@@ -43,9 +43,15 @@
         specialArgs = { inherit inputs; };
         inherit system;
         modules = [
+          niri.nixosModules.niri
           ./configuration.nix
 
-          { nixpkgs.config.allowUnfree = true; }
+          {
+            nixpkgs = {
+              config.allowUnfree = true;
+              overlays = [ niri.overlays.niri ];
+            };
+          }
 
           home-manager.nixosModules.home-manager
           {
@@ -56,7 +62,6 @@
                 inherit
                   nixpkgs-unstable
                   MyNixvim
-                  niri
                   quickshell
                 ;
               };

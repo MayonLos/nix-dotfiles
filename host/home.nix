@@ -1,7 +1,6 @@
 {
   config,
   pkgs,
-  niri,
   ...
 }:
 let
@@ -15,7 +14,6 @@ let
 in
 {
   imports = [
-    niri.homeModules.niri
     ../home/dwm/suckless.nix
     ../home/niri/default.nix
     ../home/service/default.nix
@@ -28,12 +26,6 @@ in
   home.username = "mayon";
   home.homeDirectory = "/home/mayon";
   home.stateVersion = "25.11";
-
-  
-
-  home.sessionVariables = {
-    XMODIFIERS = "@im=fcitx";
-  };
 
   i18n.inputMethod = {
     type = "fcitx5";

@@ -1,13 +1,9 @@
 {
-  pkgs,
   ...
 }:
 
 {
-  programs.niri = {
-    enable = true;
-    package = pkgs.niri;
-    settings = {
+  programs.niri.settings = {
       prefer-no-csd = true;
       hotkey-overlay = {
         skip-at-startup = true;
@@ -67,20 +63,119 @@
           focus-at-startup = true;
         };
       };
+      animations = {
+        enable = true;
+        slowdown = 2;
 
-      environment = {
-        CLUTTER_BACKEND = "wayland";
-        GDK_BACKEND = "wayland,x11";
-        MOZ_ENABLE_WAYLAND = "1";
-        NIXOS_OZONE_WL = "1";
-        QT_QPA_PLATFORM = "wayland";
-        QT_WAYLAND_DISABLE_WINDOWDECORATION = "1";
-        ELECTRON_OZONE_PLATFORM_HINT = "auto";
+        workspace-switch = {
+          enable = true;
+          kind = {
+            spring = {
+              damping-ratio = 1.0;
+              stiffness = 1000;
+              epsilon = 0.0001;
+            };
+          };
+        };
 
-        XDG_SESSION_TYPE = "wayland";
-        XDG_CURRENT_DESKTOP = "niri";
-        DISPLAY = ":0";
+        window-open = {
+          enable = true;
+          kind = {
+            easing = {
+              duration-ms = 150;
+              curve = "ease-out-expo";
+              curve-args = [];
+            };
+          };
+        };
+
+        window-close = {
+          enable = true;
+          kind = {
+            easing = {
+              duration-ms = 150;
+              curve = "ease-out-quad";
+              curve-args = [];
+            };
+          };
+        };
+
+        horizontal-view-movement = {
+          enable = true;
+          kind = {
+            spring = {
+              damping-ratio = 1.0;
+              stiffness = 800;
+              epsilon = 0.0001;
+            };
+          };
+        };
+
+        window-movement = {
+          enable = true;
+          kind = {
+            spring = {
+              damping-ratio = 1.0;
+              stiffness = 800;
+              epsilon = 0.0001;
+            };
+          };
+        };
+
+        window-resize = {
+          enable = true;
+          kind = {
+            spring = {
+              damping-ratio = 1.0;
+              stiffness = 800;
+              epsilon = 0.0001;
+            };
+          };
+        };
+
+        config-notification-open-close = {
+          enable = true;
+          kind = {
+            spring = {
+              damping-ratio = 0.6;
+              stiffness = 1000;
+              epsilon = 0.001;
+            };
+          };
+        };
+
+        exit-confirmation-open-close = {
+          enable = true;
+          kind = {
+            spring = {
+              damping-ratio = 0.6;
+              stiffness = 500;
+              epsilon = 0.01;
+            };
+          };
+        };
+
+        screenshot-ui-open = {
+          enable = true;
+          kind = {
+            easing = {
+              duration-ms = 200;
+              curve = "ease-out-quad";
+              curve-args = [];
+            };
+          };
+        };
+
+        overview-open-close = {
+          enable = true;
+          kind = {
+            spring = {
+              damping-ratio = 1.0;
+              stiffness = 800;
+              epsilon = 0.0001;
+            };
+          };
+        };
       };
-    };
   };
 }

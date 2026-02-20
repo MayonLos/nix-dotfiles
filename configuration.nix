@@ -120,8 +120,17 @@
 
   services.xserver.desktopManager.runXdgAutostartIfNone = true;
   services.xserver.exportConfiguration = true;
+  services.xserver.displayManager.startx.enable = true;
 
-  services.displayManager.ly.enable = true;
+  services.greetd = {
+    enable = true;
+    useTextGreeter = true;
+    settings = {
+      default_session = {
+        command = "${pkgs.tuigreet}/bin/tuigreet --xsession-wrapper '${pkgs.xorg.xinit}/bin/startx ${pkgs.coreutils}/bin/env' --sessions ${config.services.displayManager.sessionData.desktops}/share/wayland-sessions --xsessions ${config.services.displayManager.sessionData.desktops}/share/xsessions";
+      };
+    };
+  };
 
   services.xserver.windowManager.dwm = {
     enable = true;
@@ -135,13 +144,6 @@
         ]);
     });
   };
-
-  programs.niri.package = pkgs.niri.overrideAttrs (old: {
-    postInstall = (old.postInstall or "") + ''
-      substituteInPlace $out/share/wayland-sessions/niri.desktop \
-      --replace-fail 'Exec=niri-session' 'Exec=dbus-run-session ${placeholder "out"}/bin/niri --session'
-    '';
-  });
 
   users.users.mayon = {
     isNormalUser = true;
@@ -158,6 +160,7 @@
   };
 
   programs.niri.enable = true;
+  programs.niri.package = pkgs.niri-unstable;
   programs.gamemode.enable = true;
   programs.thunar.enable = true;
   programs.xfconf.enable = true;

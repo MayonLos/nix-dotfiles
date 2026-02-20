@@ -18,7 +18,6 @@ in
     fzf
     nodejs
     gcc
-    xclip
     feh
     picom
     dunst
@@ -42,9 +41,9 @@ in
       ];
       gamemodeSupport = true;
     })
-    # flclash
+
     MyNixvim.packages.${pkgs.stdenv.hostPlatform.system}.default
-    xwayland-satellite
+    xwayland-satellite-unstable
     fuzzel
     libnotify
     swww
@@ -64,6 +63,11 @@ in
 
     unstable.qq
     unstable.go-musicfox
-    unstable.vscode
+    (unstable.vscode.override {
+      commandLineArgs = [
+        "--ozone-platform=wayland"
+        "--wayland-text-input-version=3"
+      ];
+    })
   ];
 }
