@@ -59,15 +59,8 @@ in
     mangohud
     cherry-studio
     flclash
-    # wechat
 
     unstable.qq
     unstable.go-musicfox
-    (unstable.vscode.override {
-      commandLineArgs = [
-        "--ozone-platform=wayland"
-        "--wayland-text-input-version=3"
-      ];
-    })
   ];
 }

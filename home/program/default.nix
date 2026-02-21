@@ -4,6 +4,7 @@
 
 {
   imports = [
+    ./vscode.nix
     ./obsidian.nix
     ./firefox.nix
     ./foot.nix
