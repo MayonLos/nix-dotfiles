@@ -4,6 +4,7 @@
 
 {
   imports = [
+    ./codex.nix
     ./vscode.nix
     ./obsidian.nix
     ./firefox.nix
