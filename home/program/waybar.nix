@@ -182,6 +182,21 @@
         color: #abb2bf;
       }
 
+      /* Make taskbar container transparent so when it's empty nothing remains */
+      #taskbar {
+        background: transparent;
+        margin: 0;
+        padding: 0;
+      }
+
+      /* Extra safeguard if waybar applies .empty */
+      #taskbar.empty {
+        background: transparent;
+        margin: 0;
+        min-width: 0;
+        padding: 0;
+      }
+
       #workspaces {
         background: transparent;
         margin: 4px 3px;
