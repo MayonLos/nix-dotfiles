@@ -160,7 +160,7 @@
   };
 
   programs.niri.enable = true;
-  programs.niri.package = pkgs.niri-unstable.overrideAttrs (old: {
+  programs.niri.package = pkgs.niri.overrideAttrs (old: {
     postFixup = (old.postFixup or "") + ''
       substituteInPlace "$out/bin/niri-session" \
         --replace-fail \

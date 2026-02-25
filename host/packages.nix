@@ -37,19 +37,20 @@ in
       jdks = [
         javaPackages.compiler.temurin-bin.jdk-8
         javaPackages.compiler.temurin-bin.jdk-17
-        javaPackages.compiler.temurin-bin.jdk-21
+        javaPackages.compiler.temurin-bin.jdk-25
       ];
       gamemodeSupport = true;
     })
 
     MyNixvim.packages.${pkgs.stdenv.hostPlatform.system}.default
-    xwayland-satellite-unstable
+    xwayland-satellite
     fuzzel
     libnotify
     swww
     wl-clipboard
     cliphist
     pavucontrol
+    playerctl
     (quickshell.packages.${pkgs.stdenv.hostPlatform.system}.default.withModules [
       pkgs.qt6.qtmultimedia
       pkgs.qt6.qt5compat

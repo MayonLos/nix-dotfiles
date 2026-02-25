@@ -35,7 +35,7 @@ in
   programs.niri.settings = {
     xwayland-satellite = {
       enable = true;
-      path = "${pkgs.xwayland-satellite-unstable}/bin/xwayland-satellite";
+      path = "${pkgs.xwayland-satellite}/bin/xwayland-satellite";
     };
     spawn-at-startup = [
       {

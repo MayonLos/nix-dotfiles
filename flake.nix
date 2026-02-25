@@ -49,7 +49,7 @@
           {
             nixpkgs = {
               config.allowUnfree = true;
-              overlays = [ niri.overlays.niri ];
+              overlays = [ ];
             };
           }
 
