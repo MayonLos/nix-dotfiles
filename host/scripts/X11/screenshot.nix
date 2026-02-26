@@ -54,18 +54,10 @@ let
   '';
 in
 {
-  # 将脚本写入到 ~/.local/bin
   home.file.".local/bin/screenshot.sh" = {
     source = screenshotScript;
     executable = true;
   };
-
-  # 确保依赖包已安装
-  home.packages = with pkgs; [
-    maim
-    xclip
-    libnotify
-  ];
 
   home.sessionPath = [ "$HOME/.local/bin" ];
 }

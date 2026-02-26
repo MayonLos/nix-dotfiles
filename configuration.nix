@@ -1,6 +1,5 @@
 {
   config,
-  lib,
   pkgs,
   ...
 }:
@@ -35,31 +34,11 @@
     ];
   };
 
-  systemd.services.nix-daemon.environment = {
-  https_proxy = "http://127.0.0.1:7890";
-  http_proxy = "http://127.0.0.1:7890";
-};
-
-  # services.flatpak.enable = true;
-
-  # systemd.services.flatpak-repo = {
-  #   wantedBy = [ "multi-user.target" ];
-  #   path = [ pkgs.flatpak ];
-  #   script = ''
-  #           flatpak remote-add --if-not-exists flathub \
-  #     https://flathub.org/repo/flathub.flatpakrepo
-  #   '';
-  # };
-
   networking.networkmanager.enable = true;
 
   zramSwap.enable = true;
 
   hardware.graphics.enable = true;
-
-  services.xserver.videoDrivers = [
-    "nvidia"
-  ];
 
   hardware.nvidia = {
     modesetting.enable = true;
@@ -116,11 +95,13 @@
     autoRepeatDelay = 200;
     autoRepeatInterval = 35;
     dpi = 144;
+    videoDrivers = [
+      "nvidia"
+    ];
+    desktopManager.runXdgAutostartIfNone = true;
+    exportConfiguration = true;
+    displayManager.startx.enable = true;
   };
-
-  services.xserver.desktopManager.runXdgAutostartIfNone = true;
-  services.xserver.exportConfiguration = true;
-  services.xserver.displayManager.startx.enable = true;
 
   services.greetd = {
     enable = true;

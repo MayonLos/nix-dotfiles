@@ -1,13 +1,11 @@
 {
   pkgs,
-  nixpkgs-unstable,
-  MyNixvim,
-  quickshell,
+  inputs,
   ...
 }:
 
 let
-  unstable = import nixpkgs-unstable {
+  unstable = import inputs.nixpkgs-unstable {
     system = "x86_64-linux";
     config.allowUnfree = true;
   };
@@ -42,7 +40,7 @@ in
       gamemodeSupport = true;
     })
 
-    MyNixvim.packages.${pkgs.stdenv.hostPlatform.system}.default
+    inputs.MyNixvim.packages.${pkgs.stdenv.hostPlatform.system}.default
     xwayland-satellite
     fuzzel
     libnotify
@@ -51,15 +49,12 @@ in
     cliphist
     pavucontrol
     playerctl
-    (quickshell.packages.${pkgs.stdenv.hostPlatform.system}.default.withModules [
-      pkgs.qt6.qtmultimedia
-      pkgs.qt6.qt5compat
-    ])
     obs-studio
     mangohud
     cherry-studio
     flclash
     wechat
+    xclip
 
     unstable.qq
     unstable.go-musicfox

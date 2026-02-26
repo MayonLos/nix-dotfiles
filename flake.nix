@@ -16,25 +16,9 @@
     };
 
     niri.url = "github:sodiboo/niri-flake";
-
-    quickshell = {
-      url = "github:quickshell-mirror/quickshell";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
-  outputs =
-  inputs@
-    {
-      self,
-      nixpkgs,
-      nixpkgs-unstable,
-      home-manager,
-      MyNixvim,
-      niri,
-      quickshell,
-      ...
-    }:
+  outputs = inputs@{ nixpkgs, ... }:
     let
       system = "x86_64-linux";
     in
@@ -43,28 +27,21 @@
         specialArgs = { inherit inputs; };
         inherit system;
         modules = [
-          niri.nixosModules.niri
+          inputs.niri.nixosModules.niri
           ./configuration.nix
 
           {
             nixpkgs = {
               config.allowUnfree = true;
-              overlays = [ ];
             };
           }
 
-          home-manager.nixosModules.home-manager
+          inputs.home-manager.nixosModules.home-manager
           {
             home-manager = {
               useGlobalPkgs = true;
               useUserPackages = true;
-              extraSpecialArgs = {
-                inherit
-                  nixpkgs-unstable
-                  MyNixvim
-                  quickshell
-                ;
-              };
+              extraSpecialArgs = { inherit inputs; };
               users.mayon = import ./host/home.nix;
               backupFileExtension = "backup";
             };
