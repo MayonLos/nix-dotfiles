@@ -56,10 +56,10 @@ in
       pkgs.qt6.qt5compat
     ])
     obs-studio
-    ollama
     mangohud
     cherry-studio
     flclash
+    wechat
 
     unstable.qq
     unstable.go-musicfox

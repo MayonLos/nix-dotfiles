@@ -27,11 +27,6 @@
     substituters = [
       "https://mirrors.ustc.edu.cn/nix-channels/store"
       "https://cache.nixos.org"
-      "https://nix-community.cachix.org"
-    ];
-
-    trusted-public-keys = [
-      "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
     ];
 
     experimental-features = [
@@ -40,16 +35,21 @@
     ];
   };
 
-  services.flatpak.enable = true;
+  systemd.services.nix-daemon.environment = {
+  https_proxy = "http://127.0.0.1:7890";
+  http_proxy = "http://127.0.0.1:7890";
+};
 
-  systemd.services.flatpak-repo = {
-    wantedBy = [ "multi-user.target" ];
-    path = [ pkgs.flatpak ];
-    script = ''
-            flatpak remote-add --if-not-exists flathub \
-      https://flathub.org/repo/flathub.flatpakrepo
-    '';
-  };
+  # services.flatpak.enable = true;
+
+  # systemd.services.flatpak-repo = {
+  #   wantedBy = [ "multi-user.target" ];
+  #   path = [ pkgs.flatpak ];
+  #   script = ''
+  #           flatpak remote-add --if-not-exists flathub \
+  #     https://flathub.org/repo/flathub.flatpakrepo
+  #   '';
+  # };
 
   networking.networkmanager.enable = true;
 
@@ -215,6 +215,7 @@
       noto-fonts-cjk-sans
       noto-fonts-cjk-serif
       noto-fonts-color-emoji
+      wqy_zenhei
     ];
     fontconfig = {
       antialias = true;
