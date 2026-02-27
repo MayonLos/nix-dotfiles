@@ -5,6 +5,7 @@
 {
   imports = [
     ./apps/firefox.nix
+    ./apps/fuzzel.nix
     ./apps/mpv.nix
     ./apps/obsidian.nix
     ./apps/yazi.nix

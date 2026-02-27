@@ -27,7 +27,6 @@ in
 
     # Desktop/WM utilities
     xwayland-satellite
-    fuzzel
     libnotify
     swww
     feh
