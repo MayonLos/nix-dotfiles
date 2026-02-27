@@ -13,23 +13,52 @@ in
 
 {
   home.packages = with pkgs; [
+    # Core CLI and build tooling
     fzf
     nodejs
     gcc
+    python315
+    gnumake
+    unzip
+    fastfetch
+
+    # Editor
+    inputs.MyNixvim.packages.${pkgs.stdenv.hostPlatform.system}.default
+
+    # Desktop/WM utilities
+    xwayland-satellite
+    fuzzel
+    libnotify
+    swww
     feh
     picom
     dunst
-    pamixer
-    brightnessctl
-    fastfetch
-    unzip
-    bibata-cursors
-    maim
-    python315
-    gnumake
     mission-center
     networkmanagerapplet
+    bibata-cursors
 
+    # Clipboard and screenshot helpers
+    maim
+    wl-clipboard
+    cliphist
+    xclip
+
+    # Audio/media controls and streaming
+    brightnessctl
+    pamixer
+    pavucontrol
+    playerctl
+    obs-studio
+    mangohud
+
+    # Communication and network apps
+    cherry-studio
+    flclash
+    wechat
+    unstable.qq
+    unstable.go-musicfox
+
+    # Games / launchers
     (prismlauncher.override {
       additionalPrograms = [ ffmpeg ];
       jdks = [
@@ -39,24 +68,5 @@ in
       ];
       gamemodeSupport = true;
     })
-
-    inputs.MyNixvim.packages.${pkgs.stdenv.hostPlatform.system}.default
-    xwayland-satellite
-    fuzzel
-    libnotify
-    swww
-    wl-clipboard
-    cliphist
-    pavucontrol
-    playerctl
-    obs-studio
-    mangohud
-    cherry-studio
-    flclash
-    wechat
-    xclip
-
-    unstable.qq
-    unstable.go-musicfox
   ];
 }

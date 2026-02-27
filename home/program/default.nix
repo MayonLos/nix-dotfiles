@@ -4,16 +4,18 @@
 
 {
   imports = [
-    ./codex.nix
-    ./vscode.nix
-    ./obsidian.nix
-    ./firefox.nix
-    ./foot.nix
-    ./mpv.nix
-    ./git.nix
-    ./swaylock.nix
-    ./yazi.nix
-    ./waybar.nix
-    ./tmux.nix
+    ./apps/firefox.nix
+    ./apps/mpv.nix
+    ./apps/obsidian.nix
+    ./apps/yazi.nix
+    ./apps/zathura.nix
+    ./desktop/swaylock.nix
+    ./desktop/thunar-terminal.nix
+    ./desktop/waybar.nix
+    ./dev/codex.nix
+    ./dev/git.nix
+    ./dev/vscode.nix
+    ./terminal/foot.nix
+    ./terminal/tmux.nix
   ];
 }
