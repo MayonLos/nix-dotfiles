@@ -1,9 +1,8 @@
-{
-  ...
-}:
+{ config, lib, ... }:
 
 {
-  programs.niri.settings = {
+  programs.niri.settings = lib.mkMerge [
+    {
       prefer-no-csd = true;
       hotkey-overlay = {
         skip-at-startup = true;
@@ -84,7 +83,7 @@
             easing = {
               duration-ms = 150;
               curve = "ease-out-expo";
-              curve-args = [];
+              curve-args = [ ];
             };
           };
         };
@@ -95,7 +94,7 @@
             easing = {
               duration-ms = 150;
               curve = "ease-out-quad";
-              curve-args = [];
+              curve-args = [ ];
             };
           };
         };
@@ -161,7 +160,7 @@
             easing = {
               duration-ms = 200;
               curve = "ease-out-quad";
-              curve-args = [];
+              curve-args = [ ];
             };
           };
         };
@@ -177,5 +176,19 @@
           };
         };
       };
-  };
+    }
+    (lib.mkIf (config.my.desktop.shell == "noctalia") {
+      debug.honor-xdg-activation-with-invalid-serial = true;
+      layout.focus-ring = lib.mkForce {
+        enable = true;
+        width = 2;
+        active = {
+          color = "#61afefcc";
+        };
+        inactive = {
+          color = "#3b4252";
+        };
+      };
+    })
+  ];
 }

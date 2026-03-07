@@ -11,6 +11,7 @@
     ../home/shell/default.nix
 
     ./home/base.nix
+    ./home/desktop-shell.nix
     ./home/input-method.nix
     ./home/ui.nix
     ./home/xdg.nix

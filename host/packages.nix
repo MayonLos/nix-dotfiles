@@ -33,7 +33,6 @@ in
     picom
     dunst
     mission-center
-    networkmanagerapplet
     bibata-cursors
 
     # Clipboard and screenshot helpers

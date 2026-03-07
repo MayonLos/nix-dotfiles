@@ -1,6 +1,8 @@
 { config, lib, ... }:
 
 let
+  isNoctalia = config.my.desktop.shell == "noctalia";
+
   mkActionBinds = action: keys:
     lib.listToAttrs (map (key: lib.nameValuePair key { inherit action; }) keys);
 
@@ -167,12 +169,28 @@ in
         hotkey-overlay.title = "Open a Terminal: foot";
       };
       "Mod+P" = {
-        action = spawn "fuzzel";
-        hotkey-overlay.title = "Run an Application: fuzzel";
+        action =
+          if isNoctalia then
+            spawn "noctalia-shell" "ipc" "call" "launcher" "toggle"
+          else
+            spawn "fuzzel";
+        hotkey-overlay.title =
+          if isNoctalia then
+            "Run an Application: Noctalia Launcher"
+          else
+            "Run an Application: fuzzel";
       };
       "Super+Alt+L" = {
-        action = spawn "swaylock";
-        hotkey-overlay.title = "Lock the Screen: swaylock";
+        action =
+          if isNoctalia then
+            spawn "noctalia-shell" "ipc" "call" "lockScreen" "lock"
+          else
+            spawn "swaylock";
+        hotkey-overlay.title =
+          if isNoctalia then
+            "Lock the Screen: Noctalia"
+          else
+            "Lock the Screen: swaylock";
       };
 
       "Mod+0" = {
@@ -231,7 +249,11 @@ in
         allow-inhibiting = false;
       };
 
-      "Mod+Shift+E".action = quit;
+      "Mod+Shift+E".action =
+        if isNoctalia then
+          spawn "noctalia-shell" "ipc" "call" "sessionMenu" "toggle"
+        else
+          quit;
       "Ctrl+Alt+Delete".action = quit;
 
       "Alt+V".action = spawn "niri-clipboard" "menu";

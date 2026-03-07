@@ -12,6 +12,7 @@
     ./apps/zathura.nix
     ./desktop/swaylock.nix
     ./desktop/thunar-terminal.nix
+    ./desktop/noctalia.nix
     ./desktop/waybar.nix
     ./dev/codex.nix
     ./dev/git.nix
