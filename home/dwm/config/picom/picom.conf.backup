@@ -1,0 +1,94 @@
+frame-opacity = 0.7;
+
+shadow = true;
+shadow-radius = 1;
+shadow-opacity = 0.6;
+shadow-offset-x = 0;
+shadow-offset-y = 0;
+shadow-color   = "#393943";
+
+fading        = true;
+fade-in-step  = 0.03;
+fade-out-step = 0.03;
+fade-delta    = 15;
+
+backend                = "glx";
+dithered-present       = false;
+vsync                  = true;
+detect-rounded-corners = false;
+detect-client-opacity  = true;
+use-ewmh-active-win    = true;
+detect-transient       = true;
+use-damage             = true;
+log-level              = "warn";
+
+blur = {
+  method   = "dual_kawase";
+  size     = 10;
+  strength = 3;
+};
+blur-background-fixed = true;
+
+rules = (
+  # ── 全局圆角（匹配所有窗口） ──
+  { corner-radius = 12; },
+
+  # ── 顶栏/托盘/托盘图标：全部禁用圆角（你截图里那块就会变直角） ──
+  {
+    match = "class_g = 'dwm' || name = 'dwm' || class_g = 'systray' || name = 'systray'";
+    corner-radius = 0;
+    shadow = false;
+    full-shadow = false;
+    dim = 0.0;
+    opacity = 0.6;          # 顶栏/托盘半透明
+    blur-background = true;   # 想磨砂就 true，不想就 false
+  },
+
+  # ── 活跃/非活跃：排除 bar/systray/notification/desktop，避免顶栏跟着变暗 ──
+  { match = "(focused || group_focused) && ! (class_g = 'dwm' || class_g = 'systray' || window_type = 'notification' || window_type = 'desktop')";
+    opacity = 1.0; dim = 0.0; },
+
+  { match = "! (focused || group_focused) && ! (class_g = 'dwm' || class_g = 'systray' || window_type = 'notification' || window_type = 'desktop')";
+    opacity = 0.85; dim = 0.05; },
+
+  # ── 全屏：禁用圆角 ──
+  { match = "fullscreen"; corner-radius = 0; },
+
+  # ── 工具提示 / 菜单 ──
+  { match = "window_type = 'tooltip'",       opacity = 0.50; corner-radius = 10; fade = true; shadow = true;  full-shadow = false; },
+  { match = "window_type = 'popup_menu'",    opacity = 0.70; corner-radius = 10; },
+  { match = "window_type = 'dropdown_menu'", opacity = 0.70; corner-radius = 10; },
+
+  # ── 终端（别用 *?= 'st'，会误伤 stalonetray 等） ──
+  { match = "class_g = 'kitty' || class_g = 'foot' || class_g = 'St' || class_g = 'st' || class_g = 'st-256color'",
+    opacity = 0.90; blur-background = true; dim = 0.0; },
+  { match = "! (focused || group_focused) && (class_g = 'kitty' || class_g = 'foot' || class_g = 'St' || class_g = 'st' || class_g = 'st-256color')",
+    opacity = 0.82; },
+
+  # ── Firefox ──
+  { match = "class_g *?= 'firefox'", opacity = 0.88; blur-background = true; shadow = true; full-shadow = true; },
+  { match = "class_g *?= 'firefox' && ! (focused || group_focused)", opacity = 0.80; },
+
+  # ── QQ ──
+  { match = "(class_g *?= 'qq') || (class_g *?= 'linuxqq') || (name *?= 'qq')",
+    opacity = 0.90; blur-background = true; shadow = true; full-shadow = true; dim = 0.0; },
+  { match = "(! (focused || group_focused)) && ((class_g *?= 'qq') || (class_g *?= 'linuxqq') || (name *?= 'qq'))",
+    opacity = 0.82; },
+
+  # ── 通知 ──
+  { match = "window_type = 'notification'", opacity = 0.90; corner-radius = 10; blur-background = true; dim = 0.0; shadow = true; full-shadow = true; },
+  { match = "window_type = 'notification' && ! (focused || group_focused)", opacity = 0.86; },
+
+  # ── 截图/选区：禁用模糊/阴影 ──
+  { match = "(class_g *?= 'slop') || (name *?= 'slop') || (class_g *?= 'maim') || (name *?= 'maim')",
+    blur-background = false; opacity = 1.0; dim = 0.0; shadow = false; full-shadow = false; }
+);
+
+animations = (
+  { triggers = [ "open", "show" ];  preset = "appear";       scale = 0.90; duration = 0.30; },
+  { triggers = [ "close", "hide" ]; preset = "disappear";    scale = 0.90; duration = 0.20; },
+  { triggers = [ "increase-opacity" ]; preset = "appear";    scale = 0.98; duration = 0.12; },
+  { triggers = [ "decrease-opacity" ]; preset = "disappear"; scale = 1.0;  duration = 0.10; },
+  { triggers = [ "geometry" ]; preset = "geometry-change";   duration = 0.15; }
+);
+

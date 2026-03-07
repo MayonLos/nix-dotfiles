@@ -1,10 +1,8 @@
 {
-  config,
   ...
 }:
 let
-  dotfiles = "${config.home.homeDirectory}/nixos-dotfiles/home/dwm/config";
-  create_symlink = path: config.lib.file.mkOutOfStoreSymlink path;
+  dotfiles = ../../home/dwm/config;
 
   configs = {
     picom = "picom";
@@ -13,7 +11,7 @@ let
 in
 {
   xdg.configFile = builtins.mapAttrs (name: subpath: {
-    source = create_symlink "${dotfiles}/${subpath}";
+    source = dotfiles + "/${subpath}";
     recursive = true;
   }) configs;
 

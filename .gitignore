@@ -1,2 +1,8 @@
 /result
 /result-*
+
+# local suckless build artifacts
+home/dwm/dwm
+home/dwm/config/dmenu/dmenu
+home/dwm/config/dmenu/stest
+home/dwm/config/slstatus/slstatus
