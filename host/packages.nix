@@ -30,8 +30,6 @@ in
     libnotify
     swww
     feh
-    picom
-    dunst
     mission-center
     bibata-cursors
 

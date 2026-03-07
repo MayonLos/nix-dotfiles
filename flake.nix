@@ -33,6 +33,10 @@
   outputs = inputs@{ nixpkgs, ... }:
     let
       system = "x86_64-linux";
+      pkgs = import nixpkgs {
+        inherit system;
+        config.allowUnfree = true;
+      };
     in
     {
       nixosConfigurations.nixos-btw = nixpkgs.lib.nixosSystem {
@@ -59,6 +63,11 @@
             };
           }
         ];
+      };
+
+      devShells.${system} = {
+        cuda = import ./dev/cuda/shell.nix { inherit pkgs; };
+        default = import ./dev/cuda/shell.nix { inherit pkgs; };
       };
     };
 }

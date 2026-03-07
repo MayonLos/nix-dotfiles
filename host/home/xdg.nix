@@ -1,20 +1,7 @@
 {
   ...
 }:
-let
-  dotfiles = ../../home/dwm/config;
-
-  configs = {
-    picom = "picom";
-    dunst = "dunst";
-  };
-in
 {
-  xdg.configFile = builtins.mapAttrs (name: subpath: {
-    source = dotfiles + "/${subpath}";
-    recursive = true;
-  }) configs;
-
   xdg.mimeApps = {
     enable = true;
     defaultApplications = {
