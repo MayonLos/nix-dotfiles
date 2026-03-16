@@ -46,14 +46,14 @@ in
           command = [
             "sh"
             "-c"
-            "sleep 0.8 && ${pkgs.swww}/bin/swww img ${../wallpaper/wallpaper.jpg}"
+            "sleep 0.8 && ${pkgs.swww}/bin/swww img ${../wallpaper/wallpaper-001.jpg}"
           ];
         }
         {
           command = [
             "sh"
             "-c"
-            "sleep 0.8 && ${pkgs.swww}/bin/swww img ${../wallpaper/overview.jpg} -n overview"
+            "sleep 0.8 && ${pkgs.swww}/bin/swww img ${../wallpaper/wallpaper-002.jpg} -n overview"
           ];
         }
       ];

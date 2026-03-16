@@ -8,7 +8,9 @@
 
 let
   isNoctalia = config.my.desktop.shell == "noctalia";
-  wallpaperPath = "${../../wallpaper/wallpaper.jpg}";
+  wallpaperDir = "${../../wallpaper}";
+  defaultWallpaperPath = "${../../wallpaper/wallpaper-001.jpg}";
+  overviewWallpaperPath = "${../../wallpaper/wallpaper-002.jpg}";
 in
 {
   imports = [
@@ -148,6 +150,12 @@ in
         wallpaper = {
           enabled = true;
           overviewEnabled = true;
+          directory = wallpaperDir;
+          automationEnabled = true;
+          wallpaperChangeMode = "random";
+          randomIntervalSec = 300;
+          viewMode = "single";
+          sortOrder = "name";
           fillMode = "crop";
           useSolidColor = false;
           transitionDuration = 1200;
@@ -255,9 +263,9 @@ in
     };
 
     home.file.".cache/noctalia/wallpapers.json".text = builtins.toJSON {
-      defaultWallpaper = wallpaperPath;
+      defaultWallpaper = defaultWallpaperPath;
       wallpapers = {
-        "eDP-1" = wallpaperPath;
+        "eDP-1" = defaultWallpaperPath;
       };
     };
   };
