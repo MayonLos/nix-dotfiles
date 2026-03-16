@@ -34,4 +34,13 @@
       DarkTheme = "Nord-Dark";
     };
   };
+
+  # Home Manager already generates fcitx5-daemon.service for the graphical
+  # session. Mask the XDG autostart desktop file so Fcitx5 does not start twice.
+  xdg.configFile."autostart/org.fcitx.Fcitx5.desktop".text = ''
+    [Desktop Entry]
+    Type=Application
+    Name=Fcitx 5
+    Hidden=true
+  '';
 }

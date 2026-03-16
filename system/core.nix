@@ -17,7 +17,12 @@
     "udev.log_level=3"
   ];
 
-  virtualisation.docker.enable = true;
+  virtualisation.docker = {
+    enable = true;
+    # Avoid blocking boot on network-online; dockerd will still start on demand
+    # through its socket when we actually use Docker.
+    enableOnBoot = false;
+  };
 
   networking.hostName = "nixos-btw";
   networking.networkmanager.enable = true;

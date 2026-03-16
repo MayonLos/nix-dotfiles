@@ -1,4 +1,7 @@
-{ lib, ... }:
+{
+  lib,
+  ...
+}:
 
 {
   services.picom = {
@@ -98,7 +101,14 @@
     '';
   };
 
-  # Use declarative config/package, but don't auto-start in all sessions.
-  # DWM autostart script still launches picom explicitly.
+  # We launch picom manually from DWM; hide the XDG autostart entry so Wayland
+  # sessions do not try to start it.
+  xdg.configFile."autostart/picom.desktop".text = ''
+    [Desktop Entry]
+    Type=Application
+    Name=picom
+    Hidden=true
+  '';
+
   systemd.user.services.picom.Install.WantedBy = lib.mkForce [ ];
 }
