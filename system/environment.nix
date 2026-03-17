@@ -14,6 +14,7 @@
 
   fonts = {
     packages = with pkgs; [
+      lmodern
       nerd-fonts.jetbrains-mono
       noto-fonts-cjk-sans
       noto-fonts-cjk-serif

@@ -16,6 +16,7 @@
     ./desktop/waybar.nix
     ./dev/codex.nix
     ./dev/git.nix
+    ./dev/latex.nix
     ./dev/vscode.nix
     ./terminal/foot.nix
     ./terminal/tmux.nix
