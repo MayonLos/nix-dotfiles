@@ -15,8 +15,7 @@
     gnumake
     unzip
     fastfetch
-    codex
-    claude-code
+    github-copilot-cli
 
     # Editor
     inputs.MyNixvim.packages.${pkgs.stdenv.hostPlatform.system}.default
