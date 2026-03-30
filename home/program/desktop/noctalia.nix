@@ -254,7 +254,7 @@ in
           groupIndicatorStyle = "dots";
           deadOpacity = 0.65;
           animationSpeed = 1;
-          showDockIndicator = true;
+          showDockIndicator = false;
           indicatorThickness = 3;
           indicatorColor = "primary";
           indicatorOpacity = 0.75;

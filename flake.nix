@@ -57,7 +57,13 @@
             home-manager = {
               useGlobalPkgs = true;
               useUserPackages = true;
-              extraSpecialArgs = { inherit inputs; };
+              extraSpecialArgs = { 
+                inherit inputs; 
+                pkgs-unstable = import inputs.nixpkgs-unstable {
+                  inherit system;
+                  config.allowUnfree = true;
+                };
+              };
               users.mayon = import ./host/home.nix;
               backupFileExtension = "backup";
             };

@@ -1,15 +1,9 @@
 {
   pkgs,
+  pkgs-unstable,
   inputs,
   ...
 }:
-
-let
-  unstable = import inputs.nixpkgs-unstable {
-    system = "x86_64-linux";
-    config.allowUnfree = true;
-  };
-in
 
 {
   home.packages = with pkgs; [
@@ -21,6 +15,8 @@ in
     gnumake
     unzip
     fastfetch
+    codex
+    claude-code
 
     # Editor
     inputs.MyNixvim.packages.${pkgs.stdenv.hostPlatform.system}.default
@@ -51,8 +47,8 @@ in
     cherry-studio
     flclash
     wechat
-    unstable.qq
-    unstable.go-musicfox
+    pkgs-unstable.qq
+    pkgs-unstable.go-musicfox
 
     # Games / launchers
     (prismlauncher.override {

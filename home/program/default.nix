@@ -14,7 +14,6 @@
     ./desktop/thunar-terminal.nix
     ./desktop/noctalia.nix
     ./desktop/waybar.nix
-    ./dev/codex.nix
     ./dev/git.nix
     ./dev/latex.nix
     ./dev/vscode.nix
