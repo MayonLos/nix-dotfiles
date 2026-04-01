@@ -345,7 +345,7 @@ in
 
     vaults.main = {
       enable = true;
-      target = "Notes";
+      target = "Vaults";
       settings = {
         themes = enabledThemeEntries;
         communityPlugins = enabledCommunityPluginEntries;

@@ -9,6 +9,8 @@
   home.packages = with pkgs; [
     # Core CLI and build tooling
     fzf
+    ripgrep
+    imagemagick
     nodejs
     gcc
     python315
@@ -16,6 +18,8 @@
     unzip
     fastfetch
     github-copilot-cli
+    codex
+    claude-code
 
     # Editor
     inputs.MyNixvim.packages.${pkgs.stdenv.hostPlatform.system}.default
