@@ -12,8 +12,15 @@
     ripgrep
     imagemagick
     nodejs
-    gcc
-    python315
+    clang
+    clang-tools
+    lld
+    (python312.withPackages (
+      ps: with ps; [
+        pip
+      ]
+    ))
+    python312Packages.uv
     gnumake
     unzip
     fastfetch
