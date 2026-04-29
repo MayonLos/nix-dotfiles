@@ -18,7 +18,7 @@ in
       };
       modules = [
         inputs.niri.nixosModules.niri
-        ./hosts/nixos-btw
+        ../hosts/nixos-btw
         inputs.home-manager.nixosModules.home-manager
         {
           nixpkgs.config.allowUnfree = true;
@@ -29,7 +29,7 @@ in
               inherit inputs;
               pkgs-unstable = pkgs-unstable-for "x86_64-linux";
             };
-            users.mayon = import ./modules/home/users/mayon;
+            users.mayon = import ../modules/home/users/mayon;
             backupFileExtension = "backup";
           };
         }

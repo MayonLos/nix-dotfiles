@@ -45,5 +45,11 @@
         inputs.home-manager.flakeModules.home-manager
         inputs.treefmt-nix.flakeModule
       ];
+      perSystem = { system, ... }: {
+        _module.args.pkgs = import inputs.nixpkgs {
+          inherit system;
+          config.allowUnfree = true;
+        };
+      };
     };
 }
