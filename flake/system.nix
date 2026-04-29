@@ -1,6 +1,7 @@
 { withSystem, inputs, ... }:
 let
-  pkgs-unstable-for = system:
+  pkgs-unstable-for =
+    system:
     import inputs.nixpkgs-unstable {
       inherit system;
       config.allowUnfree = true;

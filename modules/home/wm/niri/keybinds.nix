@@ -1,12 +1,14 @@
 { config, lib, ... }:
 
 let
-  mkActionBinds = action: keys:
-    lib.listToAttrs (map (key: lib.nameValuePair key { inherit action; }) keys);
+  mkActionBinds =
+    action: keys: lib.listToAttrs (map (key: lib.nameValuePair key { inherit action; }) keys);
 
-  mkLockedSpawnShBinds = spawnSh: bindings:
+  mkLockedSpawnShBinds =
+    spawnSh: bindings:
     lib.listToAttrs (
-      map (binding:
+      map (
+        binding:
         lib.nameValuePair binding.key {
           action = spawnSh binding.cmd;
           allow-when-locked = true;
@@ -14,11 +16,15 @@ let
       ) bindings
     );
 
-  mkWorkspaceBinds = field: prefix:
+  mkWorkspaceBinds =
+    field: prefix:
     lib.listToAttrs (
-      map (index:
+      map (
+        index:
         lib.nameValuePair "${prefix}${toString index}" {
-          action = { "${field}" = index; };
+          action = {
+            "${field}" = index;
+          };
         }
       ) (lib.range 1 9)
     );
@@ -26,7 +32,8 @@ let
   mergeMany = lib.foldl' (acc: item: acc // item) { };
 in
 {
-  programs.niri.settings.binds = with config.lib.niri.actions;
+  programs.niri.settings.binds =
+    with config.lib.niri.actions;
     let
       directionDefs = [
         {
@@ -64,7 +71,8 @@ in
       ];
 
       directionalBinds = mergeMany (
-        map (direction:
+        map (
+          direction:
           mkActionBinds direction.focusAction [
             "Mod+${direction.arrow}"
             "Mod+${direction.vim}"
@@ -231,8 +239,7 @@ in
         allow-inhibiting = false;
       };
 
-      "Mod+Shift+E".action =
-        spawn "noctalia-shell" "ipc" "call" "sessionMenu" "toggle";
+      "Mod+Shift+E".action = spawn "noctalia-shell" "ipc" "call" "sessionMenu" "toggle";
       "Ctrl+Alt+Delete".action = quit;
 
       "Alt+V".action = spawn "niri-clipboard" "menu";

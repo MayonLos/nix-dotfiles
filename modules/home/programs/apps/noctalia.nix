@@ -1,6 +1,4 @@
 {
-  config,
-  lib,
   pkgs,
   inputs,
   ...
@@ -9,7 +7,6 @@
 let
   wallpaperDir = "${../../_assets/wallpaper}";
   defaultWallpaperPath = "${../../_assets/wallpaper/wallpaper-001.jpg}";
-  overviewWallpaperPath = "${../../_assets/wallpaper/wallpaper-002.jpg}";
 in
 {
   imports = [
@@ -167,12 +164,30 @@ in
         controlCenter = {
           position = "close_to_bar_button";
           cards = [
-            { enabled = true; id = "profile-card"; }
-            { enabled = true; id = "shortcuts-card"; }
-            { enabled = true; id = "audio-card"; }
-            { enabled = true; id = "brightness-card"; }
-            { enabled = true; id = "weather-card"; }
-            { enabled = true; id = "media-sysmon-card"; }
+            {
+              enabled = true;
+              id = "profile-card";
+            }
+            {
+              enabled = true;
+              id = "shortcuts-card";
+            }
+            {
+              enabled = true;
+              id = "audio-card";
+            }
+            {
+              enabled = true;
+              id = "brightness-card";
+            }
+            {
+              enabled = true;
+              id = "weather-card";
+            }
+            {
+              enabled = true;
+              id = "media-sysmon-card";
+            }
           ];
         };
 

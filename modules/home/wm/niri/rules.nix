@@ -1,4 +1,4 @@
-{ config, lib, ... }:
+_:
 
 {
   programs.niri.settings = {
@@ -14,7 +14,7 @@
         draw-border-with-background = false;
       }
       {
-        matches = [{ app-id = "foot"; }];
+        matches = [ { app-id = "foot"; } ];
         opacity = 0.8;
       }
     ];

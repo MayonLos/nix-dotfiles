@@ -1,10 +1,10 @@
 {
-    ...
+  ...
 }:
 
 {
-    imports = [
-        ./clipboard.nix
-        ./cliphist.nix
-    ];
+  imports = [
+    ./clipboard.nix
+    ./cliphist.nix
+  ];
 }

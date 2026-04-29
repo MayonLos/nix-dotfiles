@@ -1,9 +1,9 @@
 {
-    ...
+  ...
 }:
 
 {
-    imports = [
-        ./zsh.nix
-    ];
+  imports = [
+    ./zsh.nix
+  ];
 }

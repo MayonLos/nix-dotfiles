@@ -1,13 +1,13 @@
-{ pkgs, ... }:
+_:
 {
   programs.clash-verge = {
-    enable      = true;
+    enable = true;
     serviceMode = true;
-    tunMode     = true;
+    tunMode = true;
   };
 
   services.resolved = {
-    enable      = true;
+    enable = true;
     extraConfig = ''
       DNSStubListener=no
     '';

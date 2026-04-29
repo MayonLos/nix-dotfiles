@@ -17,35 +17,37 @@ let
       hashes,
     }:
     let
-      requiredFiles = [ "main.js" "manifest.json" ];
+      requiredFiles = [
+        "main.js"
+        "manifest.json"
+      ];
       optionalFiles = lib.filter (file: builtins.hasAttr file hashes) [ "styles.css" ];
       allFiles = requiredFiles ++ optionalFiles;
 
-      fetchReleaseFile = file:
+      fetchReleaseFile =
+        file:
         pkgs.fetchurl {
           url = "https://github.com/${owner}/${repo}/releases/download/${version}/${file}";
           hash = hashes.${file};
         };
     in
-    pkgs.runCommand "obsidian-plugin-${name}"
-      { nativeBuildInputs = [ pkgs.jq ]; }
-      ''
-        set -eu
-        mkdir -p "$out"
+    pkgs.runCommand "obsidian-plugin-${name}" { nativeBuildInputs = [ pkgs.jq ]; } ''
+      set -eu
+      mkdir -p "$out"
 
-        ${lib.concatMapStrings (file: ''
-          cp "${fetchReleaseFile file}" "$out/${file}"
-        '') allFiles}
+      ${lib.concatMapStrings (file: ''
+        cp "${fetchReleaseFile file}" "$out/${file}"
+      '') allFiles}
 
-        test -s "$out/main.js" || { echo "ERROR: main.js missing or empty"; exit 1; }
-        test -s "$out/manifest.json" || { echo "ERROR: manifest.json missing or empty"; exit 1; }
+      test -s "$out/main.js" || { echo "ERROR: main.js missing or empty"; exit 1; }
+      test -s "$out/manifest.json" || { echo "ERROR: manifest.json missing or empty"; exit 1; }
 
-        manifest_identity="$(jq -r '.id // .name // ""' "$out/manifest.json")"
-        test -n "$manifest_identity" || {
-          echo "ERROR: manifest.json must contain a non-empty id or name"
-          exit 1
-        }
-      '';
+      manifest_identity="$(jq -r '.id // .name // ""' "$out/manifest.json")"
+      test -n "$manifest_identity" || {
+        echo "ERROR: manifest.json must contain a non-empty id or name"
+        exit 1
+      }
+    '';
 
   mkObsidianTheme =
     {
@@ -60,13 +62,25 @@ let
     }:
     let
       src = pkgs.fetchFromGitHub {
-        inherit owner repo rev hash;
+        inherit
+          owner
+          repo
+          rev
+          hash
+          ;
       };
 
-      manifest = pkgs.writeText "${name}-manifest.json" (builtins.toJSON {
-        id = name;
-        inherit name author version minAppVersion;
-      });
+      manifest = pkgs.writeText "${name}-manifest.json" (
+        builtins.toJSON {
+          id = name;
+          inherit
+            name
+            author
+            version
+            minAppVersion
+            ;
+        }
+      );
     in
     pkgs.runCommand "obsidian-theme-${lib.strings.toLower name}" { } ''
       set -eu

@@ -1,4 +1,4 @@
-{ config, lib, ... }:
+_:
 
 {
   programs.niri.settings = {
