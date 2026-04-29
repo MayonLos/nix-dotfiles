@@ -21,7 +21,6 @@ in
         ../hosts/nixos-btw
         inputs.home-manager.nixosModules.home-manager
         {
-          nixpkgs.config.allowUnfree = true;
           home-manager = {
             useGlobalPkgs = true;
             useUserPackages = true;
