@@ -28,6 +28,8 @@
       url = "github:noctalia-dev/noctalia-qs";
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
+
+    claude-code.url = "github:sadjow/claude-code-nix/v2";
   };
 
   outputs = inputs@{ nixpkgs, ... }:
@@ -62,6 +64,7 @@
                 pkgs-unstable = import inputs.nixpkgs-unstable {
                   inherit system;
                   config.allowUnfree = true;
+                  overlays = [ inputs.claude-code.overlays.default ];
                 };
               };
               users.mayon = import ./host/home.nix;

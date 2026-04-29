@@ -7,7 +7,6 @@
 }:
 
 let
-  isNoctalia = config.my.desktop.shell == "noctalia";
   wallpaperDir = "${../../wallpaper}";
   defaultWallpaperPath = "${../../wallpaper/wallpaper-001.jpg}";
   overviewWallpaperPath = "${../../wallpaper/wallpaper-002.jpg}";
@@ -17,7 +16,7 @@ in
     inputs.noctalia.homeModules.default
   ];
 
-  config = lib.mkIf isNoctalia {
+  config = {
     programs.noctalia-shell = {
       enable = true;
       package = inputs.noctalia.packages.${pkgs.stdenv.hostPlatform.system}.default;

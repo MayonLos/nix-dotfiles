@@ -1,8 +1,6 @@
 { config, lib, ... }:
 
 let
-  isNoctalia = config.my.desktop.shell == "noctalia";
-
   mkActionBinds = action: keys:
     lib.listToAttrs (map (key: lib.nameValuePair key { inherit action; }) keys);
 
@@ -169,28 +167,12 @@ in
         hotkey-overlay.title = "Open a Terminal: foot";
       };
       "Mod+P" = {
-        action =
-          if isNoctalia then
-            spawn "noctalia-shell" "ipc" "call" "launcher" "toggle"
-          else
-            spawn "fuzzel";
-        hotkey-overlay.title =
-          if isNoctalia then
-            "Run an Application: Noctalia Launcher"
-          else
-            "Run an Application: fuzzel";
+        action = spawn "noctalia-shell" "ipc" "call" "launcher" "toggle";
+        hotkey-overlay.title = "Run an Application: Noctalia Launcher";
       };
       "Super+Alt+L" = {
-        action =
-          if isNoctalia then
-            spawn "noctalia-shell" "ipc" "call" "lockScreen" "lock"
-          else
-            spawn "swaylock";
-        hotkey-overlay.title =
-          if isNoctalia then
-            "Lock the Screen: Noctalia"
-          else
-            "Lock the Screen: swaylock";
+        action = spawn "noctalia-shell" "ipc" "call" "lockScreen" "lock";
+        hotkey-overlay.title = "Lock the Screen: Noctalia";
       };
 
       "Mod+0" = {
@@ -250,10 +232,7 @@ in
       };
 
       "Mod+Shift+E".action =
-        if isNoctalia then
-          spawn "noctalia-shell" "ipc" "call" "sessionMenu" "toggle"
-        else
-          quit;
+        spawn "noctalia-shell" "ipc" "call" "sessionMenu" "toggle";
       "Ctrl+Alt+Delete".action = quit;
 
       "Alt+V".action = spawn "niri-clipboard" "menu";

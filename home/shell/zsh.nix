@@ -3,7 +3,7 @@
 }:
 
 {
-      programs.zsh = {
+    programs.zsh = {
     enable = true;
     enableCompletion = true;
     autosuggestion.enable = true;
@@ -14,8 +14,6 @@
       plugins = [ "git" ];
     };
     shellAliases = {
-      ll = "ls -l";
-      update = "sudo nixos-rebuild switch --flake ~/nixos-dotfiles#nixos-btw";
     };
     history.size = 10000;
     zplug = {

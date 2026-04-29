@@ -5,42 +5,6 @@
 }:
 
 {
-  services.xserver = {
-    enable = true;
-    autoRepeatDelay = 200;
-    autoRepeatInterval = 35;
-    dpi = 144;
-    videoDrivers = [
-      "nvidia"
-    ];
-    desktopManager.runXdgAutostartIfNone = true;
-    exportConfiguration = true;
-    displayManager.startx.enable = true;
-  };
-
-  services.greetd = {
-    enable = true;
-    useTextGreeter = true;
-    settings = {
-      default_session = {
-        command = "${pkgs.tuigreet}/bin/tuigreet --xsession-wrapper '${pkgs.xorg.xinit}/bin/startx ${pkgs.coreutils}/bin/env' --sessions ${config.services.displayManager.sessionData.desktops}/share/wayland-sessions --xsessions ${config.services.displayManager.sessionData.desktops}/share/xsessions";
-      };
-    };
-  };
-
-  services.xserver.windowManager.dwm = {
-    enable = true;
-    package = pkgs.dwm.overrideAttrs (old: {
-      src = ../home/dwm;
-
-      buildInputs =
-        (old.buildInputs or [ ])
-        ++ (with pkgs.xorg; [
-          libXcursor
-        ]);
-    });
-  };
-
   programs.niri.enable = true;
   programs.niri.package = pkgs.niri.overrideAttrs (old: {
     postFixup = (old.postFixup or "") + ''

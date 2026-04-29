@@ -8,12 +8,7 @@ in
     executable = true;
     text = ''
       #!/usr/bin/env sh
-      # In Wayland sessions (niri), use foot. In X11 sessions (dwm), use st.
-      if [ -n "''${NIRI_SOCKET-}" ] || [ "''${XDG_SESSION_TYPE-}" = "wayland" ]; then
-        exec foot
-      fi
-
-      exec st
+      exec foot
     '';
   };
 

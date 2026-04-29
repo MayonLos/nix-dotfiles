@@ -24,10 +24,9 @@
     gnumake
     unzip
     fastfetch
-    github-copilot-cli
-    codex
-    claude-code
-
+    pkgs-unstable.github-copilot-cli
+    pkgs-unstable.codex
+    pkgs-unstable.claude-code
     # Editor
     inputs.MyNixvim.packages.${pkgs.stdenv.hostPlatform.system}.default
 
@@ -35,12 +34,10 @@
     xwayland-satellite
     libnotify
     swww
-    feh
     mission-center
     bibata-cursors
 
     # Clipboard and screenshot helpers
-    maim
     wl-clipboard
     cliphist
     xclip
@@ -55,7 +52,6 @@
 
     # Communication and network apps
     cherry-studio
-    flclash
     wechat
     pkgs-unstable.qq
     pkgs-unstable.go-musicfox
@@ -64,9 +60,6 @@
     (prismlauncher.override {
       additionalPrograms = [ ffmpeg ];
       jdks = [
-        javaPackages.compiler.temurin-bin.jdk-8
-        javaPackages.compiler.temurin-bin.jdk-17
-        javaPackages.compiler.temurin-bin.jdk-21
         javaPackages.compiler.temurin-bin.jdk-25
       ];
       gamemodeSupport = true;

@@ -5,9 +5,6 @@
   ...
 }:
 
-let
-  isNoctalia = config.my.desktop.shell == "noctalia";
-in
 {
   programs.niri.settings = {
     xwayland-satellite = {
@@ -15,47 +12,20 @@ in
       path = "${pkgs.xwayland-satellite}/bin/xwayland-satellite";
     };
 
-    spawn-at-startup =
-      [
-        {
-          command = [
+    spawn-at-startup = [
+      {
+        command = [
             "dbus-update-activation-environment"
             "--systemd"
             "WAYLAND_DISPLAY"
             "XDG_CURRENT_DESKTOP"
             "XDG_SESSION_TYPE"
             "DISPLAY"
-          ];
-        }
-      ]
-      ++ lib.optionals isNoctalia [
-        {
-          command = [ "noctalia-shell" ];
-        }
-      ]
-      ++ lib.optionals (!isNoctalia) [
-        { command = [ "${pkgs.swww}/bin/swww-daemon" ]; }
-        {
-          command = [
-            "sh"
-            "-c"
-            "sleep 0.3 && ${pkgs.swww}/bin/swww-daemon -n overview"
-          ];
-        }
-        {
-          command = [
-            "sh"
-            "-c"
-            "sleep 0.8 && ${pkgs.swww}/bin/swww img ${../wallpaper/wallpaper-001.jpg}"
-          ];
-        }
-        {
-          command = [
-            "sh"
-            "-c"
-            "sleep 0.8 && ${pkgs.swww}/bin/swww img ${../wallpaper/wallpaper-002.jpg} -n overview"
-          ];
-        }
-      ];
+        ];
+      }
+      {
+        command = [ "noctalia-shell" ];
+      }
+    ];
   };
 }
