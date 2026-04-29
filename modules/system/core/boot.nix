@@ -1,5 +1,4 @@
-_:
-{
+_: {
   boot.kernelModules = [ "tun" ];
   boot.loader.systemd-boot = {
     enable = true;

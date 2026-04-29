@@ -1,5 +1,4 @@
-_:
-{
+_: {
   networking.hostName = "nixos-btw";
   networking.networkmanager.enable = true;
   networking.firewall = {
