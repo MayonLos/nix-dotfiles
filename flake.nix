@@ -3,8 +3,9 @@
 
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-25.11";
-    
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
+
+    flake-parts.url = "github:hercules-ci/flake-parts";
 
     home-manager = {
       url = "github:nix-community/home-manager/release-25.11";
@@ -30,53 +31,19 @@
     };
 
     claude-code.url = "github:sadjow/claude-code-nix/v2";
+
+    treefmt-nix.url = "github:numtide/treefmt-nix";
   };
 
-  outputs = inputs@{ nixpkgs, ... }:
-    let
-      system = "x86_64-linux";
-      pkgs = import nixpkgs {
-        inherit system;
-        config.allowUnfree = true;
-      };
-    in
-    {
-      nixosConfigurations.nixos-btw = nixpkgs.lib.nixosSystem {
-        specialArgs = { inherit inputs; };
-        inherit system;
-        modules = [
-          inputs.niri.nixosModules.niri
-          ./configuration.nix
-
-          {
-            nixpkgs = {
-              config.allowUnfree = true;
-            };
-          }
-
-          inputs.home-manager.nixosModules.home-manager
-          {
-            home-manager = {
-              useGlobalPkgs = true;
-              useUserPackages = true;
-              extraSpecialArgs = { 
-                inherit inputs; 
-                pkgs-unstable = import inputs.nixpkgs-unstable {
-                  inherit system;
-                  config.allowUnfree = true;
-                  overlays = [ inputs.claude-code.overlays.default ];
-                };
-              };
-              users.mayon = import ./host/home.nix;
-              backupFileExtension = "backup";
-            };
-          }
-        ];
-      };
-
-      devShells.${system} = {
-        cuda = import ./dev/cuda/shell.nix { inherit pkgs; };
-        default = import ./dev/cuda/shell.nix { inherit pkgs; };
-      };
+  outputs = inputs:
+    inputs.flake-parts.lib.mkFlake { inherit inputs; } {
+      systems = [ "x86_64-linux" ];
+      imports = [
+        ./flake/system.nix
+        ./flake/home.nix
+        ./flake/dev.nix
+        inputs.home-manager.flakeModules.home-manager
+        inputs.treefmt-nix.flakeModule
+      ];
     };
 }
