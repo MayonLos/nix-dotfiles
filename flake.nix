@@ -41,7 +41,6 @@
       systems = [ "x86_64-linux" ];
       imports = [
         ./flake/system.nix
-        ./flake/home.nix
         ./flake/dev.nix
         inputs.home-manager.flakeModules.home-manager
         inputs.treefmt-nix.flakeModule
