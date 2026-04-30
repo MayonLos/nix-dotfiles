@@ -30,28 +30,20 @@ let
 
     SLURP="${pkgs.slurp}/bin/slurp"
     GRIM="${pkgs.grim}/bin/grim"
-    SATTY="${pkgs.satty}/bin/satty"
     WL_COPY="${pkgs.wl-clipboard}/bin/wl-copy"
     SWAYIMG="${pkgs.swayimg}/bin/swayimg"
-    DATE="${pkgs.coreutils}/bin/date"
     MKDIR="${pkgs.coreutils}/bin/mkdir"
+    DATE="${pkgs.coreutils}/bin/date"
 
     PIN_DIR="/tmp/niri-pins"
     "$MKDIR" -p "$PIN_DIR"
 
-    TIMESTAMP=$("$DATE" "+%Y%m%d-%H%M%S")
-    FILE="$PIN_DIR/pin-$TIMESTAMP.png"
+    FILE="$PIN_DIR/pin-$("$DATE" "+%Y%m%d-%H%M%S").png"
 
     GEOMETRY=$("$SLURP" -d) || exit 0
-    "$GRIM" -g "$GEOMETRY" - |
-      "$SATTY" --filename - \
-        --output-filename "$FILE" \
-        --copy-command "$WL_COPY" \
-        --early-exit
-
-    if [ -f "$FILE" ]; then
-      "$SWAYIMG" "$FILE"
-    fi
+    "$GRIM" -g "$GEOMETRY" "$FILE"
+    "$WL_COPY" < "$FILE"
+    "$SWAYIMG" "$FILE"
   '';
 in
 {
