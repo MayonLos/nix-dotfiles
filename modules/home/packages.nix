@@ -35,7 +35,6 @@
     mangohud
 
     cherry-studio
-    pkgs-unstable.wechat
     pkgs-unstable.qq
     pkgs-unstable.go-musicfox
   ];

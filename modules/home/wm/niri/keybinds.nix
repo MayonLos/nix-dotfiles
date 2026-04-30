@@ -200,7 +200,7 @@ in
       "Mod+Shift+Minus".action = set-window-height "-10%";
       "Mod+Shift+Equal".action = set-window-height "+10%";
 
-      "Mod+V".action = toggle-window-floating;
+      "Mod+Shift+Space".action = toggle-window-floating;
       "Mod+Shift+V".action = switch-focus-between-floating-and-tiling;
       "Mod+W".action = toggle-column-tabbed-display;
 
@@ -220,8 +220,8 @@ in
       "Mod+Shift+E".action = spawn "noctalia-shell" "ipc" "call" "sessionMenu" "toggle";
       "Ctrl+Alt+Delete".action = quit;
 
-      "Alt+V".action = spawn "niri-clipboard" "menu";
-      "Alt+Shift+V".action = spawn "niri-clipboard" "clear";
+      "Mod+V".action = spawn "niri-clipboard" "menu";
+      "Mod+Shift+X".action = spawn "niri-clipboard" "clear";
 
       "Mod+Shift+P".action = power-off-monitors;
     }
