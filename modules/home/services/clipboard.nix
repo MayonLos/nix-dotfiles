@@ -140,6 +140,12 @@ let
       bridge)
         bridge
         ;;
+      sync-from-wayland)
+        sync_from_wayland "''${2:-}"
+        ;;
+      sync-from-x11)
+        sync_from_x11
+        ;;
       *)
         echo "Usage: clipboard-bridge bridge" >&2
         exit 1
