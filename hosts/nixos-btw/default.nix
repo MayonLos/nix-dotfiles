@@ -1,16 +1,21 @@
+_:
+let
+  importDir =
+    dir:
+    builtins.concatLists (
+      builtins.attrValues (
+        builtins.mapAttrs (
+          name: type:
+          if (type == "regular" || type == "symlink") && builtins.match ".*\\.nix" name != null then
+            [ (dir + "/${name}") ]
+          else if type == "directory" then
+            importDir (dir + "/${name}")
+          else
+            [ ]
+        ) (builtins.readDir dir)
+      )
+    );
+in
 {
-  ...
-}:
-
-{
-  imports = [
-    ./hardware.nix
-    ../../modules/system/core
-    ../../modules/system/desktop
-    ../../modules/system/hardware
-    ../../modules/system/programs
-    ../../modules/system/security
-    ../../modules/system/services
-    ../../modules/system/users
-  ];
+  imports = [ ./hardware.nix ] ++ importDir ../../modules/system;
 }

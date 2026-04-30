@@ -1,31 +1,5 @@
+{ pkgs, ... }:
 {
-  pkgs,
-  ...
-}:
-
-{
-  users.users.mayon = {
-    isNormalUser = true;
-    extraGroups = [
-      "wheel"
-      "networkmanager"
-      "gamemode"
-      "input"
-    ];
-    shell = pkgs.zsh;
-    packages = with pkgs; [
-      tree
-    ];
-  };
-
-  environment.systemPackages = with pkgs; [
-    vim
-    wget
-    git
-    lshw
-    btop
-  ];
-
   fonts = {
     packages = with pkgs; [
       lmodern

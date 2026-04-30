@@ -1,6 +1,4 @@
-_:
-
-{
+_: {
   services.openssh = {
     enable = true;
     settings = {
@@ -9,6 +7,4 @@ _:
       PermitRootLogin = "no";
     };
   };
-
-  security.polkit.enable = true;
 }

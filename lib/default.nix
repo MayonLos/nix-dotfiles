@@ -1,4 +1,5 @@
-_: {
-  # Pure Nix helper functions.
-  # Currently empty -- extract here when the same expression appears >=3 times.
+{ pkgs, lib }:
+{
+  obsidian = import ./obsidian-helpers.nix { inherit pkgs lib; };
+  keybinds = import ./keybind-helpers.nix { inherit lib; };
 }

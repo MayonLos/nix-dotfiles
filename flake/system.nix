@@ -7,6 +7,22 @@ let
       config.allowUnfree = true;
       overlays = [ inputs.claude-code.overlays.default ];
     };
+
+  importDir =
+    dir:
+    builtins.concatLists (
+      builtins.attrValues (
+        builtins.mapAttrs (
+          name: type:
+          if (type == "regular" || type == "symlink") && builtins.match ".*\\.nix" name != null then
+            [ (dir + "/${name}") ]
+          else if type == "directory" then
+            importDir (dir + "/${name}")
+          else
+            [ ]
+        ) (builtins.readDir dir)
+      )
+    );
 in
 {
   flake.nixosConfigurations.nixos-btw = withSystem "x86_64-linux" (
@@ -29,8 +45,9 @@ in
               inherit inputs;
               pkgs-unstable = pkgs-unstable-for "x86_64-linux";
             };
-            users.mayon = import ../modules/home/users/mayon;
-            backupFileExtension = "backup";
+            users.mayon = {
+              imports = importDir ../modules/home;
+            };
           };
         }
       ];
