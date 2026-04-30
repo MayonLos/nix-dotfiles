@@ -21,6 +21,7 @@ _:
         matches = [ { app-id = "swayimg"; } ];
         open-floating = true;
         default-column-width = { proportion = 0.5; };
+        border = { width = 0; };
       }
     ];
 
