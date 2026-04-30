@@ -26,6 +26,11 @@
     wl-clipboard
     xclip
 
+    grim
+    slurp
+    satty
+    swayimg
+
     brightnessctl
     pamixer
     pavucontrol
