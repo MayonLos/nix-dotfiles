@@ -43,7 +43,11 @@ let
     GEOMETRY=$("$SLURP" -d) || exit 0
     "$GRIM" -g "$GEOMETRY" "$FILE"
     "$WL_COPY" < "$FILE"
-    "$SWAYIMG" "$FILE"
+    "$SWAYIMG" \
+      --config info.show=no \
+      --config viewer.window="#00000000" \
+      --config general.decoration=no \
+      "$FILE"
   '';
 in
 {
