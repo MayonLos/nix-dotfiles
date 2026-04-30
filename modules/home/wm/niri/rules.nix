@@ -17,6 +17,11 @@ _:
         matches = [ { app-id = "foot"; } ];
         opacity = 0.8;
       }
+      {
+        matches = [ { app-id = "swayimg"; } ];
+        open-floating = true;
+        default-column-width = { proportion = 0.5; };
+      }
     ];
 
     layer-rules = [
