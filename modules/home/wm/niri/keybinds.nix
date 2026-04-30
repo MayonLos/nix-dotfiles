@@ -220,8 +220,7 @@ in
       "Mod+Shift+E".action = spawn "noctalia-shell" "ipc" "call" "sessionMenu" "toggle";
       "Ctrl+Alt+Delete".action = quit;
 
-      "Mod+V".action = spawn "niri-clipboard" "menu";
-      "Mod+Shift+X".action = spawn "niri-clipboard" "clear";
+      "Alt+V".action = spawn "clipse";
 
       "Mod+Shift+P".action = power-off-monitors;
     }

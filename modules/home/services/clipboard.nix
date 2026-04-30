@@ -1,11 +1,9 @@
 { pkgs, ... }:
 
 let
-  niriClipboard = pkgs.writeShellScriptBin "niri-clipboard" ''
+  clipboardBridge = pkgs.writeShellScriptBin "clipboard-bridge" ''
     set -euo pipefail
 
-    CLIPHIST="${pkgs.cliphist}/bin/cliphist"
-    FUZZEL="${pkgs.fuzzel}/bin/fuzzel"
     WL_COPY="${pkgs.wl-clipboard}/bin/wl-copy"
     WL_PASTE="${pkgs.wl-clipboard}/bin/wl-paste"
     XCLIP="${pkgs.xclip}/bin/xclip"
@@ -20,7 +18,7 @@ let
     SLEEP="${pkgs.coreutils}/bin/sleep"
     PRINTF="${pkgs.coreutils}/bin/printf"
 
-    STATE_DIR="''${XDG_RUNTIME_DIR:-/tmp}/niri-clipboard"
+    STATE_DIR="''${XDG_RUNTIME_DIR:-/tmp}/clipboard-bridge"
     HASH_STATE="$STATE_DIR/last-hash"
 
     ensure_state_dir() {
@@ -49,7 +47,7 @@ let
       local tmp mime hash
 
       ensure_state_dir
-      tmp="$("$MKTEMP" -t niri-clip-wl.XXXXXX)"
+      tmp="$("$MKTEMP" -t cb-wl.XXXXXX)"
       "$CAT" >"$tmp"
 
       if [ ! -s "$tmp" ]; then
@@ -80,7 +78,7 @@ let
       local tmp mime hash
 
       ensure_state_dir
-      tmp="$("$MKTEMP" -t niri-clip-x11.XXXXXX)"
+      tmp="$("$MKTEMP" -t cb-x11.XXXXXX)"
       mime=""
 
       if "$XCLIP" -selection clipboard -out -t image/png >"$tmp" 2>/dev/null && [ -s "$tmp" ]; then
@@ -107,41 +105,6 @@ let
       "$WL_COPY" --type "$mime" <"$tmp"
       remember_hash "$hash"
       "$RM" -f "$tmp"
-    }
-
-    menu() {
-      local selection tmp mime hash
-
-      ensure_state_dir
-      selection="$("$CLIPHIST" list | "$FUZZEL" --dmenu || true)"
-      [ -n "$selection" ] || return 0
-
-      tmp="$("$MKTEMP" -t niri-clip-menu.XXXXXX)"
-      if ! "$PRINTF" "%s\n" "$selection" | "$CLIPHIST" decode >"$tmp" 2>/dev/null; then
-        "$RM" -f "$tmp"
-        return 0
-      fi
-
-      if [ ! -s "$tmp" ]; then
-        "$RM" -f "$tmp"
-        return 0
-      fi
-
-      mime="$("$FILE_BIN" --brief --mime-type "$tmp" 2>/dev/null || true)"
-      [ -n "$mime" ] || mime="text/plain"
-
-      "$WL_COPY" --type "$mime" <"$tmp"
-      hash="$(current_hash "$tmp")"
-      remember_hash "$hash"
-      "$RM" -f "$tmp"
-    }
-
-    clear_all() {
-      ensure_state_dir
-      "$CLIPHIST" wipe || true
-      "$WL_COPY" --clear || true
-      "$PRINTF" "" | "$XCLIP" -selection clipboard -in 2>/dev/null || true
-      "$RM" -f "$HASH_STATE"
     }
 
     bridge() {
@@ -174,45 +137,31 @@ let
     }
 
     case "''${1:-}" in
-      menu)
-        menu
-        ;;
-      clear)
-        clear_all
-        ;;
       bridge)
         bridge
         ;;
-      sync-from-wayland)
-        sync_from_wayland "''${2:-}"
-        ;;
-      sync-from-x11)
-        sync_from_x11
-        ;;
       *)
-        echo "Usage: niri-clipboard {menu|clear|bridge}" >&2
+        echo "Usage: clipboard-bridge bridge" >&2
         exit 1
         ;;
     esac
   '';
 in
 {
-  home.packages = [ niriClipboard ];
+  home.packages = [ clipboardBridge ];
 
-  systemd.user.services.niri-clipboard-bridge = {
+  systemd.user.services.clipboard-bridge = {
     Unit = {
-      Description = "Clipboard bridge between Wayland and X11 for niri";
+      Description = "Clipboard bridge between Wayland and X11";
       PartOf = [ "graphical-session.target" ];
       After = [ "graphical-session.target" ];
     };
-
     Service = {
       Type = "simple";
-      ExecStart = "${niriClipboard}/bin/niri-clipboard bridge";
+      ExecStart = "${clipboardBridge}/bin/clipboard-bridge bridge";
       Restart = "on-failure";
       RestartSec = 1;
     };
-
     Install = {
       WantedBy = [ "graphical-session.target" ];
     };

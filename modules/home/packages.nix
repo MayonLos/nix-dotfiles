@@ -22,8 +22,6 @@
     inputs.MyNixvim.packages.${pkgs.stdenv.hostPlatform.system}.default
 
     xwayland-satellite
-    libnotify
-    swww
     mission-center
     wl-clipboard
     xclip
