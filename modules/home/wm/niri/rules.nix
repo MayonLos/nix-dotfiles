@@ -21,12 +21,6 @@ _:
         matches = [ { app-id = "swayimg"; } ];
         open-floating = true;
         default-column-width = { proportion = 0.5; };
-        focus-ring-width = 0;
-        border = {
-          width = 2;
-          active-color = "#61afef";
-          inactive-color = "#3b4252";
-        };
       }
     ];
 
