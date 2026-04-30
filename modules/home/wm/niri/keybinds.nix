@@ -204,8 +204,11 @@ in
       "Mod+Shift+V".action = switch-focus-between-floating-and-tiling;
       "Mod+W".action = toggle-column-tabbed-display;
 
-      "Print".action.screenshot = {
-        show-pointer = false;
+      "Print" = {
+        action = spawn "screenshot-region";
+      };
+      "Ctrl+Shift+Print" = {
+        action = spawn "screenshot-pin";
       };
       "Alt+Print".action.screenshot-window = { };
       "Ctrl+Print".action.screenshot-screen = {
