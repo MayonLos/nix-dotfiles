@@ -3,12 +3,16 @@
   ...
 }:
 
+let
+  cursorTheme = "Bibata-Modern-Ice";
+  cursorSize = 16;
+in
 {
   home.pointerCursor = {
     package = pkgs.bibata-cursors;
-    name = "Bibata-Modern-Ice";
-    size = 16;
-    x11.defaultCursor = "Bibata-Modern-Ice";
+    name = cursorTheme;
+    size = cursorSize;
+    x11.defaultCursor = cursorTheme;
     gtk.enable = true;
     x11.enable = true;
   };

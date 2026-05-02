@@ -21,6 +21,7 @@
     inputs.MyNixvim.packages.${pkgs.stdenv.hostPlatform.system}.default
 
     xwayland-satellite
+    glfw3-minecraft
     mission-center
     wl-clipboard
     xclip
