@@ -4,5 +4,8 @@
     vim
     wget
     lshw
+    gnumake
+    unzip
+    ripgrep
   ];
 }
