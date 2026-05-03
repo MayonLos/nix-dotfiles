@@ -36,6 +36,7 @@
     pavucontrol
     playerctl
     mangohud
+    libdecor
 
     cherry-studio
     pkgs-unstable.qq

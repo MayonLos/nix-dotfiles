@@ -1,14 +1,16 @@
-{ lib, ... }:
+{ config, lib, ... }:
 {
   hardware.graphics.enable = true;
+
+  services.xserver.videoDrivers = [ "modesetting" "nvidia" ];
 
   hardware.nvidia = {
     modesetting.enable = true;
     powerManagement.enable = false;
-    powerManagement.finegrained = false;
-    open = false;
+    powerManagement.finegrained = true;
+    open = true;
     nvidiaSettings = true;
-    forceFullCompositionPipeline = true;
+    package = config.boot.kernelPackages.nvidiaPackages.stable;
 
     prime = {
       offload = {
