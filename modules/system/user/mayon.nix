@@ -7,6 +7,7 @@
       "networkmanager"
       "gamemode"
       "input"
+      "docker"
     ];
     shell = pkgs.zsh;
     packages = with pkgs; [
