@@ -18,6 +18,16 @@
     pkgs-unstable.claude-code
     pkgs-unstable.gemini-cli
 
+    # 现代 CLI 工具
+    zoxide
+    bat
+    eza
+    ripgrep
+    lazygit
+    duf
+    nh
+    nix-output-monitor
+
     inputs.MyNixvim.packages.${pkgs.stdenv.hostPlatform.system}.default
 
     xwayland-satellite

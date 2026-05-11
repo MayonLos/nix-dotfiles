@@ -12,6 +12,17 @@ _:
         };
         clip-to-geometry = true;
         draw-border-with-background = false;
+        shadow = {
+          enable = true;
+          softness = 30.0;
+          spread = 5.0;
+          offset = {
+            x = 0.0;
+            y = 5.0;
+          };
+          color = "#00000088";
+          inactive-color = "#00000055";
+        };
       }
       {
         matches = [ { app-id = "foot"; } ];

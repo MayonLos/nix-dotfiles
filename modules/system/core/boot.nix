@@ -15,6 +15,6 @@ _: {
 
   virtualisation.docker.enable = true;
 
-  zramSwap.enable = true;
+  zramSwap = { enable = true; algorithm = "zstd"; };
   powerManagement.enable = true;
 }

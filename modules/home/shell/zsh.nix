@@ -1,4 +1,4 @@
-_:
+{ pkgs, ... }:
 
 {
   programs.zsh = {
@@ -6,19 +6,42 @@ _:
     enableCompletion = true;
     autosuggestion.enable = true;
     syntaxHighlighting.enable = true;
-    oh-my-zsh = {
-      enable = true;
-      theme = "robbyrussell";
-      plugins = [ "git" ];
+
+    plugins = [
+      {
+        name = "fzf-tab";
+        src = "${pkgs.zsh-fzf-tab}/share/fzf-tab";
+      }
+    ];
+
+    history = {
+      size = 10000;
+      save = 10000;
+      ignoreDups = true;
+      share = true;
     };
+
     shellAliases = {
+      ls = "eza --icons";
+      ll = "eza -l --icons --git";
+      la = "eza -la --icons --git";
+      lt = "eza --tree --icons";
+      cat = "bat";
+      ".." = "cd ..";
+      "..." = "cd ../..";
+      nr = "nh os switch ~/nix-dotfiles";
+      nc = "nh clean all";
+      lg = "lazygit";
     };
-    history.size = 10000;
-    zplug = {
-      enable = true;
-      plugins = [
-        { name = "Aloxaf/fzf-tab"; }
-      ];
-    };
+  };
+
+  programs.starship = {
+    enable = true;
+    enableZshIntegration = true;
+  };
+
+  programs.zoxide = {
+    enable = true;
+    enableZshIntegration = true;
   };
 }
