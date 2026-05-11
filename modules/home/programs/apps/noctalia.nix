@@ -94,6 +94,7 @@ in
               { id = "Brightness"; }
               { id = "SystemMonitor"; }
               { id = "Tray"; }
+              { id = "PowerProfile"; }
               {
                 id = "Battery";
                 alwaysShowPercentage = true;

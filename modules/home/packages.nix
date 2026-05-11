@@ -18,6 +18,8 @@
     pkgs-unstable.claude-code
     pkgs-unstable.gemini-cli
 
+    lenovo-legion
+
     # 现代 CLI 工具
     zoxide
     bat

@@ -1,5 +1,9 @@
-_: {
-  boot.kernelModules = [ "tun" ];
+{ config, ... }: {
+  boot.kernelModules = [ "tun" "legion_laptop" ];
+  boot.extraModulePackages = [ config.boot.kernelPackages.lenovo-legion-module ];
+  boot.extraModprobeConfig = ''
+    options legion_laptop force=1
+  '';
   boot.loader.systemd-boot = {
     enable = true;
     configurationLimit = 30;
