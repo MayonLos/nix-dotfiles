@@ -2,6 +2,7 @@
   pkgs,
   pkgs-unstable,
   inputs,
+  lib,
   ...
 }:
 
@@ -52,5 +53,13 @@
     cherry-studio
     pkgs-unstable.qq
     pkgs-unstable.go-musicfox
+
+    # STM32 embedded development
+    pkgs-unstable.stm32cubemx
+    (lib.lowPrio gcc-arm-embedded)
+    stlink
+    openocd
+    dfu-util
+    stm32flash
   ];
 }

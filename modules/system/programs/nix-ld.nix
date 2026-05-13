@@ -13,6 +13,8 @@
       openssl            # libssl.so, libcrypto.so
       libGL              # OpenGL (matplotlib backend)
       glib               # GObject
+      libusb1            # USB device access for ST-Link in VSCode extensions
+      krb5               # libgssapi_krb5.so.2 for STM32_Programmer_CLI
     ];
   };
 
