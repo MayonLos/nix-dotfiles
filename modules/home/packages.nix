@@ -50,7 +50,6 @@
     mangohud
     libdecor
 
-    cherry-studio
     pkgs-unstable.qq
     pkgs-unstable.go-musicfox
 

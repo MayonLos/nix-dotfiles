@@ -32,9 +32,9 @@ _: {
 
   # nix-daemon is a separate systemd service; sudo -E does NOT pass env vars to it.
   # Set proxy here so fetches inside the daemon (substituters, FOD) go through the proxy.
-  systemd.services.nix-daemon.environment = {
-    https_proxy = "http://127.0.0.1:7897";
-    http_proxy = "http://127.0.0.1:7897";
-    all_proxy = "socks5://127.0.0.1:7897";
-  };
+  # systemd.services.nix-daemon.environment = {
+  #   https_proxy = "http://127.0.0.1:7897";
+  #   http_proxy = "http://127.0.0.1:7897";
+  #   all_proxy = "socks5://127.0.0.1:7897";
+  # };
 }
