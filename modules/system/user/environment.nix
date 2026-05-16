@@ -6,6 +6,7 @@
     lshw
     gnumake
     unzip
+    unrar
     ripgrep
   ];
 }

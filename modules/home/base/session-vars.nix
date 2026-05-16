@@ -1,6 +1,8 @@
 _:
 
 {
+  # 96 DPI × 1.5 scale = 144; tells X11/XWayland apps to render at native resolution
+  xresources.properties."Xft.dpi" = 144;
   # Reaches systemd user session → niri (launched as systemd service) inherits these
   systemd.user.sessionVariables = {
     NIXOS_OZONE_WL = "1";

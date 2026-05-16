@@ -205,10 +205,10 @@ in
       "Mod+W".action = toggle-column-tabbed-display;
 
       "Print" = {
-        action = spawn "screenshot-region";
+        action = spawn "screenshot" "region";
       };
       "Ctrl+Shift+Print" = {
-        action = spawn "screenshot-pin";
+        action = spawn "screenshot" "pin";
       };
       "Alt+Print".action.screenshot-window = { };
       "Ctrl+Print".action.screenshot-screen = {
