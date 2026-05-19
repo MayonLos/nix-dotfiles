@@ -10,17 +10,18 @@
       screenshots = true;
       clock = true;
       timestr = "%H:%M";
-      datestr = "%Y-%m-%d";
-      effect-blur = "8x5";
-      effect-vignette = "0.3:0.7";
+      datestr = "%a, %B %d";
+      effect-blur = "14x8";
+      effect-vignette = "0.4:0.8";
+      effect-scale = "0.5";
       fade-in = 0;
       grace = 0;
 
       # Ring indicator — One Dark
       indicator = true;
-      indicator-radius = 80;
-      indicator-thickness = 7;
-      ring-color = "3b4252";
+      indicator-radius = 90;
+      indicator-thickness = 8;
+      ring-color = "2c313a";
       ring-ver-color = "98c379";
       ring-wrong-color = "e06c75";
       ring-clear-color = "61afef";
@@ -29,19 +30,20 @@
 
       # Text
       text-color = "abb2bf";
-      text-ver-color = "abb2bf";
+      text-ver-color = "98c379";
       text-wrong-color = "e06c75";
       text-clear-color = "61afef";
 
       # Fill inside indicator
-      inside-color = "1f232966";
-      inside-ver-color = "1f232966";
-      inside-wrong-color = "1f232966";
-      inside-clear-color = "1f232966";
+      inside-color = "1e222a99";
+      inside-ver-color = "1e222a99";
+      inside-wrong-color = "1e222a99";
+      inside-clear-color = "1e222a99";
 
       separator-color = "00000000";
       line-uses-ring = true;
       font = "JetBrainsMono Nerd Font";
+      font-size = 28;
       show-failed-attempts = true;
     };
   };

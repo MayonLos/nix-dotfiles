@@ -2,3 +2,6 @@
 /result-*
 .worktrees/
 .claude/
+.codex/
+.agents/
+CLAUDE.md

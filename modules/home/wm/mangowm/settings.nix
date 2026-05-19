@@ -115,6 +115,9 @@ in
     autostart_sh = ''
       # Export Wayland env to D-Bus + systemd so portals (OBS, screenshare) can connect
       dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE DISPLAY
+      # Fix XWayland font DPI for HiDPI display (2560×1600, scale 1.5 → 144 DPI)
+      printf 'Xft.dpi: 144\nXcursor.size: 36\nXft.antialias: 1\nXft.hinting: 1\nXft.hintstyle: hintslight\nXft.rgba: rgb\n' \
+        | ${pkgs.xorg.xrdb}/bin/xrdb -merge
       pkill swaybg || true
       pkill swayidle || true
       pkill wl-clip-persist || true

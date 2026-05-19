@@ -2,28 +2,30 @@
 {
   home.packages = [ pkgs.fuzzel ];
 
-  # Fuzzel app launcher — only used in MangoWM session.
-  # Niri uses noctalia-shell launcher instead.
   xdg.configFile."fuzzel/fuzzel.ini".text = ''
     [main]
-    font=JetBrainsMono Nerd Font:size=12
+    font=JetBrainsMono Nerd Font:size=13
     icon-theme=Papirus-Dark
     terminal=foot -e
-    width=40
-    lines=12
-    prompt=>_
+    width=42
+    lines=10
+    prompt=
+    padding=4,4
+    inner-padding=10
+    image-size-ratio=0.4
+    letter-spacing=0
 
     [colors]
-    background=1f2329ff
+    background=1e222aee
     text=abb2bfff
     match=61afefff
-    selection=61afef33
-    selection-text=dcd7baff
+    selection=2c313aff
+    selection-text=abb2bfff
     selection-match=61afefff
-    border=3b4252ff
+    border=61afef66
 
     [border]
-    radius=8
+    radius=12
     width=1
   '';
 }

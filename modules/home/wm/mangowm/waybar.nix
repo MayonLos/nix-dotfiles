@@ -58,7 +58,7 @@
 
         network = {
           interval = 10;
-          format-wifi = "<span foreground='#61afef'> </span>{signalStrength}%";
+          format-wifi = "<span foreground='#61afef'> </span>{signalStrength}%";
           format-ethernet = "<span foreground='#61afef'>󰈀 </span>{ifname}";
           format-linked = "<span foreground='#56b6c2'>󰈁 </span>{ifname}";
           format-disconnected = "<span foreground='#e5c07b'>󰖪 </span>offline";
@@ -73,9 +73,9 @@
           format = "<span foreground='#98c379'>{icon}</span>{volume}%";
           format-muted = "<span foreground='#5c6370'>󰝟 </span>mute";
           format-icons = [
-            " "
-            " "
-            " "
+            " "
+            " "
+            " "
           ];
           max-volume = 150;
           on-click = "pavucontrol";
@@ -101,14 +101,14 @@
           format-warning = "<span foreground='#e5c07b'>{icon} </span>{capacity}%";
           format-critical = "<span foreground='#e06c75'>{icon} </span>{capacity}%";
           format-charging = "<span foreground='#98c379'>󰚥 </span>{capacity}%";
-          format-plugged = "<span foreground='#98c379'> </span>{capacity}%";
+          format-plugged = "<span foreground='#98c379'> </span>{capacity}%";
           format-full = "<span foreground='#98c379'>󰁹 </span>{capacity}%";
           format-icons = [
-            ""
-            ""
-            ""
-            ""
-            ""
+            ""
+            ""
+            ""
+            ""
+            ""
           ];
           tooltip-format = "{time}";
         };
@@ -137,7 +137,7 @@
     style = ''
       * {
         font-family: "IosevkaTerm Nerd Font", "JetBrainsMono Nerd Font", monospace;
-        font-size: 14px;
+        font-size: 13px;
         border: none;
         border-radius: 0;
         min-height: 0;
@@ -149,14 +149,13 @@
       }
 
       window#waybar {
-        background: rgba(40, 44, 52, 0.72);
+        background: rgba(30, 34, 42, 0.88);
         color: #abb2bf;
-        border-bottom: 1px solid rgba(92, 99, 112, 0.28);
-        border-radius: 0;
+        border-bottom: 1px solid rgba(92, 99, 112, 0.25);
       }
 
       window#waybar > box {
-        padding: 4px 12px;
+        padding: 4px 10px;
       }
 
       .modules-left,
@@ -166,7 +165,7 @@
       }
 
       tooltip {
-        background: rgba(31, 35, 41, 0.94);
+        background: rgba(31, 35, 41, 0.96);
         border: 1px solid rgba(92, 99, 112, 0.45);
         border-radius: 12px;
       }
@@ -184,49 +183,48 @@
       #wireplumber,
       #battery,
       #clock {
-        min-height: 30px;
+        min-height: 28px;
         background: transparent;
       }
 
       #workspaces {
-        padding: 0 10px 0 0;
+        padding: 0 8px 0 0;
       }
 
       #workspaces button {
-        min-width: 28px;
-        padding: 0 8px;
-        margin: 0 4px 0 0;
-        color: #5c6370;
-        background: transparent;
-        border-bottom: 2px solid transparent;
-        transition: all 0.18s ease;
+        min-width: 26px;
+        padding: 0 6px;
+        margin: 0 2px;
+        color: #4b5263;
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 8px;
+        transition: all 0.15s ease;
       }
 
       #workspaces button:hover {
         color: #abb2bf;
-        background: rgba(97, 175, 239, 0.10);
-        border-bottom-color: rgba(97, 175, 239, 0.25);
+        background: rgba(97, 175, 239, 0.12);
       }
 
       #workspaces button.active {
         color: #61afef;
-        background: rgba(97, 175, 239, 0.12);
-        border-bottom-color: #61afef;
+        background: rgba(97, 175, 239, 0.18);
         font-weight: 600;
       }
 
       #workspaces button.visible {
-        color: #7f848e;
+        color: #6b737f;
+        background: rgba(255, 255, 255, 0.06);
       }
 
       #workspaces button.urgent {
         color: #e06c75;
-        border-bottom-color: #e06c75;
+        background: rgba(224, 108, 117, 0.15);
       }
 
       #window {
-        padding: 0 18px;
-        color: #828997;
+        padding: 0 16px;
+        color: #7f848e;
         font-weight: 500;
       }
 
@@ -242,12 +240,14 @@
       #battery,
       #clock {
         padding: 0 10px;
-        margin-left: 2px;
+        margin-left: 1px;
         color: #abb2bf;
+        border-radius: 10px;
+        transition: background 0.15s ease;
       }
 
       #tray {
-        padding-right: 12px;
+        padding-right: 10px;
         margin-right: 4px;
       }
 
@@ -267,7 +267,6 @@
       #battery:hover,
       #clock:hover {
         background: rgba(171, 178, 191, 0.08);
-        border-radius: 8px;
       }
 
       #network.disconnected {
@@ -276,7 +275,7 @@
 
       #network.disabled,
       #wireplumber.muted {
-        color: #5c6370;
+        color: #4b5263;
       }
 
       #battery.warning {
@@ -295,7 +294,7 @@
       #clock {
         color: #d7dae0;
         font-weight: 500;
-        margin-left: 6px;
+        margin-left: 4px;
       }
     '';
   };
