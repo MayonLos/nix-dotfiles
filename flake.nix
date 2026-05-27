@@ -30,11 +30,6 @@
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
 
-    mangowm = {
-      url = "github:mangowm/mango";
-      inputs.nixpkgs.follows = "nixpkgs-unstable";
-    };
-
     claude-code.url = "github:sadjow/claude-code-nix/v2";
 
     treefmt-nix.url = "github:numtide/treefmt-nix";

@@ -46,24 +46,8 @@ let
         ;;
 
       window)
-        # Focused window capture — compositor-aware.
-        # MangoWM: mmsg ships with mango and exposes focused-window geometry.
-        # Other compositors: falls back to a full-screen capture.
-        case "$WM" in
-          mango|Mango)
-            g=$(mmsg -x \
-              | awk '/x /    {x=$3}
-                     /y /    {y=$3}
-                     /width / {w=$3}
-                     /height /{h=$3}
-                     END      {print x","y" "w"x"h}')
-            [ -z "$g" ] && exit 1
-            "$GRIM" -g "$g" "$FILEPATH"
-            ;;
-          *)
-            "$GRIM" "$FILEPATH"
-            ;;
-        esac
+        # Focused window capture — falls back to full-screen capture.
+        "$GRIM" "$FILEPATH"
         ;;
 
       pin)

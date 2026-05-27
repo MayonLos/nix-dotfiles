@@ -35,7 +35,6 @@ in
       };
       modules = [
         inputs.niri.nixosModules.niri
-        inputs.mangowm.nixosModules.mango
         ../hosts/nixos-btw
         inputs.home-manager.nixosModules.home-manager
         {
