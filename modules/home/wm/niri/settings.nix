@@ -3,11 +3,23 @@ _:
 {
   programs.niri.settings = {
     prefer-no-csd = true;
+    screenshot-path = "~/Pictures/Screenshots/%Y%m%d-%H%M%S.png";
     debug.honor-xdg-activation-with-invalid-serial = true;
 
     hotkey-overlay = {
       skip-at-startup = true;
+      hide-not-bound = true; # 快捷键覆盖层只显示已绑定的按键
     };
+
+    # 鼠标指针
+    cursor = {
+      size = 24;
+      hide-when-typing = true; # 打字时隐藏鼠标
+    };
+
+    # 剪贴板
+    clipboard.disable-primary = false; # 保留中键粘贴（primary selection）
+
     layout = {
       background-color = "#00000000";
       focus-ring = {
@@ -23,16 +35,30 @@ _:
 
       gaps = 6;
 
+      center-focused-column = "on-overflow"; # 窗口超出屏幕宽度时自动居中
+
       struts = {
         left = 10;
         right = 10;
         top = 10;
         bottom = 10;
       };
+
+      preset-column-widths = [
+        { proportion = 0.33333; }
+        { proportion = 0.5; }
+        { proportion = 0.66667; }
+        { proportion = 1.0; }
+      ];
     };
 
     input = {
-      keyboard.xkb.layout = "us";
+      keyboard = {
+        xkb.layout = "us";
+        numlock = true;
+        repeat-delay = 400;
+        repeat-rate = 30;
+      };
       touchpad = {
         click-method = "button-areas";
         dwt = true;
@@ -46,6 +72,7 @@ _:
       };
       focus-follows-mouse.enable = true;
       warp-mouse-to-focus.enable = false;
+      workspace-auto-back-and-forth = true; # Super+数字再按一次回到上一个工作区
     };
 
     outputs = {
@@ -63,6 +90,7 @@ _:
         focus-at-startup = true;
       };
     };
+
     animations = {
       enable = true;
       slowdown = 2;

@@ -206,13 +206,15 @@ in
 
       "Print" = {
         action = spawn "screenshot" "region";
+        hotkey-overlay.title = "Screenshot: Region";
       };
-      "Ctrl+Shift+Print" = {
-        action = spawn "screenshot" "pin";
+      "Shift+Print" = {
+        action = spawn "screenshot" "fullscreen";
+        hotkey-overlay.title = "Screenshot: Fullscreen";
       };
-      "Alt+Print".action.screenshot-window = { };
-      "Ctrl+Print".action.screenshot-screen = {
-        show-pointer = false;
+      "Alt+Print" = {
+        action.screenshot-window = { };
+        hotkey-overlay.title = "Screenshot: Window";
       };
 
       "Mod+Escape" = {
