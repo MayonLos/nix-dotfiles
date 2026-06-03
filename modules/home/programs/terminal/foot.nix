@@ -28,7 +28,7 @@
         indicator-position = "relative";
       };
 
-      colors = {
+      colors-dark = {
         alpha = "0.8";
       };
 

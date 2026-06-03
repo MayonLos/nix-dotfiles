@@ -5,7 +5,10 @@
     enable32Bit = true;
   };
 
-  services.xserver.videoDrivers = [ "modesetting" "nvidia" ];
+  services.xserver.videoDrivers = [
+    "modesetting"
+    "nvidia"
+  ];
 
   hardware.nvidia = {
     modesetting.enable = true;
@@ -25,7 +28,6 @@
     };
   };
 
-  # 修复 NVIDIA 在 Niri/Wayland 上的 VRAM 显存泄露问题
   environment.etc."nvidia/nvidia-application-profiles-rc.d/50-niri-vram-fix.json".text = ''
     {
       "rules": [
@@ -39,3 +41,4 @@
     }
   '';
 }
+

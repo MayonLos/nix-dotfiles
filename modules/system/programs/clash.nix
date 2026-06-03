@@ -7,8 +7,10 @@ _: {
 
   services.resolved = {
     enable = true;
-    extraConfig = ''
-      DNSStubListener=no
-    '';
+    settings = {
+      Resolve = {
+        DNSStubListener = "no";
+      };
+    };
   };
 }

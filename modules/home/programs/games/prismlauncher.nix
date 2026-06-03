@@ -2,8 +2,7 @@
 {
   home.packages = [
     (pkgs.prismlauncher.override {
-      withWaylandGLFW = true;
-      additionalPrograms = [ 
+      additionalPrograms = [
         pkgs.ffmpeg
         pkgs.mangohud
         pkgs.gamescope
@@ -18,3 +17,4 @@
     })
   ];
 }
+

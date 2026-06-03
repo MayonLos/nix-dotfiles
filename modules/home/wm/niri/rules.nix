@@ -34,6 +34,16 @@ _:
         default-column-width = { proportion = 0.5; };
         border = { width = 0; };
       }
+      {
+        matches = [ { app-id = "^steam_app_"; } ];
+        variable-refresh-rate = true;
+        geometry-corner-radius = {
+          top-left = 0.0;
+          top-right = 0.0;
+          bottom-left = 0.0;
+          bottom-right = 0.0;
+        };
+      }
     ];
 
     layer-rules = [

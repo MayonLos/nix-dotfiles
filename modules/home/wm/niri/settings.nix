@@ -8,17 +8,15 @@ _:
 
     hotkey-overlay = {
       skip-at-startup = true;
-      hide-not-bound = true; # 快捷键覆盖层只显示已绑定的按键
+      hide-not-bound = true;
     };
 
-    # 鼠标指针
     cursor = {
       size = 24;
-      hide-when-typing = true; # 打字时隐藏鼠标
+      hide-when-typing = true;
     };
 
-    # 剪贴板
-    clipboard.disable-primary = false; # 保留中键粘贴（primary selection）
+    clipboard.disable-primary = false;
 
     layout = {
       background-color = "#00000000";
@@ -35,7 +33,7 @@ _:
 
       gaps = 6;
 
-      center-focused-column = "on-overflow"; # 窗口超出屏幕宽度时自动居中
+      center-focused-column = "on-overflow";
 
       struts = {
         left = 10;
@@ -72,7 +70,7 @@ _:
       };
       focus-follows-mouse.enable = true;
       warp-mouse-to-focus.enable = false;
-      workspace-auto-back-and-forth = true; # Super+数字再按一次回到上一个工作区
+      workspace-auto-back-and-forth = true;
     };
 
     outputs = {
@@ -88,6 +86,7 @@ _:
           y = 0;
         };
         focus-at-startup = true;
+        variable-refresh-rate = "on-demand";
       };
     };
 
