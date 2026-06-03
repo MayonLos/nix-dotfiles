@@ -47,11 +47,15 @@
     pamixer
     pavucontrol
     playerctl
-    mangohud
     libdecor
 
     pkgs-unstable.qq
     pkgs-unstable.go-musicfox
+
+    # 游戏生态与补强
+    pkgs-unstable.heroic
+    protonup-qt
+    umu-launcher
 
     # STM32 embedded development
     pkgs-unstable.stm32cubemx

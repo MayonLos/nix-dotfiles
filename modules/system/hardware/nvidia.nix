@@ -1,6 +1,9 @@
 { config, ... }:
 {
-  hardware.graphics.enable = true;
+  hardware.graphics = {
+    enable = true;
+    enable32Bit = true;
+  };
 
   services.xserver.videoDrivers = [ "modesetting" "nvidia" ];
 
@@ -22,4 +25,17 @@
     };
   };
 
+  # 修复 NVIDIA 在 Niri/Wayland 上的 VRAM 显存泄露问题
+  environment.etc."nvidia/nvidia-application-profiles-rc.d/50-niri-vram-fix.json".text = ''
+    {
+      "rules": [
+        { "pattern": { "feature": "procname", "matches": "niri" },
+          "profile": "Limit Free Buffer Pool" }
+      ],
+      "profiles": [
+        { "name": "Limit Free Buffer Pool",
+          "settings": [ { "key": "GLVidHeapReuseRatio", "value": 0 } ] }
+      ]
+    }
+  '';
 }
