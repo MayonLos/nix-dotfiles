@@ -16,7 +16,7 @@ NixOS & Home Manager configuration — "NixOS from Scratch."
 │   │   ├── base/          #   Core user identity: username, GTK, input-method, XDG, session vars
 │   │   ├── wm/niri/       #   Niri compositor: autostart, keybinds, window rules, animations, shadows
 │   │   ├── programs/      #   User applications
-│   │   │   ├── apps/      #     firefox, mpv, obsidian, obs-studio, screenshot, yazi, zathura...
+│   │   │   ├── apps/      #     firefox, mpv, obs-studio, screenshot, yazi, zathura...
 │   │   │   ├── dev/       #     git (delta), direnv, latex, llvm, python, vscode
 │   │   │   ├── games/     #     prismlauncher
 │   │   │   └── terminal/  #     foot, tmux
@@ -34,7 +34,6 @@ NixOS & Home Manager configuration — "NixOS from Scratch."
 ├── lib/                   # Helper libraries
 │   ├── default.nix        #   Combinator — merges sub-libs
 │   ├── keybind-helpers.nix
-│   └── obsidian-helpers.nix
 └── flake/
     ├── system.nix         # NixOS + Home Manager wiring (auto-imports modules)
     └── dev.nix            # Dev shells (default, cuda), treefmt config

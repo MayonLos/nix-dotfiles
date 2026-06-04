@@ -11,7 +11,6 @@
     fzf
     imagemagick
     nodejs
-    obsidian
     fastfetch
     btop
     pkgs-unstable.github-copilot-cli
@@ -33,7 +32,6 @@
     inputs.MyNixvim.packages.${pkgs.stdenv.hostPlatform.system}.default
 
     xwayland-satellite
-    mission-center
     wl-clipboard
     xclip
 
@@ -47,8 +45,6 @@
     pavucontrol
     playerctl
     libdecor
-
-    pkgs-unstable.go-musicfox
 
     protonup-qt
 
