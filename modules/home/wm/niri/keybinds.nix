@@ -205,12 +205,8 @@ in
       "Mod+W".action = toggle-column-tabbed-display;
 
       "Print" = {
-        action = spawn "screenshot" "region";
+        action = spawn "screenshot";
         hotkey-overlay.title = "Screenshot: Region";
-      };
-      "Shift+Print" = {
-        action = spawn "screenshot" "fullscreen";
-        hotkey-overlay.title = "Screenshot: Fullscreen";
       };
       "Alt+Print" = {
         action.screenshot-window = { };

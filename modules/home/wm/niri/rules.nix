@@ -35,6 +35,10 @@ _:
         border = { width = 0; };
       }
       {
+        matches = [ { app-id = "com.gabm.satty"; } ];
+        open-floating = true;
+      }
+      {
         matches = [ { app-id = "^steam_app_"; } ];
         variable-refresh-rate = true;
         geometry-corner-radius = {
