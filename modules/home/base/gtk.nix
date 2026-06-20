@@ -5,7 +5,7 @@
 
 let
   cursorTheme = "Bibata-Modern-Ice";
-  cursorSize = 16;
+  cursorSize = 24;
 in
 {
   home.pointerCursor = {

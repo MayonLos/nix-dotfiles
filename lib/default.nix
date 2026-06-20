@@ -1,4 +1,3 @@
-{ pkgs, lib }:
 {
-  keybinds = import ./keybind-helpers.nix { inherit lib; };
+  importDir = import ./import-dir.nix;
 }

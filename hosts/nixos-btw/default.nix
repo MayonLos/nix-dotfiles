@@ -1,20 +1,6 @@
 _:
 let
-  importDir =
-    dir:
-    builtins.concatLists (
-      builtins.attrValues (
-        builtins.mapAttrs (
-          name: type:
-          if (type == "regular" || type == "symlink") && builtins.match ".*\\.nix" name != null then
-            [ (dir + "/${name}") ]
-          else if type == "directory" then
-            importDir (dir + "/${name}")
-          else
-            [ ]
-        ) (builtins.readDir dir)
-      )
-    );
+  importDir = import ../../lib/import-dir.nix;
 in
 {
   imports = [ ./hardware.nix ] ++ importDir ../../modules/system;

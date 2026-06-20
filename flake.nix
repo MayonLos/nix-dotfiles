@@ -17,8 +17,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    niri.url = "github:sodiboo/niri-flake";
-
     noctalia = {
       url = "github:noctalia-dev/noctalia-shell";
       inputs.nixpkgs.follows = "nixpkgs-unstable";
@@ -31,6 +29,11 @@
     };
 
     claude-code.url = "github:sadjow/claude-code-nix/v2";
+
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
     treefmt-nix.url = "github:numtide/treefmt-nix";
   };
@@ -51,7 +54,6 @@
           _module.args.pkgs = import inputs.nixpkgs {
             inherit system;
             config.allowUnfree = true;
-            config.permittedInsecurePackages = [ "electron-38.8.4" ];
           };
         };
     };

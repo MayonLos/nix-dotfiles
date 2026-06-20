@@ -9,6 +9,9 @@ _:
     _JAVA_AWT_WM_NONREPARENTING = "1";
   };
 
+  # Add ~/.local/bin to PATH (for pipx, cargo, agy, etc.)
+  home.sessionPath = [ "$HOME/.local/bin" ];
+
   # Reaches shell sessions (terminals)
   home.sessionVariables = {
     NIXOS_OZONE_WL = "1";

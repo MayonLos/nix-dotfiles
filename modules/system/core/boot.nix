@@ -21,15 +21,11 @@
     "split_lock_detect=off"
   ];
   boot.consoleLogLevel = 3;
-  boot.initrd.systemd.enable = true;
-
   boot.kernel.sysctl = {
     "vm.max_map_count" = 2147483642;
     "net.core.default_qdisc" = "fq";
     "net.ipv4.tcp_congestion_control" = "bbr";
   };
-
-  virtualisation.docker.enable = true;
 
   zramSwap = {
     enable = true;

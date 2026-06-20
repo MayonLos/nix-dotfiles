@@ -1,5 +1,7 @@
 { withSystem, inputs, ... }:
 let
+  importDir = import ../lib/import-dir.nix;
+
   pkgs-unstable-for =
     system:
     import inputs.nixpkgs-unstable {
@@ -7,43 +9,28 @@ let
       config.allowUnfree = true;
       overlays = [ inputs.claude-code.overlays.default ];
     };
-
-  importDir =
-    dir:
-    builtins.concatLists (
-      builtins.attrValues (
-        builtins.mapAttrs (
-          name: type:
-          if (type == "regular" || type == "symlink") && builtins.match ".*\\.nix" name != null then
-            [ (dir + "/${name}") ]
-          else if type == "directory" then
-            importDir (dir + "/${name}")
-          else
-            [ ]
-        ) (builtins.readDir dir)
-      )
-    );
 in
 {
   flake.nixosConfigurations.nixos-btw = withSystem "x86_64-linux" (
     { pkgs, ... }:
+    let
+      pkgs-unstable = pkgs-unstable-for "x86_64-linux";
+    in
     inputs.nixpkgs.lib.nixosSystem {
       inherit pkgs;
       specialArgs = {
-        inherit inputs;
-        pkgs-unstable = pkgs-unstable-for "x86_64-linux";
+        inherit inputs pkgs-unstable;
       };
       modules = [
-        inputs.niri.nixosModules.niri
         ../hosts/nixos-btw
+        inputs.sops-nix.nixosModules.sops
         inputs.home-manager.nixosModules.home-manager
         {
           home-manager = {
             useGlobalPkgs = true;
             useUserPackages = true;
             extraSpecialArgs = {
-              inherit inputs;
-              pkgs-unstable = pkgs-unstable-for "x86_64-linux";
+              inherit inputs pkgs-unstable;
             };
             users.mayon = {
               imports = importDir ../modules/home;

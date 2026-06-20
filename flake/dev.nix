@@ -9,6 +9,9 @@ _: {
             git
             gnumake
             clang-tools
+            sops
+            age
+            ssh-to-age
           ];
         };
       };
