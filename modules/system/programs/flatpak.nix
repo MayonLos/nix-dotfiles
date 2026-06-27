@@ -8,7 +8,20 @@
     after = [ "network-online.target" ];
     path = [ pkgs.flatpak ];
     script = ''
-      flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+      # Once the remote exists this is an offline-safe local no-op. The retry
+      # loop only covers a fresh first-add racing WiFi/DNS that isn't up yet at
+      # boot (oneshot can't use Restart=). Adding flathub is non-critical, so on
+      # persistent failure we exit 0 rather than redden the boot — next boot
+      # retries anyway.
+      for attempt in $(seq 1 12); do
+        if flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo; then
+          exit 0
+        fi
+        echo "flathub not reachable yet (attempt $attempt/12), retrying in 10s..." >&2
+        sleep 10
+      done
+      echo "could not add flathub after retries; will retry next boot" >&2
+      exit 0
     '';
     serviceConfig.Type = "oneshot";
     serviceConfig.RemainAfterExit = true;
