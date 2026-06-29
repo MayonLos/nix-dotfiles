@@ -1,10 +1,6 @@
 { pkgs, ... }:
 
 let
-  # Screenshot script for niri.
-  # Usage: screenshot
-  #
-  #   select region → satty annotate → save + clipboard
   screenshot = pkgs.writeShellScriptBin "screenshot" ''
     set -euo pipefail
 
@@ -20,7 +16,6 @@ let
     FILENAME="$("$DATE" +%Y%m%d-%H%M%S).png"
     FILEPATH="$SHOTS_DIR/$FILENAME"
 
-    # Interactive region selection → satty annotation → save + clipboard
     g=$("$SLURP" -d) || exit 0
     "$GRIM" -g "$g" - \
       | "$SATTY" \
