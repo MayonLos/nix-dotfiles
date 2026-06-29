@@ -1,4 +1,18 @@
-{ pkgs, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}:
+let
+  # Noctalia's foot template renders the active palette to this file
+  # (output_path = $XDG_CONFIG_HOME/foot/themes/noctalia). We `include` it from
+  # foot.ini below so foot follows the live theme. Declaring the include here —
+  # rather than letting the template's apply.sh sed it into foot.ini — keeps
+  # foot.ini a clean read-only HM symlink: apply.sh sees the include already
+  # present (`grep include.*noctalia`) and skips its rewrite.
+  noctaliaTheme = "${config.xdg.configHome}/foot/themes/noctalia";
+in
 {
   programs.foot = {
     enable = true;
@@ -8,6 +22,7 @@
         term = "xterm-256color";
         font = "JetBrainsMono Nerd Font:size=8";
         dpi-aware = "yes";
+        include = noctaliaTheme; # noctalia-rendered palette (colors-dark)
       };
 
       mouse = {
@@ -60,4 +75,14 @@
       };
     };
   };
+
+  # foot refuses to start on a missing `include` target, so seed an empty (valid)
+  # theme file if noctalia hasn't rendered it yet. Mutable, non-HM-managed —
+  # noctalia overwrites it on every theme change.
+  home.activation.seedFootNoctaliaTheme = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    if [ ! -e "${noctaliaTheme}" ]; then
+      run mkdir -p "$(dirname "${noctaliaTheme}")"
+      run ${pkgs.coreutils}/bin/install -m 0644 /dev/null "${noctaliaTheme}"
+    fi
+  '';
 }
