@@ -6,42 +6,34 @@
     enableZshIntegration = true;
     shellWrapperName = "y";
 
-    # Runtime binaries required by previewers/plugins
     extraPackages = with pkgs; [
       fd
       file
-      poppler-utils # PDF → text preview
-      ffmpegthumbnailer # video thumbnail frames
-      mediainfo # media metadata sidebar
-      exiftool # EXIF/file metadata
-      duckdb # CSV/JSON/Parquet table rendering
-      glow # Markdown terminal renderer
-      ouch # archive listing + compress/decompress
+      poppler-utils
+      ffmpegthumbnailer
+      mediainfo
+      exiftool
+      duckdb
+      glow
+      ouch
     ];
 
     plugins = with pkgs.yaziPlugins; {
       inherit
-        # === Previewers ===
-        duckdb # tabular data as rendered tables
-        glow # Markdown → glow output
-        ouch # archive contents listing
-        # === UI ===
-        full-border # rounded borders around all panels
-        toggle-pane # hide/show preview pane with one key
-        # === Behavior ===
-        smart-enter # l/Enter = enter dir or open file (smarter)
-        smart-filter # F = filter that auto-enters sole result
-        # === Navigation ===
-        jump-to-char # f → jump to next file starting with <char>
-        relative-motions # 1-5 → display relative numbers + jump N lines
-        # === Integrations ===
-        git # git status badges on files and dirs
-        # === File ops ===
-        chmod # interactive octal permission editor
+        duckdb
+        glow
+        ouch
+        full-border
+        toggle-pane
+        smart-enter
+        smart-filter
+        jump-to-char
+        relative-motions
+        git
+        chmod
         ;
     };
 
-    # init.lua — executed once at startup; wire up plugins that need setup()
     initLua = ''
       require("full-border"):setup {
         type = ui.Border.ROUNDED,
@@ -101,10 +93,7 @@
       };
 
       plugin = {
-        # --- Previewers (prepend = checked before built-ins) ---
-        # NOTE: yazi 26.x renamed the glob match field `name` -> `url`.
         prepend_previewers = [
-          # Tabular data rendered as tables via duckdb
           {
             url = "*.csv";
             run = "duckdb";
@@ -125,7 +114,6 @@
             url = "*.arrow";
             run = "duckdb";
           }
-          # Markdown rendered by glow
           {
             url = "*.md";
             run = "glow";
@@ -134,17 +122,12 @@
             url = "*.markdown";
             run = "glow";
           }
-          # Archives listed by ouch (mime-based, covers all variants)
           {
             mime = "application/{*zip,tar,bzip2,7z*,rar,xz,zstd,java-archive}";
             run = "ouch";
           }
         ];
 
-        # --- Fetchers: git status badges (yazi 26.x API) ---
-        # `id` is removed (only needed on yazi <= v26.1.22), `name` -> `url`,
-        # and `group` is now mandatory — entries sharing a group dedupe so only
-        # the first match runs per file.
         prepend_fetchers = [
           {
             url = "*";
@@ -162,8 +145,6 @@
 
     keymap = {
       mgr.prepend_keymap = [
-        # === Entry behavior ===
-        # l and Enter both use smart-enter (replaces default l/Enter)
         {
           on = "l";
           run = "plugin smart-enter";
@@ -175,29 +156,23 @@
           desc = "Enter dir or open file";
         }
 
-        # === Filtering ===
-        # F → smart-filter (auto-enters sole match; replaces default f/F filter)
         {
           on = "F";
           run = "plugin smart-filter";
           desc = "Smart filter";
         }
 
-        # === Preview ===
         {
           on = "!";
           run = "plugin toggle-pane";
           desc = "Toggle preview pane";
         }
 
-        # === Navigation ===
-        # f → jump to next file whose name starts with a typed char (vim-style)
         {
           on = "f";
           run = "plugin jump-to-char";
           desc = "Jump to char";
         }
-        # 1-5 → show relative line numbers and jump N steps
         {
           on = "1";
           run = "plugin relative-motions 1";
@@ -224,14 +199,11 @@
           desc = "×5 relative motion";
         }
 
-        # === File operations ===
-        # C → compress selection or decompress hovered archive
         {
           on = "C";
           run = "plugin ouch";
           desc = "Compress / decompress (ouch)";
         }
-        # gm → interactive chmod editor
         {
           on = [
             "g"
@@ -240,21 +212,18 @@
           run = "plugin chmod";
           desc = "chmod selected files";
         }
-        # Ctrl+s → drop into $SHELL at current path
         {
           on = "<C-s>";
           run = ''shell "$SHELL" --block'';
           desc = "Shell in current dir";
         }
 
-        # === Tabs ===
         {
           on = "T";
           run = "tab_create --current";
           desc = "New tab at current path";
         }
 
-        # === Misc ===
         {
           on = "<C-r>";
           run = "reload";
