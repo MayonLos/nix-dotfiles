@@ -1,6 +1,5 @@
 { pkgs, lib, ... }:
 {
-  # CUDA binary cache (moved from cuda-maintainers.cachix.org to here in Nov 2025)
   nix.settings = {
     substituters = lib.mkAfter [
       "https://cache.nixos-cuda.org"
@@ -16,6 +15,5 @@
     cuda_nvcc
   ];
 
-  # Required by many CUDA-aware tools (cmake CUDA detection, etc.)
   environment.variables.CUDA_PATH = "${pkgs.cudaPackages.cudatoolkit}";
 }

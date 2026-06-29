@@ -16,10 +16,8 @@
   boot.loader.efi.canTouchEfiVariables = true;
   boot.supportedFilesystems = [ "ntfs" ];
 
-  # Wipe /tmp on every boot. It lives on the ext4 root, so without this it would
-  # persist across reboots and accumulate junk. Kept on disk (not tmpfs) so large
-  # nix/compiler builds don't eat into RAM.
-  boot.tmp.cleanOnBoot = true;
+  boot.tmp.useTmpfs = true;
+  systemd.services.nix-daemon.environment.TMPDIR = "/var/tmp";
   boot.kernelParams = [
     "quiet"
     "udev.log_level=3"

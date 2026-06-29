@@ -9,4 +9,3 @@ _:
     gamescopeSession.enable = true;
   };
 }
-
