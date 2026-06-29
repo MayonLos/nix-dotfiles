@@ -20,11 +20,19 @@
     noctalia = {
       url = "github:noctalia-dev/noctalia-shell";
       inputs.nixpkgs.follows = "nixpkgs-unstable";
-      inputs.noctalia-qs.follows = "noctalia-qs";
     };
 
-    noctalia-qs = {
-      url = "github:noctalia-dev/noctalia-qs";
+    # Graphical greetd login matching the Noctalia desktop. Separate repo from the
+    # shell, single `nixpkgs` input pinned to nixos-unstable. Deliberately NOT
+    # `follows`-ed — the greeter builds from source (no cachix), so we let it build
+    # against its own tested nixpkgs to avoid attr/version drift breaking the build.
+    noctalia-greeter.url = "github:noctalia-dev/noctalia-greeter";
+
+    # Zen browser (not in nixpkgs). Provides a home-manager module (firefox-style
+    # profiles). follows nixpkgs-unstable to dedup the heavy input; home-manager is
+    # left on the flake's own pin so its mkFirefoxModule stays version-matched.
+    zen-browser = {
+      url = "github:0xc000022070/zen-browser-flake";
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
 
@@ -32,6 +40,13 @@
 
     sops-nix = {
       url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # Weekly-updated prebuilt nix-index database, so we never run `nix-index`
+    # manually. Provides the command-not-found handler + `nix-locate` + comma.
+    nix-index-database = {
+      url = "github:nix-community/nix-index-database";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
