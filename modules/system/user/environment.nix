@@ -7,6 +7,5 @@
     gnumake
     unzip
     unrar
-    ripgrep
   ];
 }
