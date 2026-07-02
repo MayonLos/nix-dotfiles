@@ -29,7 +29,7 @@
       cat = "bat";
       ".." = "cd ..";
       "..." = "cd ../..";
-      nr = "nh os switch ~/nix-dotfiles";
+      nr = "nh os switch";
       nc = "nh clean all";
       lg = "lazygit";
     };

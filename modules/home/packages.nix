@@ -23,7 +23,6 @@
     ripgrep
     lazygit
     duf
-    nh
     nix-output-monitor
     xwayland-satellite
     wl-clipboard
