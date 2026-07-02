@@ -1,4 +1,4 @@
-_:
+{ pkgs, ... }:
 
 {
   programs.steam = {
@@ -7,5 +7,6 @@ _:
     dedicatedServer.openFirewall = true;
     localNetworkGameTransfers.openFirewall = true;
     gamescopeSession.enable = true;
+    extraPackages = [ pkgs.mangohud ];
   };
 }
