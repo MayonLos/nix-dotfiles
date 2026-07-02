@@ -14,6 +14,16 @@ _: {
             ssh-to-age
           ];
         };
+
+        cuda = pkgs.mkShell {
+          name = "cuda-dev";
+          packages = with pkgs.cudaPackages; [
+            cudatoolkit
+            cudnn
+            cuda_nvcc
+          ];
+          CUDA_PATH = "${pkgs.cudaPackages.cudatoolkit}";
+        };
       };
 
       treefmt = {
