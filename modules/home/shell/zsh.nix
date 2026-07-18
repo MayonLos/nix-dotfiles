@@ -53,6 +53,25 @@
     bindkey "^[[B" down-line-or-beginning-search 
     bindkey "^[OA" up-line-or-beginning-search
     bindkey "^[OB" down-line-or-beginning-search
+
+    use-java() {
+      local java_home_var="$1"
+      local java_home="''${(P)java_home_var}"
+      if [ -z "$java_home" ]; then
+        echo "Unknown Java home: $java_home_var" >&2
+        return 1
+      fi
+
+      export JAVA_HOME="$java_home"
+      path=("''${JAVA_HOME}/bin" "''${(@)path:#''${JAVA8_HOME}/bin}" "''${(@)path:#''${JAVA17_HOME}/bin}" "''${(@)path:#''${JAVA21_HOME}/bin}" "''${(@)path:#''${JAVA25_HOME}/bin}")
+      hash -r
+      java -version
+    }
+
+    use-java8() { use-java JAVA8_HOME; }
+    use-java17() { use-java JAVA17_HOME; }
+    use-java21() { use-java JAVA21_HOME; }
+    use-java25() { use-java JAVA25_HOME; }
   '';
 
   programs.starship = {
