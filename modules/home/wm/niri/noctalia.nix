@@ -6,7 +6,7 @@
 
 let
   wallpaperDir = "${../../_assets/wallpaper}";
-  defaultWallpaperPath = "${../../_assets/wallpaper/wallpaper-001.jpg}";
+  defaultWallpaperPath = "${../../_assets/wallpaper/wallpaper-001.png}";
 
   distroLogo = "${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg";
 

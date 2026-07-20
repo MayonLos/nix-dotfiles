@@ -186,6 +186,27 @@
     }
 
     window-rule {
+        match app-id="thunar" title="^(Rename|重命名)"
+        open-floating true
+    }
+
+    window-rule {
+        match app-id="zen-beta" title="^Picture-in-Picture$"
+        open-floating true
+        default-column-width { fixed 480; }
+    }
+
+    window-rule {
+        match app-id="^(pavucontrol|org.pulseaudio.pavucontrol|blueman-manager|nm-connection-editor|org.gnome.Calculator|xdg-desktop-portal-gtk)$"
+        open-floating true
+    }
+
+    window-rule {
+        match app-id="^(polkit-.*|org.freedesktop.PolicyKit.*)$"
+        open-floating true
+    }
+
+    window-rule {
         match app-id="dev.noctalia.Noctalia.Settings"
         open-floating true
         default-column-width { fixed 1080; }
