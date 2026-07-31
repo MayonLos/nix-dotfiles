@@ -72,6 +72,18 @@
     use-java17() { use-java JAVA17_HOME; }
     use-java21() { use-java JAVA21_HOME; }
     use-java25() { use-java JAVA25_HOME; }
+
+    # Point LUA_PATH/LUA_CPATH at `luarocks install --local` trees.
+    # On demand rather than global: neovim honours LUA_PATH too, and its
+    # LuaJIT must not pick up Lua 5.4 rocks.
+    use-luarocks() {
+      if ! command -v luarocks >/dev/null; then
+        echo "luarocks not found" >&2
+        return 1
+      fi
+      eval "$(luarocks path)"
+      echo "LUA_PATH/LUA_CPATH set for $(lua -v 2>&1)"
+    }
   '';
 
   programs.starship = {
