@@ -189,13 +189,27 @@ in
           capsule = true;
           capsule_opacity = 0.96;
 
+          # 插件 widget 在 bar 里的写法是 `<plugin-id>:<entry-id>`：
+          # widget_factory.cpp 直接把这个字符串丢给 PluginRegistry::resolve()，
+          # 而 resolve() 按第一个冒号切成 manifest.id + entry.id
+          # (plugin_registry.cpp:20 `manifest->id + ":" + entry->id`)。
+          # entry-id 来自各插件 plugin.toml 的 [[widget]] id，不是插件名，
+          # 所以 timer 和 deepseek_usage 都叫 "bar"。
           start = [
             "launcher"
-            "workspaces"
+            # 替代内置 "workspaces"：只显示当前聚焦的 niri 工作区。
+            # 想换回完整工作区列表就把这行改回 "workspaces"。
+            "salemsayed/niri-active-workspace:active-workspace"
             "media"
           ];
           center = [ ];
           end = [
+            "lowcache/claude-companion:pulse"
+            "avivbintangaringga/nix-monitor:nix-monitor"
+            "coder/deepseek_usage:bar"
+            "8bury/mini-docker:mini-docker"
+            "nightwatch75/file-search:file-search"
+            "noctalia/timer:bar"
             "network"
             "bluetooth"
             "volume"
