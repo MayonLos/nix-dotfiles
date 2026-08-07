@@ -122,20 +122,46 @@ in
           };
         };
 
-        plugins.source = [
-          {
-            name = "official";
-            kind = "git";
-            location = "https://github.com/noctalia-dev/official-plugins";
-            enabled = false;
-          }
-          {
-            name = "community";
-            kind = "git";
-            location = "https://github.com/noctalia-dev/community-plugins";
-            enabled = false;
-          }
-        ];
+        # kind = "path" 而不是 "git"：noctalia 把 Path 源当成只读的不可变目录
+        # （config_types.h 的注释原话就是 "e.g. a Nix store path"），启动时直接
+        # 读 location，不 clone、不联网、update/auto_update 都是 no-op。
+        #
+        # 这一点对这台机器是硬要求：git 源在启动阶段 clone，github 不通时会卡满
+        # 超时然后段错误，niri 自启的 noctalia 直接死掉——这也是这两个源之前
+        # 一直 enabled = false 的原因。走 store path 后崩溃面消失，版本也锁进了
+        # flake.lock，更新统一走 nix flake update。
+        plugins = {
+          auto_update = false;
+
+          source = [
+            {
+              name = "official";
+              kind = "path";
+              location = "${inputs.noctalia-plugins-official}";
+              enabled = true;
+            }
+            {
+              name = "community";
+              kind = "path";
+              location = "${inputs.noctalia-plugins-community}";
+              enabled = true;
+            }
+          ];
+
+          # 保守起步集：只挑依赖在本机全部齐备、且不会去改声明式配置的。
+          # 刻意排除的几个：battery-threshold（要 sudo/groupadd/usermod 改系统
+          # 权限，和 NixOS 冲突）、niri-animations（会写 niri 配置，而那是只读
+          # HM 符号链接）、color_picker / screen-toolkit / keybind-cheatsheet
+          # （依赖 hyprpicker / hyprctl，Hyprland 专用）、translator（走 Google
+          # 翻译，本地网络不通）。
+          enabled = [
+            "noctalia/timer"
+            "cleboost/jetbrains-provider" # /jb 打开最近的 JetBrains 项目
+            "coder/deepseek_usage" # 对应 sops 里的 DEEPSEEK_API_KEY
+            "avivbintangaringga/nix-monitor" # nixpkgs 更新监控
+            "8bury/mini-docker" # 管 rootless docker
+          ];
+        };
 
         bar.main = {
           position = "top";

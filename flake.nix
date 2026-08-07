@@ -22,6 +22,19 @@
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
 
+    # Noctalia plugin repositories, consumed as plain source trees rather than
+    # through noctalia's own git fetcher. A `kind = "path"` plugin source points
+    # straight at the store path, so nothing is cloned at startup — see the
+    # comment on settings.plugins in modules/home/wm/niri/noctalia.nix.
+    noctalia-plugins-official = {
+      url = "github:noctalia-dev/official-plugins";
+      flake = false;
+    };
+    noctalia-plugins-community = {
+      url = "github:noctalia-dev/community-plugins";
+      flake = false;
+    };
+
     # Graphical greetd login matching the Noctalia desktop. Separate repo from the
     # shell, single `nixpkgs` input pinned to nixos-unstable. Deliberately NOT
     # `follows`-ed — the greeter builds from source (no cachix), so we let it build
