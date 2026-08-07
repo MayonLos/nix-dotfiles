@@ -1,12 +1,11 @@
-{ pkgs, ... }:
-{
+_: {
   xdg.portal = {
+    # No `extraPortals` here on purpose: `programs.niri.enable` already pulls in
+    # xdg-desktop-portal-gnome, and gtk + gnome-keyring come along with it.
+    # Listing them again (plus the xdg-desktop-portal host package, which is not
+    # a backend) duplicated every backend and produced a stream of
+    # "Ignoring duplicate name org.freedesktop.portal.Desktop" from dbus-broker.
     enable = true;
-    extraPortals = with pkgs; [
-      xdg-desktop-portal
-      xdg-desktop-portal-gnome
-      xdg-desktop-portal-gtk
-    ];
 
     config = {
       niri = {
