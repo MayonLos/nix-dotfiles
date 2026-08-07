@@ -39,15 +39,17 @@ in
   ];
 
   config = {
-    # 插件声明的外部依赖里，本机唯独缺这两个：
-    #   gdbus       — file-search 用它发 dbus 调用（glib 的 bin 输出，不是主输出）
-    #   notify-send — claude-companion 用它发通知
-    # 插件不会自己装依赖，缺了就是静默不工作，所以在这里补齐。
+    # 已启用插件声明的外部依赖里，本机缺的那些。插件不会自己装依赖，
+    # 缺了就是静默不工作（不报错、不提示），所以在这里补齐。
+    # 增删插件时记得同步这个列表——每一项都对应一个具体的插件。
     home.packages = with pkgs; [
-      glib.bin # gdbus，file-search 用
-      tmuxp # tmux-provider 用（tmux 本体已在 tmux.nix）
+      tmuxp # tmux-provider（tmux 本体在 tmux.nix）
       pulseaudio # 只为 pactl 这个 CLI，audio-switcher 用；
       # 音频服务端仍是 pipewire，这里不会顶替它
+      gpu-screen-recorder # screen_recorder
+      smartmontools # smartctl，drive-health（另见 modules/system/services/drive-health.nix）
+      iw # hotspot 查无线网卡能力
+      udiskie # udiskie 插件的挂载守护
     ];
 
     programs.noctalia = {
@@ -159,29 +161,44 @@ in
             }
           ];
 
-          # 保守起步集：只挑依赖在本机全部齐备、且不会去改声明式配置的。
-          # 刻意排除的几个：battery-threshold（要 sudo/groupadd/usermod 改系统
-          # 权限，和 NixOS 冲突）、niri-animations（会写 niri 配置，而那是只读
-          # HM 符号链接）、color_picker / screen-toolkit / keybind-cheatsheet
-          # （依赖 hyprpicker / hyprctl，Hyprland 专用）、translator（走 Google
-          # 翻译，本地网络不通）。
+          # ⚠️ 这个列表会被运行时覆盖层盖掉。
+          # 在 Noctalia 设置界面里开关插件，会把整份 enabled 数组写进
+          # ~/.local/state/noctalia/settings.toml，而那份优先级更高——也就是说
+          # GUI 一旦动过，这里写什么都不再生效。想让这里重新说了算，就把覆盖层
+          # 里的 [plugins] 段删掉再 `noctalia msg config-reload`。
+          # 反过来，想把 GUI 里试出来的结果固化回来，用
+          # `noctalia config export merged` 读出实际值抄进来。
+          #
+          # 刻意排除的：battery-threshold（要 sudo/groupadd/usermod 改系统权限）、
+          # niri-animations（会写只读的 niri HM 符号链接）、screen-toolkit /
+          # color_picker / keybind-cheatsheet（依赖 hyprpicker、hyprctl，
+          # Hyprland 专用）、translator（走 Google 翻译，本地不通）。
           enabled = [
-            # 启动器 provider（无 bar widget，靠前缀触发）
-            "cleboost/jetbrains-provider" # /jb 最近的 JetBrains 项目
-            "dunarand/tmux-provider" # /tm 挂载 tmux 会话
-            "radimous/prismlauncher-instances" # PrismLauncher 实例
-
-            # bar widget
-            "salemsayed/niri-active-workspace" # 只显示当前 niri 工作区
-            "coder/deepseek_usage" # 对应 sops 里的 DEEPSEEK_API_KEY
-            "8bury/mini-docker" # 管 rootless docker
-            "nightwatch75/file-search" # fzf 模糊搜文件
-            "rxtsel/portctl" # 看/杀监听中的 TCP/UDP 端口
-            "yuuto/calculator" # 表达式计算器
-            "blackbartblues/audio-switcher" # 切输入输出设备、蓝牙接管
-            "8bury/lid-guard" # 合盖不挂起，让 nix 构建跑完
-            "3ri4ng0ld/ip-monitor" # 看各网卡/出口 IP，配合 Clash TUN
-            "apex077/eyecare" # 20-20-20 护眼提醒，配合 nightlight
+            "3ri4ng0ld/ip-monitor"
+            "8bury/mini-docker"
+            "alexander/game-launcher"
+            "alexander/mimir"
+            "aristides/udiskie"
+            "avivbintangaringga/nix-monitor"
+            "blackbartblues/audio-switcher"
+            "cleboost/hotspot"
+            "cleboost/jetbrains-provider"
+            "cleboost/ssh-launcher"
+            "coder/deepseek_usage"
+            "dunarand/bookmarks"
+            "dunarand/tmux-provider"
+            "gustav0ar/drive-health"
+            "nightwatch75/todo"
+            "noctalia/kaomoji"
+            "noctalia/notes"
+            "noctalia/screen_recorder"
+            "nomadcxx/gamer-mode"
+            "radimous/prismlauncher-instances"
+            "rxtsel/portctl"
+            "salemsayed/niri-active-workspace"
+            "whyoolw/sharednd"
+            "yocraft/battery-widget" # 桌面/锁屏电量组件，无 bar widget
+            "yuuto/calculator"
           ];
         };
 
@@ -205,18 +222,17 @@ in
           # (plugin_registry.cpp:20 `manifest->id + ":" + entry->id`)。
           # entry-id 来自各插件 plugin.toml 的 [[widget]] id，不是插件名，
           # 所以 timer 和 deepseek_usage 都叫 "bar"。
+          #
+          # === 试用布局：所有 widget 全部展开，不折叠 ===
+          # 确认要留的之后再收进 accordion。
           start = [
             "launcher"
-            # 替代内置 "workspaces"：只显示当前聚焦的 niri 工作区。
-            # 想换回完整工作区列表就把这行改回 "workspaces"。
             "salemsayed/niri-active-workspace:active-workspace"
             "media"
           ];
           center = [ ];
-          # 分组胶囊：lane 里用字面量 "group:<id>" 引用一组，成员住在组里而不是
-          # 散在 lane 上（config_types.h:51 kCapsuleGroupTokenPrefix）。这样 end
-          # 从 16 个条目收成 8 个，视觉上分块而不是一长条。
           end = [
+            "group:tools"
             "group:dev"
             "group:sys"
             "sysmon"
@@ -228,34 +244,51 @@ in
           ];
 
           capsule_group = [
-            # accordion：平时只显示第一个成员（docker），鼠标悬停向左展开其余。
-            # 这几个都是按需查看的东西，没必要一直占着 bar。
+            # 效率工具
             {
-              id = "dev";
+              id = "tools";
               members = [
-                "8bury/mini-docker:mini-docker"
-                "rxtsel/portctl:indicator"
-                "coder/deepseek_usage:bar"
-                "nightwatch75/file-search:file-search"
-                "yuuto/calculator:bar"
-                "8bury/lid-guard:lid-guard"
-                "apex077/eyecare:eyecare-widget"
+                "dunarand/bookmarks:bar" # 自定义快捷动作
+                "noctalia/notes:notes" # 侧栏速记
+                "nightwatch75/todo:todo" # 任务清单
+                "nightwatch75/file-search:file-search" # fzf 模糊搜文件
+                "yuuto/calculator:bar" # 计算器
+                "alexander/mimir:status" # LLM 对话
               ];
-              accordion = true;
-              accordion_direction = "start";
+              accordion = false;
               padding = 6.0;
               widget_spacing = 4;
             }
-            # 常看的系统状态，始终展开，共用一个胶囊底色
+            # 开发 & 监控
+            {
+              id = "dev";
+              members = [
+                "8bury/mini-docker:mini-docker" # Docker 管理
+                "rxtsel/portctl:indicator" # 端口查杀
+                "coder/deepseek_usage:bar" # API 余额
+                "nomadcxx/gamer-mode:gamermode" # CPU/RAM/GPU 指标
+                "avivbintangaringga/nix-monitor:nix-monitor" # Nixpkgs 更新
+                "lowcache/claude-companion:pulse" # Claude Code 伴侣
+                "noctalia/screen_recorder:recorder" # 一键录屏
+                "gustav0ar/drive-health:summary" # 硬盘 SMART 健康
+              ];
+              accordion = false;
+              padding = 6.0;
+              widget_spacing = 4;
+            }
+            # 系统状态
             {
               id = "sys";
               members = [
                 "network"
                 "3ri4ng0ld/ip-monitor:widget"
+                "cleboost/hotspot:toggle" # Wi-Fi 热点
                 "bluetooth"
                 "blackbartblues/audio-switcher:widget"
                 "volume"
                 "brightness"
+                "aristides/udiskie:status" # USB 挂载管理
+                "alexander/game-launcher:launcher" # 游戏启动器
               ];
               accordion = false;
               padding = 6.0;
