@@ -39,6 +39,15 @@ in
   ];
 
   config = {
+    # 插件声明的外部依赖里，本机唯独缺这两个：
+    #   gdbus       — file-search 用它发 dbus 调用（glib 的 bin 输出，不是主输出）
+    #   notify-send — claude-companion 用它发通知
+    # 插件不会自己装依赖，缺了就是静默不工作，所以在这里补齐。
+    home.packages = with pkgs; [
+      glib.bin
+      libnotify
+    ];
+
     programs.noctalia = {
       enable = true;
       package = inputs.noctalia.packages.${pkgs.stdenv.hostPlatform.system}.default;
@@ -160,6 +169,9 @@ in
             "coder/deepseek_usage" # 对应 sops 里的 DEEPSEEK_API_KEY
             "avivbintangaringga/nix-monitor" # nixpkgs 更新监控
             "8bury/mini-docker" # 管 rootless docker
+            "nightwatch75/file-search" # fzf 模糊搜文件，需要上面补的 gdbus
+            "lowcache/claude-companion" # Claude Code 启动 + 提示，需要上面补的 notify-send
+            "salemsayed/niri-active-workspace" # bar 上只显示当前 niri 工作区
           ];
         };
 
