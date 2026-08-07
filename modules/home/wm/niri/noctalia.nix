@@ -79,7 +79,6 @@ in
             show_icons = true;
             compact = true;
             app_grid = true;
-            session_search = true;
             sort_by_usage = true;
           };
 
@@ -226,6 +225,15 @@ in
           warning_threshold = 20;
         };
 
+        # 夜间自动降色温。日落后从 6500K 渐变到 4000K；force=false 表示
+        # 只在夜间生效而不是全天锁定。
+        nightlight = {
+          enabled = true;
+          force = false;
+          temperature_day = 6500;
+          temperature_night = 4000;
+        };
+
         weather = {
           enabled = true;
           unit = "metric";
@@ -281,16 +289,9 @@ in
           battery_percentage_changed = "${lowBatterySuspend}";
         };
 
-        dock = {
-          enabled = true;
-          position = "bottom";
-          auto_hide = true;
-          reserve_space = false;
-          background_opacity = 0.92;
-          radius = 16;
-          launcher_position = "end";
-          show_running = true;
-        };
+        # 关掉：bar 上已经有 launcher 和 workspaces，dock 是重复入口。
+        # 关掉后其余 dock.* 键全部无意义，所以只留这一行。
+        dock.enabled = false;
 
         lockscreen = {
           enabled = true;
