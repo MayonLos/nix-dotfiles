@@ -39,5 +39,7 @@
     lenovo-legion
     protonup-qt
     obsidian
+    go-musicfox
+    pkgs-unstable.typora # 1.14.8 vs 1.13.6 on stable
   ];
 }
