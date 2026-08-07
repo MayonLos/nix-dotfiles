@@ -179,6 +179,9 @@ in
             "rxtsel/portctl" # 看/杀监听中的 TCP/UDP 端口
             "yuuto/calculator" # 表达式计算器
             "blackbartblues/audio-switcher" # 切输入输出设备、蓝牙接管
+            "8bury/lid-guard" # 合盖不挂起，让 nix 构建跑完
+            "3ri4ng0ld/ip-monitor" # 看各网卡/出口 IP，配合 Clash TUN
+            "apex077/eyecare" # 20-20-20 护眼提醒，配合 nightlight
           ];
         };
 
@@ -235,6 +238,8 @@ in
                 "coder/deepseek_usage:bar"
                 "nightwatch75/file-search:file-search"
                 "yuuto/calculator:bar"
+                "8bury/lid-guard:lid-guard"
+                "apex077/eyecare:eyecare-widget"
               ];
               accordion = true;
               accordion_direction = "start";
@@ -246,6 +251,7 @@ in
               id = "sys";
               members = [
                 "network"
+                "3ri4ng0ld/ip-monitor:widget"
                 "bluetooth"
                 "blackbartblues/audio-switcher:widget"
                 "volume"
@@ -310,6 +316,21 @@ in
 
         battery = {
           warning_threshold = 20;
+        };
+
+        # 屏幕角落触发。用底边两角而不是顶边——bar 在顶部（margin_edge 6、
+        # margin_ends 8），顶角和 bar 的悬停区挨得太近容易误触；dock 关掉之后
+        # 底边完全空出来了，正好用。
+        # action 合法值只有 none / launcher / control_center / window_switcher /
+        # command 这五个（settings_registry.cpp 的 hotCornerActionSelect）；
+        # 注意它在 schema 里是自由字符串，写错了验证器不报错、运行时静默失效。
+        hot_corners = {
+          enabled = true;
+          delay_ms = 200; # 停留 200ms 才触发，避免鼠标划过就弹
+          bottom_left.action = "launcher";
+          bottom_right.action = "control_center";
+          top_left.action = "none";
+          top_right.action = "none";
         };
 
         # 夜间自动降色温。日落后从 6500K 渐变到 4000K；force=false 表示
