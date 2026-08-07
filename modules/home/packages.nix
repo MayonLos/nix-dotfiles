@@ -24,7 +24,6 @@
     lazygit
     duf
     nix-output-monitor
-    xwayland-satellite
     wl-clipboard
     xclip
     grim

@@ -1,6 +1,6 @@
 _:
 let
-  importDir = import ../../lib/import-dir.nix;
+  inherit (import ../../lib) importDir;
 in
 {
   imports = [ ./hardware.nix ] ++ importDir ../../modules/system;

@@ -1,6 +1,6 @@
 { withSystem, inputs, ... }:
 let
-  importDir = import ../lib/import-dir.nix;
+  inherit (import ../lib) importDir;
 
   pkgs-unstable-for =
     system:
