@@ -44,8 +44,10 @@ in
     #   notify-send — claude-companion 用它发通知
     # 插件不会自己装依赖，缺了就是静默不工作，所以在这里补齐。
     home.packages = with pkgs; [
-      glib.bin
-      libnotify
+      glib.bin # gdbus，file-search 用
+      tmuxp # tmux-provider 用（tmux 本体已在 tmux.nix）
+      pulseaudio # 只为 pactl 这个 CLI，audio-switcher 用；
+      # 音频服务端仍是 pipewire，这里不会顶替它
     ];
 
     programs.noctalia = {
@@ -164,14 +166,19 @@ in
           # （依赖 hyprpicker / hyprctl，Hyprland 专用）、translator（走 Google
           # 翻译，本地网络不通）。
           enabled = [
-            "noctalia/timer"
-            "cleboost/jetbrains-provider" # /jb 打开最近的 JetBrains 项目
+            # 启动器 provider（无 bar widget，靠前缀触发）
+            "cleboost/jetbrains-provider" # /jb 最近的 JetBrains 项目
+            "dunarand/tmux-provider" # /tm 挂载 tmux 会话
+            "radimous/prismlauncher-instances" # PrismLauncher 实例
+
+            # bar widget
+            "salemsayed/niri-active-workspace" # 只显示当前 niri 工作区
             "coder/deepseek_usage" # 对应 sops 里的 DEEPSEEK_API_KEY
-            "avivbintangaringga/nix-monitor" # nixpkgs 更新监控
             "8bury/mini-docker" # 管 rootless docker
-            "nightwatch75/file-search" # fzf 模糊搜文件，需要上面补的 gdbus
-            "lowcache/claude-companion" # Claude Code 启动 + 提示，需要上面补的 notify-send
-            "salemsayed/niri-active-workspace" # bar 上只显示当前 niri 工作区
+            "nightwatch75/file-search" # fzf 模糊搜文件
+            "rxtsel/portctl" # 看/杀监听中的 TCP/UDP 端口
+            "yuuto/calculator" # 表达式计算器
+            "blackbartblues/audio-switcher" # 切输入输出设备、蓝牙接管
           ];
         };
 
@@ -203,23 +210,51 @@ in
             "media"
           ];
           center = [ ];
+          # 分组胶囊：lane 里用字面量 "group:<id>" 引用一组，成员住在组里而不是
+          # 散在 lane 上（config_types.h:51 kCapsuleGroupTokenPrefix）。这样 end
+          # 从 16 个条目收成 8 个，视觉上分块而不是一长条。
           end = [
-            "lowcache/claude-companion:pulse"
-            "avivbintangaringga/nix-monitor:nix-monitor"
-            "coder/deepseek_usage:bar"
-            "8bury/mini-docker:mini-docker"
-            "nightwatch75/file-search:file-search"
-            "noctalia/timer:bar"
-            "network"
-            "bluetooth"
-            "volume"
-            "brightness"
+            "group:dev"
+            "group:sys"
             "sysmon"
             "tray"
             "power_profile"
             "battery"
             "clock"
             "control-center"
+          ];
+
+          capsule_group = [
+            # accordion：平时只显示第一个成员（docker），鼠标悬停向左展开其余。
+            # 这几个都是按需查看的东西，没必要一直占着 bar。
+            {
+              id = "dev";
+              members = [
+                "8bury/mini-docker:mini-docker"
+                "rxtsel/portctl:indicator"
+                "coder/deepseek_usage:bar"
+                "nightwatch75/file-search:file-search"
+                "yuuto/calculator:bar"
+              ];
+              accordion = true;
+              accordion_direction = "start";
+              padding = 6.0;
+              widget_spacing = 4;
+            }
+            # 常看的系统状态，始终展开，共用一个胶囊底色
+            {
+              id = "sys";
+              members = [
+                "network"
+                "bluetooth"
+                "blackbartblues/audio-switcher:widget"
+                "volume"
+                "brightness"
+              ];
+              accordion = false;
+              padding = 6.0;
+              widget_spacing = 4;
+            }
           ];
         };
 
