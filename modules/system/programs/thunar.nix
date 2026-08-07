@@ -4,19 +4,23 @@
 }:
 
 {
-  programs.thunar = {
-    enable = true;
-    plugins = with pkgs; [
-      thunar-archive-plugin
-      thunar-volman
-    ];
+  programs = {
+    thunar = {
+      enable = true;
+      plugins = with pkgs; [
+        thunar-archive-plugin
+        thunar-volman
+      ];
+    };
+
+    xfconf.enable = true;
+    dconf.enable = true;
   };
 
-  programs.xfconf.enable = true;
-  programs.dconf.enable = true;
-  services.dbus.enable = true;
-
-  services.gvfs.enable = true;
-  services.tumbler.enable = true;
-  services.udisks2.enable = true;
+  services = {
+    dbus.enable = true;
+    gvfs.enable = true;
+    tumbler.enable = true;
+    udisks2.enable = true;
+  };
 }

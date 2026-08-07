@@ -1,6 +1,8 @@
 _: {
-  services.thermald.enable = true;
-  services.power-profiles-daemon.enable = true;
-  services.upower.enable = true;
-  services.fstrim.enable = true;
+  services = {
+    thermald.enable = true;
+    power-profiles-daemon.enable = true;
+    upower.enable = true;
+    fstrim.enable = true;
+  };
 }

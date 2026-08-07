@@ -1,7 +1,9 @@
 _:
 
 {
-  home.username = "mayon";
-  home.homeDirectory = "/home/mayon";
-  home.stateVersion = "25.11";
+  home = {
+    username = "mayon";
+    homeDirectory = "/home/mayon";
+    stateVersion = "25.11";
+  };
 }
