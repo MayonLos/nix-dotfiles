@@ -251,7 +251,6 @@ in
                 "dunarand/bookmarks:bar" # 自定义快捷动作
                 "noctalia/notes:notes" # 侧栏速记
                 "nightwatch75/todo:todo" # 任务清单
-                "nightwatch75/file-search:file-search" # fzf 模糊搜文件
                 "yuuto/calculator:bar" # 计算器
                 "alexander/mimir:status" # LLM 对话
               ];
@@ -268,7 +267,6 @@ in
                 "coder/deepseek_usage:bar" # API 余额
                 "nomadcxx/gamer-mode:gamermode" # CPU/RAM/GPU 指标
                 "avivbintangaringga/nix-monitor:nix-monitor" # Nixpkgs 更新
-                "lowcache/claude-companion:pulse" # Claude Code 伴侣
                 "noctalia/screen_recorder:recorder" # 一键录屏
                 "gustav0ar/drive-health:summary" # 硬盘 SMART 健康
               ];
