@@ -206,21 +206,21 @@ in
           # entry-id 来自各插件 plugin.toml 的 [[widget]] id，不是插件名，
           # 常见的 entry-id 是 "bar"、"widget"、"status"，多个插件重名很正常。
           #
-          # 三段式布局：左边导航 + 个人工具，中间时钟，右边系统状态。
+          # 布局按「交互方式」分，而不是按主题分：
+          #   start  = 上下文（我在哪、在放什么）
+          #   center = 时钟
+          #   end    = panels（点开才看）→ sys（扫一眼就走）→ 系统托盘和电源
           #
-          # group:tools 特意放在 start 而不是 end —— end 是右对齐的，溢出时最先
-          # 被裁掉的就是它最左端的那一组，而 notes 又是该组第一个成员，之前
-          # 「notes 在 bar 上不显示」就是这么来的。start 左对齐、向右生长，
-          # 空间充裕，不会再被裁。
+          # 插件删到 12 个之后，原来 tools/dev 两个 2 成员的小组已经不值一个胶囊了
+          # （胶囊的边框和内边距比内容还显眼），合并成一个 panels 组。
           start = [
             "launcher"
             "salemsayed/niri-active-workspace:active-workspace"
             "media"
-            "group:tools"
           ];
           center = [ "clock" ];
           end = [
-            "group:dev"
+            "group:panels"
             "group:sys"
             "sysmon"
             "tray"
@@ -230,29 +230,26 @@ in
           ];
 
           capsule_group = [
-            # 效率工具
+            # 四个都是「点一下开面板」的东西，平时不需要占位置，所以折叠。
+            # accordion 只显示第一个成员（notes），悬停向左展开其余三个。
+            #
+            # 这也顺带解决了之前 notes 被裁的问题：end 是右对齐的，溢出时最先
+            # 被裁掉的就是最左端那一组的头几个成员，而折叠状态下这一组只占
+            # 一个图标的宽度，挤不掉。
             {
-              id = "tools";
+              id = "panels";
               members = [
                 "noctalia/notes:notes" # 侧栏速记
                 "nightwatch75/todo:todo" # 任务清单
-              ];
-              accordion = false;
-              padding = 6.0;
-              widget_spacing = 4;
-            }
-            # 开发 & 监控
-            {
-              id = "dev";
-              members = [
                 "8bury/mini-docker:mini-docker" # Docker 管理
                 "rxtsel/portctl:indicator" # 端口查杀
               ];
-              accordion = false;
+              accordion = true;
+              accordion_direction = "start";
               padding = 6.0;
               widget_spacing = 4;
             }
-            # 系统状态
+            # 常驻扫视的系统状态，始终展开
             {
               id = "sys";
               members = [
