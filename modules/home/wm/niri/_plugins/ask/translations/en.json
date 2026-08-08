@@ -1,42 +1,81 @@
 {
-  "title": "Ask",
-  "empty": "Type a question below and press Enter. History lives only in this panel and is never written to disk.",
-  "role": {
-    "you": "You",
-    "assistant": "Assistant"
+  "copied": "Copied to clipboard",
+  "effort": {
+    "prefix": "Thinking: "
+  },
+  "empty": "Type a question below and press Enter. Use the history button to revisit earlier conversations.",
+  "error": {
+    "api": "The API returned an error",
+    "decode": "Could not parse the response",
+    "empty": "The reply was empty",
+    "http": "Request failed (HTTP %d)",
+    "no_key": "Cannot read the API key from"
+  },
+  "history": {
+    "empty": "No saved conversations yet.",
+    "title": "History"
   },
   "input": {
     "placeholder": "Ask something…",
     "waiting": "Waiting for a reply…"
   },
+  "reasoning": {
+    "hide": "Hide reasoning",
+    "show": "Show reasoning"
+  },
+  "retry": "Retry",
+  "role": {
+    "assistant": "Assistant",
+    "you": "You"
+  },
+  "settings": {
+    "api_base": {
+      "label": "API base URL"
+    },
+    "key_file": {
+      "description": "Read at send time, never stored in noctalia's settings",
+      "label": "API key file"
+    },
+    "max_conversations": {
+      "description": "Oldest are dropped beyond this count",
+      "label": "Conversations kept"
+    },
+    "max_turns": {
+      "description": "Older messages are dropped to bound token use",
+      "label": "Turns kept as context"
+    },
+    "model": {
+      "description": "Switchable per conversation from the panel",
+      "flash": "V4 Flash — cheaper and faster",
+      "label": "Default model",
+      "pro": "V4 Pro — stronger, ~3x the price"
+    },
+    "persist_history": {
+      "description": "Stored under the plugin's data directory; turn off to keep everything in memory",
+      "label": "Save conversations to disk"
+    },
+    "reasoning_effort": {
+      "description": "Only applies while thinking mode is on",
+      "high": "High",
+      "label": "Reasoning effort",
+      "low": "Low",
+      "medium": "Medium"
+    },
+    "system_prompt": {
+      "description": "Prepended to every conversation",
+      "label": "System prompt"
+    },
+    "thinking": {
+      "description": "On by default for V4; turning it off is cheaper and faster",
+      "label": "Thinking mode"
+    }
+  },
   "status": {
     "thinking": "Thinking…"
   },
+  "title": "Ask",
   "tooltip": {
-    "ready": "Ask — click to open the chat panel",
-    "no_key": "No API key readable at:"
-  },
-  "error": {
-    "no_key": "Cannot read the API key from",
-    "http": "Request failed (HTTP %d)",
-    "decode": "Could not parse the response",
-    "api": "The API returned an error",
-    "empty": "The reply was empty"
-  },
-  "settings": {
-    "key_file": {
-      "label": "API key file",
-      "description": "Read at send time, never stored in noctalia's settings"
-    },
-    "api_base": { "label": "API base URL" },
-    "model": { "label": "Model" },
-    "system_prompt": {
-      "label": "System prompt",
-      "description": "Prepended to every conversation"
-    },
-    "max_turns": {
-      "label": "Turns kept as context",
-      "description": "Older messages are dropped to bound token use"
-    }
+    "no_key": "No API key readable at:",
+    "ready": "Ask — click to open the chat panel"
   }
 }

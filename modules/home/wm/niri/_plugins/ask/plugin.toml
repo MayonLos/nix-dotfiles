@@ -4,12 +4,16 @@
 # /run/secrets/deepseek-api-key 读，不落进 noctalia 的运行时状态文件。
 # mimir 和 deepseek_usage 当初就是因为把 key 明文写进 settings.toml 才被删掉的。
 #
-# 无外部依赖：readFile + http 都是宿主提供的能力。
+# 结构上参考 mimir：对话状态住在 [[service]] 里，panel 只是它的显示层。
+# panel 的 Lua 状态在关闭时就会销毁，放 service 才能让对话跨面板开关存活。
+# 两者通过 noctalia.state 通信。
+#
+# 无外部依赖：readFile / writeFile / http 都是宿主提供的能力。
 
 id = "mayon/ask"
 name = "Ask"
-version = "1.0.0"
-plugin_api = 9
+version = "2.0.0"
+plugin_api = 13  # capture_keys 需要 >= 13（宿主最高支持 23）
 author = "mayon"
 license = "MIT"
 dependencies = []
@@ -17,9 +21,9 @@ tags = ["ai", "chat"]
 icon = "message-circle"
 description = "Ask an LLM from the bar, with the API key read from a sops secret instead of stored in settings."
 
-# 插件级设置：bar.luau 和 chat.luau 两个入口都要读，所以放在这里而不是
-# [[widget.setting]] —— 后者是入口作用域的，panel 读不到（noctalia plugins lint
-# 会把这种跨入口读取报成 "reads undeclared setting"）。
+# 插件级设置：三个入口都要读，所以放在这里而不是 [[widget.setting]] ——
+# 后者是入口作用域的，panel/service 读不到（noctalia plugins lint 会把这种
+# 跨入口读取报成 "reads undeclared setting"）。
 [[setting]]
 key = "key_file"
 type = "file"
@@ -33,11 +37,37 @@ type = "string"
 label_key = "settings.api_base.label"
 default = "https://api.deepseek.com"
 
+# 这里只定「默认」模型；面板顶部可以随时切，切换结果记在 state 里。
 [[setting]]
 key = "model"
-type = "string"
+type = "select"
 label_key = "settings.model.label"
-default = "deepseek-chat"
+description_key = "settings.model.description"
+options = [
+  { value = "deepseek-v4-flash", label_key = "settings.model.flash" },
+  { value = "deepseek-v4-pro", label_key = "settings.model.pro" },
+]
+default = "deepseek-v4-flash"
+
+# V4 两个模型都默认开思考模式。关掉能省 token、也快一些。
+[[setting]]
+key = "thinking"
+type = "bool"
+label_key = "settings.thinking.label"
+description_key = "settings.thinking.description"
+default = true
+
+[[setting]]
+key = "reasoning_effort"
+type = "select"
+label_key = "settings.reasoning_effort.label"
+description_key = "settings.reasoning_effort.description"
+options = [
+  { value = "low", label_key = "settings.reasoning_effort.low" },
+  { value = "medium", label_key = "settings.reasoning_effort.medium" },
+  { value = "high", label_key = "settings.reasoning_effort.high" },
+]
+default = "medium"
 
 [[setting]]
 key = "system_prompt"
@@ -53,16 +83,38 @@ label_key = "settings.max_turns.label"
 description_key = "settings.max_turns.description"
 default = 12
 
+[[setting]]
+key = "persist_history"
+type = "bool"
+label_key = "settings.persist_history.label"
+description_key = "settings.persist_history.description"
+default = true
+
+[[setting]]
+key = "max_conversations"
+type = "int"
+label_key = "settings.max_conversations.label"
+description_key = "settings.max_conversations.description"
+default = 30
+
 [[widget]]
 id = "bar"
 entry = "bar.luau"
 
 # 挂右侧、占满高度的侧栏。height = "fill" + position 是 notes 那个
 # full-height side panel 的同款写法。
+# capture_keys：面板独占这两个键，用来在输入框里翻历史（像 shell 那样）。
+# 代价是消息列表不能再用上下键滚动 —— 输入框常驻焦点，这个取舍是划算的。
 [[panel]]
 id = "chat"
 entry = "chat.luau"
-width = 460
+capture_keys = ["Up", "Down"]
+width = 480
 height = "fill"
 placement = "floating"
 position = "center_right"
+
+# 无头服务：持有对话、发请求、读写历史。panel 开着与否都在。
+[[service]]
+id = "brain"
+entry = "service.luau"

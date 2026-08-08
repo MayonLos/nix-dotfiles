@@ -1,42 +1,81 @@
 {
-  "title": "问一下",
-  "empty": "在下面输入问题按回车。对话只存在这个面板的内存里，不会写到磁盘。",
-  "role": {
-    "you": "你",
-    "assistant": "助手"
+  "copied": "已复制到剪贴板",
+  "effort": {
+    "prefix": "思考："
+  },
+  "empty": "在下面输入问题按回车。点历史按钮可以翻看之前的会话。",
+  "error": {
+    "api": "接口返回了错误",
+    "decode": "响应解析失败",
+    "empty": "回复是空的",
+    "http": "请求失败（HTTP %d）",
+    "no_key": "读不到 API 密钥："
+  },
+  "history": {
+    "empty": "还没有保存的会话。",
+    "title": "历史记录"
   },
   "input": {
     "placeholder": "问点什么…",
     "waiting": "等待回复中…"
   },
+  "reasoning": {
+    "hide": "收起思考过程",
+    "show": "显示思考过程"
+  },
+  "retry": "重试",
+  "role": {
+    "assistant": "助手",
+    "you": "你"
+  },
+  "settings": {
+    "api_base": {
+      "label": "API 地址"
+    },
+    "key_file": {
+      "description": "发送时现读，不会存进 noctalia 的配置里",
+      "label": "密钥文件"
+    },
+    "max_conversations": {
+      "description": "超过就丢弃最旧的",
+      "label": "保留的会话数"
+    },
+    "max_turns": {
+      "description": "更早的消息会被丢弃，避免 token 无限增长",
+      "label": "保留的上下文轮数"
+    },
+    "model": {
+      "description": "面板里可以随时切换，只影响当前会话",
+      "flash": "V4 Flash — 更便宜更快",
+      "label": "默认模型",
+      "pro": "V4 Pro — 更强，价格约 3 倍"
+    },
+    "persist_history": {
+      "description": "存在插件数据目录下；关掉则只留在内存里",
+      "label": "把会话保存到磁盘"
+    },
+    "reasoning_effort": {
+      "description": "仅在思考模式开启时生效",
+      "high": "高",
+      "label": "思考强度",
+      "low": "低",
+      "medium": "中"
+    },
+    "system_prompt": {
+      "description": "每次对话都会带上",
+      "label": "系统提示词"
+    },
+    "thinking": {
+      "description": "V4 默认开启；关掉更省钱也更快",
+      "label": "思考模式"
+    }
+  },
   "status": {
     "thinking": "思考中…"
   },
+  "title": "问一下",
   "tooltip": {
-    "ready": "问一下 — 点击打开聊天面板",
-    "no_key": "读不到 API 密钥："
-  },
-  "error": {
     "no_key": "读不到 API 密钥：",
-    "http": "请求失败（HTTP %d）",
-    "decode": "响应解析失败",
-    "api": "接口返回了错误",
-    "empty": "回复是空的"
-  },
-  "settings": {
-    "key_file": {
-      "label": "密钥文件",
-      "description": "发送时现读，不会存进 noctalia 的配置里"
-    },
-    "api_base": { "label": "API 地址" },
-    "model": { "label": "模型" },
-    "system_prompt": {
-      "label": "系统提示词",
-      "description": "每次对话都会带上"
-    },
-    "max_turns": {
-      "label": "保留的上下文轮数",
-      "description": "更早的消息会被丢弃，避免 token 无限增长"
-    }
+    "ready": "问一下 — 点击打开聊天面板"
   }
 }
