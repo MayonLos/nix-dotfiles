@@ -183,21 +183,17 @@ in
             "blackbartblues/audio-switcher"
             "cleboost/hotspot"
             "cleboost/jetbrains-provider"
-            "cleboost/ssh-launcher"
             "coder/deepseek_usage"
-            "dunarand/bookmarks"
             "dunarand/tmux-provider"
             "gustav0ar/drive-health"
             "nightwatch75/todo"
             "noctalia/kaomoji"
             "noctalia/notes"
             "noctalia/screen_recorder"
-            "nomadcxx/gamer-mode"
             "radimous/prismlauncher-instances"
             "rxtsel/portctl"
             "salemsayed/niri-active-workspace"
             "whyoolw/sharednd"
-            "yocraft/battery-widget" # 桌面/锁屏电量组件，无 bar widget
             "yuuto/calculator"
           ];
         };
@@ -248,7 +244,6 @@ in
             {
               id = "tools";
               members = [
-                "dunarand/bookmarks:bar" # 自定义快捷动作
                 "noctalia/notes:notes" # 侧栏速记
                 "nightwatch75/todo:todo" # 任务清单
                 "yuuto/calculator:bar" # 计算器
@@ -265,7 +260,6 @@ in
                 "8bury/mini-docker:mini-docker" # Docker 管理
                 "rxtsel/portctl:indicator" # 端口查杀
                 "coder/deepseek_usage:bar" # API 余额
-                "nomadcxx/gamer-mode:gamermode" # CPU/RAM/GPU 指标
                 "avivbintangaringga/nix-monitor:nix-monitor" # Nixpkgs 更新
                 "noctalia/screen_recorder:recorder" # 一键录屏
                 "gustav0ar/drive-health:summary" # 硬盘 SMART 健康
