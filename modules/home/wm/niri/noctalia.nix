@@ -47,8 +47,6 @@ in
       pulseaudio # 只为 pactl 这个 CLI，audio-switcher 用；
       # 音频服务端仍是 pipewire，这里不会顶替它
       gpu-screen-recorder # screen_recorder
-      smartmontools # smartctl，drive-health（另见 modules/system/services/drive-health.nix）
-      iw # hotspot 查无线网卡能力
       udiskie # udiskie 插件的挂载守护
     ];
 
@@ -176,16 +174,12 @@ in
           enabled = [
             "3ri4ng0ld/ip-monitor"
             "8bury/mini-docker"
-            "alexander/game-launcher"
             "alexander/mimir"
             "aristides/udiskie"
-            "avivbintangaringga/nix-monitor"
             "blackbartblues/audio-switcher"
-            "cleboost/hotspot"
             "cleboost/jetbrains-provider"
             "coder/deepseek_usage"
             "dunarand/tmux-provider"
-            "gustav0ar/drive-health"
             "nightwatch75/todo"
             "noctalia/kaomoji"
             "noctalia/notes"
@@ -194,7 +188,6 @@ in
             "rxtsel/portctl"
             "salemsayed/niri-active-workspace"
             "whyoolw/sharednd"
-            "yuuto/calculator"
           ];
         };
 
@@ -246,7 +239,6 @@ in
               members = [
                 "noctalia/notes:notes" # 侧栏速记
                 "nightwatch75/todo:todo" # 任务清单
-                "yuuto/calculator:bar" # 计算器
                 "alexander/mimir:status" # LLM 对话
               ];
               accordion = false;
@@ -260,9 +252,7 @@ in
                 "8bury/mini-docker:mini-docker" # Docker 管理
                 "rxtsel/portctl:indicator" # 端口查杀
                 "coder/deepseek_usage:bar" # API 余额
-                "avivbintangaringga/nix-monitor:nix-monitor" # Nixpkgs 更新
                 "noctalia/screen_recorder:recorder" # 一键录屏
-                "gustav0ar/drive-health:summary" # 硬盘 SMART 健康
               ];
               accordion = false;
               padding = 6.0;
@@ -274,13 +264,11 @@ in
               members = [
                 "network"
                 "3ri4ng0ld/ip-monitor:widget"
-                "cleboost/hotspot:toggle" # Wi-Fi 热点
                 "bluetooth"
                 "blackbartblues/audio-switcher:widget"
                 "volume"
                 "brightness"
                 "aristides/udiskie:status" # USB 挂载管理
-                "alexander/game-launcher:launcher" # 游戏启动器
               ];
               accordion = false;
               padding = 6.0;
