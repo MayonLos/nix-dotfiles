@@ -47,7 +47,6 @@ in
       pulseaudio # 只为 pactl 这个 CLI，audio-switcher 用；
       # 音频服务端仍是 pipewire，这里不会顶替它
       gpu-screen-recorder # screen_recorder
-      udiskie # udiskie 插件的挂载守护
     ];
 
     programs.noctalia = {
@@ -175,7 +174,6 @@ in
             "3ri4ng0ld/ip-monitor"
             "8bury/mini-docker"
             "alexander/mimir"
-            "aristides/udiskie"
             "blackbartblues/audio-switcher"
             "cleboost/jetbrains-provider"
             "coder/deepseek_usage"
@@ -212,23 +210,26 @@ in
           # entry-id 来自各插件 plugin.toml 的 [[widget]] id，不是插件名，
           # 所以 timer 和 deepseek_usage 都叫 "bar"。
           #
-          # === 试用布局：所有 widget 全部展开，不折叠 ===
-          # 确认要留的之后再收进 accordion。
+          # 三段式布局：左边导航 + 个人工具，中间时钟，右边系统状态。
+          #
+          # group:tools 特意放在 start 而不是 end —— end 是右对齐的，溢出时最先
+          # 被裁掉的就是它最左端的那一组，而 notes 又是该组第一个成员，之前
+          # 「notes 在 bar 上不显示」就是这么来的。start 左对齐、向右生长，
+          # 空间充裕，不会再被裁。
           start = [
             "launcher"
             "salemsayed/niri-active-workspace:active-workspace"
             "media"
-          ];
-          center = [ ];
-          end = [
             "group:tools"
+          ];
+          center = [ "clock" ];
+          end = [
             "group:dev"
             "group:sys"
             "sysmon"
             "tray"
             "power_profile"
             "battery"
-            "clock"
             "control-center"
           ];
 
@@ -268,7 +269,6 @@ in
                 "blackbartblues/audio-switcher:widget"
                 "volume"
                 "brightness"
-                "aristides/udiskie:status" # USB 挂载管理
               ];
               accordion = false;
               padding = 6.0;
