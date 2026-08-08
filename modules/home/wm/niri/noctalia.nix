@@ -172,10 +172,8 @@ in
           enabled = [
             "3ri4ng0ld/ip-monitor"
             "8bury/mini-docker"
-            "alexander/mimir"
             "blackbartblues/audio-switcher"
             "cleboost/jetbrains-provider"
-            "coder/deepseek_usage"
             "dunarand/tmux-provider"
             "nightwatch75/todo"
             "noctalia/kaomoji"
@@ -206,7 +204,7 @@ in
           # 而 resolve() 按第一个冒号切成 manifest.id + entry.id
           # (plugin_registry.cpp:20 `manifest->id + ":" + entry->id`)。
           # entry-id 来自各插件 plugin.toml 的 [[widget]] id，不是插件名，
-          # 所以 timer 和 deepseek_usage 都叫 "bar"。
+          # 常见的 entry-id 是 "bar"、"widget"、"status"，多个插件重名很正常。
           #
           # 三段式布局：左边导航 + 个人工具，中间时钟，右边系统状态。
           #
@@ -238,7 +236,6 @@ in
               members = [
                 "noctalia/notes:notes" # 侧栏速记
                 "nightwatch75/todo:todo" # 任务清单
-                "alexander/mimir:status" # LLM 对话
               ];
               accordion = false;
               padding = 6.0;
@@ -250,7 +247,6 @@ in
               members = [
                 "8bury/mini-docker:mini-docker" # Docker 管理
                 "rxtsel/portctl:indicator" # 端口查杀
-                "coder/deepseek_usage:bar" # API 余额
               ];
               accordion = false;
               padding = 6.0;
