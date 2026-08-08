@@ -28,7 +28,6 @@
     xclip
     grim
     slurp
-    satty
     swayimg
     libheif
     brightnessctl

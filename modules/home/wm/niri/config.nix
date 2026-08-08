@@ -360,8 +360,9 @@
         Mod+Shift+V { switch-focus-between-floating-and-tiling; }
         Mod+W { toggle-column-tabbed-display; }
 
-        Print hotkey-overlay-title="Screenshot: Region" { spawn "screenshot"; }
+        Print hotkey-overlay-title="Screenshot: Region + Annotate" { spawn "mark-shot"; }
         Alt+Print hotkey-overlay-title="Screenshot: Window" { screenshot-window; }
+        Shift+Print hotkey-overlay-title="Screenshot: Scrolling" { spawn "wayscrollshot"; }
 
         Mod+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
         Mod+Shift+E { spawn "noctalia" "msg" "panel-toggle" "session"; }
