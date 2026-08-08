@@ -44,8 +44,6 @@ in
     # 增删插件时记得同步这个列表——每一项都对应一个具体的插件。
     home.packages = with pkgs; [
       tmuxp # tmux-provider（tmux 本体在 tmux.nix）
-      pulseaudio # 只为 pactl 这个 CLI，audio-switcher 用；
-      # 音频服务端仍是 pipewire，这里不会顶替它
     ];
 
     programs.noctalia = {
@@ -172,7 +170,6 @@ in
           enabled = [
             "3ri4ng0ld/ip-monitor"
             "8bury/mini-docker"
-            "blackbartblues/audio-switcher"
             "cleboost/jetbrains-provider"
             "dunarand/tmux-provider"
             "nightwatch75/todo"
@@ -248,7 +245,6 @@ in
                 "network"
                 "3ri4ng0ld/ip-monitor:widget"
                 "bluetooth"
-                "blackbartblues/audio-switcher:widget"
                 "volume"
                 "brightness"
               ];
