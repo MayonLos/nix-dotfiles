@@ -46,7 +46,6 @@ in
       tmuxp # tmux-provider（tmux 本体在 tmux.nix）
       pulseaudio # 只为 pactl 这个 CLI，audio-switcher 用；
       # 音频服务端仍是 pipewire，这里不会顶替它
-      gpu-screen-recorder # screen_recorder
     ];
 
     programs.noctalia = {
@@ -181,7 +180,6 @@ in
             "nightwatch75/todo"
             "noctalia/kaomoji"
             "noctalia/notes"
-            "noctalia/screen_recorder"
             "radimous/prismlauncher-instances"
             "rxtsel/portctl"
             "salemsayed/niri-active-workspace"
@@ -253,7 +251,6 @@ in
                 "8bury/mini-docker:mini-docker" # Docker 管理
                 "rxtsel/portctl:indicator" # 端口查杀
                 "coder/deepseek_usage:bar" # API 余额
-                "noctalia/screen_recorder:recorder" # 一键录屏
               ];
               accordion = false;
               padding = 6.0;
