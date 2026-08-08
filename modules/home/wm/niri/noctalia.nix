@@ -206,21 +206,19 @@ in
           # entry-id 来自各插件 plugin.toml 的 [[widget]] id，不是插件名，
           # 常见的 entry-id 是 "bar"、"widget"、"status"，多个插件重名很正常。
           #
-          # 布局按「交互方式」分，而不是按主题分：
-          #   start  = 上下文（我在哪、在放什么）
-          #   center = 时钟
-          #   end    = panels（点开才看）→ sys（扫一眼就走）→ 系统托盘和电源
+          # 左边放上下文和常用工具，中间时钟，右边系统状态。
           #
-          # 插件删到 12 个之后，原来 tools/dev 两个 2 成员的小组已经不值一个胶囊了
-          # （胶囊的边框和内边距比内容还显眼），合并成一个 panels 组。
+          # panels 组整组放在 start：这四个都是「点一下开面板」的工具，摆在左边
+          # 顺手，而且 start 是左对齐、向右生长的通道，空间充裕——不像 end 右对齐、
+          # 溢出时会从最左端开始裁（之前 notes 看不见就是这么来的）。
           start = [
             "launcher"
             "salemsayed/niri-active-workspace:active-workspace"
             "media"
+            "group:panels"
           ];
           center = [ "clock" ];
           end = [
-            "group:panels"
             "group:sys"
             "sysmon"
             "tray"
@@ -230,12 +228,7 @@ in
           ];
 
           capsule_group = [
-            # 四个都是「点一下开面板」的东西，平时不需要占位置，所以折叠。
-            # accordion 只显示第一个成员（notes），悬停向左展开其余三个。
-            #
-            # 这也顺带解决了之前 notes 被裁的问题：end 是右对齐的，溢出时最先
-            # 被裁掉的就是最左端那一组的头几个成员，而折叠状态下这一组只占
-            # 一个图标的宽度，挤不掉。
+            # 常用工具，全部常驻展开（不折叠）
             {
               id = "panels";
               members = [
@@ -244,8 +237,7 @@ in
                 "8bury/mini-docker:mini-docker" # Docker 管理
                 "rxtsel/portctl:indicator" # 端口查杀
               ];
-              accordion = true;
-              accordion_direction = "start";
+              accordion = false;
               padding = 6.0;
               widget_spacing = 4;
             }
