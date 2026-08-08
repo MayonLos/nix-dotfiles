@@ -1,0 +1,42 @@
+{
+  "title": "Ask",
+  "empty": "Type a question below and press Enter. History lives only in this panel and is never written to disk.",
+  "role": {
+    "you": "You",
+    "assistant": "Assistant"
+  },
+  "input": {
+    "placeholder": "Ask something…",
+    "waiting": "Waiting for a reply…"
+  },
+  "status": {
+    "thinking": "Thinking…"
+  },
+  "tooltip": {
+    "ready": "Ask — click to open the chat panel",
+    "no_key": "No API key readable at:"
+  },
+  "error": {
+    "no_key": "Cannot read the API key from",
+    "http": "Request failed (HTTP %d)",
+    "decode": "Could not parse the response",
+    "api": "The API returned an error",
+    "empty": "The reply was empty"
+  },
+  "settings": {
+    "key_file": {
+      "label": "API key file",
+      "description": "Read at send time, never stored in noctalia's settings"
+    },
+    "api_base": { "label": "API base URL" },
+    "model": { "label": "Model" },
+    "system_prompt": {
+      "label": "System prompt",
+      "description": "Prepended to every conversation"
+    },
+    "max_turns": {
+      "label": "Turns kept as context",
+      "description": "Older messages are dropped to bound token use"
+    }
+  }
+}

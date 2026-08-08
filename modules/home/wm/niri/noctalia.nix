@@ -153,6 +153,16 @@ in
               location = "${inputs.noctalia-plugins-community}";
               enabled = true;
             }
+            # 自建插件。path 源在没有 catalog.toml 时会直接扫目录
+            # （plugin_catalog.cpp:272 "No catalog.toml — path sources are on
+            # disk, so scan straight away."），所以放一个含 plugin.toml 的
+            # 子目录就够了。用 ../_plugins 的相对路径让整个目录进 store。
+            {
+              name = "local";
+              kind = "path";
+              location = "${./_plugins}";
+              enabled = true;
+            }
           ];
 
           # ⚠️ 这个列表会被运行时覆盖层盖掉。
@@ -168,6 +178,7 @@ in
           # color_picker / keybind-cheatsheet（依赖 hyprpicker、hyprctl，
           # Hyprland 专用）、translator（走 Google 翻译，本地不通）。
           enabled = [
+            "mayon/ask" # 自建，见 _plugins/ask
             "3ri4ng0ld/ip-monitor"
             "8bury/mini-docker"
             "cleboost/jetbrains-provider"
@@ -229,6 +240,7 @@ in
             {
               id = "panels";
               members = [
+                "mayon/ask:bar" # 问 AI
                 "noctalia/notes:notes" # 侧栏速记
                 "nightwatch75/todo:todo" # 任务清单
                 "8bury/mini-docker:mini-docker" # Docker 管理

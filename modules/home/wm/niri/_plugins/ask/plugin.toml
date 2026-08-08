@@ -1,0 +1,68 @@
+# 自建插件：从 bar 直接问 AI。
+#
+# 和社区那些 AI 插件最大的区别是 **不存 API key**：密钥从 sops 解密出来的
+# /run/secrets/deepseek-api-key 读，不落进 noctalia 的运行时状态文件。
+# mimir 和 deepseek_usage 当初就是因为把 key 明文写进 settings.toml 才被删掉的。
+#
+# 无外部依赖：readFile + http 都是宿主提供的能力。
+
+id = "mayon/ask"
+name = "Ask"
+version = "1.0.0"
+plugin_api = 9
+author = "mayon"
+license = "MIT"
+dependencies = []
+tags = ["ai", "chat"]
+icon = "message-circle"
+description = "Ask an LLM from the bar, with the API key read from a sops secret instead of stored in settings."
+
+# 插件级设置：bar.luau 和 chat.luau 两个入口都要读，所以放在这里而不是
+# [[widget.setting]] —— 后者是入口作用域的，panel 读不到（noctalia plugins lint
+# 会把这种跨入口读取报成 "reads undeclared setting"）。
+[[setting]]
+key = "key_file"
+type = "file"
+label_key = "settings.key_file.label"
+description_key = "settings.key_file.description"
+default = "/run/secrets/deepseek-api-key"
+
+[[setting]]
+key = "api_base"
+type = "string"
+label_key = "settings.api_base.label"
+default = "https://api.deepseek.com"
+
+[[setting]]
+key = "model"
+type = "string"
+label_key = "settings.model.label"
+default = "deepseek-chat"
+
+[[setting]]
+key = "system_prompt"
+type = "string"
+label_key = "settings.system_prompt.label"
+description_key = "settings.system_prompt.description"
+default = "You are a concise assistant. Answer in the user's language. Prefer short, direct answers."
+
+[[setting]]
+key = "max_turns"
+type = "int"
+label_key = "settings.max_turns.label"
+description_key = "settings.max_turns.description"
+default = 12
+
+[[widget]]
+id = "bar"
+entry = "bar.luau"
+
+# 挂右侧、占满高度的侧栏。height = "fill" + position 是 notes 那个
+# full-height side panel 的同款写法。
+[[panel]]
+id = "chat"
+entry = "chat.luau"
+width = 460
+height = "fill"
+placement = "floating"
+position = "center_right"

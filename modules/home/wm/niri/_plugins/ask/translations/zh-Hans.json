@@ -1,0 +1,42 @@
+{
+  "title": "问一下",
+  "empty": "在下面输入问题按回车。对话只存在这个面板的内存里，不会写到磁盘。",
+  "role": {
+    "you": "你",
+    "assistant": "助手"
+  },
+  "input": {
+    "placeholder": "问点什么…",
+    "waiting": "等待回复中…"
+  },
+  "status": {
+    "thinking": "思考中…"
+  },
+  "tooltip": {
+    "ready": "问一下 — 点击打开聊天面板",
+    "no_key": "读不到 API 密钥："
+  },
+  "error": {
+    "no_key": "读不到 API 密钥：",
+    "http": "请求失败（HTTP %d）",
+    "decode": "响应解析失败",
+    "api": "接口返回了错误",
+    "empty": "回复是空的"
+  },
+  "settings": {
+    "key_file": {
+      "label": "密钥文件",
+      "description": "发送时现读，不会存进 noctalia 的配置里"
+    },
+    "api_base": { "label": "API 地址" },
+    "model": { "label": "模型" },
+    "system_prompt": {
+      "label": "系统提示词",
+      "description": "每次对话都会带上"
+    },
+    "max_turns": {
+      "label": "保留的上下文轮数",
+      "description": "更早的消息会被丢弃，避免 token 无限增长"
+    }
+  }
+}
