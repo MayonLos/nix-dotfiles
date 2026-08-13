@@ -1,8 +1,51 @@
-{ pkgs-unstable, ... }:
+{
+  pkgs,
+  pkgs-unstable,
+  lib,
+  ...
+}:
+
+let
+  # QQ 3.2.32 bundles Electron 40 / Chromium 144, which does have the Wayland
+  # screen-capture path compiled in: the binary carries
+  # org.freedesktop.portal.ScreenCast + SelectSources and dlopens
+  # libpipewire-0.3.so.0 at runtime. The dlopen is the problem — nixpkgs'
+  # wrapper only puts libglvnd and util-linux-minimal on LD_LIBRARY_PATH, and
+  # none of the 25 RPATH entries mention pipewire, so on NixOS (no /usr/lib)
+  # the load fails and WebRTC silently falls back to having no capturer.
+  # That is why screen sharing does nothing under Wayland.
+  #
+  # Verified 2026-08-13: dlopen("libpipewire-0.3.so.0") fails with QQ's own
+  # environment and succeeds (pw_init included) with pipewire on the path.
+  # The compositor side was already fine — niri itself serves
+  # org.gnome.Mutter.ScreenCast, which is the backend
+  # xdg-desktop-portal-gnome uses.
+  #
+  # No --enable-features=WebRTCPipeWireCapturer is added on purpose: it is
+  # default-on since Chromium 110, and Chromium takes the *last*
+  # --enable-features switch rather than merging them, so passing a second one
+  # would silently drop the WaylandWindowDecorations that nixpkgs' wrapper sets.
+  qq = pkgs.symlinkJoin {
+    name = "qq-with-pipewire";
+    paths = [ pkgs-unstable.qq ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram $out/bin/qq \
+        --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [ pkgs.pipewire ]}
+
+      # qq.desktop hardcodes the unwrapped store path, so the launcher would
+      # bypass the wrapper entirely without this.
+      rm $out/share/applications/qq.desktop
+      substitute ${pkgs-unstable.qq}/share/applications/qq.desktop \
+        $out/share/applications/qq.desktop \
+        --replace-fail "${pkgs-unstable.qq}/bin/qq" "$out/bin/qq"
+    '';
+  };
+in
 {
   # Both from unstable — these chase upstream closely and stable lags:
   # qq 3.2.29 vs 3.2.32, wechat-uos 4.1.1.4 vs 4.1.1.7.
-  home.packages = with pkgs-unstable; [
+  home.packages = [
     # Passes --enable-wayland-ime --wayland-text-input-version=3 when
     # NIXOS_OZONE_WL and WAYLAND_DISPLAY are both set (they are), so fcitx5's
     # wayland frontend drives it over text-input-v3 rather than XIM.
@@ -13,6 +56,6 @@
     # QT_IM_MODULE/GTK_IM_MODULE explicitly. It pins QT_QPA_PLATFORM=xcb, so it
     # runs through XWayland — Xft.dpi=144 in session-vars keeps that readable.
     # Switch to `wechat` (official Linux AppImage) if the UOS build misbehaves.
-    wechat-uos
+    pkgs-unstable.wechat-uos
   ];
 }
