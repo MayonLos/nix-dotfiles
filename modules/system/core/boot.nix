@@ -9,6 +9,7 @@
     extraModulePackages = [ config.boot.kernelPackages.lenovo-legion-module ];
     extraModprobeConfig = ''
       options legion_laptop force=1
+      options nvidia NVreg_PreserveVideoMemoryAllocations=1
     '';
     loader = {
       systemd-boot = {
