@@ -9,7 +9,7 @@
   home.packages = with pkgs; [
     qt6Packages.qt6ct
     pkgs-unstable.github-copilot-cli
-    pkgs-unstable.codex
+    # codex comes from programs/dev/codex — wrapped to default to DeepSeek.
     pkgs-unstable.claude-code
     inputs.MyNixvim.packages.${pkgs.stdenv.hostPlatform.system}.default
     fzf
