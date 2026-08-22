@@ -16,8 +16,7 @@ let
   };
 in
 {
-  xresources.properties."Xft.dpi" = 144;
-
+  # Xft.dpi and the xrdb merge that actually delivers it live in xresources.nix.
   systemd.user.sessionVariables = shared;
 
   home = {

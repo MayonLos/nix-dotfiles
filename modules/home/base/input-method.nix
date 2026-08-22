@@ -35,6 +35,26 @@
         addons.classicui.globalSection = {
           Theme = "Nord-Dark";
           DarkTheme = "Nord-Dark";
+
+          # No ForceWaylandDPI here. It was tried on 2026-08-21 and is wrong:
+          # classicui already gets 1.5 from wp_fractional_scale_v1 on Wayland
+          # and multiplies the DPI by it, so forcing 144 renders the popup at
+          # 144 x 1.5 and every native client's candidate window grew by half
+          # again. The Wayland path needs no correction.
+          #
+          # It also cannot reach QQ. QQ holds live connections to Xwayland
+          # (verified against `ss -xp`, and niri reports its window's PID as
+          # xwayland-satellite) even though its wrapper passes
+          # --ozone-platform-hint=auto --enable-wayland-ime, so its input goes
+          # through XIM and the X11 half of classicui. That half is governed by
+          # PerScreenDPI and Xft.dpi.
+          #
+          # At its True default, fcitx5 derives the DPI from what Xwayland
+          # reports for the screen — 2560x1600 in 677x423 mm, i.e. 96 — and
+          # ignores Xft.dpi entirely. False makes it read Xft.dpi, which
+          # base/xresources.nix sets to 144 and, more to the point, actually
+          # merges into the running server.
+          PerScreenDPI = "False";
         };
       };
     };
