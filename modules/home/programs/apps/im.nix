@@ -25,13 +25,29 @@ let
   # default-on since Chromium 110, and Chromium takes the *last*
   # --enable-features switch rather than merging them, so passing a second one
   # would silently drop the WaylandWindowDecorations that nixpkgs' wrapper sets.
+  #
+  # --ozone-platform=wayland overrides the --ozone-platform-hint=auto that
+  # nixpkgs' wrapper passes. `auto` was resolving to X11 even though
+  # WAYLAND_DISPLAY, XDG_SESSION_TYPE and NIXOS_OZONE_WL are all set and
+  # libwayland-client resolves fine, which left QQ as the machine's only
+  # XWayland client (`xlsclients` printed nothing else) with its IME on XIM and
+  # its fcitx5 candidate window stuck at 96 DPI. Verified 2026-08-21: with the
+  # platform pinned, a QQ started on a scratch --user-data-dir held *zero*
+  # connections to @/tmp/.X11-unix/X0 across 24 s and did not crash — an
+  # explicit --ozone-platform never falls back, so surviving proves Wayland
+  # initialised. Its input now goes through text-input-v3, where classicui
+  # already scales correctly from wp_fractional_scale_v1.
+  #
+  # If the tray icon or screen sharing regresses, drop this one flag; nothing
+  # else here depends on it.
   qq = pkgs.symlinkJoin {
     name = "qq-with-pipewire";
     paths = [ pkgs-unstable.qq ];
     nativeBuildInputs = [ pkgs.makeWrapper ];
     postBuild = ''
       wrapProgram $out/bin/qq \
-        --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [ pkgs.pipewire ]}
+        --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [ pkgs.pipewire ]} \
+        --add-flags "--ozone-platform=wayland"
 
       # qq.desktop hardcodes the unwrapped store path, so the launcher would
       # bypass the wrapper entirely without this.
