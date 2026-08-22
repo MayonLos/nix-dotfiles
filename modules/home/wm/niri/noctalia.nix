@@ -138,7 +138,9 @@ in
         # 一直 enabled = false 的原因。走 store path 后崩溃面消失，版本也锁进了
         # flake.lock，更新统一走 nix flake update。
         plugins = {
-          auto_update = false;
+          # noctalia 5 起这里是枚举 all|official|none；布尔值仍被接受，但会在
+          # 启动时打出 deprecated 告警。
+          auto_update = "none";
 
           source = [
             {
