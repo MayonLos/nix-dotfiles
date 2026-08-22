@@ -1,19 +1,23 @@
-# 自建插件：从 bar 直接问 AI。
+# Own plugin: ask an LLM straight from the bar.
 #
-# 和社区那些 AI 插件最大的区别是 **不存 API key**：密钥从 sops 解密出来的
-# /run/secrets/deepseek-api-key 读，不落进 noctalia 的运行时状态文件。
-# mimir 和 deepseek_usage 当初就是因为把 key 明文写进 settings.toml 才被删掉的。
+# The one thing that sets it apart from the community AI plugins is that it
+# **stores no API key**: the key is read from /run/secrets/deepseek-api-key,
+# decrypted by sops, and never lands in noctalia's runtime state files. mimir
+# and deepseek_usage were dropped precisely because they wrote the key in clear
+# text into settings.toml.
 #
-# 结构上参考 mimir：对话状态住在 [[service]] 里，panel 只是它的显示层。
-# panel 的 Lua 状态在关闭时就会销毁，放 service 才能让对话跨面板开关存活。
-# 两者通过 noctalia.state 通信。
+# Structure follows mimir: conversation state lives in the [[service]] and the
+# panel is only its display layer. A panel's Lua state is destroyed the moment
+# it closes, so only the service can keep a conversation alive across open and
+# close. The two talk through noctalia.state.
 #
-# 无外部依赖：readFile / writeFile / http 都是宿主提供的能力。
+# No external dependencies: readFile / writeFile / http are all host
+# capabilities.
 
 id = "mayon/ask"
 name = "Ask"
 version = "2.0.0"
-plugin_api = 13  # capture_keys 需要 >= 13（宿主最高支持 23）
+plugin_api = 13  # capture_keys needs >= 13 (the host supports up to 23)
 author = "mayon"
 license = "MIT"
 dependencies = []
@@ -21,9 +25,10 @@ tags = ["ai", "chat"]
 icon = "message-circle"
 description = "Ask an LLM from the bar, with the API key read from a sops secret instead of stored in settings."
 
-# 插件级设置：三个入口都要读，所以放在这里而不是 [[widget.setting]] ——
-# 后者是入口作用域的，panel/service 读不到（noctalia plugins lint 会把这种
-# 跨入口读取报成 "reads undeclared setting"）。
+# Plugin-level settings: all three entries read them, so they go here rather
+# than into [[widget.setting]] -- that one is entry-scoped and invisible to the
+# panel and the service (noctalia plugins lint reports such a cross-entry read
+# as "reads undeclared setting").
 [[setting]]
 key = "key_file"
 type = "file"
@@ -37,7 +42,8 @@ type = "string"
 label_key = "settings.api_base.label"
 default = "https://api.deepseek.com"
 
-# 这里只定「默认」模型；面板顶部可以随时切，切换结果记在 state 里。
+# Only the *default* model. The panel header can switch at any time and the
+# choice is kept in state.
 [[setting]]
 key = "model"
 type = "select"
@@ -49,7 +55,8 @@ options = [
 ]
 default = "deepseek-v4-flash"
 
-# V4 两个模型都默认开思考模式。关掉能省 token、也快一些。
+# Both V4 models default to thinking mode. Turning it off saves tokens and is
+# a little faster.
 [[setting]]
 key = "thinking"
 type = "bool"
@@ -101,10 +108,12 @@ default = 30
 id = "bar"
 entry = "bar.luau"
 
-# 挂右侧、占满高度的侧栏。height = "fill" + position 是 notes 那个
-# full-height side panel 的同款写法。
-# capture_keys：面板独占这两个键，用来在输入框里翻历史（像 shell 那样）。
-# 代价是消息列表不能再用上下键滚动 —— 输入框常驻焦点，这个取舍是划算的。
+# Full-height sidebar on the right. height = "fill" plus position is the same
+# spelling notes uses for its full-height side panel.
+# capture_keys: the panel takes these two keys for itself, to walk the prompt
+# history in the input field the way a shell does. The cost is that the message
+# list can no longer be scrolled with Up/Down -- the input keeps focus anyway,
+# so the trade is worth it.
 [[panel]]
 id = "chat"
 entry = "chat.luau"
@@ -114,7 +123,8 @@ height = "fill"
 placement = "floating"
 position = "center_right"
 
-# 无头服务：持有对话、发请求、读写历史。panel 开着与否都在。
+# Headless service: owns the conversation, sends the requests, reads and writes
+# history. Runs whether or not the panel is open.
 [[service]]
 id = "brain"
 entry = "service.luau"

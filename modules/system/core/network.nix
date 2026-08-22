@@ -3,9 +3,11 @@ _: {
     hostName = "nixos-btw";
     networkmanager.enable = true;
     firewall = {
-      # Clash Verge 的 TUN 网卡。verge-mihomo 1.19.x 默认把设备命名为 "Meta"，
-      # 早期版本叫 "Mihomo"；名字对不上时 TUN 里的 TCP 会被 INPUT 链丢掉
-      # （UDP/DNS 仍然正常），表现为「开了代理反而连不上」。两个名字都放行。
+      # Clash Verge's TUN interface. verge-mihomo 1.19.x names the device
+      # "Meta" by default; earlier versions used "Mihomo". When the name does
+      # not match, TCP inside the TUN is dropped by the INPUT chain (UDP/DNS
+      # keeps working), which shows up as "the proxy is on and now nothing
+      # connects". Trust both names.
       trustedInterfaces = [
         "Meta"
         "Mihomo"

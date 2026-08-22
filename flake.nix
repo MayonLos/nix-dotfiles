@@ -61,9 +61,10 @@
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
 
-    # Wayland 截图工具，都不在 nixpkgs 里。两者都从源码构建且没有 cachix，
-    # 所以刻意不 follows nixpkgs —— 理由和 noctalia-greeter 一样：让它们对着
-    # 各自测过的 nixpkgs 构建，避免 attr/版本漂移把构建搞挂。
+    # Wayland screenshot tools, neither in nixpkgs. Both build from source with
+    # no cachix, so deliberately NOT `follows`-ed — same reasoning as
+    # noctalia-greeter: let them build against their own tested nixpkgs rather
+    # than risk attr/version drift breaking the build.
     mark-shot.url = "github:jswysnemc/mark-shot";
     wayscrollshot.url = "github:jswysnemc/wayscrollshot";
 

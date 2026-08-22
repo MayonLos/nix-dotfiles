@@ -1,17 +1,20 @@
 --!nonstrict
--- 无头服务：持有对话、发请求、读写历史。
+-- Headless service: owns the conversation, sends the requests, reads and writes
+-- history.
 --
--- panel 关闭时它的 Lua 状态会被销毁，所以对话不能住在 panel 里 —— 这是从
--- mimir 学来的结构。panel 只渲染 noctalia.state 里的东西，并通过 state 发指令。
+-- A panel's Lua state is destroyed when it closes, so the conversation cannot
+-- live in the panel -- this structure is borrowed from mimir. The panel only
+-- renders what is in noctalia.state and issues commands through state.
 --
--- 状态键（都以 ask. 开头，避免和别的插件撞）：
---   ask.messages       当前对话 { role, text, reasoning }
---   ask.status         "idle" | "thinking" | 错误文本
---   ask.can_retry      上一次请求失败、可以重试
---   ask.model          当前模型（面板可切，不写回设置）
---   ask.conversations  历史会话摘要 { id, title, at, count }
---   ask.active         当前会话 id
--- 指令键（panel 写，这里消费后清空）：
+-- State keys (all prefixed ask. so they cannot clash with other plugins):
+--   ask.messages       current conversation { role, text, reasoning }
+--   ask.status         "idle" | "thinking" | error text
+--   ask.can_retry      the last request failed and can be retried
+--   ask.model          current model (switchable in the panel, never written
+--                      back to settings)
+--   ask.conversations  summaries of stored conversations { id, title, at, count }
+--   ask.active         id of the current conversation
+-- Command keys (written by the panel, consumed and cleared here):
 --   ask.send / ask.retry / ask.clear / ask.load / ask.delete / ask.set_model
 
 local keyFile = noctalia.getConfig("key_file")
@@ -30,13 +33,14 @@ local model = noctalia.getConfig("model")
 local messages: { Message } = {}
 local conversations: { Conversation } = {}
 local activeId: string? = nil
--- 输入框的提示词历史，跨会话保留（像 shell 的 history），只存文本不存回答
+-- Prompt history for the input, kept across conversations the way a shell's
+-- history is; the text only, never the answers
 local promptHistory: { string } = {}
 local pending = false
--- 失败时记住上一个问题，重试不用重新打字
+-- Remember the last question on failure, so a retry needs no retyping
 local lastQuestion: string? = nil
 
---------------------------------------------------------------------------- 持久化
+-------------------------------------------------------------------- persistence
 
 local function historyPath(): string?
 	local dir = noctalia.pluginDataDir()
@@ -54,14 +58,14 @@ local function saveHistory()
 	if not path then
 		return
 	end
-	-- 只留最近 N 个会话，避免文件无限增长
+	-- Keep only the most recent N conversations, so the file cannot grow forever
 	local keep = {}
 	local start = math.max(1, #conversations - maxConversations + 1)
 	for i = start, #conversations do
 		table.insert(keep, conversations[i])
 	end
 	conversations = keep
-	-- 提示词历史比会话短命得多，固定留 100 条
+	-- Prompt history is far more short-lived than conversations; cap it at 100
 	local prompts = {}
 	local pstart = math.max(1, #promptHistory - 100 + 1)
 	for i = pstart, #promptHistory do
@@ -91,16 +95,17 @@ local function loadHistory()
 		if type(decoded.conversations) == "table" then
 			conversations = decoded.conversations
 		end
-		-- version 1 的文件没有 prompts 字段，缺了就是空列表
+		-- version 1 files have no prompts field; absent means an empty list
 		if type(decoded.prompts) == "table" then
 			promptHistory = decoded.prompts
 		end
 	end
 end
 
---------------------------------------------------------------------------- 状态发布
+--------------------------------------------------------------- state publishing
 
--- 会话列表只发摘要：panel 的列表用不到正文，省一次大对象拷贝
+-- Publish summaries only: the panel's list never needs the bodies, which saves
+-- copying a large object
 local function publishConversations()
 	local summary = {}
 	for _, c in conversations do
@@ -126,14 +131,14 @@ local function setStatus(s: string)
 	noctalia.state.set("ask.status", s)
 end
 
--- 失败：留住问题让面板显示重试按钮
+-- Failure: hold on to the question so the panel can show a retry button
 local function fail(reason: string)
 	pending = false
 	setStatus(reason)
 	noctalia.state.set("ask.can_retry", lastQuestion ~= nil)
 end
 
---------------------------------------------------------------------------- 会话管理
+------------------------------------------------------------ conversation store
 
 local function titleFrom(text: string): string
 	local t = noctalia.string.trim(text)
@@ -143,7 +148,8 @@ local function titleFrom(text: string): string
 	return string.sub(t, 1, 40) .. "…"
 end
 
--- 当前对话落进 conversations：第一次提问建条目，之后就地更新
+-- Land the current conversation in conversations: the first question creates
+-- the entry, later ones update it in place
 local function commitActive()
 	if #messages == 0 then
 		return
@@ -169,7 +175,7 @@ local function commitActive()
 	publishConversations()
 end
 
---------------------------------------------------------------------------- 请求
+------------------------------------------------------------------------ request
 
 local function readKey(): string?
 	local raw = noctalia.readFile(keyFile)
@@ -180,8 +186,9 @@ local function readKey(): string?
 	return if key == "" then nil else key
 end
 
--- 只把最近若干轮送上去，避免上下文无限增长把 token 烧光。
--- 思考内容不回传 —— 那是给人看的，喂回去只是浪费 token。
+-- Send only the most recent turns, so the context cannot grow without bound and
+-- burn through tokens. Reasoning is never sent back -- it is there for a human
+-- to read, and feeding it in again only wastes tokens.
 local function buildMessages()
 	local msgs = { { role = "system", content = systemPrompt } }
 	local start = math.max(1, #messages - maxTurns + 1)
@@ -191,13 +198,15 @@ local function buildMessages()
 	return msgs
 end
 
--- send(question, isRetry)：重试时不重复往历史里塞同一个问题
+-- send(question, isRetry): a retry must not push the same question into the
+-- history twice
 local function send(question: string, isRetry: boolean)
 	if pending then
 		return
 	end
 
-	-- 密钥现读现用，不缓存：sops 轮换 + rebuild 之后下一次提问自动用新的
+	-- The key is read fresh every time and never cached, so the next question
+	-- automatically picks up a rotated sops secret after a rebuild
 	local key = readKey()
 	if key == nil then
 		lastQuestion = question
@@ -207,7 +216,8 @@ local function send(question: string, isRetry: boolean)
 
 	if not isRetry then
 		table.insert(messages, { role = "user", text = question })
-		-- 和上一条相同就不重复记，免得连按回车塞满历史
+		-- Skip a duplicate of the previous entry, so mashing Enter cannot fill the
+		-- history
 		if promptHistory[#promptHistory] ~= question then
 			table.insert(promptHistory, question)
 		end
@@ -223,7 +233,8 @@ local function send(question: string, isRetry: boolean)
 		messages = buildMessages(),
 		stream = false,
 	}
-	-- V4 的思考模式开关。关掉时显式传 disabled，别依赖服务端默认。
+	-- V4's thinking-mode switch. When off, pass disabled explicitly rather than
+	-- relying on the server-side default.
 	body.thinking = { type = if thinkingEnabled then "enabled" else "disabled" }
 	if thinkingEnabled then
 		body.reasoning_effort = reasoningEffort
@@ -251,7 +262,7 @@ local function send(question: string, isRetry: boolean)
 			return
 		end
 
-		-- 接口报错时 HTTP 也可能是 200，正文里才有 error
+		-- The API can return HTTP 200 on an error; only the body carries `error`
 		if decoded.error ~= nil then
 			fail(decoded.error.message or noctalia.tr("error.api"))
 			return
@@ -265,7 +276,7 @@ local function send(question: string, isRetry: boolean)
 			return
 		end
 
-		-- 思考内容的字段名各家不一致，两个都认一下
+		-- Providers disagree on the field name for reasoning, so accept both
 		local reasoning = msg and (msg.reasoning_content or msg.reasoning)
 		if reasoning ~= nil then
 			reasoning = noctalia.string.trim(reasoning)
@@ -287,7 +298,7 @@ local function send(question: string, isRetry: boolean)
 	end)
 end
 
---------------------------------------------------------------------------- 指令
+----------------------------------------------------------------------- commands
 
 noctalia.state.watch("ask.send", function(text)
 	if text == nil or text == "" then
@@ -297,7 +308,7 @@ noctalia.state.watch("ask.send", function(text)
 	send(text, false)
 end)
 
--- 重试：问题已经在历史里了，别重复插入
+-- Retry: the question is already in the history, so do not insert it again
 noctalia.state.watch("ask.retry", function(flag)
 	if flag ~= true then
 		return
@@ -326,7 +337,8 @@ noctalia.state.watch("ask.set_model", function(value)
 	publish()
 end)
 
--- 清空 = 开新对话。已存过的旧对话留在历史里，不动。
+-- Clear = start a new conversation. Anything already saved stays in the history
+-- untouched.
 noctalia.state.watch("ask.clear", function(flag)
 	if flag ~= true then
 		return
@@ -382,7 +394,7 @@ noctalia.state.watch("ask.delete", function(id)
 	publishConversations()
 end)
 
---------------------------------------------------------------------------- 启动
+------------------------------------------------------------------------ startup
 
 loadHistory()
 publishConversations()
@@ -391,6 +403,6 @@ setStatus("idle")
 noctalia.state.set("ask.can_retry", false)
 
 function update()
-	-- 全靠事件驱动，不需要轮询
+	-- Fully event-driven, so there is nothing to poll for
 	noctalia.setUpdateInterval(3600000)
 end
