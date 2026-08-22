@@ -12,8 +12,20 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    MyNixvim = {
-      url = "github:MayonLos/nixvim";
+    # Neovim. The config itself lives in ./nixvim (repo root, *not* under
+    # modules/ — lib/import-dir.nix recurses through every .nix file there and
+    # would try to load each nixvim module as a Home Manager one). Built in
+    # modules/home/programs/dev/nvim.nix.
+    nixvim = {
+      url = "github:nix-community/nixvim/nixos-26.05";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-parts.follows = "flake-parts";
+    };
+
+    # The MCP server binary config/plugins/ai/mcphub.nix points mcphub.nvim at.
+    # Not in nixpkgs.
+    mcp-hub = {
+      url = "github:ravitemer/mcp-hub";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -56,6 +68,13 @@
     wayscrollshot.url = "github:jswysnemc/wayscrollshot";
 
     claude-code.url = "github:sadjow/claude-code-nix/v2";
+
+    # Codex CLI. Same maintainer and same shape as claude-code above: prebuilt
+    # binaries from upstream's own releases, refreshed hourly by CI, so it runs
+    # ahead of nixpkgs (0.149 vs nixpkgs-unstable's 0.147 on 2026-08-22). Left
+    # un-`follows`-ed for the same reason as claude-code — it ships a static
+    # musl binary and only wants nixpkgs for the wrapper around it.
+    codex-cli.url = "github:sadjow/codex-cli-nix";
 
     sops-nix = {
       url = "github:Mic92/sops-nix";
