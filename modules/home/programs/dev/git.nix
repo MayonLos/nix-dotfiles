@@ -18,6 +18,21 @@ _: {
     };
   };
 
+  # The GitHub CLI. `programs.gh` writes ~/.config/gh/config.yml only — the
+  # token lives in hosts.yml, which Home Manager does not touch, so enabling
+  # this does not disturb an existing login.
+  programs.gh = {
+    enable = true;
+    settings = {
+      git_protocol = "ssh";
+      prompt = "enabled";
+      aliases = {
+        pv = "pr view --web";
+        rv = "repo view --web";
+      };
+    };
+  };
+
   programs.delta = {
     enable = true;
     options = {
