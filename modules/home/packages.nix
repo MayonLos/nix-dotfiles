@@ -1,7 +1,6 @@
 {
   pkgs,
   pkgs-unstable,
-  inputs,
   ...
 }:
 
@@ -11,7 +10,7 @@
     pkgs-unstable.github-copilot-cli
     # codex comes from programs/dev/codex — wrapped to default to DeepSeek.
     pkgs-unstable.claude-code
-    inputs.MyNixvim.packages.${pkgs.stdenv.hostPlatform.system}.default
+    # nvim comes from programs/dev/nvim.nix — built from ./nixvim in this repo.
     fzf
     imagemagick
     nodejs
