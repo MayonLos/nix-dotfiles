@@ -1,8 +1,9 @@
 --!nonstrict
--- Bar widget：一个入口图标，点开聊天面板。
+-- Bar widget: a single entry icon that opens the chat panel.
 --
--- 它同时负责「密钥是否可读」的体检 —— 密钥不可读时图标变警告色，
--- 省得你点开面板才发现问不了。
+-- It doubles as the "is the key readable" health check -- when the key cannot
+-- be read the icon turns into its warning variant, so you do not find out only
+-- after opening the panel and trying to ask something.
 
 local keyFile = noctalia.getConfig("key_file")
 
@@ -27,8 +28,8 @@ local function render()
 end
 
 function update()
-	-- 密钥基本不变，查得勤没意义；rebuild 后 /run/secrets 会换新，
-	-- 一分钟一次足够察觉。
+	-- The key hardly ever changes, so polling harder buys nothing; /run/secrets is
+	-- replaced after a rebuild, and once a minute notices that soon enough.
 	noctalia.setUpdateInterval(60000)
 	hasKey = checkKey()
 	render()

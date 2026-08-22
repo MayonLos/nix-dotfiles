@@ -1,15 +1,17 @@
 { pkgs, config, ... }:
 {
-  # Qt 应用（mark-shot、virt-manager 的对话框等）此前不跟主题：文件保存框是
-  # 一片浅灰的 Fusion 默认样式。
+  # Qt apps (mark-shot, virt-manager's dialogs, ...) used to ignore the theme:
+  # file dialogs came up in flat light-grey default Fusion.
   #
-  # 原因是配置只做了一半：niri 的 environment 里设了 QT_QPA_PLATFORMTHEME=qt6ct，
-  # noctalia 的 qt 模板也把配色渲染到了 ~/.config/qt6ct/colors/noctalia.conf，
-  # 但 qt6ct 自己的主配置 qt6ct.conf 从来没人写过 —— 没有它，qt6ct 不知道该用
-  # 哪套配色，于是回落到默认浅色。
+  # The setup was only half done. niri's environment sets
+  # QT_QPA_PLATFORMTHEME=qt6ct and noctalia's qt template renders the palette to
+  # ~/.config/qt6ct/colors/noctalia.conf, but qt6ct's own qt6ct.conf was never
+  # written -- without it qt6ct does not know which palette to use and falls
+  # back to the default light one.
   #
-  # 这个文件是可变的（qt6ct 的 GUI 也会写它），所以用 activation 播种而不是
-  # home.file 软链：只在缺失时创建，之后你在 qt6ct 里怎么调都不会被覆盖。
+  # That file is mutable (qt6ct's own GUI writes it too), so seed it from an
+  # activation script instead of a home.file symlink: created only when missing,
+  # so whatever you later tweak inside qt6ct is never overwritten.
   home.activation.seedQt6ctConfig =
     let
       colorScheme = "${config.home.homeDirectory}/.config/qt6ct/colors/noctalia.conf";

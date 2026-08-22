@@ -1,10 +1,13 @@
 { pkgs, lib, ... }:
 let
-  # nixpkgs 的 JetBrains 2026.2 包里 lib/skiko-awt-runtime-all/libskiko-linux-x64.so
-  # 的 RPATH 被 autoPatchelf 写成了构建目录 /build/...，运行时解析不到
-  # libGL/libX11/libfontconfig/libstdc++。Compose 渲染器加载失败后欢迎界面一直转圈、
-  # 点击无响应。上游的 extraLdPath 参数走 extendMkDerivation，overrideAttrs 传不进去,
-  # 所以在包外面再套一层 wrapper 把这几个库补进 LD_LIBRARY_PATH。
+  # In nixpkgs' JetBrains 2026.2 packages, autoPatchelf leaves the RPATH of
+  # lib/skiko-awt-runtime-all/libskiko-linux-x64.so pointing at the build
+  # directory (/build/...), so libGL/libX11/libfontconfig/libstdc++ cannot be
+  # resolved at runtime. The Compose renderer then fails to load and the welcome
+  # screen spins forever with clicks doing nothing. Upstream's extraLdPath
+  # argument goes through extendMkDerivation and cannot be reached via
+  # overrideAttrs, hence this outer wrapper adding those libs to
+  # LD_LIBRARY_PATH.
   skikoLibs = with pkgs; [
     libGL
     libx11
@@ -19,7 +22,8 @@ let
       paths = [ ide ];
       nativeBuildInputs = [ pkgs.makeWrapper ];
       postBuild = ''
-        # buildEnv 只有一个输入时会把 $out/bin 直接软链到原包，先展开成真实目录
+        # With a single input buildEnv symlinks $out/bin straight at the original
+        # package; expand it into a real directory first.
         if [ -L "$out/bin" ]; then
           target=$(readlink -f "$out/bin")
           rm "$out/bin"

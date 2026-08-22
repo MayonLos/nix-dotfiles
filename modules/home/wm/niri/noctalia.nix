@@ -39,11 +39,13 @@ in
   ];
 
   config = {
-    # 已启用插件声明的外部依赖里，本机缺的那些。插件不会自己装依赖，
-    # 缺了就是静默不工作（不报错、不提示），所以在这里补齐。
-    # 增删插件时记得同步这个列表——每一项都对应一个具体的插件。
+    # External dependencies declared by the enabled plugins that this machine
+    # would otherwise be missing. Plugins never install their own dependencies
+    # and just silently do nothing when one is absent -- no error, no hint.
+    # Keep this in sync when adding or removing plugins; every entry maps to
+    # one specific plugin.
     home.packages = with pkgs; [
-      tmuxp # tmux-provider（tmux 本体在 tmux.nix）
+      tmuxp # tmux-provider (tmux itself lives in tmux.nix)
     ];
 
     programs.noctalia = {
@@ -96,9 +98,10 @@ in
 
           niri_overview_type_to_launch_enabled = true;
 
-          # 启用 Noctalia 内置的 polkit 身份验证代理（提供特权操作的密码弹窗）。
-          # 系统侧 security.polkit.enable=true 已开启，且 niri 下没有其它 polkit agent，
-          # 所以由 Noctalia 来当这个 agent，不会冲突。
+          # Noctalia's built-in polkit authentication agent (the password
+          # prompt for privileged actions). security.polkit.enable is already on
+          # system-side and niri runs no other polkit agent, so letting Noctalia
+          # be that agent does not conflict with anything.
           polkit_agent = true;
         };
 
@@ -129,17 +132,20 @@ in
           };
         };
 
-        # kind = "path" 而不是 "git"：noctalia 把 Path 源当成只读的不可变目录
-        # （config_types.h 的注释原话就是 "e.g. a Nix store path"），启动时直接
-        # 读 location，不 clone、不联网、update/auto_update 都是 no-op。
+        # kind = "path" rather than "git": noctalia treats a Path source as a
+        # read-only immutable directory (config_types.h says so verbatim, "e.g.
+        # a Nix store path"), reads location directly at startup, and never
+        # clones or touches the network -- update/auto_update are no-ops.
         #
-        # 这一点对这台机器是硬要求：git 源在启动阶段 clone，github 不通时会卡满
-        # 超时然后段错误，niri 自启的 noctalia 直接死掉——这也是这两个源之前
-        # 一直 enabled = false 的原因。走 store path 后崩溃面消失，版本也锁进了
-        # flake.lock，更新统一走 nix flake update。
+        # That is a hard requirement on this machine: a git source clones during
+        # startup, and when github is unreachable it burns the whole timeout and
+        # then segfaults, taking down the noctalia that niri autostarts -- which
+        # is why both sources used to sit at enabled = false. Store paths remove
+        # that failure mode and pin the versions in flake.lock; updates go
+        # through nix flake update like everything else.
         plugins = {
-          # noctalia 5 起这里是枚举 all|official|none；布尔值仍被接受，但会在
-          # 启动时打出 deprecated 告警。
+          # Enum since noctalia 5: all | official | none. A boolean is still
+          # accepted but warns as deprecated at startup.
           auto_update = "none";
 
           source = [
@@ -155,10 +161,11 @@ in
               location = "${inputs.noctalia-plugins-community}";
               enabled = true;
             }
-            # 自建插件。path 源在没有 catalog.toml 时会直接扫目录
-            # （plugin_catalog.cpp:272 "No catalog.toml — path sources are on
-            # disk, so scan straight away."），所以放一个含 plugin.toml 的
-            # 子目录就够了。用 ../_plugins 的相对路径让整个目录进 store。
+            # Own plugins. With no catalog.toml a path source simply scans the
+            # directory (plugin_catalog.cpp:272 "No catalog.toml -- path sources
+            # are on disk, so scan straight away."), so one subdirectory holding
+            # a plugin.toml is enough. The relative ./_plugins path pulls the
+            # whole directory into the store.
             {
               name = "local";
               kind = "path";
@@ -167,20 +174,22 @@ in
             }
           ];
 
-          # ⚠️ 这个列表会被运行时覆盖层盖掉。
-          # 在 Noctalia 设置界面里开关插件，会把整份 enabled 数组写进
-          # ~/.local/state/noctalia/settings.toml，而那份优先级更高——也就是说
-          # GUI 一旦动过，这里写什么都不再生效。想让这里重新说了算，就把覆盖层
-          # 里的 [plugins] 段删掉再 `noctalia msg config-reload`。
-          # 反过来，想把 GUI 里试出来的结果固化回来，用
-          # `noctalia config export merged` 读出实际值抄进来。
+          # WARNING: this list is shadowed by the runtime override layer.
+          # Toggling a plugin in Noctalia's settings UI writes the entire enabled
+          # array into ~/.local/state/noctalia/settings.toml, which takes
+          # priority -- once the GUI has touched it, nothing written here has any
+          # effect. To hand control back, drop the [plugins] section from the
+          # override layer and run `noctalia msg config-reload`. The other way
+          # round, `noctalia config export merged` prints the effective values so
+          # whatever you settled on in the GUI can be copied back here.
           #
-          # 刻意排除的：battery-threshold（要 sudo/groupadd/usermod 改系统权限）、
-          # niri-animations（会写只读的 niri HM 符号链接）、screen-toolkit /
-          # color_picker / keybind-cheatsheet（依赖 hyprpicker、hyprctl，
-          # Hyprland 专用）、translator（走 Google 翻译，本地不通）。
+          # Deliberately excluded: battery-threshold (needs sudo/groupadd/usermod
+          # to change system permissions), niri-animations (writes to niri's
+          # read-only HM symlink), screen-toolkit / color_picker /
+          # keybind-cheatsheet (depend on hyprpicker and hyprctl, Hyprland only),
+          # translator (goes through Google Translate, unreachable here).
           enabled = [
-            "mayon/ask" # 自建，见 _plugins/ask
+            "mayon/ask" # own plugin, see _plugins/ask
             "3ri4ng0ld/ip-monitor"
             "8bury/mini-docker"
             "cleboost/jetbrains-provider"
@@ -209,18 +218,23 @@ in
           capsule = true;
           capsule_opacity = 0.96;
 
-          # 插件 widget 在 bar 里的写法是 `<plugin-id>:<entry-id>`：
-          # widget_factory.cpp 直接把这个字符串丢给 PluginRegistry::resolve()，
-          # 而 resolve() 按第一个冒号切成 manifest.id + entry.id
-          # (plugin_registry.cpp:20 `manifest->id + ":" + entry->id`)。
-          # entry-id 来自各插件 plugin.toml 的 [[widget]] id，不是插件名，
-          # 常见的 entry-id 是 "bar"、"widget"、"status"，多个插件重名很正常。
+          # A plugin widget is spelled `<plugin-id>:<entry-id>` in the bar:
+          # widget_factory.cpp hands the string straight to
+          # PluginRegistry::resolve(), which splits it on the first colon into
+          # manifest.id + entry.id (plugin_registry.cpp:20
+          # `manifest->id + ":" + entry->id`). The entry-id comes from the
+          # [[widget]] id in each plugin's plugin.toml, not from the plugin name;
+          # "bar", "widget" and "status" are common, and collisions across
+          # plugins are perfectly normal.
           #
-          # 左边放上下文和常用工具，中间时钟，右边系统状态。
+          # Context and everyday tools on the left, clock in the center, system
+          # status on the right.
           #
-          # panels 组整组放在 start：这四个都是「点一下开面板」的工具，摆在左边
-          # 顺手，而且 start 是左对齐、向右生长的通道，空间充裕——不像 end 右对齐、
-          # 溢出时会从最左端开始裁（之前 notes 看不见就是这么来的）。
+          # The panels group goes into start as a whole: all four are "click to
+          # open a panel" tools, handy on the left, and start is left-aligned and
+          # grows rightwards with room to spare -- unlike end, which is
+          # right-aligned and clips from its leftmost item on overflow (that is
+          # how notes went missing before).
           start = [
             "launcher"
             "salemsayed/niri-active-workspace:active-workspace"
@@ -238,21 +252,19 @@ in
           ];
 
           capsule_group = [
-            # 常用工具，全部常驻展开（不折叠）
             {
               id = "panels";
               members = [
-                "mayon/ask:bar" # 问 AI
-                "noctalia/notes:notes" # 侧栏速记
-                "nightwatch75/todo:todo" # 任务清单
-                "8bury/mini-docker:mini-docker" # Docker 管理
-                "rxtsel/portctl:indicator" # 端口查杀
+                "mayon/ask:bar" # ask the AI
+                "noctalia/notes:notes" # sidebar scratchpad
+                "nightwatch75/todo:todo" # task list
+                "8bury/mini-docker:mini-docker" # Docker management
+                "rxtsel/portctl:indicator" # inspect and kill port listeners
               ];
               accordion = false;
               padding = 6.0;
               widget_spacing = 4;
             }
-            # 常驻扫视的系统状态，始终展开
             {
               id = "sys";
               members = [
@@ -323,23 +335,25 @@ in
           warning_threshold = 20;
         };
 
-        # 屏幕角落触发。用底边两角而不是顶边——bar 在顶部（margin_edge 6、
-        # margin_ends 8），顶角和 bar 的悬停区挨得太近容易误触；dock 关掉之后
-        # 底边完全空出来了，正好用。
-        # action 合法值只有 none / launcher / control_center / window_switcher /
-        # command 这五个（settings_registry.cpp 的 hotCornerActionSelect）；
-        # 注意它在 schema 里是自由字符串，写错了验证器不报错、运行时静默失效。
+        # Screen corner triggers, on the bottom corners rather than the top
+        # ones -- the bar sits at the top (margin_edge 6, margin_ends 8) and the
+        # top corners are close enough to its hover area to fire by accident,
+        # while the bottom edge is completely free now that the dock is off.
+        # action only accepts none / launcher / control_center / window_switcher
+        # / command (hotCornerActionSelect in settings_registry.cpp); note it is
+        # a free-form string in the schema, so a typo passes validation and then
+        # silently does nothing at runtime.
         hot_corners = {
           enabled = true;
-          delay_ms = 200; # 停留 200ms 才触发，避免鼠标划过就弹
+          delay_ms = 200; # dwell time, so a cursor merely passing by does not fire it
           bottom_left.action = "launcher";
           bottom_right.action = "control_center";
           top_left.action = "none";
           top_right.action = "none";
         };
 
-        # 夜间自动降色温。日落后从 6500K 渐变到 4000K；force=false 表示
-        # 只在夜间生效而不是全天锁定。
+        # force = false keeps the shift to night-time only instead of locking
+        # the temperature all day.
         nightlight = {
           enabled = true;
           force = false;
@@ -402,8 +416,9 @@ in
           battery_percentage_changed = "${lowBatterySuspend}";
         };
 
-        # 关掉：bar 上已经有 launcher 和 workspaces，dock 是重复入口。
-        # 关掉后其余 dock.* 键全部无意义，所以只留这一行。
+        # Off: the bar already carries a launcher and workspaces, so the dock is
+        # a duplicate entry point. With it off every other dock.* key is
+        # meaningless, hence the single line.
         dock.enabled = false;
 
         lockscreen = {

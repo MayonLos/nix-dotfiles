@@ -1,24 +1,27 @@
 --!nonstrict
--- 聊天面板 —— 纯显示层。
+-- Chat panel -- display layer only.
 --
--- 所有状态都在 service.luau 里，这边只读 noctalia.state 渲染、写 state 发指令。
--- 好处是关掉面板对话不丢（panel 的 Lua 状态在关闭时会被销毁）。
+-- All state lives in service.luau; this side just reads noctalia.state to
+-- render and writes to state to issue commands. The point is that closing the
+-- panel does not lose the conversation (a panel's Lua state is destroyed on
+-- close).
 
--- 面板宽 480 减去内边距。ui.label 没有 wrap 属性（kLabel 只认 width/height/
--- text/fontSize/color/fontWeight/maxWidth/maxLines/textAlign/fontFamily/
--- baseline），换行靠 maxWidth 触发。
+-- The panel's 480 width minus padding. ui.label has no wrap property (kLabel
+-- only knows width/height/text/fontSize/color/fontWeight/maxWidth/maxLines/
+-- textAlign/fontFamily/baseline), so wrapping is triggered by maxWidth.
 local TEXT_WIDTH = 415
 
 local MODELS = { "deepseek-v4-flash", "deepseek-v4-pro" }
 local EFFORTS = { "low", "medium", "high" }
 
 local showHistory = false
--- 哪几条消息展开了思考过程，按索引记
+-- Which messages have their reasoning expanded, keyed by index
 local expanded: { [number]: boolean } = {}
 
--- 输入框是 uncontrolled 的：`value` 只在控件首次创建时播种一次
--- （ui_tree_reconciler.cpp: "Uncontrolled: the host owns the text buffer/cursor.
--- `value` seeds the field once"）。所以要清空或回填历史，只能换掉 key 逼它重建。
+-- The input is uncontrolled: `value` seeds the widget once, when it is first
+-- created (ui_tree_reconciler.cpp: "Uncontrolled: the host owns the text
+-- buffer/cursor. `value` seeds the field once"). So clearing it or filling in a
+-- history entry means swapping the key to force a rebuild.
 local promptSeq = 0
 local promptValue = ""
 
@@ -27,7 +30,7 @@ local function setPrompt(text: string)
 	promptSeq += 1
 end
 
--- 上下键翻历史时的游标：nil = 停在「当前正在输入的那条」
+-- Cursor for walking history with Up/Down: nil = sitting on what is being typed
 local histCursor: number? = nil
 
 local function messages()
@@ -54,7 +57,7 @@ local function modelIndex(): number
 	local m = currentModel()
 	for i, v in MODELS do
 		if v == m then
-			return i - 1 -- ui.select 用 0 基
+			return i - 1 -- ui.select is 0-based
 		end
 	end
 	return 0
@@ -74,19 +77,21 @@ local function effortIndex(): number
 	return 1
 end
 
--- 下拉里显示成「思考:中」这种，比光一个 "medium" 容易懂
+-- The dropdown reads like "Thinking: medium", which is clearer than a bare
+-- "medium"
 local EFFORT_LABELS = {}
 for _, v in EFFORTS do
 	table.insert(EFFORT_LABELS, noctalia.tr("effort.prefix") .. noctalia.tr("settings.reasoning_effort." .. v))
 end
 
---------------------------------------------------------------------------- 组件
+--------------------------------------------------------------------- components
 
 local function bubble(entry, index: number)
 	local mine = entry.role == "user"
 	local children = {}
 
-	-- 思考过程：默认折叠，点一下展开。放在答案上面，符合阅读顺序。
+	-- Reasoning: collapsed by default, one click expands it. Placed above the
+	-- answer, which matches the reading order.
 	if entry.reasoning ~= nil and entry.reasoning ~= "" then
 		local open = expanded[index] == true
 		table.insert(
@@ -104,20 +109,22 @@ local function bubble(entry, index: number)
 			table.insert(
 				children,
 				ui.column({ radius = 8, fill = "surface_variant", padding = 8, align = "stretch" }, {
-					-- 思考内容也是模型输出，同样是 markdown
+					-- Reasoning is model output too, so it is markdown as well
 					ui.markdown({ text = entry.reasoning, flexGrow = 1 }),
 				})
 			)
 		end
 	end
 
-	-- 气泡用 ui.column 而不是 ui.box：box 的属性集里没有 padding，也不渲染子节点。
-	-- 只有 flex 节点（column/row）会递归 children。
+	-- Bubbles use ui.column rather than ui.box: box has no padding in its property
+	-- set and does not render children at all -- only flex nodes (column/row)
+	-- recurse into children.
 	--
-	-- 助手回复走 ui.markdown（md4c 支撑，代码块/列表/加粗都能渲染）；
-	-- 自己打的字仍用 ui.label —— 输入里随手出现的 * 或 _ 不该被当成格式标记。
-	-- kMarkdown 只认 {width,height,flexGrow,opacity,visible,text}，没有
-	-- maxWidth/color/fontSize，宽度靠外层 align = "stretch" 撑开。
+	-- Assistant replies go through ui.markdown (backed by md4c, so code blocks,
+	-- lists and bold all render); what you typed yourself stays ui.label -- a
+	-- stray * or _ in the input should not be read as formatting. kMarkdown only
+	-- knows {width,height,flexGrow,opacity,visible,text} and has no
+	-- maxWidth/color/fontSize, so the width comes from the outer align = "stretch".
 	table.insert(
 		children,
 		ui.column({
@@ -179,12 +186,12 @@ local function conversationRow(c)
 	})
 end
 
---------------------------------------------------------------------------- 视图
+-------------------------------------------------------------------------- views
 
 local function historyView()
 	local rows = {}
 	local list = conversations()
-	-- 新的在上
+	-- Newest first
 	for i = #list, 1, -1 do
 		table.insert(rows, conversationRow(list[i]))
 	end
@@ -213,7 +220,7 @@ local function chatView()
 	return rows
 end
 
---------------------------------------------------------------------------- 渲染
+------------------------------------------------------------------------- render
 
 function render()
 	local s = status()
@@ -245,9 +252,11 @@ function render()
 			ui.button({ glyph = "close", onClick = "onClose" }),
 		}),
 
-		-- 模型和思考强度都放在这里：改一次跑一次的东西不该埋在设置界面里。
-		-- 两者都只影响当前会话，不写回设置文件。
-		-- 思考关掉时 effort 无意义，置灰而不是隐藏 —— 免得布局跳动。
+		-- Model and reasoning effort both live here: things you change from one run to
+		-- the next do not belong buried in the settings UI. Both affect the current
+		-- session only and are never written back to the settings file. With thinking
+		-- off the effort is meaningless, so grey it out instead of hiding it -- that
+		-- keeps the layout from jumping.
 		ui.row({ gap = 8, align = "center", visible = not showHistory }, {
 			ui.select({
 				options = MODELS,
@@ -270,7 +279,7 @@ function render()
 			ui.row({ align = "center", gap = 8, visible = s ~= "idle" }, {
 				ui.label({
 					text = if s == "idle" then "" else s,
-					-- thinking 是正常状态，别用错误色
+					-- thinking is a normal state, so do not use the error color
 					color = if thinking then "on_surface_variant" else "error",
 					fontSize = 11,
 					flexGrow = 1,
@@ -295,9 +304,9 @@ function render()
 	}))
 end
 
---------------------------------------------------------------------------- 事件
+------------------------------------------------------------------------- events
 
--- service 那边一有变化就重画
+-- Repaint whenever the service changes something
 noctalia.state.watch("ask.messages", render)
 noctalia.state.watch("ask.status", render)
 noctalia.state.watch("ask.conversations", render)
@@ -335,14 +344,14 @@ function onSubmit(text)
 		return
 	end
 	noctalia.state.set("ask.send", question)
-	-- 换 key 让输入框重建成空的；游标回到底部
+	-- Swapping the key rebuilds the input as empty; cursor goes back to the bottom
 	setPrompt("")
 	histCursor = nil
 	render()
 end
 
--- 面板在清单里用 capture_keys 声明了 Up/Down，宿主按下和抬起都会回调，
--- 这里只处理按下。
+-- The panel declares Up/Down via capture_keys in the manifest; the host calls
+-- back on both press and release, and only press is handled here.
 function onKey(spec, pressed)
 	if pressed ~= true then
 		return
@@ -353,7 +362,7 @@ function onKey(spec, pressed)
 	end
 
 	if spec == "Up" then
-		-- 第一次按：从最后一条开始；之后逐条往前
+		-- First press starts at the last entry, then it walks backwards one at a time
 		histCursor = if histCursor == nil then #prompts else math.max(1, histCursor - 1)
 		setPrompt(prompts[histCursor])
 		render()
@@ -362,7 +371,7 @@ function onKey(spec, pressed)
 			return
 		end
 		if histCursor >= #prompts then
-			-- 走到底了：回到空输入，和 shell 的行为一致
+			-- Past the end: back to an empty input, same as a shell does
 			histCursor = nil
 			setPrompt("")
 		else

@@ -1,13 +1,15 @@
 { pkgs, ... }:
 {
-  # FHS 变体，而不是给普通 vscode 手工补 LD_LIBRARY_PATH。
+  # The FHS variant, rather than patching LD_LIBRARY_PATH onto plain vscode.
   #
-  # 扩展自带的预编译二进制需要一堆系统库，缺一个就静默不工作：cpptools 的
-  # OpenDebugAD7 要 libstdc++，而当初装 STM32Cube 时它的 node-usb 绑定还要
-  # libudev.so.1 —— 手工 wrapper 只塞了 stdenv.cc.cc.lib + libusb1，
-  # libudev 没覆盖到，打地鼠打不完。
-  # vscode-fhs 的 targetPkgs 里已经有 udev/libudev0-shim/glibc/icu/nss 等，
-  # 一次性解决这一类问题。要再加库用 pkgs.vscode.fhsWithPackages (ps: [ ... ])。
+  # Extension-shipped prebuilt binaries need a pile of system libraries and fail
+  # silently when one is missing: cpptools' OpenDebugAD7 wants libstdc++, and
+  # back when STM32Cube was installed its node-usb binding also wanted
+  # libudev.so.1 -- the hand-rolled wrapper only carried stdenv.cc.cc.lib +
+  # libusb1, never covered libudev, and turned into endless whack-a-mole.
+  # vscode-fhs' targetPkgs already include udev/libudev0-shim/glibc/icu/nss and
+  # friends, which settles the whole class at once. To add more libraries, use
+  # pkgs.vscode.fhsWithPackages (ps: [ ... ]).
   programs.vscode = {
     enable = true;
     package = pkgs.vscode-fhs;

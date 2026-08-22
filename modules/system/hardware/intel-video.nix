@@ -1,19 +1,21 @@
 { pkgs, ... }:
 {
-  # i7-14700HX（Raptor Lake）的核显走 VAAPI 需要 iHD 驱动，而 hardware.graphics
-  # 的 extraPackages 之前只有 NVIDIA 那几个，/run/opengl-driver/lib/dri/ 下没有
-  # iHD_drv_video.so —— 于是任何在 Intel 渲染节点上 vaInitialize 的程序都失败。
+  # VAAPI on the i7-14700HX (Raptor Lake) iGPU needs the iHD driver, but
+  # hardware.graphics.extraPackages only carried the NVIDIA ones, so
+  # /run/opengl-driver/lib/dri/ had no iHD_drv_video.so -- every vaInitialize on
+  # the Intel render node failed.
   #
-  # 注意本机的节点编号和直觉相反：renderD128 是 nvidia，renderD129 才是 i915。
+  # Note the node numbering on this machine is the opposite of what you would
+  # guess: renderD128 is nvidia, renderD129 is i915.
   #
-  # 影响面是全系统的：浏览器和 mpv 的硬件解码此前都落在 CPU 上。补上之后
-  # vainfo 能列出 H264 / HEVC / AV1 的解码和编码 entrypoint。
-  # 用 mkAfter 追加，避免顶掉 nvidia.nix 里已有的项。
+  # The impact was system-wide: hardware decoding in browsers and mpv all fell
+  # back to the CPU. With this in place vainfo lists H264 / HEVC / AV1 decode and
+  # encode entrypoints.
   hardware.graphics.extraPackages = with pkgs; [
-    intel-media-driver # iHD，Gen8 以上
-    vpl-gpu-rt # oneVPL 运行时，Gen12 以上的编解码走它
+    intel-media-driver # iHD, Gen8 and newer
+    vpl-gpu-rt # oneVPL runtime, drives codecs on Gen12 and newer
   ];
 
-  # 排障用：`vainfo --display drm --device /dev/dri/renderD129`
+  # For troubleshooting: `vainfo --display drm --device /dev/dri/renderD129`
   environment.systemPackages = [ pkgs.libva-utils ];
 }
