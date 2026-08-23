@@ -1,0 +1,690 @@
+#!/usr/bin/env python3
+"""Window rectangles for mark-shot's hover selection, on niri + noctalia.
+
+Replaces upstream's scripts/mark-shot-window-detection-niri, which is wrong on
+this host in two ways:
+
+  * It only recognises waybar and DankMaterialShell panels. With a noctalia bar
+    it reserves nothing at the top of the work area.
+  * It starts the first tile of a column at the very top of the work area, while
+    niri puts it one `gaps` lower (Column::tiles_origin, src/layout/scrolling.rs).
+
+Together those placed every rectangle 42 logical px too high here: the bottom
+strip of a window fell outside the box and an equally tall strip above it was
+swallowed.
+
+niri 26.04 only fills WindowLayout::tile_pos_in_workspace_view for *floating*
+windows (src/layout/floating.rs); tiled windows always get None
+(Tile::ipc_layout_template). Tiled rectangles therefore have to be rebuilt from
+pos_in_scrolling_layout + tile_size, mirroring niri's own layout code:
+
+    tile_x = column_x - view_pos
+    tile_y = work_y + gaps + sum(heights of the tiles above it, each + gaps)
+
+The one input that cannot be recovered from IPC is the scroll position: niri's
+view offset is animation and gesture state, not part of any snapshot. It is
+estimated from the resting values compute_new_view_offset() settles on.
+
+The bar's exclusive zone is *measured* rather than computed from noctalia's
+thickness and margins, which would mean reimplementing reservedBarExclusiveZone
+along with its shadow-bleed and auto-hide cases: a column left on `auto` height
+fills the work area, so the tallest column pins the work height down to within a
+physical pixel. noctalia's config is only consulted for which edge the bar is on.
+
+Output: {"windows": [{x, y, width, height}, ...]} in global logical pixels.
+
+Environment (all optional, all set by mark-shot except the tuning knobs):
+  MARK_SHOT_CAPTURE_{X,Y,WIDTH,HEIGHT}      clip every rectangle to this area
+  MARK_SHOT_CAPTURE_OUTPUT                  restrict to a single output
+  MARK_SHOT_CAPTURE_ALL_OUTPUTS=1           cover every output
+  MARK_SHOT_NIRI_PANEL_EDGE                 top|bottom|left|right|none
+  MARK_SHOT_NIRI_PANEL_SIZE                 exclusive zone in logical px
+  MARK_SHOT_NIRI_OFFSET_{X,Y,WIDTH,HEIGHT}  final nudge on every rectangle
+"""
+
+import json
+import math
+import os
+import shutil
+import subprocess
+import sys
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # python < 3.11
+    tomllib = None
+
+EDGES = ("top", "bottom", "left", "right")
+
+
+# --------------------------------------------------------------------------
+# small helpers
+# --------------------------------------------------------------------------
+
+def env_float(name):
+    value = os.environ.get(name)
+    if not value:
+        return None
+    try:
+        return float(value)
+    except ValueError:
+        return None
+
+
+def pair(value):
+    if not isinstance(value, list) or len(value) < 2:
+        return None
+    try:
+        return float(value[0]), float(value[1])
+    except (TypeError, ValueError):
+        return None
+
+
+def config_home():
+    return os.environ.get("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
+
+
+def state_home():
+    return os.environ.get("XDG_STATE_HOME") or os.path.join(os.path.expanduser("~"), ".local", "state")
+
+
+# --------------------------------------------------------------------------
+# niri IPC
+# --------------------------------------------------------------------------
+
+def niri_json(*args):
+    binary = os.environ.get("MARK_SHOT_NIRI_BIN") or shutil.which("niri")
+    if not binary:
+        raise RuntimeError("niri command not found")
+    result = subprocess.run(
+        [binary, "msg", "-j", *args],
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        timeout=2,
+    )
+    return json.loads(result.stdout)
+
+
+def niri_layers():
+    try:
+        layers = niri_json("layers")
+    except (RuntimeError, subprocess.SubprocessError, json.JSONDecodeError):
+        return []
+    return layers if isinstance(layers, list) else []
+
+
+# --------------------------------------------------------------------------
+# niri config (KDL)
+# --------------------------------------------------------------------------
+
+def strip_comments(text):
+    """Drop // and /* */ comments, leaving string literals untouched."""
+    out = []
+    index = 0
+    in_string = False
+    escaped = False
+    while index < len(text):
+        char = text[index]
+        following = text[index + 1] if index + 1 < len(text) else ""
+
+        if in_string:
+            out.append(char)
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            index += 1
+            continue
+
+        if char == '"':
+            in_string = True
+            out.append(char)
+            index += 1
+            continue
+
+        if char == "/" and following == "/":
+            index += 2
+            while index < len(text) and text[index] not in "\r\n":
+                index += 1
+            continue
+
+        if char == "/" and following == "*":
+            index += 2
+            while index + 1 < len(text) and not (text[index] == "*" and text[index + 1] == "/"):
+                index += 1
+            index += 2
+            continue
+
+        out.append(char)
+        index += 1
+    return "".join(out)
+
+
+def read_kdl(path, seen=None):
+    """Read a KDL file with its `include`s expanded and comments removed."""
+    if seen is None:
+        seen = set()
+    real = os.path.realpath(path)
+    if real in seen:
+        return ""
+    seen.add(real)
+    try:
+        with open(real, "r", encoding="utf-8") as handle:
+            text = strip_comments(handle.read())
+    except OSError:
+        return ""
+
+    # niri resolves an include against the directory of the path it was given,
+    # not the symlink target. The config here is a home-manager symlink into the
+    # store, where the sibling files do not exist, so the unresolved directory
+    # has to be tried first.
+    bases = [os.path.dirname(os.path.abspath(path)), os.path.dirname(real)]
+
+    parts = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("include"):
+            target = stripped[len("include"):].strip().strip('"')
+            if target:
+                candidates = ([target] if os.path.isabs(target)
+                              else [os.path.join(base, target) for base in bases])
+                for candidate in candidates:
+                    if os.path.exists(candidate):
+                        parts.append(read_kdl(candidate, seen))
+                        break
+            continue
+        parts.append(line)
+    return "\n".join(parts)
+
+
+def niri_config_path():
+    override = os.environ.get("NIRI_CONFIG", "").strip()
+    return override or os.path.join(config_home(), "niri", "config.kdl")
+
+
+def parse_number(token):
+    try:
+        return float(token)
+    except ValueError:
+        return None
+
+
+def niri_layout_config():
+    """The `layout` values that decide tile geometry, with niri's own defaults."""
+    config = {
+        "gaps": 16.0,
+        "struts": {"left": 0.0, "right": 0.0, "top": 0.0, "bottom": 0.0},
+        "center_focused_column": "never",
+        "always_center_single_column": False,
+    }
+
+    depth = 0
+    layout_depth = None
+    struts_depth = None
+    for raw in read_kdl(niri_config_path()).splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        opens = line.count("{")
+        closes = line.count("}")
+        tokens = line.replace("{", " { ").replace("}", " } ").split()
+        name = tokens[0] if tokens else ""
+
+        if depth == 0 and name == "layout" and opens:
+            layout_depth = depth + 1
+        elif layout_depth is not None and depth == layout_depth:
+            if name == "struts" and opens:
+                struts_depth = depth + 1
+            elif name == "gaps" and len(tokens) > 1:
+                value = parse_number(tokens[1])
+                if value is not None:
+                    config["gaps"] = value
+            elif name == "center-focused-column" and len(tokens) > 1:
+                config["center_focused_column"] = tokens[1].strip('"').lower()
+            elif name == "always-center-single-column":
+                config["always_center_single_column"] = (
+                    len(tokens) < 2 or tokens[1].strip('"').lower() not in ("false", "0")
+                )
+        elif (struts_depth is not None and depth == struts_depth
+                and name in EDGES and len(tokens) > 1):
+            value = parse_number(tokens[1])
+            if value is not None:
+                config["struts"][name] = value
+
+        depth += opens - closes
+        if struts_depth is not None and depth < struts_depth:
+            struts_depth = None
+        if layout_depth is not None and depth < layout_depth:
+            layout_depth = None
+    return config
+
+
+# --------------------------------------------------------------------------
+# panel edge
+# --------------------------------------------------------------------------
+
+def noctalia_bar_edge(layers, output_name):
+    """The edge noctalia's main bar sits on, or None when it is not running here.
+
+    The runtime override layer in ~/.local/state/noctalia/settings.toml shadows
+    the home-manager config.toml, so both are read in that order.
+    """
+    has_bar = any(
+        isinstance(layer, dict)
+        and str(layer.get("namespace", "")).startswith("noctalia-bar")
+        and (not output_name or layer.get("output") == output_name)
+        for layer in layers
+    )
+    if not has_bar or tomllib is None:
+        return "top"
+
+    position = None
+    for path in (os.path.join(config_home(), "noctalia", "config.toml"),
+                 os.path.join(state_home(), "noctalia", "settings.toml")):
+        try:
+            with open(path, "rb") as handle:
+                payload = tomllib.load(handle)
+        except (OSError, ValueError):
+            continue
+        candidate = payload.get("bar", {}).get("main", {}).get("position")
+        if isinstance(candidate, str) and candidate.lower() in EDGES:
+            position = candidate.lower()
+    return position or "top"
+
+
+def panel_edge(layers, output_name):
+    """Which edge loses space to a panel. "top" is the fallback rather than
+    "none": with no panel at all the measurement below simply comes out at zero,
+    so guessing the common edge costs nothing and covers bars this script does
+    not recognise."""
+    override = os.environ.get("MARK_SHOT_NIRI_PANEL_EDGE", "").strip().lower()
+    if override == "none":
+        return None
+    if override in EDGES:
+        return override
+    return noctalia_bar_edge(layers, output_name)
+
+
+# --------------------------------------------------------------------------
+# outputs
+# --------------------------------------------------------------------------
+
+def output_geometry(outputs, name):
+    """Origin, exact logical size and scale of an output.
+
+    `logical.width`/`logical.height` are rounded to whole pixels in the IPC while
+    niri lays out against mode/scale, so 2560/1.5 arrives as 1706 instead of
+    1706.667. The exact value is recovered from the current mode; the work-area
+    arithmetic below is sensitive to that two-thirds of a pixel.
+    """
+    output = outputs.get(name)
+    if not isinstance(output, dict):
+        return None
+    logical = output.get("logical")
+    if not isinstance(logical, dict):
+        return None
+
+    scale = float(logical.get("scale") or 1.0) or 1.0
+    width = float(logical.get("width", 0))
+    height = float(logical.get("height", 0))
+
+    modes = output.get("modes")
+    index = output.get("current_mode")
+    if isinstance(modes, list) and isinstance(index, int) and 0 <= index < len(modes):
+        mode = modes[index]
+        mode_w = float(mode.get("width", 0)) / scale
+        mode_h = float(mode.get("height", 0)) / scale
+        if str(logical.get("transform", "Normal")).lower().replace("flipped", "").strip("-_") in ("90", "270"):
+            mode_w, mode_h = mode_h, mode_w
+        if mode_w > 0 and mode_h > 0:
+            width, height = mode_w, mode_h
+
+    if width <= 0 or height <= 0:
+        return None
+    return {
+        "x": float(logical.get("x", 0)),
+        "y": float(logical.get("y", 0)),
+        "width": width,
+        "height": height,
+        "scale": scale,
+    }
+
+
+# --------------------------------------------------------------------------
+# workspaces and columns
+# --------------------------------------------------------------------------
+
+def workspace_targets(workspaces):
+    """The visible workspaces, keyed by id."""
+    all_outputs = os.environ.get("MARK_SHOT_CAPTURE_ALL_OUTPUTS") == "1"
+    wanted = os.environ.get("MARK_SHOT_CAPTURE_OUTPUT", "")
+    targets = {}
+    for workspace in workspaces:
+        if not workspace.get("is_active") and not workspace.get("is_focused"):
+            continue
+        output = workspace.get("output", "")
+        if wanted and not all_outputs and output != wanted:
+            continue
+        workspace_id = workspace.get("id")
+        if workspace_id is not None:
+            targets[workspace_id] = workspace
+    return targets
+
+
+def focus_stamp(window):
+    stamp = window.get("focus_timestamp")
+    if not isinstance(stamp, dict):
+        return (0, 0)
+    return (int(stamp.get("secs", 0)), int(stamp.get("nanos", 0)))
+
+
+def build_columns(windows, workspace_id):
+    """Tiled windows of one workspace, grouped into columns keyed by index."""
+    columns = {}
+    for window in windows:
+        if window.get("workspace_id") != workspace_id or window.get("is_floating"):
+            continue
+        layout = window.get("layout")
+        if not isinstance(layout, dict):
+            continue
+        position = pair(layout.get("pos_in_scrolling_layout"))
+        tile_size = pair(layout.get("tile_size"))
+        window_size = pair(layout.get("window_size"))
+        if position is None or tile_size is None or window_size is None:
+            continue
+        columns.setdefault(int(round(position[0])), []).append({
+            "window": window,
+            "row": int(round(position[1])),
+            "tile": tile_size,
+            "size": window_size,
+            "offset": pair(layout.get("window_offset_in_tile")) or (0.0, 0.0),
+        })
+    for entries in columns.values():
+        entries.sort(key=lambda entry: entry["row"])
+    return columns
+
+
+def is_fullscreen_column(entries, geometry):
+    """A fullscreen tile covers the whole output and skips the work area."""
+    return any(entry["tile"][0] >= geometry["width"] - 1.0
+               and entry["tile"][1] >= geometry["height"] - 1.0
+               for entry in entries)
+
+
+def active_column_index(columns, workspace):
+    active_id = workspace.get("active_window_id")
+    best = None
+    for index, entries in columns.items():
+        for entry in entries:
+            window = entry["window"]
+            if window.get("id") == active_id:
+                return index
+            if window.get("is_focused"):
+                best = index
+    if best is not None:
+        return best
+    ranked = [(focus_stamp(entry["window"]), index)
+              for index, entries in columns.items() for entry in entries]
+    return max(ranked)[1] if ranked else None
+
+
+# --------------------------------------------------------------------------
+# work area and view position
+# --------------------------------------------------------------------------
+
+def column_extent(entries, gaps, scale):
+    """Vertical space a column occupies, including the gap above and below it.
+
+    Reported tile heights are rounded *up* onto the physical pixel grid, so a
+    sum of them overshoots the true layout height by up to one physical pixel
+    per tile. Half of that is subtracted back as the expected error; without it
+    the work area comes out a third of a pixel short here, which is enough to
+    flip the tile position onto the wrong side of a .5 rounding boundary.
+    """
+    total = sum(entry["tile"][1] for entry in entries) + gaps * (len(entries) + 1)
+    return total - len(entries) / (2.0 * scale)
+
+
+def working_area(geometry, columns, layout_config, edge):
+    """niri's work area for an output, in global logical pixels.
+
+    The exclusive zone of the bar is not exposed over IPC, so it is measured: a
+    column whose height is left on `auto` fills the work area, hence the tallest
+    non-fullscreen column pins down the work height. Only the edge it sits on
+    comes from configuration.
+    """
+    gaps = layout_config["gaps"]
+    struts = layout_config["struts"]
+    insets = {name: 0.0 for name in EDGES}
+
+    size_override = env_float("MARK_SHOT_NIRI_PANEL_SIZE")
+    if edge is not None:
+        if size_override is not None:
+            insets[edge] = size_override
+        elif edge in ("top", "bottom"):
+            candidates = [column_extent(entries, gaps, geometry["scale"])
+                          for entries in columns.values()
+                          if not is_fullscreen_column(entries, geometry)]
+            if candidates:
+                available = geometry["height"] - struts["top"] - struts["bottom"]
+                insets[edge] = max(0.0, available - max(candidates))
+
+    x = geometry["x"] + struts["left"] + insets["left"]
+    y = geometry["y"] + struts["top"] + insets["top"]
+    width = geometry["width"] - struts["left"] - struts["right"] - insets["left"] - insets["right"]
+    height = geometry["height"] - struts["top"] - struts["bottom"] - insets["top"] - insets["bottom"]
+    if width <= 0 or height <= 0:
+        return None
+    return {"x": x, "y": y, "width": width, "height": height}
+
+
+def should_center(columns, order, active, layout_config, area):
+    """Whether niri would have centred the active column.
+
+    `on-overflow` really compares the target against the neighbour it was
+    reached from; that neighbour is unknowable from a snapshot, so the column to
+    the left is assumed (the column to the right for the leftmost one).
+    """
+    mode = layout_config["center_focused_column"]
+    if mode == "always":
+        return True
+    if layout_config["always_center_single_column"] and len(order) <= 1:
+        return True
+    if mode != "on-overflow" or len(order) <= 1:
+        return False
+
+    position = order.index(active)
+    source = order[position - 1] if position > 0 else order[position + 1]
+    gaps = layout_config["gaps"]
+    left, right = (source, active) if columns[source]["x"] < columns[active]["x"] else (active, source)
+    span = columns[right]["x"] - columns[left]["x"] + columns[right]["width"] + gaps * 2.0
+    return span > area["width"]
+
+
+def view_position(columns, order, active, layout_config, area, origin_x):
+    """niri's scroll position: column_x of the active column plus its view offset."""
+    gaps = layout_config["gaps"]
+    area_x = area["x"] - origin_x
+    total = sum(columns[index]["width"] for index in order) + gaps * (len(order) + 1)
+
+    # Everything fits, so the view never scrolled away from the first column.
+    if total <= area["width"]:
+        return -(area_x + gaps)
+
+    width = columns[active]["width"]
+    if should_center(columns, order, active, layout_config, area) and area["width"] > width:
+        offset = -(area["width"] - width) / 2.0 - area_x
+    else:
+        # compute_new_view_offset()'s left-aligned branch, the resting position
+        # after scrolling a column into view.
+        padding = min(max((area["width"] - width) / 2.0, 0.0), gaps)
+        offset = -padding - area_x
+    return columns[active]["x"] + offset
+
+
+# --------------------------------------------------------------------------
+# rectangle collection
+# --------------------------------------------------------------------------
+
+def snap(value, scale):
+    """Round a logical coordinate onto the physical pixel grid, as niri does.
+
+    Smithay's to_physical_precise_round() goes through Rust's f64::round(),
+    which breaks ties away from zero. Python's round() is half-to-even, and the
+    two disagree on exactly the .5 cases fractional scaling keeps producing.
+    """
+    physical = value * scale
+    rounded = math.floor(physical + 0.5) if physical >= 0 else math.ceil(physical - 0.5)
+    return rounded / scale
+
+
+def capture_bounds():
+    values = [env_float("MARK_SHOT_CAPTURE_" + name) for name in ("X", "Y", "WIDTH", "HEIGHT")]
+    if any(value is None for value in values):
+        return None
+    x, y, width, height = values
+    if width <= 0 or height <= 0:
+        return None
+    return (x, y, width, height)
+
+
+def nudge():
+    return tuple(env_float("MARK_SHOT_NIRI_OFFSET_" + name) or 0.0
+                 for name in ("X", "Y", "WIDTH", "HEIGHT"))
+
+
+class Collector:
+    def __init__(self, bounds):
+        self.bounds = bounds
+        self.nudge = nudge()
+        self.seen = set()
+        self.rects = []
+
+    def add(self, x, y, width, height):
+        dx, dy, dw, dh = self.nudge
+        x, y, width, height = x + dx, y + dy, width + dw, height + dh
+        if self.bounds is not None:
+            bx, by, bw, bh = self.bounds
+            left, top = max(x, bx), max(y, by)
+            right, bottom = min(x + width, bx + bw), min(y + height, by + bh)
+            x, y, width, height = left, top, right - left, bottom - top
+        if width <= 1 or height <= 1:
+            return
+        key = (int(round(x)), int(round(y)), int(round(width)), int(round(height)))
+        if key in self.seen:
+            return
+        self.seen.add(key)
+        self.rects.append({"x": key[0], "y": key[1], "width": key[2], "height": key[3]})
+
+
+def collect_workspace(collector, workspace, windows, geometry, layers, layout_config):
+    """Append every visible window rectangle of one workspace."""
+    gaps = layout_config["gaps"]
+    scale = geometry["scale"]
+    workspace_id = workspace.get("id")
+
+    # Floating windows carry an exact position; only tiled ones need rebuilding.
+    # Should a later niri start reporting tile_pos_in_workspace_view for tiled
+    # windows too, they are taken from here and skipped in the rebuild below.
+    exact = set()
+    for window in windows:
+        if window.get("workspace_id") != workspace_id:
+            continue
+        layout = window.get("layout")
+        if not isinstance(layout, dict):
+            continue
+        tile_pos = pair(layout.get("tile_pos_in_workspace_view"))
+        size = pair(layout.get("window_size"))
+        if tile_pos is None or size is None:
+            continue
+        offset = pair(layout.get("window_offset_in_tile")) or (0.0, 0.0)
+        exact.add(window.get("id"))
+        collector.add(snap(geometry["x"] + tile_pos[0] + offset[0], scale),
+                      snap(geometry["y"] + tile_pos[1] + offset[1], scale),
+                      size[0], size[1])
+
+    grouped = build_columns(windows, workspace_id)
+    if not grouped:
+        return
+
+    edge = panel_edge(layers, workspace.get("output", ""))
+    area = working_area(geometry, grouped, layout_config, edge)
+    if area is None:
+        return
+
+    order = sorted(grouped)
+    columns = {}
+    cursor = 0.0
+    for index in order:
+        width = max(entry["tile"][0] for entry in grouped[index])
+        columns[index] = {"x": cursor, "width": width}
+        cursor += width + gaps
+
+    active = active_column_index(grouped, workspace)
+    if active is None:
+        return
+
+    if is_fullscreen_column(grouped[active], geometry):
+        # A fullscreen column ignores the work area and pins the view to itself.
+        view = columns[active]["x"]
+    else:
+        view = view_position(columns, order, active, layout_config, area, geometry["x"])
+
+    for index in order:
+        entries = grouped[index]
+        column_x = geometry["x"] + columns[index]["x"] - view
+        fullscreen = is_fullscreen_column(entries, geometry)
+        y = geometry["y"] if fullscreen else area["y"] + gaps
+        for entry in entries:
+            offset = entry["offset"]
+            if entry["window"].get("id") not in exact:
+                collector.add(snap(column_x + offset[0], scale),
+                              snap(y + offset[1], scale),
+                              entry["size"][0], entry["size"][1])
+            if fullscreen:
+                continue
+            y += entry["tile"][1] + gaps
+
+
+def main():
+    outputs = niri_json("outputs")
+    workspaces = niri_json("workspaces")
+    windows = niri_json("windows")
+    layers = niri_layers()
+    if not isinstance(outputs, dict) or not isinstance(workspaces, list) or not isinstance(windows, list):
+        raise RuntimeError("unexpected niri JSON shape")
+
+    layout_config = niri_layout_config()
+    targets = workspace_targets(workspaces)
+
+    bounds = capture_bounds()
+    if bounds is None:
+        rects = [output_geometry(outputs, workspace.get("output", "")) for workspace in targets.values()]
+        rects = [rect for rect in rects if rect]
+        if rects:
+            left = min(rect["x"] for rect in rects)
+            top = min(rect["y"] for rect in rects)
+            right = max(rect["x"] + rect["width"] for rect in rects)
+            bottom = max(rect["y"] + rect["height"] for rect in rects)
+            bounds = (left, top, right - left, bottom - top)
+
+    collector = Collector(bounds)
+    for workspace in targets.values():
+        geometry = output_geometry(outputs, workspace.get("output", ""))
+        if geometry is None:
+            continue
+        collect_workspace(collector, workspace, windows, geometry, layers, layout_config)
+
+    print(json.dumps({"windows": collector.rects}, separators=(",", ":")))
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as error:  # the host only reads stdout; stderr is for logs
+        print(str(error), file=sys.stderr)
+        sys.exit(1)
