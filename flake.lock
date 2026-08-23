@@ -180,11 +180,11 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1786895434,
-        "narHash": "sha256-sZDRXp862CWvnml8SYxecL+uSxsum+oi2eho4tri2/4=",
+        "lastModified": 1787461333,
+        "narHash": "sha256-r1LX4BUMKbEPbC9uDTMfhFxSQgYIxyCtubo5Sp4KrRw=",
         "owner": "jswysnemc",
         "repo": "mark-shot",
-        "rev": "6e453ef7624a7b6954f46a3e1a25caa074646d5b",
+        "rev": "7639adbb8d844bec4a40582934252965671bbdf4",
         "type": "github"
       },
       "original": {
