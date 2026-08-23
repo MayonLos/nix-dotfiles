@@ -237,7 +237,7 @@
         Mod+E { spawn "thunar"; }
         Mod+Shift+Slash { show-hotkey-overlay; }
         Mod+Shift+Return hotkey-overlay-title="Open a Terminal: foot" { spawn "foot"; }
-        Mod+P hotkey-overlay-title="Run an Application: Noctalia Launcher" { spawn "noctalia" "msg" "panel-toggle" "launcher"; }
+        Alt+Space hotkey-overlay-title="Run an Application: Noctalia Launcher" { spawn "noctalia" "msg" "panel-toggle" "launcher"; }
         Mod+S hotkey-overlay-title="Control Center: Noctalia" { spawn "noctalia" "msg" "panel-toggle" "control-center"; }
         Super+Alt+L hotkey-overlay-title="Lock the Screen: Noctalia" { spawn "noctalia" "msg" "session" "lock"; }
 
