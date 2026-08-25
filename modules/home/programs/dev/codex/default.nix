@@ -12,8 +12,32 @@ let
   #
   # The `-c` overrides below pin config keys that codex owns; a fast-moving
   # version stream makes them likelier to drift. If codex starts rejecting them,
-  # switching this one line back to `pkgs-unstable.codex` is the whole revert.
-  codexPkg = inputs.codex-cli.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  # `codexPkg = pkgs-unstable.codex` is the whole revert.
+  #
+  # Not `inputs.codex-cli.packages.<system>.default`: that path evaluates
+  # upstream's package.nix as written, and it still reads `stdenv.isLinux`,
+  # which nixpkgs 26.05 deprecated — every `nixos-rebuild` printed
+  #
+  #   evaluation warning: stdenv.isLinux is deprecated, use
+  #   stdenv.hostPlatform.isLinux instead
+  #
+  # So the file is read, the four occurrences rewritten, and the result called
+  # against upstream's own pinned nixpkgs with the same arguments their flake
+  # uses. Their overlay only adds `codex`/`codex-node` attributes that
+  # package.nix never reads, so dropping it changes nothing: the derivation
+  # comes out bit-identical (verified — same .drv path both ways), just
+  # without the warning. Delete this whole block and go back to the one-liner
+  # once sadjow/codex-cli-nix updates.
+  codexNixpkgs = import inputs.codex-cli.inputs.nixpkgs {
+    inherit (pkgs.stdenv.hostPlatform) system;
+    config.allowUnfree = true;
+  };
+
+  codexPkg = codexNixpkgs.callPackage (builtins.toFile "codex-package.nix" (
+    builtins.replaceStrings [ "stdenv.isLinux" ] [ "stdenv.hostPlatform.isLinux" ] (
+      builtins.readFile "${inputs.codex-cli}/package.nix"
+    )
+  )) { runtime = "native"; };
 
   # `codex` with no arguments should be DeepSeek, and codex has no config
   # key or env var for "use this profile by default", so the choice has to be
