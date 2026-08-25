@@ -8,5 +8,6 @@
     ./neogen.nix
     ./trouble.nix
     ./persistence.nix
+    ./open-url.nix
   ];
 }
