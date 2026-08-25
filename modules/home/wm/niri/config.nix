@@ -235,14 +235,15 @@
 
     binds {
         Mod+E { spawn "thunar"; }
+        Mod+B hotkey-overlay-title="Open a Browser: Zen" { spawn "zen-beta"; }
         Mod+Shift+Slash { show-hotkey-overlay; }
-        Mod+Shift+Return hotkey-overlay-title="Open a Terminal: foot" { spawn "foot"; }
+        Mod+Return hotkey-overlay-title="Open a Terminal: foot" { spawn "foot"; }
         Alt+Space hotkey-overlay-title="Run an Application: Noctalia Launcher" { spawn "noctalia" "msg" "panel-toggle" "launcher"; }
         Mod+S hotkey-overlay-title="Control Center: Noctalia" { spawn "noctalia" "msg" "panel-toggle" "control-center"; }
         Super+Alt+L hotkey-overlay-title="Lock the Screen: Noctalia" { spawn "noctalia" "msg" "session" "lock"; }
 
         Mod+0 repeat=false { toggle-overview; }
-        Mod+Shift+C repeat=false { close-window; }
+        Mod+Q repeat=false { close-window; }
 
 
         Mod+H { focus-column-left; }
@@ -265,24 +266,15 @@
         Mod+Ctrl+Right { move-column-right; }
 
 
-        Mod+Shift+H { focus-monitor-left; }
-        Mod+Shift+Left { focus-monitor-left; }
-        Mod+Shift+J { focus-monitor-down; }
-        Mod+Shift+Down { focus-monitor-down; }
-        Mod+Shift+K { focus-monitor-up; }
-        Mod+Shift+Up { focus-monitor-up; }
-        Mod+Shift+L { focus-monitor-right; }
-        Mod+Shift+Right { focus-monitor-right; }
-
-
-        Mod+Shift+Ctrl+H { move-column-to-monitor-left; }
-        Mod+Shift+Ctrl+Left { move-column-to-monitor-left; }
-        Mod+Shift+Ctrl+J { move-column-to-monitor-down; }
-        Mod+Shift+Ctrl+Down { move-column-to-monitor-down; }
-        Mod+Shift+Ctrl+K { move-column-to-monitor-up; }
-        Mod+Shift+Ctrl+Up { move-column-to-monitor-up; }
-        Mod+Shift+Ctrl+L { move-column-to-monitor-right; }
-        Mod+Shift+Ctrl+Right { move-column-to-monitor-right; }
+        // The upstream default binds sixteen keys to focus-monitor-* and
+        // move-column-to-monitor-*, and this host has exactly one output
+        // (eDP-1, see the output block above). Every one of them was a no-op
+        // occupying Mod+Shift+HJKL and Mod+Shift+Ctrl+HJKL. If an external
+        // display ever gets plugged in, two lines bring the function back
+        // without the directional spread:
+        //
+        //   Mod+Shift+Tab { focus-monitor-next; }
+        //   Mod+Shift+Ctrl+Tab { move-column-to-monitor-next; }
 
 
         Mod+Page_Down { focus-workspace-down; }
