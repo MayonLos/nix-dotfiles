@@ -77,6 +77,14 @@
     # musl binary and only wants nixpkgs for the wrapper around it.
     codex-cli.url = "github:sadjow/codex-cli-nix";
 
+    # Daily-updated packages for AI coding agents that nixpkgs does not carry
+    # (dsh, zcode, ...). Deliberately NOT `follows`-ed: upstream only builds and
+    # caches against its own pinned nixpkgs-unstable, and pointing it at this
+    # flake's stable `nixpkgs` would both break eventually and miss every
+    # prebuilt binary. The cost is one extra nixpkgs evaluation; the payoff is
+    # cache.numtide.com hits, wired up in modules/system/core/nix.nix.
+    llm-agents.url = "github:numtide/llm-agents.nix";
+
     sops-nix = {
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";
