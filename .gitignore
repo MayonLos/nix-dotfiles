@@ -1,7 +1,11 @@
 /result
 /result-*
 .worktrees/
-.claude/
 .codex/
 .agents/
-CLAUDE.md
+
+# Agent configuration. Skills and subagent definitions are part of the repo —
+# they are what keeps AGENTS.md short. Local permission state is not.
+.claude/*
+!.claude/skills/
+!.claude/agents/
