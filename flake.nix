@@ -70,15 +70,8 @@
 
     claude-code.url = "github:sadjow/claude-code-nix/v2";
 
-    # Codex CLI. Same maintainer and same shape as claude-code above: prebuilt
-    # binaries from upstream's own releases, refreshed hourly by CI, so it runs
-    # ahead of nixpkgs (0.149 vs nixpkgs-unstable's 0.147 on 2026-08-22). Left
-    # un-`follows`-ed for the same reason as claude-code — it ships a static
-    # musl binary and only wants nixpkgs for the wrapper around it.
-    codex-cli.url = "github:sadjow/codex-cli-nix";
-
-    # Daily-updated packages for AI coding agents that nixpkgs does not carry
-    # (dsh, zcode, ...). Deliberately NOT `follows`-ed: upstream only builds and
+    # Daily-updated packages for AI coding agents: codex, the ChatGPT desktop
+    # app, dsh, zcode, opencode and the review/usage tooling around them. Deliberately NOT `follows`-ed: upstream only builds and
     # caches against its own pinned nixpkgs-unstable, and pointing it at this
     # flake's stable `nixpkgs` would both break eventually and miss every
     # prebuilt binary. The cost is one extra nixpkgs evaluation; the payoff is

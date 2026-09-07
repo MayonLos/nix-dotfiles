@@ -8,8 +8,8 @@
 # nixpkgs. Everything here is prebuilt on cache.numtide.com (the substituter is
 # added in modules/system/core/nix.nix), so none of it compiles locally.
 #
-# claude-code and github-copilot-cli stay in ../../packages.nix, and codex stays
-# in ./codex — those already have working sources that track upstream closely.
+# claude-code and github-copilot-cli stay in ../../packages.nix — those already
+# have working sources that track upstream closely.
 let
   agents = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system};
 in
@@ -26,6 +26,26 @@ in
     # corepack/pnpm on PATH (nodejs in ../../packages.nix provides corepack).
     # Credentials are configured on first run, not read from DEEPSEEK_API_KEY.
     agents.dsh
+
+    # OpenAI's CLI agent. Was ./codex until 2026-08-30: a symlinkJoin around
+    # the sadjow/codex-cli-nix input, whose launcher injected ~10 `-c` overrides
+    # to make bare `codex` mean DeepSeek. All of that is gone — bare `codex` is
+    # now the ChatGPT account, which is the point. This source is also newer
+    # than what it replaced (0.150.1 vs 0.149.0; nixpkgs-unstable is on 0.147.0)
+    # and drops the `stdenv.isLinux` deprecation-warning workaround that the old
+    # module carried, since it is not built from upstream's package.nix.
+    # ~/.codex/config.toml is still codex's own, unmanaged by Nix.
+    agents.codex
+
+    # The ChatGPT/Codex desktop app. Wrapped with --ozone-platform=wayland when
+    # NIXOS_OZONE_WL is set. Note it authenticates on its own and will not see
+    # the shell environment, so nothing here depends on sops.
+    agents.chatgpt
+
+    # xAI's official Grok Build coding agent. Provides both `grok` for
+    # interactive sessions and `agent` for automation. Authentication is via
+    # browser OAuth on first launch or XAI_API_KEY for non-browser use.
+    agents.grok
 
     # Terminal coding agent, provider-agnostic. Config lives in
     # ~/.config/opencode/opencode.json. Ahead of nixpkgs (1.18.25 vs 1.18.18 on
