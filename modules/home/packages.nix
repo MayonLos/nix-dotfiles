@@ -24,6 +24,8 @@
     lazygit
     duf
     nix-output-monitor
+    # Editing secrets/secrets.yaml is routine enough to want outside `nix develop`.
+    sops
     wl-clipboard
     xclip
     grim
