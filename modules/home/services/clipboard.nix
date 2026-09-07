@@ -28,6 +28,19 @@ let
       STATE_DIR="''${XDG_RUNTIME_DIR:-/tmp}/clipboard-bridge"
       HASH_STATE="$STATE_DIR/last-hash"
 
+      # Every read below is time-boxed, and that is load-bearing rather than
+      # defensive. wl-paste blocks forever if the selection owner dies during
+      # the transfer, which is routine here: mark-shot holds a screenshot with
+      # `wl-copy --foreground` and that holder is killed the moment its window
+      # closes, mid-read. A hung reader would be survivable if it only lost one
+      # sync -- but `wl-paste --watch` runs its command *serially*, so one stuck
+      # child wedges the watcher permanently and every later copy silently stops
+      # reaching X11 until the session restarts. Observed 2026-09-07: a
+      # from-wayland child sat on `wl-paste --type image/png` for seven minutes
+      # while the X11 side stayed frozen on a seven-minute-old payload, which is
+      # the "screenshot sometimes does not reach the clipboard" report.
+      READ_TIMEOUT=5
+
       # Both directions share one hash file on purpose: it is what stops the
       # two watchers from bouncing the same payload back and forth forever.
       is_duplicate() {
@@ -60,14 +73,14 @@ let
 
       sync_from_wayland() {
         local types mime tmp hash
-        types="$(wl-paste --list-types 2>/dev/null)" || return 0
+        types="$(timeout "$READ_TIMEOUT" wl-paste --list-types 2>/dev/null)" || return 0
         mime="$(pick_type "$types")" || return 0
 
         tmp="$(mktemp -t cb-wl.XXXXXX)"
         # shellcheck disable=SC2064
         trap "rm -f '$tmp'" RETURN
 
-        wl-paste --no-newline --type "$mime" >"$tmp" 2>/dev/null || return 0
+        timeout "$READ_TIMEOUT" wl-paste --no-newline --type "$mime" >"$tmp" 2>/dev/null || return 0
         [ -s "$tmp" ] || return 0
 
         hash="$(sha256sum "$tmp" | cut -d' ' -f1)"
@@ -79,20 +92,23 @@ let
           *) ;;
         esac
 
-        xclip -selection clipboard -t "$mime" -i <"$tmp" || return 0
+        # Recorded before the handover, not after: xclip taking ownership wakes
+        # clipnotify, and the from-x11 side must already see this hash or it
+        # reflects the payload straight back.
         printf '%s' "$hash" >"$HASH_STATE"
+        xclip -selection clipboard -t "$mime" -i <"$tmp" || return 0
       }
 
       sync_from_x11() {
         local types mime tmp hash
-        types="$(xclip -selection clipboard -t TARGETS -o 2>/dev/null)" || return 0
+        types="$(timeout "$READ_TIMEOUT" xclip -selection clipboard -t TARGETS -o 2>/dev/null)" || return 0
         mime="$(pick_type "$types")" || return 0
 
         tmp="$(mktemp -t cb-x11.XXXXXX)"
         # shellcheck disable=SC2064
         trap "rm -f '$tmp'" RETURN
 
-        xclip -selection clipboard -t "$mime" -o >"$tmp" 2>/dev/null || return 0
+        timeout "$READ_TIMEOUT" xclip -selection clipboard -t "$mime" -o >"$tmp" 2>/dev/null || return 0
         [ -s "$tmp" ] || return 0
 
         hash="$(sha256sum "$tmp" | cut -d' ' -f1)"
@@ -103,8 +119,8 @@ let
           *) ;;
         esac
 
-        wl-copy --type "$mime" <"$tmp"
         printf '%s' "$hash" >"$HASH_STATE"
+        wl-copy --type "$mime" <"$tmp"
       }
 
       bridge() {
@@ -153,7 +169,10 @@ in
       # DISPLAY is exported into the user bus by the dbus-update-activation-environment
       # call in niri's config; without it the X11 half silently no-ops.
       ExecStart = "${clipboardBridge}/bin/clipboard-bridge bridge";
-      Restart = "on-failure";
+      # `wait` in bridge() returns as soon as the first watcher exits, so the
+      # service can end with status 0 while the clipboard is no longer bridged.
+      # on-failure would leave that dead; always brings it back.
+      Restart = "always";
       RestartSec = 2;
     };
     Install = {
