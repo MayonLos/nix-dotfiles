@@ -1,7 +1,9 @@
-{ pkgs, ... }:
+{ pkgs, pkgs-unstable, ... }:
 
 let
   temurin = pkgs.javaPackages.compiler.temurin-bin;
+  # 26 is not in stable 26.05 yet.
+  temurin-unstable = pkgs-unstable.javaPackages.compiler.temurin-bin;
 
   # Needed both by systemd user services (which do not source the shell profile)
   # and by interactive shells, so the same set is exported through both paths.
@@ -12,6 +14,7 @@ let
     JAVA17_HOME = "${temurin.jdk-17}";
     JAVA21_HOME = "${temurin.jdk-21}";
     JAVA25_HOME = "${temurin.jdk-25}";
+    JAVA26_HOME = "${temurin-unstable.jdk-26}";
     JAVA_HOME = "${temurin.jdk-25}";
   };
 in

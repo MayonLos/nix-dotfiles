@@ -29,7 +29,7 @@ let
       fi
 
       export JAVA_HOME="$java_home"
-      path=("''${JAVA_HOME}/bin" "''${(@)path:#''${JAVA8_HOME}/bin}" "''${(@)path:#''${JAVA17_HOME}/bin}" "''${(@)path:#''${JAVA21_HOME}/bin}" "''${(@)path:#''${JAVA25_HOME}/bin}")
+      path=("''${JAVA_HOME}/bin" "''${(@)path:#''${JAVA8_HOME}/bin}" "''${(@)path:#''${JAVA17_HOME}/bin}" "''${(@)path:#''${JAVA21_HOME}/bin}" "''${(@)path:#''${JAVA25_HOME}/bin}" "''${(@)path:#''${JAVA26_HOME}/bin}")
       hash -r
       java -version
     }
@@ -38,6 +38,7 @@ let
     use-java17() { use-java JAVA17_HOME; }
     use-java21() { use-java JAVA21_HOME; }
     use-java25() { use-java JAVA25_HOME; }
+    use-java26() { use-java JAVA26_HOME; }
 
     # Point LUA_PATH/LUA_CPATH at `luarocks install --local` trees.
     # On demand rather than global: neovim honours LUA_PATH too, and its

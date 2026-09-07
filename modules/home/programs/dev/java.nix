@@ -1,6 +1,8 @@
-{ pkgs, ... }:
+{ pkgs, pkgs-unstable, ... }:
 let
   temurin = pkgs.javaPackages.compiler.temurin-bin;
+  # 26 is not in stable 26.05 yet.
+  temurin-unstable = pkgs-unstable.javaPackages.compiler.temurin-bin;
 in
 {
   home.packages = [
@@ -13,5 +15,7 @@ in
     (pkgs.writeShellScriptBin "javac21" ''exec ${temurin.jdk-21}/bin/javac "$@"'')
     (pkgs.writeShellScriptBin "java25" ''exec ${temurin.jdk-25}/bin/java "$@"'')
     (pkgs.writeShellScriptBin "javac25" ''exec ${temurin.jdk-25}/bin/javac "$@"'')
+    (pkgs.writeShellScriptBin "java26" ''exec ${temurin-unstable.jdk-26}/bin/java "$@"'')
+    (pkgs.writeShellScriptBin "javac26" ''exec ${temurin-unstable.jdk-26}/bin/javac "$@"'')
   ];
 }
