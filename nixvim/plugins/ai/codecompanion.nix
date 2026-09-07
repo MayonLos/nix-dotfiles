@@ -38,10 +38,18 @@ in
   plugins.codecompanion = {
     enable = true;
 
+    # Every user command the keymaps below reach for has to be listed, not just
+    # the three headline ones: lz-n creates a stub per name here and loads the
+    # plugin when the stub fires. A command left off the list simply does not
+    # exist until something else happens to load codecompanion, so <leader>at,
+    # <leader>aT and <leader>ax died with "E492: Not an editor command" on a
+    # cold start. Verified with vim.fn.exists(":CodeCompanionCLI") == 0.
     lazyLoad.settings.cmd = [
       "CodeCompanion"
       "CodeCompanionChat"
       "CodeCompanionActions"
+      "CodeCompanionCLI"
+      "CodeCompanionCmd"
     ];
     settings = {
       interactions = {
@@ -64,6 +72,14 @@ in
             codex.cmd = "codex";
             copilot.cmd = "copilot";
             antigravity.cmd = "agy";
+            # The other two engines from ../../../modules/home/programs/dev/ai-agents.nix.
+            # grok matters most here: AGENTS.md treats it as the non-Claude,
+            # non-codex third opinion, so it needs to be reachable from
+            # <leader>aT the same way the others are. grok also installs an
+            # `agent` binary for automation -- `grok` is the interactive one,
+            # which is what a CLI interaction wants.
+            grok.cmd = "grok";
+            opencode.cmd = "opencode";
           };
         };
       };

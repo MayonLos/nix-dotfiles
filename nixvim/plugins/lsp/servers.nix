@@ -181,6 +181,119 @@ _: {
           ];
         };
       };
+
+      # The four below close a gap the rest of the config already assumed:
+      # colorizer lazy-loads on css/scss/html/javascript/typescript/typescriptreact
+      # (plugins/appearance/colorizer.nix) and treesitter parses html/yaml/json,
+      # but nothing was ever started to actually diagnose or complete them.
+      #
+      # html, cssls and jsonls are three servers out of one package,
+      # vscode-langservers-extracted. All of them speak LSP over stdio only, so
+      # "--stdio" is mandatory rather than a preference -- without it the process
+      # starts, says nothing, and the client times out.
+      html = {
+        enable = true;
+        package = null;
+        config = {
+          cmd = [
+            "vscode-html-language-server"
+            "--stdio"
+          ];
+          filetypes = [
+            "html"
+            "templ"
+          ];
+          root_markers = [
+            "package.json"
+            ".git"
+          ];
+        };
+      };
+
+      cssls = {
+        enable = true;
+        package = null;
+        config = {
+          cmd = [
+            "vscode-css-language-server"
+            "--stdio"
+          ];
+          filetypes = [
+            "css"
+            "scss"
+            "less"
+          ];
+          root_markers = [
+            "package.json"
+            ".git"
+          ];
+        };
+      };
+
+      jsonls = {
+        enable = true;
+        package = null;
+        config = {
+          cmd = [
+            "vscode-json-language-server"
+            "--stdio"
+          ];
+          filetypes = [
+            "json"
+            "jsonc"
+          ];
+          root_markers = [
+            "package.json"
+            ".git"
+          ];
+        };
+      };
+
+      ts_ls = {
+        enable = true;
+        package = null;
+        config = {
+          cmd = [
+            "typescript-language-server"
+            "--stdio"
+          ];
+          filetypes = [
+            "javascript"
+            "javascriptreact"
+            "javascript.jsx"
+            "typescript"
+            "typescriptreact"
+            "typescript.tsx"
+          ];
+          # tsconfig/jsconfig before package.json: in a monorepo the nearest
+          # tsconfig is the right project root, and package.json would pick the
+          # workspace root instead.
+          root_markers = [
+            "tsconfig.json"
+            "jsconfig.json"
+            "package.json"
+            ".git"
+          ];
+        };
+      };
+
+      yamlls = {
+        enable = true;
+        package = null;
+        config = {
+          cmd = [
+            "yaml-language-server"
+            "--stdio"
+          ];
+          filetypes = [ "yaml" ];
+          root_markers = [ ".git" ];
+          # Schemas are off by default here: schemaStore.enable fetches its
+          # catalogue over the network on every start, which behind the proxy in
+          # modules/system/core/nix.nix is a slow first diagnostic. Turn it on if
+          # you start editing CI configs where the schema is the whole point.
+          settings.yaml.schemaStore.enable = false;
+        };
+      };
     };
 
     keymaps = [

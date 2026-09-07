@@ -1,5 +1,5 @@
 {
   imports = [
-    ./toggleterm.nix
+    ./snacks-terminal.nix
   ];
 }
