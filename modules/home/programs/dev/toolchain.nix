@@ -24,6 +24,9 @@
     nixd
     pyright
     texlab
+    typescript-language-server # ts_ls; tsserver's store path is baked into its cli.mjs
+    vscode-langservers-extracted # vscode-{html,css,json,eslint}-language-server
+    yaml-language-server
 
     # Formatters. nixfmt is the same one `nix fmt` runs through treefmt
     # (flake/dev.nix), so save-time and CI cannot disagree.

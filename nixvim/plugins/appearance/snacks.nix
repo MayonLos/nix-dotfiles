@@ -118,7 +118,28 @@
       image.enabled = false;
 
       dashboard.enabled = false;
-      terminal.enabled = false;
+
+      # terminal replaced toggleterm (unmaintained: last commit 2025-03).
+      # Unlike every other key in this block this is not an on/off switch --
+      # snacks/init.lua only auto-starts the modules listed in its `events`
+      # table and terminal is not one of them, so `enabled` is never read here.
+      # What this block actually does is set the defaults every
+      # Snacks.terminal() call merges through Snacks.config.get("terminal", ...).
+      #
+      # position must be spelled out: snacks/terminal.lua M.open resolves it as
+      # `cmd and "float" or "bottom"`, so a bare toggle with no command would
+      # open a bottom split, not the float toggleterm gave us.
+      terminal = {
+        win = {
+          position = "float";
+          # toggleterm called this "curved"; that name is toggleterm's own.
+          # snacks passes the value straight to nvim_open_win, which spells the
+          # same border "rounded".
+          border = "rounded";
+          width = 120;
+          height = 30;
+        };
+      };
     };
   };
 
