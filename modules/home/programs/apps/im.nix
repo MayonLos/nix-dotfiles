@@ -25,9 +25,10 @@ let
   # xdg-desktop-portal-wlr logged zero requests for the whole session.
   #
   # Under mango's rootless Xwayland there is nothing for XQueryTree to find, so
-  # the picker ends at "该应用已无法共享". The way a screen reaches QQ here is
-  # as a *camera*: see the v4l2loopback comment in
-  # modules/system/desktop/obs.nix. Nothing in this file can change that.
+  # the picker ends at "该应用已无法共享". Nothing in this file can change that,
+  # and nothing else in the repo does either -- the v4l2loopback virtual-camera
+  # workaround was built, tried and then removed on request. Screen sharing goes
+  # through a browser instead; see the `desktop-apps` skill.
   #
   # Verified 2026-08-13: dlopen("libpipewire-0.3.so.0") fails with QQ's own
   # environment and succeeds (pw_init included) with pipewire on the path.
