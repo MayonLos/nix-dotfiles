@@ -131,6 +131,35 @@ rotation is `rr`. This host runs one output at `scale:1.5`.
 Per-tag layouts are the point of being here: most tags are `tile` (dwm
 master-stack), and a couple stay `scroller` for the niri-style workflow.
 
+## mango inherits no session variables — mirror them with `env=`
+
+The session desktop file is `Exec=mango`, executed directly. niri got Home
+Manager's session variables because `niri-session` is a shell wrapper that
+sources `hm-session-vars.sh`; mango has no such step, so **its process
+environment starts nearly empty** (`XDG_SESSION_TYPE`, `XDG_CURRENT_DESKTOP`,
+and what it sets itself). Everything mango spawns — noctalia, and every app
+noctalia's launcher starts — inherits that.
+
+`modules/home/wm/mango/config.nix` puts them back by mirroring
+`config.home.sessionVariables` into `env=` lines, which mango setenv's into its
+own process while parsing the config (`src/config/parse_config.c:335`).
+
+The one that bites hardest is `NIXOS_OZONE_WL`: the nixpkgs Electron wrappers
+add `--ozone-platform=wayland` only when it is set, so without it every Electron
+app silently lands on XWayland and looks **blurry** at this 1.5x scale — which
+reads as a compositor scaling bug and is not one. `XMODIFIERS`,
+`GLFW_IM_MODULE` and `SDL_IM_MODULE` ride along in the same set, so input method
+in launcher-started apps depends on this too.
+
+Two things to know before editing it:
+
+- Values needing shell expansion are filtered out. mango expands `~/` and
+  nothing else, so a `${...}` or `$(...)` would be set as that literal string.
+- `systemctl --user show-environment` showing a variable proves nothing about
+  mango: Home Manager writes `systemd.user.sessionVariables` separately, so the
+  systemd/D-Bus environment can look correct while mango's own is missing it.
+  Read `/proc/$(pgrep -x mango)/environ` instead.
+
 ## noctalia
 
 Bar, launcher, lock screen, clipboard, session menu and OSD, all in
@@ -217,9 +246,17 @@ What that reaches the user as is an OBS screen-capture source that stays black,
 with nothing in OBS's own log to explain it. **`slurp` does not help** — it
 selects a *region*, not an output, and is not in that list.
 
-`modules/home/wm/mango/screencast.nix` skips the chooser instead of installing a
-picker to answer a one-answer question: `chooser_type=none` plus
-`output_name=eDP-1`. Revisit if a second output ever appears.
+The fix goes in **`xdg.portal.wlr.settings`** (NixOS), not in a
+`~/.config/xdg-desktop-portal-wlr/config`. That NixOS option generates an ini
+and the service is launched with `--config=<that ini>`, and xdpw's
+`init_config()` skips its own `$XDG_CONFIG_HOME` search entirely once
+`--config` is given — so a hand-written user config is silently never read.
+Check `ps` for the `--config=` argument before believing any xdpw config file.
+
+`modules/system/desktop/xdg.nix` sets `chooser_type=none` plus
+`output_name=eDP-1`: one output, so skip the chooser rather than install a
+picker to answer a question with one possible answer. Revisit if a second
+output ever appears.
 
 Only keys mango's own module leaves unset may be added to `xdg.portal.config.mango`;
 it already fixes `default`, Secret, ScreenCast, Screenshot and Inhibit, and

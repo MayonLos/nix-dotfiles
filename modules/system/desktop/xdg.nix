@@ -40,5 +40,27 @@
     };
 
     config.common.default = "gnome";
+
+    # xdg-desktop-portal-wlr is started with an explicit
+    # `--config=<generated ini>` (this option is what generates it), and
+    # xdpw's init_config() skips its own $XDG_CONFIG_HOME search entirely
+    # when --config is given. So a hand-written
+    # ~/.config/xdg-desktop-portal-wlr/config is silently never read; it has
+    # to go here.
+    #
+    # Without it xdpw asks a dmenu-shaped "output chooser" which screen to
+    # capture -- bemenu, wmenu, wofi, rofi -- none of which are installed, so
+    # every one failed and it gave up with "wlroots: no output found". What
+    # that reaches the user as is an OBS screen-capture source that stays
+    # black, with nothing in OBS's own log to explain it. (slurp does not
+    # help: it picks a region, not an output.)
+    #
+    # One output, so skip the chooser rather than install a picker to answer a
+    # question with one possible answer. Revisit if a second output appears.
+    wlr.settings.screencast = {
+      output_name = "eDP-1";
+      chooser_type = "none";
+      max_fps = 60;
+    };
   };
 }

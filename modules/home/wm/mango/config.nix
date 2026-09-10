@@ -1,4 +1,9 @@
-{ inputs, config, ... }:
+{
+  inputs,
+  config,
+  lib,
+  ...
+}:
 
 {
   imports = [ inputs.mango.hmModules.mango ];
@@ -25,10 +30,34 @@
         "name:^eDP-1$,width:2560,height:1600,refresh:165.002,x:0,y:0,scale:1.5,vrr:1"
       ];
 
-      # Mango must set this in its `env` list; without it, Qt apps
-      # under mango fall back to default light Fusion and modules/home/base/
-      # qt.nix's qt6ct palette is never consulted. See the comment there.
-      env = [ "QT_QPA_PLATFORMTHEME,qt6ct" ];
+      # mango is exec'd straight from the session desktop file, not through a
+      # login shell, so it inherits none of Home Manager's session variables --
+      # niri got them because niri-session is a shell wrapper that sources
+      # hm-session-vars.sh. Everything mango spawns (noctalia, and every app
+      # noctalia's launcher starts) inherits mango's environment, so the whole
+      # set has to be put back here. `env=` is setenv'd into the compositor's
+      # own process at config-parse time (src/config/parse_config.c:335).
+      #
+      # The one that bites hardest is NIXOS_OZONE_WL: the nixpkgs Electron
+      # wrappers add `--ozone-platform=wayland` only when it is set, so without
+      # it every Electron app lands on XWayland and renders visibly blurry at
+      # this 1.5x scale. Mirrored from home.sessionVariables rather than
+      # retyped, so base/session-vars.nix stays the single source of truth.
+      #
+      # Values needing shell expansion are dropped: mango expands `~/` and
+      # nothing else, so a `${...}` or `$(...)` would be set as that literal
+      # string. TMUX_TMPDIR is the one that hits this today; shells still get
+      # it from hm-session-vars.sh, which is where it matters.
+      env =
+        lib.mapAttrsToList (n: v: "${n},${toString v}") (
+          lib.filterAttrs (_: v: !(lib.hasInfix "$" (toString v))) config.home.sessionVariables
+        )
+        ++ [
+          # Not a session variable: niri carried this in its own `environment`
+          # block. Without it Qt apps come up in default light Fusion and
+          # base/qt.nix's qt6ct palette is never consulted.
+          "QT_QPA_PLATFORMTHEME,qt6ct"
+        ];
 
       # Carried over from niri's `cursor` block. cursor_hide_on_keypress is
       # mango's spelling of niri's `hide-when-typing`; there is no global

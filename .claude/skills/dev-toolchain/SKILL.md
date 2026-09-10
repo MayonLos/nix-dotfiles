@@ -1,6 +1,6 @@
 ---
 name: dev-toolchain
-description: Where language servers, formatters, linters, compilers and debug adapters are declared on this host, and the closure-size and sys.path rules that govern them. Use when adding or upgrading an LSP server, formatter or linter for nvim or Emacs, when a server starts in one editor but not the other, when editing modules/home/programs/dev/toolchain.nix or nixvim/plugins/lsp/servers.nix, when nvim's closure or rebuild time blows up, or when a DAP adapter (debugpy in particular) fails to start.
+description: Where language servers, formatters, linters, compilers and debug adapters are declared on this host, and the closure-size and sys.path rules that govern them. Use when adding or upgrading an LSP server, formatter or linter for nvim or Emacs, when a server starts in one editor but not the other, when a server is not found at runtime, when editing modules/home/programs/dev/toolchain.nix or nixvim/plugins/lsp/servers.nix, when nvim's closure or rebuild time blows up, when adding a language's compiler or interpreter, or when a DAP adapter (debugpy in particular) fails to start.
 ---
 
 # Toolchain: servers, formatters, linters
@@ -54,12 +54,13 @@ same rule: it belongs in the interpreter's `withPackages`, not the profile.
 
 ## Neovim
 
-The config is nixvim modules at `nixvim/` in the repo root, **not** under
-`modules/` — `importDir` would try to load each of its ~70 files as a Home
-Manager module. `modules/home/programs/dev/nvim.nix` is the single bridge.
-See the `nix-modules` skill.
+`EDITOR` is nvim. The config is nixvim modules at `nixvim/` in the repo root,
+bridged by `modules/home/programs/dev/nvim.nix`.
 
-`EDITOR` is nvim.
+**Everything about the editor itself — adding a plugin, lazy-loading, keymaps —
+is the `nvim-config` skill.** What belongs here is only the boundary above: the
+tools nvim *starts* live in `toolchain.nix`, and `servers.nix` names them as bare
+binaries.
 
 ## Emacs
 

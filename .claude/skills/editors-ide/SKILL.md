@@ -95,7 +95,9 @@ rewrite found a leftover `zcode.desktop.backup` in the way, failed
 `force` overwrites in place and never backs up. **Do not remove it.**
 
 `xdg.enable` is false on this host, so `xdg.desktopEntries` emits nothing —
-that is why the file is written through `home.file` directly.
+that is why the file is written through `home.file` directly. `desktop-apps`
+generalises the rule for files an application rewrites behind Home Manager's
+back.
 
 ## Delegating work to the agent CLIs
 
