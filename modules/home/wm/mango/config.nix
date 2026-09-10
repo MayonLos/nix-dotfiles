@@ -219,24 +219,29 @@
         "SUPER,7,view,7"
         "SUPER,8,view,8"
         "SUPER,9,view,9"
-        "SUPER+CTRL,1,tag,1"
-        "SUPER+CTRL,2,tag,2"
-        "SUPER+CTRL,3,tag,3"
-        "SUPER+CTRL,4,tag,4"
-        "SUPER+CTRL,5,tag,5"
-        "SUPER+CTRL,6,tag,6"
-        "SUPER+CTRL,7,tag,7"
-        "SUPER+CTRL,8,tag,8"
-        "SUPER+CTRL,9,tag,9"
-        "SUPER+SHIFT,1,tagsilent,1"
-        "SUPER+SHIFT,2,tagsilent,2"
-        "SUPER+SHIFT,3,tagsilent,3"
-        "SUPER+SHIFT,4,tagsilent,4"
-        "SUPER+SHIFT,5,tagsilent,5"
-        "SUPER+SHIFT,6,tagsilent,6"
-        "SUPER+SHIFT,7,tagsilent,7"
-        "SUPER+SHIFT,8,tagsilent,8"
-        "SUPER+SHIFT,9,tagsilent,9"
+        # tag follows, tagsilent does not: tag_client() calls
+        # client_switch_view() and then focuses the moved window
+        # (src/manage/client.c), while tag_silent() only rewrites c->tags.
+        # Shift gets the one that follows because that is the reflex; Ctrl
+        # keeps the stay-put variant for parking a window out of the way.
+        "SUPER+CTRL,1,tagsilent,1"
+        "SUPER+CTRL,2,tagsilent,2"
+        "SUPER+CTRL,3,tagsilent,3"
+        "SUPER+CTRL,4,tagsilent,4"
+        "SUPER+CTRL,5,tagsilent,5"
+        "SUPER+CTRL,6,tagsilent,6"
+        "SUPER+CTRL,7,tagsilent,7"
+        "SUPER+CTRL,8,tagsilent,8"
+        "SUPER+CTRL,9,tagsilent,9"
+        "SUPER+SHIFT,1,tag,1"
+        "SUPER+SHIFT,2,tag,2"
+        "SUPER+SHIFT,3,tag,3"
+        "SUPER+SHIFT,4,tag,4"
+        "SUPER+SHIFT,5,tag,5"
+        "SUPER+SHIFT,6,tag,6"
+        "SUPER+SHIFT,7,tag,7"
+        "SUPER+SHIFT,8,tag,8"
+        "SUPER+SHIFT,9,tag,9"
 
         # setmfact keeps dwm's convention (src/dispatch/bind.c, set_master_factor):
         # an argument below 1.0 is a *delta* applied to the current mfact, and
