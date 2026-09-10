@@ -34,7 +34,24 @@
       # which is why they pointed at the GNOME backend before. mango is plain
       # wlroots and has no such interface, so capture goes through
       # xdg-desktop-portal-wlr, which picks its region with slurp.
-      "org.freedesktop.impl.portal.FileChooser" = "gnome";
+      # NOT "gnome". xdg-desktop-portal-gnome 50 no longer draws its own file
+      # dialog -- it delegates FileChooser to Nautilus over D-Bus, and with no
+      # activatable org.gnome.Nautilus every dialog dies with
+      # "Delegated FileChooser call failed: The name is not activatable".
+      # That reaches the user as VS Code, QQ and everything else simply not
+      # opening a file picker at all. `programs.niri.enable` used to hide this
+      # by pulling Nautilus in through its useNautilus path; it left with niri.
+      #
+      # Restoring it would mean `services.dbus.packages = [ pkgs.nautilus ]`,
+      # which costs a 1.2 GiB closure and also registers
+      # org.freedesktop.FileManager1 -- i.e. "show in file manager" would start
+      # opening Nautilus instead of Thunar, which this host actually uses (see
+      # thunar-actions.nix). Not worth it for a file dialog.
+      #
+      # The cost of gtk: xdg-desktop-portal-gtk 1.15.3 is still GTK 3, so its
+      # dialog cannot do fractional scaling and will not be pixel-perfect on
+      # this 1.5x output. A working dialog beats a sharp one that never opens.
+      "org.freedesktop.impl.portal.FileChooser" = "gtk";
       "org.freedesktop.impl.portal.Settings" = "gnome";
       "org.freedesktop.impl.portal.OpenURI" = "gtk";
     };
