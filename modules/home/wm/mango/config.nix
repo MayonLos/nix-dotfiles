@@ -1,0 +1,275 @@
+{ inputs, ... }:
+
+{
+  imports = [ inputs.mango.hmModules.mango ];
+
+  wayland.windowManager.mango = {
+    enable = true;
+
+    # Mango's systemd hook already imports the session variables and starts
+    # mango-session.target, so duplicating niri's dbus-update command here
+    # would only race the same environment update.
+    systemd.enable = true;
+
+    settings = {
+      # The broad default is dwm's master-stack tile layout; tags 5 and 9 are
+      # scrollers for browsing and long-form work where side-by-side tiles fit
+      # the niri-style workflow better.
+      tagrule = [
+        "id:*,layout_name:tile"
+        "id:5,layout_name:scroller"
+        "id:9,layout_name:scroller"
+      ];
+
+      monitorrule = [
+        "name:^eDP-1$,width:2560,height:1600,refresh:165.002,x:0,y:0,scale:1.5"
+      ];
+
+      # niri sets this in its `environment` block; without it here, Qt apps
+      # under mango fall back to default light Fusion and modules/home/base/
+      # qt.nix's qt6ct palette is never consulted. See the comment there.
+      env = [ "QT_QPA_PLATFORMTHEME,qt6ct" ];
+
+      # Noctalia draws its own layer effects, so only Mango's window blur and
+      # shadows remain enabled.
+      blur = 1;
+      blur_layer = 0;
+      blur_optimized = 1;
+      blur_params_num_passes = 2;
+      blur_params_radius = 5;
+      blur_params_noise = 0.02;
+      blur_params_brightness = 0.9;
+      blur_params_contrast = 0.9;
+      blur_params_saturation = 1.0;
+      layer_animations = 0;
+      shadows = 1;
+      layer_shadows = 0;
+      shadow_only_floating = 0;
+      shadows_size = 4;
+      shadows_blur = 12;
+      shadows_position_x = 2;
+      shadows_position_y = 2;
+      shadowscolor = "0x000000ff";
+
+      borderpx = 4;
+      border_radius = 18;
+      gappih = 5;
+      gappiv = 5;
+      gappoh = 10;
+      gappov = 10;
+      smartgaps = 0;
+      no_border_when_single = 0;
+
+      animations = 1;
+      animation_type_open = "zoom";
+      animation_type_close = "slide";
+      animation_fade_in = 1;
+      animation_fade_out = 1;
+      fadein_begin_opacity = 0.5;
+      fadeout_begin_opacity = 0.5;
+      zoom_initial_ratio = 0.4;
+      zoom_end_ratio = 0.8;
+      animation_duration_move = 500;
+      animation_duration_open = 400;
+      animation_duration_tag = 300;
+      animation_duration_close = 300;
+      animation_duration_focus = 0;
+      animation_curve_open = "0.46,1.0,0.29,0.99";
+      animation_curve_move = "0.46,1.0,0.29,0.99";
+      animation_curve_tag = "0.46,1.0,0.29,0.99";
+      animation_curve_close = "0.46,1.0,0.29,0.99";
+      animation_curve_focus = "0.46,1.0,0.29,0.99";
+      animation_curve_opafadein = "0.46,1.0,0.29,0.99";
+      animation_curve_opafadeout = "0.5,0.5,0.5,0.5";
+      tag_animation_direction = 1;
+
+      scroller_structs = 20;
+      scroller_default_proportion = 0.9;
+      scroller_focus_center = 0;
+      scroller_prefer_center = 0;
+      scroller_prefer_overspread = 1;
+      edge_scroller_pointer_focus = 1;
+      edge_scroller_focus_allow_speed = 0.0;
+      scroller_proportion_preset = "0.5,0.8,1.0";
+      scroller_ignore_proportion_single = 1;
+      scroller_default_proportion_single = 1.0;
+
+      new_is_master = 1;
+      default_mfact = 0.55;
+      default_nmaster = 1;
+      tag_num = 9;
+
+      repeat_rate = 30;
+      repeat_delay = 400;
+      numlockon = 1;
+      xkb_rules_layout = "us";
+      tap_to_click = 1;
+      trackpad_natural_scrolling = 1;
+      trackpad_disable_while_typing = 1;
+      trackpad_scroll_method = 1;
+      trackpad_click_method = 1;
+      trackpad_middle_button_emulation = 1;
+      trackpad_accel_profile = 2;
+      button_map = 0;
+      sloppyfocus = 1;
+
+      # Window rules use the same app-id/title regular-expression matching as
+      # niri. Mango has no layer-rule equivalent, so Noctalia's layer effects
+      # are handled by the effect settings above instead.
+      windowrule = [
+        "isfloating:1,width:0.5,isnoborder:1,appid:^swayimg$"
+        "isfloating:1,appid:^com\\.gabm\\.satty$"
+        "isfloating:1,appid:^thunar$,title:^(Rename|重命名)"
+        "isfloating:1,width:480,appid:^zen-beta$,title:^Picture-in-Picture$"
+        "isfloating:1,appid:^(pavucontrol|org\\.pulseaudio\\.pavucontrol|blueman-manager|nm-connection-editor|org\\.gnome\\.Calculator|xdg-desktop-portal-gtk)$"
+        "isfloating:1,appid:^(polkit-.*|org\\.freedesktop\\.PolicyKit.*)$"
+        "isfloating:1,width:1080,height:920,appid:^dev\\.noctalia\\.Noctalia\\.Settings$"
+        "vrr_only_fullscreen:1,isnoradius:1,appid:^steam_app_"
+        "focused_opacity:0.8,unfocused_opacity:0.8,appid:^foot$"
+      ];
+
+      # Launches, Noctalia shell controls, tag navigation, and dwm-style
+      # master-stack operations.
+      bind = [
+        "SUPER,E,spawn,thunar"
+        "SUPER,B,spawn,zen-beta"
+        "SUPER,Return,spawn,foot"
+        "ALT,space,spawn,noctalia msg panel-toggle launcher"
+        "SUPER,S,spawn,noctalia msg panel-toggle control-center"
+        "SUPER+ALT,L,spawn,noctalia msg session lock"
+        "SUPER,0,toggleoverview"
+        "SUPER,Q,killclient"
+
+        "SUPER,H,focusdir,left"
+        "SUPER,Left,focusdir,left"
+        "SUPER,J,focusdir,down"
+        "SUPER,Down,focusdir,down"
+        "SUPER,K,focusdir,up"
+        "SUPER,Up,focusdir,up"
+        "SUPER,L,focusdir,right"
+        "SUPER,Right,focusdir,right"
+
+        "SUPER+CTRL,H,exchange_client,left"
+        "SUPER+CTRL,Left,exchange_client,left"
+        "SUPER+CTRL,J,exchange_client,down"
+        "SUPER+CTRL,Down,exchange_client,down"
+        "SUPER+CTRL,K,exchange_client,up"
+        "SUPER+CTRL,Up,exchange_client,up"
+        "SUPER+CTRL,L,exchange_client,right"
+        "SUPER+CTRL,Right,exchange_client,right"
+
+        "SUPER,Page_Down,viewtoright"
+        "SUPER,U,viewtoright"
+        "SUPER,Page_Up,viewtoleft"
+        "SUPER,I,viewtoleft"
+        "SUPER+CTRL,Page_Down,tagtoright"
+        "SUPER+CTRL,U,tagtoright"
+        "SUPER+CTRL,Page_Up,tagtoleft"
+        "SUPER+CTRL,I,tagtoleft"
+        "SUPER+SHIFT,Page_Down,tagtoright"
+        "SUPER+SHIFT,U,tagtoright"
+        "SUPER+SHIFT,Page_Up,tagtoleft"
+        "SUPER+SHIFT,I,tagtoleft"
+
+        "SUPER,1,view,1"
+        "SUPER,2,view,2"
+        "SUPER,3,view,3"
+        "SUPER,4,view,4"
+        "SUPER,5,view,5"
+        "SUPER,6,view,6"
+        "SUPER,7,view,7"
+        "SUPER,8,view,8"
+        "SUPER,9,view,9"
+        "SUPER+CTRL,1,tag,1"
+        "SUPER+CTRL,2,tag,2"
+        "SUPER+CTRL,3,tag,3"
+        "SUPER+CTRL,4,tag,4"
+        "SUPER+CTRL,5,tag,5"
+        "SUPER+CTRL,6,tag,6"
+        "SUPER+CTRL,7,tag,7"
+        "SUPER+CTRL,8,tag,8"
+        "SUPER+CTRL,9,tag,9"
+        "SUPER+SHIFT,1,tagsilent,1"
+        "SUPER+SHIFT,2,tagsilent,2"
+        "SUPER+SHIFT,3,tagsilent,3"
+        "SUPER+SHIFT,4,tagsilent,4"
+        "SUPER+SHIFT,5,tagsilent,5"
+        "SUPER+SHIFT,6,tagsilent,6"
+        "SUPER+SHIFT,7,tagsilent,7"
+        "SUPER+SHIFT,8,tagsilent,8"
+        "SUPER+SHIFT,9,tagsilent,9"
+
+        # setmfact keeps dwm's convention (src/dispatch/bind.c, set_master_factor):
+        # an argument below 1.0 is a *delta* applied to the current mfact, and
+        # only >= 1.0 is absolute, taken as value - 1.0. So the two absolute
+        # binds below read 1.55 and 1.9, not 0.55 and 0.9 -- written the obvious
+        # way they are deltas that overshoot the 0.9 guard and silently do
+        # nothing at all.
+        "SUPER,Home,focusstack,prev"
+        "SUPER,End,focusstack,next"
+        "SUPER,Tab,focuslast"
+        "SUPER,R,setmfact,+0.05"
+        "SUPER+CTRL,R,setmfact,1.55"
+        "SUPER,F,togglemaximizescreen"
+        "SUPER+SHIFT,F,togglefullscreen"
+        "SUPER+CTRL,F,setmfact,1.9"
+        "SUPER,C,centerwin"
+        "SUPER,Minus,setmfact,-0.05"
+        "SUPER,Equal,setmfact,+0.05"
+        "SUPER+SHIFT,Minus,resizewin,0,-10"
+        "SUPER+SHIFT,Equal,resizewin,0,+10"
+        "SUPER+SHIFT,space,togglefloating"
+        "SUPER,W,switch_layout"
+        "SUPER,Z,zoom"
+
+        "NONE,Print,spawn,mark-shot"
+        "SHIFT,Print,spawn,wayscrollshot"
+        "SUPER+SHIFT,E,spawn,noctalia msg panel-toggle session"
+        "CTRL+ALT,Delete,quit"
+        "SUPER,V,spawn,noctalia msg panel-toggle clipboard"
+        "SUPER+SHIFT,P,sleep_monitor,eDP-1"
+        "SUPER+SHIFT,W,spawn,noctalia msg wallpaper-random"
+        "SUPER+SHIFT,A,spawn,noctalia msg caffeine-toggle"
+
+        "SUPER+SHIFT,R,setkeymode,resize"
+        "SUPER,grave,toggle_scratchpad"
+        "SUPER+ALT,T,switcher,next"
+      ];
+
+      bindl = [
+        "NONE,XF86AudioRaiseVolume,spawn,noctalia msg volume-up"
+        "NONE,XF86AudioLowerVolume,spawn,noctalia msg volume-down"
+        "NONE,XF86AudioMute,spawn,noctalia msg volume-mute"
+        "NONE,XF86AudioMicMute,spawn,noctalia msg mic-mute"
+        "NONE,XF86MonBrightnessUp,spawn,noctalia msg brightness-up"
+        "NONE,XF86MonBrightnessDown,spawn,noctalia msg brightness-down"
+        "NONE,XF86AudioPlay,spawn,playerctl play-pause"
+        "NONE,XF86AudioStop,spawn,playerctl stop"
+        "NONE,XF86AudioPrev,spawn,playerctl previous"
+        "NONE,XF86AudioNext,spawn,playerctl next"
+      ];
+
+      keymode.resize.bind = [
+        "NONE,H,resizewin,-10,0"
+        "NONE,Left,resizewin,-10,0"
+        "NONE,J,resizewin,0,+10"
+        "NONE,Down,resizewin,0,+10"
+        "NONE,K,resizewin,0,-10"
+        "NONE,Up,resizewin,0,-10"
+        "NONE,L,resizewin,+10,0"
+        "NONE,Right,resizewin,+10,0"
+        "NONE,Escape,setkeymode,default"
+      ];
+    };
+
+    # Mango has no niri column consume/expel, first/last-column movement, preset
+    # column/window heights, center-visible-columns, floating/tiling focus
+    # switching, keyboard-shortcut inhibition, or compositor screenshot
+    # dispatcher. Those niri-only actions are intentionally not recreated with
+    # unrelated commands.
+
+    # The systemd option above supplies the dbus environment; this is the
+    # compositor's documented one-shot Noctalia startup line.
+    extraConfig = "exec-once=noctalia";
+  };
+}
