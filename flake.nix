@@ -53,6 +53,20 @@
     # against its own tested nixpkgs to avoid attr/version drift breaking the build.
     noctalia-greeter.url = "github:noctalia-dev/noctalia-greeter";
 
+    # MangoWC: a dwl-derived compositor, run as a second session next to niri
+    # (modules/system/desktop/mango.nix, modules/home/wm/mango/). It is in
+    # nixpkgs-unstable, but the flake is what carries the home-manager module
+    # that renders ~/.config/mango/config.conf from Nix, so we take the flake.
+    #
+    # Deliberately NOT `follows`-ed. mango pins its own `scenefx` against its
+    # own nixpkgs-unstable, and mango/scenefx/wlroots are a version-tight
+    # triple -- forcing this flake's stable nixpkgs on it is exactly the kind
+    # of pairing that breaks on a channel bump. Unlike the other un-followed
+    # inputs there is no binary cache to preserve here (mango publishes none),
+    # but there is also nothing to lose: it is dwl-sized C and builds in
+    # seconds.
+    mango.url = "github:mangowm/mango";
+
     # Zen browser (not in nixpkgs). Provides a home-manager module (firefox-style
     # profiles). follows nixpkgs-unstable to dedup the heavy input; home-manager is
     # left on the flake's own pin so its mkFirefoxModule stays version-matched.
