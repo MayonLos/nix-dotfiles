@@ -3,7 +3,7 @@
   # Qt apps (mark-shot, virt-manager's dialogs, ...) used to ignore the theme:
   # file dialogs came up in flat light-grey default Fusion.
   #
-  # The setup was only half done. niri's environment sets
+  # The setup was only half done. Mango's environment sets
   # QT_QPA_PLATFORMTHEME=qt6ct and noctalia's qt template renders the palette to
   # ~/.config/qt6ct/colors/noctalia.conf, but qt6ct's own qt6ct.conf was never
   # written -- without it qt6ct does not know which palette to use and falls

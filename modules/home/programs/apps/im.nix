@@ -17,7 +17,7 @@ let
   #
   # Verified 2026-08-13: dlopen("libpipewire-0.3.so.0") fails with QQ's own
   # environment and succeeds (pw_init included) with pipewire on the path.
-  # The compositor side was already fine — niri itself serves
+  # The compositor side was already fine — mango's portal setup serves
   # org.gnome.Mutter.ScreenCast, which is the backend
   # xdg-desktop-portal-gnome uses.
   #

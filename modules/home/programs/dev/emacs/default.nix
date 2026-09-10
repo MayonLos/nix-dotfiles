@@ -2,8 +2,8 @@
 
 let
   # PGTK, not the plain `emacs` attribute: that one is still the Lucid/X11
-  # build, so it would run through xwayland-satellite and inherit the integer
-  # scale X11 sees rather than niri's 1.5. PGTK talks Wayland directly and, with
+  # build, so it would run through Mango's built-in Xwayland and inherit the X11
+  # scale rather than Mango's 1.5 logical scale. PGTK talks Wayland directly and, with
   # GTK_IM_MODULE deliberately unset by the fcitx5 module (waylandFrontend =
   # true), reaches fcitx5 over text-input-v3 — the same path QQ uses, so the
   # candidate window is the one ForceWaylandDPI in base/input-method.nix fixes.

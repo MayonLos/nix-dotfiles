@@ -1,5 +1,7 @@
 {
   pkgs,
+  lib,
+  config,
   inputs,
   ...
 }:
@@ -7,18 +9,19 @@
 let
   system = pkgs.stdenv.hostPlatform.system;
 
-  # Upstream's niri window-detection script only knows waybar and
-  # DankMaterialShell panels, so with a noctalia bar it reserves nothing at the
-  # top of the work area, and it also starts the first tile of a column flush
-  # with the work area instead of one `gaps` below it. Every hover rectangle
-  # landed ~42 logical px too high: the bottom of a window fell outside the box
-  # and a strip of the bar above it was swallowed. The replacement measures the
-  # bar's exclusive zone from the tallest column and mirrors niri's own layout
-  # code; see the header comment in _mark-shot/window-detection-niri.
+  # Mango exposes every arranged client rectangle through its IPC, including
+  # tiled windows and the space reserved by layer-shell panels. The replacement
+  # therefore only filters and clips those rectangles; see the header comment
+  # in _mark-shot/window-detection-mango.
   #
-  # It replaces the file cmake installed under the same name: mark-shot resolves
-  # the command through PATH, so windowDetection.command in
-  # ~/.config/mark-shot/config.json keeps pointing at the stock name.
+  # Upstream ships detectors for gnome, hyprland, kde and niri and none for
+  # mango, so this one is added rather than replacing a file of the same name.
+  # mark-shot resolves windowDetection.command through PATH, but that command
+  # is recorded in ~/.config/mark-shot/config.json -- a file mark-shot rewrites
+  # itself, so Home Manager cannot own it. It still says
+  # `mark-shot-window-detection-niri` on a machine that came from the niri
+  # branch, which under mango would silently run upstream's niri script and
+  # get nothing back. The activation below repoints it.
   #
   # symlinkJoin rather than overrideAttrs, because overrideAttrs folds the script
   # into the main derivation and every edit to it would then recompile the whole
@@ -29,10 +32,10 @@ let
     name = "mark-shot-${mark-shot-unpatched.version}";
     paths = [ mark-shot-unpatched ];
     postBuild = ''
-      rm -f "$out/bin/mark-shot-window-detection-niri"
-      install -Dm755 ${./_mark-shot/window-detection-niri} \
-        "$out/bin/mark-shot-window-detection-niri"
-      substituteInPlace "$out/bin/mark-shot-window-detection-niri" \
+      rm -f "$out/bin/mark-shot-window-detection-mango"
+      install -Dm755 ${./_mark-shot/window-detection-mango} \
+        "$out/bin/mark-shot-window-detection-mango"
+      substituteInPlace "$out/bin/mark-shot-window-detection-mango" \
         --replace-fail '#!/usr/bin/env python3' '#!${pkgs.python3}/bin/python3'
     '';
     inherit (mark-shot-unpatched) meta;
@@ -42,7 +45,7 @@ in
   # Replaces the hand-rolled `slurp -d | grim -g | satty` pipeline.
   #
   # mark-shot does region select, annotate, copy, save and pin-to-desktop in one
-  # program, and its README states it targets Wayland compositors like niri. It
+  # program, and its README states it targets Wayland compositors. It
   # still calls grim and wl-clipboard internally, so those packages stay; satty
   # had no other user and is gone from packages.nix.
   #
@@ -53,4 +56,22 @@ in
     mark-shot
     inputs.wayscrollshot.packages.${system}.default
   ];
+
+  # Rewrite only windowDetection.command, leaving every other key mark-shot
+  # stores in that file alone. Idempotent, and a no-op once it already points
+  # at the mango helper.
+  home.activation.markShotWindowDetection = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    target="${config.xdg.configHome}/mark-shot/config.json"
+    want="mark-shot-window-detection-mango"
+    if [ -r "$target" ] \
+      && ! ${lib.getExe pkgs.jq} -e --arg w "$want" \
+             '.windowDetection.command == $w' "$target" >/dev/null; then
+      tmp="$(${pkgs.coreutils}/bin/mktemp)"
+      if ${lib.getExe pkgs.jq} --arg w "$want" \
+           '.windowDetection.command = $w' "$target" > "$tmp"; then
+        run ${pkgs.coreutils}/bin/install -m 0644 "$tmp" "$target"
+      fi
+      ${pkgs.coreutils}/bin/rm -f "$tmp"
+    fi
+  '';
 }

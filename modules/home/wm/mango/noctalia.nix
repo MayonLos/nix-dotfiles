@@ -96,11 +96,9 @@ in
             size = 32;
           };
 
-          niri_overview_type_to_launch_enabled = true;
-
           # Noctalia's built-in polkit authentication agent (the password
           # prompt for privileged actions). security.polkit.enable is already on
-          # system-side and niri runs no other polkit agent, so letting Noctalia
+          # system-side and mango runs no other polkit agent, so letting Noctalia
           # be that agent does not conflict with anything.
           polkit_agent = true;
         };
@@ -119,7 +117,7 @@ in
               "foot"
               "gtk3"
               "gtk4"
-              "niri"
+              "mango"
               "qt"
             ];
             community_ids = [
@@ -139,7 +137,7 @@ in
         #
         # That is a hard requirement on this machine: a git source clones during
         # startup, and when github is unreachable it burns the whole timeout and
-        # then segfaults, taking down the noctalia that niri autostarts -- which
+        # then segfaults, taking down the noctalia that mango autostarts -- which
         # is why both sources used to sit at enabled = false. Store paths remove
         # that failure mode and pin the versions in flake.lock; updates go
         # through nix flake update like everything else.
@@ -184,7 +182,7 @@ in
           # whatever you settled on in the GUI can be copied back here.
           #
           # Deliberately excluded: battery-threshold (needs sudo/groupadd/usermod
-          # to change system permissions), niri-animations (writes to niri's
+          # to change system permissions), compositor animations (writes to the
           # read-only HM symlink), screen-toolkit / color_picker /
           # keybind-cheatsheet (depend on hyprpicker and hyprctl, Hyprland only),
           # translator (goes through Google Translate, unreachable here).
@@ -199,7 +197,6 @@ in
             "noctalia/notes"
             "radimous/prismlauncher-instances"
             "rxtsel/portctl"
-            "salemsayed/niri-active-workspace"
             "whyoolw/sharednd"
           ];
         };
@@ -237,7 +234,7 @@ in
           # how notes went missing before).
           start = [
             "launcher"
-            "salemsayed/niri-active-workspace:active-workspace"
+            "workspaces"
             "media"
             "group:panels"
           ];

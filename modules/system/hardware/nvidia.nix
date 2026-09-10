@@ -31,10 +31,10 @@
     };
   };
 
-  environment.etc."nvidia/nvidia-application-profiles-rc.d/50-niri-vram-fix.json".text = ''
+  environment.etc."nvidia/nvidia-application-profiles-rc.d/50-mango-vram-fix.json".text = ''
     {
       "rules": [
-        { "pattern": { "feature": "procname", "matches": "niri" },
+        { "pattern": { "feature": "procname", "matches": "mango" },
           "profile": "Limit Free Buffer Pool" }
       ],
       "profiles": [
