@@ -1,12 +1,13 @@
 # nix-dotfiles
 
-NixOS + Home Manager 配置，单主机 `nixos-btw`（Intel + NVIDIA 笔记本，2560×1600 @ 165 Hz，niri 合成器）。
+NixOS + Home Manager 配置，单主机 `nixos-btw`（Intel + NVIDIA 笔记本，2560×1600 @ 165 Hz，mango 合成器）。
 
 - **框架**：flake-parts
 - **通道**：`nixpkgs` = nixos-26.05（稳定），`nixpkgs-unstable` = nixos-unstable
 - **Home Manager**：作为 NixOS 模块运行，不是 standalone
 
-配置约定和踩坑记录见 [CLAUDE.md](CLAUDE.md)（未纳入版本库，仅本地）。
+配置约定和踩坑记录见 [AGENTS.md](AGENTS.md)（`CLAUDE.md` 是指向它的软链，一份来源）。
+细节按领域拆在 `.claude/skills/` 下，AGENTS.md 里的表格说明何时该读哪一份。
 
 ## 日常命令
 
@@ -14,7 +15,7 @@ NixOS + Home Manager 配置，单主机 `nixos-btw`（Intel + NVIDIA 笔记本�
 nr                  # 重建系统（nh os switch，含 home-manager）
 nc                  # 清理旧世代（每周自动跑一次，保留最近 5 个和 14 天内的）
 nix fmt             # 格式化全部 .nix（nixfmt + deadnix + statix，走 treefmt）
-nix develop         # 开发 shell：git、gnumake、clang-tools、sops
+nix develop         # 开发 shell：git、gnumake、clang-tools、sops、age、ssh-to-age
 nix develop .#cuda  # CUDA 工具链单独一个 shell
 ```
 
@@ -42,7 +43,7 @@ lib/
 modules/
   home/                → Home Manager（用户 mayon）
     base/              身份、GTK、Qt、输入法、XDG、会话变量、Xresources
-    wm/niri/           niri 配置（单个 KDL 字符串）、noctalia
+    wm/mango/          mango 配置（key=value，由 Nix 生成）、noctalia、自研插件
     programs/
       apps/            浏览器、mpv、截图、yazi、IM 等
       dev/             编辑器、语言工具链、direnv、git
@@ -53,14 +54,14 @@ modules/
     packages.nix       用户级 CLI 工具
   system/              → NixOS
     core/              boot、locale、网络、nix 设置
-    desktop/           niri、xdg portal、greetd
+    desktop/           mango、xdg portal、greetd
     hardware/          nvidia（PRIME offload）、音频、蓝牙、固件
     programs/          clash、nix-ld、thunar 等
     security/          polkit、sops
     services/          earlyoom、openssh、docker
     user/              用户、字体、环境变量
     virtualisation/    libvirt/KVM
-nixvim/                Neovim 配置（nixvim 模块树，45 个插件模块）
+nixvim/                Neovim 配置（nixvim 模块树，58 个插件模块）
 secrets/secrets.yaml   sops 加密的 API key（可安全提交）
 ```
 
@@ -68,7 +69,7 @@ secrets/secrets.yaml   sops 加密的 API key（可安全提交）
 
 `lib/import-dir.nix` 里的 `importDir` **递归导入目录下每一个 `.nix`**，`modules/home/` 进 Home Manager，`modules/system/` 进 NixOS。新增模块不需要在任何地方登记，丢个文件进去即可。
 
-**它没有排除机制** —— 连下划线前缀都不跳过。`modules/home/_assets/` 和 `wm/niri/_plugins/` 之所以没被当成模块导入，纯粹因为里面没有 `.nix` 文件。
+**它没有排除机制** —— 连下划线前缀都不跳过。`modules/home/_assets/` 和 `wm/mango/_plugins/` 之所以没被当成模块导入，纯粹因为里面没有 `.nix` 文件。
 
 这就是 **`nixvim/` 放在仓库根目录而不是 `modules/` 下**的原因：那 45 个文件是 nixvim 模块，不是 Home Manager 模块，放进去会被逐个加载然后全部报错。只有 `modules/home/programs/dev/nvim.nix` 一个文件伸手去引用它。
 
@@ -93,7 +94,7 @@ Home Manager 把配置文件从 `/nix/store` 链接到家目录。**store 里的
 
 ```
 ~/.config/emacs/       真目录（12 项里只有 init.el、early-init.el 是 store 链接）
-~/.config/niri/        真目录（config.kdl 是链接）
+~/.config/mango/       真目录（config.conf 是链接，noctalia.conf 由主题模板写入）
 ~/.config/foot/        真目录（foot.ini 是链接）
 ~/.config/noctalia/    真目录（1/4 是链接）
 ~/.config/yazi/        真目录（3/6 是链接）
@@ -101,7 +102,7 @@ Home Manager 把配置文件从 `/nix/store` 链接到家目录。**store 里的
 
 这类由 `xdg.configFile."emacs/init.el".source = ...` 产生 —— 路径里带了文件名，HM 就只建这一个链接，父目录保持可写。
 
-**这个区别决定了应用能不能保存自己的运行时状态**：noctalia 要写 `settings.toml`、Emacs 要写 `custom.el` 和 `personal.el`、niri 要写会话数据。要是把它们的整个目录都链成 store，这些全都会失败。
+**这个区别决定了应用能不能保存自己的运行时状态**：noctalia 要写 `settings.json`、Emacs 要写 `custom.el` 和 `personal.el`、noctalia 的主题模板要往 `~/.config/mango/noctalia.conf` 里渲染配色。要是把它们的整个目录都链成 store，这些全都会失败。
 
 > 需要「配置进版本库、同时又能即时编辑」时，用 `config.lib.file.mkOutOfStoreSymlink` 链到仓库里的真实路径。本仓库目前没有用到这种模式。
 
@@ -143,7 +144,7 @@ sops secrets/secrets.yaml            # 编辑
 | fcitx5 配置 | `systemctl --user restart app-org.fcitx.Fcitx5@autostart.service`（**不是** `fcitx5-daemon`，那个是登录时竞争失败的那份） |
 | Emacs 配置 | `systemctl --user restart emacs` |
 | nvim 配置 | 无，重建即生效 |
-| niri 配置 | `niri msg action load-config` 或重登 |
+| mango 配置 | `Super+Alt+R`（reload_config）或重登；键位、窗口规则、动画都能热重载 |
 | QQ 的 wrapper | 从托盘完全退出再开 |
 
 ## 排查

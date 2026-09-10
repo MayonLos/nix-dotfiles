@@ -155,7 +155,6 @@
       # are handled by the effect settings above instead.
       windowrule = [
         "isfloating:1,width:0.5,isnoborder:1,appid:^swayimg$"
-        "isfloating:1,appid:^com\\.gabm\\.satty$"
         "isfloating:1,appid:^thunar$,title:^(Rename|重命名)"
         "isfloating:1,width:480,appid:^zen-beta$,title:^Picture-in-Picture$"
         "isfloating:1,appid:^(pavucontrol|org\\.pulseaudio\\.pavucontrol|blueman-manager|nm-connection-editor|org\\.gnome\\.Calculator|xdg-desktop-portal-gtk)$"

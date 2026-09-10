@@ -8,8 +8,8 @@ description: GTK/Qt/font theming, default applications, and the desktop apps thi
 ## Three theming surfaces, one palette
 
 noctalia owns the live palette and renders it into per-application files through
-its template system (`modules/home/wm/niri/noctalia.nix`): builtin templates for
-btop, cava, **foot, gtk3, gtk4, niri, qt**, community ones for obsidian, vscode,
+its template system (`modules/home/wm/mango/noctalia.nix`): builtin templates for
+btop, cava, **foot, gtk3, gtk4, mango, qt**, community ones for obsidian, vscode,
 yazi, **zathura, zen-browser**. Changing the theme is a runtime action, not a
 rebuild.
 
@@ -20,10 +20,10 @@ The Nix modules only set up what those templates cannot:
   `~/.config/gtk-4.0/gtk.css`. GTK3 uses `adw-gtk3-dark`, which is the theme
   noctalia's gtk3 template is written to recolor; Adwaita-dark does not pick up
   those `@define-color` overrides cleanly. Icons are Papirus-Dark, cursor is
-  Bibata-Modern-Ice at 24 (also set in niri's `cursor` block and in the greeter).
+  Bibata-Modern-Ice at 24 (also set in mango's `cursor_theme`/`cursor_size` and in the greeter).
   `dconf` sets `color-scheme = prefer-dark`. **nwg-look is unnecessary** — all of
   this is declarative.
-- **Qt** (`modules/home/base/qt.nix`) — niri's `environment` block sets
+- **Qt** (`modules/home/base/qt.nix`) — mango's `env=` lines set
   `QT_QPA_PLATFORMTHEME=qt6ct` and noctalia renders the palette to
   `~/.config/qt6ct/colors/noctalia.conf`, but qt6ct ignores it without its own
   `qt6ct.conf` naming that palette. That file is seeded (see below). This is why
@@ -89,7 +89,7 @@ The "Copy as Image" action exists because Thunar's Ctrl+C only ever puts file
 *references* on the clipboard — that is GTK file-manager design. The script
 normalises to PNG (first frame only) and writes **both** `wl-copy` and `xclip`,
 because xwayland-satellite's bridge needs keyboard focus to see the Wayland
-selection. See `desktop-niri` for the clipboard bridge story.
+selection. See `desktop-mango` for the clipboard bridge story.
 
 ## mpv, zathura, Zen
 
@@ -112,7 +112,7 @@ lags them. QQ is wrapped for libpipewire (Wayland screen sharing) and pinned to
 `--ozone-platform=wayland`; `wechat-uos` runs on XWayland by its own choice of
 `QT_QPA_PLATFORM=xcb`.
 
-Do not change the platform flags without reading `desktop-niri` first — which of
+Do not change the platform flags without reading `desktop-mango` first — which of
 the two is on XWayland determines the whole fcitx5 candidate-window DPI setup,
 and the comments inside `input-method.nix` are stale on that point.
 

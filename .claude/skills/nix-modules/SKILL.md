@@ -18,7 +18,7 @@ Adding a module means dropping a file in the right directory. There is no
 import list to update.
 
 **There is no skip mechanism** — not for `_`-prefixed directories either.
-`modules/home/_assets` and `modules/home/wm/niri/_plugins` survive only because
+`modules/home/_assets` and `modules/home/wm/mango/_plugins` survive only because
 neither contains a `.nix` file. Consequences:
 
 - Never put a non-module `.nix` file (a helper, a package expression, a
@@ -70,7 +70,7 @@ from unstable drags its own dependency closure alongside the stable one.
 Packages that come from a flake input rather than either channel (the
 `llm-agents` agents, zen-browser, noctalia, mark-shot, noctalia-greeter) are
 wired up in their own modules — see `editors-ide`, `desktop-apps` and
-`desktop-niri`.
+`desktop-mango`.
 
 A third case: a package that stable lacks but that is not "fast-moving" — Java 26
 (`java.nix`, `session-vars.nix`, `prismlauncher.nix`) and the IM apps (`im.nix`)
@@ -105,8 +105,10 @@ a file some application also rewrites at runtime (see `editors-ide` on ZCode).
 | `nix-index-database` | prebuilt weekly nix-index DB (command-not-found, `nix-locate`, comma) |
 | `treefmt-nix` | formatter orchestration — not a hand-written formatter config |
 
-niri is **not** an input; it comes from nixpkgs via `programs.niri.enable` in
-`modules/system/desktop/niri.nix`.
+mango **is** an input (`github:mangowm/mango`), deliberately not `follows`-ed,
+and is enabled in `modules/system/desktop/mango.nix`. niri, which it replaced,
+came from nixpkgs instead -- do not assume a compositor is packaged the same way
+the last one was.
 
 **Do not add `inputs.nixpkgs.follows` to the inputs that lack it.**
 `noctalia-greeter`, `mark-shot`, `wayscrollshot` and `llm-agents` each build
