@@ -71,6 +71,37 @@ the accepted trade for them not timing out one at a time when it is up.
 `no_proxy` excludes loopback because `socks5h` would otherwise hand even local
 name resolution to the proxy.
 
+### A build that hangs forever is usually a stalled substituter fetch
+
+Measured 2026-09-10: `nix build` of the system toplevel sat for **37 minutes**
+with no progress — no compiler processes, no build directories, nothing landing
+in the store — while `curl -sI https://cache.nixos.org/nix-cache-info` answered
+in 0.22 s. A download connection had wedged inside the TUN and nix waited on it
+with no timeout of its own.
+
+The fix is to give nix one:
+
+```sh
+nix build … --option stalled-download-timeout 20 --option connect-timeout 10
+```
+
+With those, the wedged connection is dropped and retried instead of pinning the
+build. Worth reaching for the moment a build looks frozen rather than slow.
+
+**How to tell frozen from slow — and one trap.** Do *not* use
+`find /nix/store -maxdepth 1 -newermt '-5 minutes'`: nix normalises store path
+mtimes to the epoch, so that always returns nothing and every build looks dead.
+Sample the path count instead, and check throughput separately:
+
+```sh
+a=$(ls /nix/store | wc -l); sleep 45; b=$(ls /nix/store | wc -l); echo $((b-a))
+awk '{s+=$1} END {print s}' /sys/class/net/*/statistics/rx_bytes   # twice, 20s apart
+```
+
+Bytes moving with zero new paths is normal — nix registers a path only after the
+whole NAR verifies, and a single CUDA or Electron NAR is hundreds of MB. Zero on
+both is the real hang.
+
 ## No Flatpak — do not add it back
 
 It was removed after measuring: 6.1 GiB on disk for four apps whose bodies

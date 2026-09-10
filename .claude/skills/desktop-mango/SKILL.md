@@ -202,6 +202,24 @@ applies a theme, and a plain `source` of a missing file is a parse error. niri
 needed an activation script to seed an empty file for exactly this reason; mango
 has the optional form built in, so there is nothing to seed.
 
+## What `programs.mango.enable` switches on behind your back
+
+It sets `services.graphical-desktop.enable`, and
+`nixos/modules/services/misc/graphical-desktop.nix` fans that out further. The
+one that costs real disk is `services.speechd.enable = lib.mkDefault true`,
+which drags in speech-dispatcher and behind it **630 MB of mbrola voice data**
+for a screen reader nothing here uses. `modules/system/desktop/mango.nix` turns
+it back off; the only casualty is "read aloud" in browsers.
+
+The general lesson, which cost a working file dialog once already: a compositor
+module is not just a compositor. When swapping one out, diff what the old
+module's `config` block provided — `programs.niri.enable` was also supplying
+`services.gnome.gnome-keyring.enable`, an `xdg-desktop-portal-gnome` in
+`extraPortals`, and `services.dbus.packages = [ pkgs.nautilus ]`. The first two
+were carried over deliberately; the third was missed, and GNOME 50's portal
+delegates FileChooser to Nautilus over D-Bus, so every file dialog in every app
+died with `The name is not activatable` until FileChooser was pointed at gtk.
+
 ## Portals: add to extraPortals, never replace it
 
 Entries arrive from three different modules and the merged list is correct only
