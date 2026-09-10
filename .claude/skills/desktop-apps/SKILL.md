@@ -147,10 +147,17 @@ Things that look like fixes and are not:
   exactly the functions QQ uses, but the repo was archived 2025-09 and its
   wlroots black-screen issue is unresolved.
 
-**The working route is the virtual camera.** `modules/system/desktop/obs.nix`
-configures v4l2loopback for it: OBS captures through the portal (which works)
-and writes to `/dev/video9`, and QQ picks "OBS Virtual Camera" from its *camera*
-dropdown. `exclusive_caps=1` is what makes an Electron app accept the node at
-all; `video_nr=9` keeps it from racing the real webcam for `/dev/video0`. No
-`video` group needed — v4l2loopback nodes carry udev's `uaccess` tag, so logind
-ACLs them to the active user.
+**There is no working native route, and none is configured.** A v4l2loopback
+virtual camera (OBS captures through the portal, writes to a loopback node, QQ
+picks it from its *camera* dropdown) was built and verified working here on
+2026-09-10, then removed on request because it was not going to be used. Do not
+re-add `modules/system/desktop/obs.nix` assuming it went missing -- deleting it
+was deliberate. The details, if it is ever wanted back:
+`devices=1 video_nr=9 card_label="OBS Virtual Camera" exclusive_caps=1`, where
+`exclusive_caps` is what makes an Electron app accept the node at all and
+`video_nr` stops it racing the real webcam for `/dev/video0`; no `video` group
+is needed because v4l2loopback nodes carry udev's `uaccess` tag.
+
+For an actual meeting, use the **web client in a browser**: browser screen
+sharing goes through `org.freedesktop.portal.ScreenCast` and works normally
+here.
