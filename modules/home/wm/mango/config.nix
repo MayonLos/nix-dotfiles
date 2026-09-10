@@ -22,13 +22,21 @@
       ];
 
       monitorrule = [
-        "name:^eDP-1$,width:2560,height:1600,refresh:165.002,x:0,y:0,scale:1.5"
+        "name:^eDP-1$,width:2560,height:1600,refresh:165.002,x:0,y:0,scale:1.5,vrr:1"
       ];
 
       # Mango must set this in its `env` list; without it, Qt apps
       # under mango fall back to default light Fusion and modules/home/base/
       # qt.nix's qt6ct palette is never consulted. See the comment there.
       env = [ "QT_QPA_PLATFORMTHEME,qt6ct" ];
+
+      # Carried over from niri's `cursor` block. cursor_hide_on_keypress is
+      # mango's spelling of niri's `hide-when-typing`; there is no global
+      # prefer-no-csd equivalent (mango's allow_csd is a windowrule field only,
+      # and it does not ask clients for decorations anyway).
+      cursor_theme = "Bibata-Modern-Ice";
+      cursor_size = 24;
+      cursor_hide_on_keypress = 1;
 
       # Noctalia draws its own layer effects, so only Mango's window blur and
       # shadows remain enabled.
@@ -268,11 +276,22 @@
     # dispatcher. Those actions are intentionally not recreated with unrelated
     # commands.
 
-    # The systemd option above supplies the dbus environment; this is the
-    # compositor's documented one-shot Noctalia startup line.
-    extraConfig = ''
-      exec-once=noctalia
+    # `systemd.enable` above only *defines* mango-session.target. The line that
+    # actually runs `dbus-update-activation-environment --systemd` and
+    # `systemctl --user start mango-session.target` lives in the autostart
+    # script the module generates -- and the module only writes that script,
+    # and only adds its `exec-once`, when `autostart_sh` is non-empty
+    # (nix/hm-modules.nix). Starting noctalia from `extraConfig` instead left
+    # autostart_sh empty, so the target never started; graphical-session.target
+    # BindsTo it, so every user unit hanging off it stayed dead -- cliphist,
+    # xrdb-merge, fcitx5-daemon -- and D-Bus-activated launches never saw
+    # NIXOS_OZONE_WL, which sent Electron apps to XWayland and made them blurry.
+    # Anything to autostart belongs here, not in an `exec-once` of its own.
+    autostart_sh = ''
+      noctalia &
+    '';
 
+    extraConfig = ''
       # Noctalia's builtin "mango" theme template renders the palette to
       # $XDG_CONFIG_HOME/mango/noctalia.conf (assets/templates/builtin.toml).
       # Sourced last so those colours win over anything set above.
