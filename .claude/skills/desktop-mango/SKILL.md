@@ -158,7 +158,13 @@ Two things to know before editing it:
 - `systemctl --user show-environment` showing a variable proves nothing about
   mango: Home Manager writes `systemd.user.sessionVariables` separately, so the
   systemd/D-Bus environment can look correct while mango's own is missing it.
-  Read `/proc/$(pgrep -x mango)/environ` instead.
+- **`/proc/$(pgrep -x mango)/environ` proves nothing either**, and reading it as
+  if it did wasted a whole debugging round here. That file is the environment
+  block as it was at `exec`; the `env=` entries are applied later by `setenv()`
+  while mango parses its config, and never appear in it. mango's environ shows
+  the bare greetd/PAM set (`EDITOR=nano` and friends) even when everything is
+  working. Check a **child** instead — `tr '\0' '\n' < /proc/$(pgrep -x
+  noctalia)/environ` — since inheritance is the thing that actually matters.
 
 ## noctalia
 
