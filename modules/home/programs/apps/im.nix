@@ -17,9 +17,12 @@ let
   #
   # Verified 2026-08-13: dlopen("libpipewire-0.3.so.0") fails with QQ's own
   # environment and succeeds (pw_init included) with pipewire on the path.
-  # The compositor side was already fine — mango's portal setup serves
-  # org.gnome.Mutter.ScreenCast, which is the backend
-  # xdg-desktop-portal-gnome uses.
+  # That half was verified under niri, whose portal setup served
+  # org.gnome.Mutter.ScreenCast. It does NOT carry over to mango: mango is
+  # plain wlroots with no Mutter interface, so screen capture goes through
+  # xdg-desktop-portal-wlr instead (modules/system/desktop/xdg.nix). The
+  # LD_LIBRARY_PATH wrap below is about QQ's own dlopen and is unaffected by
+  # which portal backend serves the request.
   #
   # No --enable-features=WebRTCPipeWireCapturer is added on purpose: it is
   # default-on since Chromium 110, and Chromium takes the *last*

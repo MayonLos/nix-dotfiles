@@ -287,6 +287,13 @@ in
           vertical_format = "{:%H\n%M}";
         };
 
+        widget.workspaces = {
+          # mango always defines all `tag_num` tags, so the bar would otherwise
+          # show 1-9 permanently. This collapses a tag out of the row once it
+          # holds no windows; the active tag stays visible even when empty.
+          hide_when_empty = true;
+        };
+
         wallpaper = {
           enabled = true;
           directory = wallpaperDir;
