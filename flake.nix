@@ -123,6 +123,24 @@
           _module.args.pkgs = import inputs.nixpkgs {
             inherit system;
             config.allowUnfree = true;
+            overlays = [
+              # xdg-desktop-portal-wlr is what serves ScreenCast under mango.
+              # Stable is 0.8.2; 0.8.3 took over driving the PipeWire graph and
+              # 0.8.4 fixed streams freezing on PipeWire buffer starvation --
+              # both squarely in the "screen share dies after a while" class.
+              #
+              # It has to be an overlay rather than a package option:
+              # nixos/modules/config/xdg/portals/wlr.nix hardcodes
+              # `pkgs.xdg-desktop-portal-wlr` for BOTH the extraPortals entry
+              # and the systemd ExecStart it overrides, and mango's own module
+              # adds the same attribute again. Listing an unstable copy
+              # alongside would put two different versions of one backend on the
+              # bus. legacyPackages, not a second `import`, so this costs no
+              # extra nixpkgs evaluation.
+              (_: _: {
+                inherit (inputs.nixpkgs-unstable.legacyPackages.${system}) xdg-desktop-portal-wlr;
+              })
+            ];
           };
         };
     };
