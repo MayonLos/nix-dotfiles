@@ -203,10 +203,12 @@
         "SUPER+CTRL,U,tagtoright"
         "SUPER+CTRL,Page_Up,tagtoleft"
         "SUPER+CTRL,I,tagtoleft"
-        "SUPER+SHIFT,Page_Down,tagtoright"
-        "SUPER+SHIFT,U,tagtoright"
-        "SUPER+SHIFT,Page_Up,tagtoleft"
-        "SUPER+SHIFT,I,tagtoleft"
+        # niri had two distinct pairs here -- move-column-to-workspace and
+        # move-workspace -- and mango has only the first, so the Shift pair was
+        # a byte-identical duplicate of the Ctrl pair above. Reused for the one
+        # dwm knob the layout has and nothing else could reach: nmaster.
+        "SUPER+SHIFT,I,incnmaster,1"
+        "SUPER+SHIFT,U,incnmaster,-1"
 
         "SUPER,1,view,1"
         "SUPER,2,view,2"
@@ -245,7 +247,10 @@
         "SUPER,Home,focusstack,prev"
         "SUPER,End,focusstack,next"
         "SUPER,Tab,focuslast"
-        "SUPER,R,setmfact,+0.05"
+        # niri's Mod+R was switch-preset-column-width; this is its real
+        # counterpart, cycling scroller_proportion_preset on a scroller tag.
+        # It used to be a second copy of SUPER+Equal.
+        "SUPER,R,switch_proportion_preset"
         "SUPER+CTRL,R,setmfact,1.55"
         "SUPER,F,togglemaximizescreen"
         "SUPER+SHIFT,F,togglefullscreen"
@@ -258,6 +263,10 @@
         "SUPER+SHIFT,space,togglefloating"
         "SUPER,W,switch_layout"
         "SUPER,Z,zoom"
+        "SUPER+SHIFT,G,togglegaps"
+        # mango hot-reloads config.conf; without a bind there is no way to ask
+        # for it after editing the file by hand.
+        "SUPER+ALT,R,reload_config"
 
         "NONE,Print,spawn,mark-shot"
         "SHIFT,Print,spawn,wayscrollshot"
