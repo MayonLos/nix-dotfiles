@@ -24,6 +24,19 @@
     lazygit
     duf
     nix-output-monitor
+    # `find` to ripgrep/eza/bat's `grep`/`ls`/`cat`; the one missing sibling of
+    # the set above.
+    fd
+    # Not only for interactive use: screenshot.nix's activation reaches for it
+    # through lib.getExe, and mmsg / noctalia both speak JSON.
+    jq
+    hexyl
+    # `duf` covers filesystems; this is the "what ate the disk" half. Worth
+    # having when the system closure is 60+ GiB.
+    dust
+    # tldr client. Complements nix-index + comma, which answer "which package
+    # has this binary" rather than "how do I use it".
+    tealdeer
     # Editing secrets/secrets.yaml is routine enough to want outside `nix develop`.
     sops
     wl-clipboard
@@ -38,6 +51,19 @@
     playerctl
     libdecor
     lenovo-legion
+    # No nvtop. Every variant with the NVIDIA backend pulls cuda-merged, i.e.
+    # nvcc + cublas + cufft + cusolver + cusparse + npp -- 2.9 GiB of CUDA for a
+    # GPU monitor, verified with `nix why-depends --derivation` on the system
+    # toplevel. `nvidia-smi` ships with the driver and already answers the same
+    # questions; CUDA proper stays in the `.#cuda` dev shell where it belongs.
+    # imagemagick above covers stills; this is the video/audio half. OBS bundles
+    # its own copy but does not put it on PATH.
+    ffmpeg
+    yt-dlp
+    # system/user/environment.nix has unzip and unrar; 7z covers the rest.
+    p7zip
+    # ships the `qalc` CLI calculator.
+    libqalculate
     protonup-qt
     obsidian
     go-musicfox

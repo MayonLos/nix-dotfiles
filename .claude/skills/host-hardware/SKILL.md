@@ -5,7 +5,7 @@ description: Host-level decisions on nixos-btw (Intel + NVIDIA laptop) — GPU o
 
 # Host: nixos-btw
 
-Single host: Intel + NVIDIA laptop, 2560×1600 internal display, niri compositor.
+Single host: Intel + NVIDIA laptop, 2560×1600 internal display, mango compositor.
 Entry point `hosts/nixos-btw/default.nix`, hardware in `hosts/nixos-btw/hardware.nix`.
 
 ## NVIDIA — PRIME offload, finegrained off
@@ -21,7 +21,7 @@ Two settings there are about the same shutdown crash and must stay as they are:
 - `nvidiaPersistenced = true` — makes shutdown take the proper driver teardown
   path, avoiding the `nv_drm_master_drop` → `ReleaseOwnership` NULL deref.
 
-`open = true` (the open kernel modules) and a niri-specific application profile
+`open = true` (the open kernel modules) and a compositor-specific application profile
 capping `GLVidHeapReuseRatio` (a VRAM leak workaround) are also set in that file.
 CUDA lives in `modules/system/hardware/cuda.nix` and the `nix develop .#cuda`
 shell.
@@ -100,7 +100,7 @@ is short: `core/boot.nix`, `core/locale.nix`, `hardware/audio.nix` (pipewire),
 `user/environment.nix`.
 
 Neighbouring skills own the rest: `gaming-stack` for Steam/gamescope/gamemode,
-`desktop-niri` for the compositor and greeter, `desktop-apps` for theming and
+`desktop-mango` for the compositor and greeter, `desktop-apps` for theming and
 fonts, `shell-terminal` for zsh and the terminal stack, `nix-modules` for the
 flake and channel rules.
 

@@ -14,8 +14,8 @@ is no binary cache, but the build is dwl-sized C and takes seconds.
 - `modules/home/wm/mango/config.nix` — the compositor config
 - `modules/home/wm/mango/noctalia.nix` — the shell
 
-The `main` branch is still pure niri and exists as the fallback. Do not port
-mango changes onto it.
+`main` is this configuration. The last pure-niri state is commit `6c006fe`,
+reachable from history (`git switch -c niri 6c006fe`) but no longer a branch.
 
 ## Verify config keys against the source, not the docs site
 
