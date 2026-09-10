@@ -6,14 +6,28 @@
 }:
 
 let
-  # QQ 3.2.32 bundles Electron 40 / Chromium 144, which does have the Wayland
-  # screen-capture path compiled in: the binary carries
-  # org.freedesktop.portal.ScreenCast + SelectSources and dlopens
-  # libpipewire-0.3.so.0 at runtime. The dlopen is the problem — nixpkgs'
-  # wrapper only puts libglvnd and util-linux-minimal on LD_LIBRARY_PATH, and
-  # none of the 25 RPATH entries mention pipewire, so on NixOS (no /usr/lib)
-  # the load fails and WebRTC silently falls back to having no capturer.
-  # That is why screen sharing does nothing under Wayland.
+  # nixpkgs' wrapper puts only libglvnd and util-linux-minimal on
+  # LD_LIBRARY_PATH and none of the 25 RPATH entries mention pipewire, so on
+  # NixOS (no /usr/lib) QQ's runtime dlopen of libpipewire-0.3.so.0 fails.
+  # The wrap below fixes that, and it works: `grep libpipewire /proc/<qq>/maps`
+  # shows the library mapped. Keep it — QQ reaches for pipewire on more than
+  # one path and this is cheap.
+  #
+  # **It does not buy screen sharing, and the earlier claim here that it did
+  # was wrong.** Re-verified 2026-09-10 against qq-3.2.32's binary: QQ's own
+  # share picker is X11-only. It carries XQueryTree / XGetImage /
+  # XShmGetImage and has no Wayland toplevel enumeration whatsoever — neither
+  # zwlr_foreign_toplevel_manager_v1 nor ext_foreign_toplevel_list_v1 is in the
+  # binary, and the only Wayland globals it names are
+  # ext_input_manager_v1/ext_input_v1. The org.freedesktop.portal.ScreenCast
+  # and SelectSources strings that suggested otherwise are Electron's own code,
+  # on a path QQ's picker never takes: with the share dialog open,
+  # xdg-desktop-portal-wlr logged zero requests for the whole session.
+  #
+  # Under mango's rootless Xwayland there is nothing for XQueryTree to find, so
+  # the picker ends at "该应用已无法共享". The way a screen reaches QQ here is
+  # as a *camera*: see the v4l2loopback comment in
+  # modules/system/desktop/obs.nix. Nothing in this file can change that.
   #
   # Verified 2026-08-13: dlopen("libpipewire-0.3.so.0") fails with QQ's own
   # environment and succeeds (pw_init included) with pipewire on the path.
@@ -41,8 +55,8 @@ let
   # initialised. Its input now goes through text-input-v3, where classicui
   # already scales correctly from wp_fractional_scale_v1.
   #
-  # If the tray icon or screen sharing regresses, drop this one flag; nothing
-  # else here depends on it.
+  # If the tray icon regresses, drop this one flag; nothing else here depends
+  # on it. Screen sharing is not a reason to touch it either way — see above.
   qq = pkgs.symlinkJoin {
     name = "qq-with-pipewire";
     paths = [ pkgs-unstable.qq ];
