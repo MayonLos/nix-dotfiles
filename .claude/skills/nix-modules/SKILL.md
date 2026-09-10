@@ -68,8 +68,14 @@ demonstrably too old for a package that must track upstream; a package pulled
 from unstable drags its own dependency closure alongside the stable one.
 
 Packages that come from a flake input rather than either channel (the
-`llm-agents` agents, zen-browser, noctalia, mark-shot) are wired up in their
-own modules — see `dev-toolchain` and `editors-ide`.
+`llm-agents` agents, zen-browser, noctalia, mark-shot, noctalia-greeter) are
+wired up in their own modules — see `editors-ide`, `desktop-apps` and
+`desktop-niri`.
+
+A third case: a package that stable lacks but that is not "fast-moving" — Java 26
+(`java.nix`, `session-vars.nix`, `prismlauncher.nix`) and the IM apps (`im.nix`)
+each reach into `pkgs-unstable` for one attribute with a comment saying why.
+Follow that pattern rather than adding the package to the unstable list above.
 
 ## Home Manager runs as a NixOS module
 
@@ -110,6 +116,11 @@ comment in `flake.nix` saying so. The cost is an extra nixpkgs evaluation.
 
 `lib/default.nix` exposes exactly one helper, `importDir`. Keep it that way
 unless something genuinely needs sharing across host and flake.
+
+`flake/dev.nix` holds the two dev shells (`default`: git, gnumake, clang-tools,
+sops, age, ssh-to-age — `.#cuda`: cudatoolkit, cudnn, nvcc) and the treefmt
+config. Per-project toolchains belong in that project's own `.envrc`/flake, not
+here — see `dev-toolchain` on direnv.
 
 ## Commands
 

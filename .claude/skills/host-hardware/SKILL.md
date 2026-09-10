@@ -57,6 +57,20 @@ listed on purpose — when the name does not match, TCP inside the TUN is droppe
 by the INPUT chain while UDP/DNS keeps working, which presents as "the proxy is
 on and now nothing connects". Do not prune either name.
 
+### nix-daemon has its own proxy
+
+`modules/system/core/nix.nix` sets `http_proxy`/`https_proxy` to
+`socks5h://localhost:7897` (Clash Verge's mixed port) **on the nix-daemon unit**.
+Substituter and tarball downloads run inside that daemon, which inherits nothing
+from your shell; flake *input* fetches happen in the `nix` client process and use
+the user environment instead, which is why the two can behave differently.
+
+This hard-depends on Clash listening there: with Clash down, daemon-side
+downloads fail outright rather than falling back to a direct connection. That is
+the accepted trade for them not timing out one at a time when it is up.
+`no_proxy` excludes loopback because `socks5h` would otherwise hand even local
+name resolution to the proxy.
+
 ## No Flatpak — do not add it back
 
 It was removed after measuring: 6.1 GiB on disk for four apps whose bodies
@@ -77,10 +91,16 @@ Chromium fails to `dlopen` libpipewire otherwise.
 Reach for nixpkgs, `nix-ld` (`modules/system/programs/nix-ld.nix`) or an FHS
 wrapper before considering Flatpak again.
 
-## Shell
+## Everything else on this host
 
-Pure Home Manager built-ins, **no framework** — `autosuggestion`,
-`syntaxHighlighting`, `plugins`, with starship and zoxide. Prefix history search
-(↑/↓) uses the built-in `up-line-or-beginning-search`. The init script lives in a
-`let zshInit = ''…''` binding so everything stays inside one `programs = { … }`
-attrset. Git diffs page through delta, configured via `programs.git.delta`.
+Small, comment-free modules nobody has needed a rule for yet — read the file, it
+is short: `core/boot.nix`, `core/locale.nix`, `hardware/audio.nix` (pipewire),
+`hardware/bluetooth.nix`, `hardware/firmware.nix`, `hardware/intel-video.nix`,
+`security/polkit.nix`, `services/systemd.nix`, `user/mayon.nix`,
+`user/environment.nix`.
+
+Neighbouring skills own the rest: `gaming-stack` for Steam/gamescope/gamemode,
+`desktop-niri` for the compositor and greeter, `desktop-apps` for theming and
+fonts, `shell-terminal` for zsh and the terminal stack, `nix-modules` for the
+flake and channel rules.
+
