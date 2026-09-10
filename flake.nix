@@ -37,7 +37,7 @@
     # Noctalia plugin repositories, consumed as plain source trees rather than
     # through noctalia's own git fetcher. A `kind = "path"` plugin source points
     # straight at the store path, so nothing is cloned at startup — see the
-    # comment on settings.plugins in modules/home/wm/niri/noctalia.nix.
+    # comment on settings.plugins in modules/home/wm/mango/noctalia.nix.
     noctalia-plugins-official = {
       url = "github:noctalia-dev/official-plugins";
       flake = false;
@@ -53,8 +53,8 @@
     # against its own tested nixpkgs to avoid attr/version drift breaking the build.
     noctalia-greeter.url = "github:noctalia-dev/noctalia-greeter";
 
-    # MangoWC: a dwl-derived compositor, run as a second session next to niri
-    # (modules/system/desktop/mango.nix, modules/home/wm/mango/). It is in
+    # MangoWC: the compositor this host runs (modules/system/desktop/mango.nix,
+    # modules/home/wm/mango/), a dwl derivative. It is in
     # nixpkgs-unstable, but the flake is what carries the home-manager module
     # that renders ~/.config/mango/config.conf from Nix, so we take the flake.
     #

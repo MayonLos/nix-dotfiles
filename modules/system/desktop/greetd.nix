@@ -9,7 +9,7 @@
   programs.noctalia-greeter = {
     enable = true;
     settings = {
-      session.default = "Niri";
+      session.default = "Mango";
       appearance.password_style = "random";
       keyboard.layout = "us";
       cursor = {
@@ -26,5 +26,4 @@
 
   environment.systemPackages = [ pkgs.bibata-cursors ];
 
-  systemd.user.services.niri.enableDefaultPath = false;
 }

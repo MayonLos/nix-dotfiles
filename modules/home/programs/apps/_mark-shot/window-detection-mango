@@ -1,0 +1,171 @@
+#!/usr/bin/env python3
+"""Window rectangles for mark-shot's hover selection, on mango.
+
+Mango publishes each arranged client's final global logical rectangle through
+``mmsg get all-clients``. That already includes tiled geometry and any
+layer-shell reservation, so this replacement only filters visible clients and
+clips their rectangles to mark-shot's requested capture area. It is short
+because no layout reconstruction or bar measurement is needed.
+
+Output: {"windows": [{x, y, width, height}, ...]} in global logical pixels.
+
+Environment (all optional):
+  MARK_SHOT_CAPTURE_{X,Y,WIDTH,HEIGHT}  clip every rectangle to this area
+  MARK_SHOT_CAPTURE_OUTPUT              restrict to one mango monitor name
+  MARK_SHOT_CAPTURE_ALL_OUTPUTS=1       include visible clients on every output
+"""
+
+import json
+import math
+import os
+import shutil
+import subprocess
+import sys
+
+
+def env_float(name):
+    value = os.environ.get(name)
+    if not value:
+        return None
+    try:
+        return float(value)
+    except ValueError:
+        return None
+
+
+def capture_bounds():
+    values = [
+        env_float("MARK_SHOT_CAPTURE_" + name)
+        for name in ("X", "Y", "WIDTH", "HEIGHT")
+    ]
+    if any(value is None for value in values):
+        return None
+    x, y, width, height = values
+    if width <= 0 or height <= 0:
+        return None
+    return x, y, width, height
+
+
+def mmsg_json(binary, query):
+    result = subprocess.run(
+        [binary, "get", query],
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        timeout=2,
+    )
+    return json.loads(result.stdout)
+
+
+def list_from_response(response, key):
+    """Accept both mango's array form and its keyed IPC response form."""
+    if isinstance(response, list):
+        return response
+    if isinstance(response, dict) and isinstance(response.get(key), list):
+        return response[key]
+    raise RuntimeError(f"unexpected mango JSON shape for {key}")
+
+
+def output_filter(monitors):
+    if os.environ.get("MARK_SHOT_CAPTURE_ALL_OUTPUTS") == "1":
+        return None
+
+    wanted = os.environ.get("MARK_SHOT_CAPTURE_OUTPUT", "").strip()
+    if wanted:
+        return {wanted}
+
+    # With no explicit output, match mark-shot's normal current-screen mode.
+    # If the compositor gives us no selected monitor, keeping all outputs is a
+    # safer fallback than returning no rectangles at all.
+    active = {
+        monitor.get("name")
+        for monitor in monitors
+        if isinstance(monitor, dict) and monitor.get("active")
+    }
+    active.discard(None)
+    return active or None
+
+
+def round_pixel(value):
+    """Round halfway cases away from zero, as a geometry helper should."""
+    return math.floor(value + 0.5) if value >= 0 else math.ceil(value - 0.5)
+
+
+def collect_rectangles(clients, monitors, bounds):
+    allowed_outputs = output_filter(monitors)
+    rectangles = []
+    seen = set()
+
+    for client in clients:
+        if not isinstance(client, dict):
+            continue
+        if not client.get("is_visible") or client.get("is_minimized"):
+            continue
+        # Scratchpad, overlay, and global clients stay eligible when mango
+        # reports them as visible: their geometry is on screen and mark-shot
+        # should be able to select it. Hidden scratchpad clients are already
+        # excluded by is_visible.
+        if allowed_outputs is not None and client.get("monitor") not in allowed_outputs:
+            continue
+
+        try:
+            x = float(client["x"])
+            y = float(client["y"])
+            width = float(client["width"])
+            height = float(client["height"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if width <= 0 or height <= 0:
+            continue
+
+        if bounds is not None:
+            bx, by, bw, bh = bounds
+            x = max(x, bx)
+            y = max(y, by)
+            right = min(x + width, bx + bw)
+            bottom = min(y + height, by + bh)
+            width = right - x
+            height = bottom - y
+        if width <= 1 or height <= 1:
+            continue
+
+        rectangle = {
+            "x": round_pixel(x),
+            "y": round_pixel(y),
+            "width": round_pixel(width),
+            "height": round_pixel(height),
+        }
+        if rectangle["width"] <= 1 or rectangle["height"] <= 1:
+            continue
+        key = tuple(rectangle.values())
+        if key in seen:
+            continue
+        seen.add(key)
+        rectangles.append(rectangle)
+
+    return rectangles
+
+
+def main():
+    binary = os.environ.get("MARK_SHOT_MMSG_BIN") or shutil.which("mmsg")
+    if not binary:
+        raise RuntimeError("mmsg command not found")
+
+    clients = list_from_response(mmsg_json(binary, "all-clients"), "clients")
+    monitors = list_from_response(mmsg_json(binary, "all-monitors"), "monitors")
+    print(
+        json.dumps(
+            {"windows": collect_rectangles(clients, monitors, capture_bounds())},
+            separators=(",", ":"),
+        )
+    )
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as error:  # mark-shot only reads stdout; stderr is for logs
+        print(json.dumps({"windows": []}, separators=(",", ":")))
+        print(str(error), file=sys.stderr)
+        sys.exit(1)

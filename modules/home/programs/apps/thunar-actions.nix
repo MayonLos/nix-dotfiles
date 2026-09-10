@@ -50,13 +50,11 @@ let
       fi
 
       # Both clipboards get written:
-      #   wl-copy -> native Wayland clients (QQ, Zen, Typora, everything niri)
+      #   wl-copy -> native Wayland clients (QQ, Zen and Typora)
       #   xclip   -> XWayland clients (wechat-uos pins QT_QPA_PLATFORM=xcb)
-      # xwayland-satellite is supposed to keep those two in sync, but it reads
-      # the Wayland selection through the seat's wl_data_device, which requires
-      # keyboard focus — so a copy performed while a Wayland window is focused
-      # is not reliably visible to X11 clients. Writing both sides directly
-      # sidesteps the whole question.
+      # Mango's built-in Xwayland normally synchronises those selections, but
+      # writing both sides directly makes this action independent of selection
+      # ownership and focus timing.
       #
       # Both commands slurp stdin into memory before forking off to serve the
       # selection, so the temp file can go away immediately afterwards.

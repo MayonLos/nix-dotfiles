@@ -42,12 +42,10 @@
           # 144 x 1.5 and every native client's candidate window grew by half
           # again. The Wayland path needs no correction.
           #
-          # It also cannot reach QQ. QQ holds live connections to Xwayland
-          # (verified against `ss -xp`, and niri reports its window's PID as
-          # xwayland-satellite) even though its wrapper passes
-          # --ozone-platform-hint=auto --enable-wayland-ime, so its input goes
-          # through XIM and the X11 half of classicui. That half is governed by
-          # PerScreenDPI and Xft.dpi.
+          # QQ is not the X11 exception anymore: im.nix pins it to Wayland, so
+          # its input goes through text-input-v3 and this setting cannot affect
+          # it. wechat-uos pins QT_QPA_PLATFORM=xcb, so it uses the X11 half of
+          # classicui; that half is governed by PerScreenDPI and Xft.dpi.
           #
           # At its True default, fcitx5 derives the DPI from what Xwayland
           # reports for the screen — 2560x1600 in 677x423 mm, i.e. 96 — and

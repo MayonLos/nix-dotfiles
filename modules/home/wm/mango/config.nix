@@ -1,4 +1,4 @@
-{ inputs, ... }:
+{ inputs, config, ... }:
 
 {
   imports = [ inputs.mango.hmModules.mango ];
@@ -7,14 +7,14 @@
     enable = true;
 
     # Mango's systemd hook already imports the session variables and starts
-    # mango-session.target, so duplicating niri's dbus-update command here
+    # mango-session.target, so duplicating that environment update here
     # would only race the same environment update.
     systemd.enable = true;
 
     settings = {
       # The broad default is dwm's master-stack tile layout; tags 5 and 9 are
       # scrollers for browsing and long-form work where side-by-side tiles fit
-      # the niri-style workflow better.
+      # the side-by-side workspace workflow better.
       tagrule = [
         "id:*,layout_name:tile"
         "id:5,layout_name:scroller"
@@ -25,7 +25,7 @@
         "name:^eDP-1$,width:2560,height:1600,refresh:165.002,x:0,y:0,scale:1.5"
       ];
 
-      # niri sets this in its `environment` block; without it here, Qt apps
+      # Mango must set this in its `env` list; without it, Qt apps
       # under mango fall back to default light Fusion and modules/home/base/
       # qt.nix's qt6ct palette is never consulted. See the comment there.
       env = [ "QT_QPA_PLATFORMTHEME,qt6ct" ];
@@ -113,8 +113,8 @@
       button_map = 0;
       sloppyfocus = 1;
 
-      # Window rules use the same app-id/title regular-expression matching as
-      # niri. Mango has no layer-rule equivalent, so Noctalia's layer effects
+      # Window rules use app-id/title regular-expression matching. Mango has no
+      # layer-rule equivalent, so Noctalia's layer effects
       # are handled by the effect settings above instead.
       windowrule = [
         "isfloating:1,width:0.5,isnoborder:1,appid:^swayimg$"
@@ -262,14 +262,26 @@
       ];
     };
 
-    # Mango has no niri column consume/expel, first/last-column movement, preset
-    # column/window heights, center-visible-columns, floating/tiling focus
-    # switching, keyboard-shortcut inhibition, or compositor screenshot
-    # dispatcher. Those niri-only actions are intentionally not recreated with
-    # unrelated commands.
+    # Mango has no column consume/expel, first/last-column movement,
+    # preset column/window heights, center-visible-columns, floating/tiling
+    # focus switching, keyboard-shortcut inhibition, or compositor screenshot
+    # dispatcher. Those actions are intentionally not recreated with unrelated
+    # commands.
 
     # The systemd option above supplies the dbus environment; this is the
     # compositor's documented one-shot Noctalia startup line.
-    extraConfig = "exec-once=noctalia";
+    extraConfig = ''
+      exec-once=noctalia
+
+      # Noctalia's builtin "mango" theme template renders the palette to
+      # $XDG_CONFIG_HOME/mango/noctalia.conf (assets/templates/builtin.toml).
+      # Sourced last so those colours win over anything set above.
+      #
+      # source-optional, not source: the file does not exist until Noctalia
+      # first applies a theme, and a plain `source` of a missing file is a
+      # parse error. This is what niri needed a seed-an-empty-file activation
+      # script for -- mango has the optional form built in.
+      source-optional=${config.xdg.configHome}/mango/noctalia.conf
+    '';
   };
 }
