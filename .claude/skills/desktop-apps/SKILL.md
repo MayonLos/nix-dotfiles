@@ -115,3 +115,42 @@ lags them. QQ is wrapped for libpipewire (Wayland screen sharing) and pinned to
 Do not change the platform flags without reading `desktop-niri` first — which of
 the two is on XWayland determines the whole fcitx5 candidate-window DPI setup,
 and the comments inside `input-method.nix` are stale on that point.
+
+## QQ / Tencent Meeting screen sharing: X11-only, use the virtual camera
+
+Their share pickers cannot see a Wayland desktop and nothing on the compositor
+or portal side changes that. Verified 2026-09-10 against `qq-3.2.32`'s binary:
+
+| In the binary | |
+|---|---|
+| `XQueryTree`, `XGetImage`, `XShmGetImage` | present — the X11 enumerate-and-grab path |
+| `zwlr_foreign_toplevel_manager_v1` | absent |
+| `ext_foreign_toplevel_list_v1` | absent |
+| Wayland globals it names | only `ext_input_manager_v1` / `ext_input_v1` |
+
+`org.freedesktop.portal.ScreenCast` and `SelectSources` *are* in the binary and
+look like proof of portal support — they are not. That is Electron's own code
+on a path QQ's picker never takes: with the share dialog open,
+`xdg-desktop-portal-wlr` logged **zero** requests. Under mango's rootless
+Xwayland `XQueryTree` finds nothing, so the picker ends at
+"该应用已无法共享，请重新选择".
+
+Things that look like fixes and are not:
+
+- `--enable-features=WebRTCPipeWireCapturer` — that feature name no longer
+  exists in Chromium 144; passing it is a no-op. (And Chromium takes the *last*
+  `--enable-features` rather than merging, so a second one would drop the
+  wrapper's `WaylandWindowDecorations`.)
+- the `LD_LIBRARY_PATH` pipewire wrap in `im.nix` — real and worth keeping, but
+  it fixes a dlopen, not the picker.
+- `xuwd1/wemeet-wayland-screenshare`, the LD_PRELOAD `XShm*` hook — hooks
+  exactly the functions QQ uses, but the repo was archived 2025-09 and its
+  wlroots black-screen issue is unresolved.
+
+**The working route is the virtual camera.** `modules/system/desktop/obs.nix`
+configures v4l2loopback for it: OBS captures through the portal (which works)
+and writes to `/dev/video9`, and QQ picks "OBS Virtual Camera" from its *camera*
+dropdown. `exclusive_caps=1` is what makes an Electron app accept the node at
+all; `video_nr=9` keeps it from racing the real webcam for `/dev/video0`. No
+`video` group needed — v4l2loopback nodes carry udev's `uaccess` tag, so logind
+ACLs them to the active user.
