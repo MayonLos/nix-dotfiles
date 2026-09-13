@@ -1,4 +1,4 @@
-{
+_: {
   colorschemes.onedark = {
     enable = true;
     settings = {

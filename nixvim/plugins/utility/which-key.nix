@@ -1,4 +1,4 @@
-{
+_: {
   plugins.which-key = {
     enable = true;
     settings = {
@@ -46,7 +46,7 @@
         }
         {
           __unkeyed-1 = "<leader>c";
-          group = " Code";
+          group = " Code";
         }
         {
           __unkeyed-1 = "<leader>n";
@@ -58,7 +58,7 @@
         }
         {
           __unkeyed-1 = "<leader>t";
-          group = " Terminal";
+          group = "󰆍 Terminal";
         }
         {
           __unkeyed-1 = "<leader>x";
@@ -75,6 +75,10 @@
       ];
       win = {
         border = "rounded";
+        padding = [
+          0
+          1
+        ];
         wo = {
           winblend = 0;
         };
