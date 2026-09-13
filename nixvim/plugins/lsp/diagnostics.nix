@@ -1,4 +1,4 @@
-{
+_: {
   diagnostic.settings = {
     virtual_text = false;
 
@@ -8,14 +8,12 @@
     # every line, and <leader>ll below switches back to showing them all.
     virtual_lines.current_line = true;
 
-    signs.text.__raw = ''
-      {
-        [vim.diagnostic.severity.ERROR] = "󰅚 ",
-        [vim.diagnostic.severity.WARN]  = "󰀪 ",
-        [vim.diagnostic.severity.INFO]  = "󰋽 ",
-        [vim.diagnostic.severity.HINT]  = "󰌶 ",
-      }
-    '';
+    severity_sort = true;
+    float = {
+      border = "rounded";
+      source = "if_many";
+      header = "";
+    };
   };
 
   keymaps = [
