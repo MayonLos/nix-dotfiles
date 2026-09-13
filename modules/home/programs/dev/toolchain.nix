@@ -48,6 +48,23 @@
     # name snacks looks for.
     trash-cli
 
+    # Formula rendering for markdown notes. render-markdown.nvim turns `$...$`
+    # into unicode *text*, not an image, so it works in foot (sixel only, no
+    # kitty graphics protocol). Its latex handler shells out to `utftex` and
+    # falls back to `latex2text`; neither was installed, so it hit
+    # ConverterNotFound and silently left every formula raw.
+    #
+    # Both are needed, for different shapes. utftex draws the real two-level
+    # box and is what a display block gets. It cannot keep an unmappable
+    # subscript on one line though -- `T_W` comes back two rows tall -- and two
+    # rows is unusable inline, so latex2text handles those by substituting
+    # symbols only. It is never allowed near \frac, which it would flatten to
+    # "a/b" without brackets: silently wrong maths in a notes vault is worse
+    # than an unrendered formula. nixvim/plugins/utility/lua/md_latex.lua picks
+    # between them. texliveFull (latex.nix) ships no such converter.
+    (callPackage ../../../../pkgs/libtexprintf.nix { }) # utftex
+    python3Packages.pylatexenc # latex2text
+
     # Debug adapters. gdb (llvm.nix) speaks DAP natively since 14; codelldb is
     # what nvim-dap and Emacs dape both use for C/C++/Rust. The Python adapter
     # is not here — it must be importable by the interpreter itself, so it
