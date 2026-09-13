@@ -1,4 +1,4 @@
-{
+_: {
   # One plugin replacing five. dressing.nvim was the forcing function — its
   # author archived it with "use snacks.nvim instead for your vim.ui.*
   # interfaces" — and once snacks is here, nvim-notify, neoscroll,
@@ -11,7 +11,14 @@
 
     settings = {
       # --- replacements -------------------------------------------------
-      input.enabled = true; # was dressing.nvim
+      input = {
+        enabled = true; # was dressing.nvim
+        win.border = "rounded";
+      };
+      styles.notification = {
+        border = "rounded";
+        wo.winblend = 0;
+      };
 
       notifier = {
         enabled = true; # was nvim-notify
@@ -35,7 +42,11 @@
       indent = {
         enabled = true; # was indent-blankline.nvim
         animate.enabled = false; # animated guides are a distraction, not a cue
-        scope.enabled = true; # draw the enclosing scope, not just columns
+        indent.char = "│";
+        scope = {
+          enabled = true; # draw the enclosing scope, not just columns
+          char = "│";
+        };
       };
 
       words = {

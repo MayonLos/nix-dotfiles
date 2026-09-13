@@ -1,4 +1,4 @@
-{
+_: {
   extraConfigLua = ''
     local onedark = require("onedark")
     local style_file = vim.fn.stdpath("data") .. "/onedark-style"

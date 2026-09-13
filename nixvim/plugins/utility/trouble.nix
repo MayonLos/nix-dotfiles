@@ -1,4 +1,4 @@
-{
+_: {
   # A navigable list for the things that are currently lists of locations:
   # diagnostics, LSP references, the quickfix stack. bqf (plugins/utility/bqf)
   # improves the quickfix window itself; this is the layer above it, where you
@@ -13,6 +13,8 @@
 
     settings = {
       focus = true;
+      icons.indent.last = "╰╴";
+      win.wo.winhighlight = "Normal:TroubleNormal,NormalNC:TroubleNormal";
       # Preview the entry under the cursor in the real buffer rather than a
       # scratch one, so LSP and treesitter highlighting are already there.
       preview = {
