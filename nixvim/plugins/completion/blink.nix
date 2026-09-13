@@ -1,4 +1,4 @@
-{
+_: {
   plugins.blink-cmp = {
     enable = true;
     settings = {
@@ -47,8 +47,9 @@
       };
       completion = {
         menu = {
-          border = "none";
+          border = "rounded";
           draw = {
+            padding = 1;
             gap = 1;
             treesitter = [ "lsp" ];
             columns = [
@@ -65,7 +66,7 @@
         trigger.show_in_snippet = false;
         documentation = {
           auto_show = true;
-          window.border = "single";
+          window.border = "rounded";
         };
         accept.auto_brackets.enabled = false;
       };
@@ -81,7 +82,7 @@
       snippets.preset = "luasnip";
       signature = {
         enabled = true;
-        window.border = "single";
+        window.border = "rounded";
       };
     };
   };

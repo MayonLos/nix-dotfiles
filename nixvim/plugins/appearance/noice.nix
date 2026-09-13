@@ -1,4 +1,4 @@
-{
+_: {
   # Replaces the one-line cmdline and the message area at the bottom of the
   # screen with floating windows. This is the single largest visual change in
   # the appearance group — everything else here decorates the buffer, this one
@@ -33,7 +33,40 @@
         inc_rename = false;
       };
 
+      views = {
+        cmdline_popup.border = {
+          style = "rounded";
+          padding = [
+            0
+            1
+          ];
+        };
+        hover.border = {
+          style = "rounded";
+          padding = [
+            0
+            1
+          ];
+        };
+        popup.border = {
+          style = "rounded";
+          padding = [
+            0
+            1
+          ];
+        };
+        mini.win_options.winblend = 0;
+      };
+
       routes = [
+        # Heirline keeps the match position beside the ruler while searching.
+        {
+          filter = {
+            event = "msg_show";
+            kind = "search_count";
+          };
+          opts.skip = true;
+        }
         # "written", "N more lines", "search hit BOTTOM" and friends fire on
         # nearly every keystroke sequence; they are noise once messages are a
         # popup rather than a status line you can ignore.

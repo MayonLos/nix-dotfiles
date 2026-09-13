@@ -1,4 +1,4 @@
-{
+_: {
   # Draws the actual colour behind #rrggbb, rgb() and friends. Only useful
   # where colours are written down, so it is scoped to those filetypes rather
   # than attached to every buffer.

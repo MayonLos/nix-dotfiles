@@ -26,6 +26,7 @@
     scrolloff = 8;
     conceallevel = 2;
     laststatus = 3;
+    showmode = false; # Heirline already shows the mode beside the filename.
     showtabline = 2;
     winborder = "rounded";
     signcolumn = "yes";
