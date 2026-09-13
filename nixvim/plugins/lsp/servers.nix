@@ -165,6 +165,25 @@ _: {
             ".marksman.toml"
             ".git"
           ];
+
+          # A wiki link to a page that has not been written yet is a TODO, not
+          # an error -- an index note legitimately carries a dozen of them, and
+          # at ERROR severity they painted the whole file red. Code 1
+          # (ambiguous link, i.e. two files share a name) stays an error
+          # because it is a real problem. Marksman sends `code` as a *string*,
+          # so comparing it against the number 2 silently never matches.
+          handlers.__raw = ''
+            {
+              ["textDocument/publishDiagnostics"] = function(err, result, ctx, config)
+                for _, diagnostic in ipairs(result and result.diagnostics or {}) do
+                  if tostring(diagnostic.code) == "2" then
+                    diagnostic.severity = vim.lsp.protocol.DiagnosticSeverity.Hint
+                  end
+                end
+                return vim.lsp.handlers["textDocument/publishDiagnostics"](err, result, ctx, config)
+              end,
+            }
+          '';
         };
       };
 
