@@ -13,7 +13,135 @@
 -- three ways to get there, tried in order.
 local M = {}
 
-local builtin = require("render-markdown.handler.latex")
+local builtin
+
+-- utftex 1.31 rendered {x+y}^2 as x+y² in the regression probe. Keeping
+-- parentheses when removing a box preserves its grouping as well as its body.
+local function read_group(s, i)
+  i = s:find("%S", i) or #s + 1
+  if s:sub(i, i) ~= "{" then
+    return nil
+  end
+  local depth, j = 1, i + 1
+  while j <= #s do
+    local c = s:sub(j, j)
+    if c == "%" then
+      j = s:find("\n", j, true) or #s + 1
+    elseif c == "\\" then
+      j = j + 2
+    else
+      if c == "{" then
+        depth = depth + 1
+      elseif c == "}" then
+        depth = depth - 1
+        if depth == 0 then
+          return s:sub(i + 1, j - 1), j + 1
+        end
+      end
+      j = j + 1
+    end
+  end
+end
+
+local silent_drop = {
+  overline = true,
+  ne = true,
+  iff = true,
+  implies = true,
+  bmod = true,
+  deg = true,
+}
+
+local function has_command(expr, commands)
+  local i = 1
+  while i <= #expr do
+    if expr:sub(i, i) == "\\" then
+      local cmd = expr:match("^\\(%a+)", i)
+      if cmd and commands[cmd] then
+        return true
+      end
+      i = i + (cmd and #cmd + 1 or 2)
+    else
+      i = i + 1
+    end
+  end
+  return false
+end
+
+-- Both labelled-arrow probes exited 1 in utftex; latex2text returned only
+-- "a " for a \xrightarrow{b} and a \xleftarrow{b}. Keep the entire source.
+local unsupported = { xrightarrow = true, xleftarrow = true }
+
+-- The two matrix probes changed [21] to [2  1] and -2-3 to -2  -3 with
+-- literal padding. This Lua pass is also used by the builtin's converter:
+-- it fixes both paths without changing or rebuilding libtexprintf 1.31.
+function M.preprocess(expr)
+  if has_command(expr, unsupported) then
+    return nil
+  end
+  local out, stack, depth, i = {}, {}, 0, 1
+  while i <= #expr do
+    local c = expr:sub(i, i)
+    local cmd = c == "\\" and expr:match("^\\(%a+)", i)
+    if c == "%" then
+      local j = expr:find("\n", i, true) or #expr + 1
+      out[#out + 1] = expr:sub(i, j - 1)
+      i = j
+    elseif cmd == "boxed" or cmd == "tag" then
+      local body, j = read_group(expr, i + #cmd + 1)
+      if not body then
+        return nil
+      end
+      body = M.preprocess(body)
+      if not body then
+        return nil
+      end
+      -- a \tag{门1} exited 1; a (门1) exited 0 and kept the complete
+      -- label. Parentheses retain the tag without an unsupported macro.
+      out[#out + 1] = (cmd == "tag" and " (" or "(") .. body .. ")"
+      i = j
+    elseif cmd == "begin" or cmd == "end" then
+      local env, j = read_group(expr, i + #cmd + 1)
+      if not env then
+        return nil
+      end
+      if cmd == "begin" then
+        stack[#stack + 1] = {
+          env = env,
+          depth = depth,
+          columns = env:match("matrix%*?$") ~= nil or env == "array" or env == "cases" or env == "aligned",
+        }
+      elseif #stack > 0 and stack[#stack].env == env then
+        stack[#stack] = nil
+      else
+        return nil
+      end
+      out[#out + 1] = expr:sub(i, j - 1)
+      i = j
+    elseif c == "\\" then
+      local length = cmd and #cmd + 1 or 2
+      out[#out + 1] = expr:sub(i, i + length - 1)
+      i = i + length
+    else
+      local env = stack[#stack]
+      if c == "&" and env and env.columns and depth == env.depth then
+        out[#out + 1] = " & "
+      else
+        out[#out + 1] = c
+      end
+      if c == "{" then
+        depth = depth + 1
+      elseif c == "}" then
+        depth = depth - 1
+      end
+      i = i + 1
+    end
+  end
+  if #stack > 0 then
+    return nil
+  end
+  return table.concat(out)
+end
 
 -- Read one latex argument starting at i: a braced group, a command, or a
 -- single character. Returns the argument body and the index just past it.
@@ -115,18 +243,25 @@ bracket_scripts = function(expr)
   return table.concat(out)
 end
 
-local function one_line(cmd, expr)
+-- The cache regression makes four inline/display queries for one fraction
+-- with only two subprocesses: its original and its linearised input.
+local conversions = {}
+
+local function convert(cmd, expr)
+  local key = cmd .. "\0" .. expr
+  if conversions[key] ~= nil then
+    return conversions[key]
+  end
   local ok, res = pcall(function()
-    return vim.system(cmd, { stdin = expr, text = true }):wait()
+    return vim.system({ cmd }, { stdin = expr, text = true }):wait()
   end)
-  if not ok or res.code ~= 0 then
-    return nil
-  end
-  local out = (res.stdout or ""):gsub("%s+$", "")
-  if out == "" or out:find("\n") then
-    return nil
-  end
-  return out
+  local out = ok and res.code == 0 and (res.stdout or ""):gsub("%s+$", "") or false
+  conversions[key] = out ~= "" and out or false
+  return conversions[key]
+end
+
+local function one_line(out)
+  return out and not out:find("\n") and out or false
 end
 
 local cache = {}
@@ -134,30 +269,43 @@ local cache = {}
 -- "builtin" -> hand the node to the builtin handler
 -- string    -> render inline with this text ourselves
 -- false     -> leave the source untouched
-local function classify(expr)
-  local hit = cache[expr]
-  if hit ~= nil then
-    return hit
+local function classify(expr, display)
+  local key = (display and "display\0" or "inline\0") .. expr
+  local hit = cache[key]
+  if hit then
+    return hit.value, hit.route
   end
 
-  local result = false
-  local linear = linearise(expr)
-  if one_line({ "utftex" }, expr) then
-    -- Fits as it stands: let the builtin render it, so render-markdown keeps
-    -- accounting for the width it concealed when it sizes table columns.
-    result = "builtin"
-  elseif linear ~= expr and one_line({ "utftex" }, linear) then
-    result = one_line({ "utftex" }, linear)
-  elseif not expr:find("\\overline") then
-    -- Last resort, symbol substitution only. Barred names are excluded because
-    -- latex2text silently drops the bar, and \overline{AB} without it is a
-    -- different logic expression than the one written.
-    result = one_line({ "latex2text" }, bracket_scripts(linear)) or false
+  local result, route = false, "raw"
+  local prepared = M.preprocess(expr)
+  if prepared then
+    local rendered = convert("utftex", prepared)
+    if (display and rendered) or one_line(rendered) then
+      -- Fits as it stands: let the builtin render it, so render-markdown keeps
+      -- accounting for the width it concealed when it sizes table columns.
+      result, route = "builtin", "builtin"
+    else
+      local linear = linearise(prepared)
+      local flattened = linear ~= prepared and one_line(convert("utftex", linear))
+      if flattened then
+        result, route = flattened, "linearised-utftex"
+      elseif not has_command(expr, silent_drop) then
+        -- All six probes (overline, ne, iff, implies, bmod, deg) returned "a b"
+        -- from latex2text 2.10 for a \macro{b}. A missing bar changes the logic
+        -- expression; a missing relation changes the statement just as surely.
+        result = one_line(convert("latex2text", bracket_scripts(linear)))
+        if result then
+          route = "latex2text"
+        end
+      end
+    end
   end
 
-  cache[expr] = result
-  return result
+  cache[key] = { value = result, route = route }
+  return result, route
 end
+
+M.classify = classify
 
 -- The table handler sizes columns from the buffer text and only accounts for
 -- the marks render-markdown made itself, so a cell shortened here drags its
@@ -194,6 +342,7 @@ end
 local pending = {}
 
 function M.parse(ctx)
+  builtin = builtin or require("render-markdown.handler.latex")
   local buf = ctx.buf
   local tick = vim.api.nvim_buf_get_changedtick(buf)
   local batch = pending[buf]
@@ -208,22 +357,19 @@ function M.parse(ctx)
   local text = vim.treesitter.get_node_text(ctx.root, buf)
   local line = vim.api.nvim_buf_get_lines(buf, row, row + 1, false)[1] or ""
 
-  if row ~= end_row or vim.trim(line) == vim.trim(text) then
+  local display = row ~= end_row or vim.trim(line) == vim.trim(text)
+  local verdict = classify(vim.trim((text:gsub("^%$+", ""):gsub("%$+$", ""))), display)
+  if verdict == "builtin" then
     batch.roots[#batch.roots + 1] = ctx.root
-  else
-    local verdict = classify(vim.trim((text:gsub("^%$+", ""):gsub("%$+$", ""))))
-    if verdict == "builtin" then
-      batch.roots[#batch.roots + 1] = ctx.root
-    elseif verdict then
-      local lost = 0
-      if line:match("^%s*|") then
-        lost = vim.fn.strdisplaywidth(text) - vim.fn.strdisplaywidth(verdict)
-      end
-      if lost >= 0 then
-        batch.marks[#batch.marks + 1] = inline_mark(row, col, end_row, end_col, verdict)
-        if lost > 0 then
-          batch.marks[#batch.marks + 1] = pad_mark(row, line, end_col, lost)
-        end
+  elseif verdict then
+    local lost = 0
+    if line:match("^%s*|") then
+      lost = vim.fn.strdisplaywidth(text) - vim.fn.strdisplaywidth(verdict)
+    end
+    if lost >= 0 then
+      batch.marks[#batch.marks + 1] = inline_mark(row, col, end_row, end_col, verdict)
+      if lost > 0 then
+        batch.marks[#batch.marks + 1] = pad_mark(row, line, end_col, lost)
       end
     end
   end
@@ -233,10 +379,9 @@ function M.parse(ctx)
   end
   pending[buf] = nil
 
-  -- The builtin buffers every root it is handed and converts the whole batch in
-  -- one utftex call when ctx.last is set. Because the rejected roots never
-  -- reach it, the real last root may be one of those and the batch would never
-  -- be flushed -- so replay the kept roots and set last on our own final one.
+  -- The replay regression keeps one builtin root when the final root is
+  -- rejected. render-markdown 8.12.0 waits for ctx.last to convert its pending
+  -- inputs, so the final kept root must flush the batch itself.
   local marks = batch.marks
   for i, root in ipairs(batch.roots) do
     local ok, out = pcall(builtin.parse, { buf = buf, root = root, last = i == #batch.roots })

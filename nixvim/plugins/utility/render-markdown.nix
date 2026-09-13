@@ -1,3 +1,14 @@
+{ pkgs, ... }:
+let
+  latexConverter = pkgs.writeShellScript "md-utftex" ''
+    set -euo pipefail
+    ${pkgs.luajit}/bin/luajit -e '
+      local expr = dofile("${./lua/md_latex.lua}").preprocess(io.read("*a"))
+      if not expr then os.exit(1) end
+      io.write(expr)
+    ' | utftex
+  '';
+in
 {
   plugins.render-markdown = {
     enable = true;
@@ -11,6 +22,11 @@
         "codecompanion"
       ];
       completions.lsp.enabled = true;
+
+      # The builtin's converter list defaults to utftex then latex2text in
+      # render-markdown 8.12.0; all five operator probes lost their operator in
+      # the latter. md_latex now gates display roots too and owns that fallback.
+      latex.converter = "${latexConverter}";
 
       # utftex renders a formula as a box several rows tall. render-markdown
       # puts those extra rows in virt_lines around the *buffer* line, which is
