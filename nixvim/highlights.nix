@@ -17,8 +17,11 @@ _: {
       vim.api.nvim_set_hl(0, "NormalFloat", { fg = normal.fg, bg = float.bg or normal.bg })
       vim.api.nvim_set_hl(0, "FloatBorder", { fg = comment.fg, bg = float.bg or normal.bg })
       vim.api.nvim_set_hl(0, "FloatTitle", { fg = accent.fg, bg = float.bg or normal.bg, bold = true })
-      vim.api.nvim_set_hl(0, "MultiCursor", { fg = normal.fg, bg = visual.bg, underline = true })
-      vim.api.nvim_set_hl(0, "MultiCursorMain", { fg = normal.bg, bg = accent.fg, bold = true })
+      -- multicursor.nvim's group names, not smoka7's MultiCursor/MultiCursorMain
+      -- (editing/multicursors.nix). A disabled cursor has to stay visible but
+      -- read as inert, so it borrows the comment colour rather than the accent.
+      vim.api.nvim_set_hl(0, "MultiCursorCursor", { fg = normal.bg, bg = accent.fg, bold = true })
+      vim.api.nvim_set_hl(0, "MultiCursorDisabledCursor", { fg = normal.bg, bg = comment.fg })
       -- Retain the scheme's contrast while adding the pairing cue.
       match.bold, match.underline = true, true
       vim.api.nvim_set_hl(0, "MatchParen", match)
@@ -49,6 +52,11 @@ _: {
         NoiceConfirmBorder = "FloatBorder",
         SnacksInputNormal = "NormalFloat",
         SnacksInputBorder = "FloatBorder",
+        MultiCursorVisual = "Visual",
+        MultiCursorSign = "SignColumn",
+        MultiCursorMatchPreview = "Search",
+        MultiCursorDisabledVisual = "Folded",
+        MultiCursorDisabledSign = "SignColumn",
         SnacksIndent = "NonText",
         SnacksIndentScope = "Comment",
         TroubleNormal = "Normal",
