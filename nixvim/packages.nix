@@ -14,11 +14,34 @@
   withRuby = false;
   withPython3 = false;
 
-  # Only `fd` is still worth declaring here: it is what fzf-lua shells out to
-  # for file listing and it is the one tool in this list not already in the
-  # user profile. bat, git, ripgrep and fzf are all in profile PATH already, and
-  # nixvim only ever adds these to the wrapper's PATH — it does not interpolate
-  # store paths into the config (verified against the generated init.lua), so
-  # declaring them again just pinned another copy into nvim's closure.
-  dependencies.fd.enable = true;
+  # Declaring nothing here does NOT mean nothing is pinned. A nixvim plugin
+  # module can declare its own `dependencies`, and `lib/plugins/utils.nix`
+  # enables each one with `lib.mkDefault true` — so gitsigns pulls in git,
+  # todo-comments pulls in ripgrep and fzf-lua pulls in fzf whether or not this
+  # file mentions them. They land in `extraPackages`, which prefixes the
+  # wrapper's PATH; nothing interpolates a store path into the config, so the
+  # only thing they buy is a self-contained `nix run`.
+  #
+  # mkDefault means an explicit `false` here wins without mkForce.
+  #
+  # Measured 2026-09-14 by building one variant per change and comparing the
+  # **total** editor closure (individual `path-info -S` values overlap and must
+  # not be summed):
+  #
+  #   baseline                783 MB
+  #   git.enable = false      553 MB   -230 MB
+  #   ripgrep.enable = false  776 MB     -7 MB
+  #   fzf.enable = false      783 MB       0
+  #   git + ripgrep           547 MB   -236 MB
+  #   ...and fd too           541 MB     -6 MB
+  #
+  # git alone is 29% of the editor. fzf saves nothing and fd saves 6 MB, so
+  # both stay: trading self-containment for zero or near-zero bytes is a pure
+  # loss, and fd is what fzf-lua lists files with. git and ripgrep are in the
+  # user profile, which is where the editor now finds them.
+  dependencies = {
+    fd.enable = true;
+    git.enable = false;
+    ripgrep.enable = false;
+  };
 }
