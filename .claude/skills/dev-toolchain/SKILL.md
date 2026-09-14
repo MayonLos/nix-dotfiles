@@ -70,13 +70,32 @@ binary paths into Lua. Neovim 0.12.4's
 `executable('wl-paste')` and calls those bare commands through PATH. Disabling
 an ordinary `dependencies` entry does not remove this provider package.
 
-The reported editor closure at this audit was 783 MB. No removal or saving
-was verified: the sandbox denied Nix daemon socket access for the editor
-build, system evaluation and `nix fmt`. Keep each dependency until a separate
-built variant demonstrates a reduction in the **total editor closure**;
-individual package closure sizes overlap and cannot be added. Verify profile
-PATH tools with actual fzf-lua file/live-grep pickers and gitsigns in a fresh
-terminal editor, and verify clipboard copy/paste before changing its provider.
+Measured the same day by building one variant per change and comparing the
+**total** editor closure — individual package closure sizes overlap heavily
+and must never be summed:
+
+| variant | total | delta |
+|---|---:|---:|
+| baseline | 783 MB | — |
+| `git.enable = false` | 553 MB | -230 MB |
+| `ripgrep.enable = false` | 776 MB | -7 MB |
+| `fzf.enable = false` | 783 MB | 0 |
+| git + ripgrep | 547 MB | -236 MB |
+| ...and fd as well | 541 MB | -6 MB |
+
+git alone was 29% of the editor. `nixvim/packages.nix` now disables git and
+ripgrep and keeps fzf and fd: trading self-containment for zero or near-zero
+bytes is a pure loss, and fd is what fzf-lua lists files with.
+
+The failure mode to guard against is an editor launched somewhere with a
+thinner PATH than an interactive shell. The one that matters here is
+`systemctl --user show-environment`, which is what a desktop entry inherits:
+it carries `/etc/profiles/per-user/mayon/bin`, and git, rg, fzf, fd and
+wl-copy all resolve inside it. Verified under exactly that PATH, not the
+caller's: gitsigns produced an identical mark count before and after,
+`<leader>ff` listed files, `<leader>fg` returned a grep hit, and
+`:TodoQuickFix` returned an entry. Re-run those four if this set changes
+again, and never take `vim.fn.executable` in your own shell as the answer.
 
 ## debugpy is deliberately not in toolchain.nix
 
