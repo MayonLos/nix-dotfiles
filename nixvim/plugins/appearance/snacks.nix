@@ -253,6 +253,16 @@ _: {
   # which way it just went. Hand-written `set invwrap` bindings cannot do that.
   extraConfigLua = ''
     local Snacks = require("snacks")
+
+    -- `input.enabled = true` above only writes snacks' config table; it does
+    -- not claim vim.ui.input. Same mechanism as the terminal block: snacks
+    -- auto-starts only the modules listed in its own `events` table, and input
+    -- is not one of them. Measured on 2.31.0 -- vim.ui.input resolves to
+    -- runtime/lua/vim/ui.lua before this call and to snacks/input.lua after,
+    -- so without it every rename prompt falls back to the command line and the
+    -- rounded border configured above is never drawn.
+    Snacks.input.enable()
+
     Snacks.toggle.option("wrap", { name = "Wrap" }):map("<leader>uw")
     Snacks.toggle.option("spell", { name = "Spelling" }):map("<leader>up")
     Snacks.toggle.option("relativenumber", { name = "Relative number" }):map("<leader>ur")
