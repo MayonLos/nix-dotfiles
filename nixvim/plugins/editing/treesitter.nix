@@ -35,9 +35,12 @@
       disable = [ "latex" ];
     };
     indent.enable = true;
-    # ufo owns folds now, using Treesitter ranges itself; enabling foldexpr
-    # here would compete with ufo's manual fold management.
-    folding.enable = false;
+    # Kept on even though ufo computes its own treesitter ranges: foldexpr is
+    # synchronous, ufo's provider is not. Without it a buffer has no folds at
+    # all for the ~2s until ufo attaches, and `zc` right after opening a file
+    # fails with E490. ufo takes over from here -- its README: "foldmethod
+    # option will finally become manual if ufo is working".
+    folding.enable = true;
 
     nixvimInjections = true;
   };

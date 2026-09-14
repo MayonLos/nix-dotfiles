@@ -35,11 +35,13 @@ _: {
   };
 
   opts = {
-    foldmethod = "manual";
     foldenable = true;
     foldlevelstart = 99; # Match foldlevel = 99: opening a file keeps its folds open.
     # Snacks already draws the fold group on the right of the statuscolumn.
     foldcolumn = "0";
+    # foldmethod is deliberately NOT set here. ufo switches the window to
+    # manual itself once it has ranges; forcing manual up front only deletes
+    # the treesitter foldexpr that covers the gap before it attaches.
   };
 
   keymaps = [
