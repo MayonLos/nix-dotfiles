@@ -85,9 +85,9 @@ _: {
 
       # heirline draws the statusline and the tabline; it never touched the
       # status *column*, which was Neovim's built-in default. That default has
-      # no fold indicator, and this config folds by treesitter expression
-      # (plugins/editing/treesitter.nix sets folding.enable), so a folded
-      # region was invisible until you moved onto it.
+      # no fold indicator, so a folded region was invisible until you moved
+      # onto it. ufo now manages the Treesitter fold ranges (editing/ufo.nix);
+      # this remains the sole fold indicator, with the native foldcolumn off.
       statuscolumn = {
         enabled = true;
         left = [

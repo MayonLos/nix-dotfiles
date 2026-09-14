@@ -35,7 +35,9 @@
       disable = [ "latex" ];
     };
     indent.enable = true;
-    folding.enable = true;
+    # ufo owns folds now, using Treesitter ranges itself; enabling foldexpr
+    # here would compete with ufo's manual fold management.
+    folding.enable = false;
 
     nixvimInjections = true;
   };
