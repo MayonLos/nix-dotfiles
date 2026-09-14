@@ -15,6 +15,11 @@
 { vimPlugins, fetchFromGitHub }:
 vimPlugins.diffview-nvim.overrideAttrs (old: {
   version = "0-unstable-2026-09-08";
+  # buildVimPlugin computes `name` from pname/version before overrideAttrs
+  # runs, so overriding version alone leaves the store path still spelling the
+  # old 2024-06-13 -- the contents are the fork, the label is not. Anyone
+  # auditing the closure reads the label.
+  name = "vimplugin-diffview.nvim-0-unstable-2026-09-08";
   src = fetchFromGitHub {
     owner = "dlyongemallo";
     repo = "diffview.nvim";
