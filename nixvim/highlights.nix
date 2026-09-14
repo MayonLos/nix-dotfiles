@@ -8,15 +8,18 @@ _: {
       local comment = get("Comment")
       local visual  = get("Visual")
       local folded  = get("Folded")
-      local float   = get("NormalFloat")
       local accent  = get("Function")
       local match   = get("MatchParen")
 
-      -- Opaque surfaces keep CJK prose legible under floats in light and dark
-      -- styles alike; only the severity icon needs a saturated colour.
-      vim.api.nvim_set_hl(0, "NormalFloat", { fg = normal.fg, bg = float.bg or normal.bg })
-      vim.api.nvim_set_hl(0, "FloatBorder", { fg = comment.fg, bg = float.bg or normal.bg })
-      vim.api.nvim_set_hl(0, "FloatTitle", { fg = accent.fg, bg = float.bg or normal.bg, bold = true })
+      -- Transparent on purpose, and not only as a look: TreesitterContext links
+      -- to NormalFloat (see the link table below), so the context lines pinned
+      -- at the top of a window are painted with these groups. Given them a
+      -- surface of their own and the top of every code window grows a slab that
+      -- does not belong to the buffer it is describing. An opaque variant was
+      -- tried and reverted for exactly that.
+      vim.api.nvim_set_hl(0, "NormalFloat", { fg = normal.fg, bg = "NONE" })
+      vim.api.nvim_set_hl(0, "FloatBorder", { fg = comment.fg, bg = "NONE" })
+      vim.api.nvim_set_hl(0, "FloatTitle", { fg = accent.fg, bg = "NONE", bold = true })
       -- multicursor.nvim's group names, not smoka7's MultiCursor/MultiCursorMain
       -- (editing/multicursors.nix). A disabled cursor has to stay visible but
       -- read as inert, so it borrows the comment colour rather than the accent.
@@ -33,12 +36,16 @@ _: {
         TreesitterContext = "NormalFloat",
         TreesitterContextSeparator = "FloatBorder",
         SoftFloatBorder = "FloatBorder",
-        WhichKeyNormal = "NormalFloat",
+        -- Not NormalFloat: which-key and the completion menu are the two
+        -- surfaces that sit *on top of* code you are still reading, so they
+        -- have to occlude it. Everything else in this table is a panel you
+        -- look at instead of the buffer, and those follow NormalFloat.
+        WhichKeyNormal = "Normal",
         WhichKeyBorder = "FloatBorder",
-        TabLineFill = "StatusLine",
-        BlinkCmpMenu = "NormalFloat",
+        BlinkCmpMenu = "Pmenu",
         BlinkCmpMenuBorder = "FloatBorder",
         BlinkCmpMenuSelection = "PmenuSel",
+        TabLineFill = "StatusLine",
         BlinkCmpDoc = "NormalFloat",
         BlinkCmpDocBorder = "FloatBorder",
         BlinkCmpSignatureHelp = "NormalFloat",
