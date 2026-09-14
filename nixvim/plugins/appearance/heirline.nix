@@ -109,10 +109,11 @@
     local FileIcon = {
       init = function(self)
         local ext = vim.fn.fnamemodify(self.filename, ":e")
-        self.icon = require("nvim-web-devicons").get_icon(self.filename, ext, { default = true })
+        self.icon, self.icon_color =
+          require("nvim-web-devicons").get_icon_color(self.filename, ext, { default = true })
       end,
       provider = function(self) return self.icon and (self.icon .. " ") end,
-      hl = { fg = "gray" },
+      hl = function(self) return { fg = self.icon_color } end,
     }
     local FileName = {
       provider = function(self)
@@ -298,10 +299,11 @@
     local TablineFileIcon = {
       init = function(self)
         local ext = vim.fn.fnamemodify(self.filename, ":e")
-        self.icon = require("nvim-web-devicons").get_icon(self.filename, ext, { default = true })
+        self.icon, self.icon_color =
+          require("nvim-web-devicons").get_icon_color(self.filename, ext, { default = true })
       end,
       provider = function(self) return self.icon and (self.icon .. " ") end,
-      hl = { fg = "gray" },
+      hl = function(self) return { fg = self.icon_color } end,
     }
 
     local TablineFileName = {

@@ -58,10 +58,10 @@ _: {
         links["SnacksNotifier" .. level] = "NormalFloat"
         links["SnacksNotifierBorder" .. level] = "FloatBorder"
       end
-      -- Devicons initializes its own palette, even with color_icons disabled.
-      -- Its groups must be relinked after each scheme load as well.
+      -- noice names its cmdline border group per cmdline kind, so the set is
+      -- only known once noice has drawn one. DevIcon* is deliberately left
+      -- alone -- those are file-type brand colours, see icons.nix.
       for name in pairs(vim.api.nvim_get_hl(0, {})) do
-        if name:match("^DevIcon") then links[name] = "Directory" end
         if name:match("^NoiceCmdlinePopupBorder") then links[name] = "FloatBorder" end
       end
       for name, target in pairs(links) do
