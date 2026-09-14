@@ -1,4 +1,6 @@
 _: {
+  plugins.blink-cmp-latex.enable = true;
+
   plugins.blink-cmp = {
     enable = true;
     settings = {
@@ -72,6 +74,16 @@ _: {
       };
       sources = {
         per_filetype.codecompanion.__raw = ''{ "codecompanion", inherit_defaults = true }'';
+        per_filetype.markdown.__raw = ''{ "latex", inherit_defaults = true }'';
+        per_filetype.tex.__raw = ''{ "latex", inherit_defaults = true }'';
+        providers.latex = {
+          name = "LaTeX";
+          module = "blink-cmp-latex";
+          # The vault has 3564 LaTeX spans in 113 Markdown files (2026-09-14).
+          # md_latex.lua consumes source, so insert \frac, not a Unicode symbol.
+          # Only markdown/tex opt into this source; code completion stays scoped.
+          opts.insert_command = true;
+        };
         providers.codecompanion = {
           name = "CodeCompanion";
           module = "codecompanion.providers.completion.blink";

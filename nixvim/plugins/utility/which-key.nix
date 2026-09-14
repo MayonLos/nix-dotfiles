@@ -4,6 +4,14 @@ _: {
     settings = {
       spec = [
         {
+          __unkeyed-1 = "<leader>m";
+          group = "󰇀 Multiple cursors";
+          mode = [
+            "n"
+            "x"
+          ];
+        }
+        {
           __unkeyed-1 = "<leader>f";
           group = "󰍉 Find";
         }
