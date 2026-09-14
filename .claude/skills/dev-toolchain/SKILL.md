@@ -14,8 +14,10 @@ of the same server.
 
 - Adding a server for nvim? Add it to `toolchain.nix`, not to `nixvim/`.
 - `nixvim/packages.nix` declares **no servers, formatters or linters** — only
-  `dependencies.fd.enable` (fzf-lua shells out to `fd`, and it is the one tool
-  not already in the user profile). `nix run` on the nixvim package alone
+  `dependencies.fd.enable` explicitly (fzf-lua shells out to `fd`). `fd` is
+  also in the user profile as of 2026-09-14; the previous claim that it was
+  absent was stale. Plugin modules enable other dependencies implicitly, as
+  detailed below. `nix run` on the nixvim package alone
   therefore gets you an editor with zero language servers. That is intentional,
   not a bug to fix. It also sets `withRuby = false` / `withPython3 = false`;
   this config has no remote plugins and the ruby host alone was 98 MB.
@@ -40,6 +42,41 @@ took that closure from **8.9 GiB to 824 MB**. The servers are on `PATH` via
 
 If a server is not found at runtime, the fix is to add it to `toolchain.nix` —
 never to interpolate a store path back into `servers.nix`.
+
+## Plugin runtime dependencies can be enabled implicitly
+
+Source audit on 2026-09-14, at the locked nixvim revision
+`68c2edd2787f055d9c306bcfe726f3b8f11b9441` (local source NAR hash checked
+against `flake.lock`):
+
+- `plugins/by-name/gitsigns/default.nix:13` declares `dependencies = [ "git" ];`.
+- `plugins/by-name/todo-comments/default.nix:23` declares
+  `dependencies = [ "ripgrep" ];`.
+- `plugins/by-name/fzf-lua/default.nix:35` declares `dependencies = [ "fzf" ];`.
+
+These are paths in the nixvim input, not this repository. Its
+`lib/plugins/mk-neovim-plugin.nix` calls `enableDependencies` when the plugin
+is enabled. `lib/plugins/utils.nix:132` implements that with `lib.mkDefault
+true`; `modules/dependencies.nix` collects enabled packages into
+`extraPackages`, and `modules/top-level/output.nix:334` prefixes the wrapper's
+PATH with them. Omitting a dependency from `nixvim/packages.nix` therefore
+does **not** disable it. An explicit `dependencies.<name>.enable = false`
+overrides these defaults without `mkForce`.
+
+Clipboard takes a separate route: nixvim's `modules/clipboard.nix:55` adds
+enabled provider packages to `extraPackages`. It does not interpolate their
+binary paths into Lua. Neovim 0.12.4's
+`runtime/autoload/provider/clipboard.vim` checks `executable('wl-copy')` and
+`executable('wl-paste')` and calls those bare commands through PATH. Disabling
+an ordinary `dependencies` entry does not remove this provider package.
+
+The reported editor closure at this audit was 783 MB. No removal or saving
+was verified: the sandbox denied Nix daemon socket access for the editor
+build, system evaluation and `nix fmt`. Keep each dependency until a separate
+built variant demonstrates a reduction in the **total editor closure**;
+individual package closure sizes overlap and cannot be added. Verify profile
+PATH tools with actual fzf-lua file/live-grep pickers and gitsigns in a fresh
+terminal editor, and verify clipboard copy/paste before changing its provider.
 
 ## debugpy is deliberately not in toolchain.nix
 
