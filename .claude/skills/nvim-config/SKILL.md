@@ -1,6 +1,6 @@
 ---
 name: nvim-config
-description: The nixvim tree at nixvim/ — how a plugin gets added, how lz-n lazy-loading is wired, the keymap/which-key conventions, and the two build settings (combinePlugins, opts vs globalOpts) that silently break things. Use when adding, removing or configuring any Neovim plugin, when editing anything under nixvim/, when a keymap or a :Command does not exist until something else loads, when an option does not apply to the window nvim opened with, or when a plugin's runtime files collide after a rebuild.
+description: The nixvim tree at nixvim/ — how a plugin gets added, how lz-n lazy-loading is wired, the keymap/which-key conventions, the build settings (combinePlugins, opts vs globalOpts) that silently break things, and the four ways a setting here can evaluate cleanly yet never reach the runtime. Use when adding, removing or configuring any Neovim plugin, when editing anything under nixvim/, when a keymap or a :Command does not exist until something else loads, when an option does not apply to the window nvim opened with, when a plugin's runtime files collide after a rebuild, when a setting looks correct but the editor behaves as if it were absent, when only the first buffer of a session misbehaves, when folding is empty right after opening a file, when something else owns vim.ui.input/select or a highlight group, when hand-packaging a Vim plugin with buildVimPlugin or overrideAttrs, or when you need to verify a change without a full nixos-rebuild.
 ---
 
 # Neovim (nixvim)
@@ -111,9 +111,70 @@ colorscheme change is therefore runtime state, not a rebuild.
 It has been reviewed for redundancy — snacks.nvim already absorbed dressing,
 nvim-notify, neoscroll, indent-blankline and vim-illuminate, and the remaining
 overlaps (snacks `scope` vs treesitter-textobjects) are documented in the files
-themselves. **Do not propose trimming it as cleanup.** The one real debt is
-`plugins/editing/multicursors.nix` — upstream is unmaintained; replace it only
-when something better exists, not to reduce plugin count.
+themselves. **Do not propose trimming it as cleanup.**
+
+The multicursors debt is settled: `plugins/editing/multicursors.nix` now wires
+jake-stewart's `multicursor.nvim` by hand (nixvim has no module for it), which
+also dropped hydra.nvim. Neovim merged built-in multiple cursors upstream
+(neovim/neovim#41587) but 0.12.4 ships neither `:MultiCursor` nor its help, so
+the plugin stays until that lands.
+
+`nvim-treesitter` was archived upstream on 2026-04-03 and the pinned version is
+that day's commit. Highlighting, folding and treesitter-context all still work
+on 0.12.4, so there is nothing to do here — the migration to the `main` branch
+is nixvim's to make, not this repo's. Do not start it locally.
+
+## Enabling a thing is not wiring it — four ways this config lied
+
+Every one of these had correct-looking Nix, evaluated fine, produced no error,
+and did the wrong thing at runtime. They are the same bug wearing four hats:
+**the setting lands somewhere real, but too late or in the wrong object.** None
+were findable by reading the config; all were found by driving the built editor
+and watching what it actually did.
+
+- **A config key that only the plugin's own `setup` reads, when lz-n defers
+  that setup.** `render-markdown`'s `latex.converter` pointed at a wrapper
+  script, and the *first* markdown buffer of every session still used the
+  default converter — `plugin/render-markdown.lua` runs `setup(vim.g.
+  render_markdown_config)` when lz-n finally sources the plugin directory, and
+  the manager renders immediately, so the render context captured a buffer
+  config built from defaults. `custom_handlers` is read live off a module field
+  and was therefore already ours, which is why only one key looked stale. Worse,
+  that plugin caches converter output globally by formula text, so one bad early
+  pass outlived the race for the whole session. Fixed by also setting
+  `vim.g.render_markdown_config` — the plugin's own answer to plugin-manager
+  ordering. **If a plugin offers a `vim.g.*_config` global, prefer it over
+  trusting setup ordering.**
+
+- **An `enabled = true` that only writes a config table.** `snacks.input`
+  never claimed `vim.ui.input`; snacks auto-starts only the modules in its own
+  `events` table. Measured: `vim.ui.input` resolved to
+  `runtime/lua/vim/ui.lua` before an explicit `Snacks.input.enable()` and to
+  `snacks/input.lua` after. The same mechanism is why `terminal` in
+  `snacks.nix` documents that its `enabled` key is never read. **For any snacks
+  module, check `debug.getinfo` on what it claims to own, not the config
+  table.**
+
+- **A synchronous provider replaced by an asynchronous one.** `nvim-ufo`
+  computes fold ranges asynchronously; turning off treesitter's `foldexpr` and
+  forcing `foldmethod=manual` globally left buffers with *no* folds for ~2s
+  after opening — `zc` returned `E490: No fold found`. foldexpr is kept on as
+  the pre-attach provider; ufo switches the window to manual itself once it has
+  ranges (its README: "foldmethod option will finally become manual if ufo is
+  working"). **Never force `foldmethod` globally for ufo.**
+
+- **`overrideAttrs` that changes a version but not a name.** `buildVimPlugin`
+  computes `name` from `pname`/`version` before the override runs, so
+  `pkgs/diffview-plus.nix` produced the fork's source under a store path still
+  spelling the old upstream date. Contents right, label wrong, and the label is
+  what an audit reads. Override `name` explicitly. While there: overriding the
+  nixpkgs package rather than writing a fresh `buildVimPlugin` is what inherits
+  `nvimSkipModules`, without which diffview fails its require check on ~30
+  modules that need its bootstrap global.
+
+The lesson is in `## Verifying a change` below, and it is not optional: a
+config change to this tree is unverified until a freshly built binary has been
+driven and observed.
 
 ## Verifying a change
 
@@ -121,3 +182,41 @@ when something better exists, not to reduce plugin count.
 For an eval-only check of a structural change,
 `nix build .#nixosConfigurations.nixos-btw.config.system.build.toplevel`.
 Then test in a **fresh** nvim — lazy-loading bugs only reproduce cold.
+
+Building just the editor is much faster than a rebuild and needs no sudo:
+
+```nix
+nix build --no-link --print-out-paths --impure --expr '
+let
+  f = builtins.getFlake "git+file:///home/mayon/nix-dotfiles?dirty=1";
+  system = "x86_64-linux";
+  nvimPkgs = import f.inputs.nixpkgs { inherit system; config.allowUnfree = true;
+    overlays = [ (_: _: { mcp-hub = f.inputs.mcp-hub.packages.${system}.default; }) ]; };
+in f.inputs.nixvim.legacyPackages.${system}.makeNixvimWithModule {
+  pkgs = nvimPkgs; module = import /home/mayon/nix-dotfiles/nixvim;
+}'
+```
+
+Then, against that binary:
+
+- **Startup errors**, which nothing else surfaces:
+  `nvim --headless -c 'lua vim.wait(3000); local m=vim.split(vim.fn.execute("messages"),"\n") …' -c 'qa!'`
+- **What a key or command actually resolves to**: `vim.fn.maparg(lhs, mode,
+  false, true)` — note `nvim_get_keymap` returns `<leader>` already expanded to
+  a literal space, so looking up the string `"<leader>x"` always fails.
+- **Who owns a `vim.ui.*` or a highlight**: `debug.getinfo(fn, "S").short_src`
+  and `nvim_get_hl(0, { name = …, link = false })`.
+- **What the editor actually draws**, including virtual text, folds and CJK
+  alignment — run it in tmux and read the screen back as text:
+
+  ```sh
+  tmux new-session -d -s v -x 160 -y 48 "<store-path>/bin/nvim <file>"
+  sleep 6; tmux send-keys -t v <keys>; sleep 3
+  tmux capture-pane -t v -p          # add -e to inspect colour codes
+  tmux kill-session -t v
+  ```
+
+- **Which subprocesses a plugin spawns**, when a converter or external tool is
+  involved: wrap `vim.system` in a `-c luafile` probe and print every call. That
+  is what exposed the render-markdown converter race; no amount of reading found
+  it.
