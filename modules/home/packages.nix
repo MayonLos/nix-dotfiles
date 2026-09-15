@@ -7,6 +7,9 @@
 {
   home.packages = with pkgs; [
     qt6Packages.qt6ct
+    # Qt5 counterpart, for Octave's Qt5 GUI -- see base/qt.nix. Only
+    # 1.1 MiB on top, because Octave already drags Qt5 in.
+    libsForQt5.qt5ct
     pkgs-unstable.github-copilot-cli
     pkgs-unstable.claude-code
     # codex, chatgpt, dsh, opencode, zcode and the agent-side tooling come from
