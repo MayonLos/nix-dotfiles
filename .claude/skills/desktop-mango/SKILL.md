@@ -379,13 +379,36 @@ is named `Fcitx5 Input Window`) and confirm the protocol with
 
 ## Clipboard
 
-The Wayland ↔ X11 bridge that `modules/home/services/clipboard.nix` used to
-provide is **gone on this branch**. It existed only because xwayland-satellite
-0.8.1/0.8.2 transferred 0 bytes in both directions; mango uses wlroots' built-in
-Xwayland, which does selection sync inside the compositor, and running a manual
-bridge alongside a working one risks a feedback loop. This has not been confirmed
-on a running mango yet — if X11 copy/paste is dead, that module on `main` is the
-thing to resurrect, not a new workaround.
+`modules/home/services/clipboard.nix` bridges the Wayland and X11 clipboards,
+and it is **required** — mango does not sync selections between them. The module
+was written for xwayland-satellite under niri, deleted in the mango migration on
+the theory that wlroots' built-in Xwayland handles this in the compositor, and
+restored on 2026-09-15 when that theory was finally measured:
+
+| Direction | Without the bridge |
+|---|---|
+| X11 → Wayland | QQ's copied text sat in the X11 CLIPBOARD (`xclip -o` returned it) while `wl-paste` still served a minutes-old PNG |
+| Wayland → X11 | `wl-copy` a marker, then `xclip -selection clipboard -o` → `target STRING not available` |
+
+Nothing is missing on the compositor side: mango advertises
+`wl_data_device_manager` v3, `zwp_primary_selection_device_manager_v1`,
+`zwlr_data_control_manager_v1` v2 and `ext_data_control_manager_v1`. The feedback
+loop the deletion worried about does not happen — the two watchers share one
+hash file, and the restored bridge measured 0 CPU-seconds over 4 minutes with no
+duplicate entries in `cliphist`.
+
+**This is what "copy in QQ does nothing" actually is.** QQ is a mixed-protocol
+client: Wayland for its windows (zero connections to `@/tmp/.X11-unix/X0` while
+idle, input over text-input-v3) but X11 for the clipboard, reached through
+`DISPLAY=:0` only at the moment you copy. So a QQ clipboard report is a bridge
+problem, never a QQ one, and re-pinning QQ to `--ozone-platform=x11` to "fix" it
+would wreck the fcitx5 candidate-window setup above. Upstream `xwayclip` and the
+AUR `qq-wayland-clipboard-git` exist for exactly this class of app.
+
+One rough edge, harmless so far: an image copied from QQ crosses labelled
+`image/png` while the bytes are JFIF, because `pick_type` prefers `image/png`
+from the X11 TARGETS list and QQ offers that target for JPEG data. `cliphist`
+sniffs content and files it correctly as jpeg.
 
 `modules/home/services/cliphist.nix` is separate and unchanged: two
 `wl-paste --watch cliphist store` user units (text and image) populate the
