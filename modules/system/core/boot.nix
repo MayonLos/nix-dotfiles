@@ -1,7 +1,10 @@
 { config, pkgs, ... }:
 {
   boot = {
-    kernelPackages = pkgs.linuxPackages_zen;
+    # linuxPackages_zen currently tracks Linux 7.2, which NVIDIA's open 595
+    # module does not build against (strncpy was removed from the kernel API).
+    # Stay on nixpkgs' supported LTS kernel until NVIDIA supports 7.2.
+    kernelPackages = pkgs.linuxPackages;
     kernelModules = [
       "tun"
       "legion_laptop"
