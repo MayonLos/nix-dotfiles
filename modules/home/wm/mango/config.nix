@@ -17,13 +17,9 @@
     systemd.enable = true;
 
     settings = {
-      # The broad default is dwm's master-stack tile layout; tags 5 and 9 are
-      # scrollers for browsing and long-form work where side-by-side tiles fit
-      # the side-by-side workspace workflow better.
+      # The broad default is dwm's master-stack tile layout for all tags.
       tagrule = [
         "id:*,layout_name:tile"
-        "id:5,layout_name:scroller"
-        "id:9,layout_name:scroller"
       ];
 
       monitorrule = [
@@ -131,6 +127,11 @@
       scroller_ignore_proportion_single = 1;
       scroller_default_proportion_single = 1.0;
 
+      # Avoid accidental tag changes at the screen edge while a game or video
+      # is fullscreen, and keep the display awake during fullscreen playback.
+      hotarea_disable_on_fullscreen = 1;
+      idleinhibit_when_fullscreen = 1;
+
       new_is_master = 1;
       default_mfact = 0.55;
       default_nmaster = 1;
@@ -194,10 +195,17 @@
         "SUPER+CTRL,L,exchange_client,right"
         "SUPER+CTRL,Right,exchange_client,right"
 
+        "SUPER+SHIFT+CTRL,H,move_client,left"
+        "SUPER+SHIFT+CTRL,J,move_client,down"
+        "SUPER+SHIFT+CTRL,K,move_client,up"
+        "SUPER+SHIFT+CTRL,L,move_client,right"
+
         "SUPER,Page_Down,viewtoright"
         "SUPER,U,viewtoright"
         "SUPER,Page_Up,viewtoleft"
         "SUPER,I,viewtoleft"
+        "SUPER+ALT,J,overcircle,current_prev"
+        "SUPER+ALT,K,overcircle,current_next"
         "SUPER+CTRL,Page_Down,tagtoright"
         "SUPER+CTRL,U,tagtoright"
         "SUPER+CTRL,Page_Up,tagtoleft"
@@ -284,6 +292,13 @@
         "SUPER+SHIFT,R,setkeymode,resize"
         "SUPER,grave,toggle_scratchpad"
         "SUPER+ALT,T,switcher,next"
+      ];
+
+      # Match the old niri mouse workflow: Super+left-drag moves the focused
+      # window and Super+right-drag resizes it.
+      mousebind = [
+        "SUPER,btn_left,moveresize,curmove"
+        "SUPER,btn_right,moveresize,curresize"
       ];
 
       bindl = [
