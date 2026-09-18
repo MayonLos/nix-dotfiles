@@ -15,15 +15,11 @@
     # codex, chatgpt, dsh, opencode, zcode and the agent-side tooling come from
     # programs/dev/ai-agents.nix — packaged by the llm-agents.nix input.
     # nvim comes from programs/dev/nvim.nix — built from ./nixvim in this repo.
-    fzf
     imagemagick
     nodejs
-    fastfetch
-    btop
     bat
     eza
     ripgrep
-    lazygit
     duf
     nix-output-monitor
     # `find` to ripgrep/eza/bat's `grep`/`ls`/`cat`; the one missing sibling of
