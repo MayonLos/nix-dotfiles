@@ -30,7 +30,12 @@ in
       interpolation = "yes";
       tscale = "oversample";
 
-      sub-font = "JetBrainsMonoNF-Regular";
+      # A sans, not the monospace this used to name: subtitles are prose, and
+      # more to the point they are often Chinese here -- a Latin-only mono
+      # family means every CJK glyph is a fontconfig fallback, so the line
+      # renders in two typefaces with two different vertical metrics.
+      # Noto Sans CJK SC covers both scripts in one family.
+      sub-font = "Noto Sans CJK SC";
       sub-font-size = 45;
       sub-auto = "fuzzy";
       slang = "chs,sc,zh,chi,zho";
