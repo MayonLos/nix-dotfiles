@@ -55,7 +55,15 @@
 ;; soon as anything else prints.  This is the same content in a child frame —
 ;; the role nvim gives to its LSP hover float.
 (use-package eldoc-box
-  :hook (eglot-managed-mode . eldoc-box-hover-at-point-mode))
+  :hook (eglot-managed-mode . eldoc-box-hover-at-point-mode)
+  ;; eldoc-box.el:85 defines `eldoc-box-border' as literally `:background
+  ;; "white"' on any dark background, so the hover frame came up as a white
+  ;; slab in the middle of a Nord buffer. Both faces are pinned to the palette
+  ;; here; `:custom-face' rather than a `setq' because the face has to exist
+  ;; before it can be set, and this form is deferred until eldoc-box loads.
+  :custom-face
+  (eldoc-box-border ((t (:background "#4C566A"))))
+  (eldoc-box-body ((t (:background "#272C36" :inherit nil)))))
 
 ;; Workspace-wide symbol lookup from the language server.  consult-imenu only
 ;; ever sees the current file, which is the distinction nvim draws between

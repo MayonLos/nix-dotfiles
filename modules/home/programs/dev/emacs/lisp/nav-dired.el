@@ -15,6 +15,13 @@
 
 (use-package dirvish
   :init (dirvish-override-dired-mode 1)
+  ;; `dirvish-hl-line' inherits `highlight', and doom-nord defines `highlight'
+  ;; as plain `blue' (#81A1C1, Nord9) -- a full-brightness accent used as the
+  ;; background of a row that spans the whole sidebar. Measured: 5964 pixels of
+  ;; #81A1C1 in one line, the loudest block on the frame. Nord2 says "this row
+  ;; is current" without being the first thing the eye lands on.
+  :custom-face
+  (dirvish-hl-line ((t (:background "#434C5E" :extend t))))
   :config
   (setq dirvish-attributes '(nerd-icons file-size vc-state git-msg)
         dirvish-mode-line-format '(:left (sort file-time symlink) :right (omit yank index))

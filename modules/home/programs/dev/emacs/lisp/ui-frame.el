@@ -23,6 +23,24 @@
           :right-divider-width 20
           :scroll-bar-width 8
           :fringe-width 10))
+
+  ;; Without this the mode line and header line keep their own background, and
+  ;; the padding above turns each of them into a wide filled block: the dirvish
+  ;; header, the breadcrumb, and both halves of the mode line all read as slabs
+  ;; of a different colour rather than as edges. `subtle-frame-lines' drops
+  ;; those backgrounds to the frame's own and draws a hairline instead — an
+  ;; overline under the mode line, an underline under the header line — so the
+  ;; chrome marks a boundary without becoming a shape.
+  ;;
+  ;; Read once at enable, same as the widths. Colours are doom-nord's own:
+  ;; Nord10 for the focused window, base3 everywhere else, both dark enough to
+  ;; sit against bg #2E3440 without drawing the eye.
+  (setq spacious-padding-subtle-frame-lines
+        '(:mode-line-active "#5E81AC"
+          :mode-line-inactive "#373E4C"
+          :header-line-active "#373E4C"
+          :header-line-inactive "#373E4C"))
+
   (spacious-padding-mode 1))
 
 ;; Buffers that are not visiting a file get a slightly different background,
