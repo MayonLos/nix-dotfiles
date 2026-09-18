@@ -1,11 +1,24 @@
 {
   plugins.treesitter-textobjects = {
     enable = true;
-    settings = {
-      select.lookahead = true;
-      move.set_jumps = true;
-    };
+    # No `settings` here. nixvim funnels them into
+    # `require("nvim-treesitter").setup{ textobjects = ... }`, and the pinned
+    # nvim-treesitter is the archived **main**-branch layout, whose `setup`
+    # reads only `install_dir` -- everything else is dropped on the floor.
+    # Measured: `select.lookahead` came out `false` at runtime despite being set
+    # to `true` here, so `vif` with the cursor *before* the function on the same
+    # line did not look ahead to it.
+    #
+    # This plugin has had its own `setup` since it split from nvim-treesitter,
+    # and that is the only path that reaches its config module.
   };
+
+  extraConfigLua = ''
+    require("nvim-treesitter-textobjects").setup({
+      select = { lookahead = true },
+      move = { set_jumps = true },
+    })
+  '';
 
   keymaps =
     let

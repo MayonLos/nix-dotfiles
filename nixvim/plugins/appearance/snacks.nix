@@ -174,8 +174,9 @@ _: {
 
     # --- file -----------------------------------------------------------
     {
-      # oil can rename a file too, but it will not tell the language server,
-      # so every import pointing at the old name silently breaks.
+      # Renaming through the tree or through `:!mv` does not tell the language
+      # server, so every import pointing at the old name silently breaks. This
+      # one goes through the LSP's willRenameFiles.
       mode = "n";
       key = "<leader>fR";
       action.__raw = ''function() require("snacks").rename.rename_file() end'';
@@ -184,8 +185,13 @@ _: {
 
     # --- explorer -------------------------------------------------------
     {
-      # A tree for orientation. oil stays the editing surface: it renames and
-      # deletes by editing buffer text, which a tree cannot express.
+      # The file manager for this config. oil.nvim used to sit beside it as the
+      # "edit the directory as a buffer" surface and was removed on 2026-09-18:
+      # two file explorers, and the one that was supposed to own `nvim <dir>`
+      # never did -- its `default_file_explorer = true` needed oil loaded to
+      # register the netrw hijack, but oil was lazy on `cmd = "Oil"` while this
+      # one is eager, so snacks claimed the directory buffer every time
+      # (measured: `nvim dtest/` gave ft=snacks_picker_list, oil not loaded).
       mode = "n";
       key = "<leader>e";
       action.__raw = ''function() require("snacks").explorer() end'';
