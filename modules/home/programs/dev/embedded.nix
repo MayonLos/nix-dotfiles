@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 
 {
   # STM32 / Cortex-M development. Per the dev-toolchain skill's split, this is a
@@ -17,7 +17,16 @@
     #
     # It brings its own arm-none-eabi-gdb, which is the one to point at
     # OpenOCD's :3333 -- the host `gdb` from llvm.nix cannot debug a Cortex-M.
-    gcc-arm-embedded
+    #
+    # `lowPrio` because it collides with that host gdb on 78 paths:
+    # include/gdb/jit-reader.h and the whole share/gdb/python/gdb tree, which
+    # both packages install at the same names. Without it `home-manager-path`
+    # fails to build outright ("two given paths contain a conflicting
+    # subpath"). Letting the host gdb win costs nothing: both binaries resolve
+    # their data directory by absolute store path, not through the profile --
+    # verified with `show data-directory` on each. Nothing collides in bin/;
+    # every ARM binary carries the arm-none-eabi- prefix.
+    (lib.lowPrio gcc-arm-embedded)
 
     # Flashing and on-chip debugging, in order of how much they hide from you:
     #
