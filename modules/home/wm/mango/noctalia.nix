@@ -308,6 +308,11 @@ in
           # active); "nothing running" is not a fault. Same correction as
           # widget.sysmon below: red is for things that are wrong.
           inactive_color = "on_surface_variant";
+          # The count is 0 unless something is actually running, and a widget
+          # whose only state is "0" is a widget that says nothing. This hides
+          # the glyph, the count and the dot entirely until a container comes
+          # up, at which point it appears with a real number in it.
+          status_mode = "running_only";
         };
 
         # "暂无播放内容" is not information. The widget sat there at full width
