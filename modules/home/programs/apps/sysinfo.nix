@@ -5,12 +5,18 @@ _:
     # `fastfetch` is run by hand, not on shell start, so it is allowed to be a
     # showpiece rather than something to scroll past.
     #
-    # The hex below is deliberate and is the exception, not the rule: unlike
-    # tmux or fzf, fastfetch draws its own colours rather than reading the
-    # terminal palette, so it cannot follow a noctalia theme change. It is in
-    # the same bucket as nvim, Emacs and fcitx5 -- pinned to Tokyo Night by
-    # hand, retheme costs a rebuild. Values are the night variant, matching
-    # ~/.config/foot/themes/noctalia.
+    # Colours are ANSI indices, not hex, for two reasons. The first is that hex
+    # in a `{#...}` format string is not reliably accepted: fastfetch 2.63.1
+    # rejected `{#BB9AF7}` with `invalid color code found: BB9AF7`. The second
+    # is the one that matters more -- an index is resolved by foot from the
+    # palette noctalia renders, so this follows a theme change for free. An
+    # earlier version of this file used hex and claimed in a comment that
+    # fastfetch "draws its own colours rather than reading the terminal
+    # palette". That was simply wrong: it emits ANSI escapes like anything else.
+    #
+    # Index -> Tokyo Night, straight out of ~/.config/foot/themes/noctalia:
+    #   1 red #f7768e   2 green #9ece6a   3 yellow #e0af68   4 blue #7aa2f7
+    #   5 magenta #bb9af7   6 cyan #7dcfff   8 bright0 #414868   15 #c0caf5
     fastfetch = {
       enable = true;
       settings = {
@@ -18,15 +24,15 @@ _:
           source = "nixos_small";
           padding.right = 2;
           color = {
-            "1" = "#7aa2f7";
-            "2" = "#7dcfff";
+            "1" = "4";
+            "2" = "6";
           };
         };
         display = {
           separator = "    ";
           color = {
-            output = "#c0caf5";
-            separator = "#414868";
+            output = "15";
+            separator = "8";
           };
         };
         # One line per thing worth knowing about *this* machine: an Intel +
@@ -35,7 +41,7 @@ _:
         modules = [
           {
             type = "title";
-            format = "{#BB9AF7}{user-name}{#565F89}@{#7AA2F7}{host-name}";
+            format = "{#5}{user-name}{#8}@{#4}{host-name}";
           }
           {
             type = "separator";
@@ -44,59 +50,59 @@ _:
           {
             type = "os";
             key = "OS";
-            keyColor = "#7aa2f7";
+            keyColor = "4";
           }
           {
             type = "kernel";
             key = "Kernel";
-            keyColor = "#7dcfff";
+            keyColor = "6";
           }
           {
             type = "uptime";
             key = "Uptime";
-            keyColor = "#9ece6a";
+            keyColor = "2";
           }
           {
             type = "packages";
             key = "Packages";
-            keyColor = "#e0af68";
+            keyColor = "3";
           }
           {
             type = "wm";
             key = "Compositor";
-            keyColor = "#bb9af7";
+            keyColor = "5";
           }
           {
             type = "display";
             key = "Display";
-            keyColor = "#7aa2f7";
+            keyColor = "4";
             compactType = "original-with-refresh-rate";
           }
           {
             type = "cpu";
             key = "CPU";
-            keyColor = "#7dcfff";
+            keyColor = "6";
           }
           {
             type = "gpu";
             key = "GPU";
-            keyColor = "#9ece6a";
+            keyColor = "2";
           }
           {
             type = "memory";
             key = "Memory";
-            keyColor = "#e0af68";
+            keyColor = "3";
           }
           {
             type = "disk";
             key = "Disk";
-            keyColor = "#ff9e64";
+            keyColor = "3";
             folders = "/";
           }
           {
             type = "battery";
             key = "Battery";
-            keyColor = "#f7768e";
+            keyColor = "1";
           }
         ];
       };
