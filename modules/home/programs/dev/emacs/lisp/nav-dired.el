@@ -25,7 +25,18 @@
   ;; `SPC e' is the side panel, matching nvim's `<leader>e'.  The `SPC o'
   ;; group is Emacs-only: dired is reached far more often here than a file
   ;; tree is in nvim, so it keeps its own entry points.
-  (setq dirvish-side-width 35))
+  (setq dirvish-side-width 35)
+
+  ;; dirvish keeps `major-mode' as `dired-mode' for compatibility, so
+  ;; evil-collection's `dired-mode-map' bindings apply -- and its per-state
+  ;; auxiliary map wins over `dirvish-mode-map', which is only a *child* of
+  ;; dired-mode-map. The visible effect: `q' ran `quit-window' instead of
+  ;; `dirvish-quit', skipping `dirvish--clear-session' and leaking the hidden
+  ;; dired buffers and session bookkeeping every time.
+  ;;
+  ;; Binding on the mode's own map through evil puts it above that aux layer.
+  (with-eval-after-load 'evil
+    (evil-define-key 'normal dirvish-mode-map (kbd "q") #'dirvish-quit)))
 
 (provide 'nav-dired)
 ;;; nav-dired.el ends here

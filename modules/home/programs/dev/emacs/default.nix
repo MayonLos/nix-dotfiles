@@ -191,7 +191,8 @@ in
         nerd-icons
         nerd-icons-completion
         nerd-icons-corfu
-        nerd-icons-dired
+        # No nerd-icons-dired: dirvish draws dired's icons itself, and having
+        # both put two glyphs on every row.
         nerd-icons-ibuffer
         indent-bars
         ligature

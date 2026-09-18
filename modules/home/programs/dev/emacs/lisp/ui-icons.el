@@ -9,6 +9,11 @@
 
 (use-package nerd-icons)
 
+;; Dired has no entry here on purpose. dirvish draws icons itself through
+;; `dirvish-attributes' (nav-dired.el), and `dirvish-override-dired-mode' means
+;; that is the code path every dired buffer takes. Adding nerd-icons-dired on
+;; top put *two* identical glyphs on every row.
+
 ;; Completion candidates: file kinds in find-file, buffer kinds in switch-buffer.
 (use-package nerd-icons-completion
   :after (marginalia nerd-icons)
@@ -20,9 +25,6 @@
 (use-package nerd-icons-corfu
   :after corfu
   :config (add-to-list 'corfu-margin-formatters #'nerd-icons-corfu-formatter))
-
-(use-package nerd-icons-dired
-  :hook (dired-mode . nerd-icons-dired-mode))
 
 (use-package nerd-icons-ibuffer
   :hook (ibuffer-mode . nerd-icons-ibuffer-mode))

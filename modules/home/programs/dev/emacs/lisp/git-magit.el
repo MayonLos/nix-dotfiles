@@ -58,6 +58,14 @@
   ;; stages or commits anything.
   (add-hook 'magit-pre-refresh-hook #'diff-hl-magit-pre-refresh)
   (add-hook 'magit-post-refresh-hook #'diff-hl-magit-post-refresh)
+  ;; The left fringe already belongs to flymake (`flymake-fringe-indicator-
+  ;; position' defaults to `left-fringe', and diag-trouble.el turns flymake on
+  ;; for every prog buffer). Both default to the left, so on any line that has
+  ;; both an uncommitted change and a diagnostic one indicator silently hid the
+  ;; other. Git marks move right; diagnostics keep the left, because the
+  ;; `SPC l l' end-of-line rendering is built around them.
+  (setq diff-hl-side 'right)
+
   ;; Update as you type rather than only on save, which is what makes the marks
   ;; comparable to gitsigns'.
   (diff-hl-flydiff-mode 1))

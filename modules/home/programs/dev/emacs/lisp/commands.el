@@ -95,15 +95,21 @@ The equivalent of snacks' zen mode in the Neovim config."
   :lighter " Zen"
   (if my/zen-mode
       (let ((pad (max 0 (/ (- (window-total-width) fill-column) 2))))
-        (setq my/zen--state (list display-line-numbers mode-line-format))
+        ;; `header-line-format' has to go too: ui-modeline.el puts
+        ;; breadcrumb-local-mode on every prog buffer, so without this the
+        ;; breadcrumb path stayed on screen while everything else was stripped.
+        (setq my/zen--state
+              (list display-line-numbers mode-line-format header-line-format))
         (setq display-line-numbers nil
-              mode-line-format nil)
+              mode-line-format nil
+              header-line-format nil)
         ;; Centre the text by padding the window rather than the buffer, so
         ;; nothing about the file on disk changes.
         (set-window-margins nil pad pad))
     (when my/zen--state
       (setq display-line-numbers (nth 0 my/zen--state)
-            mode-line-format (nth 1 my/zen--state)))
+            mode-line-format (nth 1 my/zen--state)
+            header-line-format (nth 2 my/zen--state)))
     (set-window-margins nil 0 0)))
 
 (defun my/toggle-inlay-hints ()

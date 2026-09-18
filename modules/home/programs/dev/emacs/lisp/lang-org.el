@@ -43,7 +43,15 @@
 (use-package org-modern
   :after org
   :hook ((org-mode . org-modern-mode)
-         (org-agenda-finalize . org-modern-agenda)))
+         (org-agenda-finalize . org-modern-agenda))
+  :config
+  ;; Tables are valign's job (lang-markdown.el), not org-modern's. Both put a
+  ;; `display (space :width N)' property on the *same* `|' characters --
+  ;; org-modern as a text property, valign as an overlay -- so the column
+  ;; widths depended on which one refreshed last. valign is the one that
+  ;; measures rendered pixels, which is the only thing that works for the CJK
+  ;; and mixed-pitch text this config is full of.
+  (setq org-modern-table nil))
 
 ;; `org-hide-emphasis-markers' above makes *bold* readable but un-editable;
 ;; this reveals the markers only for the construct point is inside.

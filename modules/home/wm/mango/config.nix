@@ -26,6 +26,34 @@
         "name:^eDP-1$,width:2560,height:1600,refresh:165.002,x:0,y:0,scale:1.5,vrr:1"
       ];
 
+      # Let X11 clients render at real pixels instead of being upscaled.
+      #
+      # Measured on 2026-09-18 with the default (0): `xdpyinfo` reported the X
+      # screen as **1707x1067**, i.e. 2560/1.5 -- Xwayland runs at the LOGICAL
+      # size and mango stretches every X surface 1.5x to fill the panel. That
+      # is a bitmap upscale, so every X11 client is soft no matter what it
+      # does internally; Steam's UI was the complaint that surfaced it, and the
+      # NIXOS_OZONE_WL comment below is the same problem seen from the other
+      # side.
+      #
+      # With 1, src/manage/client.c:xwayland_client_scale returns the monitor
+      # scale, so mango sizes each X window in *physical* pixels and presents
+      # it 1:1 ("windows display exactly 1:1", its own comment) -- nothing is
+      # resampled. Measured with an xclock after flipping it:
+      #
+      #   compositor logical geometry   936 x 1010
+      #   X-side geometry              1392 x 1503     ratio 1.487
+      #
+      # i.e. the client now renders into a buffer 1.5x its logical size. The
+      # root X screen still *reports* 1707x1067; only per-window geometry
+      # changes, which is enough.
+      #
+      # X clients then look small unless they scale themselves -- which is
+      # exactly what `Xft.dpi: 144` in base/xresources.nix is for, and it is
+      # already merged into this server (`xrdb -query` returns it). The two
+      # settings are a pair; neither works alone.
+      xwayland_ignore_scale = 1;
+
       # mango is exec'd straight from the session desktop file, not through a
       # login shell, so it inherits none of Home Manager's session variables --
       # niri got them because niri-session is a shell wrapper that sources
