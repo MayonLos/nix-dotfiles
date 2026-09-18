@@ -20,7 +20,6 @@
     nodejs
     fastfetch
     btop
-    zoxide
     bat
     eza
     ripgrep

@@ -12,8 +12,13 @@ in
     package = pkgs.bibata-cursors;
     name = cursorTheme;
     size = cursorSize;
-    x11.defaultCursor = cursorTheme;
     gtk.enable = true;
+    # x11.enable is what emits Xcursor.theme / Xcursor.size into
+    # xresources.properties, which base/xresources.nix merges into the running
+    # Xwayland server -- that is the half that reaches XWayland clients.
+    # x11.defaultCursor is deliberately left at its default: it names a cursor
+    # *file* inside share/icons/<theme>/cursors/ (left_ptr), not the theme, and
+    # it is only ever used by xsession.profileExtra, which mango never runs.
     x11.enable = true;
   };
 

@@ -23,6 +23,9 @@
       database = "sqlite";
       continuous-hist-save = true;
 
+      # These four configure recoloring; they do not switch it on. `recolor`
+      # itself stays at its default of false, so a PDF opens with its real
+      # colours and `^r` toggles the dark rendering these keys describe.
       recolor-keephue = true;
       recolor-reverse-video = true;
       recolor-lightcolor = "#1e1e2e";

@@ -35,6 +35,11 @@ _: {
 
   programs.delta = {
     enable = true;
+    # Without this, `delta` is merely installed: the module writes
+    # pager.diff / interactive.diffFilter / pager.blame into git's config only
+    # when enableGitIntegration is set, and it defaults to false. `git diff`
+    # rendered through git's own pager until this line existed.
+    enableGitIntegration = true;
     options = {
       navigate = true;
       side-by-side = true;

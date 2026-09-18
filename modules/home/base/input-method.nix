@@ -74,7 +74,5 @@
 
         ascii_composer/good_old_caps_lock: true
     '';
-
-    sessionVariables.GLFW_IM_MODULE = "ibus";
   };
 }

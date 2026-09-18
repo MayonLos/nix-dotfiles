@@ -28,8 +28,9 @@ in
       "$HOME/.local/bin"
     ];
 
+    # GLFW_IM_MODULE / SDL_IM_MODULE / XMODIFIERS are not here: the
+    # i18n.inputMethod.fcitx5 module sets all three itself.
     sessionVariables = shared // {
-      XMODIFIERS = "@im=fcitx";
       EDITOR = "nvim";
       VISUAL = "nvim";
       BAT_THEME = "OneHalfDark";
