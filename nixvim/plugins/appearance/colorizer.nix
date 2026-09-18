@@ -7,6 +7,12 @@ _: {
 
     lazyLoad = {
       enable = true;
+      settings.cmd = [
+        "ColorizerToggle"
+        "ColorizerAttachToBuffer"
+        "ColorizerDetachFromBuffer"
+        "ColorizerReloadAllBuffers"
+      ];
       settings.ft = [
         "css"
         "scss"
