@@ -9,9 +9,6 @@ _:
         Experimental = true;
         FastConnectable = true;
       };
-      Policy = {
-        AutoEnable = true;
-      };
     };
   };
 }

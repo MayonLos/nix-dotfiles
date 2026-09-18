@@ -1,5 +1,8 @@
 { config, ... }:
 {
+  # Stated here rather than left to Steam: nixpkgs' programs/steam.nix assigns
+  # both of these plainly (not mkDefault) whenever Steam is enabled, so the
+  # values have to agree with this file or evaluation fails outright.
   hardware.graphics = {
     enable = true;
     enable32Bit = true;
