@@ -16,9 +16,17 @@
   :config
   (setq doom-themes-enable-bold t
         doom-themes-enable-italic t)
-  ;; doom-nord rather than plain nord-theme: it ships the face definitions that
-  ;; magit, org and doom-modeline expect.
-  (load-theme 'doom-nord t)
+  ;; doom-tokyo-night, not a standalone tokyonight package: doom-themes ships
+  ;; the face definitions magit, org and doom-modeline expect, which a bare
+  ;; theme does not.
+  ;;
+  ;; The scheme is not a taste call made here -- it is the host's. noctalia
+  ;; renders the live palette into foot, gtk, qt, mango, btop, cava, yazi,
+  ;; zathura, vscode and zen, and that palette is Tokyo Night (#1a1b26 /
+  ;; #c0caf5 / #7aa2f7, read straight out of ~/.config/foot/themes/noctalia).
+  ;; Emacs cannot follow it at runtime, so it is pinned to the same scheme, as
+  ;; are nvim, tmux and fcitx5.
+  (load-theme 'doom-tokyo-night t)
   ;; Org face tweaks live in a separate file that the nixpkgs build does not
   ;; generate an autoload for, so `doom-themes-org-config' is void until it is
   ;; required by hand.
@@ -26,7 +34,7 @@
     (doom-themes-org-config))
 
   ;; Built-in faces doom-nord does not claim, which therefore keep Emacs' own
-  ;; hardcoded greys and show up as off-palette slabs against #2E3440.
+  ;; hardcoded greys and show up as off-palette slabs against #1a1b26.
   ;;
   ;; `help-key-binding' is the one that shows: its dark default is
   ;; `:background "grey19" :box (:color "grey35")', which is what drew the grey
@@ -37,9 +45,9 @@
   ;; These run after `load-theme' on purpose -- a theme load resets faces, so
   ;; anything set before it would be thrown away.
   (set-face-attribute 'help-key-binding nil
-                      :background "#3B4252"   ; nord1
-                      :foreground "#88C0D0"   ; nord8, frost
-                      :box '(:line-width (1 . -1) :color "#4C566A")))
+                      :background "#292e42"   ; bg_highlight
+                      :foreground "#7dcfff"   ; cyan
+                      :box '(:line-width (1 . -1) :color "#414868")))
 
 (provide 'ui-theme)
 ;;; ui-theme.el ends here

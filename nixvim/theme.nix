@@ -1,8 +1,13 @@
 _: {
+  # The chosen style is runtime state, not a rebuild: it is written to
+  # stdpath("data") and re-applied on the next start. `<leader>fs` picks one
+  # through fzf-lua (plugins/navigation/fzf.nix).
   extraConfigLua = ''
-    local onedark = require("onedark")
-    local style_file = vim.fn.stdpath("data") .. "/onedark-style"
-    local STYLES = { "dark", "darker", "cool", "deep", "warm", "warmer", "light" }
+    local tokyonight = require("tokyonight")
+    local style_file = vim.fn.stdpath("data") .. "/tokyonight-style"
+    -- `day` is in the list deliberately: it is the one escape hatch for
+    -- working outdoors, and the file it writes survives the session.
+    local STYLES = { "night", "storm", "moon", "day" }
 
     local function apply_saved_style()
       local file = io.open(style_file, "r")
@@ -10,19 +15,19 @@ _: {
       local style = file:read("*line")
       file:close()
       if style and vim.tbl_contains(STYLES, style) then
-        onedark.setup({ style = style })
-        onedark.load()
+        tokyonight.setup({ style = style })
+        tokyonight.load()
       end
     end
 
-    _G.select_onedark_style = function()
+    _G.select_tokyonight_style = function()
       local ok, fzf = pcall(require, "fzf-lua")
       if not ok then
         vim.notify("fzf-lua is required for style selection", vim.log.levels.WARN)
         return
       end
       fzf.fzf_exec(STYLES, {
-        prompt = "OneDark Style ❯ ",
+        prompt = "Tokyo Night Style ❯ ",
         actions = {
           ["default"] = function(selected)
             if not selected or #selected == 0 then return end
@@ -35,8 +40,8 @@ _: {
               vim.notify("Failed to save style preference", vim.log.levels.ERROR)
               return
             end
-            onedark.setup({ style = new_style })
-            onedark.load()
+            tokyonight.setup({ style = new_style })
+            tokyonight.load()
             vim.notify(
               string.format("Applied '%s' style", new_style),
               vim.log.levels.INFO

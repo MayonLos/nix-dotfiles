@@ -62,8 +62,8 @@
   ;; here; `:custom-face' rather than a `setq' because the face has to exist
   ;; before it can be set, and this form is deferred until eldoc-box loads.
   :custom-face
-  (eldoc-box-border ((t (:background "#4C566A"))))
-  (eldoc-box-body ((t (:background "#272C36" :inherit nil)))))
+  (eldoc-box-border ((t (:background "#414868"))))
+  (eldoc-box-body ((t (:background "#16161e" :inherit nil)))))
 
 ;; Workspace-wide symbol lookup from the language server.  consult-imenu only
 ;; ever sees the current file, which is the distinction nvim draws between

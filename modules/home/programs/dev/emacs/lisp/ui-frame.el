@@ -32,14 +32,14 @@
   ;; overline under the mode line, an underline under the header line — so the
   ;; chrome marks a boundary without becoming a shape.
   ;;
-  ;; Read once at enable, same as the widths. Colours are doom-nord's own:
-  ;; Nord10 for the focused window, base3 everywhere else, both dark enough to
-  ;; sit against bg #2E3440 without drawing the eye.
+  ;; Read once at enable, same as the widths. Colours are Tokyo Night's own:
+  ;; blue1 marks the focused window, bg_highlight everywhere else, both dark
+  ;; enough to sit against bg #1a1b26 without drawing the eye.
   (setq spacious-padding-subtle-frame-lines
-        '(:mode-line-active "#5E81AC"
-          :mode-line-inactive "#373E4C"
-          :header-line-active "#373E4C"
-          :header-line-inactive "#373E4C"))
+        '(:mode-line-active "#3d59a1"
+          :mode-line-inactive "#292e42"
+          :header-line-active "#292e42"
+          :header-line-inactive "#292e42"))
 
   (spacious-padding-mode 1))
 

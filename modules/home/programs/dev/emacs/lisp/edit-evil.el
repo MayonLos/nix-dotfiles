@@ -36,12 +36,12 @@
   ;; The minibuffer is not a text editor; modal state there fights completion.
   (setq evil-echo-state nil)
   ;; State shows in the mode line, but the cursor is where the eye already is.
-  ;; Nord: frost blue normal, aurora yellow insert, purple visual, red replace.
-  (setq evil-normal-state-cursor   '("#81a1c1" box)
-        evil-insert-state-cursor   '("#ebcb8b" (bar . 2))
-        evil-visual-state-cursor   '("#b48ead" box)
-        evil-replace-state-cursor  '("#bf616a" hbar)
-        evil-operator-state-cursor '("#88c0d0" hollow)))
+  ;; Tokyo Night: blue normal, yellow insert, magenta visual, red replace.
+  (setq evil-normal-state-cursor   '("#7aa2f7" box)
+        evil-insert-state-cursor   '("#e0af68" (bar . 2))
+        evil-visual-state-cursor   '("#bb9af7" box)
+        evil-replace-state-cursor  '("#f7768e" hbar)
+        evil-operator-state-cursor '("#7dcfff" hollow)))
 
 (use-package evil-collection
   :after evil

@@ -40,7 +40,10 @@
 ;; own intra-line highlighting and the two draw over each other.
 (use-package magit-delta
   :hook (magit-mode . magit-delta-mode)
-  :config (setq magit-delta-default-dark-theme "Nord"
+  ;; Same syntax theme as `BAT_THEME' in base/session-vars.nix -- delta is the
+  ;; pager in both places, and it used to render Nord here and OneHalfDark in
+  ;; the terminal, so one hunk had two looks.
+  :config (setq magit-delta-default-dark-theme "Catppuccin Mocha"
                 magit-diff-refine-hunk nil))
 
 ;; Step a single file backwards through its own history, one commit per key.
