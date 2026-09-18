@@ -6,13 +6,13 @@ let
   # scale rather than Mango's 1.5 logical scale. PGTK talks Wayland directly and, with
   # GTK_IM_MODULE deliberately unset by the fcitx5 module (waylandFrontend =
   # true), reaches fcitx5 over text-input-v3 — the same path QQ uses, so the
-  # candidate window is the one ForceWaylandDPI in base/input-method.nix fixes.
+  # candidate window is the one PerScreenDPI in base/input-method.nix fixes.
   emacsPackage = pkgs.emacs30-pgtk;
 
   # Emacs 30 ships the *-ts-mode major modes but no grammars; it looks for
   # libtree-sitter-<lang>.so on `treesit-extra-load-path`. `with-all-grammars`
   # is 279 MiB of closure for 280 languages, so this is the subset that matches
-  # the remaps in init.el.
+  # the remaps in lisp/edit-treesit.el.
   grammars = emacsPackage.pkgs.treesit-grammars.with-grammars (
     g: with g; [
       tree-sitter-bash
@@ -45,31 +45,50 @@ in
     enable = true;
     package = emacsPackage;
 
-    # Everything on the load-path is put there by this wrapper, which is why
-    # early-init.el sets `package-enable-at-startup` to nil and every
-    # use-package form in init.el resolves without :ensure. Adding a package
-    # here is the only way to install one — `M-x package-install` has no
-    # writable directory to install into.
+    # Everything on the load-path is put there by this wrapper, which is why no
+    # use-package form in lisp/ needs :ensure. Adding a package here is the only
+    # way to install one — `M-x package-install` has no writable directory to
+    # install into.
+    #
+    # Grouped to match the module tree in lisp/, which in turn mirrors
+    # nixvim/plugins/. A package added here belongs in exactly one of those
+    # files; if it does not fit one, that is a sign the tree needs a new module
+    # rather than a sign to put it anywhere.
     extraPackages =
       epkgs: with epkgs; [
-        # Modal editing. evil-collection has to see evil-want-keybinding = nil
-        # before evil loads; init.el sets that in an :init block.
+        # -- lisp/keymaps.el ------------------------------------------------
+        general
+
+        # -- lisp/edit-evil.el ----------------------------------------------
+        # evil-collection has to see evil-want-keybinding = nil before evil
+        # loads; edit-evil.el sets that in an :init block.
         evil
         evil-collection
         evil-surround
-        evil-org
-        general
         # The pieces of the vim experience evil itself leaves out: C-a/C-x on
-        # numbers, `af`/`if`-style tree-sitter text objects (the nvim
-        # textobjects equivalent), simultaneous edits, and a flash on whatever
-        # an operator just acted on.
+        # numbers, and a flash on whatever an operator just acted on.
         evil-numbers
+        evil-goggles
+        # flash.nvim's job — reach a visible position without counting lines.
+        avy
+        ace-window
+
+        # -- lisp/edit-textobj.el, edit-multicursor.el, edit-treesit.el ------
+        # `af`/`if`-style tree-sitter text objects (the nvim textobjects
+        # equivalent) and simultaneous edits of every match.
         evil-textobj-tree-sitter
         evil-multiedit
-        evil-goggles
+        treesit-fold
+        nix-ts-mode
 
-        # Minibuffer and in-buffer completion. vertico/orderless/marginalia/
-        # consult replace ido and ivy; corfu/cape replace company.
+        # -- lisp/core-defaults.el ------------------------------------------
+        # ws-butler instead of a global `delete-trailing-whitespace' on save:
+        # the latter rewrites lines the commit never touched and turns every
+        # diff into noise.
+        ws-butler
+
+        # -- lisp/nav-minibuffer.el -----------------------------------------
+        # vertico/orderless/marginalia/consult replace ido and ivy.
         vertico
         orderless
         marginalia
@@ -77,13 +96,43 @@ in
         consult-dir
         embark
         embark-consult
-        corfu
-        cape
         # `embark-export' a consult-ripgrep result into a grep buffer, edit it
         # like any other buffer, `C-c C-c' — that is project-wide refactoring
         # with no dedicated tool involved.
         wgrep
 
+        # -- lisp/nav-harpoon.el --------------------------------------------
+        # harpoon.nvim's model: three or four files per project on fixed keys,
+        # separated by git branch. Pulls in f.el as a dependency.
+        harpoon
+
+        # -- lisp/nav-dired.el ----------------------------------------------
+        # A dired worth using as a file manager: preview pane, icons, header.
+        dirvish
+
+        # -- lisp/cmp-corfu.el, cmp-snippets.el ------------------------------
+        # corfu/cape replace company.
+        corfu
+        cape
+        yasnippet
+        yasnippet-snippets
+
+        # -- lisp/lsp-eglot.el, diag-trouble.el ------------------------------
+        # eglot is built in; these are the things around it.
+        eldoc-box
+        # Workspace-wide symbol search from the language server, as opposed to
+        # consult-imenu which only ever sees the current file.
+        consult-eglot
+        # Jump to any TODO/FIXME in the project, not just the ones magit-todos
+        # surfaces on the status screen.
+        consult-todo
+
+        # -- lisp/fmt-apheleia.el --------------------------------------------
+        # Formats on save in a subprocess, so a slow formatter cannot freeze
+        # the (single-threaded) editor the way a `before-save-hook' would.
+        apheleia
+
+        # -- lisp/git-magit.el -----------------------------------------------
         # The two reasons to run Emacs at all, plus the things that make them
         # complete: GitHub PRs and issues inside magit, per-file history
         # scrubbing, and the repository's TODOs on the status screen.
@@ -91,16 +140,52 @@ in
         forge
         git-timemachine
         magit-todos
-        # Renders magit's diffs through delta, which programs.git.delta already
-        # configures as the pager — so a hunk looks the same in both places.
+        # Renders magit's diffs through delta, which programs/dev/git.nix
+        # configures as git's pager — so a hunk looks the same in both places.
         magit-delta
-        org-modern
-        org-appear
-        org-roam
+        diff-hl
 
-        # Appearance. doom-modeline and nerd-icons need a Nerd Font with the
-        # symbol range — system/user/fonts.nix carries nerd-fonts.symbols-only
-        # for exactly this.
+        # -- lisp/dbg-dape.el ------------------------------------------------
+        # Debug Adapter Protocol client — the one large capability eglot does
+        # not cover. Drives gdb directly (17.2 speaks DAP natively) for C/C++
+        # and debugpy for Python.
+        dape
+
+        # -- lisp/ai-gptel.el ------------------------------------------------
+        # An LLM client wired to the DeepSeek key already in sops.
+        gptel
+
+        # -- lisp/tool-terminal.el -------------------------------------------
+        # A real terminal, since eshell is not one and ansi-term is worse.
+        vterm
+        popper
+
+        # -- lisp/tool-session.el --------------------------------------------
+        # persistence.nvim's job: restore the window layout for a directory.
+        easysession
+
+        # -- lisp/tool-utility.el --------------------------------------------
+        helpful
+        vundo
+        # Undo history survives a daemon restart, which matters more here than
+        # usual because a Wayland disconnect takes the daemon down with it.
+        undo-fu-session
+        # Shows the key just pressed and the command it ran. Worth leaving on
+        # while the muscle memory is still forming.
+        keycast
+        # Evaluation results appear inline next to the form instead of flashing
+        # in the echo area — the difference between reading elisp and poking it.
+        eros
+        # direnv, so a buffer under a project with an .envrc gets that project's
+        # toolchain instead of the daemon's login environment. Without this,
+        # eglot would start whatever clangd the daemon happened to inherit.
+        envrc
+        # An HTTP client whose request definitions are org documents.
+        verb
+
+        # -- lisp/ui-*.el ----------------------------------------------------
+        # doom-modeline and nerd-icons need a Nerd Font with the symbol range —
+        # system/user/fonts.nix carries nerd-fonts.symbols-only for exactly this.
         doom-themes
         doom-modeline
         nerd-icons
@@ -133,74 +218,28 @@ in
         # popper's popups already announce themselves by position; a mode line
         # in each one is pure noise.
         hide-mode-line
-
-        # Editing and VCS affordances.
-        diff-hl
-        hl-todo
         rainbow-delimiters
-        helpful
-        eldoc-box
-        # ws-butler instead of a global `delete-trailing-whitespace' on save:
-        # the latter rewrites lines the commit never touched and turns every
-        # diff into noise.
-        ws-butler
-        vundo
-        avy
-        ace-window
-        popper
-        treesit-fold
-        yasnippet
-        yasnippet-snippets
-        # Formats on save in a subprocess, so a slow formatter cannot freeze
-        # the (single-threaded) editor the way a `before-save-hook' would.
-        apheleia
+        hl-todo
 
-        # Major modes Emacs does not ship. Everything else in init.el's
-        # major-mode-remap-alist is built in.
-        nix-ts-mode
+        # -- lisp/lang-markdown.el, lang-tex.el ------------------------------
         markdown-mode
+        # Tables aligned by rendered pixel width rather than character count,
+        # which is the only way a table holding CJK survives a proportional
+        # face. render-markdown.nvim's job on the Neovim side.
+        valign
         # Real LaTeX editing rather than the built-in latex-mode, and a viewer
         # that renders the PDF inside Emacs with forward/inverse search.
         auctex
         pdf-tools
 
-        # direnv, so a buffer under a project with an .envrc gets that project's
-        # toolchain instead of the daemon's login environment. Without this,
-        # eglot would start whatever clangd the daemon happened to inherit.
-        envrc
-
-        # A real terminal, since eshell is not one and ansi-term is worse, and
-        # a dired that is worth using as a file manager.
-        vterm
-        dirvish
-
-        # An HTTP client whose request definitions are org documents, and an
-        # LLM client wired to the DeepSeek key already in sops.
-        verb
-        gptel
-
-        # Debug Adapter Protocol client — the one large capability eglot does
-        # not cover. Drives gdb directly (17.2 speaks DAP natively) for C/C++
-        # and debugpy for Python.
-        dape
-        # Workspace-wide symbol search from the language server, as opposed to
-        # consult-imenu which only ever sees the current file.
-        consult-eglot
-        # Jump to any TODO/FIXME in the project, not just the ones magit-todos
-        # surfaces on the status screen.
-        consult-todo
-        # Undo history survives a daemon restart, which matters more here than
-        # usual because a Wayland disconnect takes the daemon down with it.
-        undo-fu-session
-        # Shows the key just pressed and the command it ran. Worth leaving on
-        # while the muscle memory is still forming.
-        keycast
+        # -- lisp/lang-org.el -------------------------------------------------
+        org-modern
+        org-appear
+        org-roam
         # Clipboard image straight into an org file: saved next to the document
         # and inlined as a link.
         org-download
-        # Evaluation results appear inline next to the form instead of flashing
-        # in the echo area — the difference between reading elisp and poking it.
-        eros
+        evil-org
       ];
   };
 
@@ -215,6 +254,10 @@ in
       treesitGrammars = "${grammars}/lib";
     };
 
+    # init.el is only a loader; every setting lives in one file under lisp/,
+    # laid out to mirror nixvim/. The whole directory is linked in one go, so
+    # adding a module means adding the file and naming it in `my/modules`.
     "emacs/init.el".source = ./init.el;
+    "emacs/lisp".source = ./lisp;
   };
 }
