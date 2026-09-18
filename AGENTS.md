@@ -21,6 +21,7 @@ lib/               one helper: importDir
 modules/system/    NixOS modules   — auto-imported
 modules/home/      Home Manager modules for `mayon` — auto-imported
 nixvim/            Neovim config (repo root on purpose — see nix-modules skill)
+pkgs/              hand-written derivations for what nixpkgs lacks
 secrets/           age-encrypted secrets.yaml
 ```
 
@@ -42,12 +43,14 @@ nix develop .#cuda   # cudatoolkit, cudnn, nvcc
 2. Every module file is a function: `_: { … }` or `{ pkgs, lib, ... }: { … }`.
    `inputs` and `pkgs-unstable` are available via `specialArgs`.
 3. `pkgs` is **stable nixos-26.05** and is the default. `pkgs-unstable` is for
-   fast-moving packages only (`claude-code`, `github-copilot-cli`, `antigravity`).
+   fast-moving packages only (`claude-code`, `github-copilot-cli`,
+   `antigravity-ide-fhs`/`antigravity-cli`, `typora`), plus the single-attribute
+   exceptions the nix-modules skill lists.
 4. Home Manager runs **as a NixOS module** — `nixos-rebuild` applies both.
 5. Never put a secret in a `.nix` file; everything in a module is world-readable
    in `/nix/store`.
-6. `noctalia-greeter`, `mark-shot`, `wayscrollshot` and `llm-agents` are
-   deliberately **not** `follows`-ed. Do not "tidy" those.
+6. `mango`, `noctalia-greeter`, `mark-shot`, `wayscrollshot` and `llm-agents`
+   are deliberately **not** `follows`-ed. Do not "tidy" those.
 7. Comments explain *why*, not *what* — most of the surprising code here is
    load-bearing and already carries the reason. Read the comment before deleting
    a workaround.

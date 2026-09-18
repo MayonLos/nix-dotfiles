@@ -161,3 +161,11 @@ is needed because v4l2loopback nodes carry udev's `uaccess` tag.
 For an actual meeting, use the **web client in a browser**: browser screen
 sharing goes through `org.freedesktop.portal.ScreenCast` and works normally
 here.
+
+OBS itself *is* installed, as a Home Manager module:
+`modules/home/programs/apps/obs-studio.nix`, with three plugins — `wlrobs`
+(wlroots screen capture), `obs-vkcapture` (Vulkan/OpenGL game capture, the
+counterpart to `gamescope`/MangoHud in the gaming-stack skill) and
+`obs-pipewire-audio-capture`. It is the deleted *system* module
+(`modules/system/desktop/obs.nix`, v4l2loopback) that must not come back, not
+OBS.

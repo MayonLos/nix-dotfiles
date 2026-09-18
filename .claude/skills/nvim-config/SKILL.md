@@ -95,7 +95,9 @@ runs. Using it meant `number`, `relativenumber`, `cursorline`, `list` and
 - Leader groups are registered in `plugins/utility/which-key.nix` with
   `__unkeyed-1`: `f` Find, `s` Search, `g` Git, `l` LSP, `d` Debug, `w` Window,
   `u` Utility/Toggle, `a` AI (`ac` CLI agent), `b` Buffer, `c` Code, `n` Docs,
-  `o` Oil, `t` Terminal, `x` Diagnostics, `h` Harpoon, `p` Session.
+  `t` Terminal, `x` Diagnostics, `h` Harpoon, `p` Session, `m` Multicursor.
+  There is no `o` group: it was oil's, and oil was removed on 2026-09-18 —
+  snacks' explorer on `<leader>e` is the only file manager now.
 - Plugin-specific maps live in the plugin's own file; only global editor maps
   belong in `keymappings.nix`.
 

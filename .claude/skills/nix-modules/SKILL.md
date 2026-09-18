@@ -61,7 +61,7 @@ _: {
 | | Channel | Use for |
 |---|---|---|
 | `pkgs` | `nixpkgs` — **nixos-26.05** stable | system packages and most user packages; the default |
-| `pkgs-unstable` | `nixpkgs-unstable`, plus the `claude-code` overlay | fast-moving packages only: `claude-code`, `github-copilot-cli`, `antigravity` |
+| `pkgs-unstable` | `nixpkgs-unstable`, plus the `claude-code` overlay | fast-moving packages only: `claude-code`, `github-copilot-cli`, `antigravity-ide-fhs`/`antigravity-cli`, `typora` |
 
 `allowUnfree = true` on both. Reach for `pkgs-unstable` only when stable is
 demonstrably too old for a package that must track upstream; a package pulled
@@ -76,6 +76,7 @@ A third case: a package that stable lacks but that is not "fast-moving" — Java
 (`java.nix`, `session-vars.nix`, `prismlauncher.nix`) and the IM apps (`im.nix`)
 each reach into `pkgs-unstable` for one attribute with a comment saying why.
 Follow that pattern rather than adding the package to the unstable list above.
+`packages.nix` takes `typora` the same way (stable lags a minor version).
 
 ## Home Manager runs as a NixOS module
 
@@ -111,10 +112,14 @@ came from nixpkgs instead -- do not assume a compositor is packaged the same way
 the last one was.
 
 **Do not add `inputs.nixpkgs.follows` to the inputs that lack it.**
-`noctalia-greeter`, `mark-shot`, `wayscrollshot` and `llm-agents` each build
-from source or publish to their own binary cache; pointing them at this flake's
-nixpkgs breaks their builds or misses every prebuilt binary. Those four carry a
-comment in `flake.nix` saying so. The cost is an extra nixpkgs evaluation.
+`mango`, `noctalia-greeter`, `mark-shot`, `wayscrollshot` and `llm-agents` each
+build from source, publish to their own binary cache, or pin a version-tight
+dependency triple of their own; pointing them at this flake's nixpkgs breaks
+their builds or misses every prebuilt binary. All five carry a comment in
+`flake.nix` saying so. The cost is an extra nixpkgs evaluation.
+(`claude-code`, `treefmt-nix` and the two `noctalia-plugins-*` source trees have
+no `follows` either, but only because they have no nixpkgs input worth
+deduplicating — they are not part of this rule.)
 
 `lib/default.nix` exposes exactly one helper, `importDir`. Keep it that way
 unless something genuinely needs sharing across host and flake.

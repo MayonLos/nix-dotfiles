@@ -58,7 +58,11 @@ file, see the `sops-secrets` skill (the export loop at the top of `zshInit` is
 the interactive half of that story).
 
 `Xft.dpi` is **not** here — it is an X resource, delivered by
-`modules/home/base/xresources.nix`; see the `desktop-niri` skill.
+`modules/home/base/xresources.nix`; see the `desktop-mango` skill.
+
+The system half of zsh is `modules/system/programs/zsh.nix`: it enables the
+shell system-wide and sets `programs.command-not-found.enable = false` so
+nix-index's hook is the one that answers an unknown command.
 
 ## foot follows the noctalia palette by `include`
 

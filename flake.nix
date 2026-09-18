@@ -22,7 +22,7 @@
       inputs.flake-parts.follows = "flake-parts";
     };
 
-    # The MCP server binary config/plugins/ai/mcphub.nix points mcphub.nvim at.
+    # The MCP server binary nixvim/plugins/ai/mcphub.nix points mcphub.nvim at.
     # Not in nixpkgs.
     mcp-hub = {
       url = "github:ravitemer/mcp-hub";
