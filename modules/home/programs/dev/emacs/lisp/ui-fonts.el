@@ -1,8 +1,8 @@
 ;;; ui-fonts.el --- Faces and ligatures  -*- lexical-binding: t; -*-
 
 ;;; Commentary:
-;; JetBrainsMono Nerd Font matches foot; Noto Sans CJK SC is the system CJK
-;; default from system/user/fonts.nix.
+;; JetBrainsMono Nerd Font matches kitty (programs/terminal/kitty.nix); Noto
+;; Sans CJK SC is the system CJK default from system/user/fonts.nix.
 
 ;;; Code:
 
@@ -24,8 +24,33 @@
 ;;
 ;; but a fifth less fringing is not worth ten columns and a frame that no
 ;; longer matches the rest of the desktop — judged on screen, not on the
-;; numbers. The resampling is the problem and only the output scale or a
-;; non-pgtk build can remove it.
+;; numbers.
+;;
+;; The output scale was then tried too, in full: `monitorrule' to `scale:2',
+;; `Xft.dpi' 144 -> 192, and every length on the host multiplied by 0.75 so the
+;; physical sizes came out unchanged (mango borders/gaps/radius/cursor, kitty
+;; font and padding, the noctalia bar, this number 110 -> 83). At *matched
+;; physical glyph size* that is the only thing that actually works, because at
+;; an integer scale there is nothing left to resample:
+;;
+;;   scale 1.5 + 11.0pt   37.1% blurred edge, 41.7% solid
+;;   scale 2.0 +  8.3pt   27.5%               56.5%
+;;
+;; It was still turned down — a whole-host change for a cosmetic gain — and
+;; reverted. Do not re-propose it; the numbers above are the argument, and they
+;; already lost.
+;;
+;; Dead ends, all measured, so nobody spends the afternoon again:
+;;   * `GDK_SCALE=2'      — no effect; Emacs is already at buffer_scale 2.
+;;   * `GDK_BACKEND=x11'  — the pgtk build refuses to start under X at all
+;;     ("that configuration is unsupported … sporadic crashes").
+;;   * a compositor filter knob — mango's `parse_config.c' has none, and
+;;     wlroots already defaults a scene buffer to WLR_SCALE_FILTER_BILINEAR,
+;;     the better of its two filters.
+;;   * toggling the window floating — the workaround in mangowm/mango#896. That
+;;     bug is a *stale* buffer_scale; ours is correct, and it changed nothing.
+;;   * a newer Emacs — there is no emacs31 in nixpkgs and no upstream pgtk work
+;;     on fractional scale. It needs a GTK4 port, which does not exist.
 (defvar my/font-height 110)
 
 (defun my/setup-fonts ()
