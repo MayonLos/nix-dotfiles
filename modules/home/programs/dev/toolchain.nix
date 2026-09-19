@@ -48,11 +48,13 @@
     # name snacks looks for.
     trash-cli
 
-    # Formula rendering for markdown notes. render-markdown.nvim turns `$...$`
-    # into unicode *text*, not an image, so it works in foot (sixel only, no
-    # kitty graphics protocol). Its latex handler shells out to `utftex` and
-    # falls back to `latex2text`; neither was installed, so it hit
-    # ConverterNotFound and silently left every formula raw.
+    # Formula rendering for markdown notes, kept as the *fallback* path.
+    # snacks.nvim renders a formula as a typeset image over the kitty graphics
+    # protocol and that is what a normal session uses; render-markdown.nvim
+    # turns `$...$` into unicode *text* instead, which is what still works on a
+    # plain tty or over ssh without `kitten ssh`. Its latex handler shells out
+    # to `utftex` and falls back to `latex2text`; neither was installed, so it
+    # hit ConverterNotFound and silently left every formula raw.
     #
     # Both are needed, for different shapes. utftex draws the real two-level
     # box and is what a display block gets. It cannot keep an unmappable

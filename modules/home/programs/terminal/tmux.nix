@@ -118,7 +118,7 @@
       # palette noctalia rendered, so the status bar tracks the desktop for
       # free and stays tracking it. The mapping from what used to be hardcoded:
       #
-      #   default   terminal bg/fg -- also keeps foot's transparency
+      #   default   terminal bg/fg -- also keeps kitty's background_opacity
       #   colour4   regular4, the accent   (was #7aa2f7)
       #   colour3   regular3, yellow       (was #e0af68)
       #   colour8   bright0, muted         (was #6e6a86 / #2f2f44)
