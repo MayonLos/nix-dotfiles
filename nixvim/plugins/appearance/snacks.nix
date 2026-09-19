@@ -149,26 +149,31 @@ _: {
         doc = {
           enabled = true;
 
-          # Formulae typeset *in the buffer*, which is the whole point of
-          # writing them. `float` is listed for completeness only: in a
-          # terminal that speaks the graphics protocol, snacks resolves
-          # `float = doc.float and not inline` (image/doc.lua:445-446), so
-          # inline wins and the two can never both be on.
+          # One formula at a time, in a float beside the cursor -- not every
+          # formula in the buffer at once. `inline = true` was tried and it
+          # costs two things:
           #
-          # The cost, and it is a real one: a formula inside a markdown table
-          # still breaks that table's alignment. render-markdown measures a
-          # column from the *character* width of the text it conceals
-          # (render/markdown/table.lua:183-190 via request/context.lua:40-47,
-          # which counts only render-markdown's own extmarks), while snacks
-          # sizes the inline placeholder from the rendered PNG's *pixels*
-          # (image/util.lua:50-61). Neither can see the other's numbers. No
-          # snacks option fixes it -- `math.latex.font_size` only makes the
-          # error smaller, not zero, and a different size per formula means a
-          # different error per row.
+          #  * a formula inside a markdown table breaks that table's alignment.
+          #    render-markdown measures a column from the *character* width of
+          #    the text it conceals (render/markdown/table.lua:183-190 via
+          #    request/context.lua:40-47, which counts only render-markdown's
+          #    own extmarks), while snacks sizes the inline placeholder from
+          #    the rendered PNG's *pixels* (image/util.lua:50-61). Neither can
+          #    see the other's numbers, and no snacks option bridges them.
+          #  * a screenful of small images reads as soft even when each one is
+          #    sharp, because every formula is fitted to a different
+          #    non-integer fraction of the cell grid.
           #
-          # Set `inline = false` to trade typeset-in-place back for intact
-          # tables; snacks then falls back to a hover float.
-          inline = true;
+          # The trade is real and goes the other way too: the float is closed
+          # whenever the mode is not normal (`vim.fn.mode() ~= "n"` ->
+          # `hover_close()`, image/doc.lua:377, not configurable), so there is
+          # no preview while actually typing a formula -- it appears when you
+          # leave insert. `inline = true` is the only mode that renders as you
+          # write. One line, either way.
+          #
+          # `float` and `inline` can never both be on: snacks resolves
+          # `float = doc.float and not inline` (image/doc.lua:445-446).
+          inline = false;
           float = true;
 
           max_width = 80;
@@ -192,6 +197,27 @@ _: {
           # inline formula sit closer to the line height of the text.
           latex.font_size = "small";
         };
+
+        # 384, double snacks' default 192 (image/init.lua:133). The default
+        # renders a formula too small to be displayed without upscaling, which
+        # is the whole of the "it looks a bit soft" complaint: the cached PNGs
+        # came out 89x14, 63x21, 88x30 for inline formulae, while one kitty
+        # cell on this display is about 13x28 *physical* pixels at
+        # `font_size 8.25`-equivalent density -- so a one-line formula was
+        # being blown up 1.5-2x to fill its row. At 384 the source is bigger
+        # than the target in every case measured and the fit is a downscale,
+        # which is the direction that stays sharp.
+        #
+        # Cost is pdflatex/ImageMagick time and cache size, both per formula
+        # and both small; the images are cached under
+        # ~/.cache/nvim/snacks/image keyed by content, so a re-render only
+        # happens when the formula changes.
+        convert.magick.math = [
+          "-density"
+          384
+          "{src}[{page}]"
+          "-trim"
+        ];
       };
 
       dashboard.enabled = false;
