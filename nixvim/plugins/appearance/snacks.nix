@@ -138,17 +138,60 @@ _: {
       # utftex (plugins/utility/render-markdown.nix) stays as the fallback for
       # anywhere the graphics protocol is unavailable -- a plain tty, or ssh
       # without `kitten ssh`.
-      # No `doc` table here, deliberately. Setting it *replaces* snacks'
-      # default rather than merging into it, and that default carries
-      # `max_width`, `max_height` and -- the load-bearing one -- a `conceal`
-      # function that hides the source of a maths block (init.lua:88-91,
-      # "only conceal math expressions"). An earlier version set just
-      # `inline`/`float` here and silently dropped the rest: measured with a
-      # probe, `cfg.doc` came back as exactly `{float=true, inline=true}`, the
-      # `$$...$$` stayed on screen, and no image was ever placed.
+      # Every key of `doc` is spelled out, including the ones that only repeat
+      # a snacks default. Setting this table at all risks replacing rather
+      # than merging, and the default it would drop is `conceal` -- the
+      # function that hides the `$...$` source once its image is placed
+      # (snacks/image/init.lua:84-91). Lose that and the source and the image
+      # sit side by side, which looks like the renderer is broken.
       image = {
         enabled = true;
-        math.enabled = true;
+        doc = {
+          enabled = true;
+
+          # Formulae typeset *in the buffer*, which is the whole point of
+          # writing them. `float` is listed for completeness only: in a
+          # terminal that speaks the graphics protocol, snacks resolves
+          # `float = doc.float and not inline` (image/doc.lua:445-446), so
+          # inline wins and the two can never both be on.
+          #
+          # The cost, and it is a real one: a formula inside a markdown table
+          # still breaks that table's alignment. render-markdown measures a
+          # column from the *character* width of the text it conceals
+          # (render/markdown/table.lua:183-190 via request/context.lua:40-47,
+          # which counts only render-markdown's own extmarks), while snacks
+          # sizes the inline placeholder from the rendered PNG's *pixels*
+          # (image/util.lua:50-61). Neither can see the other's numbers. No
+          # snacks option fixes it -- `math.latex.font_size` only makes the
+          # error smaller, not zero, and a different size per formula means a
+          # different error per row.
+          #
+          # Set `inline = false` to trade typeset-in-place back for intact
+          # tables; snacks then falls back to a hover float.
+          inline = true;
+          float = true;
+
+          max_width = 80;
+          max_height = 40;
+
+          # snacks' own default, restated (init.lua:88-91): conceal the source
+          # of a maths block, leave an image link's source alone.
+          conceal.__raw = ''
+            function(_lang, type)
+              return type == "math"
+            end
+          '';
+        };
+        math = {
+          enabled = true;
+          # "Large" is snacks' default and it is sized for a formula sitting
+          # alone on its own line. In prose and especially inside a table it
+          # dwarfs the text around it -- measured against the real notes, a
+          # single inline \$...\$ was taller than three rows of the table it
+          # was in. "small" keeps a display block readable while letting an
+          # inline formula sit closer to the line height of the text.
+          latex.font_size = "small";
+        };
       };
 
       dashboard.enabled = false;

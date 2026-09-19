@@ -25,6 +25,23 @@
     cursorline = true;
     scrolloff = 8;
     conceallevel = 2;
+    # The switch that keeps a rendered line rendered when the cursor lands on
+    # it -- and it is a *window* option, not a plugin one, which is why no
+    # amount of reading snacks' or render-markdown's config finds it.
+    # snacks/image/inline.lua:45 returns early from its conceal pass when
+    # `vim.wo.concealcursor` contains the current mode, so every image in the
+    # cursor's line stays shown. Without it, walking down a document takes the
+    # typeset formulae apart one line at a time.
+    #
+    # "nvic" is all four modes, insert included, because the point is to see
+    # the document while writing it.
+    #
+    # This is the global default and markdown does NOT use it: render-markdown
+    # sets `concealcursor` per window from its own
+    # `win_options.concealcursor.rendered`, which is where the markdown value
+    # actually lives (plugins/utility/render-markdown.nix). Changing this line
+    # alone does nothing to a note.
+    concealcursor = "nvic";
     laststatus = 3;
     showmode = false; # Heirline already shows the mode beside the filename.
     showtabline = 2;

@@ -23,6 +23,30 @@ in
       ];
       completions.lsp.enabled = true;
 
+      # Two separate mechanisms un-render the line the cursor is on, and both
+      # have to be turned off or the document comes apart as you walk through
+      # it -- which is exactly what "the rendering breaks when I move" means.
+      #
+      # 1. This plugin owns `concealcursor` per window, not `nixvim/options.nix`.
+      #    `win_options.concealcursor.rendered` defaults to "", and it is
+      #    applied whenever rendering is on, so the global setting is
+      #    overwritten the moment a markdown buffer opens. Verified with a live
+      #    probe: `vim.wo.concealcursor` read "" in an open note while
+      #    options.nix asked for "nvic". This is also what snacks' image layer
+      #    reads (snacks/image/inline.lua:45) to decide whether to pull the
+      #    formula images off the cursor's line, so the one setting governs
+      #    both this plugin's conceal and the maths.
+      # 2. `anti_conceal` un-renders this plugin's *own* marks near the cursor
+      #    -- heading icons, bullets, table borders, link icons.
+      #
+      # The cost of both: while the cursor is on a line you do not see its raw
+      # markup, so editing a link target or a table separator is done blind.
+      # Drop the "i" from `concealcursor` to get the source back while actually
+      # typing, or set `anti_conceal.enabled = true` to get this plugin's own
+      # markup back without touching the maths.
+      win_options.concealcursor.rendered = "nvic";
+      anti_conceal.enabled = false;
+
       # Maths belongs to snacks.image now, not to this plugin.
       #
       # Both want the same `$$...$$` node, and this one wins: it conceals the

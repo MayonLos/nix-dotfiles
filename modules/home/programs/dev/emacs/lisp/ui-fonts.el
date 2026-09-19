@@ -9,6 +9,23 @@
 ;; Height is in tenths of a point — raise or lower this one number if the whole
 ;; UI is the wrong size.  `C-x C-=' and `C-x C--' adjust the current buffer
 ;; without a rebuild.
+;;
+;; Do not raise this to fight the soft rendering. It was tried: Emacs 30 is
+;; pgtk, GTK3 never binds `wp_fractional_scale_v1' (traced with
+;; `WAYLAND_DEBUG=1' — mango advertises the global, Emacs ignores it, reads
+;; `wl_output.scale(2)' and calls `set_buffer_scale(2)'), so Emacs renders at
+;; 2x and the compositor resamples down to this output's 1.5x. A bigger glyph
+;; does survive that better, measured on a screenshot crop of one string by
+;; counting ink pixels landing between background and foreground:
+;;
+;;   height 113   36.8% blurred edge, 42.7% solid   97 columns
+;;   height 130   30.0%               50.2%         87 columns
+;;   height 150   30.5%               54.3%         73 columns
+;;
+;; but a fifth less fringing is not worth ten columns and a frame that no
+;; longer matches the rest of the desktop — judged on screen, not on the
+;; numbers. The resampling is the problem and only the output scale or a
+;; non-pgtk build can remove it.
 (defvar my/font-height 110)
 
 (defun my/setup-fonts ()
