@@ -95,9 +95,11 @@ local function latex_error(src)
   return #out > 0 and out or nil
 end
 
+---@param src string
 ---@param lines string[]
-local function show_error(lines)
+local function show_error(src, lines)
   close()
+  state.src = src
   local width = 0
   for i, l in ipairs(lines) do
     lines[i] = l:gsub("\t", "  ")
@@ -180,7 +182,13 @@ local function update()
     end
     -- Already showing this exact formula: leave it alone rather than
     -- rebuilding the float on every cursor nudge inside it.
-    if state.src == src and state.win and state.win:valid() and state.kind == "image" then
+    --
+    -- This has to cover the error float too, not just the image one. Guarding
+    -- on `kind == "image"` meant a formula that does not compile re-entered
+    -- the convert pipeline every 250 ms for as long as the cursor sat in it --
+    -- invisible, because the float it produced was identical each time, and
+    -- the cost was a pdflatex run per tick.
+    if state.src == src and state.win and state.win:valid() then
       return
     end
 
@@ -213,9 +221,9 @@ local function update()
             -- because it looks like the formula was accepted.
             local errs = latex_error(src)
             if errs then
-              show_error(errs)
+              show_error(src, errs)
             elseif convert:error() then
-              show_error({ "! LaTeX failed", vim.trim(convert:error()) })
+              show_error(src, { "! LaTeX failed", vim.trim(convert:error()) })
             else
               show_image(src)
             end
