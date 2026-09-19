@@ -233,6 +233,14 @@ in
         auctex
         pdf-tools
 
+        # -- lisp/lang-math.el ------------------------------------------------
+        # LaTeX shown typeset rather than as source. org previews natively;
+        # markdown has nothing of its own, so texfrag lends it AUCTeX's
+        # `preview' machinery. Both render through texliveFull + ghostscript
+        # from programs/dev/latex.nix.
+        org-fragtog
+        texfrag
+
         # -- lisp/lang-org.el -------------------------------------------------
         org-modern
         org-appear

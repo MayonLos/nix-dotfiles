@@ -21,6 +21,7 @@
 ;;   nixvim/plugins/ai/            lisp/ai-gptel.el
 ;;   nixvim/plugins/terminal/      lisp/tool-terminal.el
 ;;   nixvim/plugins/utility/       lisp/tool-*.el
+;;   (snacks.image maths)          lisp/lang-math.el
 ;;   nixvim/keymappings.nix        lisp/keymaps.el
 ;;
 ;; Every package on the load-path was put there by the Nix wrapper, so no
@@ -91,6 +92,8 @@
     lang-markdown
     lang-tex
     lang-org
+    ;; after lang-org and lang-markdown: it configures both of them.
+    lang-math
 
     ;; last: every command it binds has been defined or autoloaded by now.
     keymaps)
