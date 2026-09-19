@@ -149,6 +149,25 @@ _: {
         doc = {
           enabled = true;
 
+          # BOTH off, on purpose. snacks' own document handling is disabled
+          # and `lua/math_preview.lua` does the drawing instead, because the
+          # two things wanted here are not reachable through snacks' config:
+          # its hover closes whenever `vim.fn.mode() ~= "n"`
+          # (image/doc.lua:377) so there is no preview while a formula is
+          # being typed, and a formula pdflatex rejects produces no float at
+          # all -- a typo reads as a broken renderer.
+          #
+          # With both false, `M._attach` returns early (image/doc.lua:453) and
+          # snacks draws nothing, while `Snacks.image.doc.at_cursor`,
+          # `Snacks.image.convert` and `Snacks.image.placement` stay callable.
+          # math_preview uses all three, so the LaTeX template, the palette
+          # colour and the ~/.cache/nvim/snacks/image cache are still shared --
+          # this is a different trigger and a different error path, not a
+          # second renderer.
+          #
+          # Everything below still applies, because math_preview inherits
+          # `Snacks.image.config.doc`:
+          #
           # One formula at a time, in a float beside the cursor -- not every
           # formula in the buffer at once. `inline = true` was tried and it
           # costs two things:
@@ -164,17 +183,11 @@ _: {
           #    sharp, because every formula is fitted to a different
           #    non-integer fraction of the cell grid.
           #
-          # The trade is real and goes the other way too: the float is closed
-          # whenever the mode is not normal (`vim.fn.mode() ~= "n"` ->
-          # `hover_close()`, image/doc.lua:377, not configurable), so there is
-          # no preview while actually typing a formula -- it appears when you
-          # leave insert. `inline = true` is the only mode that renders as you
-          # write. One line, either way.
-          #
-          # `float` and `inline` can never both be on: snacks resolves
-          # `float = doc.float and not inline` (image/doc.lua:445-446).
+          # The float used to lose the other half of the trade -- it closed
+          # on leaving normal mode, so it was useless while writing. That is
+          # what math_preview exists to fix; see above.
           inline = false;
-          float = true;
+          float = false;
 
           max_width = 80;
           max_height = 40;
@@ -367,5 +380,13 @@ _: {
     Snacks.toggle.diagnostics():map("<leader>ux")
     Snacks.toggle.inlay_hints():map("<leader>ui")
     Snacks.toggle.treesitter():map("<leader>ut")
+
+    -- The maths preview, which snacks' own `doc.float`/`doc.inline` are turned
+    -- off for. See the image block above and lua/math_preview.lua.
+    require("math_preview").setup()
   '';
+
+  extraFiles = {
+    "lua/math_preview.lua".source = ./lua/math_preview.lua;
+  };
 }
