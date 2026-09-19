@@ -18,8 +18,8 @@ Adding a module means dropping a file in the right directory. There is no
 import list to update.
 
 **There is no skip mechanism** — not for `_`-prefixed directories either.
-`modules/home/_assets` and `modules/home/wm/mango/_plugins` survive only because
-neither contains a `.nix` file. Consequences:
+`modules/home/_assets` survives only because it contains no `.nix` file.
+Consequences:
 
 - Never put a non-module `.nix` file (a helper, a package expression, a
   fragment meant to be `import`ed by hand) anywhere under `modules/`. It will

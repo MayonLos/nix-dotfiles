@@ -169,7 +169,18 @@ directory it corresponds to:
 | `plugins/debug/` | `dbg-dape.el` |
 | `plugins/ai/` | `ai-gptel.el` |
 | `plugins/terminal/`, `plugins/utility/` | `tool-terminal.el`, `tool-session.el`, `tool-utility.el` |
+| `plugins/lang/`, `plugins/utility/render-markdown.nix`, snacks' math | `lang-org.el`, `lang-markdown.el`, `lang-tex.el`, `lang-math.el` |
 | `keymappings.nix`, `which-key.nix` | `keymaps.el` |
+| — (no nvim counterpart) | `commands.el` |
+
+`commands.el` is the one file with no nixvim mirror: small helpers with no
+package of their own, required before every module that calls one and before
+`keymaps.el`, which binds most of them. `my/on-first-frame` lives there — the
+Emacs process can start before the compositor has given it a frame, so anything
+probing frame parameters at load time has to wait for the first client.
+
+That is 32 files; if this table and `ls lisp/` disagree, the table is the one
+that is wrong.
 
 Adding a module means writing the file **and** naming it in `my/modules`; the
 directory is linked wholesale, so a file nobody requires is dead weight rather
@@ -235,9 +246,13 @@ commands, 0 void.
   `~/.config/emacs/personal.el`, loaded last.
 - gptel reads `/run/secrets/deepseek-api-key` through a lambda, not an env var
   — the daemon never sourced the zsh profile. See the `sops-secrets` skill.
-- The theme is deliberately **not** nvim's: doom-nord here, OneDark there,
-  because the Emacs frame shares a screen with the Nord-Dark fcitx5 candidate
-  window. Structure is mirrored; hue is not.
+- The theme is `doom-tokyo-night`, the same scheme as nvim, noctalia and the
+  rest of the host. (It used to be `doom-nord` against nvim's OneDark, on the
+  theory that Emacs should match the fcitx5 candidate window; that whole
+  divergence was retired on 2026-09-19.) `doom-themes`, not a standalone
+  tokyonight package, because doom ships the face definitions magit, org and
+  doom-modeline expect. Emacs cannot follow noctalia at runtime, so it is
+  hand-pinned — see the two-tier colour rule in `desktop-apps`.
 
 ## Per-project environments
 

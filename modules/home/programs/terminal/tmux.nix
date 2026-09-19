@@ -105,16 +105,16 @@
       TMUX_FZF_LAUNCH_KEY="F"
       TMUX_FZF_ORDER="session|window|pane|command|keybinding"
 
-      ##### Theme: whatever foot is wearing #####
+      ##### Theme: whatever the terminal is wearing #####
 
-      # No hex anywhere below, on purpose. foot follows the live noctalia
-      # palette through the `include` in foot.nix, and noctalia rewrites that
+      # No hex anywhere below, on purpose. kitty follows the live noctalia
+      # palette through the `include` in kitty.nix, and noctalia rewrites that
       # file on every theme change -- but tmux draws its own status bar, so a
       # hardcoded palette here drifts the moment the theme does. It had already
       # drifted into four schemes at once: #1e1e2e is Catppuccin, #dcd7ba is
       # Kanagawa, #6e6a86 is Rose Pine, #7aa2f7 is Tokyo Night.
       #
-      # Terminal colour *indices* are the fix: foot resolves them out of the
+      # Terminal colour *indices* are the fix: kitty resolves them out of the
       # palette noctalia rendered, so the status bar tracks the desktop for
       # free and stays tracking it. The mapping from what used to be hardcoded:
       #

@@ -8,13 +8,13 @@ _:
     # Colours are ANSI indices, not hex, for two reasons. The first is that hex
     # in a `{#...}` format string is not reliably accepted: fastfetch 2.63.1
     # rejected `{#BB9AF7}` with `invalid color code found: BB9AF7`. The second
-    # is the one that matters more -- an index is resolved by foot from the
+    # is the one that matters more -- an index is resolved by kitty from the
     # palette noctalia renders, so this follows a theme change for free. An
     # earlier version of this file used hex and claimed in a comment that
     # fastfetch "draws its own colours rather than reading the terminal
     # palette". That was simply wrong: it emits ANSI escapes like anything else.
     #
-    # Index -> Tokyo Night, straight out of ~/.config/foot/themes/noctalia:
+    # Index -> Tokyo Night, straight out of ~/.config/kitty/themes/noctalia.conf:
     #   1 red #f7768e   2 green #9ece6a   3 yellow #e0af68   4 blue #7aa2f7
     #   5 magenta #bb9af7   6 cyan #7dcfff   8 bright0 #414868   15 #c0caf5
     fastfetch = {
@@ -117,8 +117,8 @@ _:
     # btop.conf: its post_hook (assets/templates/btop/apply.sh) starts with
     # `grep -qE '^color_theme\s*=\s*"noctalia"'` and returns immediately when
     # the value is already right. Home Manager pins it to exactly that value,
-    # so the hook always takes the no-op branch. Same arrangement as foot's
-    # `include` in programs/terminal/foot.nix, and it breaks the same way if
+    # so the hook always takes the no-op branch. Same arrangement as kitty's
+    # `include` in programs/terminal/kitty.nix, and it breaks the same way if
     # the value here ever stops being "noctalia".
     btop = {
       enable = true;

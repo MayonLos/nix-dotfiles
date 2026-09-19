@@ -180,9 +180,10 @@ and it is gone).
 
 Plugins come from the `noctalia-plugins-official` / `noctalia-plugins-community`
 inputs as plain source trees (`flake = false`), consumed with `kind = "path"` so
-nothing is cloned at startup. An in-tree plugin lives at
-`modules/home/wm/mango/_plugins/`, which survives `importDir` only because it
-contains no `.nix` file.
+nothing is cloned at startup. There is **no** in-tree plugin source any more —
+`modules/home/wm/mango/_plugins/` held one (`mayon/ask`) and was deleted with it
+on 2026-09-19. If one ever comes back it has to live outside `modules/`, or
+contain no `.nix` file, because `importDir` has no skip mechanism.
 
 Validate config against the noctalia binary, not against upstream's
 `example.toml` — the example has been unreliable across v5 schema changes.
@@ -353,17 +354,25 @@ The X11 path needs both halves:
   and the compositor does not source it. Without the service the resource
   database is empty — `xrdb -query` prints nothing.
 
-X clients get **physical** pixels, so each has to be told 96 × 1.5 = 144 itself.
-`xwayland_ignore_scale` (default `0`) is what decides this and is easy to get
-backwards: at `0`, `xwayland_preferred_scale()` returns the monitor scale and X
-clients are asked to render at 1.5 — sharp. Setting it to `1` makes them render
-at 1x and lets the compositor upscale — blurry. Leave it alone.
-The 1.5x measurement was taken under niri + xwayland-satellite (QQ at 1251×1498 X
-pixels against 834×999 logical, 2026-08-21). It carries over to mango's built-in
-Xwayland **by source inspection, not re-measurement**: `src/manage/client.c`
-converts with `X11 = logical * scale` and `xwayland_ignore_scale` defaults to 0.
-Re-check with `xwininfo -root -tree` vs `mmsg get all-clients` the first time the
-candidate window looks wrong.
+X clients get **physical** pixels — but only because `xwayland_ignore_scale = 1`
+is set in `modules/home/wm/mango/config.nix`. **The name reads backwards and an
+earlier version of this page had it exactly wrong.** Measured 2026-09-18:
+
+| `xwayland_ignore_scale` | X screen (`xdpyinfo`) | xclock: logical vs X-side | Result |
+|---|---|---|---|
+| `0` (mango's default) | 1707×1067 (= 2560/1.5) | — | Xwayland runs at the **logical** size and mango bitmap-upscales every X surface 1.5× — soft |
+| `1` (what this host sets) | 1707×1067 (unchanged) | 936×1010 vs 1392×1503, ratio 1.487 | `xwayland_client_scale` returns the monitor scale, each X window is sized in physical pixels and presented 1:1 — sharp |
+
+Only *per-window* geometry changes; the root screen keeps reporting 1707×1067,
+which is why `xdpyinfo` alone cannot tell you which mode you are in. Use
+`xwininfo -root -tree` against `mmsg get all-clients` — the ratio is the answer.
+
+Steam's blurry UI was the complaint that surfaced this, but it was never a Steam
+bug: every X11 client was being upscaled.
+
+`xwayland_ignore_scale = 1` and `Xft.dpi = 144` are **a pair**. The first makes
+the buffer physical; without the second, clients keep drawing at 96 dpi into it
+and come out sharp but tiny. Change one and you must check the other.
 
 **Which client is on XWayland has changed — do not trust older comments.**
 `modules/home/programs/apps/im.nix` pins QQ to `--ozone-platform=wayland`

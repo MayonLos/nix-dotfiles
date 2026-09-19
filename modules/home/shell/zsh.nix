@@ -109,12 +109,13 @@ in
         "--layout=reverse"
         "--border=rounded"
       ];
-      # Terminal colour indices, not hex. fzf renders inside foot, and foot's
-      # palette is rewritten by noctalia on every theme change -- so an index
-      # tracks the desktop for free while a hex value silently becomes the odd
-      # one out. `-1` is fzf's "leave it to the terminal", which is also what
-      # keeps foot's transparency behind the list. Same reasoning as the status
-      # bar in programs/terminal/tmux.nix.
+      # Terminal colour indices, not hex. fzf renders inside kitty, and
+      # kitty's palette is rewritten by noctalia on every theme change (the
+      # `include themes/noctalia.conf` in programs/terminal/kitty.nix) -- so an
+      # index tracks the desktop for free while a hex value silently becomes
+      # the odd one out. `-1` is fzf's "leave it to the terminal", which is
+      # also what keeps kitty's `background_opacity 0.8` visible behind the
+      # list. Same reasoning as the status bar in programs/terminal/tmux.nix.
       #
       # Home Manager turns this into FZF_DEFAULT_OPTS, which zsh-fzf-tab reads
       # too, so completions and standalone fzf cannot disagree.

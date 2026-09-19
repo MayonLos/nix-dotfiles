@@ -83,7 +83,7 @@ in
   # flake/system.nix preserves the old file as uca.xml.backup.
   #
   # "Open Terminal Here" is pre-existing and pairs with thunar-terminal.nix
-  # (helpers.rc -> foot). Don't drop it.
+  # (helpers.rc -> ~/.local/bin/thunar-open-terminal -> kitty). Don't drop it.
   home.file.".config/Thunar/uca.xml".text = ''
     <?xml version="1.0" encoding="UTF-8"?>
     <actions>
