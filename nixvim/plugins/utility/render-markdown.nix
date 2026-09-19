@@ -23,6 +23,24 @@ in
       ];
       completions.lsp.enabled = true;
 
+      # Insert mode included. `render_modes` defaults to `{ "n", "c", "t" }`
+      # (init.lua:60), so entering insert threw the *whole document* back to
+      # raw source -- headings, tables, code blocks, all of it -- which is the
+      # opposite of being able to see what you are writing. Seen on the real
+      # notes: cursor in a formula on line 122, the maths float rendered fine
+      # (that is lua/math_preview.lua and independent of this), while the
+      # table three lines below sat there as `| 极点位置 | 时域响应 |`.
+      #
+      # `"v"` is deliberately left out. Visual mode is for selecting text by
+      # its real extent, and rendering hides markup characters that a
+      # selection has to include.
+      render_modes = [
+        "n"
+        "c"
+        "t"
+        "i"
+      ];
+
       # Two separate mechanisms un-render the line the cursor is on, and both
       # have to be turned off or the document comes apart as you walk through
       # it -- which is exactly what "the rendering breaks when I move" means.
