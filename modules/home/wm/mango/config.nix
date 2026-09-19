@@ -113,7 +113,11 @@
       shadowscolor = "0x000000ff";
 
       borderpx = 4;
-      border_radius = 18;
+      # 16, not 18, to match noctalia's `bar.main.radius` -- and every panel,
+      # since `corner_radius_scale` is 1.0. Window corners and shell chrome sit
+      # adjacent on screen; two rounding values that differ by 2px read as a
+      # mistake rather than as a choice.
+      border_radius = 16;
       gappih = 5;
       gappiv = 5;
       gappoh = 10;
@@ -141,7 +145,11 @@
       animation_curve_close = "0.46,1.0,0.29,0.99";
       animation_curve_focus = "0.46,1.0,0.29,0.99";
       animation_curve_opafadein = "0.46,1.0,0.29,0.99";
-      animation_curve_opafadeout = "0.5,0.5,0.5,0.5";
+      # Was "0.5,0.5,0.5,0.5" -- a bezier straight down the diagonal, i.e.
+      # constant velocity. Every other curve here, including its own
+      # opafadein counterpart, eases; the fade-out was the one motion in the
+      # compositor that did not.
+      animation_curve_opafadeout = "0.46,1.0,0.29,0.99";
       tag_animation_direction = 1;
 
       scroller_structs = 20;
@@ -186,9 +194,22 @@
         "isfloating:1,width:0.5,isnoborder:1,appid:^swayimg$"
         "isfloating:1,appid:^thunar$,title:^(Rename|重命名)"
         "isfloating:1,width:480,appid:^zen-beta$,title:^Picture-in-Picture$"
-        "isfloating:1,appid:^(pavucontrol|org\\.pulseaudio\\.pavucontrol|blueman-manager|nm-connection-editor|org\\.gnome\\.Calculator|xdg-desktop-portal-gtk)$"
-        "isfloating:1,appid:^(polkit-.*|org\\.freedesktop\\.PolicyKit.*)$"
-        "isfloating:1,width:1080,height:920,appid:^dev\\.noctalia\\.Noctalia\\.Settings$"
+        # blueman-manager, nm-connection-editor and org.gnome.Calculator were
+        # in this alternation and are installed nowhere -- not on PATH, not in
+        # any module. Template leftovers. Add an appid back when the program
+        # that carries it actually arrives, not before: a rule that cannot
+        # match is indistinguishable from one that is broken.
+        "isfloating:1,appid:^(pavucontrol|org\\.pulseaudio\\.pavucontrol|xdg-desktop-portal-gtk)$"
+        # No polkit rule. This host runs no standalone polkit GUI agent --
+        # noctalia's built-in one is the only authentication agent (see
+        # noctalia.nix's `polkit_agent`), and it draws in the shell rather than
+        # opening a top-level window, so nothing can ever carry a `polkit-*` or
+        # `org.freedesktop.PolicyKit*` appid here.
+        # `.Settings` was never an appid. Measured with `mmsg get all-clients`
+        # while the window was open: it reports `dev.noctalia.Noctalia`, and the
+        # window came up tiled at 936x1010 instead of the floating 1080x920 this
+        # line asks for -- the rule had simply never matched anything.
+        "isfloating:1,width:1080,height:920,appid:^dev\\.noctalia\\.Noctalia$"
         "vrr_only_fullscreen:1,isnoradius:1,appid:^steam_app_"
         "focused_opacity:0.8,unfocused_opacity:0.8,appid:^kitty$"
       ];
@@ -318,6 +339,12 @@
         "SUPER+SHIFT,A,spawn,noctalia msg caffeine-toggle"
 
         "SUPER+SHIFT,R,setkeymode,resize"
+        # These two are a pair. `toggle_scratchpad` only ever acts on a client
+        # whose `is_in_scratchpad` flag is set, and mango sets that flag only
+        # inside `set_minimized()` (src/manage/client.c) -- so without a
+        # minimize bind the toggle is a permanent no-op. It was: dispatching it
+        # by hand returned `{"success":true}` and changed nothing.
+        "SUPER+SHIFT,grave,minimized"
         "SUPER,grave,toggle_scratchpad"
         "SUPER+ALT,T,switcher,next"
       ];
