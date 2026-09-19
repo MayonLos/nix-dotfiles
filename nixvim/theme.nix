@@ -9,14 +9,39 @@ _: {
     -- working outdoors, and the file it writes survives the session.
     local STYLES = { "night", "storm", "moon", "day" }
 
+    -- Two traps, both measured on a headless build before this was written:
+    --
+    --  * `tokyonight.setup{ style = ... }` REPLACES the option table, it does
+    --    not merge. Passing only `style` reverted `styles.floats` and
+    --    `styles.sidebars` from "transparent" (set in
+    --    plugins/appearance/colorscheme.nix) back to the plugin default
+    --    "dark", so every float grew an opaque background.
+    --  * `tokyonight.load()` does NOT fire Neovim's ColorScheme event. A
+    --    tracer autocmd counted zero. highlights.nix hangs its whole override
+    --    table off ColorScheme, so switching style silently threw away the
+    --    transparent NormalFloat, the MultiCursor colours, TabLine, MatchParen
+    --    and every link in that file -- with no error, for the rest of the
+    --    session, and on every later start because the choice is persisted.
+    --
+    -- So: merge onto the live options, and go through `:colorscheme`, which
+    -- does fire the event.
+    local function set_style(style)
+      local opts = vim.tbl_deep_extend(
+        "force",
+        require("tokyonight.config").options or {},
+        { style = style }
+      )
+      tokyonight.setup(opts)
+      vim.cmd.colorscheme("tokyonight")
+    end
+
     local function apply_saved_style()
       local file = io.open(style_file, "r")
       if not file then return end
       local style = file:read("*line")
       file:close()
       if style and vim.tbl_contains(STYLES, style) then
-        tokyonight.setup({ style = style })
-        tokyonight.load()
+        set_style(style)
       end
     end
 
@@ -40,8 +65,7 @@ _: {
               vim.notify("Failed to save style preference", vim.log.levels.ERROR)
               return
             end
-            tokyonight.setup({ style = new_style })
-            tokyonight.load()
+            set_style(new_style)
             vim.notify(
               string.format("Applied '%s' style", new_style),
               vim.log.levels.INFO
