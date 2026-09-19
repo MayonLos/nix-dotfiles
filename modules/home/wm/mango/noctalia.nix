@@ -114,7 +114,7 @@ in
             builtin_ids = [
               "btop"
               "cava"
-              "foot"
+              "kitty"
               "gtk3"
               "gtk4"
               "mango"
@@ -159,17 +159,13 @@ in
               location = "${inputs.noctalia-plugins-community}";
               enabled = true;
             }
-            # Own plugins. With no catalog.toml a path source simply scans the
-            # directory (plugin_catalog.cpp:272 "No catalog.toml -- path sources
-            # are on disk, so scan straight away."), so one subdirectory holding
-            # a plugin.toml is enough. The relative ./_plugins path pulls the
-            # whole directory into the store.
-            {
-              name = "local";
-              kind = "path";
-              location = "${./_plugins}";
-              enabled = true;
-            }
+            # No local source. `_plugins/ask` (an LLM chat panel) was the only
+            # thing in it and was removed on 2026-09-18; a path source pointing
+            # at a directory that no longer exists fails evaluation, so the
+            # whole block goes with it. To add one back: create
+            # `_plugins/<name>/plugin.toml` and restore this entry -- with no
+            # catalog.toml a path source just scans the directory
+            # (plugin_catalog.cpp:272).
           ];
 
           # WARNING: this list is shadowed by the runtime override layer.
@@ -187,7 +183,6 @@ in
           # keybind-cheatsheet (depend on hyprpicker and hyprctl, Hyprland only),
           # translator (goes through Google Translate, unreachable here).
           enabled = [
-            "mayon/ask" # own plugin, see _plugins/ask
             "3ri4ng0ld/ip-monitor"
             "8bury/mini-docker"
             "cleboost/jetbrains-provider"
@@ -239,12 +234,16 @@ in
             "group:panels"
           ];
           center = [ "clock" ];
+          # Four capsules on each side. `end` used to carry six -- the sys
+          # group plus sysmon, tray, power_profile, battery and control-center
+          # each in a capsule of its own, against four on the left, which made
+          # the right half read as a row of loose pills rather than as groups.
+          # sysmon, power_profile and battery are one subject (how much the
+          # machine is working and what it is running on), so they became one.
           end = [
             "group:sys"
-            "sysmon"
             "tray"
-            "power_profile"
-            "battery"
+            "group:power"
             "control-center"
           ];
 
@@ -252,7 +251,6 @@ in
             {
               id = "panels";
               members = [
-                "mayon/ask:bar" # ask the AI
                 "noctalia/notes:notes" # sidebar scratchpad
                 "nightwatch75/todo:todo" # task list
                 "8bury/mini-docker:mini-docker" # Docker management
@@ -275,6 +273,17 @@ in
               padding = 6.0;
               widget_spacing = 4;
             }
+            {
+              id = "power";
+              members = [
+                "sysmon"
+                "power_profile"
+                "battery"
+              ];
+              accordion = false;
+              padding = 6.0;
+              widget_spacing = 4;
+            }
           ];
         };
 
@@ -282,6 +291,53 @@ in
           custom_image = distroLogo;
           custom_image_colorize = false;
         };
+        # A plugin's bar widget takes its settings from the same `widget.<id>`
+        # table as a builtin one, keyed by the full `<plugin-id>:<entry-id>`
+        # spelling (config_export.cpp:367). NOT `plugin_settings.*` -- that
+        # table is for keys a plugin declares as a top-level [[setting]], and
+        # `inactive_color` is a [[widget.setting]], i.e. it belongs to the
+        # widget entry. Putting it in plugin_settings parses, exports, and does
+        # nothing; measured before this comment existed.
+        widget."8bury/mini-docker:mini-docker" = {
+          # widget.luau:46 fills the status dot with
+          # `runningCount > 0 and active_color or inactive_color`, and
+          # inactive_color defaults to "error" -- so a red dot sits in the bar
+          # whenever no container is running, which on a laptop is nearly
+          # always. Docker itself is fine (it is rootless here, so the unit to
+          # ask about is `systemctl --user is-active docker`, which says
+          # active); "nothing running" is not a fault. Same correction as
+          # widget.sysmon below: red is for things that are wrong.
+          inactive_color = "on_surface_variant";
+          # The count is 0 unless something is actually running, and a widget
+          # whose only state is "0" is a widget that says nothing. This hides
+          # the glyph, the count and the dot entirely until a container comes
+          # up, at which point it appears with a real number in it.
+          status_mode = "running_only";
+        };
+
+        # "暂无播放内容" is not information. The widget sat there at full width
+        # announcing that nothing was playing, which is most of the time.
+        widget.media.hide_when_no_media = true;
+
+        widget.network = {
+          # The glyph already says connected / disconnected / which kind. The
+          # SSID next to it is ~110 physical pixels of a string that does not
+          # change and cannot be acted on; it is still one hover away.
+          show_label = false;
+        };
+
+        widget.sysmon = {
+          # `highlightColor` defaults to ColorRole::Error (sysmon_widget.h:58),
+          # so the CPU gauge is drawn in the palette's *error* colour at every
+          # load -- a permanent red tick next to "1%". Red should mean
+          # something is wrong. Primary is the accent the rest of the bar uses.
+          highlight_color = "primary";
+          # The label is as wide as the number in it, so the widget grew and
+          # shrank between "1%" and "100%" and shoved its neighbours sideways
+          # several times a second. Pin it to the width of the widest value.
+          label_min_width = 34;
+        };
+
         widget.clock = {
           format = "{:%H:%M}";
           vertical_format = "{:%H\n%M}";

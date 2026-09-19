@@ -26,14 +26,15 @@
       gc-cons-percentage 0.6)
 
 ;; Frame parameters set here apply to the *first* frame, so the session never
-;; flashes a toolbar it is about to remove.  The colours are nord0/nord4, which
-;; is what doom-nord settles on a moment later.
+;; flashes a toolbar it is about to remove.  The colours are Tokyo Night's bg
+;; and fg, which is what doom-tokyo-night settles on a moment later -- keep them
+;; in step with lisp/ui-theme.el or startup flashes the old background.
 (setq default-frame-alist
       '((menu-bar-lines . 0)
         (tool-bar-lines . 0)
         (vertical-scroll-bars . nil)
-        (background-color . "#2e3440")
-        (foreground-color . "#d8dee9")))
+        (background-color . "#1a1b26")
+        (foreground-color . "#c0caf5")))
 
 ;; Emacs otherwise resizes the frame once per font or UI-element change during
 ;; startup, and each resize is a round trip to the compositor.

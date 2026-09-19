@@ -105,35 +105,54 @@
       TMUX_FZF_LAUNCH_KEY="F"
       TMUX_FZF_ORDER="session|window|pane|command|keybinding"
 
-      ##### Theme: Minimal Dark #####
+      ##### Theme: whatever the terminal is wearing #####
 
-      # bg=#1e1e2e  bg-alt=#26263a  fg=#dcd7ba  muted=#6e6a86  accent=#7aa2f7
+      # No hex anywhere below, on purpose. kitty follows the live noctalia
+      # palette through the `include` in kitty.nix, and noctalia rewrites that
+      # file on every theme change -- but tmux draws its own status bar, so a
+      # hardcoded palette here drifts the moment the theme does. It had already
+      # drifted into four schemes at once: #1e1e2e is Catppuccin, #dcd7ba is
+      # Kanagawa, #6e6a86 is Rose Pine, #7aa2f7 is Tokyo Night.
+      #
+      # Terminal colour *indices* are the fix: kitty resolves them out of the
+      # palette noctalia rendered, so the status bar tracks the desktop for
+      # free and stays tracking it. The mapping from what used to be hardcoded:
+      #
+      #   default   terminal bg/fg -- also keeps foot's transparency
+      #   colour4   regular4, the accent   (was #7aa2f7)
+      #   colour3   regular3, yellow       (was #e0af68)
+      #   colour8   bright0, muted         (was #6e6a86 / #2f2f44)
+      #   colour15  bright7, bright text   (was #dcd7ba)
+      #   colour0   regular0, text on the accent
+      #
+      # `bg=default` matters beyond theming: a hardcoded background painted an
+      # opaque bar across a terminal that is otherwise translucent.
 
       set -g status on
       set -g status-position bottom
       set -g status-interval 2
-      set -g status-style "bg=#1e1e2e,fg=#dcd7ba"
+      set -g status-style "bg=default,fg=colour7"
 
       set -g status-left-length 50
-      set -g status-left "#[fg=#7aa2f7,bold] #S #[fg=#6e6a86]│ "
+      set -g status-left "#[fg=colour4,bold] #S #[fg=colour8]│ "
 
       set -g status-right-length 100
-      set -g status-right "#{prefix_highlight}#[fg=#6e6a86] %Y-%m-%d #[fg=#dcd7ba]%H:%M "
+      set -g status-right "#{prefix_highlight}#[fg=colour8] %Y-%m-%d #[fg=colour15]%H:%M "
 
-      setw -g window-status-format         "#[fg=#6e6a86] #I:#W "
-      setw -g window-status-current-format "#[fg=#dcd7ba,bold] #I:#W "
+      setw -g window-status-format         "#[fg=colour8] #I:#W "
+      setw -g window-status-current-format "#[fg=colour15,bold] #I:#W "
 
-      set -g pane-border-style        "fg=#2f2f44"
-      set -g pane-active-border-style "fg=#7aa2f7"
-      set -g message-style            "bg=#26263a,fg=#dcd7ba"
-      set -g mode-style               "bg=#7aa2f7,fg=#1e1e2e"
+      set -g pane-border-style        "fg=colour8"
+      set -g pane-active-border-style "fg=colour4"
+      set -g message-style            "bg=colour8,fg=colour15"
+      set -g mode-style               "bg=colour4,fg=colour0"
 
       ##### Prefix Highlight #####
 
-      set -g @prefix_highlight_fg '#1e1e2e'
-      set -g @prefix_highlight_bg '#7aa2f7'
+      set -g @prefix_highlight_fg 'colour0'
+      set -g @prefix_highlight_bg 'colour4'
       set -g @prefix_highlight_show_copy_mode 'on'
-      set -g @prefix_highlight_copy_mode_attr 'fg=#1e1e2e,bg=#e0af68'
+      set -g @prefix_highlight_copy_mode_attr 'fg=colour0,bg=colour3'
       set -g @prefix_highlight_output_prefix ' '
       set -g @prefix_highlight_output_suffix ' '
     '';

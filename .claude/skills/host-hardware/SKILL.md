@@ -122,13 +122,70 @@ Chromium fails to `dlopen` libpipewire otherwise.
 Reach for nixpkgs, `nix-ld` (`modules/system/programs/nix-ld.nix`) or an FHS
 wrapper before considering Flatpak again.
 
+## The kernel is pinned by NVIDIA, not by taste
+
+`modules/system/core/boot.nix` sets `boot.kernelPackages = pkgs.linuxPackages` —
+nixpkgs' LTS, **not** `linuxPackages_zen`. Zen currently tracks Linux 7.2, and
+NVIDIA's open 595 module does not build against it (`strncpy` was removed from
+the kernel API). Moving off LTS is an NVIDIA-support question; check that the
+driver builds before touching this line.
+
+Three more load-bearing settings live in the same file:
+
+- `options legion_laptop force=1` — the Lenovo EC module refuses this laptop's
+  DMI without it, and `boot.extraModulePackages` carries
+  `lenovo-legion-module` for the same reason.
+- `options nvidia NVreg_PreserveVideoMemoryAllocations=1` — suspend/resume, see
+  the NVIDIA section above.
+- `systemd.services.nix-daemon.environment.TMPDIR = "/var/tmp"` — `/tmp` is
+  tmpfs here (`boot.tmp.useTmpfs`), and a large nixpkgs build does not fit in
+  RAM.
+
+`hardware/intel-video.nix` is likewise not decorative: VAAPI on the Raptor Lake
+iGPU needs `intel-media-driver` (iHD) plus `vpl-gpu-rt` in
+`hardware.graphics.extraPackages`, or every `vaInitialize` on the Intel render
+node fails and browsers and mpv silently decode on the CPU. The render nodes are
+inverted from what you would guess: **renderD128 is nvidia, renderD129 is i915**.
+
+## Networking bits that are easy to "tidy" wrongly
+
+`modules/system/programs/clash.nix` enables `programs.clash-verge` with
+`serviceMode` and `tunMode`, and sets `services.resolved.settings.Resolve
+.DNSStubListener = "no"`. That last line is not cleanup fodder: the TUN stack
+wants :53 for itself, and leaving systemd-resolved's stub listener on it is the
+classic "everything resolves until the proxy starts" failure. The TUN interface
+name and the nix-daemon proxy wiring are covered in the proxy section above.
+
+## Debug probes and serial
+
+`modules/system/hardware/debug-probes.nix` puts `openocd` and `stlink` into
+`services.udev.packages`, which installs their upstream rules. Those rules tag
+ST-Link, CMSIS-DAP and J-Link devices `uaccess`, so logind hands the logged-in
+seat access dynamically -- there is no `plugdev` group here and none is needed.
+
+The serial console is the exception and the reason `mayon` is in `dialout`:
+`/dev/ttyUSB*` and `/dev/ttyACM*` come up root:dialout with no uaccess tag, so
+`tio /dev/ttyACM0` needs real group membership. The toolchain those devices are
+for is in `modules/home/programs/dev/embedded.nix` (`dev-toolchain` skill).
+
 ## Everything else on this host
 
-Small, comment-free modules nobody has needed a rule for yet — read the file, it
-is short: `core/boot.nix`, `core/locale.nix`, `hardware/audio.nix` (pipewire),
-`hardware/bluetooth.nix`, `hardware/firmware.nix`, `hardware/intel-video.nix`,
+Short modules with no rule of their own — read the file, including its comments:
+`core/locale.nix` (zh_CN is built deliberately), `hardware/audio.nix`
+(pipewire), `hardware/bluetooth.nix`, `hardware/firmware.nix`,
 `security/polkit.nix`, `services/systemd.nix`, `user/mayon.nix`,
-`user/environment.nix`.
+`user/environment.nix`, `programs/libreoffice.nix` (libreoffice-qt + en_US
+hunspell/hyphen dictionaries).
+
+`programs/nh.nix` enables `nh` with `flake = "/home/mayon/nix-dotfiles"` — an
+absolute path, so moving or renaming the repo breaks `nr`/`nc` until it is
+updated — and `clean.extraArgs = "--keep 5 --keep-since 14d"`, which is the
+retention policy behind the weekly GC.
+
+`programs/zsh.nix` (system) is three lines but one of them matters:
+`programs.command-not-found.enable = false`, because the default handler reads a
+stale channel database and would override nix-index's hook. See
+`shell-terminal`.
 
 Neighbouring skills own the rest: `gaming-stack` for Steam/gamescope/gamemode,
 `desktop-mango` for the compositor and greeter, `desktop-apps` for theming and

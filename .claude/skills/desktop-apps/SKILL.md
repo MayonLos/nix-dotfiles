@@ -9,7 +9,7 @@ description: GTK/Qt/font theming, default applications, and the desktop apps thi
 
 noctalia owns the live palette and renders it into per-application files through
 its template system (`modules/home/wm/mango/noctalia.nix`): builtin templates for
-btop, cava, **foot, gtk3, gtk4, mango, qt**, community ones for obsidian, vscode,
+btop, cava, **kitty, gtk3, gtk4, mango, qt**, community ones for obsidian, vscode,
 yazi, **zathura, zen-browser**. Changing the theme is a runtime action, not a
 rebuild.
 
@@ -34,6 +34,41 @@ The Nix modules only set up what those templates cannot:
   up the family "Symbols Nerd Font Mono" **by name** and does not fall back to the
   patched JetBrainsMono.
 
+## The two-tier colour rule
+
+Every colour on this host is Tokyo Night. There are exactly two ways a program
+gets there, and which tier a program is in is decided by one question: **can it
+read the terminal palette, or the file noctalia renders?**
+
+| Tier | How it gets the colour | Cost of a theme change |
+|---|---|---|
+| **Follows noctalia** | an ANSI colour *index* (`1`, `4`, `15`, `-1`), or an `include`/`source` of a noctalia-rendered file | free, at runtime |
+| **Hand-pinned hex** | Tokyo Night hex literals written into a `.nix` or `.el` file | a rebuild |
+
+Tier 1 is the default and the goal. `fzf` (`shell/zsh.nix`), the tmux status bar
+(`terminal/tmux.nix`), `fastfetch` and `btop`
+(`programs/apps/sysinfo.nix`), kitty, GTK, Qt, yazi, zathura and Zen are all
+here. **Write an index, never a hex, for anything that renders inside the
+terminal** — it tracks the desktop for free, and `-1` ("leave it to the
+terminal") is what preserves kitty's `background_opacity` behind an overlay.
+
+Tier 2 is for programs that genuinely cannot: Neovim and Emacs pick a
+colorscheme at startup and have no way to re-read noctalia, `bat`/`delta` take a
+named syntax theme, and fcitx5 takes a theme name. Those are pinned, and the
+pinning has to stay consistent across *every* place the same program appears —
+`magit-delta`'s `magit-delta-default-dark-theme` and `BAT_THEME` in
+`base/session-vars.nix` are the same pager and once rendered two different
+schemes for one hunk.
+
+The failure this rule prevents is drift, and it is not hypothetical: the tmux
+status bar had accumulated **four** schemes at once (`#1e1e2e` Catppuccin,
+`#dcd7ba` Kanagawa, `#6e6a86` Rose Pine, `#7aa2f7` Tokyo Night) before it was
+converted to indices.
+
+One trap when moving something to tier 1: not every program accepts hex at all.
+fastfetch 2.63.1 rejects `{#BB9AF7}` outright — `invalid color code found` — so
+a `{#...}` format string is a runtime error, not a fallback.
+
 ## The seeded-mutable-file pattern
 
 Several apps rewrite their own config, or refuse to start when an `include`
@@ -46,7 +81,7 @@ home.activation.seedX = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
 '';
 ```
 
-Used by foot (`themes/noctalia`), qt6ct (`qt6ct.conf`), zathura (`noctaliarc`)
+Used by kitty (`themes/noctalia.conf`), qt6ct (`qt6ct.conf`), zathura (`noctaliarc`)
 and Zen (`userChrome.css` / `userContent.css`). The file stays mutable: noctalia
 overwrites it on every theme change, and whatever you tweak in qt6ct's GUI
 survives.
@@ -55,8 +90,8 @@ Decide by ownership: **Home Manager owns it and nothing else writes it →
 `home.file`. Something else writes it → seed it.** The third case, where a module
 must own a file an app also rewrites, needs `force = true`, because
 `backupFileExtension = "backup"` otherwise leaves a stale `.backup` in the way
-and takes `home-manager-mayon.service` down at the next activation — see
-`editors-ide` on ZCode.
+and takes `home-manager-mayon.service` down at the next activation — the
+worked example is in `editors-ide`, under the ZCode removal note.
 
 ## Default applications
 
@@ -78,7 +113,7 @@ those services, not Thunar.
 Two Home Manager modules extend it:
 
 - `thunar-terminal.nix` — "Open Terminal Here" goes through
-  `~/.local/bin/thunar-open-terminal` (execs foot), registered in
+  `~/.local/bin/thunar-open-terminal` (execs kitty), registered in
   `~/.config/xfce4/helpers.rc`.
 - `thunar-actions.nix` — owns `~/.config/Thunar/uca.xml`, so **the "Configure
   custom actions" dialog can no longer save**; new right-click actions are added
@@ -161,3 +196,11 @@ is needed because v4l2loopback nodes carry udev's `uaccess` tag.
 For an actual meeting, use the **web client in a browser**: browser screen
 sharing goes through `org.freedesktop.portal.ScreenCast` and works normally
 here.
+
+OBS itself *is* installed, as a Home Manager module:
+`modules/home/programs/apps/obs-studio.nix`, with three plugins — `wlrobs`
+(wlroots screen capture), `obs-vkcapture` (Vulkan/OpenGL game capture, the
+counterpart to `gamescope`/MangoHud in the gaming-stack skill) and
+`obs-pipewire-audio-capture`. It is the deleted *system* module
+(`modules/system/desktop/obs.nix`, v4l2loopback) that must not come back, not
+OBS.

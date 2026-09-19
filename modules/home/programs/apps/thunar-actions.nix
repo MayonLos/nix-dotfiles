@@ -52,9 +52,10 @@ let
       # Both clipboards get written:
       #   wl-copy -> native Wayland clients (QQ, Zen and Typora)
       #   xclip   -> XWayland clients (wechat-uos pins QT_QPA_PLATFORM=xcb)
-      # Mango's built-in Xwayland normally synchronises those selections, but
-      # writing both sides directly makes this action independent of selection
-      # ownership and focus timing.
+      # Mango does *not* synchronise the two selections (measured 2026-09-15,
+      # see the desktop-mango skill) -- services/clipboard.nix bridges them on a
+      # timer. Writing both sides directly here makes this action independent of
+      # that bridge, of selection ownership, and of focus timing.
       #
       # Both commands slurp stdin into memory before forking off to serve the
       # selection, so the temp file can go away immediately afterwards.
@@ -82,7 +83,7 @@ in
   # flake/system.nix preserves the old file as uca.xml.backup.
   #
   # "Open Terminal Here" is pre-existing and pairs with thunar-terminal.nix
-  # (helpers.rc -> foot). Don't drop it.
+  # (helpers.rc -> ~/.local/bin/thunar-open-terminal -> kitty). Don't drop it.
   home.file.".config/Thunar/uca.xml".text = ''
     <?xml version="1.0" encoding="UTF-8"?>
     <actions>

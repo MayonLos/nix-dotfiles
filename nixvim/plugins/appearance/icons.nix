@@ -41,7 +41,7 @@ in
 {
   # Brand colours on purpose: they are the fastest way to tell one file from
   # another in the tabline and in fzf-lua's list, and that beats matching
-  # onedark's palette. Nothing else here relinks the DevIcon* groups.
+  # the colorscheme's palette. Nothing else here relinks the DevIcon* groups.
   plugins.web-devicons.enable = true;
   plugins.navic.settings.icons = paddedKinds;
   plugins.blink-cmp.settings.appearance.kind_icons = kinds;

@@ -15,7 +15,12 @@
             pkgs.rime-ice
           ];
         })
-        fcitx5-nord
+        # The candidate window floats over whatever application has focus, so
+        # it is the one surface that should match the *desktop* rather than
+        # carry taste of its own. noctalia drives everything else here to Tokyo
+        # Night; Nord-Dark was the last thing still disagreeing with it.
+        # Storm rather than Day: the live palette's background is #1a1b26.
+        fcitx5-tokyonight
         fcitx5-gtk
         libsForQt5.fcitx5-qt
         qt6Packages.fcitx5-configtool
@@ -33,8 +38,8 @@
         };
 
         addons.classicui.globalSection = {
-          Theme = "Nord-Dark";
-          DarkTheme = "Nord-Dark";
+          Theme = "Tokyonight-Storm";
+          DarkTheme = "Tokyonight-Storm";
 
           # No ForceWaylandDPI here. It was tried on 2026-08-21 and is wrong:
           # classicui already gets 1.5 from wp_fractional_scale_v1 on Wayland
@@ -74,7 +79,5 @@
 
         ascii_composer/good_old_caps_lock: true
     '';
-
-    sessionVariables.GLFW_IM_MODULE = "ibus";
   };
 }

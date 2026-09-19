@@ -8,7 +8,7 @@ in
     executable = true;
     text = ''
       #!/usr/bin/env sh
-      exec foot
+      exec kitty
     '';
   };
 

@@ -1,6 +1,6 @@
 ---
 name: editors-ide
-description: Packaging workarounds for the GUI IDEs and AI coding agents installed on this host — JetBrains, VS Code, Antigravity, and the llm-agents CLIs (codex, grok, opencode, dsh, zcode). Use when a JetBrains welcome screen hangs or its renderer fails to load, when a VS Code extension's bundled binary cannot find a shared library, when adding or upgrading an AI coding agent, when editing jetbrains.nix / vscode.nix / antigravity.nix / ai-agents.nix, or when ZCode's desktop entry or fcitx5 input breaks after an update.
+description: Packaging workarounds for the GUI IDEs and AI coding agents installed on this host — JetBrains, VS Code, Antigravity, and the llm-agents CLIs (codex, grok, opencode, dsh). Use when a JetBrains welcome screen hangs or its renderer fails to load, when a VS Code extension's bundled binary cannot find a shared library, when adding or upgrading an AI coding agent, when editing jetbrains.nix / vscode.nix / antigravity.nix / ai-agents.nix, or when an Electron agent rewrites its own desktop entry.
 ---
 
 # IDEs and agent CLIs
@@ -50,7 +50,7 @@ layout to load. Same reasoning as `vscode-fhs` above.
 ## ai-agents.nix — the llm-agents input
 
 Every AI coding agent that comes from the `llm-agents` flake input rather than
-nixpkgs: `codex`, `chatgpt`, `dsh`, `grok`, `opencode`, `zcode`, plus `ccusage`,
+nixpkgs: `codex`, `chatgpt`, `dsh`, `grok`, `opencode`, plus `ccusage`,
 `crit`, `mcporter`, `sandbox-runtime` (binary is `srt`) and `workmux`.
 
 All of it is prebuilt on `cache.numtide.com` — the substituter is added in
@@ -73,26 +73,30 @@ Notes worth knowing before touching this file:
 - **grok** provides both `grok` (interactive) and `agent` (automation).
   Auth is browser OAuth on first launch, or `XAI_API_KEY`.
 
-## ZCode's desktop entry — why the module owns it
+## ZCode was removed — do not add it back
 
-ZCode rewrites `~/.local/share/applications/zcode.desktop` on **every launch**,
-pointing `Exec` at `lib/ZCode/zcode`, the raw Electron binary rather than the
-`bin/zcode` wrapper. Since `~/.local/share` outranks `/etc/profiles` in
-`XDG_DATA_DIRS`, that self-written entry wins for both the launcher and the
-`zcode://` OAuth callback. Result: ZCode starts without `--enable-wayland-ime`
-(so no fcitx5 input) and without xdg-utils on `PATH`, from a hard-coded store
-path that `nh clean` later turns dangling.
+`agents.zcode` (Z.ai's Electron IDE) was removed on **2026-09-19** at the
+user's instruction, after it was observed pushing to a user repository without
+being asked. Its local state went with it: `~/.zcode` (724 MB of workspace,
+checkpoints and logs, plus `v2/credentials.json`) and `~/.config/ZCode` (19 MB).
+Nothing in Nix managed those paths, so a rebuild does not recreate them.
 
-`ai-agents.nix` owns the file so every activation restores the correct entry.
-It does **not** stop the rewrite — ZCode unlinks the symlink and writes a fresh
-0600 file. The entry is only guaranteed correct between an activation and the
-next launch.
+This is not a packaging note, it is a standing decision. If it is ever
+reinstated that is the user's call to make explicitly, not a cleanup.
 
-`force = true` is what keeps this from breaking boot: with
-`home-manager.backupFileExtension = "backup"`, the second activation after a
-rewrite found a leftover `zcode.desktop.backup` in the way, failed
-`checkLinkTargets`, and took `home-manager-mayon.service` down at startup.
-`force` overwrites in place and never backs up. **Do not remove it.**
+It carried one workaround that is worth knowing about, because **any Electron
+app that registers a URL scheme can do the same thing**: ZCode rewrote
+`~/.local/share/applications/zcode.desktop` on every launch, pointing `Exec` at
+the raw Electron binary instead of its `bin/` wrapper — losing
+`--enable-wayland-ime` (so fcitx5 stopped working inside it) and hard-coding a
+store path that `nh clean` later turned dangling. `ai-agents.nix` owned the
+file so each activation restored it, with `force = true` because
+`home-manager.backupFileExtension = "backup"` otherwise found a leftover
+`.desktop.backup` in the way, failed `checkLinkTargets`, and took
+`home-manager-mayon.service` down at startup.
+
+The removed block is in `git log -- modules/home/programs/dev/ai-agents.nix`
+if another agent ever needs the same treatment.
 
 `xdg.enable` is false on this host, so `xdg.desktopEntries` emits nothing —
 that is why the file is written through `home.file` directly. `desktop-apps`

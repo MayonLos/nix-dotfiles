@@ -95,16 +95,32 @@ runs. Using it meant `number`, `relativenumber`, `cursorline`, `list` and
 - Leader groups are registered in `plugins/utility/which-key.nix` with
   `__unkeyed-1`: `f` Find, `s` Search, `g` Git, `l` LSP, `d` Debug, `w` Window,
   `u` Utility/Toggle, `a` AI (`ac` CLI agent), `b` Buffer, `c` Code, `n` Docs,
-  `o` Oil, `t` Terminal, `x` Diagnostics, `h` Harpoon, `p` Session.
+  `t` Terminal, `x` Diagnostics, `h` Harpoon, `p` Session, `m` Multicursor.
+  There is no `o` group: it was oil's, and oil was removed on 2026-09-18 —
+  snacks' explorer on `<leader>e` is the only file manager now.
 - Plugin-specific maps live in the plugin's own file; only global editor maps
   belong in `keymappings.nix`.
 
 ## Theme
 
-onedark, with the chosen style persisted to
-`vim.fn.stdpath("data") .. "/onedark-style"` and re-applied on startup by
-`nixvim/theme.nix` (`_G.select_onedark_style` picks one through fzf-lua). A
-colorscheme change is therefore runtime state, not a rebuild.
+**tokyonight** — the same scheme the whole host wears (see the two-tier colour
+rule in `desktop-apps`). The style (`night` / `storm` / `moon` / `day`) is
+persisted to `vim.fn.stdpath("data") .. "/tokyonight-style"` and re-applied on
+startup by `nixvim/theme.nix`; `_G.select_tokyonight_style`, on `<leader>fs`,
+picks one through fzf-lua. A colorscheme change is runtime state, not a rebuild.
+
+Two traps live in that file and both were measured, not guessed:
+
+- `tokyonight.setup{}` **replaces** the option table rather than merging, so
+  passing only `style` throws away `styles.floats`/`styles.sidebars =
+  "transparent"` from `plugins/appearance/colorscheme.nix`.
+- `tokyonight.load()` does **not** fire Neovim's `ColorScheme` event, and
+  `nixvim/highlights.nix` hangs its entire override table off that event.
+
+So the switcher merges onto `require("tokyonight.config").options` and goes
+through `vim.cmd.colorscheme`, which does fire it. Change either half back and
+every override in `highlights.nix` silently disappears for the rest of the
+session — and on every later start, because the choice is persisted.
 
 ## The plugin set is deliberate
 

@@ -38,8 +38,8 @@
           }
           {
             __unkeyed-1 = "<leader>fs";
-            __unkeyed-2.__raw = "function() _G.select_onedark_style() end";
-            desc = "Select OneDark Style";
+            __unkeyed-2.__raw = "function() _G.select_tokyonight_style() end";
+            desc = "Select Tokyo Night Style";
           }
         ];
       };

@@ -33,8 +33,41 @@ _: {
     };
   };
 
+  # The `lg` alias in shell/zsh.nix points here. Its colours are hex for the
+  # same reason fastfetch's are (apps/sysinfo.nix): lazygit paints its own
+  # panels rather than reading the terminal palette, so it cannot follow a
+  # noctalia theme change and is pinned to Tokyo Night by hand instead.
+  programs.lazygit = {
+    enable = true;
+    settings.gui.theme = {
+      activeBorderColor = [
+        "#7aa2f7"
+        "bold"
+      ];
+      searchingActiveBorderColor = [
+        "#7dcfff"
+        "bold"
+      ];
+      inactiveBorderColor = [ "#414868" ];
+      optionsTextColor = [ "#7aa2f7" ];
+      selectedLineBgColor = [ "#292e42" ];
+      inactiveViewSelectedLineBgColor = [ "#283457" ];
+      cherryPickedCommitFgColor = [ "#1a1b26" ];
+      cherryPickedCommitBgColor = [ "#7dcfff" ];
+      markedBaseCommitFgColor = [ "#1a1b26" ];
+      markedBaseCommitBgColor = [ "#e0af68" ];
+      unstagedChangesColor = [ "#f7768e" ];
+      defaultFgColor = [ "#c0caf5" ];
+    };
+  };
+
   programs.delta = {
     enable = true;
+    # Without this, `delta` is merely installed: the module writes
+    # pager.diff / interactive.diffFilter / pager.blame into git's config only
+    # when enableGitIntegration is set, and it defaults to false. `git diff`
+    # rendered through git's own pager until this line existed.
+    enableGitIntegration = true;
     options = {
       navigate = true;
       side-by-side = true;

@@ -12,8 +12,9 @@
       stiffness = 0.8;
       trailing_stiffness = 0.6;
       distance_stop_animating = 0.5;
-      # foot renders at 165 Hz; matching it keeps the trail smooth without
-      # spending frames the compositor will drop anyway.
+      # eDP-1 runs at 165 Hz (monitorrule in wm/mango/config.nix); matching it
+      # keeps the trail smooth without spending frames the compositor will
+      # drop anyway. ~7 ms is that refresh interval, not a terminal property.
       time_interval = 7;
     };
   };

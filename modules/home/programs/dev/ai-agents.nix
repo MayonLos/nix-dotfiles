@@ -52,13 +52,6 @@ in
     # nixos-unstable, 1.15.10 on stable).
     agents.opencode
 
-    # Z.ai's Electron desktop IDE. Not in nixpkgs at all — upstream ships only
-    # .deb/.rpm/AppImage; this package unpacks the .deb and patches the RUNPATH.
-    # Its bin/zcode wrapper adds the Chromium Wayland flags (including
-    # --enable-wayland-ime, which fcitx5 needs) and puts xdg-utils on PATH.
-    # See xdg.desktopEntries.zcode below for why that wrapper needs defending.
-    agents.zcode
-
     # Token usage and cost across the agent CLIs, read from their local session
     # files — nothing is uploaded. Covers claude-code and codex, both of which
     # are already installed.
@@ -83,44 +76,20 @@ in
     agents.workmux
   ];
 
-  # ZCode rewrites ~/.local/share/applications/zcode.desktop on every launch,
-  # pointing Exec at lib/ZCode/zcode — the *raw* Electron binary, not the
-  # bin/zcode wrapper. Since ~/.local/share outranks /etc/profiles in
-  # XDG_DATA_DIRS, that self-written entry wins for both the app launcher and
-  # the zcode:// OAuth callback, so ZCode ends up started without
-  # --enable-wayland-ime (no fcitx5 input) and without xdg-utils on PATH. It
-  # also hard-codes a store path, which `nh clean` turns into a dangling one
-  # after an update.
+  # NOT here: `agents.zcode` (Z.ai's Electron IDE). Removed 2026-09-19 at the
+  # user's instruction after it was observed pushing to a user repository
+  # without being asked. Do not add it back.
   #
-  # Owning the file here restores the correct entry on every activation. It
-  # does NOT make the rewrite fail: ZCode unlinks the store symlink and writes
-  # a fresh 0600 regular file (it owns the directory, so read-only targets stop
-  # nothing) — the entry is only guaranteed correct between an activation and
-  # the next ZCode launch. `force` is what keeps that from breaking boot: with
-  # home-manager.backupFileExtension = "backup" (flake/system.nix) the second
-  # activation after a rewrite found a leftover zcode.desktop.backup in the way
-  # and failed checkLinkTargets, taking home-manager-mayon.service down at
-  # startup. force overwrites in place and never backs up.
+  # It also carried a desktop-entry workaround that this file used to own:
+  # ZCode rewrote ~/.local/share/applications/zcode.desktop on every launch,
+  # pointing Exec at the raw Electron binary instead of the `bin/zcode` wrapper
+  # (losing --enable-wayland-ime, so fcitx5 stopped working in it) and
+  # hard-coding a store path that `nh clean` later turned into a dangling one.
+  # That block went with it -- if zcode ever returns, the workaround is in
+  # `git log -- modules/home/programs/dev/ai-agents.nix`, not lost.
   #
-  # Keep the fields in sync with the package's own desktop item
-  # (share/applications/zcode.desktop).
-  # xdg.enable is false on this host, so xdg.desktopEntries emits nothing —
-  # write the file directly instead.
-  home.file.".local/share/applications/zcode.desktop" = {
-    force = true;
-    source =
-      (pkgs.makeDesktopItem {
-        name = "zcode";
-        desktopName = "ZCode";
-        genericName = "Agentic Development Environment";
-        comment = "ZCode Desktop App";
-        exec = "zcode %U";
-        icon = "zcode";
-        terminal = false;
-        categories = [ "Development" ];
-        mimeTypes = [ "x-scheme-handler/zcode" ];
-        startupWMClass = "ZCode";
-      })
-      + "/share/applications/zcode.desktop";
-  };
+  # Its local state (~/.zcode, 724 MB of workspace/checkpoints/logs plus
+  # v2/credentials.json, and ~/.config/ZCode, 19 MB) was deleted by hand at the
+  # same time; nothing in Nix manages those paths, so a rebuild does not
+  # recreate them.
 }

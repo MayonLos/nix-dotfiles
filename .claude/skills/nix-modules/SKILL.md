@@ -18,8 +18,8 @@ Adding a module means dropping a file in the right directory. There is no
 import list to update.
 
 **There is no skip mechanism** — not for `_`-prefixed directories either.
-`modules/home/_assets` and `modules/home/wm/mango/_plugins` survive only because
-neither contains a `.nix` file. Consequences:
+`modules/home/_assets` survives only because it contains no `.nix` file.
+Consequences:
 
 - Never put a non-module `.nix` file (a helper, a package expression, a
   fragment meant to be `import`ed by hand) anywhere under `modules/`. It will
@@ -61,7 +61,7 @@ _: {
 | | Channel | Use for |
 |---|---|---|
 | `pkgs` | `nixpkgs` — **nixos-26.05** stable | system packages and most user packages; the default |
-| `pkgs-unstable` | `nixpkgs-unstable`, plus the `claude-code` overlay | fast-moving packages only: `claude-code`, `github-copilot-cli`, `antigravity` |
+| `pkgs-unstable` | `nixpkgs-unstable`, plus the `claude-code` overlay | fast-moving packages only: `claude-code`, `github-copilot-cli`, `antigravity-ide-fhs`/`antigravity-cli`, `typora` |
 
 `allowUnfree = true` on both. Reach for `pkgs-unstable` only when stable is
 demonstrably too old for a package that must track upstream; a package pulled
@@ -76,6 +76,7 @@ A third case: a package that stable lacks but that is not "fast-moving" — Java
 (`java.nix`, `session-vars.nix`, `prismlauncher.nix`) and the IM apps (`im.nix`)
 each reach into `pkgs-unstable` for one attribute with a comment saying why.
 Follow that pattern rather than adding the package to the unstable list above.
+`packages.nix` takes `typora` the same way (stable lags a minor version).
 
 ## Home Manager runs as a NixOS module
 
@@ -83,7 +84,8 @@ Activated via `home-manager.nixosModules.home-manager` with
 `useGlobalPkgs = true` — not standalone. There is no separate `home-manager
 switch`; a `nixos-rebuild switch` applies both. `home-manager.backupFileExtension
 = "backup"` is set in `flake/system.nix`, which matters whenever a module owns
-a file some application also rewrites at runtime (see `editors-ide` on ZCode).
+a file some application also rewrites at runtime (the worked example is the
+ZCode removal note in `editors-ide`).
 
 ## flake inputs
 
@@ -100,7 +102,7 @@ a file some application also rewrites at runtime (see `editors-ide` on ZCode).
 | `zen-browser` | Zen browser + its home-manager module (not in nixpkgs) |
 | `mark-shot` / `wayscrollshot` | Wayland screenshot tools, neither in nixpkgs |
 | `claude-code` | Claude Code CLI (overlay adds it to `pkgs-unstable`) |
-| `llm-agents` | AI coding agents nixpkgs lacks or lags — codex, chatgpt, dsh, grok, zcode, opencode, and the review/usage tooling |
+| `llm-agents` | AI coding agents nixpkgs lacks or lags — codex, chatgpt, dsh, grok, opencode, and the review/usage tooling. `zcode` is in this input and deliberately not installed; see `editors-ide` |
 | `sops-nix` | encrypted secrets |
 | `nix-index-database` | prebuilt weekly nix-index DB (command-not-found, `nix-locate`, comma) |
 | `treefmt-nix` | formatter orchestration — not a hand-written formatter config |
@@ -111,10 +113,14 @@ came from nixpkgs instead -- do not assume a compositor is packaged the same way
 the last one was.
 
 **Do not add `inputs.nixpkgs.follows` to the inputs that lack it.**
-`noctalia-greeter`, `mark-shot`, `wayscrollshot` and `llm-agents` each build
-from source or publish to their own binary cache; pointing them at this flake's
-nixpkgs breaks their builds or misses every prebuilt binary. Those four carry a
-comment in `flake.nix` saying so. The cost is an extra nixpkgs evaluation.
+`mango`, `noctalia-greeter`, `mark-shot`, `wayscrollshot` and `llm-agents` each
+build from source, publish to their own binary cache, or pin a version-tight
+dependency triple of their own; pointing them at this flake's nixpkgs breaks
+their builds or misses every prebuilt binary. All five carry a comment in
+`flake.nix` saying so. The cost is an extra nixpkgs evaluation.
+(`claude-code`, `treefmt-nix` and the two `noctalia-plugins-*` source trees have
+no `follows` either, but only because they have no nixpkgs input worth
+deduplicating — they are not part of this rule.)
 
 `lib/default.nix` exposes exactly one helper, `importDir`. Keep it that way
 unless something genuinely needs sharing across host and flake.

@@ -23,12 +23,49 @@ in
       ];
       completions.lsp.enabled = true;
 
-      # The builtin's converter list defaults to utftex then latex2text in
-      # render-markdown 8.12.0; all five operator probes lost their operator in
-      # the latter. md_latex now gates display roots too and owns that fallback.
+      # Two separate mechanisms un-render the line the cursor is on, and both
+      # have to be turned off or the document comes apart as you walk through
+      # it -- which is exactly what "the rendering breaks when I move" means.
       #
-      # Also set through globals.render_markdown_config below -- this line alone
-      # is not enough, see the comment there.
+      # 1. This plugin owns `concealcursor` per window, not `nixvim/options.nix`.
+      #    `win_options.concealcursor.rendered` defaults to "", and it is
+      #    applied whenever rendering is on, so the global setting is
+      #    overwritten the moment a markdown buffer opens. Verified with a live
+      #    probe: `vim.wo.concealcursor` read "" in an open note while
+      #    options.nix asked for "nvic". This is also what snacks' image layer
+      #    reads (snacks/image/inline.lua:45) to decide whether to pull the
+      #    formula images off the cursor's line, so the one setting governs
+      #    both this plugin's conceal and the maths.
+      # 2. `anti_conceal` un-renders this plugin's *own* marks near the cursor
+      #    -- heading icons, bullets, table borders, link icons.
+      #
+      # The cost of both: while the cursor is on a line you do not see its raw
+      # markup, so editing a link target or a table separator is done blind.
+      # Drop the "i" from `concealcursor` to get the source back while actually
+      # typing, or set `anti_conceal.enabled = true` to get this plugin's own
+      # markup back without touching the maths.
+      win_options.concealcursor.rendered = "nvic";
+      anti_conceal.enabled = false;
+
+      # Maths belongs to snacks.image now, not to this plugin.
+      #
+      # Both want the same `$$...$$` node, and this one wins: it conceals the
+      # source and substitutes its converter's output before snacks can place
+      # an image. Measured after the move to kitty -- snacks reported
+      # `enabled=true math.enabled=true terminal=kitty supported=true`, and the
+      # buffer still showed utftex's Unicode art. Same "two packages claiming
+      # one canvas" shape as dirvish/nerd-icons and org-modern/valign in the
+      # Emacs config.
+      #
+      # snacks renders the formula through pdflatex and shows a typeset image
+      # (plugins/appearance/snacks.nix), which is what this is for.
+      latex.enabled = false;
+
+      # The utftex machinery below is kept, inert, as the documented fallback:
+      # snacks needs the kitty graphics protocol, so a plain tty or an ssh
+      # session without `kitten ssh` renders nothing. Flip `latex.enabled` back
+      # to true there and this all works again, including the md_latex handler
+      # that decides inline-vs-display -- do not delete it to "clean up".
       latex.converter = "${latexConverter}";
 
       # utftex renders a formula as a box several rows tall. render-markdown

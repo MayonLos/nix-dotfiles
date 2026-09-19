@@ -22,7 +22,7 @@
       inputs.flake-parts.follows = "flake-parts";
     };
 
-    # The MCP server binary config/plugins/ai/mcphub.nix points mcphub.nvim at.
+    # The MCP server binary nixvim/plugins/ai/mcphub.nix points mcphub.nvim at.
     # Not in nixpkgs.
     mcp-hub = {
       url = "github:ravitemer/mcp-hub";
@@ -85,7 +85,7 @@
     claude-code.url = "github:sadjow/claude-code-nix/v2";
 
     # Daily-updated packages for AI coding agents: codex, the ChatGPT desktop
-    # app, dsh, zcode, opencode and the review/usage tooling around them. Deliberately NOT `follows`-ed: upstream only builds and
+    # app, dsh, opencode and the review/usage tooling around them. zcode is deliberately NOT installed -- see programs/dev/ai-agents.nix. Deliberately NOT `follows`-ed: upstream only builds and
     # caches against its own pinned nixpkgs-unstable, and pointing it at this
     # flake's stable `nixpkgs` would both break eventually and miss every
     # prebuilt binary. The cost is one extra nixpkgs evaluation; the payoff is

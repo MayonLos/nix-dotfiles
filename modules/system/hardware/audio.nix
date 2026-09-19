@@ -5,6 +5,10 @@ _:
     enable = true;
     alsa = {
       enable = true;
+      # programs/steam.nix in nixpkgs assigns this *plainly* (not mkDefault) as
+      # `alsa.support32Bit = alsa.enable` whenever Steam is on, which it is.
+      # The two agree today; setting `false` here would be a conflicting-
+      # definition eval error, not a silent override. Disable it in steam.nix.
       support32Bit = true;
     };
     pulse.enable = true;

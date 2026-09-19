@@ -12,12 +12,19 @@ let
   # The original measurement was taken under niri + xwayland-satellite: QQ's
   # window was 1251x1498 X pixels against the 834x999 logical size niri
   # reported, exactly 1.5x (`xwininfo -root -tree` vs `niri msg windows`,
-  # 2026-08-21). It still applies to mango's built-in Xwayland by source
-  # inspection rather than by re-measurement: client.c converts with
-  # "X11 = logical * scale" and `xwayland_ignore_scale` defaults to 0, so the
-  # X server again runs at the output's real scale. Worth re-checking with
-  # `xwininfo -root -tree` vs `mmsg get all-clients` the first time the fcitx5
-  # candidate window looks wrong.
+  # 2026-08-21). Re-measured under mango on 2026-09-18, and the source-inspection
+  # note that used to stand here was wrong: at mango's default
+  # `xwayland_ignore_scale = 0` the X server ran at the *logical* size
+  # (`xdpyinfo`: 1707x1067 = 2560/1.5) and every X surface was stretched 1.5x
+  # onto the panel, which is why X11 clients -- Steam most visibly -- rendered
+  # soft. wm/mango/config.nix now sets `xwayland_ignore_scale = 1`, so X windows
+  # get physical-pixel buffers presented 1:1 (measured with an xclock:
+  # 936x1010 logical vs 1392x1503 X-side, ratio 1.49).
+  #
+  # That makes this file load-bearing well beyond fcitx5: under 1:1
+  # presentation an X client is *small* until it scales itself, and Xft.dpi is
+  # how it learns to. The two settings are a pair -- do not remove one without
+  # the other. Re-check with `xwininfo -root -tree` vs `mmsg get all-clients`.
   #
   # Home Manager writes ~/.Xresources but only merges it into a running server
   # when DISPLAY happens to be set in the activation environment

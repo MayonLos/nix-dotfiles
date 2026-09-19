@@ -100,5 +100,40 @@ in
       enable = true;
       enableZshIntegration = true;
     };
+
+    fzf = {
+      enable = true;
+      enableZshIntegration = true;
+      defaultOptions = [
+        "--height=40%"
+        "--layout=reverse"
+        "--border=rounded"
+      ];
+      # Terminal colour indices, not hex. fzf renders inside kitty, and
+      # kitty's palette is rewritten by noctalia on every theme change (the
+      # `include themes/noctalia.conf` in programs/terminal/kitty.nix) -- so an
+      # index tracks the desktop for free while a hex value silently becomes
+      # the odd one out. `-1` is fzf's "leave it to the terminal", which is
+      # also what keeps kitty's `background_opacity 0.8` visible behind the
+      # list. Same reasoning as the status bar in programs/terminal/tmux.nix.
+      #
+      # Home Manager turns this into FZF_DEFAULT_OPTS, which zsh-fzf-tab reads
+      # too, so completions and standalone fzf cannot disagree.
+      colors = {
+        fg = "-1";
+        bg = "-1";
+        "fg+" = "15"; # bright7, the brightest text
+        "bg+" = "8"; # bright0, the selected row
+        hl = "3"; # yellow on the match
+        "hl+" = "11";
+        border = "8";
+        prompt = "4"; # blue, same accent the bar uses
+        pointer = "1";
+        marker = "2";
+        spinner = "6";
+        header = "5";
+        info = "8";
+      };
+    };
   };
 }

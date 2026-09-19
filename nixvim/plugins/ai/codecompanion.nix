@@ -186,7 +186,31 @@ in
     };
   };
 
-  extraPlugins = [ pkgs.vimPlugins.codecompanion-history-nvim ];
+  # codecompanion-history-nvim declares `dependencies = [ plenary codecompanion ]`,
+  # and nixvim normalises dependencies with `optional = false` -- so taking the
+  # package as it comes installs codecompanion.nvim a SECOND time, as a *start*
+  # plugin. It is then on runtimepath from startup, `require("codecompanion")`
+  # succeeds without any lz-n stub firing, and the `after` hook that calls
+  # setup() never runs. Measured on a cold start: language came out "English"
+  # rather than Chinese, `extensions` was empty (no history, no mcphub),
+  # `cli_agents` was empty so every <leader>ac* key errored with "CLI agent
+  # 'nil' not found", <leader>ah threw "attempt to index field 'history'", and
+  # the chat adapter was the stock default instead of copilot_acp. The whole
+  # `settings` block below was dead on a cold start and only came alive once a
+  # :CodeCompanion* command had loaded the opt copy.
+  #
+  # plenary is kept -- history genuinely uses it, and nothing else pulls it in.
+  # `doCheck = false` is the price: buildVimPlugin's require check loads every
+  # module in the plugin, and history's modules require codecompanion, which is
+  # now absent at *check* time. At runtime it is present -- codecompanion is the
+  # thing that requires history, as one of its `extensions`, and by then lz-n
+  # has sourced the opt copy. Nothing requires history at startup.
+  extraPlugins = [
+    (pkgs.vimPlugins.codecompanion-history-nvim.overrideAttrs (_: {
+      dependencies = [ pkgs.vimPlugins.plenary-nvim ];
+      doCheck = false;
+    }))
+  ];
 
   extraFiles = {
     "lua/cc_fidget.lua".source = ./lua/cc_fidget.lua;

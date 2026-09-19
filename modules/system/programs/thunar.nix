@@ -13,14 +13,13 @@
       ];
     };
 
-    xfconf.enable = true;
     dconf.enable = true;
   };
 
   services = {
-    dbus.enable = true;
+    # gvfs pulls in udisks2 itself, and programs.thunar pulls in xfconf --
+    # neither needs restating here. tumbler is the thumbnailer, which does.
     gvfs.enable = true;
     tumbler.enable = true;
-    udisks2.enable = true;
   };
 }

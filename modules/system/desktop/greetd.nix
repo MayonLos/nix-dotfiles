@@ -20,8 +20,6 @@
     };
   };
 
-  services.greetd.settings.default_session.user = "greeter";
-
   environment.pathsToLink = [ "/share/wayland-sessions" ];
 
   environment.systemPackages = [ pkgs.bibata-cursors ];

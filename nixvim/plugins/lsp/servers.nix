@@ -328,12 +328,13 @@ _: {
         lspBufAction = "declaration";
         options.desc = "Go to declaration";
       }
-      {
-        mode = "n";
-        key = "gr";
-        lspBufAction = "references";
-        options.desc = "References";
-      }
+      # No `gr` here. Neovim 0.11+ ships gra/gri/grn/grr as global LSP maps,
+      # and nixvim attaches these buffer-locally on LspAttach -- a buffer-local
+      # `gr` wins over a longer global map, so grn/gra/gri/grr became
+      # unreachable in exactly the buffers they exist for, and `gr` itself had
+      # to wait out timeoutlen (400ms) against the buffer-local grt/grx before
+      # firing. References is still `grr` (built in), `<leader>xl` (trouble)
+      # and `<leader>ll`.
       {
         mode = "n";
         key = "grt";

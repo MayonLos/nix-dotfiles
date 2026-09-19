@@ -1,6 +1,6 @@
 ---
 name: shell-terminal
-description: The interactive shell stack on this host — zsh (no framework), starship, zoxide, foot, tmux, yazi, git/delta/gh and the nix-index+comma pair. Use when adding an alias, a shell function or an environment variable, when deciding between zsh.nix and session-vars.nix for something, when a variable is set in a terminal but empty in a systemd unit or a launcher, when touching foot/tmux/yazi config, when the terminal's colours do not follow the noctalia theme, or when image preview or true colour breaks inside tmux.
+description: The interactive shell stack on this host — zsh (no framework), starship, zoxide, kitty, tmux, yazi, git/delta/gh/lazygit and the nix-index+comma pair. Use when adding an alias, a shell function or an environment variable, when deciding between zsh.nix and session-vars.nix for something, when a variable is set in a terminal but empty in a systemd unit or a launcher, when touching kitty/tmux/yazi config, when the terminal's colours do not follow the noctalia theme, or when image preview, inline images or true colour breaks inside tmux.
 ---
 
 # Shell and terminal
@@ -9,11 +9,16 @@ description: The interactive shell stack on this host — zsh (no framework), st
 |---|---|
 | zsh, starship, zoxide | `modules/home/shell/zsh.nix` |
 | env vars, PATH, JAVA*_HOME | `modules/home/base/session-vars.nix` |
-| terminal emulator | `modules/home/programs/terminal/foot.nix` |
+| terminal emulator | `modules/home/programs/terminal/kitty.nix` |
 | multiplexer | `modules/home/programs/terminal/tmux.nix` |
 | file manager (TUI) | `modules/home/programs/apps/yazi.nix` |
-| git, delta, gh | `modules/home/programs/dev/git.nix` |
+| git, delta, gh, lazygit | `modules/home/programs/dev/git.nix` |
 | `nix-locate` / `,` | `modules/home/programs/dev/nix-index.nix` |
+| fastfetch, btop | `modules/home/programs/apps/sysinfo.nix` |
+
+Colours for everything in this table follow the **two-tier colour rule** in the
+`desktop-apps` skill: anything rendering inside the terminal uses ANSI colour
+*indices*, never hex, so it tracks the live noctalia palette for free.
 
 ## zsh has no framework, on purpose
 
@@ -58,24 +63,46 @@ file, see the `sops-secrets` skill (the export loop at the top of `zshInit` is
 the interactive half of that story).
 
 `Xft.dpi` is **not** here — it is an X resource, delivered by
-`modules/home/base/xresources.nix`; see the `desktop-niri` skill.
+`modules/home/base/xresources.nix`; see the `desktop-mango` skill.
 
-## foot follows the noctalia palette by `include`
+The system half of zsh is `modules/system/programs/zsh.nix`: it enables the
+shell system-wide and sets `programs.command-not-found.enable = false` so
+nix-index's hook is the one that answers an unknown command.
 
-foot.ini is a read-only HM symlink that `include`s
-`$XDG_CONFIG_HOME/foot/themes/noctalia`, which noctalia's template rewrites on
-every theme change.
+## kitty, and why the config file is split in two
 
-Declaring the `include` in the module (rather than letting noctalia's `apply.sh`
-sed it into foot.ini) is what keeps foot.ini declarative: apply.sh greps for the
-include, finds it, and skips its own rewrite. **foot refuses to start when an
-`include` target is missing**, so an activation script seeds an empty file when
-noctalia has not rendered one yet. That seeded file is mutable and unmanaged —
-do not convert it to `home.file`.
+**kitty replaced foot on 2026-09-19 for one reason: the kitty graphics
+protocol.** snacks.nvim renders LaTeX as typeset images and
+`snacks/image/terminal.lua` speaks kitty, ghostty and wezterm only; foot
+implements sixel and nothing else, which is why
+`nixvim/plugins/appearance/snacks.nix` used to carry `image.enabled = false`.
+The cost is closure size — foot was 96 MiB and kitty is not.
 
-`term` is set to `xterm-256color` rather than `foot`. Keep it that way unless you
-have a reason: remote hosts and older tools that do not ship foot's terminfo
-entry fall back badly, and tmux already sets its own `tmux-256color` inside.
+**Do not use `programs.kitty.settings`.** That module makes `kitty.conf` a
+read-only store symlink, and noctalia's `assets/templates/kitty/apply.sh` runs
+`touch "$config_file"` as its *first* line under `set -euo pipefail`. `touch` on
+an HM symlink returns "Permission denied", the hook aborts, and the live
+`pkill -USR1 kitty` reload never runs. foot's template got away with a read-only
+`foot.ini` because its apply.sh greps first and never touches; kitty's does not.
+
+So ownership is split, and both halves matter:
+
+| File | Owner | Contents |
+|---|---|---|
+| `kitty/mayon.conf` | Home Manager, read-only | every real setting |
+| `kitty/kitty.conf` | seeded once by an activation script, then **mutable** | two `include` lines, nothing else |
+| `kitty/themes/noctalia.conf` | noctalia, rewritten on every theme change | the palette |
+
+The activation script repairs `kitty.conf` when it is missing **or** when
+`include mayon.conf` is missing from it — losing that line loses every setting
+in the module silently, which is worse than a crash. The seed comes from a
+`pkgs.writeText` store file, not a heredoc: a heredoc inside a Nix indented
+string loses its terminator's indentation and once produced an empty seed.
+
+`TERM` stays at kitty's default `xterm-kitty`. That is safe here only because
+`kitten ssh` ships kitty's terminfo to the remote host on connect. Do **not**
+copy foot's old `term = xterm-256color` across — it would also cost the graphics
+protocol this whole swap was for.
 
 ## tmux
 

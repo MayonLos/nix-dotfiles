@@ -122,11 +122,116 @@ _: {
       };
       explorer.enabled = true;
 
-      # image needs the kitty graphics protocol — snacks/image/terminal.lua
-      # detects only kitty, ghostty and wezterm, and `grep -ri sixel` across the
-      # module returns nothing. foot implements sixel and nothing else, so this
-      # would render exactly zero images.
-      image.enabled = false;
+      # Enabled on 2026-09-19, when the terminal moved from foot to kitty
+      # (modules/home/programs/terminal/kitty.nix). snacks/image/terminal.lua
+      # speaks kitty, ghostty and wezterm only -- foot implements sixel and
+      # nothing else, so this rendered exactly zero images and was off.
+      #
+      # The payload is not really pictures, it is *maths*:
+      # snacks/image/init.lua:137-165 builds a LaTeX `standalone` document
+      # (amsmath, amssymb, amsfonts, amscd, mathtools), renders it with
+      # pdflatex -- texliveFull from programs/dev/latex.nix -- and converts at
+      # `-density 192 -trim` with ImageMagick from packages.nix. Both binaries
+      # were already on PATH. It colours the output to the current palette, so
+      # formulae inherit the theme.
+      #
+      # utftex (plugins/utility/render-markdown.nix) stays as the fallback for
+      # anywhere the graphics protocol is unavailable -- a plain tty, or ssh
+      # without `kitten ssh`.
+      # Every key of `doc` is spelled out, including the ones that only repeat
+      # a snacks default. Setting this table at all risks replacing rather
+      # than merging, and the default it would drop is `conceal` -- the
+      # function that hides the `$...$` source once its image is placed
+      # (snacks/image/init.lua:84-91). Lose that and the source and the image
+      # sit side by side, which looks like the renderer is broken.
+      image = {
+        enabled = true;
+        doc = {
+          enabled = true;
+
+          # BOTH off, on purpose. snacks' own document handling is disabled
+          # and `lua/math_preview.lua` does the drawing instead, because the
+          # two things wanted here are not reachable through snacks' config:
+          # its hover closes whenever `vim.fn.mode() ~= "n"`
+          # (image/doc.lua:377) so there is no preview while a formula is
+          # being typed, and a formula pdflatex rejects produces no float at
+          # all -- a typo reads as a broken renderer.
+          #
+          # With both false, `M._attach` returns early (image/doc.lua:453) and
+          # snacks draws nothing, while `Snacks.image.doc.at_cursor`,
+          # `Snacks.image.convert` and `Snacks.image.placement` stay callable.
+          # math_preview uses all three, so the LaTeX template, the palette
+          # colour and the ~/.cache/nvim/snacks/image cache are still shared --
+          # this is a different trigger and a different error path, not a
+          # second renderer.
+          #
+          # Everything below still applies, because math_preview inherits
+          # `Snacks.image.config.doc`:
+          #
+          # One formula at a time, in a float beside the cursor -- not every
+          # formula in the buffer at once. `inline = true` was tried and it
+          # costs two things:
+          #
+          #  * a formula inside a markdown table breaks that table's alignment.
+          #    render-markdown measures a column from the *character* width of
+          #    the text it conceals (render/markdown/table.lua:183-190 via
+          #    request/context.lua:40-47, which counts only render-markdown's
+          #    own extmarks), while snacks sizes the inline placeholder from
+          #    the rendered PNG's *pixels* (image/util.lua:50-61). Neither can
+          #    see the other's numbers, and no snacks option bridges them.
+          #  * a screenful of small images reads as soft even when each one is
+          #    sharp, because every formula is fitted to a different
+          #    non-integer fraction of the cell grid.
+          #
+          # The float used to lose the other half of the trade -- it closed
+          # on leaving normal mode, so it was useless while writing. That is
+          # what math_preview exists to fix; see above.
+          inline = false;
+          float = false;
+
+          max_width = 80;
+          max_height = 40;
+
+          # snacks' own default, restated (init.lua:88-91): conceal the source
+          # of a maths block, leave an image link's source alone.
+          conceal.__raw = ''
+            function(_lang, type)
+              return type == "math"
+            end
+          '';
+        };
+        math = {
+          enabled = true;
+          # "Large" is snacks' default and it is sized for a formula sitting
+          # alone on its own line. In prose and especially inside a table it
+          # dwarfs the text around it -- measured against the real notes, a
+          # single inline \$...\$ was taller than three rows of the table it
+          # was in. "small" keeps a display block readable while letting an
+          # inline formula sit closer to the line height of the text.
+          latex.font_size = "small";
+        };
+
+        # 384, double snacks' default 192 (image/init.lua:133). The default
+        # renders a formula too small to be displayed without upscaling, which
+        # is the whole of the "it looks a bit soft" complaint: the cached PNGs
+        # came out 89x14, 63x21, 88x30 for inline formulae, while one kitty
+        # cell on this display is about 13x28 *physical* pixels at
+        # `font_size 8.25`-equivalent density -- so a one-line formula was
+        # being blown up 1.5-2x to fill its row. At 384 the source is bigger
+        # than the target in every case measured and the fit is a downscale,
+        # which is the direction that stays sharp.
+        #
+        # Cost is pdflatex/ImageMagick time and cache size, both per formula
+        # and both small; the images are cached under
+        # ~/.cache/nvim/snacks/image keyed by content, so a re-render only
+        # happens when the formula changes.
+        convert.magick.math = [
+          "-density"
+          384
+          "{src}[{page}]"
+          "-trim"
+        ];
+      };
 
       dashboard.enabled = false;
 
@@ -174,8 +279,9 @@ _: {
 
     # --- file -----------------------------------------------------------
     {
-      # oil can rename a file too, but it will not tell the language server,
-      # so every import pointing at the old name silently breaks.
+      # Renaming through the tree or through `:!mv` does not tell the language
+      # server, so every import pointing at the old name silently breaks. This
+      # one goes through the LSP's willRenameFiles.
       mode = "n";
       key = "<leader>fR";
       action.__raw = ''function() require("snacks").rename.rename_file() end'';
@@ -184,8 +290,13 @@ _: {
 
     # --- explorer -------------------------------------------------------
     {
-      # A tree for orientation. oil stays the editing surface: it renames and
-      # deletes by editing buffer text, which a tree cannot express.
+      # The file manager for this config. oil.nvim used to sit beside it as the
+      # "edit the directory as a buffer" surface and was removed on 2026-09-18:
+      # two file explorers, and the one that was supposed to own `nvim <dir>`
+      # never did -- its `default_file_explorer = true` needed oil loaded to
+      # register the netrw hijack, but oil was lazy on `cmd = "Oil"` while this
+      # one is eager, so snacks claimed the directory buffer every time
+      # (measured: `nvim dtest/` gave ft=snacks_picker_list, oil not loaded).
       mode = "n";
       key = "<leader>e";
       action.__raw = ''function() require("snacks").explorer() end'';
@@ -269,5 +380,13 @@ _: {
     Snacks.toggle.diagnostics():map("<leader>ux")
     Snacks.toggle.inlay_hints():map("<leader>ui")
     Snacks.toggle.treesitter():map("<leader>ut")
+
+    -- The maths preview, which snacks' own `doc.float`/`doc.inline` are turned
+    -- off for. See the image block above and lua/math_preview.lua.
+    require("math_preview").setup()
   '';
+
+  extraFiles = {
+    "lua/math_preview.lua".source = ./lua/math_preview.lua;
+  };
 }
