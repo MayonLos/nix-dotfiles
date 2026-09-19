@@ -190,7 +190,7 @@
         "isfloating:1,appid:^(polkit-.*|org\\.freedesktop\\.PolicyKit.*)$"
         "isfloating:1,width:1080,height:920,appid:^dev\\.noctalia\\.Noctalia\\.Settings$"
         "vrr_only_fullscreen:1,isnoradius:1,appid:^steam_app_"
-        "focused_opacity:0.8,unfocused_opacity:0.8,appid:^foot$"
+        "focused_opacity:0.8,unfocused_opacity:0.8,appid:^kitty$"
       ];
 
       # Launches, Noctalia shell controls, tag navigation, and dwm-style
@@ -198,7 +198,7 @@
       bind = [
         "SUPER,E,spawn,thunar"
         "SUPER,B,spawn,zen-beta"
-        "SUPER,Return,spawn,foot"
+        "SUPER,Return,spawn,kitty"
         "ALT,space,spawn,noctalia msg panel-toggle launcher"
         "SUPER,S,spawn,noctalia msg panel-toggle control-center"
         "SUPER+ALT,L,spawn,noctalia msg session lock"

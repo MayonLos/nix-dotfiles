@@ -23,12 +23,25 @@ in
       ];
       completions.lsp.enabled = true;
 
-      # The builtin's converter list defaults to utftex then latex2text in
-      # render-markdown 8.12.0; all five operator probes lost their operator in
-      # the latter. md_latex now gates display roots too and owns that fallback.
+      # Maths belongs to snacks.image now, not to this plugin.
       #
-      # Also set through globals.render_markdown_config below -- this line alone
-      # is not enough, see the comment there.
+      # Both want the same `$$...$$` node, and this one wins: it conceals the
+      # source and substitutes its converter's output before snacks can place
+      # an image. Measured after the move to kitty -- snacks reported
+      # `enabled=true math.enabled=true terminal=kitty supported=true`, and the
+      # buffer still showed utftex's Unicode art. Same "two packages claiming
+      # one canvas" shape as dirvish/nerd-icons and org-modern/valign in the
+      # Emacs config.
+      #
+      # snacks renders the formula through pdflatex and shows a typeset image
+      # (plugins/appearance/snacks.nix), which is what this is for.
+      latex.enabled = false;
+
+      # The utftex machinery below is kept, inert, as the documented fallback:
+      # snacks needs the kitty graphics protocol, so a plain tty or an ssh
+      # session without `kitten ssh` renders nothing. Flip `latex.enabled` back
+      # to true there and this all works again, including the md_latex handler
+      # that decides inline-vs-display -- do not delete it to "clean up".
       latex.converter = "${latexConverter}";
 
       # utftex renders a formula as a box several rows tall. render-markdown

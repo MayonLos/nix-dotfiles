@@ -114,7 +114,7 @@ in
             builtin_ids = [
               "btop"
               "cava"
-              "foot"
+              "kitty"
               "gtk3"
               "gtk4"
               "mango"

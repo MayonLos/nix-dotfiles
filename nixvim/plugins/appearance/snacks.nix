@@ -122,11 +122,34 @@ _: {
       };
       explorer.enabled = true;
 
-      # image needs the kitty graphics protocol — snacks/image/terminal.lua
-      # detects only kitty, ghostty and wezterm, and `grep -ri sixel` across the
-      # module returns nothing. foot implements sixel and nothing else, so this
-      # would render exactly zero images.
-      image.enabled = false;
+      # Enabled on 2026-09-19, when the terminal moved from foot to kitty
+      # (modules/home/programs/terminal/kitty.nix). snacks/image/terminal.lua
+      # speaks kitty, ghostty and wezterm only -- foot implements sixel and
+      # nothing else, so this rendered exactly zero images and was off.
+      #
+      # The payload is not really pictures, it is *maths*:
+      # snacks/image/init.lua:137-165 builds a LaTeX `standalone` document
+      # (amsmath, amssymb, amsfonts, amscd, mathtools), renders it with
+      # pdflatex -- texliveFull from programs/dev/latex.nix -- and converts at
+      # `-density 192 -trim` with ImageMagick from packages.nix. Both binaries
+      # were already on PATH. It colours the output to the current palette, so
+      # formulae inherit the theme.
+      #
+      # utftex (plugins/utility/render-markdown.nix) stays as the fallback for
+      # anywhere the graphics protocol is unavailable -- a plain tty, or ssh
+      # without `kitten ssh`.
+      # No `doc` table here, deliberately. Setting it *replaces* snacks'
+      # default rather than merging into it, and that default carries
+      # `max_width`, `max_height` and -- the load-bearing one -- a `conceal`
+      # function that hides the source of a maths block (init.lua:88-91,
+      # "only conceal math expressions"). An earlier version set just
+      # `inline`/`float` here and silently dropped the rest: measured with a
+      # probe, `cfg.doc` came back as exactly `{float=true, inline=true}`, the
+      # `$$...$$` stayed on screen, and no image was ever placed.
+      image = {
+        enabled = true;
+        math.enabled = true;
+      };
 
       dashboard.enabled = false;
 
