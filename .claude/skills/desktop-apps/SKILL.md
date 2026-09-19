@@ -90,8 +90,8 @@ Decide by ownership: **Home Manager owns it and nothing else writes it →
 `home.file`. Something else writes it → seed it.** The third case, where a module
 must own a file an app also rewrites, needs `force = true`, because
 `backupFileExtension = "backup"` otherwise leaves a stale `.backup` in the way
-and takes `home-manager-mayon.service` down at the next activation — see
-`editors-ide` on ZCode.
+and takes `home-manager-mayon.service` down at the next activation — the
+worked example is in `editors-ide`, under the ZCode removal note.
 
 ## Default applications
 

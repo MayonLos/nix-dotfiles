@@ -84,7 +84,8 @@ Activated via `home-manager.nixosModules.home-manager` with
 `useGlobalPkgs = true` — not standalone. There is no separate `home-manager
 switch`; a `nixos-rebuild switch` applies both. `home-manager.backupFileExtension
 = "backup"` is set in `flake/system.nix`, which matters whenever a module owns
-a file some application also rewrites at runtime (see `editors-ide` on ZCode).
+a file some application also rewrites at runtime (the worked example is the
+ZCode removal note in `editors-ide`).
 
 ## flake inputs
 
@@ -101,7 +102,7 @@ a file some application also rewrites at runtime (see `editors-ide` on ZCode).
 | `zen-browser` | Zen browser + its home-manager module (not in nixpkgs) |
 | `mark-shot` / `wayscrollshot` | Wayland screenshot tools, neither in nixpkgs |
 | `claude-code` | Claude Code CLI (overlay adds it to `pkgs-unstable`) |
-| `llm-agents` | AI coding agents nixpkgs lacks or lags — codex, chatgpt, dsh, grok, zcode, opencode, and the review/usage tooling |
+| `llm-agents` | AI coding agents nixpkgs lacks or lags — codex, chatgpt, dsh, grok, opencode, and the review/usage tooling. `zcode` is in this input and deliberately not installed; see `editors-ide` |
 | `sops-nix` | encrypted secrets |
 | `nix-index-database` | prebuilt weekly nix-index DB (command-not-found, `nix-locate`, comma) |
 | `treefmt-nix` | formatter orchestration — not a hand-written formatter config |

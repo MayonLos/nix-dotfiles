@@ -66,7 +66,7 @@ that area — each carries the measurements and the failure modes behind the cod
 | [sops-secrets](.claude/skills/sops-secrets/SKILL.md) | adding/rotating a secret, empty credential at runtime, editing `secrets/secrets.yaml` or `modules/system/security/sops.nix` |
 | [nvim-config](.claude/skills/nvim-config/SKILL.md) | any change under `nixvim/` — adding a plugin, lazy-loading, keymaps, an option that does not apply |
 | [dev-toolchain](.claude/skills/dev-toolchain/SKILL.md) | LSP servers, formatters, linters, Emacs, DAP adapters, per-language compilers, nvim closure size |
-| [editors-ide](.claude/skills/editors-ide/SKILL.md) | JetBrains, VS Code, Antigravity, the `llm-agents` CLIs (codex/grok/opencode/dsh/zcode) |
+| [editors-ide](.claude/skills/editors-ide/SKILL.md) | JetBrains, VS Code, Antigravity, the `llm-agents` CLIs (codex/grok/opencode/dsh) |
 | [shell-terminal](.claude/skills/shell-terminal/SKILL.md) | zsh aliases/functions, env vars vs. `session-vars.nix`, kitty, tmux, yazi, git/delta/gh/lazygit |
 | [desktop-mango](.claude/skills/desktop-mango/SKILL.md) | mango keybinds/window rules/tags, noctalia, greeter, xdg portals, screenshots, clipboard, fcitx5 DPI |
 | [desktop-apps](.claude/skills/desktop-apps/SKILL.md) | GTK/Qt/font theming, default applications, Thunar actions, mpv/zathura/Zen, QQ/WeChat packaging |
