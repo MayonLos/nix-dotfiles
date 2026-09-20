@@ -61,7 +61,7 @@ _: {
 | | Channel | Use for |
 |---|---|---|
 | `pkgs` | `nixpkgs` — **nixos-26.05** stable | system packages and most user packages; the default |
-| `pkgs-unstable` | `nixpkgs-unstable`, plus the `claude-code` overlay | fast-moving packages only: `claude-code`, `github-copilot-cli`, `antigravity-ide-fhs`/`antigravity-cli`, `typora` |
+| `pkgs-unstable` | `nixpkgs-unstable`, plus the `claude-code` overlay | fast-moving packages only: `claude-code`, `github-copilot-cli`, `typora` |
 
 `allowUnfree = true` on both. Reach for `pkgs-unstable` only when stable is
 demonstrably too old for a package that must track upstream; a package pulled

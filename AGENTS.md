@@ -43,9 +43,8 @@ nix develop .#cuda   # cudatoolkit, cudnn, nvcc
 2. Every module file is a function: `_: { … }` or `{ pkgs, lib, ... }: { … }`.
    `inputs` and `pkgs-unstable` are available via `specialArgs`.
 3. `pkgs` is **stable nixos-26.05** and is the default. `pkgs-unstable` is for
-   fast-moving packages only (`claude-code`, `github-copilot-cli`,
-   `antigravity-ide-fhs`/`antigravity-cli`, `typora`), plus the single-attribute
-   exceptions the nix-modules skill lists.
+   fast-moving packages only (`claude-code`, `github-copilot-cli`, `typora`),
+   plus the single-attribute exceptions the nix-modules skill lists.
 4. Home Manager runs **as a NixOS module** — `nixos-rebuild` applies both.
 5. Never put a secret in a `.nix` file; everything in a module is world-readable
    in `/nix/store`.

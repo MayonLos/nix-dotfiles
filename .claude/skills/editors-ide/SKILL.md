@@ -1,6 +1,6 @@
 ---
 name: editors-ide
-description: Packaging workarounds for the GUI IDEs and AI coding agents installed on this host — JetBrains, VS Code, Antigravity, and the llm-agents CLIs (codex, grok, opencode, dsh). Use when a JetBrains welcome screen hangs or its renderer fails to load, when a VS Code extension's bundled binary cannot find a shared library, when adding or upgrading an AI coding agent, when editing jetbrains.nix / vscode.nix / antigravity.nix / ai-agents.nix, or when an Electron agent rewrites its own desktop entry.
+description: Packaging workarounds for the GUI IDEs and AI coding agents installed on this host — JetBrains, VS Code, and the llm-agents CLIs (codex, grok, opencode, dsh). Use when a JetBrains welcome screen hangs or its renderer fails to load, when a VS Code extension's bundled binary cannot find a shared library, when adding or upgrading an AI coding agent, when editing jetbrains.nix / vscode.nix / ai-agents.nix, or when an Electron agent rewrites its own desktop entry.
 ---
 
 # IDEs and agent CLIs
@@ -33,19 +33,14 @@ If another library is ever needed, switch to
 `pkgs.vscode.fhsWithPackages (ps: [ … ])` rather than going back to a
 hand-rolled `LD_LIBRARY_PATH` override.
 
-## antigravity.nix
+## Antigravity was removed
 
-Goes through the Home Manager `programs.antigravity` / `programs.antigravity-cli`
-modules. The CLI binary is `agy`.
-
-Both packages are set **explicitly** to `pkgs-unstable.*`, because those modules
-default to `pkgs.antigravity*` from **stable**, where 26.05 carries only an
-older IDE (1.23.2) and no `antigravity-cli` at all. Do not drop the explicit
-`package` on the assumption the default is fine.
-
-The IDE is the **FHS** variant (`antigravity-ide-fhs`): it pulls prebuilt
-binaries for extensions and language servers, which need a normal filesystem
-layout to load. Same reasoning as `vscode-fhs` above.
+`antigravity.nix`, the `programs.antigravity` / `programs.antigravity-cli`
+modules and the `agy` entry in codecompanion's CLI agent list were all deleted
+on 2026-09-20 because the IDE and its CLI are no longer used. This is a note,
+not a gap: do not re-add them on the assumption something is missing. The two
+packages were the only reason `antigravity-ide-fhs` / `antigravity-cli` appeared
+in the pkgs-unstable list, which is why that list is shorter now.
 
 ## ai-agents.nix — the llm-agents input
 

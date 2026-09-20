@@ -71,7 +71,6 @@ in
             claude.cmd = "claude";
             codex.cmd = "codex";
             copilot.cmd = "copilot";
-            antigravity.cmd = "agy";
             # The other two engines from ../../../modules/home/programs/dev/ai-agents.nix.
             # grok matters most here: AGENTS.md treats it as the non-Claude,
             # non-codex third opinion, so it needs to be reachable from
