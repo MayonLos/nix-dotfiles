@@ -20,6 +20,13 @@
 # SDR hardware support package; a local parallel pool does not touch them, and
 # they are a large closure to carry on the chance that it might.
 #
+# Nor the nine libboost-1.74 entries R2026a added. MATLAB ships its own copies
+# under bin/glnxa64 with an mw prefix and its own soname
+# (libmwboost_system.so.1.81.0), so nothing resolves a bare libboost soname --
+# checked inside the built env, where libboost_system.so is absent and MATLAB
+# starts anyway. nixpkgs' boost is 1.89 in any case, which is not what that
+# list asks for.
+#
 # Takes `pkgs` rather than going through callPackage on purpose: targetPkgs is a
 # function of the whole package set, not a handful of named inputs.
 {

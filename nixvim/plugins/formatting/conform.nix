@@ -40,15 +40,26 @@
         sh = [ "shfmt" ];
         tex = [ "latexindent" ];
         # MATLAB has no standalone formatter; matlab_ls formats by asking the
-        # MATLAB it drives. The entry has to exist even though it lists no
-        # formatter -- without it the `_` catch-all below claims .m buffers,
-        # runs trim_whitespace, counts as a successful format, and the LSP is
-        # never consulted. The first save then blows format_on_save's 200ms
-        # budget while MATLAB starts; that is exactly what
-        # _G.slow_format_filetypes handles, and from the second save on it
-        # formats through format_after_save instead.
+        # MATLAB it drives. What this entry does is exist: without it the `_`
+        # catch-all below claims .m buffers, runs trim_whitespace, counts that
+        # as a successful format, and the LSP is never consulted.
+        #
+        # The lsp_format here is never read: all three call sites in this file
+        # pass one explicitly -- "fallback" at the <leader>lf keymap, in
+        # format_on_save and in format_after_save -- and conform consults the
+        # per-filetype value only when the caller passed none. It is written to
+        # match them anyway, so the file does not state a behaviour it does not
+        # have.
+        #
+        # It cannot be an empty list instead: nixvim drops an empty one, and
+        # checked in a built editor that leaves `formatters_by_ft.matlab` nil,
+        # which puts .m straight back under `_`.
+        #
+        # The first save blows format_on_save's 200ms budget while MATLAB
+        # starts; that is what _G.slow_format_filetypes handles, and from the
+        # second save on it formats through format_after_save instead.
         matlab = {
-          lsp_format = "prefer";
+          lsp_format = "fallback";
         };
         "_" = [
           "squeeze_blanks"
