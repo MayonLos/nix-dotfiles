@@ -247,6 +247,37 @@ _: {
 
             telemetry = false;
           };
+
+          # Without this the editor gives no sign that MATLAB is still starting,
+          # and the ten seconds before it connects look exactly like a broken
+          # setup: the client attaches, the statusline says LSP 1, and every
+          # completion comes back empty. CompletionSupportProvider returns {}
+          # rather than an error in that window, so nothing surfaces on its own.
+          #
+          # These are notifications, not requests -- the server pushes
+          # connectionStatus through matlab/connection/update/server, whose
+          # ConnectionState is connecting/connected/disconnected
+          # (MatlabSession.ts:34). Neovim dispatches notifications through the
+          # same handlers table as requests, so they are hooked the same way.
+          handlers.__raw = ''
+            {
+              ["matlab/connection/update/server"] = function(_, result)
+                local status = result and result.connectionStatus
+                if status == "connecting" then
+                  vim.notify("MATLAB starting -- no completion yet",
+                    vim.log.levels.INFO, { title = "matlab_ls" })
+                elseif status == "connected" then
+                  vim.notify("MATLAB ready", vim.log.levels.INFO, { title = "matlab_ls" })
+                elseif status == "disconnected" then
+                  vim.notify("MATLAB disconnected", vim.log.levels.WARN, { title = "matlab_ls" })
+                end
+              end,
+              ["matlab/launchfailed"] = function()
+                vim.notify("MATLAB failed to launch -- check MATLAB_INSTALL_DIR",
+                  vim.log.levels.ERROR, { title = "matlab_ls" })
+              end,
+            }
+          '';
         };
       };
 
