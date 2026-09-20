@@ -1,9 +1,10 @@
 { pkgs, ... }:
 let
-  # MATLAB itself is not packageable here: its installer requires a MathWorks
-  # login, so no derivation can fetch it. Octave covers .m coursework, and the
-  # parts it does not cover (Simulink, the commercial toolboxes) are not used
-  # on this host.
+  # MATLAB itself is still not a derivation -- its installer requires a
+  # MathWorks login, so nothing can fetch it -- but matlab.nix now wraps an
+  # imperative install in an FHS environment, so Simulink and the commercial
+  # toolboxes are available. Octave stays: it starts in a second, needs no
+  # licence server, and covers .m coursework on its own.
   #
   # octaveFull rather than octave: the only difference is the Qt GUI, and Qt is
   # already in this host's closure for other applications. Measured with
