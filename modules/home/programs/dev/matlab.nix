@@ -1,40 +1,31 @@
 { pkgs, config, ... }:
 {
-  # MATLAB's desktop comes up light. Its theme setting is
-  # s.matlab.appearance.MATLABTheme, whose factory value is "System" -- but on
-  # Linux that does not mean the desktop's preference: no MATLAB library
-  # mentions org.freedesktop.appearance, so nothing here reads the portal, which
-  # does report prefer-dark (checked with gdbus: uint32 1). "System" therefore
-  # resolves to light and stays there.
+  # No MATLAB theme is managed here, deliberately. A
+  # home.file."Documents/MATLAB/startup.m" setting
+  # s.matlab.appearance.MATLABTheme.TemporaryValue = 'Dark' was added on
+  # 2026-09-20 and removed the same day on request: it did darken the desktop,
+  # editor and command window (screenshotted under Xvfb), but not the file
+  # dialogs, which was the part that mattered. Flip the theme in Preferences >
+  # Appearance if you want it; it is one setting, and not worth a managed file.
   #
-  # Setting it through `matlab -batch` does not stick -- measured, the mtime of
-  # ~/.matlab/R2026a/matlab.mlsettings is unchanged afterwards, and a second
-  # process reads System again. That file is an OPC zip archive in any case, so
-  # it is not something Home Manager can own.
-  #
-  # startup.m is the declarative way in. MATLAB runs it from `userpath` on every
-  # start, it is plain text, and TemporaryValue applies for the session without
-  # writing to the settings archive at all. Verified by screenshotting a real
-  # desktop under Xvfb: the editor, file browser and command window all come up
-  # dark.
-  #
-  # This does NOT theme MATLAB's file dialogs, and nothing here can. Those are
-  # Qt widgets drawn by the Qt 6.8.1 MATLAB bundles, which ships no
-  # platformtheme plugin at all; nixpkgs' qt6ct is built against Qt 6.11.1 and
-  # Qt refuses a plugin from a newer build. Tested both with
-  # QT_QPA_PLATFORMTHEME=qt6ct inherited and with it unset -- the dialog is
-  # light either way, so the variable is not what breaks it.
-  home.file."Documents/MATLAB/startup.m".text = ''
-    s = settings;
-    s.matlab.appearance.MATLABTheme.TemporaryValue = 'Dark';
-    clear s
-
-    % Anything personal goes in startup-local.m beside this file, which Home
-    % Manager does not own -- this one is a read-only symlink into the store.
-    if exist(fullfile(userpath, 'startup-local.m'), 'file') == 2
-      run(fullfile(userpath, 'startup-local.m'));
-    end
-  '';
+  # The dialogs cannot be themed from outside, and this is the measured version
+  # of that claim, not a guess. They are Qt widgets drawn by the Qt 6.8.1
+  # MATLAB bundles, which ships no platformtheme plugin. Four routes tested,
+  # all light:
+  #   - nixpkgs' qt6ct (Qt 6.11): Qt rejects it outright --
+  #     "uses incompatible Qt library. (6.11.0)"
+  #   - nixos-24.11's qt6ct 0.10 (Qt 6.8.3): *does* load into a MATLABWindow
+  #     started by hand, yet /proc/<pid>/maps shows it absent when MATLAB
+  #     spawns that same binary with the same environment
+  #   - QT_QPA_PLATFORMTHEME unset: Qt falls back to QGenericUnixTheme, which
+  #     never overrides colorScheme(), so the palette is always light. The
+  #     portal strings in libQt6Gui belong to QGnomeTheme, not to that one
+  #   - QT_QPA_PLATFORMTHEME=gnome, i.e. QGnomeTheme, which is built in and
+  #     does read the portal (the portal reports prefer-dark, checked with
+  #     gdbus): still light
+  # Four different ways of reaching the platform theme, one result, which
+  # points at MATLAB setting its own palette. Do not spend another evening on
+  # it without new evidence.
 
   home.packages = [
     # Not callPackage: pkgs/matlab.nix needs the whole package set to build its
