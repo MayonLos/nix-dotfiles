@@ -39,6 +39,17 @@
         bash = [ "shfmt" ];
         sh = [ "shfmt" ];
         tex = [ "latexindent" ];
+        # MATLAB has no standalone formatter; matlab_ls formats by asking the
+        # MATLAB it drives. The entry has to exist even though it lists no
+        # formatter -- without it the `_` catch-all below claims .m buffers,
+        # runs trim_whitespace, counts as a successful format, and the LSP is
+        # never consulted. The first save then blows format_on_save's 200ms
+        # budget while MATLAB starts; that is exactly what
+        # _G.slow_format_filetypes handles, and from the second save on it
+        # formats through format_after_save instead.
+        matlab = {
+          lsp_format = "prefer";
+        };
         "_" = [
           "squeeze_blanks"
           "trim_whitespace"

@@ -187,6 +187,69 @@ _: {
         };
       };
 
+      # MATLAB. `cmd` is the FHS wrapper from pkgs/matlab.nix rather than
+      # matlab-language-server itself -- the server answers completion,
+      # signature help and formatting by launching a real MATLAB, and that only
+      # starts inside the FHS environment. Still a bare name, per the rule at
+      # the top of this file.
+      #
+      # matlab only, not octave. Neovim resolves every .m file tested here to
+      # the matlab filetype (an empty one included); a file only becomes octave
+      # on Octave-specific syntax, and pointing MathWorks' server at that would
+      # diagnose real Octave code as broken MATLAB. octave.nix still owns those.
+      matlab_ls = {
+        enable = true;
+        package = null;
+        config = {
+          cmd = [ "matlab-ls" ];
+          filetypes = [ "matlab" ];
+          root_markers = [ ".git" ];
+
+          # These are not belt-and-braces over matlab-ls's command line -- they
+          # are the only thing the server reads. ConfigurationManager.ts:150
+          # returns the client's configuration whenever the client advertises
+          # workspace/configuration, which Neovim does, and discards every CLI
+          # argument in that case. The flags in the wrapper only take effect for
+          # a client without that capability. The section it asks for is
+          # `MATLAB`, capitalised, checked against the getConfiguration call.
+          #
+          # Leaving this out is not "use the defaults" either: nvim-lspconfig
+          # ships its own matlab_ls settings, and one of them is
+          # telemetry = true. Its installPath is also "", which is not what this
+          # host wants -- see below.
+          settings.MATLAB = {
+            # Same tree pkgs/matlab.nix installs into. $MATLAB_INSTALL_DIR wins
+            # if it is set, so overriding the install location stays a single
+            # change. Left empty the server would search PATH and find the FHS
+            # wrapper there, then try to launch MATLAB through a second nested
+            # bwrap.
+            installPath.__raw = ''
+              vim.env.MATLAB_INSTALL_DIR or vim.fn.expand("~/.local/share/MATLAB/R2026a")
+            '';
+
+            # onStart, despite the cost of a full MATLAB per session that opens
+            # a .m file, because onDemand silently disables completion.
+            # CompletionSupportProvider.ts:163 returns an empty list when the
+            # MVM is not ready and never asks for a launch -- unlike navigation,
+            # formatting and rename, which call getMatlabConnection(true).
+            # Under onDemand completion therefore stays dead until some *other*
+            # feature happens to start MATLAB first. Measured both ways against
+            # this install: completing `zer` gives 0 items on onDemand and 11
+            # on onStart (zeros, zerophase, zerocrossrate, ...), with MATLAB
+            # taking about ten seconds to become ready.
+            matlabConnectionTiming = "onStart";
+
+            # Costs nothing extra here: WorkspaceIndexer runs from the MVM
+            # CONNECTED handler (server.ts:101), so it never starts MATLAB
+            # itself -- it indexes once MATLAB is up, which is what makes
+            # cross-file go-to-definition work.
+            indexWorkspace = true;
+
+            telemetry = false;
+          };
+        };
+      };
+
       cmake = {
         enable = true;
         package = null;

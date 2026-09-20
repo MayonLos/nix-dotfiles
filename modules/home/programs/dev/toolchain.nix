@@ -21,6 +21,11 @@
     jdt-language-server
     lua-language-server
     marksman
+    # MathWorks' own server. It is not started directly: pkgs/matlab.nix wraps
+    # it as `matlab-ls` so it runs inside the FHS environment, which is the only
+    # place the MATLAB it drives for completion and formatting will start. Here
+    # rather than in that package so nvim and Emacs share one copy.
+    matlab-language-server
     nixd
     pyright
     texlab
