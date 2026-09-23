@@ -112,6 +112,13 @@
       shadows_position_y = 2;
       shadowscolor = "0x000000ff";
 
+      # Mango 0.17.3: keep the focused window at full brightness and add a
+      # subtle overlay to unfocused windows. This improves focus visibility
+      # without changing application opacity or the Noctalia shell.
+      dim_enable = 1;
+      dim_focused_color = "0x00000000";
+      dim_unfocused_color = "0x00000033";
+
       borderpx = 4;
       # 16, not 18, to match noctalia's `bar.main.radius` -- and every panel,
       # since `corner_radius_scale` is 1.0. Window corners and shell chrome sit
