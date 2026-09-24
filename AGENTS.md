@@ -1,80 +1,88 @@
 # AGENTS.md
 
-Guidance for AI coding agents (Claude Code, Codex, Grok, opencode) working in
-this repository. `CLAUDE.md` is a symlink to this file — one source, no drift.
+本仓库使用 Codex。这里是常驻上下文；领域知识放在 `.agents/skills/`，
+只读取当前任务涉及的技能及其相关 references。以下路径均相对仓库根目录。
 
-This file is an **index**, kept deliberately short because it is loaded into
-every session. The detail lives in `.claude/skills/`; load a skill only when
-the table below says it applies. Claude Code discovers those automatically;
-other agents should `cat` the path.
+## 仓库
 
-## What this is
+NixOS + Home Manager，flake-parts，单主机 `nixos-btw`，用户 `mayon`。
+Intel + NVIDIA 笔记本，mango 桌面。Home Manager 随 NixOS 重建，无独立 switch。
 
-A NixOS + Home Manager configuration built with **flake-parts**. One host:
-`nixos-btw` — Intel + NVIDIA laptop, 2560×1600, mango compositor, user `mayon`.
+| 路径 | 职责 |
+|---|---|
+| `flake.nix`、`flake/` | 输入、主机接线、开发 shell、格式检查 |
+| `hosts/nixos-btw/` | 主机入口及硬件扫描配置 |
+| `modules/system/`、`modules/home/` | 自动导入的 NixOS / Home Manager 模块 |
+| `nixvim/` | 显式导入的 Neovim 模块树 |
+| `pkgs/`、`lib/` | 自定义包与 `importDir` 辅助函数 |
+| `secrets/` | sops 加密数据 |
 
-```
-flake.nix          inputs (see the nix-modules skill for the table)
-flake/             flake-parts modules (system.nix, dev.nix)
-hosts/nixos-btw/   host entry + hardware
-lib/               one helper: importDir
-modules/system/    NixOS modules   — auto-imported
-modules/home/      Home Manager modules for `mayon` — auto-imported
-nixvim/            Neovim config (repo root on purpose — see nix-modules skill)
-pkgs/              hand-written derivations for what nixpkgs lacks
-secrets/           age-encrypted secrets.yaml
-```
+## 不能在整理中丢失的约束
 
-## Commands
+- `importDir` 递归加载 `modules/` 下**所有** `.nix`，没有跳过目录机制。
+  helper、包表达式、nixvim 模块不能放进去。模块采用函数形式。
+- `pkgs` 默认是 stable `nixos-26.05`；`pkgs-unstable` 只用于现有明确例外或
+  stable 确实不能满足的包。两者和 `inputs` 的接线见 `nix-modules`。
+- 不给 `mango`、`noctalia-greeter`、`mark-shot`、`wayscrollshot`、`llm-agents`
+  添加 `follows`：其源码依赖组合或预构建缓存依赖各自的 pin。
+- 秘密不进入 Nix 字符串、日志或 store；使用 sops 的运行时文件 / 模板。
+- 修改 workaround 前先读原因，并按当前锁定源码或实际行为验证；旧测量不是永恒结论。
+  `flake.lock` 和模块优先于技能里记载的旧版本，发现矛盾时一起更新说明。
+
+## 技能路由
+
+编辑相关领域前读取对应入口；跨领域只加载必要的几份。
+
+| 技能 | 何时读取 |
+|---|---|
+| [nix-modules](.agents/skills/nix-modules/SKILL.md) | 模块增删移动、flake 接线、通道、开发 shell |
+| [sops-secrets](.agents/skills/sops-secrets/SKILL.md) | 秘密增删轮换、凭据传递与运行时缺失 |
+| [nvim-config](.agents/skills/nvim-config/SKILL.md) | `nixvim/` 插件、加载、键位及编辑器行为 |
+| [dev-toolchain](.agents/skills/dev-toolchain/SKILL.md) | LSP、formatter、DAP、语言工具链、Emacs |
+| [editors-ide](.agents/skills/editors-ide/SKILL.md) | JetBrains、VS Code、AI CLI 的安装与包装 |
+| [shell-terminal](.agents/skills/shell-terminal/SKILL.md) | zsh、环境变量、kitty、tmux、yazi、git |
+| [desktop-mango](.agents/skills/desktop-mango/SKILL.md) | mango、noctalia、portal、截图、剪贴板、fcitx5 |
+| [desktop-apps](.agents/skills/desktop-apps/SKILL.md) | GTK/Qt/字体、默认应用、Thunar、媒体、IM |
+| [gaming-stack](.agents/skills/gaming-stack/SKILL.md) | Steam、gamescope、gamemode、MangoHud、Prism |
+| [host-hardware](.agents/skills/host-hardware/SKILL.md) | 内核/NVIDIA、虚拟化、内存、网络、系统服务 |
+
+## 工作与验证
+
+审核请求先给带路径和证据的发现，区分缺陷、可选改进和未验证推测。
+要求修改时完成实现与相关验证；文档迁移不顺带切换系统或升级输入。
 
 ```sh
-sudo nixos-rebuild switch --flake .#nixos-btw   # or: nr   (nh os switch)
-nix fmt              # nixfmt + deadnix + statix via treefmt — run before committing
-nix flake check
-nc                   # nh clean all (also runs weekly)
-nix develop          # git, gnumake, clang-tools, sops tooling
-nix develop .#cuda   # cudatoolkit, cudnn, nvcc
+git status --short
+nix fmt                          # 会改文件；检查已有用户改动后再运行
+nix flake check --no-build --no-write-lock-file  # 求值，不证明构建成功
+nix build --no-link --no-write-lock-file .#checks.x86_64-linux.treefmt
+nix build --no-link --no-write-lock-file .#nixosConfigurations.nixos-btw.config.system.build.toplevel
 ```
 
-## Rules that apply everywhere
+按影响选择检查：纯文档检查链接、事实和格式；模块改动求值并构建相关输出；
+编辑器/桌面行为还需运行时验证。缺依赖或网络失败时报告限制，不宣称通过。
+新文件未被 Git 跟踪时，Git flake 看不到；可用 `path:.` 检查工作树，
+但它也可能将 Git 忽略的本地文件纳入 Nix store，使用前检查源范围，不能包含运行时秘密。
 
-1. **`importDir` loads every `.nix` file under `modules/`, with no skip
-   mechanism.** Never put a non-module `.nix` file there.
-2. Every module file is a function: `_: { … }` or `{ pkgs, lib, ... }: { … }`.
-   `inputs` and `pkgs-unstable` are available via `specialArgs`.
-3. `pkgs` is **stable nixos-26.05** and is the default. `pkgs-unstable` is for
-   fast-moving packages only (`claude-code`, `github-copilot-cli`, `typora`),
-   plus the single-attribute exceptions the nix-modules skill lists.
-4. Home Manager runs **as a NixOS module** — `nixos-rebuild` applies both.
-5. Never put a secret in a `.nix` file; everything in a module is world-readable
-   in `/nix/store`.
-6. `mango`, `noctalia-greeter`, `mark-shot`, `wayscrollshot` and `llm-agents`
-   are deliberately **not** `follows`-ed. Do not "tidy" those.
-7. Comments explain *why*, not *what* — most of the surprising code here is
-   load-bearing and already carries the reason. Read the comment before deleting
-   a workaround.
+系统切换命令是 `sudo nixos-rebuild switch --flake .#nixos-btw`（`nr`）；
+清理是 `nc`；开发环境为 `nix develop` 和 `nix develop .#cuda`。
+只有任务包含应用配置时才切换系统；构建本身不会应用配置。
 
-## Skill index
+## Codex 分工
 
-Ten skills, one per area. Load the one whose row matches before editing files in
-that area — each carries the measurements and the failure modes behind the code.
+主代理负责方案、跨模块判断、集成和最后核验。把能独立完成的窄任务交给
+Luna：定点搜索、文档核对、小范围修正、明确范围的审查；不要为简单一步操作拆团队。
 
-| Load | When |
-|---|---|
-| [nix-modules](.claude/skills/nix-modules/SKILL.md) | adding/moving/deleting a module, module not applied, choosing a channel, editing `flake.nix`, `flake/system.nix` or `flake/dev.nix` |
-| [sops-secrets](.claude/skills/sops-secrets/SKILL.md) | adding/rotating a secret, empty credential at runtime, editing `secrets/secrets.yaml` or `modules/system/security/sops.nix` |
-| [nvim-config](.claude/skills/nvim-config/SKILL.md) | any change under `nixvim/` — adding a plugin, lazy-loading, keymaps, an option that does not apply |
-| [dev-toolchain](.claude/skills/dev-toolchain/SKILL.md) | LSP servers, formatters, linters, Emacs, DAP adapters, per-language compilers, nvim closure size |
-| [editors-ide](.claude/skills/editors-ide/SKILL.md) | JetBrains, VS Code, Antigravity, the `llm-agents` CLIs (codex/grok/opencode/dsh) |
-| [shell-terminal](.claude/skills/shell-terminal/SKILL.md) | zsh aliases/functions, env vars vs. `session-vars.nix`, kitty, tmux, yazi, git/delta/gh/lazygit |
-| [desktop-mango](.claude/skills/desktop-mango/SKILL.md) | mango keybinds/window rules/tags, noctalia, greeter, xdg portals, screenshots, clipboard, fcitx5 DPI |
-| [desktop-apps](.claude/skills/desktop-apps/SKILL.md) | GTK/Qt/font theming, default applications, Thunar actions, mpv/zathura/Zen, QQ/WeChat packaging |
-| [gaming-stack](.claude/skills/gaming-stack/SKILL.md) | Steam, gamescope, gamemode, MangoHud, PrismLauncher, running a game on the dGPU |
-| [host-hardware](.claude/skills/host-hardware/SKILL.md) | NVIDIA/PRIME, Docker, libvirt, earlyoom, sshd/firewall, clash/TUN + nix-daemon proxy, why there is no Flatpak |
+- `.codex/agents/luna-review.toml`：只读证据收集与小范围审核。
+- `.codex/agents/luna-worker.toml`：有明确文件归属和验收条件的小改动。
+- `.codex/agents/reviewer.toml`：独立复核，继承主代理模型，适合跨模块结论。
 
-## Delegating to another engine
+使用当前环境的原生子代理工具；客户端尚未发现项目角色时，在任务中显式选择
+`gpt-6-luna` 并传入角色要求，不假装角色已加载。若该模型不可用，报告并由主代理接手。
+每个子任务说明目标、绝对路径、可写范围、已有事实和完成标准；不要把猜测当结论传入。
+并行写任务分配不重叠的文件；需改同一文件或独立 CLI 执行时使用隔离 worktree。
+子代理不得回滚他人改动、提交或推送；主代理核对证据与 diff 后交付。
+子代理结论须说明做了什么、改了哪里、实际验证与剩余限制。
 
-`codex` and `grok` are installed. Use the user-level `delegate-cli` skill
-(`~/.claude/skills/delegate-cli/SKILL.md`) before hand-rolling a `codex exec` or
-`grok -p` command line — the safe invocation shape is not the default one, and
-delegated *writes* must go through a git worktree.
+无需把 Codex 再包装成外部 `codex exec`，也不依赖家目录的委托脚本。
+其他引擎仅在用户明确要求时使用，并单独确定上下文、权限及隔离范围。

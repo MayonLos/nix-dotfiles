@@ -6,8 +6,35 @@ NixOS + Home Manager 配置，单主机 `nixos-btw`（Intel + NVIDIA 笔记本�
 - **通道**：`nixpkgs` = nixos-26.05（稳定），`nixpkgs-unstable` = nixos-unstable
 - **Home Manager**：作为 NixOS 模块运行，不是 standalone
 
-配置约定和踩坑记录见 [AGENTS.md](AGENTS.md)（`CLAUDE.md` 是指向它的软链，一份来源）。
-细节按领域拆在 `.claude/skills/` 下，AGENTS.md 里的表格说明何时该读哪一份。
+仓库工作流以 **Codex** 为入口：[AGENTS.md](AGENTS.md) 放公共约定，
+十个领域技能在 [.agents/skills/](.agents/skills/)，详细排障资料按需从技能的 `references/` 读取。
+技能不是配置真相的替代品：版本以 `flake.lock` 为准，行为以当前模块和实际验证为准。
+
+## Codex 工作流
+
+在仓库目录启动 `codex`。Codex 自动发现 `.agents/skills/`；
+可用 `/skills` 查看，或在请求中显式写 `$nix-modules` 等技能名。
+共享的项目配置在 [.codex/config.toml](.codex/config.toml)，
+只设置子代理启用与并发；主模型、账号与权限仍使用个人配置。
+项目配置受 Codex 的仓库信任机制控制，未信任时可能不加载。
+
+三个原生代理角色在 [.codex/agents/](.codex/agents/)：
+
+| 角色 | 用途 | 模型 |
+|---|---|---|
+| `luna-review` | 小范围只读审核、资料核对 | `gpt-6-luna` |
+| `luna-worker` | 已明确范围的小改动 | `gpt-6-luna` |
+| `reviewer` | 跨模块独立复核 | 继承主代理 |
+
+例如：“审核最近的改动，让 luna-review 检查文档与模块是否一致，主代理复核结论。”
+实现任务先划分互不重叠的文件，主代理合并检查；没有必要时不拆任务。
+角色和技能未刷新时重开会话。只读角色也明确禁止编辑，不把 sandbox 默认值当成绝对保证：
+当前会话的权限覆盖可能优先于角色配置。
+
+旧的 Claude 技能、CLI 包装代理和 `CLAUDE.md` 已移出共享工作流；
+个人的 Claude 设置、登录状态和已安装软件不由此次迁移改动。
+目录与角色格式依据 [官方技能说明](https://learn.chatgpt.com/docs/build-skills)
+及 [子代理说明](https://learn.chatgpt.com/docs/agent-configuration/subagents)。
 
 ## 日常命令
 
@@ -25,12 +52,15 @@ nix develop .#cuda  # CUDA 工具链单独一个 shell
 sudo nixos-rebuild switch --flake .#nixos-btw
 ```
 
-**改完配置必须重建才生效** —— 编辑 `~/.config/` 下的文件没有意义，见下节。
+声明式配置修改需重建才生效；应用维护的可写运行时配置可以即时修改，见下节。
 
 ## 目录结构
 
 ```
 flake.nix              inputs 与 flake-parts 编排
+AGENTS.md              Codex 常驻约定与领域技能索引
+.agents/skills/        Codex 领域技能与按需 references
+.codex/               共享项目配置与原生子代理角色
 flake/
   system.nix           NixOS + Home Manager 接线，自动导入 modules/
   dev.nix              开发 shell、treefmt 配置
@@ -43,12 +73,12 @@ lib/
 modules/
   home/                → Home Manager（用户 mayon）
     base/              身份、GTK、Qt、输入法、XDG、会话变量、Xresources
-    wm/mango/          mango 配置（key=value，由 Nix 生成）、noctalia、自研插件
+    wm/mango/          mango 配置（key=value，由 Nix 生成）、noctalia
     programs/
       apps/            浏览器、mpv、截图、yazi、IM 等
       dev/             编辑器、语言工具链、direnv、git
       games/           prismlauncher
-      terminal/        foot、tmux
+      terminal/        kitty、tmux
     shell/             zsh（无框架）、starship、zoxide
     services/          剪贴板桥接、cliphist
     packages.nix       用户级 CLI 工具
@@ -61,7 +91,7 @@ modules/
     services/          earlyoom、openssh、docker
     user/              用户、字体、环境变量
     virtualisation/    libvirt/KVM
-nixvim/                Neovim 配置（nixvim 模块树，58 个插件模块）
+nixvim/                Neovim 配置（显式 imports 的 nixvim 模块树）
 secrets/secrets.yaml   sops 加密的 API key（可安全提交）
 ```
 
@@ -69,9 +99,9 @@ secrets/secrets.yaml   sops 加密的 API key（可安全提交）
 
 `lib/import-dir.nix` 里的 `importDir` **递归导入目录下每一个 `.nix`**，`modules/home/` 进 Home Manager，`modules/system/` 进 NixOS。新增模块不需要在任何地方登记，丢个文件进去即可。
 
-**它没有排除机制** —— 连下划线前缀都不跳过。`modules/home/_assets/` 和 `wm/mango/_plugins/` 之所以没被当成模块导入，纯粹因为里面没有 `.nix` 文件。
+**它没有排除机制** —— 连下划线前缀都不跳过。资源目录只有在不含 `.nix` 文件时才不会被当成模块导入。
 
-这就是 **`nixvim/` 放在仓库根目录而不是 `modules/` 下**的原因：那 45 个文件是 nixvim 模块，不是 Home Manager 模块，放进去会被逐个加载然后全部报错。只有 `modules/home/programs/dev/nvim.nix` 一个文件伸手去引用它。
+这就是 **`nixvim/` 放在仓库根目录而不是 `modules/` 下**的原因：这里是 nixvim 模块，不是 Home Manager 模块。由 `modules/home/programs/dev/nvim.nix` 统一引用。
 
 ## 软链接：哪些能改，哪些不能
 
@@ -93,11 +123,11 @@ Home Manager 把配置文件从 `/nix/store` 链接到家目录。**store 里的
 ### 真目录里只链接了个别文件 → 应用可以在旁边写
 
 ```
-~/.config/emacs/       真目录（12 项里只有 init.el、early-init.el 是 store 链接）
+~/.config/emacs/       真目录（init.el、early-init.el、lisp/ 由 Home Manager 管理）
 ~/.config/mango/       真目录（config.conf 是链接，noctalia.conf 由主题模板写入）
-~/.config/foot/        真目录（foot.ini 是链接）
-~/.config/noctalia/    真目录（1/4 是链接）
-~/.config/yazi/        真目录（3/6 是链接）
+~/.config/kitty/       真目录（mayon.conf 是链接；kitty.conf 和主题文件可写）
+~/.config/noctalia/    真目录（具体文件的归属见 noctalia.nix）
+~/.config/yazi/        真目录（声明式配置和运行时状态共存）
 ```
 
 这类由 `xdg.configFile."emacs/init.el".source = ...` 产生 —— 路径里带了文件名，HM 就只建这一个链接，父目录保持可写。
@@ -129,20 +159,21 @@ sops secrets/secrets.yaml            # 编辑
 # 然后在 sops.nix 加 secrets.<name>.owner，在 zsh.nix 的循环里加 <name>:ENV_VAR
 ```
 
-**注意**：systemd 用户服务不会 source zsh profile，所以守护进程拿不到这些环境变量，得直接读 `/run/secrets/<name>`（Emacs 的 gptel 就是这么做的）。
+**注意**：systemd 用户服务和桌面启动的应用不会 source 交互式 zsh 初始化，不能依赖这些变量；
+可直接读 `/run/secrets/<name>`（Emacs 的 gptel 就是这么做的；本仓库没有配置 Emacs daemon）。
 
 ## 修改流程
 
-1. 改 `modules/` 下对应的 `.nix`
+1. 改对应配置并检查 `git diff`；新文件需进入 Git flake 的源集合
 2. `nix fmt`
-3. `nix build --no-link .#nixosConfigurations.nixos-btw.config.system.build.toplevel` —— 先构建再切换，能提前看到 `evaluation warning:`（nixpkgs 的弃用提示都在这里）
-4. `nr` 切换
+3. `nix flake check --no-build --no-write-lock-file` 求值，再按影响构建相关输出或 `nix build --no-link .#nixosConfigurations.nixos-btw.config.system.build.toplevel`；求值通过不等于构建或运行时通过
+4. 需要应用配置时用 `nr` 切换；仅工作流文档和技能变更不需要重建系统
 5. 有些东西需要额外一步才生效：
 
 | 改了什么 | 还要做 |
 |---|---|
 | fcitx5 配置 | `systemctl --user restart app-org.fcitx.Fcitx5@autostart.service`（**不是** `fcitx5-daemon`，那个是登录时竞争失败的那份） |
-| Emacs 配置 | `systemctl --user restart emacs` |
+| Emacs 配置 | 关闭后重新启动 Emacs（当前未配置 daemon unit） |
 | nvim 配置 | 无，重建即生效 |
 | mango 配置 | `Super+Alt+R`（reload_config）或重登；键位、窗口规则、动画都能热重载 |
 | QQ 的 wrapper | 从托盘完全退出再开 |
@@ -164,4 +195,5 @@ nix path-info -rS <store-path> | sort -k2 -rn | head
 sudo nixos-rebuild switch --rollback
 ```
 
-`flake.lock` 更新后想知道有没有东西要改：构建输出里的 `evaluation warning:` 就是答案，它会点名被弃用的属性和位置。
+`flake.lock` 更新后检查 `evaluation warning:` 和构建结果，再验证受影响的运行时行为；
+没有弃用提示不代表没有兼容性问题。

@@ -1,0 +1,5 @@
+# Keep the primary model, account, and permissions in the user's configuration.
+# Only bounded project roles pin Luna; more demanding agents inherit the parent.
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 3

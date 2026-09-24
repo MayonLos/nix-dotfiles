@@ -1,11 +1,13 @@
 /result
 /result-*
 .worktrees/
-.codex/
-.agents/
+# Share Codex instructions and agent roles; keep local runtime state private.
+/.agents/*
+!/.agents/skills/
+/.codex/*
+!/.codex/config.toml
+!/.codex/agents/
+/.team/
 
-# Agent configuration. Skills and subagent definitions are part of the repo —
-# they are what keeps AGENTS.md short. Local permission state is not.
-.claude/*
-!.claude/skills/
-!.claude/agents/
+# Legacy local Claude state is not part of the Codex workflow.
+/.claude/

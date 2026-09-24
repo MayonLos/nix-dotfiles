@@ -8,8 +8,8 @@
 # nixpkgs. Everything here is prebuilt on cache.numtide.com (the substituter is
 # added in modules/system/core/nix.nix), so none of it compiles locally.
 #
-# claude-code and github-copilot-cli stay in ../../packages.nix — those already
-# have working sources that track upstream closely.
+# github-copilot-cli stays in ../../packages.nix — its source tracks upstream
+# closely.
 let
   agents = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system};
 in
@@ -53,12 +53,11 @@ in
     agents.opencode
 
     # Token usage and cost across the agent CLIs, read from their local session
-    # files — nothing is uploaded. Covers claude-code and codex, both of which
-    # are already installed.
+    # files — nothing is uploaded. Covers codex and the other installed agents.
     agents.ccusage
 
     # Local-first review of agent output: plans, diffs, web pages. Useful with
-    # three agents (claude-code, codex, copilot-cli) producing changes here.
+    # the agents producing changes here.
     agents.crit
 
     # MCP runtime and CLI — for driving and debugging MCP servers from the

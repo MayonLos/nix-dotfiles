@@ -11,7 +11,6 @@
     # 1.1 MiB on top, because Octave already drags Qt5 in.
     libsForQt5.qt5ct
     pkgs-unstable.github-copilot-cli
-    pkgs-unstable.claude-code
     # codex, chatgpt, dsh, opencode and the agent-side tooling come from
     # programs/dev/ai-agents.nix — packaged by the llm-agents.nix input.
     # nvim comes from programs/dev/nvim.nix — built from ./nixvim in this repo.
