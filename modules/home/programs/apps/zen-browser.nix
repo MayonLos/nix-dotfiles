@@ -26,6 +26,10 @@ in
     if [ ! -e "${zenChrome}/userChrome.css" ]; then
       run mkdir -p "${zenChrome}"
       run ${pkgs.coreutils}/bin/install -m 0644 /dev/null "${zenChrome}/userChrome.css"
+    fi
+
+    if [ ! -e "${zenChrome}/userContent.css" ]; then
+      run mkdir -p "${zenChrome}"
       run ${pkgs.coreutils}/bin/install -m 0644 /dev/null "${zenChrome}/userContent.css"
     fi
   '';
