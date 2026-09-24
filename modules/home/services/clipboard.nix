@@ -155,7 +155,11 @@ let
 
         # shellcheck disable=SC2064
         trap "kill $wl_pid $x11_pid 2>/dev/null || true" EXIT INT TERM
-        wait "$wl_pid" "$x11_pid"
+        # Wait for the first watcher to exit; waiting on both PIDs here would
+        # leave the bridge alive with one direction broken. The EXIT trap
+        # stops the peer, and even a clean watcher exit must restart the unit.
+        wait -n "$wl_pid" "$x11_pid" || true
+        return 1
       }
 
       case "''${1:-}" in
