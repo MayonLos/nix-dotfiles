@@ -193,7 +193,115 @@ in
             "radimous/prismlauncher-instances"
             "rxtsel/portctl"
             "whyoolw/sharednd"
+
+            # Added 2026-09-25. Every dependency below was checked with
+            # `command -v` on this host rather than taken from the plugin's own
+            # claim; noctalia never installs a dependency and a missing one
+            # fails silently, with no error and no hint.
+            #
+            # The only entry that needed a new package is fel/ocr (tesseract,
+            # added in ../../packages.nix). The rest resolve against what is
+            # already on PATH: mmsg and jq ship with mango / the CLI set.
+            "coder/deepseek_usage" # DeepSeek balance; needs its API key in the GUI, see below
+            "ezequiel/mango_layouts" # jq + mmsg
+            "fel/ocr" # grim + slurp + tesseract
+            "gambled23/mangowm-keymode" # mmsg; shows the keymode SUPER+SHIFT,R enters
+            "mindnbytes/nix-status" # nix + readlink; flake_dir set in plugin_settings
+
+            # Removed 2026-09-25, all three after being measured rather than
+            # guessed at. To restore any of them, re-add its id here and, where
+            # it had one, its `<id>:<entry>` string to group:dev below.
+            #
+            #   weinguyen/opencode-companion 0.2.0 — auto-started `opencode
+            #     serve` on 127.0.0.1:4096 and added a chat panel, but the panel
+            #     only duplicated what the terminal already does.
+            #   fel/agent-glow 0.1.0 — the watcher itself ran fine, but it has
+            #     no codex collector at all: activity.py implements
+            #     collect_claude and collect_opencode only, and every other
+            #     family falls back to "CPU >= 15%". Measured during an active
+            #     codex turn (confirmed by `systemd-inhibit --who codex --why
+            #     "Codex is running an active turn"`), the probe still reported
+            #     codex: 0.0 — codex blocks on the API with almost no CPU. Since
+            #     codex and dsh are what actually runs here, the indicator could
+            #     never light up.
+            #   mdj2812/mihomo-control 0.2.0 — host/port/secret are ordinary
+            #     settings, but there is nothing to connect to: verge-mihomo
+            #     runs with external-controller = '' (verge.yaml also has
+            #     enable_external_controller: false) and listens only on
+            #     external-controller-unix, while the plugin speaks host:port.
           ];
+
+          # Settings live in `plugin_settings` below, not under this table: the
+          # generated config.toml carries only auto_update, enabled and
+          # [[source]] here. One entry above still has no working declarative
+          # route, for a reason rather than an oversight:
+          #
+          #   deepseek_usage    api_key. Deliberately NOT wired to
+          #                     /run/secrets/deepseek-api-key: the plugin reads
+          #                     its key only through noctalia.getConfig("api_key")
+          #                     and has no file or environment indirection, so the
+          #                     key has to be pasted into the GUI and ends up in
+          #                     noctalia's plaintext state file. The sops copy and
+          #                     that copy are independent; rotate both, or drop
+          #                     this plugin.
+          #
+          #                     That state file is mode 644, which looks alarming
+          #                     next to /run/secrets/* at 400 — but it is not
+          #                     reachable: /home/mayon is 700 and mayon is the
+          #                     only human account on this host (the nixbld*
+          #                     uids are build sandboxes with no login). The key
+          #                     is also already exported as DEEPSEEK_API_KEY into
+          #                     every interactive shell by ../../shell/zsh.nix,
+          #                     i.e. readable from /proc/<pid>/environ by anything
+          #                     running as mayon — a strictly wider surface than
+          #                     one more 600-equivalent file here. Accepted.
+          #                     What it does cost is a second place to rotate.
+          #
+          # Setting those cards writes noctalia's runtime override layer, which
+          # takes priority over this file — see the WARNING above.
+        };
+
+        # Per-plugin settings. This is a TOP-LEVEL table, a sibling of
+        # `plugins` and `bar`, not a child of `plugins`: config_export.cpp:370
+        # writes it as `plugin_settings` and settings_content_plugins.cpp:645
+        # reads the path `{"plugin_settings", pluginId, key}`. A plugin's own
+        # `[[setting]]` keys go here; its `[[widget.setting]]` keys belong under
+        # `widget."<plugin-id>:<entry-id>"` instead (see the note in bar.main).
+        #
+        # Only settings that are safe to state declaratively live here. Secrets
+        # do not: noctalia only reads a plugin's config value, never a file, so
+        # anything secret would have to be written into this store path.
+        plugin_settings = {
+          # Without these the plugin loads but reports nothing usable: its
+          # flake_dir defaults to empty and it then has no repository to
+          # evaluate. `nixos_configuration` is the attribute under
+          # nixosConfigurations, which is `nixos-btw` here.
+          "mindnbytes/nix-status" = {
+            flake_dir = "/home/mayon/nix-dotfiles";
+            nixos_configuration = "nixos-btw";
+          };
+
+          # Default is "eng"; tesseract is built with chi_sim as well (see
+          # ../../packages.nix), and the plugin passes this straight to
+          # `tesseract -l`. Without it, Chinese screen text comes back empty.
+          "fel/ocr".languages = "eng+chi_sim";
+
+          # mango_layouts declares `position = "bottom_right"` in its own
+          # [[panel]] block, which is why it opened as a floating box in the
+          # corner. Panel shell settings are per-panel and overridable from
+          # here as `<panel-entry-id>_<key>` (panelShellSettingKey in
+          # plugin_panel_shell.cpp): placement, position, layer, open_near_click.
+          #
+          # `position` only applies while floating, so it is the attached pair
+          # that actually moves it: the panel now drops from the bar icon like
+          # the other panel plugins instead of floating in a corner. Swap to
+          # `panel_placement = "floating"` + a `panel_position` such as "center"
+          # for the other shape.
+          "ezequiel/mango_layouts" = {
+            panel_placement = "attached";
+            panel_position = "auto";
+            panel_open_near_click = true;
+          };
         };
 
         bar.main = {
@@ -232,6 +340,7 @@ in
             "workspaces"
             "media"
             "group:panels"
+            "group:dev"
           ];
           center = [ "clock" ];
           # Four capsules on each side. `end` used to carry six -- the sys
@@ -279,6 +388,42 @@ in
                 "sysmon"
                 "power_profile"
                 "battery"
+              ];
+              accordion = false;
+              padding = 6.0;
+              widget_spacing = 4;
+            }
+            # Added 2026-09-25. Enabling a plugin does NOT put anything on
+            # screen: every one of these ships its UI as a bar entry, and an
+            # entry only renders when its `<plugin-id>:<entry-id>` string is
+            # named in the layout. That is why the nine plugins enabled below
+            # were invisible until this group existed.
+            #
+            # All of them went into ONE new capsule in `start` rather than into
+            # `group:sys`: start is left-aligned and grows rightwards, while
+            # `end` is right-aligned and clips its leftmost item on overflow
+            # (how notes once went missing). Keeping the new load out of `end`
+            # leaves that failure mode where it was.
+            #
+            # The entry-id after the colon is each plugin's `[[widget]] id`,
+            # not its name — `bar`, `widget` and `status` are common. To move
+            # one, paste its string wherever it belongs:
+            #
+            #   ezequiel/mango_layouts:btn            layout switcher
+            #   gambled23/mangowm-keymode:mangowm-keymode   shows resize keymode
+            #   mindnbytes/nix-status:status          generations + flake inputs
+            #   coder/deepseek_usage:bar              DeepSeek balance
+            #
+            # Deliberately NOT here:
+            #   fel/ocr          its `grab` entry is a control-center tile, so
+            #                    OCR is already reachable without bar space
+            {
+              id = "dev";
+              members = [
+                "ezequiel/mango_layouts:btn"
+                "gambled23/mangowm-keymode:mangowm-keymode"
+                "mindnbytes/nix-status:status"
+                "coder/deepseek_usage:bar"
               ];
               accordion = false;
               padding = 6.0;

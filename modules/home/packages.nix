@@ -40,6 +40,17 @@
     xclip
     grim
     slurp
+    # OCR engine behind noctalia's fel/ocr plugin (see wm/mango/noctalia.nix),
+    # which shells out to `tesseract` on a grim+slurp region. nixpkgs builds it
+    # with English only; chi_sim is enabled explicitly because Chinese text is
+    # the case that actually comes up here. The language set is baked in at
+    # build time, so adding one later means another rebuild.
+    (tesseract5.override {
+      enableLanguages = [
+        "eng"
+        "chi_sim"
+      ];
+    })
     swayimg
     libheif
     brightnessctl
