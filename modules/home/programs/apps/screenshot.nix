@@ -40,6 +40,74 @@ let
     '';
     inherit (mark-shot-unpatched) meta;
   };
+
+  # Screen-text OCR behind the two Print-family binds in
+  # ../../wm/mango/config.nix. Two entry points rather than one script with a
+  # flag, so each mango bind stays a plain `spawn,<command>` and does not depend
+  # on how mango passes trailing arguments.
+  #
+  # The full-screen variant calls `grim` with no -g/-o, which captures every
+  # output. Hardcoding eDP-1 would break the day a second monitor appears, and
+  # `mmsg get all-monitors` reports neither `focused` nor `sel`, so there is no
+  # output name to discover from the CLI.
+  #
+  # libnotify rides in the script's own paths rather than home.packages: this
+  # script is its only user, and notify-send is the only feedback available here
+  # -- noctalia exposes no `msg notify`, and its own OCR plugin reaches the user
+  # only through a control-center tile capped at six entries (see config.nix).
+  #
+  # writeShellScriptBin, not writeShellApplication: the latter runs shellcheck in
+  # its checkPhase, and shellcheck's Haskell closure is build-time only, so it is
+  # never retained by a generation and has to be fetched again after any `nh
+  # clean`. That cost lands on a 40-line script that only glues five binaries
+  # together. Every tool is therefore named by store path, the same way the
+  # activation script further down already does it.
+  #
+  # tesseract is built with chi_sim in ../../packages.nix; without it Chinese
+  # text comes back empty rather than wrong, which is easy to mistake for the
+  # script being broken.
+  mkOcr =
+    name: screen:
+    pkgs.writeShellScriptBin name ''
+      set -euo pipefail
+
+      # mango spawns children without a login shell, so LANG may be unset and
+      # coreutils would fall back to a byte-oriented C locale -- `cut -c` below
+      # would then split a multi-byte Chinese character in the notification
+      # preview. C.UTF-8 is built by modules/system/core/locale.nix.
+      export LC_ALL=C.UTF-8
+
+      img="$(${pkgs.coreutils}/bin/mktemp --suffix=.png)"
+      trap '${pkgs.coreutils}/bin/rm -f "$img"' EXIT
+
+      ${
+        if screen then
+          ''${pkgs.grim}/bin/grim "$img"''
+        else
+          ''
+            # Cancelling slurp is the user changing their mind, not a failure:
+            # leave without a notification.
+            geom="$(${pkgs.slurp}/bin/slurp)" || exit 0
+            ${pkgs.grim}/bin/grim -g "$geom" "$img"
+          ''
+      }
+
+      if ! text="$(${pkgs.tesseract}/bin/tesseract "$img" - -l eng+chi_sim --psm 6 2>/dev/null)" \
+        || [ -z "$text" ]; then
+        ${pkgs.libnotify}/bin/notify-send "OCR" "没有识别到文字" || true
+        exit 1
+      fi
+
+      # wl-copy forks a long-lived child that keeps serving the selection, and
+      # that child inherits this script's stdout/stderr. Without the redirect
+      # the pipe stays open after the script exits, so any caller that reads our
+      # output (`ocr-screen | head`, a wrapper, a test) waits forever. Measured:
+      # a captured run hung until it was killed while the OCR itself had already
+      # succeeded and the clipboard was already set.
+      printf '%s' "$text" | ${pkgs.wl-clipboard}/bin/wl-copy >/dev/null 2>&1
+      preview="$(printf '%s' "$text" | ${pkgs.coreutils}/bin/tr '\n' ' ' | ${pkgs.coreutils}/bin/cut -c1-120)"
+      ${pkgs.libnotify}/bin/notify-send "OCR 已复制" "$preview" || true
+    '';
 in
 {
   # Replaces the hand-rolled `slurp -d | grim -g | satty` pipeline.
@@ -55,6 +123,8 @@ in
   home.packages = [
     mark-shot
     inputs.wayscrollshot.packages.${system}.default
+    (mkOcr "ocr-region" false)
+    (mkOcr "ocr-screen" true)
   ];
 
   # Rewrite only windowDetection.command, leaving every other key mark-shot

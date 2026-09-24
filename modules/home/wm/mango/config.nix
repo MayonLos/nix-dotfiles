@@ -334,6 +334,20 @@
 
         "NONE,Print,spawn,mark-shot"
         "SHIFT,Print,spawn,wayscrollshot"
+        # Screen-text OCR, so the whole Print family is capture: bare = region
+        # screenshot, Shift = scrolling capture, Super = OCR the selection,
+        # Super+Shift = OCR the entire desktop. Scripts come from
+        # programs/apps/screenshot.nix.
+        #
+        # This exists instead of using noctalia's fel/ocr tile because that tile
+        # is not automatic: the control center renders `control_center.shortcuts`,
+        # a configured list whose only default is wifi/bluetooth/caffeine/
+        # nightlight/notification/power_profile (config_types.cpp:53), and the
+        # picker that adds entries is capped at six (settings_registry.cpp:1442).
+        # The plugin's catalog entry only makes it selectable. A bind needs no
+        # slot and no noctalia restart.
+        "SUPER,Print,spawn,ocr-region"
+        "SUPER+SHIFT,Print,spawn,ocr-screen"
         "SUPER+SHIFT,E,spawn,noctalia msg panel-toggle session"
         "CTRL+ALT,Delete,quit"
         "SUPER,V,spawn,noctalia msg panel-toggle clipboard"
