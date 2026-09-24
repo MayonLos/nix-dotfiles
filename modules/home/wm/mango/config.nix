@@ -231,7 +231,6 @@
         "SUPER,S,spawn,noctalia msg panel-toggle control-center"
         "SUPER+ALT,L,spawn,noctalia msg session lock"
         "SUPER,0,toggleoverview"
-        "SUPER,Q,killclient"
 
         "SUPER,H,focusdir,left"
         "SUPER,Left,focusdir,left"
@@ -332,9 +331,6 @@
         "SUPER,W,switch_layout"
         "SUPER,Z,zoom"
         "SUPER+SHIFT,G,togglegaps"
-        # mango hot-reloads config.conf; without a bind there is no way to ask
-        # for it after editing the file by hand.
-        "SUPER+ALT,R,reload_config"
 
         "NONE,Print,spawn,mark-shot"
         "SHIFT,Print,spawn,wayscrollshot"
@@ -374,6 +370,39 @@
         "NONE,XF86AudioStop,spawn,playerctl stop"
         "NONE,XF86AudioPrev,spawn,playerctl previous"
         "NONE,XF86AudioNext,spawn,playerctl next"
+      ];
+
+      # Binds that stay live in EVERY keymode. Three facts forced this block
+      # into existence, all read off the pinned source:
+      #
+      #   1. A bind fires only when its mode matches. keyboard.c:587-589 accepts
+      #      `iscommonmode || (isdefaultmode && currently-default) ||
+      #      mode-name-equal`, so the moment a non-default mode is entered,
+      #      every bind above goes dead. pointer.c:389/1475 and
+      #      trackpad.c:65/215 apply the same test to mouse and gesture binds.
+      #   2. `reload_config` does NOT reset the mode. `server.key_mode` is
+      #      written only by set_key_mode() (dispatch/bind.c:900) and read by
+      #      the input handlers and IPC -- the reload path never touches it.
+      #      Reloading from inside a mode keeps you in that mode, so a config
+      #      edit that drops or renames the mode would leave `common` as the
+      #      only reachable layer.
+      #   3. A bare key must not go here. `common` applies globally, so a
+      #      `NONE,Escape` row would swallow Escape for every application --
+      #      unusable in a terminal or editor. Everything below carries a
+      #      modifier for that reason.
+      #
+      # These are MOVED, not copied, out of `bind` above:
+      # check_key_binding_conflicts (parse_config.c:3279-3345) calls a chord
+      # conflicting when either side is `common` (`any_common`), so a copy left
+      # in `default` warns at parse time unless both rows are `bindc`.
+      keymode.common.bind = [
+        # mango hot-reloads config.conf; without a bind there is no way to ask
+        # for it after editing the file by hand.
+        "SUPER+ALT,R,reload_config"
+        "SUPER,Q,killclient"
+        # The safety net: reachable from any mode, including one this config no
+        # longer defines. Not `NONE,Escape` -- see point 3 above.
+        "SUPER,Escape,setkeymode,default"
       ];
 
       keymode.resize.bind = [
