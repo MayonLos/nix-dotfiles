@@ -18,6 +18,7 @@
     bash-language-server
     clang-tools # clangd + clang-format
     cmake-language-server
+    dockerfile-language-server # docker-langserver
     jdt-language-server
     lua-language-server
     marksman
