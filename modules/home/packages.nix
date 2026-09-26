@@ -54,6 +54,8 @@
     swayimg
     libheif
     brightnessctl
+    # Noctalia external-monitor brightness. eDP-1 stays on the backlight backend.
+    ddcutil
     pamixer
     pavucontrol
     playerctl
@@ -75,6 +77,7 @@
     protonup-qt
     obsidian
     go-musicfox
+    google-chrome
     pkgs-unstable.typora # 1.14.8 vs 1.13.6 on stable
   ];
 }

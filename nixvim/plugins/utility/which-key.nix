@@ -61,10 +61,6 @@ _: {
           group = "󰈙 Docs";
         }
         {
-          __unkeyed-1 = "<leader>t";
-          group = "󰆍 Terminal";
-        }
-        {
           __unkeyed-1 = "<leader>x";
           group = "󰔫 Diagnostics";
         }

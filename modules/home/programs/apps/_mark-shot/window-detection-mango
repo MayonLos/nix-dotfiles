@@ -121,10 +121,10 @@ def collect_rectangles(clients, monitors, bounds):
 
         if bounds is not None:
             bx, by, bw, bh = bounds
-            x = max(x, bx)
-            y = max(y, by)
             right = min(x + width, bx + bw)
             bottom = min(y + height, by + bh)
+            x = max(x, bx)
+            y = max(y, by)
             width = right - x
             height = bottom - y
         if width <= 1 or height <= 1:

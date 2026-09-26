@@ -26,6 +26,6 @@ nix eval --raw .#nixosConfigurations.nixos-btw.config.hardware.nvidia.package.ve
 运行中的内核用 `uname -r`，不能把它当成待构建配置的内核版本。
 
 Intel 视频解码依赖 `hardware/intel-video.nix` 的 `intel-media-driver` 和 `vpl-gpu-rt`。
-曾观测 renderD128=NVIDIA、renderD129=i915；节点编号不是固定接口，使用
-`/sys/class/drm/renderD*/device/driver` 识别后再做 VAAPI 测试。
-CUDA 见 `hardware/cuda.nix` 与 `nix develop .#cuda`。
+节点编号不是固定接口。2026-09 这台机器是 renderD128=i915、renderD129=nvidia；
+使用 `/sys/class/drm/renderD*/device/driver` 识别后再做 VAAPI 测试。
+CUDA 工具链在 `nix develop .#cuda`。系统不再配置 `cache.nixos-cuda.org`，该地址没有 nix-cache-info。

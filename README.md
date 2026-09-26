@@ -123,16 +123,15 @@ Home Manager 把配置文件从 `/nix/store` 链接到家目录。**store 里的
 ### 真目录里只链接了个别文件 → 应用可以在旁边写
 
 ```
-~/.config/emacs/       真目录（init.el、early-init.el、lisp/ 由 Home Manager 管理）
 ~/.config/mango/       真目录（config.conf 是链接，noctalia.conf 由主题模板写入）
 ~/.config/kitty/       真目录（mayon.conf 是链接；kitty.conf 和主题文件可写）
 ~/.config/noctalia/    真目录（具体文件的归属见 noctalia.nix）
 ~/.config/yazi/        真目录（声明式配置和运行时状态共存）
 ```
 
-这类由 `xdg.configFile."emacs/init.el".source = ...` 产生 —— 路径里带了文件名，HM 就只建这一个链接，父目录保持可写。
+这类由 `xdg.configFile."kitty/mayon.conf".source = ...` 产生 —— 路径里带了文件名，HM 就只建这一个链接，父目录保持可写。
 
-**这个区别决定了应用能不能保存自己的运行时状态**：noctalia 要写 `settings.json`、Emacs 要写 `custom.el` 和 `personal.el`、noctalia 的主题模板要往 `~/.config/mango/noctalia.conf` 里渲染配色。要是把它们的整个目录都链成 store，这些全都会失败。
+**这个区别决定了应用能不能保存自己的运行时状态**：noctalia 要写 `settings.json`，主题模板要往 `~/.config/mango/noctalia.conf` 里渲染配色。要是把它们的整个目录都链成 store，这些全都会失败。
 
 > 需要「配置进版本库、同时又能即时编辑」时，用 `config.lib.file.mkOutOfStoreSymlink` 链到仓库里的真实路径。本仓库目前没有用到这种模式。
 
@@ -160,7 +159,7 @@ sops secrets/secrets.yaml            # 编辑
 ```
 
 **注意**：systemd 用户服务和桌面启动的应用不会 source 交互式 zsh 初始化，不能依赖这些变量；
-可直接读 `/run/secrets/<name>`（Emacs 的 gptel 就是这么做的；本仓库没有配置 Emacs daemon）。
+可直接读 `/run/secrets/<name>`。
 
 ## 修改流程
 

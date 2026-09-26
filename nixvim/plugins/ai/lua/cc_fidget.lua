@@ -37,18 +37,31 @@ local function on_finished(data)
 	handle:finish()
 end
 
-function M.setup()
-	local ok
-	ok, progress = pcall(require, "fidget.progress")
-	if not ok then
-		return
+local function ensure_progress()
+	if progress then
+		return true
 	end
+	pcall(function()
+		require("lz.n").trigger_load("fidget.nvim")
+	end)
+	local ok, mod = pcall(require, "fidget.progress")
+	if not ok then
+		return false
+	end
+	progress = mod
+	return true
+end
+
+function M.setup()
 	vim.api.nvim_create_autocmd("User", {
 		group = vim.api.nvim_create_augroup("CodeCompanionFidget", { clear = true }),
 		pattern = { "CodeCompanionRequestStarted", "CodeCompanionRequestFinished" },
 		callback = function(args)
 			local data = args.data or {}
 			if not data.id or (data.interaction or data.strategy) == "inline" then
+				return
+			end
+			if not ensure_progress() then
 				return
 			end
 			if args.match == "CodeCompanionRequestStarted" then

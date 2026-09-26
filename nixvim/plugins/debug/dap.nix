@@ -1,8 +1,8 @@
 _:
 let
   # "python3" from PATH, not a pinned python3.withPackages: dev/python.nix
-  # already ships an interpreter with debugpy importable, Emacs's dape uses that
-  # same one, and pinning a second copy here would put python in nvim's closure.
+  # already ships an interpreter with debugpy importable. Pinning a second
+  # copy here would put python in nvim's closure.
   pythonWithDebugpy = "python3";
   cProgramResolver = ''
     function()
@@ -51,7 +51,7 @@ in
 {
   # The codelldb binary comes from programs/dev/toolchain.nix; dap-lldb below
   # looks it up by name on PATH (`codelldb_path = "codelldb"`), so nothing here
-  # needs a store path — and Emacs's dape gets the same adapter.
+  # needs a store path.
 
   plugins = {
     dap = {

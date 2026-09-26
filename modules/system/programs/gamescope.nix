@@ -1,11 +1,6 @@
+_:
 {
-  pkgs,
-  ...
-}:
-
-{
-  programs.gamescope = {
-    enable = true;
-    package = pkgs.gamescope;
-  };
+  # Plain enable, above steam's mkDefault, so a gamescope session is not the
+  # only thing keeping the system package installed.
+  programs.gamescope.enable = true;
 }

@@ -20,7 +20,9 @@
       {
         plugin = resurrect;
         extraConfig = ''
-          set -g @resurrect-capture-pane-contents 'on'
+          # Layout and nvim sessions only. Pane contents copy scrollback, including
+          # secrets, into the resurrect directory every save.
+          set -g @resurrect-capture-pane-contents 'off'
           set -g @resurrect-strategy-nvim 'session'
         '';
       }
@@ -28,7 +30,7 @@
         plugin = continuum;
         extraConfig = ''
           set -g @continuum-restore 'on'
-          set -g @continuum-save-interval '10'
+          set -g @continuum-save-interval '15'
         '';
       }
       prefix-highlight
@@ -130,7 +132,7 @@
 
       set -g status on
       set -g status-position bottom
-      set -g status-interval 2
+      set -g status-interval 30
       set -g status-style "bg=default,fg=colour7"
 
       set -g status-left-length 50

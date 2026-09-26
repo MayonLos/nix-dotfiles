@@ -242,7 +242,7 @@
       condition = function()
         return conditions.buffer_matches({
           buftype  = { "nofile", "prompt", "help", "quickfix", "terminal" },
-          filetype = { "^git.*", "fugitive", "toggleterm", "fzf", "qf" },
+          filetype = { "^git.*", "fugitive", "fzf", "qf" },
         })
       end,
       ViMode, Space,

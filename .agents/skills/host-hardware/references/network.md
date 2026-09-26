@@ -5,8 +5,9 @@
 版本更换曾改变接口名；名字不匹配时 TCP 被 INPUT 丢弃而 UDP/DNS 仍通，
 会表现为“代理开启后无法联网”。不要只因当前看见一个接口就删另一个。
 
-`programs/clash.nix` 开启 serviceMode/tunMode，关闭 resolved 的 DNSStubListener，
-为 TUN 的 :53 留出端口。排查先看实际监听者，不凭 DNS 解析成功推断 TCP 正常。
+`programs/clash.nix` 开启 serviceMode/tunMode。resolved 的 stub listener 保持默认：
+Clash TUN 在隧道内劫持 DNS，不绑定 `127.0.0.53:53`。不要再把 `DNSStubListener`
+设为 `no`，除非实测 Clash 占用了该地址。排查先看实际监听者，不凭 DNS 解析成功推断 TCP 正常。
 
 `core/nix.nix` 在 nix-daemon unit 设置 `http_proxy` / `https_proxy` 为
 `socks5h://localhost:7897`，并为 localhost/127.0.0.1/::1 设置 no_proxy。

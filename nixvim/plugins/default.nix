@@ -9,7 +9,6 @@
     ./ai
     ./debug
     ./git
-    ./terminal
     ./utility
   ];
 }

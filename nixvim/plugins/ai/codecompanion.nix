@@ -66,17 +66,13 @@ in
         cmd.adapter = "deepseek";
 
         cli = {
-          agent = "claude";
+          # codex is installed; claude is not. <leader>at uses this default.
+          agent = "codex";
           agents = {
-            claude.cmd = "claude";
             codex.cmd = "codex";
             copilot.cmd = "copilot";
-            # The other two engines from ../../../modules/home/programs/dev/ai-agents.nix.
-            # grok matters most here: AGENTS.md treats it as the non-Claude,
-            # non-codex third opinion, so it needs to be reachable from
-            # <leader>aT the same way the others are. grok also installs an
-            # `agent` binary for automation -- `grok` is the interactive one,
-            # which is what a CLI interaction wants.
+            # grok is the third engine from ai-agents.nix, reachable from
+            # <leader>aT. `grok` is the interactive binary; `agent` is automation.
             grok.cmd = "grok";
             opencode.cmd = "opencode";
           };
@@ -260,22 +256,23 @@ in
       (mkMap "v" "<leader>ai" ":CodeCompanion<cr>" "CodeCompanion: inline assistant (selection)")
       (mkMap "n" "<leader>at" "<cmd>CodeCompanionCLI<cr>" "CodeCompanion: CLI (default agent)")
       (mkMap "n" "<leader>ah"
-        (lua "function() require('codecompanion').extensions.history.browse_chats() end")
+        (lua "function() require('lz.n').trigger_load('codecompanion.nvim'); require('codecompanion').extensions.history.browse_chats() end")
         "CodeCompanion: chat history"
       )
-      (mkMap nv "<leader>acp" (lua "function() require('codecompanion').cli({ prompt = true }) end")
+      (mkMap nv "<leader>acp"
+        (lua "function() require('lz.n').trigger_load('codecompanion.nvim'); require('codecompanion').cli({ prompt = true }) end")
         "CLI agent: prompt (selection-aware)"
       )
       (mkMap nv "<leader>aca"
-        (lua "function() require('codecompanion').cli('#{this}', { focus = false }) end")
+        (lua "function() require('lz.n').trigger_load('codecompanion.nvim'); require('codecompanion').cli('#{this}', { focus = false }) end")
         "CLI agent: add buffer/selection as context"
       )
       (mkMap "n" "<leader>acd"
-        (lua "function() require('codecompanion').cli('#{diagnostics} 请修复这些问题', { focus = false, submit = true }) end")
+        (lua "function() require('lz.n').trigger_load('codecompanion.nvim'); require('codecompanion').cli('#{diagnostics} 请修复这些问题', { focus = false, submit = true }) end")
         "CLI agent: fix LSP diagnostics"
       )
       (mkMap "n" "<leader>act"
-        (lua "function() require('codecompanion').cli('#{terminal} 这是终端输出，请帮我修复', { focus = false, submit = true }) end")
+        (lua "function() require('lz.n').trigger_load('codecompanion.nvim'); require('codecompanion').cli('#{terminal} 这是终端输出，请帮我修复', { focus = false, submit = true }) end")
         "CLI agent: fix terminal output"
       )
       {

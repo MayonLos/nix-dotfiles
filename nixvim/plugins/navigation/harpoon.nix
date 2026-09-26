@@ -8,6 +8,9 @@
 
     # 2.06 ms at startup was the single slowest require in this config, for a
     # plugin that does nothing until a <leader>h key is pressed.
+    # The keys list only keeps the plugin lazy. nixvim applies `keymaps` after
+    # lz-n's stubs and overwrites them, so each mapping has to trigger_load
+    # itself. Measured for the same pattern in utility/persistence.nix.
     lazyLoad.settings.keys = [
       "<leader>ha"
       "<leader>hh"
@@ -26,7 +29,12 @@
     {
       mode = "n";
       key = "<leader>ha";
-      action.__raw = ''function() require("harpoon"):list():add() end'';
+      action.__raw = ''
+        function()
+          require("lz.n").trigger_load("harpoon2")
+          require("harpoon"):list():add()
+        end
+      '';
       options.desc = "Harpoon: pin this file";
     }
     {
@@ -34,6 +42,7 @@
       key = "<leader>hh";
       action.__raw = ''
         function()
+          require("lz.n").trigger_load("harpoon2")
           local harpoon = require("harpoon")
           harpoon.ui:toggle_quick_menu(harpoon:list())
         end
@@ -43,37 +52,67 @@
     {
       mode = "n";
       key = "<leader>h1";
-      action.__raw = ''function() require("harpoon"):list():select(1) end'';
+      action.__raw = ''
+        function()
+          require("lz.n").trigger_load("harpoon2")
+          require("harpoon"):list():select(1)
+        end
+      '';
       options.desc = "Harpoon: file 1";
     }
     {
       mode = "n";
       key = "<leader>h2";
-      action.__raw = ''function() require("harpoon"):list():select(2) end'';
+      action.__raw = ''
+        function()
+          require("lz.n").trigger_load("harpoon2")
+          require("harpoon"):list():select(2)
+        end
+      '';
       options.desc = "Harpoon: file 2";
     }
     {
       mode = "n";
       key = "<leader>h3";
-      action.__raw = ''function() require("harpoon"):list():select(3) end'';
+      action.__raw = ''
+        function()
+          require("lz.n").trigger_load("harpoon2")
+          require("harpoon"):list():select(3)
+        end
+      '';
       options.desc = "Harpoon: file 3";
     }
     {
       mode = "n";
       key = "<leader>h4";
-      action.__raw = ''function() require("harpoon"):list():select(4) end'';
+      action.__raw = ''
+        function()
+          require("lz.n").trigger_load("harpoon2")
+          require("harpoon"):list():select(4)
+        end
+      '';
       options.desc = "Harpoon: file 4";
     }
     {
       mode = "n";
       key = "<leader>hn";
-      action.__raw = ''function() require("harpoon"):list():next() end'';
+      action.__raw = ''
+        function()
+          require("lz.n").trigger_load("harpoon2")
+          require("harpoon"):list():next()
+        end
+      '';
       options.desc = "Harpoon: next";
     }
     {
       mode = "n";
       key = "<leader>hp";
-      action.__raw = ''function() require("harpoon"):list():prev() end'';
+      action.__raw = ''
+        function()
+          require("lz.n").trigger_load("harpoon2")
+          require("harpoon"):list():prev()
+        end
+      '';
       options.desc = "Harpoon: previous";
     }
   ];

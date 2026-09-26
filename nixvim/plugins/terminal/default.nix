@@ -1,5 +1,0 @@
-{
-  imports = [
-    ./snacks-terminal.nix
-  ];
-}

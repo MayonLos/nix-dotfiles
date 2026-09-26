@@ -2,13 +2,20 @@
   plugins.clangd-extensions = {
     enable = true;
 
-    lazyLoad.settings.ft = [
-      "c"
-      "cpp"
-      "objc"
-      "objcpp"
-      "cuda"
-    ];
+    lazyLoad.settings = {
+      ft = [
+        "c"
+        "cpp"
+        "objc"
+        "objcpp"
+        "cuda"
+      ];
+      cmd = [
+        "ClangdAST"
+        "ClangdTypeHierarchy"
+        "ClangdSymbolInfo"
+      ];
+    };
   };
 
   keymaps = [

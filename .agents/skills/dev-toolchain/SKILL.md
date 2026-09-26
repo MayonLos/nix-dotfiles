@@ -33,18 +33,11 @@ editors on the same executable versions.
   debuggee interpreter cannot: `debugpy` belongs in `python.nix`'s
   `python3.withPackages`, so `python -m debugpy` uses an interpreter that can
   import it.
-- Emacs uses built-in Eglot plus packages from
-  `modules/home/programs/dev/emacs/default.nix`; language servers and
-  formatters still come from `toolchain.nix`.
-- A command bound in Emacs `keymaps.el` must be autoloaded even when its
-  package is deferred. `:after` delays the whole use-package form, including
-  its `:commands`; use a bare autoload or an available autoload cookie.
-- Emacs config is a loader plus modules under `emacs/lisp/`. Adding a module
-  requires listing it in `my/modules`; packages are declared in `default.nix`.
-  There is no Emacs daemon service configured here.
+Emacs is not installed. Do not add it back unless the user asks. Editor
+tools come from `toolchain.nix` and are started by nvim.
 
-For the measured Nixvim closure tradeoffs, PATH checks, and Emacs startup
-invariants, read [closure and PATH notes](references/closure-and-path.md).
+For the measured Nixvim closure tradeoffs and PATH checks, read
+[closure and PATH notes](references/closure-and-path.md).
 
 ## Language runtimes
 
