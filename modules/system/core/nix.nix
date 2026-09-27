@@ -50,6 +50,16 @@ in
   # This hard-depends on Clash listening on that port. With it down, daemon-side
   # downloads fail outright instead of falling back to a direct connection --
   # that is the trade for them not timing out one by one when it is up.
+  #
+  # One consequence is worth knowing before concluding a build is broken: with
+  # Clash down, a build whose inputs are ALL present locally still dies, because
+  # Nix asks the substituters for the output path before building it and treats
+  # the unreachable proxy as a hard failure. Measured on 2026-09-27: rebuilding
+  # one already-known config failed with "unable to download ... over proxy
+  # localhost" for a path it then built from scratch once `--offline` was
+  # passed. `--offline` skips substitution entirely and builds; use it (for both
+  # `nix build` and `nixos-rebuild`) instead of restarting Clash just to compile
+  # something local.
   systemd.services.nix-daemon.environment = {
     https_proxy = daemonProxy;
     http_proxy = daemonProxy;
