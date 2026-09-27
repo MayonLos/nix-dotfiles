@@ -189,7 +189,6 @@ in
             "dunarand/tmux-provider"
             "nightwatch75/todo"
             "noctalia/kaomoji"
-            "noctalia/notes"
             "radimous/prismlauncher-instances"
             "rxtsel/portctl"
             "whyoolw/sharednd"
@@ -205,12 +204,28 @@ in
             "coder/deepseek_usage" # DeepSeek balance; needs its API key in the GUI, see below
             "ezequiel/mango_layouts" # jq + mmsg
             "fel/ocr" # grim + slurp + tesseract
+            # Replaces noctalia/notes, removed below. Same slot in
+            # group:panels, but the notes are plain Markdown on disk (any
+            # editor, git, Obsidian), there is a launcher entry (/nt), and the
+            # optional AI backend defaults to the opencode CLI, which is
+            # already on PATH. Core notes and todos need no dependency at all;
+            # `git` is only for its opt-in history feature.
+            "fel/quill"
             "gambled23/mangowm-keymode" # mmsg; shows the keymode SUPER+SHIFT,R enters
             "mindnbytes/nix-status" # nix + readlink; flake_dir set in plugin_settings
 
-            # Removed 2026-09-25, all three after being measured rather than
-            # guessed at. To restore any of them, re-add its id here and, where
-            # it had one, its `<id>:<entry>` string to group:dev below.
+            # Removed, with the reason recorded rather than lost. To restore any
+            # of them, re-add its id here and, where it had one, its
+            # `<id>:<entry>` string to the matching capsule group below.
+            #
+            # 2026-09-27
+            #   noctalia/notes 1.0.5 — superseded by fel/quill above, not broken.
+            #     quill takes the same panel slot while keeping the notes as
+            #     plain Markdown in a directory it does not otherwise own. No
+            #     migration was needed: the folder notes had been writing to
+            #     (~/Documents/Notes) contained no files.
+            #
+            # 2026-09-25, all three after being measured rather than guessed at.
             #
             #   weinguyen/opencode-companion 0.2.0 — auto-started `opencode
             #     serve` on 127.0.0.1:4096 and added a chat panel, but the panel
@@ -286,6 +301,27 @@ in
           # `tesseract -l`. Without it, Chinese screen text comes back empty.
           "fel/ocr".languages = "eng+chi_sim";
 
+          # quill's default provider is "OpenCode Go", which needs an API key of
+          # its own. The CLI provider instead drives the `opencode` binary that
+          # llm-agents.nix already installs, so the AI features (capture,
+          # summarize, ask over the notes) work with no key and no extra setup.
+          # `off` would also be reasonable -- the notes, todos, launcher entry
+          # and natural-language due dates all work without any AI -- but then
+          # "AI capture" silently degrades to appending raw text.
+          #
+          # The model MUST be provider-qualified. quill's default,
+          # deepseek-v4-flash, is an OpenCode Go model name, and ai.luau's
+          # runCli() prefixes any model without a "/" with "opencode-go/" --
+          # so leaving the default here runs
+          #   opencode run --model opencode-go/deepseek-v4-flash ...
+          # which answers with "UnknownError: Unexpected server error" in the
+          # panel. `opencode models` lists the real ids; deepseek/deepseek-flash
+          # was verified end to end against this host's opencode.
+          "fel/quill" = {
+            ai_backend = "opencode-cli";
+            ai_model = "deepseek/deepseek-flash";
+          };
+
           # mango_layouts declares `position = "bottom_right"` in its own
           # [[panel]] block, which is why it opened as a floating box in the
           # corner. Panel shell settings are per-panel and overridable from
@@ -334,7 +370,7 @@ in
           # open a panel" tools, handy on the left, and start is left-aligned and
           # grows rightwards with room to spare -- unlike end, which is
           # right-aligned and clips from its leftmost item on overflow (that is
-          # how notes went missing before).
+          # how the notes widget -- since replaced by fel/quill -- went missing).
           start = [
             "launcher"
             "workspaces"
@@ -360,7 +396,7 @@ in
             {
               id = "panels";
               members = [
-                "noctalia/notes:notes" # sidebar scratchpad
+                "fel/quill:status" # Markdown notes + todos; replaced noctalia/notes
                 "nightwatch75/todo:todo" # task list
                 "8bury/mini-docker:mini-docker" # Docker management
                 "rxtsel/portctl:indicator" # inspect and kill port listeners
@@ -402,7 +438,7 @@ in
             # All of them went into ONE new capsule in `start` rather than into
             # `group:sys`: start is left-aligned and grows rightwards, while
             # `end` is right-aligned and clips its leftmost item on overflow
-            # (how notes once went missing). Keeping the new load out of `end`
+            # (how the notes widget once went missing). Keeping the new load out of `end`
             # leaves that failure mode where it was.
             #
             # The entry-id after the colon is each plugin's `[[widget]] id`,
