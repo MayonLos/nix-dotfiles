@@ -1,5 +1,40 @@
 { pkgs, ... }:
 
+let
+  tmuxTheme = ''
+    # tmux draws its own status bar, so use terminal palette indexes and the
+    # default background to follow Noctalia and preserve kitty transparency.
+    set -g status on
+    set -g status-position bottom
+    set -g status-interval 30
+    set -g status-style "bg=default,fg=colour7"
+
+    set -g status-left-length 30
+    set -g status-left "#[fg=colour0,bg=colour4,bold] #S #[default] "
+    set -g status-right-length 52
+    set -g status-right "#{prefix_highlight}#[default]#{?#{>=:#{client_width},100}, #[fg=colour8]│ #[fg=colour7]%a %d %b #[fg=colour4,bold]%H:%M#[default],} "
+
+    set -g window-status-separator "#[fg=colour8]·#[default]"
+    setw -g window-status-format         "#[fg=colour8] #I #[fg=colour7]#W #[default]"
+    setw -g window-status-current-format "#[fg=colour0,bg=colour4,bold] #I:#W #[default]"
+
+    set -g pane-border-style        "fg=colour8"
+    set -g pane-active-border-style "fg=colour4"
+    set -g message-style            "bg=colour8,fg=colour15"
+    set -g mode-style               "bg=colour4,fg=colour0"
+
+    set -g @prefix_highlight_fg 'colour0'
+    set -g @prefix_highlight_bg 'colour4'
+    set -g @prefix_highlight_show_copy_mode 'on'
+    set -g @prefix_highlight_copy_mode_attr 'fg=colour0,bg=colour3'
+    set -g @prefix_highlight_output_prefix ' '
+    set -g @prefix_highlight_output_suffix ' '
+
+    TMUX_FZF_LAUNCH_KEY="F"
+    TMUX_FZF_ORDER="session|window|pane|command|keybinding"
+  '';
+in
+
 {
   programs.tmux = {
     enable = true;
@@ -16,7 +51,12 @@
 
     plugins = with pkgs.tmuxPlugins; [
       sensible
-      yank
+      {
+        plugin = yank;
+        # Set the final status format after sensible defaults, before
+        # continuum adds its save marker and prefix-highlight expands its token.
+        extraConfig = tmuxTheme;
+      }
       {
         plugin = resurrect;
         extraConfig = ''
@@ -102,61 +142,6 @@
       bind -T copy-mode-vi C-v send-keys -X rectangle-toggle
       bind -T copy-mode-vi y send-keys -X copy-selection-and-cancel
 
-      ##### tmux-fzf #####
-
-      TMUX_FZF_LAUNCH_KEY="F"
-      TMUX_FZF_ORDER="session|window|pane|command|keybinding"
-
-      ##### Theme: whatever the terminal is wearing #####
-
-      # No hex anywhere below, on purpose. kitty follows the live noctalia
-      # palette through the `include` in kitty.nix, and noctalia rewrites that
-      # file on every theme change -- but tmux draws its own status bar, so a
-      # hardcoded palette here drifts the moment the theme does. It had already
-      # drifted into four schemes at once: #1e1e2e is Catppuccin, #dcd7ba is
-      # Kanagawa, #6e6a86 is Rose Pine, #7aa2f7 is Tokyo Night.
-      #
-      # Terminal colour *indices* are the fix: kitty resolves them out of the
-      # palette noctalia rendered, so the status bar tracks the desktop for
-      # free and stays tracking it. The mapping from what used to be hardcoded:
-      #
-      #   default   terminal bg/fg -- also keeps kitty's background_opacity
-      #   colour4   regular4, the accent   (was #7aa2f7)
-      #   colour3   regular3, yellow       (was #e0af68)
-      #   colour8   bright0, muted         (was #6e6a86 / #2f2f44)
-      #   colour15  bright7, bright text   (was #dcd7ba)
-      #   colour0   regular0, text on the accent
-      #
-      # `bg=default` matters beyond theming: a hardcoded background painted an
-      # opaque bar across a terminal that is otherwise translucent.
-
-      set -g status on
-      set -g status-position bottom
-      set -g status-interval 30
-      set -g status-style "bg=default,fg=colour7"
-
-      set -g status-left-length 50
-      set -g status-left "#[fg=colour4,bold] #S #[fg=colour8]│ "
-
-      set -g status-right-length 100
-      set -g status-right "#{prefix_highlight}#[fg=colour8] %Y-%m-%d #[fg=colour15]%H:%M "
-
-      setw -g window-status-format         "#[fg=colour8] #I:#W "
-      setw -g window-status-current-format "#[fg=colour15,bold] #I:#W "
-
-      set -g pane-border-style        "fg=colour8"
-      set -g pane-active-border-style "fg=colour4"
-      set -g message-style            "bg=colour8,fg=colour15"
-      set -g mode-style               "bg=colour4,fg=colour0"
-
-      ##### Prefix Highlight #####
-
-      set -g @prefix_highlight_fg 'colour0'
-      set -g @prefix_highlight_bg 'colour4'
-      set -g @prefix_highlight_show_copy_mode 'on'
-      set -g @prefix_highlight_copy_mode_attr 'fg=colour0,bg=colour3'
-      set -g @prefix_highlight_output_prefix ' '
-      set -g @prefix_highlight_output_suffix ' '
     '';
   };
 }

@@ -9,6 +9,16 @@ let
     done
     unset _s _file _var
 
+    # fzf-tab supplies its own height after FZF_DEFAULT_OPTS; override it in
+    # fzf-flags (appended last), while sharing the terminal palette with fzf.
+    zstyle ':fzf-tab:*' use-fzf-default-opts yes
+    zstyle ':fzf-tab:*' fzf-flags \
+      '--height=~40%' '--border=rounded' '--border-label= Complete ' \
+      '--padding=0,1' '--info=inline' '--prompt=❯ ' '--pointer=▌'
+    zstyle ':fzf-tab:*' switch-group '[' ']'
+    zstyle ':completion:*' menu no
+    zstyle ':completion:*:descriptions' format '[%d]'
+
     zmodload zsh/terminfo 2>/dev/null
     autoload -U up-line-or-beginning-search down-line-or-beginning-search
     zle -N up-line-or-beginning-search
@@ -94,6 +104,39 @@ in
     starship = {
       enable = true;
       enableZshIntegration = true;
+      settings = {
+        add_newline = false;
+        format = "$username$hostname$directory$git_branch$git_status$all\n$character";
+
+        directory = {
+          style = "bold blue";
+          truncation_length = 3;
+          truncation_symbol = "…/";
+          truncate_to_repo = true;
+        };
+        git_branch.style = "bold purple";
+        git_branch.format = "[ $branch]($style) ";
+        git_status.style = "yellow";
+        cmd_duration = {
+          min_time = 3000;
+          format = "[· $duration]($style) ";
+          style = "dimmed yellow";
+        };
+        status = {
+          # The prompt arrow already turns red on failure; avoid numeric noise
+          # after cancelling an interactive picker (exit status 130).
+          disabled = true;
+        };
+        sudo = {
+          # Cached sudo credentials do not mean this shell is running as root.
+          # The username module still highlights an actual root shell.
+          disabled = true;
+        };
+        line_break.disabled = true;
+        username.style_user = "bold cyan";
+        username.style_root = "bold red";
+        hostname.style = "bold cyan";
+      };
     };
 
     zoxide = {
@@ -105,34 +148,44 @@ in
       enable = true;
       enableZshIntegration = true;
       defaultOptions = [
-        "--height=40%"
+        "--height=~40%"
         "--layout=reverse"
         "--border=rounded"
+        "--padding=0,1"
+        "--info=inline"
+        "--prompt=❯ "
+        "--pointer=▌"
+        "--marker=✓"
       ];
-      # Terminal colour indices, not hex. fzf renders inside kitty, and
+      historyWidgetOptions = [ "--border-label= History " ];
+      fileWidgetOptions = [ "--border-label= Files " ];
+      changeDirWidgetOptions = [
+        "--border-label= Directories "
+        "--preview=eza --color=always --icons --group-directories-first -- {}"
+        "--preview-window=right,45%,border-left"
+      ];
+      # ANSI named colours, not hex. fzf renders inside kitty, and
       # kitty's palette is rewritten by noctalia on every theme change (the
       # `include themes/noctalia.conf` in programs/terminal/kitty.nix) -- so an
-      # index tracks the desktop for free while a hex value silently becomes
+      # ANSI name tracks the desktop for free while a hex value silently becomes
       # the odd one out. `-1` is fzf's "leave it to the terminal", which is
       # also what keeps kitty's `background_opacity 0.8` visible behind the
       # list. Same reasoning as the status bar in programs/terminal/tmux.nix.
-      #
-      # Home Manager turns this into FZF_DEFAULT_OPTS, which zsh-fzf-tab reads
-      # too, so completions and standalone fzf cannot disagree.
+      # The zstyle above explicitly opts fzf-tab into FZF_DEFAULT_OPTS.
       colors = {
         fg = "-1";
         bg = "-1";
-        "fg+" = "15"; # bright7, the brightest text
-        "bg+" = "8"; # bright0, the selected row
-        hl = "3"; # yellow on the match
-        "hl+" = "11";
-        border = "8";
-        prompt = "4"; # blue, same accent the bar uses
-        pointer = "1";
-        marker = "2";
-        spinner = "6";
-        header = "5";
-        info = "8";
+        "fg+" = "-1";
+        "bg+" = "bright-black";
+        hl = "yellow";
+        "hl+" = "bright-yellow";
+        border = "bright-black";
+        prompt = "blue";
+        pointer = "magenta";
+        marker = "green";
+        spinner = "cyan";
+        header = "bright-black";
+        info = "bright-black";
       };
     };
   };

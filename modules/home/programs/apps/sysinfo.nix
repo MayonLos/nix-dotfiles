@@ -1,108 +1,132 @@
-_:
+{ pkgs, ... }:
+
+let
+  # Keep the image above the text so narrow windows need no logo column.
+  fastfetchLogo = "${pkgs.nixos-icons}/share/icons/hicolor/512x512/apps/nix-snowflake.png";
+  # Colour strings are SGR codes, not palette indexes: 5/6 blink, 8 conceals.
+  # Named colours follow Noctalia's terminal palette without text effects.
+  section = label: color: {
+    type = "custom";
+    format = "{#${color}}── ${label} {#light_black}────────────────{#}";
+  };
+in
 
 {
   programs = {
-    # `fastfetch` is run by hand, not on shell start, so it is allowed to be a
-    # showpiece rather than something to scroll past.
-    #
-    # Colours are ANSI indices, not hex, for two reasons. The first is that hex
-    # in a `{#...}` format string is not reliably accepted: fastfetch 2.63.1
-    # rejected `{#BB9AF7}` with `invalid color code found: BB9AF7`. The second
-    # is the one that matters more -- an index is resolved by kitty from the
-    # palette noctalia renders, so this follows a theme change for free. An
-    # earlier version of this file used hex and claimed in a comment that
-    # fastfetch "draws its own colours rather than reading the terminal
-    # palette". That was simply wrong: it emits ANSI escapes like anything else.
-    #
-    # Index -> Tokyo Night, straight out of ~/.config/kitty/themes/noctalia.conf:
-    #   1 red #f7768e   2 green #9ece6a   3 yellow #e0af68   4 blue #7aa2f7
-    #   5 magenta #bb9af7   6 cyan #7dcfff   8 bright0 #414868   15 #c0caf5
     fastfetch = {
       enable = true;
       settings = {
         logo = {
-          source = "nixos_small";
-          padding.right = 2;
+          type = "kitty-direct";
+          source = fastfetchLogo;
+          position = "top";
+          width = 16;
+          height = 8;
+          padding.right = 0;
           color = {
-            "1" = "4";
-            "2" = "6";
+            "1" = "blue";
+            "2" = "cyan";
           };
         };
         display = {
-          separator = "    ";
+          hideCursor = true;
+          disableLinewrap = true;
+          brightColor = false;
+          separator = "  ";
+          key = {
+            width = 16;
+            paddingLeft = 1;
+          };
           color = {
-            output = "15";
-            separator = "8";
+            output = "default";
+            separator = "light_black";
+          };
+          bar = {
+            width = 8;
+            char = {
+              elapsed = "■";
+              total = "─";
+            };
+            color = {
+              total = "light_black";
+              border = "light_black";
+            };
           };
         };
-        # One line per thing worth knowing about *this* machine: an Intel +
-        # NVIDIA laptop, so both GPUs matter; mango rather than a desktop
-        # environment, so `wm` is the interesting field and `de` is not.
         modules = [
           {
             type = "title";
-            format = "{#5}{user-name}{#8}@{#4}{host-name}";
+            format = "{#bold_magenta}{user-name}{#}{#light_black}@{#blue}{host-name}{#}";
           }
-          {
-            type = "separator";
-            string = "──────────────";
-          }
+          "break"
+          (section "SYSTEM" "blue")
           {
             type = "os";
-            key = "OS";
-            keyColor = "4";
+            key = " OS";
+            keyColor = "blue";
           }
           {
             type = "kernel";
-            key = "Kernel";
-            keyColor = "6";
+            key = " Kernel";
+            keyColor = "cyan";
           }
           {
             type = "uptime";
-            key = "Uptime";
-            keyColor = "2";
+            key = " Uptime";
+            keyColor = "green";
           }
           {
             type = "packages";
-            key = "Packages";
-            keyColor = "3";
+            key = "󰏖 Packages";
+            keyColor = "yellow";
           }
           {
             type = "wm";
-            key = "Compositor";
-            keyColor = "5";
+            key = " Compositor";
+            keyColor = "magenta";
           }
           {
             type = "display";
-            key = "Display";
-            keyColor = "4";
+            key = "󰍹 Display";
+            keyColor = "blue";
             compactType = "original-with-refresh-rate";
           }
+          "break"
+          (section "HARDWARE" "magenta")
           {
             type = "cpu";
-            key = "CPU";
-            keyColor = "6";
+            key = " CPU";
+            keyColor = "cyan";
           }
           {
             type = "gpu";
-            key = "GPU";
-            keyColor = "2";
+            key = "󰾲 GPU";
+            keyColor = "green";
+            format = "{vendor} {name}";
           }
           {
             type = "memory";
-            key = "Memory";
-            keyColor = "3";
+            key = " Memory";
+            keyColor = "yellow";
+            percent.type = 3;
           }
           {
             type = "disk";
-            key = "Disk";
-            keyColor = "3";
+            key = " Disk";
+            keyColor = "yellow";
             folders = "/";
+            percent.type = 3;
           }
           {
             type = "battery";
-            key = "Battery";
-            keyColor = "1";
+            key = " Battery";
+            keyColor = "red";
+            percent.type = 3;
+          }
+          "break"
+          {
+            type = "colors";
+            symbol = "circle";
           }
         ];
       };
