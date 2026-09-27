@@ -38,6 +38,15 @@ The codex package here is the user's ChatGPT-account CLI; its
 `sandbox-runtime` (binary `srt`), and `workmux`; verify current package
 attributes before adding or removing entries.
 
+`bin/codex` is shadowed by a `--no-daemon` shim in the same module, because
+codex 0.157 needs a complete CLI package layout (manifest, `codex-path/rg`, an
+in-root `codex-resources/bwrap`) before it will install its app-server daemon,
+and llm-agents ships only the binaries. Do not "fix" this by completing the
+layout: the daemon copies the CLI into `~/.codex` and then runs a network
+auto-updater, which would replace the Nix-provided binary. Re-read the comment
+in `ai-agents.nix` before touching it, and drop the shim only when llm-agents
+handles the layout itself.
+
 `dsh` uses the shipped web/headless profiles; do not assume every profile named
 in upstream help is packaged. Its plugins are mutable runtime data.
 For an Electron app that rewrites its desktop entry, check whether Exec still
