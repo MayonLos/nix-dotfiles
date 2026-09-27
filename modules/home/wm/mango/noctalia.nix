@@ -540,6 +540,15 @@ in
           status_mode = "running_only";
         };
 
+        # Same idea as the two above: the widget is only worth bar space while
+        # it has something to say. Its default is the opposite, so it sat there
+        # spelling out "default" for the ~99% of the time no keymode is active.
+        # The resize mode it exists for is entered with SUPER+SHIFT,R, and this
+        # makes the badge appear only then. `notify_change` (default true) still
+        # sends a desktop notification on every switch, which is now the only
+        # signal in default mode; set it to false if the bar badge is enough.
+        widget."gambled23/mangowm-keymode:mangowm-keymode".hide_on_default = true;
+
         # "暂无播放内容" is not information. The widget sat there at full width
         # announcing that nothing was playing, which is most of the time.
         widget.media.hide_when_no_media = true;
