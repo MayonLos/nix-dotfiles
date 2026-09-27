@@ -227,7 +227,6 @@ in
             "8bury/mini-docker"
             "cleboost/jetbrains-provider"
             "dunarand/tmux-provider"
-            "nightwatch75/todo"
             "noctalia/kaomoji"
             "radimous/prismlauncher-instances"
             "rxtsel/portctl"
@@ -264,6 +263,12 @@ in
             #     plain Markdown in a directory it does not otherwise own. No
             #     migration was needed: the folder notes had been writing to
             #     (~/Documents/Notes) contained no files.
+            #   nightwatch75/todo 1.2.1 — same reason, one step later: quill's
+            #     Todos tab covers `- [ ]` items in the same vault, so keeping a
+            #     second task list only split them across two stores. Its seven
+            #     open tasks were moved into ~/notes/Inbox.md first (all except
+            #     `mp157`, which quill already had); ~/Documents/Todo/todo.json
+            #     is left untouched, so the removal loses nothing.
             #
             # 2026-09-25, all three after being measured rather than guessed at.
             #
@@ -406,7 +411,7 @@ in
           # Context and everyday tools on the left, clock in the center, system
           # status on the right.
           #
-          # The panels group goes into start as a whole: all four are "click to
+          # The panels group goes into start as a whole: all three are "click to
           # open a panel" tools, handy on the left, and start is left-aligned and
           # grows rightwards with room to spare -- unlike end, which is
           # right-aligned and clips from its leftmost item on overflow (that is
@@ -437,7 +442,6 @@ in
               id = "panels";
               members = [
                 "fel/quill:status" # Markdown notes + todos; replaced noctalia/notes
-                "nightwatch75/todo:todo" # task list
                 "8bury/mini-docker:mini-docker" # Docker management
                 "rxtsel/portctl:indicator" # inspect and kill port listeners
               ];
