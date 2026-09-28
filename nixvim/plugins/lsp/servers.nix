@@ -1,6 +1,6 @@
 _: {
   # Every `cmd` below names its binary rather than interpolating a store path.
-  # Two reasons: nvim and Emacs then start the *same* server, the one
+  # Two reasons: nvim then starts the *same* server that
   # modules/home/programs/dev/toolchain.nix installs; and a pinned path drags
   # the server into nvim's runtime closure — jdt-language-server alone brought
   # openjdk with it, 1.9 GiB for a binary the editor only ever exec's.

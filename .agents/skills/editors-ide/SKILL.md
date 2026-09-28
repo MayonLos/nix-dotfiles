@@ -34,7 +34,7 @@ binary, or command-line details. Do not infer CLI behavior from package names.
 
 The codex package here is the user's ChatGPT-account CLI; its
 `~/.codex/config.toml` is unmanaged by Nix. The package list also includes
-`dsh`, `grok`, `opencode`, `chatgpt`, `ccusage`, `crit`, `mcporter`,
+`dsh`, `grok`, `opencode`, `ccusage`, `crit`, `mcporter`,
 `sandbox-runtime` (binary `srt`), and `workmux`; verify current package
 attributes before adding or removing entries.
 
@@ -65,3 +65,8 @@ expressions resolve; a build checks derivations; launching the actual wrapped
 application checks runtime library and desktop-entry behavior. Avoid commands
 or delegation instructions that depend on Claude-specific skills or tools;
 repository-wide agent coordination belongs in `AGENTS.md`.
+
+ChatGPT desktop was removed at the user's request on 2026-09-28 after task
+startup kept hanging. Keep Codex CLI installed. Desktop-only `node_repl`,
+`browser`, `unified-computer-use`, and `codex-app-tools` integrations were
+disabled in mutable Codex configuration; user data was retained.

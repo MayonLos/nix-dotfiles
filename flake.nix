@@ -67,14 +67,6 @@
     # seconds.
     mango.url = "github:mangowm/mango";
 
-    # Zen browser (not in nixpkgs). Provides a home-manager module (firefox-style
-    # profiles). follows nixpkgs-unstable to dedup the heavy input; home-manager is
-    # left on the flake's own pin so its mkFirefoxModule stays version-matched.
-    zen-browser = {
-      url = "github:0xc000022070/zen-browser-flake";
-      inputs.nixpkgs.follows = "nixpkgs-unstable";
-    };
-
     # Wayland screenshot tools, neither in nixpkgs. Both build from source with
     # no cachix, so deliberately NOT `follows`-ed — same reasoning as
     # noctalia-greeter: let them build against their own tested nixpkgs rather
@@ -82,12 +74,14 @@
     mark-shot.url = "github:jswysnemc/mark-shot";
     wayscrollshot.url = "github:jswysnemc/wayscrollshot";
 
-    # Daily-updated packages for AI coding agents: codex, the ChatGPT desktop
-    # app, dsh, opencode and the review/usage tooling around them. zcode is deliberately NOT installed -- see programs/dev/ai-agents.nix. Deliberately NOT `follows`-ed: upstream only builds and
-    # caches against its own pinned nixpkgs-unstable, and pointing it at this
-    # flake's stable `nixpkgs` would both break eventually and miss every
-    # prebuilt binary. The cost is one extra nixpkgs evaluation; the payoff is
-    # cache.numtide.com hits, wired up in modules/system/core/nix.nix.
+    # Daily-updated packages for AI coding agents: codex, dsh, grok, opencode
+    # and the review/usage tooling around them. zcode is deliberately NOT
+    # installed -- see programs/dev/ai-agents.nix. Deliberately NOT
+    # `follows`-ed: upstream only builds and caches against its own pinned
+    # nixpkgs-unstable, and pointing it at this flake's stable `nixpkgs` would
+    # both break eventually and miss every prebuilt binary. The cost is one
+    # extra nixpkgs evaluation; the payoff is cache.numtide.com hits, wired up
+    # in modules/system/core/nix.nix.
     llm-agents.url = "github:numtide/llm-agents.nix";
 
     sops-nix = {

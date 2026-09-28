@@ -1,8 +1,8 @@
 {
   # Tools nvim launches — language servers, formatters, linters — are declared
   # once in modules/home/programs/dev/toolchain.nix and reach nvim through the
-  # profile PATH. Emacs uses the same set, so neither editor can end up on a
-  # different nixd or clangd than the other.
+  # profile PATH. One set of executables, so the profile and the editor cannot
+  # end up on a different nixd or clangd.
   #
   # Consequence, accepted deliberately: this nixvim package is no longer
   # self-contained. `nix run` on it alone yields an editor with no servers.

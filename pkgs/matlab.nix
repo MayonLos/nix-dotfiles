@@ -337,8 +337,8 @@ let
   #
   # matlab-language-server is resolved from PATH, not pinned into this closure:
   # buildFHSEnv keeps the caller's PATH, so the profile copy that
-  # toolchain.nix installs is what runs, and nvim and Emacs cannot drift onto
-  # two different servers.
+  # toolchain.nix installs is what runs, and nvim cannot drift onto a second
+  # server.
   #
   # The flags below are the fallback, not the configuration. A client that
   # advertises workspace/configuration -- nvim does -- makes the server discard

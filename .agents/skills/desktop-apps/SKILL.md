@@ -13,6 +13,6 @@ Read the relevant reference:
 
 - For palette flow, GTK/Qt setup, fonts, and mutable theme files, read [themes and file ownership](references/themes-files.md).
 - For MIME defaults, Thunar custom actions, and clipboard payloads, read [defaults and Thunar](references/defaults-thunar.md).
-- For mpv, zathura, Zen, QQ, or WeChat behavior, read [media and messaging](references/media-messaging.md).
+- For mpv, zathura, Chrome, QQ, or WeChat behavior, read [media and messaging](references/media-messaging.md).
 
 Treat historical measurements as dated evidence. In particular, re-check an app's current protocol and portal requests before changing Wayland/XWayland flags or concluding a sharing path is impossible. Report code defects discovered during this work, but keep fixes within the user's requested scope.

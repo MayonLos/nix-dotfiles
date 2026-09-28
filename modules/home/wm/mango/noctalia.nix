@@ -68,6 +68,279 @@ let
       --replace-fail '    return nextDueCache.value' \
       '    return nextDueCache.value - now'
   '';
+
+  # Google Chrome is not in Noctalia's community catalog (only brave and
+  # ungoogled-chromium), so its theme is a local user template reproducing what
+  # those templates do: a Chromium theme extension manifest rendered with the
+  # palette, plus solid PNGs because color-only themes leave the frame,
+  # toolbar and NTP unpainted on Linux. Chrome-branded builds refuse
+  # --load-extension, so first install is one manual click-through:
+  # chrome://extensions -> Developer mode -> Load unpacked -> the theme dir
+  # printed by the hook (a Noctalia palette change only needs -> Update).
+  chromeThemeManifest = pkgs.writeText "noctalia-google-chrome-theme.json" ''
+    {
+      "manifest_version": 3,
+      "name": "Noctalia",
+      "version": "1.0.0",
+      "description": "Noctalia palette theme for the Chrome UI",
+      "theme": {
+        "colors": {
+          "frame": [{{ colors.surface.default.rgb_csv }}],
+          "frame_inactive": [{{ colors.surface_dim.default.rgb_csv }}],
+          "frame_incognito": [{{ colors.surface_dim.default.rgb_csv }}],
+          "frame_incognito_inactive": [{{ colors.surface.default.rgb_csv }}],
+          "toolbar": [{{ colors.surface_container.default.rgb_csv }}],
+          "toolbar_text": [{{ colors.on_surface.default.rgb_csv }}],
+          "toolbar_button_icon": [{{ colors.on_surface.default.rgb_csv }}],
+          "tab_text": [{{ colors.on_surface.default.rgb_csv }}],
+          "tab_background_text": [{{ colors.on_surface_variant.default.rgb_csv }}],
+          "tab_background_text_inactive": [{{ colors.on_surface_variant.default.rgb_csv }}],
+          "tab_background_text_incognito": [{{ colors.on_surface.default.rgb_csv }}],
+          "tab_background_text_incognito_inactive": [{{ colors.on_surface_variant.default.rgb_csv }}],
+          "bookmark_text": [{{ colors.on_surface.default.rgb_csv }}],
+          "background_tab": [{{ colors.surface.default.rgb_csv }}],
+          "background_tab_inactive": [{{ colors.surface_dim.default.rgb_csv }}],
+          "background_tab_incognito": [{{ colors.surface_dim.default.rgb_csv }}],
+          "background_tab_incognito_inactive": [{{ colors.surface.default.rgb_csv }}],
+          "button_background": [{{ colors.surface.default.rgb_csv }}],
+          "omnibox_background": [{{ colors.surface_container_high.default.rgb_csv }}],
+          "omnibox_text": [{{ colors.on_surface.default.rgb_csv }}],
+          "ntp_background": [{{ colors.surface.default.rgb_csv }}],
+          "ntp_text": [{{ colors.on_surface.default.rgb_csv }}],
+          "ntp_link": [{{ colors.primary.default.rgb_csv }}],
+          "ntp_header": [{{ colors.surface_container.default.rgb_csv }}],
+          "ntp_section": [{{ colors.surface_container.default.rgb_csv }}]
+        },
+        "properties": {
+          "ntp_background_alignment": "top",
+          "ntp_background_repeat": "no-repeat",
+          "ntp_logo_alternate": 0
+        }
+      }
+    }
+  '';
+
+  # Hook for the user template above. jq + ImageMagick are interpolated into
+  # PATH instead of assumed: the hook runs from the noctalia process, not from
+  # an interactive shell. The community Brave template's hook needs Pillow,
+  # which this host does not ship -- hence jq/magick here.
+  chromeThemeApply = pkgs.writeShellScript "noctalia-google-chrome-apply" ''
+        set -euo pipefail
+        export PATH=${
+          pkgs.lib.makeBinPath [
+            pkgs.coreutils
+            pkgs.gnugrep
+            pkgs.procps
+            pkgs.jq
+            pkgs.imagemagick
+          ]
+        }:$PATH
+
+        log() {
+          printf '[%s] noctalia-google-chrome: %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >&2
+        }
+
+        xdg_config="''${XDG_CONFIG_HOME:-$HOME/.config}"
+        xdg_cache="''${XDG_CACHE_HOME:-$HOME/.cache}"
+        xdg_data="''${XDG_DATA_HOME:-$HOME/.local/share}"
+
+        chrome_user_data="$xdg_config/google-chrome"
+        prefs_path="$chrome_user_data/Default/Preferences"
+        theme_dir="$xdg_data/noctalia/google-chrome-theme"
+        backup_dir="$theme_dir/backups"
+        prefs_original="$backup_dir/Preferences.original"
+        rendered_manifest="$xdg_cache/noctalia/google-chrome-theme/manifest.json"
+        installed_manifest="$theme_dir/manifest.json"
+
+        usage() {
+          cat <<'EOF'
+    Usage: noctalia-google-chrome-apply <dark|light|backup|restore>
+
+      dark|light  Install rendered theme files; sync browser.theme prefs only
+                  while Chrome is stopped
+      backup      Snapshot Preferences once; never overwrites
+      restore     Copy the original snapshot back (Chrome must be stopped)
+    EOF
+        }
+
+        # Headless automation instances (e.g. the opencode browser tool) share the
+        # `chrome` comm name but use their own --user-data-dir; only a non-headless
+        # process can hold the interactive profile this script writes.
+        chrome_is_running() {
+          pgrep -u "$(id -u)" -x chrome -a 2>/dev/null | grep -v -q -- '--headless'
+        }
+
+        ensure_chrome_profile() {
+          if [ ! -d "$chrome_user_data" ]; then
+            log "ERROR: Chrome user data not found: $chrome_user_data"
+            exit 1
+          fi
+          if [ ! -f "$prefs_path" ]; then
+            log "ERROR: Chrome Preferences not found: $prefs_path -- start Chrome once"
+            exit 1
+          fi
+        }
+
+        backup_prefs() {
+          ensure_chrome_profile
+          mkdir -p "$backup_dir"
+          if [ -f "$prefs_original" ]; then
+            log "Original Preferences backup already exists: $prefs_original"
+            return 0
+          fi
+          cp -a -- "$prefs_path" "$prefs_original"
+          log "Saved original Preferences to $prefs_original"
+          if chrome_is_running; then
+            log "NOTE: Chrome is running; this snapshot may lag in-memory prefs"
+          fi
+        }
+
+        install_theme_files() {
+          local mode="$1"
+          if [ ! -f "$rendered_manifest" ]; then
+            log "ERROR: rendered manifest missing: $rendered_manifest"
+            log "Re-apply the Noctalia theme first"
+            exit 1
+          fi
+          jq -e . "$rendered_manifest" >/dev/null
+
+          local version
+          version="1.$(date -u '+%Y%m%d.%H%M%S')"
+
+          mkdir -p "$theme_dir/images"
+          write_png() {
+            magick -size "$2" "xc:rgb($3)" "$theme_dir/images/$1"
+          }
+          color_of() {
+            jq -r --arg k "$1" '.theme.colors[$k] | join(",")' "$rendered_manifest"
+          }
+
+          write_png theme_frame.png 80x60 "$(color_of frame)"
+          write_png theme_frame_inactive.png 80x60 "$(color_of frame_inactive)"
+          write_png theme_frame_incognito.png 80x60 "$(color_of frame_incognito)"
+          write_png theme_toolbar.png 320x120 "$(color_of toolbar)"
+          write_png theme_tab_background.png 64x64 "$(color_of frame)"
+          write_png theme_ntp_background.png 1920x1080 "$(color_of ntp_background)"
+
+          # Bump the version so chrome://extensions -> Update reloads the unpacked
+          # theme after a palette change.
+          jq --arg v "$version" --arg mode "$mode" '
+            .version = $v
+            | .theme.properties.ntp_logo_alternate =
+                (if $mode == "dark" then 1 else 0 end)
+            | .theme.images = {
+                theme_frame: "images/theme_frame.png",
+                theme_frame_inactive: "images/theme_frame_inactive.png",
+                theme_frame_incognito: "images/theme_frame_incognito.png",
+                theme_toolbar: "images/theme_toolbar.png",
+                theme_ntp_background: "images/theme_ntp_background.png",
+                theme_tab_background: "images/theme_tab_background.png"
+              }
+          ' "$rendered_manifest" > "$installed_manifest"
+          log "Installed theme + background images in $theme_dir (version $version)"
+        }
+
+        theme_already_loaded() {
+          [ -f "$prefs_path" ] || return 1
+          jq -e --arg dir "$(readlink -f "$theme_dir")" '
+            [.extensions.settings // {} | .[]
+             | select((.path // "") == $dir or (.manifest.name // "") == "Noctalia")]
+            | length > 0
+          ' "$prefs_path" >/dev/null 2>&1
+        }
+
+        print_load_unpacked_help() {
+          cat <<EOF >&2
+    noctalia-google-chrome: first-time install (one click-through in Chrome):
+      1. Open: chrome://extensions
+      2. Enable Developer mode
+      3. Load unpacked -> $theme_dir
+      4. Confirm Appearance uses the "Noctalia" theme
+    EOF
+        }
+
+        sync_color_scheme() {
+          local mode="$1"
+          if chrome_is_running; then
+            log "Chrome is running: skipped Preferences write (theme files are installed)"
+            return 0
+          fi
+
+          local scheme=2
+          if [ "$mode" = "light" ]; then
+            scheme=1
+          fi
+
+          # user_color is a signed 32-bit ARGB int, the same encoding the community
+          # Brave template uses; without it Material You surfaces stay purple.
+          # 4278190080 is 0xFF000000 -- jq has no hex literals.
+          local user_color
+          user_color="$(
+            jq -r '
+              .theme.colors.ntp_link // .theme.colors.toolbar_button_icon // empty
+              | .[0] as $r | .[1] as $g | .[2] as $b
+              | 4278190080 + ($r * 65536) + ($g * 256) + $b
+              | if . >= 2147483648 then . - 4294967296 else . end
+            ' "$installed_manifest"
+          )"
+
+          local tmp="$prefs_path.noctalia-tmp"
+          jq -c \
+            --argjson scheme "$scheme" \
+            --argjson user_color "''${user_color:-null}" '
+              .browser.theme.color_scheme = $scheme
+              | .browser.theme.color_scheme2 = $scheme
+              | if $user_color == null then . else
+                  .browser.theme.user_color = $user_color
+                  | .browser.theme.user_color2 = $user_color
+                end
+            ' "$prefs_path" > "$tmp"
+          chmod --reference="$prefs_path" "$tmp"
+          mv -- "$tmp" "$prefs_path"
+          log "Set browser.theme.color_scheme=$scheme and user_color from the palette"
+        }
+
+        restore_prefs() {
+          ensure_chrome_profile
+          if [ ! -f "$prefs_original" ]; then
+            log "ERROR: no original backup at $prefs_original"
+            exit 1
+          fi
+          if chrome_is_running; then
+            log "ERROR: Chrome is running; will not restore Preferences"
+            exit 1
+          fi
+          cp -a -- "$prefs_original" "$prefs_path"
+          log "Restored Preferences from $prefs_original"
+        }
+
+        case "''${1:-}" in
+          dark | light)
+            ensure_chrome_profile
+            backup_prefs
+            install_theme_files "$1"
+            if theme_already_loaded; then
+              log "Noctalia theme already loaded; reload it via chrome://extensions -> Update"
+            else
+              print_load_unpacked_help
+            fi
+            sync_color_scheme "$1"
+            ;;
+          backup)
+            backup_prefs
+            ;;
+          restore)
+            restore_prefs
+            ;;
+          -h | --help | help | "")
+            usage
+            ;;
+          *)
+            usage >&2
+            exit 1
+            ;;
+        esac
+  '';
 in
 {
   imports = [
@@ -156,13 +429,26 @@ in
               "mango"
               "qt"
             ];
+            # No Chrome in the community catalog (only brave /
+            # ungoogled-chromium), so Chrome is themed by the local user
+            # template defined in the let block. Its first install needs one
+            # manual "Load unpacked" click -- see chromeThemeManifest.
             community_ids = [
               "obsidian"
               "vscode"
               "yazi"
               "zathura"
-              "zen-browser"
             ];
+            user.google-chrome = {
+              input_path = "${chromeThemeManifest}";
+              output_path = "$XDG_CACHE_HOME/noctalia/google-chrome-theme/manifest.json";
+              post_hook = "bash ${chromeThemeApply} {{ mode }}";
+              # Serialized: the hook writes Preferences as well as theme files,
+              # and a second palette apply must not overlap it.
+              hook_async = false;
+              # Skip rendering until Chrome has created its profile.
+              requires_path = "~/.config/google-chrome";
+            };
           };
         };
 
@@ -361,7 +647,10 @@ in
           #   opencode run --model opencode-go/deepseek-v4-flash ...
           # which answers with "UnknownError: Unexpected server error" in the
           # panel. `opencode models` lists the real ids; deepseek/deepseek-flash
-          # was verified end to end against this host's opencode.
+          # is still listed under OpenCode v2 (see ai-agents.nix). The exact
+          # runCli invocation was repeated against opencode2 2.0.18 on
+          # 2026-09-29 and returned "ok", so the backend path works; only the
+          # panel UI itself was not clicked through again.
           "fel/quill" = {
             ai_backend = "opencode-cli";
             ai_model = "deepseek/deepseek-flash";

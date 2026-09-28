@@ -84,11 +84,11 @@ modules/
     packages.nix       用户级 CLI 工具
   system/              → NixOS
     core/              boot、locale、网络、nix 设置
-    desktop/           mango、xdg portal、greetd
+    desktop/           mango、xdg portal、greetd、gamemode
     hardware/          nvidia（PRIME offload）、音频、蓝牙、固件
     programs/          clash、nix-ld、thunar 等
     security/          polkit、sops
-    services/          earlyoom、openssh、docker
+    services/          earlyoom、openssh、docker、systemd
     user/              用户、字体、环境变量
     virtualisation/    libvirt/KVM
 nixvim/                Neovim 配置（显式 imports 的 nixvim 模块树）
@@ -172,7 +172,6 @@ sops secrets/secrets.yaml            # 编辑
 | 改了什么 | 还要做 |
 |---|---|
 | fcitx5 配置 | `systemctl --user restart app-org.fcitx.Fcitx5@autostart.service`（**不是** `fcitx5-daemon`，那个是登录时竞争失败的那份） |
-| Emacs 配置 | 关闭后重新启动 Emacs（当前未配置 daemon unit） |
 | nvim 配置 | 无，重建即生效 |
 | mango 配置 | `Super+Alt+R`（reload_config）或重登；键位、窗口规则、动画都能热重载 |
 | QQ 的 wrapper | 从托盘完全退出再开 |

@@ -1,13 +1,13 @@
 ---
 name: dev-toolchain
-description: 修改共享 LSP、formatter、linter、编译器、解释器、DAP 或 Emacs 配置；排查工具 PATH、Python 导入与编辑器闭包。
+description: 修改共享 LSP、formatter、linter、编译器、解释器或 DAP 配置；排查工具 PATH、Python 导入与编辑器闭包。
 ---
 
 # Development toolchain
 
 `modules/home/programs/dev/toolchain.nix` is the shared profile source for
-language servers, formatters, and linters used by Neovim and Emacs. Keep both
-editors on the same executable versions.
+language servers, formatters, and linters used by Neovim. One set of
+executable versions keeps the profile and the editor from drifting.
 
 ## Placement and runtime paths
 
@@ -33,8 +33,8 @@ editors on the same executable versions.
   debuggee interpreter cannot: `debugpy` belongs in `python.nix`'s
   `python3.withPackages`, so `python -m debugpy` uses an interpreter that can
   import it.
-Emacs is not installed. Do not add it back unless the user asks. Editor
-tools come from `toolchain.nix` and are started by nvim.
+- Emacs was removed and is not installed. Do not add it back unless the user
+  asks; the editor tools come from `toolchain.nix` and are started by nvim.
 
 For the measured Nixvim closure tradeoffs and PATH checks, read
 [closure and PATH notes](references/closure-and-path.md).
@@ -56,6 +56,5 @@ before changing installation or theme behavior; the removed managed
 `nix eval` inspects evaluated values; it does not build packages or verify that
 commands are on a launched editor's PATH. Build the relevant package or system
 configuration for build validation, then verify the command from the same
-environment the editor inherits. For Emacs key bindings, test that each bound
-command is callable before its feature is otherwise loaded. Do not report
+environment the editor inherits. Do not report
 evaluation as build or runtime verification.

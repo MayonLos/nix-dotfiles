@@ -1,8 +1,7 @@
 # sops recipients. `mayon` = your personal age key (for editing secrets),
 # `host` = derived from this machine's SSH host key (for decryption at rebuild).
-#
-# Generate your personal key, then replace the placeholder below:
-#   mkdir -p ~/.config/sops/age
+# Both are populated; rotate `mayon` by generating a new key and replacing the
+# entry below:
 #   nix shell nixpkgs#age -c age-keygen -o ~/.config/sops/age/keys.txt
 #   nix shell nixpkgs#age -c age-keygen -y ~/.config/sops/age/keys.txt   # prints public key
 keys:

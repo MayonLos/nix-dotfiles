@@ -52,6 +52,16 @@ let
       exec ${agents.codex}/bin/codex --no-daemon "$@"
     ''
   );
+
+  # llm-agents.nix ships OpenCode v2's binary as `opencode2` (upstream's real
+  # name is `opencode`; the suffix avoids colliding with the v1 package). The
+  # fel/quill noctalia plugin drives the literal name `opencode` and its backend
+  # is not configurable, and codecompanion hardcodes `opencode` too, so expose
+  # v2 under `opencode` with a thin wrapper. `opencode2` is still installed for
+  # calling the v2 entry point explicitly.
+  opencodeCli = pkgs.writeShellScriptBin "opencode" ''
+    exec ${agents.opencode2}/bin/opencode2 "$@"
+  '';
 in
 {
   home.packages = [
@@ -71,9 +81,10 @@ in
     # the sadjow/codex-cli-nix input, whose launcher injected ~10 `-c` overrides
     # to make bare `codex` mean DeepSeek. All of that is gone — bare `codex` is
     # now the ChatGPT account, which is the point. This source is also newer
-    # than what it replaced (0.150.1 vs 0.149.0; nixpkgs-unstable is on 0.147.0)
-    # and drops the `stdenv.isLinux` deprecation-warning workaround that the old
-    # module carried, since it is not built from upstream's package.nix.
+    # than what it replaced (0.157.1 now; the sadjow input was 0.149.0, and
+    # nixpkgs-unstable is on 0.156.1) and drops the `stdenv.isLinux`
+    # deprecation-warning workaround that the old module carried, since it is
+    # not built from upstream's package.nix.
     # ~/.codex/config.toml is still codex's own, unmanaged by Nix.
     #
     # codexCli shadows bin/codex with the --no-daemon shim explained above; the
@@ -82,20 +93,19 @@ in
     agents.codex
     codexCli
 
-    # The ChatGPT/Codex desktop app. Wrapped with --ozone-platform=wayland when
-    # NIXOS_OZONE_WL is set. Note it authenticates on its own and will not see
-    # the shell environment, so nothing here depends on sops.
-    agents.chatgpt
-
     # xAI's official Grok Build coding agent. Provides both `grok` for
     # interactive sessions and `agent` for automation. Authentication is via
     # browser OAuth on first launch or XAI_API_KEY for non-browser use.
     agents.grok
 
-    # Terminal coding agent, provider-agnostic. Config lives in
-    # ~/.config/opencode/opencode.json. Ahead of nixpkgs (1.18.25 vs 1.18.18 on
-    # nixos-unstable, 1.15.10 on stable).
-    agents.opencode
+    # Terminal coding agent, provider-agnostic. OpenCode v2 (2.0.18), switched
+    # from v1 (1.18.32) on 2026-09-28. Config path is unchanged
+    # (~/.config/opencode/opencode.jsonc, currently just the schema stub).
+    # Credentials move from ~/.local/share/opencode/auth.json into SQLite
+    # (~/.local/share/opencode/opencode.db), migrated on first v2 run. v2 runs
+    # through a shared background server and stores sessions in that database.
+    agents.opencode2
+    opencodeCli
 
     # Token usage and cost across the agent CLIs, read from their local session
     # files — nothing is uploaded. Covers codex and the other installed agents.

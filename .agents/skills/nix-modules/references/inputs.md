@@ -9,7 +9,7 @@
 | `nixpkgs-unstable` | 快速更新或 stable 缺少的单包 |
 | `home-manager` | release-26.05，NixOS 模块方式 |
 | `nixvim`、`mcp-hub` | 编辑器模块及 MCP 二进制，nvim 有独立包集合 |
-| `noctalia`、`zen-browser` | 使用 unstable；浏览器自己的 HM pin 保持版本匹配 |
+| `noctalia` | 跟随 `nixpkgs-unstable` |
 | `noctalia-plugins-official`、`noctalia-plugins-community` | `flake = false` 源树，经 `kind = "path"` 使用 |
 | `sops-nix`、`nix-index-database` | 运行时秘密、预构建命令索引 |
 | `flake-parts`、`treefmt-nix` | 输出结构、格式检查 |

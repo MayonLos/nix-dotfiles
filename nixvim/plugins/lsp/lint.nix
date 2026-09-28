@@ -10,9 +10,8 @@
     lintersByFt = {
       python = [ "ruff" ];
       lua = [ "luacheck" ];
-      # shellcheck is in toolchain.nix and was reachable from neither editor
-      # until this line: nvim linted nothing for sh/bash, and Emacs' built-in
-      # flymake backend shells out to `sh -n`, not to shellcheck.
+      # shellcheck is in toolchain.nix and was not reachable from nvim until
+      # this line: nvim linted nothing for sh/bash.
       sh = [ "shellcheck" ];
       bash = [ "shellcheck" ];
     };

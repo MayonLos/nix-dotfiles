@@ -7,7 +7,7 @@
   # and `:Urls ~/Documents/notes` reaches it from anywhere.
   #
   # Neovim 0.12 already binds `gx` to `vim.ui.open(vim.ui._get_urls())`, and
-  # xdg-open resolves to zen-beta on this host, so the plumbing works. What is
+  # xdg-open resolves to google-chrome on this host, so the plumbing works. What is
   # replaced here is the *detection*: `_get_urls` wants the cursor on the URL
   # itself, and in a bullet like the one above the cursor is almost always on
   # the title text or on the checkbox instead. It also has no notion of the

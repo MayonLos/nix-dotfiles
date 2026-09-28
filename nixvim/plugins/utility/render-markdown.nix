@@ -72,8 +72,7 @@ in
       # an image. Measured after the move to kitty -- snacks reported
       # `enabled=true math.enabled=true terminal=kitty supported=true`, and the
       # buffer still showed utftex's Unicode art. Same "two packages claiming
-      # one canvas" shape as dirvish/nerd-icons and org-modern/valign in the
-      # Emacs config.
+      # one canvas" shape as dirvish/nerd-icons.
       #
       # snacks renders the formula through pdflatex and shows a typeset image
       # (plugins/appearance/snacks.nix), which is what this is for.

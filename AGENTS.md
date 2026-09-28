@@ -38,7 +38,7 @@ Intel + NVIDIA 笔记本，mango 桌面。Home Manager 随 NixOS 重建，无独
 | [nix-modules](.agents/skills/nix-modules/SKILL.md) | 模块增删移动、flake 接线、通道、开发 shell |
 | [sops-secrets](.agents/skills/sops-secrets/SKILL.md) | 秘密增删轮换、凭据传递与运行时缺失 |
 | [nvim-config](.agents/skills/nvim-config/SKILL.md) | `nixvim/` 插件、加载、键位及编辑器行为 |
-| [dev-toolchain](.agents/skills/dev-toolchain/SKILL.md) | LSP、formatter、DAP、语言工具链、Emacs |
+| [dev-toolchain](.agents/skills/dev-toolchain/SKILL.md) | LSP、formatter、DAP、语言工具链 |
 | [editors-ide](.agents/skills/editors-ide/SKILL.md) | JetBrains、VS Code、AI CLI 的安装与包装 |
 | [shell-terminal](.agents/skills/shell-terminal/SKILL.md) | zsh、环境变量、kitty、tmux、yazi、git |
 | [desktop-mango](.agents/skills/desktop-mango/SKILL.md) | mango、noctalia、portal、截图、剪贴板、fcitx5 |

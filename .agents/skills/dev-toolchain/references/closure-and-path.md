@@ -1,8 +1,7 @@
-# Closure, PATH, and Emacs startup checks
+# Closure and PATH checks
 
 Read this when changing Nixvim plugin dependencies, moving a tool between the
-profile and an editor package, debugging desktop-only command lookup, or
-changing Emacs autoload/module wiring.
+profile and an editor package, or debugging desktop-only command lookup.
 
 ## Nixvim package dependencies
 

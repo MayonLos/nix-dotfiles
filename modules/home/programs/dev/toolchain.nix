@@ -25,11 +25,8 @@
     # it as `matlab-ls` so it runs inside the FHS environment, which is the only
     # place the MATLAB it drives for completion and formatting will start.
     #
-    # Only nvim consumes it today -- the Emacs tree has no matlab or octave mode
-    # and no eglot-server-programs entry, so the usual "both editors share one
-    # server" reason does not apply yet. It lives here anyway because that is
-    # where this file says servers live, and because wiring Emacs up later
-    # should not mean moving the package.
+    # Only nvim consumes it today; it lives here because this file is where
+    # servers live, and so a future client does not mean moving the package.
     matlab-language-server
     nixd
     pyright
