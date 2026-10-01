@@ -1,6 +1,10 @@
 # Themes and config ownership
 
-Noctalia renders the live palette for GTK, Qt, Kitty, zathura, Chrome (via a local user template, not the community catalog — see media and messaging), and other configured apps. Follow that output where possible. Use terminal color indexes instead of fixed hex values for terminal UI; keep fixed colors only where the program cannot follow the palette at runtime.
+Noctalia renders the live palette for GTK, Qt, Kitty, zathura, and other configured apps. Follow that output where possible. Use terminal color indexes instead of fixed hex values for terminal UI; keep fixed colors only where the program cannot follow the palette at runtime.
+
+Firefox's browser chrome follows the Noctalia palette through a local user template that updates only the managed block in the mutable profile `chrome/userChrome.css`. Firefox reads that stylesheet at startup, so palette changes require restarting Firefox; the Home Manager activation seed supplies a usable static fallback before Noctalia's first render.
+
+The wrapped Firefox package pins the currently used Dark Reader XPI and locks the browser to its built-in dark theme. This keeps a theme restored by Firefox Sync from replacing the Noctalia browser-chrome colors. The four legacy synchronized theme add-ons are blocked by enterprise policy because locking the active-theme preference alone did not deactivate Frostlit in the existing profile. Account, bookmarks and session data are preserved. Activation reuses cached palette values only, ensuring stale rendered CSS cannot replace the current Nix-managed layout.
 
 `modules/home/base/gtk.nix` leaves GTK4's explicit theme unset so libadwaita can use Noctalia's CSS, and selects the GTK3 theme expected by the generated GTK3 CSS. The cursor and icon themes are configured there as well. Check the current template output before adding another theme manager.
 

@@ -1,9 +1,39 @@
-{
-  pkgs,
-  pkgs-unstable,
-  ...
-}:
+{ pkgs, pkgs-unstable, ... }:
 
+let
+  fetchFirefoxXpi =
+    name: url: hash:
+    pkgs.fetchurl { inherit name url hash; };
+
+  firefoxAddons = {
+    darkReader =
+      fetchFirefoxXpi "darkreader-4.9.133.xpi"
+        "https://addons.mozilla.org/firefox/downloads/file/5055786/darkreader-4.9.133.xpi"
+        "sha256-6wbFCW12FhbH8dlUwRUkykv/T+cikETcH84oiowIU6s=";
+  };
+
+  firefoxWithManagedThemeAndExtensions = pkgs.firefox.override {
+    extraPolicies = {
+      ExtensionSettings = {
+        "addon@darkreader.org" = {
+          installation_mode = "force_installed";
+          install_url = "file://${firefoxAddons.darkReader}";
+          updates_disabled = true;
+        };
+        # Sync kept Frostlit active in the real profile despite the locked
+        # theme preference. Block these four old theme add-ons so the built-in
+        # dark theme and Noctalia browser chrome can actually take effect.
+        "{74da71cc-4d66-48f5-95d1-1f017f18ffab}".installation_mode = "blocked";
+        "{443bf4af-0884-4c22-886b-21f936e899df}".installation_mode = "blocked";
+        "{7efc2a80-496f-49b1-88db-4ddd7d312757}".installation_mode = "blocked";
+        "{894e1fa0-bfe2-4ee8-ad01-6e9ff4092ad0}".installation_mode = "blocked";
+      };
+    };
+    extraPrefs = ''
+      lockPref("extensions.activeThemeID", "firefox-compact-dark@mozilla.org");
+    '';
+  };
+in
 {
   home.packages = with pkgs; [
     qt6Packages.qt6ct
@@ -77,7 +107,7 @@
     protonup-qt
     obsidian
     go-musicfox
-    google-chrome
+    firefoxWithManagedThemeAndExtensions
     typora
   ];
 }

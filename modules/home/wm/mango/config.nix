@@ -200,12 +200,7 @@
       windowrule = [
         "isfloating:1,width:0.5,isnoborder:1,appid:^swayimg$"
         "isfloating:1,appid:^thunar$,title:^(Rename|重命名)"
-        # Chrome's PiP window title is a fixed string
-        # (IDS_PICTURE_IN_PICTURE_TITLE_TEXT, "Picture in picture" -- not the
-        # Firefox-style "Picture-in-Picture"). The appid alternation covers both
-        # the Wayland app_id (google-chrome) and the X11 WM_CLASS class spelling
-        # (Google-chrome).
-        "isfloating:1,width:480,appid:^[Gg]oogle-chrome$,title:^Picture in picture$"
+        "isfloating:1,width:480,appid:^[Ff]irefox$,title:^Picture-in-Picture$"
         # blueman-manager, nm-connection-editor and org.gnome.Calculator were
         # in this alternation and are installed nowhere -- not on PATH, not in
         # any module. Template leftovers. Add an appid back when the program
@@ -230,7 +225,7 @@
       # master-stack operations.
       bind = [
         "SUPER,E,spawn,thunar"
-        "SUPER,B,spawn,google-chrome"
+        "SUPER,B,spawn,firefox"
         "SUPER,Return,spawn,kitty"
         "ALT,space,spawn,noctalia msg panel-toggle launcher"
         "SUPER,S,spawn,noctalia msg panel-toggle control-center"

@@ -73,9 +73,162 @@ let
   # <Actions>/ThunarActions/ (confirmed against the thunar-uca plugin binary).
   copyImageId = "copy-image-as-png-1";
   copyImageAccel = ''(gtk_accel_path "<Actions>/ThunarActions/uca-action-${copyImageId}" "<Primary><Shift>c")'';
+
+  # Paths are text, but WeChat still reads the X11 selection. Write both,
+  # same reason as copy-image.
+  copyPath = pkgs.writeShellApplication {
+    name = "copy-path";
+    runtimeInputs = with pkgs; [
+      wl-clipboard
+      xclip
+      libnotify
+      coreutils
+    ];
+    text = ''
+      [ "$#" -ge 1 ] || exit 1
+      payload="$(printf '%s\n' "$@")"
+      printf '%s' "$payload" | wl-copy --type text/plain
+      printf '%s' "$payload" | xclip -selection clipboard -t text/plain -i
+      if [ "$#" -eq 1 ]; then
+        notify-send --app-name=copy-path --icon=edit-copy "Copied path" "$1"
+      else
+        notify-send --app-name=copy-path --icon=edit-copy "Copied paths" "$# selected"
+      fi
+    '';
+  };
+
+  pasteClipboardImage = pkgs.writeShellApplication {
+    name = "paste-clipboard-image";
+    runtimeInputs = with pkgs; [
+      wl-clipboard
+      xclip
+      imagemagick
+      libnotify
+      coreutils
+      gnugrep
+    ];
+    text = ''
+      fail() {
+        notify-send --app-name=paste-clipboard-image --icon=dialog-error "Paste image failed" "$1"
+        exit 1
+      }
+
+      [ "$#" -ge 1 ] || fail "No destination"
+      dest="$1"
+      if [ ! -d "$dest" ]; then
+        dest="$(dirname "$dest")"
+      fi
+      [ -d "$dest" ] || fail "Not a directory: $dest"
+
+      types="$(wl-paste --list-types 2>/dev/null || true)"
+      if printf '%s\n' "$types" | grep -qx 'image/png'; then
+        mime="image/png"
+        source="wayland"
+      else
+        mime="$(printf '%s\n' "$types" | grep '^image/' | head -n 1 || true)"
+        source="wayland"
+      fi
+      if [ -z "$mime" ]; then
+        types="$(xclip -selection clipboard -t TARGETS -o 2>/dev/null || true)"
+        if printf '%s\n' "$types" | grep -qx 'image/png'; then
+          mime="image/png"
+        else
+          mime="$(printf '%s\n' "$types" | grep '^image/' | head -n 1 || true)"
+        fi
+        source="x11"
+      fi
+      [ -n "$mime" ] || fail "Clipboard has no image"
+
+      base="img_$(date -Iseconds | cut -d+ -f1 | tr 'T:' '_-')"
+      out="$dest/$base.png"
+      n=1
+      while [ -e "$out" ]; do
+        out="$dest/''${base}_$n.png"
+        n=$((n + 1))
+      done
+      part="$(mktemp -t paste-clipboard-image.XXXXXX)"
+      if [ "$source" = "wayland" ]; then
+        wl-paste --type "$mime" >"$part" || fail "Could not read the Wayland clipboard"
+      else
+        xclip -selection clipboard -t "$mime" -o >"$part" || fail "Could not read the X11 clipboard"
+      fi
+      if [ "$mime" = "image/png" ]; then
+        mv "$part" "$out"
+      else
+        magick "''${part}[0]" "png:$out" || fail "PNG conversion failed"
+        rm -f "$part"
+      fi
+      notify-send --app-name=paste-clipboard-image --icon=insert-image "Saved image" "$out"
+    '';
+  };
+
+  pasteSymlink = pkgs.writeShellApplication {
+    name = "paste-symlink";
+    runtimeInputs = with pkgs; [
+      wl-clipboard
+      xclip
+      python3
+      libnotify
+      coreutils
+    ];
+    text = ''
+      fail() {
+        notify-send --app-name=paste-symlink --icon=dialog-error "Paste link failed" "$1"
+        exit 1
+      }
+
+      [ "$#" -ge 1 ] || fail "No destination"
+      dest="$1"
+      if [ ! -d "$dest" ]; then
+        dest="$(dirname "$dest")"
+      fi
+      [ -d "$dest" ] || fail "Not a directory: $dest"
+
+      uris="$(wl-paste --type text/uri-list 2>/dev/null || true)"
+      if [ -z "$uris" ]; then
+        uris="$(xclip -selection clipboard -t text/uri-list -o 2>/dev/null || true)"
+      fi
+      [ -n "$uris" ] || fail "Clipboard has no files"
+
+      count="$(PASTE_URIS="$uris" python3 - "$dest" <<'PY'
+import os
+import sys
+import urllib.parse
+
+dest = sys.argv[1]
+made = 0
+for line in os.environ.get("PASTE_URIS", "").splitlines():
+    raw = urllib.parse.unquote(line.strip())
+    if not raw.startswith("file://"):
+        continue
+    src = raw[len("file://"):]
+    if not src or not os.path.exists(src):
+        continue
+    name = os.path.basename(src.rstrip("/")) or "link"
+    root, ext = os.path.splitext(name)
+    target = os.path.join(dest, name)
+    n = 1
+    while os.path.lexists(target):
+        target = os.path.join(dest, f"{root} ({n}){ext}")
+        n += 1
+    os.symlink(src, target)
+    made += 1
+if made == 0:
+    sys.exit(1)
+print(made)
+PY
+      )" || fail "No clipboard file could be linked"
+      notify-send --app-name=paste-symlink --icon=insert-link "Created links" "$count"
+    '';
+  };
 in
 {
-  home.packages = [ copyImage ];
+  home.packages = [
+    copyImage
+    copyPath
+    pasteClipboardImage
+    pasteSymlink
+  ];
 
   # uca.xml used to be Thunar's own file (mode 600); home-manager owns it now.
   # The cost is that the "Configure custom actions" dialog can no longer save —
@@ -109,6 +262,44 @@ in
     	<range>1</range>
     	<patterns>*</patterns>
     	<image-files/>
+    </action>
+    <action>
+    	<icon>edit-copy</icon>
+    	<name>Copy Path</name>
+    	<submenu></submenu>
+    	<unique-id>copy-path-1</unique-id>
+    	<command>${copyPath}/bin/copy-path %F</command>
+    	<description>Copy the selected paths as text to Wayland and X11 clipboards</description>
+    	<range>*</range>
+    	<patterns>*</patterns>
+    	<directories/>
+    	<audio-files/>
+    	<image-files/>
+    	<other-files/>
+    	<text-files/>
+    	<video-files/>
+    </action>
+    <action>
+    	<icon>insert-image</icon>
+    	<name>Paste Clipboard Image</name>
+    	<submenu></submenu>
+    	<unique-id>paste-clipboard-image-1</unique-id>
+    	<command>${pasteClipboardImage}/bin/paste-clipboard-image %f</command>
+    	<description>Save the clipboard image into this folder as a PNG</description>
+    	<range>*</range>
+    	<patterns>*</patterns>
+    	<directories/>
+    </action>
+    <action>
+    	<icon>insert-link</icon>
+    	<name>Paste as Link</name>
+    	<submenu></submenu>
+    	<unique-id>paste-symlink-1</unique-id>
+    	<command>${pasteSymlink}/bin/paste-symlink %f</command>
+    	<description>Symlink clipboard files into this folder</description>
+    	<range>*</range>
+    	<patterns>*</patterns>
+    	<directories/>
     </action>
     </actions>
   '';
