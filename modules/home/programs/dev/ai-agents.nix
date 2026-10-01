@@ -53,6 +53,34 @@ let
     ''
   );
 
+  # dsh's app-boot loads `node-addon-require-builtin`, a native addon that
+  # decodes the machine code of a V8-internal getter to find
+  # `PrincipalRealm::builtin_module_require()`. nixpkgs' cc-wrapper compiles
+  # every x86_64/aarch64 package with leaf frame pointers
+  # (-fno-omit-frame-pointer -mno-omit-leaf-frame-pointer), which wraps that
+  # getter in a prologue/epilogue the decoder does not recognize, so boot aborts
+  # with "x64 sysv getter is not a recognized this->field accessor
+  # (wide-window retry: ...)". It is a build-flag mismatch, not a dsh bug:
+  # official nodejs.org binaries work. Root cause and discussion live in
+  # NixOS/nixpkgs#565667; llm-agents.nix#9994 carries the stub below.
+  #
+  # Stub the addon out instead of rebuilding Node with frame pointers disabled.
+  # `addon.requireBuiltin(id)` becomes `require(id)`, which returns the same
+  # internal modules because the wrapper already runs Node with
+  # --expose-internals. This is the upstream-reported workaround; the cost is
+  # that dsh's plugin-package interception goes through Node's normal resolver
+  # rather than the addon's routing. Remove once dsh (or the addon, or nixpkgs'
+  # Node) handles frame-pointer builds.
+  dshCli = agents.dsh.overrideAttrs (old: {
+    postInstall = (old.postInstall or "") + ''
+      substituteInPlace \
+        $out/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js \
+        --replace-fail \
+        'createRequire(import.meta.url)("node-addon-require-builtin")' \
+        '{ requireBuiltin: createRequire(import.meta.url) }'
+    '';
+  });
+
   # llm-agents.nix ships OpenCode v2's binary as `opencode2` (upstream's real
   # name is `opencode`; the suffix avoids colliding with the v1 package). The
   # fel/quill noctalia plugin drives the literal name `opencode` and its backend
@@ -75,7 +103,8 @@ in
     # which shells out to pnpm — mutable state outside the store, needing
     # corepack/pnpm on PATH (nodejs in ../../packages.nix provides corepack).
     # Credentials are configured on first run, not read from DEEPSEEK_API_KEY.
-    agents.dsh
+    # dshCli, not agents.dsh directly, because of the loader stub above.
+    dshCli
 
     # OpenAI's CLI agent. Was ./codex until 2026-08-30: a symlinkJoin around
     # the sadjow/codex-cli-nix input, whose launcher injected ~10 `-c` overrides

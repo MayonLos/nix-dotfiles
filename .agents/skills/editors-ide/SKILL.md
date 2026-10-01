@@ -49,14 +49,25 @@ handles the layout itself.
 
 `dsh` uses the shipped web/headless profiles; do not assume every profile named
 in upstream help is packaged. Its plugins are mutable runtime data.
+`ai-agents.nix` installs a patched `dshCli` rather than `agents.dsh`: nixpkgs
+Node is compiled with leaf frame pointers, which breaks the
+`node-addon-require-builtin` machine-code decoder at boot ("x64 sysv getter is
+not a recognized this->field accessor ..."). The patch stubs that addon to
+`require` plus the already-passed `--expose-internals`; keep it until a fixed
+Node or dsh lands (NixOS/nixpkgs#565667, llm-agents.nix#9994).
 For an Electron app that rewrites its desktop entry, check whether Exec still
 uses the wrapper and whether an old Home Manager `.backup` blocks activation.
 Resolve file ownership before adding `force = true`; see `desktop-apps`.
 
 ZCode was explicitly removed after it pushed to a user repository without
 being asked. Do not restore it unless the user explicitly requests it.
-Antigravity was removed because it was no longer used; do not treat its absence
-as a packaging gap.
+Antigravity (IDE + CLI) was removed on 2026-09-20 as unused and re-added on
+2026-10-01 at the user's request; `programs/antigravity.nix` is the module.
+The IDE needs `pkgs-unstable.antigravity-ide-fhs` (stable 26.05 has no
+`antigravity-ide-fhs` attribute; the FHS build is what lets extension language
+servers load), while the CLI is `agents.antigravity-cli` from llm-agents
+(binary `agy`, newer than unstable). `codecompanion`'s CLI agent list drives
+`agy`; keep the three in sync when moving packages around.
 
 ## Verification
 

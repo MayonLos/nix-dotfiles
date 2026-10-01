@@ -28,6 +28,9 @@
 - `modules/home/programs/dev/java.nix`、`modules/home/base/session-vars.nix`、
   `modules/home/programs/games/prismlauncher.nix`：Java 26，三处同步。
 - `modules/home/programs/apps/im.nix`：QQ / WeChat。
+- `modules/home/programs/dev/antigravity.nix`：`antigravity-ide-fhs`——stable
+  26.05 没有该属性，FHS 变体供 IDE 扩展与语言服务器加载；同文件的 CLI 走
+  `llm-agents`，不占 unstable。
 - `flake.nix`：overlay 替换 `xdg-desktop-portal-wlr`。NixOS 模块硬编码该属性到
   extraPortals 和 ExecStart，不能另加第二个不同版本的 backend。
 - `modules/system/hardware/nvidia.nix`：用当前系统的 kernelPackages.callPackage

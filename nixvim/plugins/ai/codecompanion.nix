@@ -71,6 +71,9 @@ in
           agents = {
             codex.cmd = "codex";
             copilot.cmd = "copilot";
+            # Google's Antigravity CLI (binary `agy`), from antigravity.nix;
+            # it is a Gemini-CLI fork, so it can be driven as a CLI engine.
+            antigravity.cmd = "agy";
             # grok is the third engine from ai-agents.nix, reachable from
             # <leader>aT. `grok` is the interactive binary; `agent` is automation.
             grok.cmd = "grok";
