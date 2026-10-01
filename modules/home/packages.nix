@@ -106,8 +106,21 @@ in
     libqalculate
     protonup-qt
     obsidian
+    zotero
+    kicad
+    kdePackages.kdenlive
+    stellarium
+    gimp
     go-musicfox
     firefoxWithManagedThemeAndExtensions
+    # Official client. The nixpkgs wrapper follows NIXOS_OZONE_WL from
+    # session-vars.nix, and Noctalia's notification daemon is already on
+    # (wm/mango/noctalia.nix). That daemon is what the NixOS wiki says
+    # Discord crashes without on a compositor that is not a full desktop.
+    # Screen sharing uses the existing xdg-desktop-portal-wlr path, which
+    # is pinned to eDP-1. Stock build, no withVencord: a June 2026 nixpkgs
+    # report left that override opening a window that ignored input.
+    discord
     typora
   ];
 }
