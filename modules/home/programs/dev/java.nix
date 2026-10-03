@@ -1,21 +1,22 @@
-{ pkgs, pkgs-unstable, ... }:
+{
+  pkgs,
+  pkgs-unstable,
+  lib,
+  ...
+}:
+
 let
-  temurin = pkgs.javaPackages.compiler.temurin-bin;
-  # 26 is not in stable 26.05 yet.
-  temurin-unstable = pkgs-unstable.javaPackages.compiler.temurin-bin;
+  java = import ../../../../lib/java.nix { inherit pkgs pkgs-unstable; };
+
+  # One launcher pair per installed version. The default runs as the profile
+  # `java`; the rest are reachable as javaNN/javacNN or via use-javaNN.
+  launchers = lib.concatLists (
+    lib.mapAttrsToList (version: jdk: [
+      (pkgs.writeShellScriptBin "java${version}" ''exec ${jdk}/bin/java "$@"'')
+      (pkgs.writeShellScriptBin "javac${version}" ''exec ${jdk}/bin/javac "$@"'')
+    ]) java.jdks
+  );
 in
 {
-  home.packages = [
-    temurin.jdk-25
-    (pkgs.writeShellScriptBin "java8" ''exec ${temurin.jdk-8}/bin/java "$@"'')
-    (pkgs.writeShellScriptBin "javac8" ''exec ${temurin.jdk-8}/bin/javac "$@"'')
-    (pkgs.writeShellScriptBin "java17" ''exec ${temurin.jdk-17}/bin/java "$@"'')
-    (pkgs.writeShellScriptBin "javac17" ''exec ${temurin.jdk-17}/bin/javac "$@"'')
-    (pkgs.writeShellScriptBin "java21" ''exec ${temurin.jdk-21}/bin/java "$@"'')
-    (pkgs.writeShellScriptBin "javac21" ''exec ${temurin.jdk-21}/bin/javac "$@"'')
-    (pkgs.writeShellScriptBin "java25" ''exec ${temurin.jdk-25}/bin/java "$@"'')
-    (pkgs.writeShellScriptBin "javac25" ''exec ${temurin.jdk-25}/bin/javac "$@"'')
-    (pkgs.writeShellScriptBin "java26" ''exec ${temurin-unstable.jdk-26}/bin/java "$@"'')
-    (pkgs.writeShellScriptBin "javac26" ''exec ${temurin-unstable.jdk-26}/bin/javac "$@"'')
-  ];
+  home.packages = [ java.jdks.${java.default} ] ++ launchers;
 }

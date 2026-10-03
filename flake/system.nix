@@ -2,24 +2,17 @@
 let
   inherit (import ../lib) importDir;
 
-  pkgs-unstable-for =
-    system:
-    import inputs.nixpkgs-unstable {
-      inherit system;
-      config.allowUnfree = true;
-    };
+  system = "x86_64-linux";
 in
 {
-  flake.nixosConfigurations.nixos-btw = withSystem "x86_64-linux" (
-    { pkgs, ... }:
+  flake.nixosConfigurations.nixos-btw = withSystem system (
+    { pkgs, pkgs-unstable, ... }:
     let
-      pkgs-unstable = pkgs-unstable-for "x86_64-linux";
+      extraArgs = { inherit inputs pkgs-unstable; };
     in
     inputs.nixpkgs.lib.nixosSystem {
       inherit pkgs;
-      specialArgs = {
-        inherit inputs pkgs-unstable;
-      };
+      specialArgs = extraArgs;
       modules = [
         ../hosts/nixos-btw
         inputs.sops-nix.nixosModules.sops
@@ -29,9 +22,7 @@ in
             useGlobalPkgs = true;
             useUserPackages = true;
             backupFileExtension = "backup";
-            extraSpecialArgs = {
-              inherit inputs pkgs-unstable;
-            };
+            extraSpecialArgs = extraArgs;
             users.mayon = {
               imports = importDir ../modules/home;
             };

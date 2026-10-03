@@ -111,7 +111,18 @@
       ];
       perSystem =
         { system, ... }:
+        let
+          pkgs-unstable = import inputs.nixpkgs-unstable {
+            inherit system;
+            config.allowUnfree = true;
+          };
+        in
         {
+          # Single unstable instantiation: flake/system.nix consumes it through
+          # withSystem's module args, and the portal-wlr overlay below takes
+          # its package from the same set.
+          _module.args.pkgs-unstable = pkgs-unstable;
+
           _module.args.pkgs = import inputs.nixpkgs {
             inherit system;
             config.allowUnfree = true;
@@ -127,10 +138,10 @@
               # and the systemd ExecStart it overrides, and mango's own module
               # adds the same attribute again. Listing an unstable copy
               # alongside would put two different versions of one backend on the
-              # bus. legacyPackages, not a second `import`, so this costs no
-              # extra nixpkgs evaluation.
+              # bus. Taken from the single pkgs-unstable instantiation above,
+              # not a second legacyPackages evaluation.
               (_: _: {
-                inherit (inputs.nixpkgs-unstable.legacyPackages.${system}) xdg-desktop-portal-wlr;
+                inherit (pkgs-unstable) xdg-desktop-portal-wlr;
               })
             ];
           };

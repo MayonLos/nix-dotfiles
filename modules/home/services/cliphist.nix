@@ -1,36 +1,20 @@
 { pkgs, ... }:
-{
-  systemd.user.services.cliphist-watch-text = {
-    Unit = {
-      Description = "cliphist text clipboard watcher";
-      PartOf = [ "graphical-session.target" ];
-      After = [ "graphical-session.target" ];
-    };
-    Service = {
-      Type = "simple";
-      ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste --type text --watch ${pkgs.cliphist}/bin/cliphist store";
-      Restart = "on-failure";
-      RestartSec = 2;
-    };
-    Install = {
-      WantedBy = [ "graphical-session.target" ];
-    };
-  };
+let
+  mkGraphicalService = import ../../../lib/graphical-service.nix;
 
-  systemd.user.services.cliphist-watch-image = {
-    Unit = {
-      Description = "cliphist image clipboard watcher";
-      PartOf = [ "graphical-session.target" ];
-      After = [ "graphical-session.target" ];
+  mkWatch =
+    type: description:
+    mkGraphicalService {
+      inherit description;
+      service = {
+        Type = "simple";
+        ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste --type ${type} --watch ${pkgs.cliphist}/bin/cliphist store";
+        Restart = "on-failure";
+        RestartSec = 2;
+      };
     };
-    Service = {
-      Type = "simple";
-      ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste --type image --watch ${pkgs.cliphist}/bin/cliphist store";
-      Restart = "on-failure";
-      RestartSec = 2;
-    };
-    Install = {
-      WantedBy = [ "graphical-session.target" ];
-    };
-  };
+in
+{
+  systemd.user.services.cliphist-watch-text = mkWatch "text" "cliphist text clipboard watcher";
+  systemd.user.services.cliphist-watch-image = mkWatch "image" "cliphist image clipboard watcher";
 }

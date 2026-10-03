@@ -16,7 +16,7 @@ payload there, inspect the target app before blaming a cross-protocol bridge.
 History recording is not required for clipboard transfer. Check history units
 when the symptom is missing history, not as proof that ordinary paste works.
 
-Known current supervision caveat: the bridge waits on both watcher PIDs in one `wait` command. If one watcher exits while the other stays alive, the service may remain active without that direction. Consider this when changing restart behavior; do not claim that a specific client's copy always follows one path.
+Known current supervision caveat: the bridge uses `wait -n` for its watcher PIDs. If one watcher exits while the other stays alive, the service may remain active without that direction. Consider this when changing restart behavior; do not claim that a specific client's copy always follows one path.
 
 Preserve the bounded clipboard reads: a selection owner can disappear mid-transfer,
 and a blocked read stalls later events because the Wayland watcher runs callbacks

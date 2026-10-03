@@ -11,3 +11,7 @@
 
 # Legacy local Claude state is not part of the Codex workflow.
 /.claude/
+
+# Python bytecode from scripts run in-tree.
+__pycache__/
+*.pyc

@@ -63,9 +63,11 @@ let
   # together. Every tool is therefore named by store path, the same way the
   # activation script further down already does it.
   #
-  # tesseract is built with chi_sim in ../../packages.nix; without it Chinese
-  # text comes back empty rather than wrong, which is easy to mistake for the
-  # script being broken.
+  # Same derivation packages.nix installs: pkgs/tesseract-ocr.nix adds chi_sim,
+  # without which Chinese text comes back empty rather than wrong -- easy to
+  # mistake for the script being broken.
+  tesseractOcr = pkgs.callPackage ../../../../pkgs/tesseract-ocr.nix { };
+
   mkOcr =
     name: screen:
     pkgs.writeShellScriptBin name ''
@@ -92,7 +94,7 @@ let
           ''
       }
 
-      if ! text="$(${pkgs.tesseract}/bin/tesseract "$img" - -l eng+chi_sim --psm 6 2>/dev/null)" \
+      if ! text="$(${tesseractOcr}/bin/tesseract "$img" - -l eng+chi_sim --psm 6 2>/dev/null)" \
         || [ -z "$text" ]; then
         ${pkgs.libnotify}/bin/notify-send "OCR" "没有识别到文字" || true
         exit 1

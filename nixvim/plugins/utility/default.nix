@@ -9,5 +9,6 @@
     ./trouble.nix
     ./persistence.nix
     ./open-url.nix
+    ./markdown-preview.nix
   ];
 }

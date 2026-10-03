@@ -8,8 +8,8 @@
   #
   # The cost is the usual one for a reimplemented API: it breaks whenever
   # NetEase changes it, and VIP or otherwise DRM-protected tracks will not play.
-  # If that becomes the common case, the answer is the web player in Zen, not
-  # Wine.
+  # If that becomes the common case, the answer is the web player in Firefox,
+  # not Wine.
   #
   # `pkgs` rather than pkgs-unstable: both channels are on 2.5.3.
   #

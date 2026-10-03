@@ -1,3 +1,12 @@
+let
+  mkServer =
+    server:
+    {
+      enable = true;
+      package = null;
+    }
+    // server;
+in
 _: {
   # Every `cmd` below names its binary rather than interpolating a store path.
   # Two reasons: nvim then starts the *same* server that
@@ -8,9 +17,7 @@ _: {
     inlayHints.enable = true;
 
     servers = {
-      clangd = {
-        enable = true;
-        package = null;
+      clangd = mkServer {
         config = {
           cmd = [
             "clangd"
@@ -33,9 +40,18 @@ _: {
         };
       };
 
-      nixd = {
-        enable = true;
-        package = null;
+      dockerls = mkServer {
+        config = {
+          cmd = [
+            "docker-langserver"
+            "--stdio"
+          ];
+          filetypes = [ "dockerfile" ];
+          root_markers = [ ".git" ];
+        };
+      };
+
+      nixd = mkServer {
         config = {
           cmd = [ "nixd" ];
           filetypes = [ "nix" ];
@@ -47,9 +63,7 @@ _: {
         };
       };
 
-      lua_ls = {
-        enable = true;
-        package = null;
+      lua_ls = mkServer {
         config = {
           cmd = [ "lua-language-server" ];
           filetypes = [ "lua" ];
@@ -69,9 +83,7 @@ _: {
         };
       };
 
-      pyright = {
-        enable = true;
-        package = null;
+      pyright = mkServer {
         config = {
           cmd = [
             "pyright-langserver"
@@ -88,9 +100,7 @@ _: {
         };
       };
 
-      jdtls = {
-        enable = true;
-        package = null;
+      jdtls = mkServer {
         config = {
           cmd = [ "jdtls" ];
           filetypes = [ "java" ];
@@ -103,9 +113,7 @@ _: {
         };
       };
 
-      bashls = {
-        enable = true;
-        package = null;
+      bashls = mkServer {
         config = {
           cmd = [
             "bash-language-server"
@@ -119,9 +127,7 @@ _: {
         };
       };
 
-      texlab = {
-        enable = true;
-        package = null;
+      texlab = mkServer {
         config = {
           cmd = [ "texlab" ];
           filetypes = [
@@ -149,9 +155,7 @@ _: {
         };
       };
 
-      marksman = {
-        enable = true;
-        package = null;
+      marksman = mkServer {
         config = {
           cmd = [
             "marksman"
@@ -197,9 +201,7 @@ _: {
       # the matlab filetype (an empty one included); a file only becomes octave
       # on Octave-specific syntax, and pointing MathWorks' server at that would
       # diagnose real Octave code as broken MATLAB. octave.nix still owns those.
-      matlab_ls = {
-        enable = true;
-        package = null;
+      matlab_ls = mkServer {
         config = {
           cmd = [ "matlab-ls" ];
           filetypes = [ "matlab" ];
@@ -281,9 +283,7 @@ _: {
         };
       };
 
-      cmake = {
-        enable = true;
-        package = null;
+      cmake = mkServer {
         config = {
           cmd = [ "cmake-language-server" ];
           filetypes = [ "cmake" ];
@@ -304,9 +304,7 @@ _: {
       # vscode-langservers-extracted. All of them speak LSP over stdio only, so
       # "--stdio" is mandatory rather than a preference -- without it the process
       # starts, says nothing, and the client times out.
-      html = {
-        enable = true;
-        package = null;
+      html = mkServer {
         config = {
           cmd = [
             "vscode-html-language-server"
@@ -323,9 +321,7 @@ _: {
         };
       };
 
-      cssls = {
-        enable = true;
-        package = null;
+      cssls = mkServer {
         config = {
           cmd = [
             "vscode-css-language-server"
@@ -343,9 +339,7 @@ _: {
         };
       };
 
-      jsonls = {
-        enable = true;
-        package = null;
+      jsonls = mkServer {
         config = {
           cmd = [
             "vscode-json-language-server"
@@ -362,9 +356,7 @@ _: {
         };
       };
 
-      ts_ls = {
-        enable = true;
-        package = null;
+      ts_ls = mkServer {
         config = {
           cmd = [
             "typescript-language-server"
@@ -390,9 +382,7 @@ _: {
         };
       };
 
-      yamlls = {
-        enable = true;
-        package = null;
+      yamlls = mkServer {
         config = {
           cmd = [
             "yaml-language-server"

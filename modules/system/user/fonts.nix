@@ -2,7 +2,6 @@
 {
   fonts = {
     packages = with pkgs; [
-      lmodern
       nerd-fonts.jetbrains-mono
       # nerd-icons (and doom-modeline through it) looks up "Symbols Nerd Font
       # Mono" by name rather than falling back to whatever Nerd Font is
@@ -11,7 +10,6 @@
       noto-fonts-cjk-sans
       noto-fonts-cjk-serif
       noto-fonts-color-emoji
-      wqy_zenhei
     ];
     fontconfig = {
       antialias = true;

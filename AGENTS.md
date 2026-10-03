@@ -14,8 +14,11 @@ Intel + NVIDIA 笔记本，mango 桌面。Home Manager 随 NixOS 重建，无独
 | `hosts/nixos-btw/` | 主机入口及硬件扫描配置 |
 | `modules/system/`、`modules/home/` | 自动导入的 NixOS / Home Manager 模块 |
 | `nixvim/` | 显式导入的 Neovim 模块树 |
-| `pkgs/`、`lib/` | 自定义包与 `importDir` 辅助函数 |
+| `pkgs/`、`lib/` | 自定义包与共享 helper（`importDir`、版本集合、桌面常量） |
 | `secrets/` | sops 加密数据 |
+
+抽象接口（`lib/`）与关键配置文件的索引和改动指引：
+`.agents/skills/nix-modules/references/shared-helpers.md`。
 
 ## 不能在整理中丢失的约束
 

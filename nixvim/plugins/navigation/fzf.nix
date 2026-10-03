@@ -45,15 +45,43 @@
       };
     };
     settings = {
+      # The default black backdrop (60) darkens the editor around the picker,
+      # leaving a visible rectangle even when all picker backgrounds match.
       winopts = {
+        backdrop = 100;
         border = "rounded";
-        hls = {
-          normal = "NormalFloat";
-          border = "FloatBorder";
-          title = "FloatTitle";
-          preview_normal = "NormalFloat";
-          preview_border = "FloatBorder";
+        width = 0.86;
+        height = 0.80;
+        row = 0.5;
+        col = 0.5;
+        preview = {
+          layout = "flex";
+          horizontal = "right:55%";
+          vertical = "down:45%";
+          scrollbar = false;
         };
+      };
+      hls = {
+        normal = "FzfLuaSurface";
+        border = "FzfLuaSurfaceBorder";
+        title = "FzfLuaSurfaceTitle";
+        preview_normal = "FzfLuaSurface";
+        preview_border = "FzfLuaSurfaceBorder";
+        preview_title = "FzfLuaSurfaceTitle";
+        fzf = {
+          normal = "FzfLuaSurface";
+          border = "FzfLuaSurfaceBorder";
+          separator = "FzfLuaSurfaceBorder";
+          gutter = "FzfLuaSurface";
+          prompt = "FzfLuaSurfaceTitle";
+          pointer = "FzfLuaSurfaceTitle";
+          marker = "FzfLuaSurfaceTitle";
+        };
+      };
+      fzf_colors = true;
+      fzf_opts = {
+        "--pointer" = "▌";
+        "--marker" = "✓";
       };
       file_icon_padding = " ";
       files = {

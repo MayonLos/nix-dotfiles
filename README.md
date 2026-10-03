@@ -68,8 +68,14 @@ hosts/nixos-btw/
   default.nix          主机入口，自动导入 modules/system/
   hardware.nix         nixos-generate-config 产物
 lib/
-  default.nix          导出 importDir
+  default.nix          只导出 importDir
   import-dir.nix       递归导入一个目录下所有 .nix
+  java.nix             Temurin JDK 版本集合（8/17/21/25/26）
+  toolchains.nix       LLVM / Python / Lua 版本集合
+  desktop.nix          跨 NixOS/HM 的桌面常量（光标、显示器、仓库路径）
+  graphical-service.nix 图形会话 systemd 用户单元模板
+  seed-file.nix        可变配置文件的"缺失才创建" activation
+pkgs/                  不在 nixpkgs 的包表达式（matlab、utftex、tesseract-ocr…）
 modules/
   home/                → Home Manager（用户 mayon）
     base/              身份、GTK、Qt、输入法、XDG、会话变量、Xresources
@@ -98,6 +104,9 @@ secrets/secrets.yaml   sops 加密的 API key（可安全提交）
 ### 自动导入：加文件就够了
 
 `lib/import-dir.nix` 里的 `importDir` **递归导入目录下每一个 `.nix`**，`modules/home/` 进 Home Manager，`modules/system/` 进 NixOS。新增模块不需要在任何地方登记，丢个文件进去即可。
+
+共享抽象接口（`lib/`）与关键配置文件的索引、改动步骤和验证方式，见
+[.agents/skills/nix-modules/references/shared-helpers.md](.agents/skills/nix-modules/references/shared-helpers.md)。
 
 **它没有排除机制** —— 连下划线前缀都不跳过。资源目录只有在不含 `.nix` 文件时才不会被当成模块导入。
 

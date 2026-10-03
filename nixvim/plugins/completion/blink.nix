@@ -1,3 +1,6 @@
+let
+  markdownTexSource = ''{ "latex", inherit_defaults = true }'';
+in
 _: {
   plugins.blink-cmp-latex.enable = true;
 
@@ -74,8 +77,8 @@ _: {
       };
       sources = {
         per_filetype.codecompanion.__raw = ''{ "codecompanion", inherit_defaults = true }'';
-        per_filetype.markdown.__raw = ''{ "latex", inherit_defaults = true }'';
-        per_filetype.tex.__raw = ''{ "latex", inherit_defaults = true }'';
+        per_filetype.markdown.__raw = markdownTexSource;
+        per_filetype.tex.__raw = markdownTexSource;
         providers.latex = {
           name = "LaTeX";
           module = "blink-cmp-latex";

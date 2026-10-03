@@ -4,14 +4,13 @@
 }:
 
 let
-  cursorTheme = "Bibata-Modern-Ice";
-  cursorSize = 24;
+  desktop = import ../../../lib/desktop.nix;
 in
 {
   home.pointerCursor = {
     package = pkgs.bibata-cursors;
-    name = cursorTheme;
-    size = cursorSize;
+    name = desktop.cursor.name;
+    size = desktop.cursor.size;
     gtk.enable = true;
     # x11.enable is what emits Xcursor.theme / Xcursor.size into
     # xresources.properties, which base/xresources.nix merges into the running
@@ -34,7 +33,7 @@ in
       package = pkgs.adw-gtk3;
     };
     iconTheme = {
-      name = "Papirus-Dark";
+      name = desktop.iconTheme;
       package = pkgs.papirus-icon-theme;
     };
   };

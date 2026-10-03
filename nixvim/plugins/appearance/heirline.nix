@@ -28,6 +28,7 @@
 
     local Space = { provider = " " }
     local Align = { provider = "%=" }
+    local function redraw_status() vim.cmd("redrawstatus") end
 
     -- Statusline providers parse %, and byte counts mismeasure Chinese names.
     local function text(value, width)
@@ -74,7 +75,7 @@
     ViMode.update = {
       "ModeChanged",
       pattern = "*:*",
-      callback = vim.schedule_wrap(function() vim.cmd("redrawstatus") end),
+      callback = vim.schedule_wrap(redraw_status),
     }
 
     local Git = {
@@ -203,7 +204,7 @@
     }
     vim.api.nvim_create_autocmd({ "RecordingEnter", "RecordingLeave", "LspAttach", "LspDetach" }, {
       group = vim.api.nvim_create_augroup("HeirlineState", { clear = true }),
-      callback = vim.schedule_wrap(function() vim.cmd.redrawstatus() end),
+      callback = vim.schedule_wrap(redraw_status),
     })
     local FilePercent = { provider = "%P " }
     local Ruler = { provider = "%l:%v ", hl = { fg = "fg", bold = true } }
@@ -264,7 +265,7 @@
     vim.api.nvim_create_autocmd("User", {
       group = "HeirlineCodeCompanion",
       pattern = { "CodeCompanionChatOpened", "CodeCompanionChatModel", "CodeCompanionChatDone" },
-      callback = vim.schedule_wrap(function() vim.cmd("redrawstatus") end),
+      callback = vim.schedule_wrap(redraw_status),
     })
     local CodeCompanionStatusline = {
       condition = IsCodeCompanion,

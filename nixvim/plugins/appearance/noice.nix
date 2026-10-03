@@ -1,3 +1,12 @@
+let
+  border = {
+    style = "rounded";
+    padding = [
+      0
+      1
+    ];
+  };
+in
 _: {
   # Replaces the one-line cmdline and the message area at the bottom of the
   # screen with floating windows. This is the single largest visual change in
@@ -34,27 +43,9 @@ _: {
       };
 
       views = {
-        cmdline_popup.border = {
-          style = "rounded";
-          padding = [
-            0
-            1
-          ];
-        };
-        hover.border = {
-          style = "rounded";
-          padding = [
-            0
-            1
-          ];
-        };
-        popup.border = {
-          style = "rounded";
-          padding = [
-            0
-            1
-          ];
-        };
+        cmdline_popup.border = border;
+        hover.border = border;
+        popup.border = border;
         mini.win_options.winblend = 0;
       };
 

@@ -1,10 +1,27 @@
 { pkgs, lib, ... }:
 
 let
+  failFunction = appName: message: ''
+    fail() {
+      notify-send --app-name=${appName} --icon=dialog-error "${message}" "$1"
+      exit 1
+    }
+  '';
+  normalizeDestination = ''
+    normalize_destination() {
+      [ "$#" -ge 1 ] || fail "No destination"
+      dest="$1"
+      if [ ! -d "$dest" ]; then
+        dest="$(dirname "$dest")"
+      fi
+      [ -d "$dest" ] || fail "Not a directory: $dest"
+    }
+  '';
+
   # Thunar's Ctrl+C only ever offers file references (text/uri-list +
   # x-special/gnome-copied-files + the path as plain text) — it never puts image
   # pixel data on the clipboard. That is GTK file-manager design, not a bug, and
-  # it is why pasting into WeChat/Zen/Typora yields a bare path while
+  # it is why pasting into WeChat/Firefox/Typora yields a bare path while
   # paste-inside-Thunar works fine.
   #
   # This script supplies the missing step: the image data itself.
@@ -19,10 +36,7 @@ let
       coreutils
     ];
     text = ''
-      fail() {
-        notify-send --app-name=copy-image --icon=dialog-error "Copy as image failed" "$1"
-        exit 1
-      }
+      ${failFunction "copy-image" "Copy as image failed"}
 
       [ $# -ge 1 ] || fail "No file selected"
 
@@ -35,7 +49,7 @@ let
         *) fail "Not an image: $mime ($src)" ;;
       esac
 
-      # Normalise to PNG. WeChat, Zen and Typora all accept image/png, whereas
+      # Normalise to PNG. WeChat, Firefox and Typora all accept image/png, whereas
       # image/webp, image/heic and image/avif are widely rejected; JPEG usually
       # works but converting unconditionally keeps this branch-free.
       # "[0]" takes the first frame so animations and multi-page TIFFs don't
@@ -50,7 +64,7 @@ let
       fi
 
       # Both clipboards get written:
-      #   wl-copy -> native Wayland clients (QQ, Zen and Typora)
+      #   wl-copy -> native Wayland clients (QQ, Firefox and Typora)
       #   xclip   -> XWayland clients (wechat-uos pins QT_QPA_PLATFORM=xcb)
       # Mango does *not* synchronise the two selections (measured 2026-09-15,
       # see the desktop-mango skill) -- services/clipboard.nix bridges them on a
@@ -108,17 +122,10 @@ let
       gnugrep
     ];
     text = ''
-      fail() {
-        notify-send --app-name=paste-clipboard-image --icon=dialog-error "Paste image failed" "$1"
-        exit 1
-      }
+      ${failFunction "paste-clipboard-image" "Paste image failed"}
 
-      [ "$#" -ge 1 ] || fail "No destination"
-      dest="$1"
-      if [ ! -d "$dest" ]; then
-        dest="$(dirname "$dest")"
-      fi
-      [ -d "$dest" ] || fail "Not a directory: $dest"
+      ${normalizeDestination}
+      normalize_destination "$1"
 
       types="$(wl-paste --list-types 2>/dev/null || true)"
       if printf '%s\n' "$types" | grep -qx 'image/png'; then
@@ -172,53 +179,46 @@ let
       coreutils
     ];
     text = ''
-      fail() {
-        notify-send --app-name=paste-symlink --icon=dialog-error "Paste link failed" "$1"
-        exit 1
-      }
+            ${failFunction "paste-symlink" "Paste link failed"}
 
-      [ "$#" -ge 1 ] || fail "No destination"
-      dest="$1"
-      if [ ! -d "$dest" ]; then
-        dest="$(dirname "$dest")"
-      fi
-      [ -d "$dest" ] || fail "Not a directory: $dest"
+            ${normalizeDestination}
+            normalize_destination "$1"
 
-      uris="$(wl-paste --type text/uri-list 2>/dev/null || true)"
-      if [ -z "$uris" ]; then
-        uris="$(xclip -selection clipboard -t text/uri-list -o 2>/dev/null || true)"
-      fi
-      [ -n "$uris" ] || fail "Clipboard has no files"
+            uris="$(wl-paste --type text/uri-list 2>/dev/null || true)"
+            if [ -z "$uris" ]; then
+              uris="$(xclip -selection clipboard -t text/uri-list -o 2>/dev/null || true)"
+            fi
+            [ -n "$uris" ] || fail "Clipboard has no files"
 
-      count="$(PASTE_URIS="$uris" python3 - "$dest" <<'PY'
-import os
-import sys
-import urllib.parse
+            count="$(PASTE_URIS="$uris" python3 - "$dest" <<'PY'
+      import os
+      import sys
+      import urllib.parse
 
-dest = sys.argv[1]
-made = 0
-for line in os.environ.get("PASTE_URIS", "").splitlines():
-    raw = urllib.parse.unquote(line.strip())
-    if not raw.startswith("file://"):
-        continue
-    src = raw[len("file://"):]
-    if not src or not os.path.exists(src):
-        continue
-    name = os.path.basename(src.rstrip("/")) or "link"
-    root, ext = os.path.splitext(name)
-    target = os.path.join(dest, name)
-    n = 1
-    while os.path.lexists(target):
-        target = os.path.join(dest, f"{root} ({n}){ext}")
-        n += 1
-    os.symlink(src, target)
-    made += 1
-if made == 0:
-    sys.exit(1)
-print(made)
-PY
-      )" || fail "No clipboard file could be linked"
-      notify-send --app-name=paste-symlink --icon=insert-link "Created links" "$count"
+      dest = sys.argv[1]
+      made = 0
+      for line in os.environ.get("PASTE_URIS", "").splitlines():
+          raw = urllib.parse.unquote(line.strip())
+          if not raw.startswith("file://"):
+              continue
+          src = raw[len("file://"):]
+          if not src or not os.path.exists(src):
+              continue
+          name = os.path.basename(src.rstrip("/")) or "link"
+          root, ext = os.path.splitext(name)
+          target = os.path.join(dest, name)
+          n = 1
+          while os.path.lexists(target):
+              target = os.path.join(dest, f"{root} ({n}){ext}")
+              n += 1
+          os.symlink(src, target)
+          made += 1
+      if made == 0:
+          sys.exit(1)
+      print(made)
+      PY
+            )" || fail "No clipboard file could be linked"
+            notify-send --app-name=paste-symlink --icon=insert-link "Created links" "$count"
     '';
   };
 in

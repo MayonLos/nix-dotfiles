@@ -23,6 +23,9 @@
 
     luaConfig.pre = ''
       _G.slow_format_filetypes = {}
+      _G.autoformat_disabled = function(bufnr)
+        return vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat
+      end
     '';
 
     settings = {
@@ -70,7 +73,7 @@
 
       format_on_save = ''
         function(bufnr)
-          if vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat then
+          if _G.autoformat_disabled(bufnr) then
             return
           end
           if _G.slow_format_filetypes[vim.bo[bufnr].filetype] then
@@ -87,7 +90,7 @@
 
       format_after_save = ''
         function(bufnr)
-          if vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat then
+          if _G.autoformat_disabled(bufnr) then
             return
           end
           if not _G.slow_format_filetypes[vim.bo[bufnr].filetype] then

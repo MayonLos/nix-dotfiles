@@ -1,6 +1,22 @@
-{ pkgs, ... }:
+{
+  pkgs,
+  pkgs-unstable,
+  lib,
+  ...
+}:
 
 let
+  java = import ../../../lib/java.nix { inherit pkgs pkgs-unstable; };
+
+  # Built from the same JDK set as java.nix and session-vars.nix, so the
+  # selectors cannot drift from what is installed.
+  javaSwitchFns = lib.concatStringsSep "\n" (
+    lib.mapAttrsToList (version: _: "use-java${version}() { use-java JAVA${version}_HOME; }") java.jdks
+  );
+  javaPathCleanup = lib.concatMapStringsSep " " (
+    version: ''"''${(@)path:#''${JAVA${version}_HOME}/bin}"''
+  ) (lib.attrNames java.jdks);
+
   zshInit = ''
     for _s in deepseek-api-key:DEEPSEEK_API_KEY; do
       _file="/run/secrets/''${_s%%:*}"
@@ -39,16 +55,12 @@ let
       fi
 
       export JAVA_HOME="$java_home"
-      path=("''${JAVA_HOME}/bin" "''${(@)path:#''${JAVA8_HOME}/bin}" "''${(@)path:#''${JAVA17_HOME}/bin}" "''${(@)path:#''${JAVA21_HOME}/bin}" "''${(@)path:#''${JAVA25_HOME}/bin}" "''${(@)path:#''${JAVA26_HOME}/bin}")
+      path=("''${JAVA_HOME}/bin" ${javaPathCleanup})
       hash -r
       java -version
     }
 
-    use-java8() { use-java JAVA8_HOME; }
-    use-java17() { use-java JAVA17_HOME; }
-    use-java21() { use-java JAVA21_HOME; }
-    use-java25() { use-java JAVA25_HOME; }
-    use-java26() { use-java JAVA26_HOME; }
+    ${javaSwitchFns}
 
     # Point LUA_PATH/LUA_CPATH at `luarocks install --local` trees.
     # On demand rather than global: neovim honours LUA_PATH too, and its
@@ -169,7 +181,7 @@ in
       # `include themes/noctalia.conf` in programs/terminal/kitty.nix) -- so an
       # ANSI name tracks the desktop for free while a hex value silently becomes
       # the odd one out. `-1` is fzf's "leave it to the terminal", which is
-      # also what keeps kitty's `background_opacity 0.8` visible behind the
+      # also what keeps kitty's `background_opacity 0.92` visible behind the
       # list. Same reasoning as the status bar in programs/terminal/tmux.nix.
       # The zstyle above explicitly opts fzf-tab into FZF_DEFAULT_OPTS.
       colors = {

@@ -24,9 +24,9 @@
 
 当前单属性例外的调用点：
 
-- `modules/home/packages.nix`：Copilot CLI、Typora。
-- `modules/home/programs/dev/java.nix`、`modules/home/base/session-vars.nix`、
-  `modules/home/programs/games/prismlauncher.nix`：Java 26，三处同步。
+- `modules/home/packages.nix`：Copilot CLI；Typora 使用 stable `pkgs`。
+- `lib/java.nix`：Java 26；该文件是已安装 JDK 集合的唯一来源，
+  `session-vars.nix`、`java.nix`、`zsh.nix` 从中派生，PrismLauncher 不再固定 JDK。
 - `modules/home/programs/apps/im.nix`：QQ / WeChat。
 - `modules/home/programs/dev/antigravity.nix`：`antigravity-ide-fhs`——stable
   26.05 没有该属性，FHS 变体供 IDE 扩展与语言服务器加载；同文件的 CLI 走

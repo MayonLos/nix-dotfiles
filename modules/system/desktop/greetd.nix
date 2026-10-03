@@ -3,6 +3,10 @@
   inputs,
   ...
 }:
+
+let
+  desktop = import ../../../lib/desktop.nix;
+in
 {
   imports = [ inputs.noctalia-greeter.nixosModules.default ];
 
@@ -13,8 +17,8 @@
       appearance.password_style = "random";
       keyboard.layout = "us";
       cursor = {
-        theme = "Bibata-Modern-Ice";
-        size = 24;
+        theme = desktop.cursor.name;
+        size = desktop.cursor.size;
         path = "/run/current-system/sw/share/icons";
       };
     };

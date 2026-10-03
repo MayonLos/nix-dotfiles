@@ -45,6 +45,8 @@ let
     echo "xrdb: no X server answered on DISPLAY=$DISPLAY after 10s" >&2
     exit 1
   '';
+
+  mkGraphicalService = import ../../../lib/graphical-service.nix;
 in
 {
   # 2560x1600 at mango scale 1.5. Consumed by fcitx5's X11 candidate window
@@ -52,19 +54,12 @@ in
   # all) and by any other X client that reads Xft.dpi.
   xresources.properties."Xft.dpi" = 144;
 
-  systemd.user.services.xrdb-merge = {
-    Unit = {
-      Description = "Merge ~/.Xresources into mango's built-in Xwayland server";
-      After = [ "graphical-session.target" ];
-      PartOf = [ "graphical-session.target" ];
-    };
-
-    Service = {
+  systemd.user.services.xrdb-merge = mkGraphicalService {
+    description = "Merge ~/.Xresources into mango's built-in Xwayland server";
+    service = {
       Type = "oneshot";
       RemainAfterExit = true;
       ExecStart = "${xrdbMerge}";
     };
-
-    Install.WantedBy = [ "graphical-session.target" ];
   };
 }

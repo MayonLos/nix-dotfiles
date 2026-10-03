@@ -5,6 +5,10 @@
   ...
 }:
 
+let
+  seedFile = import ../../../../lib/seed-file.nix { inherit lib pkgs; };
+in
+
 {
   programs.zathura = {
     enable = true;
@@ -46,10 +50,7 @@
     };
   };
 
-  home.activation.seedZathuraNoctaliaTheme = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    if [ ! -e "${config.xdg.configHome}/zathura/noctaliarc" ]; then
-      run mkdir -p "${config.xdg.configHome}/zathura"
-      run ${pkgs.coreutils}/bin/install -m 0644 /dev/null "${config.xdg.configHome}/zathura/noctaliarc"
-    fi
-  '';
+  home.activation.seedZathuraNoctaliaTheme =
+    seedFile.mkActivation "${config.xdg.configHome}/zathura/noctaliarc"
+      { };
 }

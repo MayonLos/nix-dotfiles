@@ -19,6 +19,11 @@ is recursively imported as Home Manager modules.
 - Every command or mapping that is meant to trigger lazy loading must be in
   that plugin's `lazyLoad.settings.cmd` or `keys`. Check all commands reached
   by keymaps, including secondary commands, in a fresh Neovim session.
+- `lazyLoad.settings.before`/`after` map to lz.n's hooks, but for Neovim
+  plugins they **replace** Nixvim's generated code: `after` replaces the
+  `setup()` call, `before` replaces the generated `vim.g` injection. Only set
+  them when you reproduce that work yourself; vim plugins (no setup) are safe.
+  Prefer `keys`/`cmd` triggers over manual `trigger_load` where possible.
 - Put plugin-specific maps beside the plugin. Global editor maps belong in
   `keymappings.nix`; every map needs `options.desc`. Register new leader groups
   in `plugins/utility/which-key.nix`.

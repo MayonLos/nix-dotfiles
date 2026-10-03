@@ -6,6 +6,7 @@
 
 let
   wallpaperDir = "${../../_assets/wallpaper}";
+  desktop = import ../../../../lib/desktop.nix;
   defaultWallpaperPath = "${../../_assets/wallpaper/wallpaper-001.png}";
 
   distroLogo = "${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg";
@@ -31,42 +32,6 @@ let
     if (( previous >= threshold && percent < threshold )); then
       ${pkgs.systemd}/bin/systemctl suspend
     fi
-  '';
-
-  # Upstream bug workaround, in the same spirit as the mark-shot patch in
-  # programs/apps/screenshot.nix: a plugin's code lives in a read-only store
-  # path and there is no override hook, so the source tree is copied and one
-  # file repaired.
-  #
-  # quill 1.1.0's nextDueInMs() assigns
-  #     nextDueCache.value = soonest and (now + soonest) or nil
-  # and then returns `nextDueCache.value - now` unguarded (service.luau:119).
-  # With no todo that has BOTH a due date and a time still in the future,
-  # `soonest` stays nil, so the subtraction throws on every service tick;
-  # noctalia then disables the entry for erroring too often ("fel/quill:index
-  # 因错误过多已被禁用"), and a disabled index is also why the Ask tab replies
-  # that it has no notes in context. A fresh, empty vault is exactly this case,
-  # so the plugin does not work out of the box.
-  #
-  # The cached early return carried the mirror-image defect: it hands back the
-  # absolute due instant where its only caller (service.luau:305) compares the
-  # result against 60000 to choose the tick length, so a warm cache never
-  # engaged the finer tick and a reminder could be up to poll_interval_ms late.
-  # Repaired to return the remaining duration, like the fresh path.
-  #
-  # Upstream main still carries both lines, so this is not "wait for a
-  # release". --replace-fail rather than --replace: if upstream rewrites or
-  # fixes the file, the build stops here loudly, which is the moment to delete
-  # this derivation instead of keeping a patch that no longer matches.
-  patchedCommunityPlugins = pkgs.runCommand "noctalia-plugins-community-patched" { } ''
-    cp -r ${inputs.noctalia-plugins-community} $out
-    chmod -R u+w $out
-
-    substituteInPlace $out/quill/service.luau \
-      --replace-fail '  return nextDueCache.value - now' \
-      '  return nextDueCache.value and (nextDueCache.value - now) or nil' \
-      --replace-fail '    return nextDueCache.value' \
-      '    return nextDueCache.value - now'
   '';
 
 in
@@ -98,6 +63,9 @@ in
           corner_radius_scale = 1.0;
           clipboard_enabled = true;
           show_location = true;
+          # New in noctalia 5.2.1: readline-style editing (Ctrl+A/E/U/K) in
+          # the shell's own text inputs.
+          readline_shortcuts = true;
 
           animation = {
             enabled = true;
@@ -126,6 +94,17 @@ in
             compact = true;
             app_grid = true;
             sort_by_usage = true;
+            # The built-in launcher calculator is compiled into the shell and
+            # cannot be uninstalled. Global search is off and the prefix is
+            # cleared, so at config level the provider is unreachable;
+            # calculator-plus is the calculator.
+            providers = [
+              {
+                name = "calculator";
+                prefix = "";
+                global = false;
+              }
+            ];
           };
 
           screen_corners = {
@@ -152,7 +131,7 @@ in
               input_path = "${../../programs/apps/_firefox/noctalia-userChrome.css}";
               output_path = "$XDG_CACHE_HOME/noctalia/firefox/userChrome.css";
               post_hook = "${pkgs.writeShellScript "noctalia-firefox-theme-apply" ''
-                exec ${pkgs.python3}/bin/python3 ${../../programs/apps/_firefox/apply-noctalia-userChrome.py} "''${XDG_CACHE_HOME:-$HOME/.cache}/noctalia/firefox/userChrome.css"
+                exec ${pkgs.python3}/bin/python3 ${../../programs/apps/_firefox}/apply-noctalia-userChrome.py "''${XDG_CACHE_HOME:-$HOME/.cache}/noctalia/firefox/userChrome.css"
               ''}";
               hook_async = false;
             };
@@ -200,11 +179,10 @@ in
             {
               name = "community";
               kind = "path";
-              # Patched copy of the input, not the input itself: quill 1.1.0
-              # ships a crash that disables its own index service. See
-              # patchedCommunityPlugins in the let block above for the two
-              # repaired lines and the conditions under which to drop this.
-              location = "${patchedCommunityPlugins}";
+              # The pinned community-plugins now guards both of quill's
+              # nextDueInMs() return paths, so the former local patch for its
+              # index-service crash is gone.
+              location = "${inputs.noctalia-plugins-community}";
               enabled = true;
             }
             # No local source. `_plugins/ask` (an LLM chat panel) was the only
@@ -249,6 +227,8 @@ in
             # added in ../../packages.nix). The rest resolve against what is
             # already on PATH: mmsg and jq ship with mango / the CLI set.
             "coder/deepseek_usage" # DeepSeek balance; needs its API key in the GUI, see below
+            "alpzy/deepseek-peak" # no deps; DeepSeek/Ollama Cloud peak-hour countdown
+            "samuelskovbakke/calculator-plus" # qalc popup calculator; qalc is in packages.nix
             "ezequiel/mango_layouts" # jq + mmsg
             "fel/ocr" # grim + slurp + tesseract
             # Replaces noctalia/notes, removed below. Same slot in
@@ -345,7 +325,7 @@ in
           # evaluate. `nixos_configuration` is the attribute under
           # nixosConfigurations, which is `nixos-btw` here.
           "mindnbytes/nix-status" = {
-            flake_dir = "/home/mayon/nix-dotfiles";
+            flake_dir = desktop.repoPath;
             nixos_configuration = "nixos-btw";
           };
 
@@ -455,6 +435,7 @@ in
                 "fel/quill:status" # Markdown notes + todos; replaced noctalia/notes
                 "8bury/mini-docker:mini-docker" # Docker management
                 "rxtsel/portctl:indicator" # inspect and kill port listeners
+                "samuelskovbakke/calculator-plus:widget" # qalc popup with history
               ];
               accordion = false;
               padding = 6.0;
@@ -515,6 +496,7 @@ in
                 "gambled23/mangowm-keymode:mangowm-keymode"
                 "mindnbytes/nix-status:status"
                 "coder/deepseek_usage:bar"
+                "alpzy/deepseek-peak:peak"
               ];
               accordion = false;
               padding = 6.0;
@@ -633,7 +615,7 @@ in
         brightness = {
           enable_ddcutil = true;
           minimum_brightness = 0.05;
-          monitor."eDP-1".backend = "backlight";
+          monitor.${desktop.primaryOutput}.backend = "backlight";
         };
 
         battery = {
@@ -686,11 +668,15 @@ in
           enable_daemon = true;
           layer = "overlay";
           background_opacity = 0.95;
+          # New in 5.2.1. No-op on the single panel, correct once a second
+          # output is attached.
+          follow_focused_output = true;
         };
 
         osd = {
           position = "top_right";
           background_opacity = 0.95;
+          follow_focused_output = true;
         };
 
         idle = {

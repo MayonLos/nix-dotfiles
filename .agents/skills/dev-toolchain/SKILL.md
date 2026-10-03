@@ -17,8 +17,16 @@ executable versions keeps the profile and the editor from drifting.
   editor package.
 - Compilers and interpreters belong in their language modules (`llvm.nix`,
   `python.nix`, `java.nix`, `lua.nix`, `latex.nix`, `octave.nix`,
-  `embedded.nix`), not the editor toolchain. Project-pinned dependencies go in
-  the project's direnv/flake environment.
+  `embedded.nix`), not the editor toolchain. The version each module installs
+  and the editor tools built against it are single-sourced in
+  `lib/toolchains.nix` (`llvm`, `python`, `lua`; Java's multi-version Temurin
+  set is `lib/java.nix`). Project-pinned dependencies go in the project's
+  direnv/flake environment.
+- Activation/build-time scripts may use `pkgs.python3` directly (for example,
+  `screenshot.nix`, `firefox.nix`, `wm/mango/noctalia.nix`, and
+  `pkgs/matlab.nix`); they need not track `lib/toolchains.nix`. That shared
+  Python source covers the development interpreter, its packages, and
+  nvim-dap's bare `python3` command only.
 - A server declared for an editor must also exist on that editor's effective
   PATH. Desktop applications inherit the user systemd environment, so a tool
   working in an interactive shell does not prove it is available to an editor.

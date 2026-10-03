@@ -82,6 +82,35 @@ _: {
       for name, target in pairs(links) do
         vim.api.nvim_set_hl(0, name, { link = target })
       end
+
+      -- Give fzf's terminal canvas, preview and borders the same Normal
+      -- background as the editor. The picker also disables its backdrop in
+      -- plugins/navigation/fzf.nix so the surrounding editor is not dimmed.
+      -- Recreate these on ColorScheme so the style switcher stays consistent.
+      vim.api.nvim_set_hl(0, "FzfLuaSurface", { fg = normal.fg, bg = normal.bg })
+      vim.api.nvim_set_hl(0, "FzfLuaSurfaceBorder", { fg = comment.fg, bg = normal.bg })
+      vim.api.nvim_set_hl(0, "FzfLuaSurfaceTitle", { fg = accent.fg, bg = normal.bg, bold = true })
+      for _, name in ipairs({
+        "FzfLuaBorder",
+        "FzfLuaPreviewBorder",
+        "FzfLuaFzfBorder",
+        "FzfLuaFzfSeparator",
+        "FzfLuaScrollBorderEmpty",
+        "FzfLuaScrollBorderFull",
+      }) do
+        vim.api.nvim_set_hl(0, name, { link = "FzfLuaSurfaceBorder" })
+      end
+      for _, name in ipairs({
+        "FzfLuaNormal",
+        "FzfLuaPreviewNormal",
+        "FzfLuaFzfNormal",
+        "FzfLuaFzfGutter",
+      }) do
+        vim.api.nvim_set_hl(0, name, { link = "FzfLuaSurface" })
+      end
+      for _, name in ipairs({ "FzfLuaTitle", "FzfLuaPreviewTitle" }) do
+        vim.api.nvim_set_hl(0, name, { link = "FzfLuaSurfaceTitle" })
+      end
     end
 
     apply_custom_hl()

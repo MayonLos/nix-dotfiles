@@ -1,5 +1,9 @@
 { pkgs, ... }:
 
+let
+  toolchains = import ../../../../lib/toolchains.nix { inherit pkgs; };
+in
+
 {
   # Single source of truth for the tools nvim starts: language servers,
   # formatters and linters. They stay on the profile PATH so the editor closure
@@ -15,7 +19,7 @@
   home.packages = with pkgs; [
     # Language servers
     bash-language-server
-    clang-tools # clangd + clang-format
+    toolchains.llvm.clang-tools # clangd + clang-format; same llvmPackages as llvm.nix
     cmake-language-server
     dockerfile-language-server # docker-langserver
     jdt-language-server
@@ -43,7 +47,7 @@
     stylua
 
     # Linters
-    lua54Packages.luacheck
+    toolchains.luaPackages.luacheck
     ruff # linter *and* Python formatter
     shellcheck
 
@@ -72,7 +76,7 @@
     # than an unrendered formula. nixvim/plugins/utility/lua/md_latex.lua picks
     # between them. texliveFull (latex.nix) ships no such converter.
     (callPackage ../../../../pkgs/libtexprintf.nix { }) # utftex
-    python3Packages.pylatexenc # latex2text
+    toolchains.python.pkgs.pylatexenc # latex2text; same interpreter as python.nix
 
     # Debug adapters. gdb (llvm.nix) speaks DAP natively since 14; codelldb is
     # what nvim-dap uses for C/C++/Rust. The Python adapter

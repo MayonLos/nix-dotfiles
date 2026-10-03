@@ -1,9 +1,14 @@
-{ pkgs, config, ... }:
+{
+  pkgs,
+  config,
+  lib,
+  ...
+}:
 {
   # Qt apps (mark-shot, virt-manager's dialogs, ...) used to ignore the theme:
   # file dialogs came up in flat light-grey default Fusion.
   #
-  # The setup was only half done. Mango's environment sets
+  # The setup was only half done. The session environment sets
   # QT_QPA_PLATFORMTHEME=qt6ct and noctalia's qt template renders the palette to
   # ~/.config/qt6ct/colors/noctalia.conf, but qt6ct's own qt6ct.conf was never
   # written -- without it qt6ct does not know which palette to use and falls
@@ -27,26 +32,24 @@
   # at runtime.
   home.activation =
     let
-      colorScheme = "${config.home.homeDirectory}/.config/qt6ct/colors/noctalia.conf";
+      seedFile = import ../../../lib/seed-file.nix { inherit lib pkgs; };
+      desktop = import ../../../lib/desktop.nix;
+      colorScheme = "${config.xdg.configHome}/qt6ct/colors/noctalia.conf";
       mkConf =
         name:
         pkgs.writeText "${name}.conf" ''
           [Appearance]
           color_scheme_path=${colorScheme}
           custom_palette=true
-          icon_theme=Papirus-Dark
+          icon_theme=${desktop.iconTheme}
           standard_dialogs=default
           style=Fusion
         '';
       seed =
         name:
-        config.lib.dag.entryAfter [ "writeBoundary" ] ''
-          target="${config.home.homeDirectory}/.config/${name}/${name}.conf"
-          if [ ! -e "$target" ]; then
-            run mkdir -p "$(dirname "$target")"
-            run ${pkgs.coreutils}/bin/install -m 0644 ${mkConf name} "$target"
-          fi
-        '';
+        seedFile.mkActivation "${config.xdg.configHome}/${name}/${name}.conf" {
+          source = mkConf name;
+        };
     in
     {
       seedQt6ctConfig = seed "qt6ct";

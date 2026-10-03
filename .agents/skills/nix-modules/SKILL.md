@@ -24,14 +24,16 @@ description: 修改此仓库的 Nix 模块组织、flake 输入与接线、通�
 不要因一个包改整个通道；先确认 stable 是否满足要求，再取单一属性并说明原因。
 
 修改通道、overlay、输入或 `follows` 前读 [输入与包来源](references/inputs.md)。
-已有特例包括 AI 工具、Typora、Java 26、IM、portal-wlr 与 NVIDIA recipe；
+已有特例包括 Copilot CLI、Java 26、IM、portal-wlr 与 NVIDIA recipe；
 其中 recipe 的导入不同于直接取 unstable 的预编译驱动包。
 
 ## 修改方式
 
 新增系统 / HM 模块只需放入对应目录；移除模块会同时移除其配置，先找调用与依赖。
 不要把完整目录迁到 `modules/` 而不检查其中所有 `.nix` 的类型。
-共享 helper 仅在确有多个调用者时加入 `lib/`；当前只有 `importDir`。
+共享 helper 放在 `lib/` 并通过相对路径导入（版本集合、桌面常量、通用小工具）；
+`lib/default.nix` 仍只导出 `importDir`，模块按相对路径取用具体文件。
+抽象接口与关键配置的改动索引见 [共享接口与关键配置](references/shared-helpers.md)。
 
 `flake/dev.nix` 管理两个 dev shell 和 treefmt：
 默认 shell 提供基础编译与 sops 工具，CUDA shell 单独提供 CUDA 依赖。

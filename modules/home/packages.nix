@@ -1,15 +1,12 @@
 { pkgs, pkgs-unstable, ... }:
 
 let
-  fetchFirefoxXpi =
-    name: url: hash:
-    pkgs.fetchurl { inherit name url hash; };
-
   firefoxAddons = {
-    darkReader =
-      fetchFirefoxXpi "darkreader-4.9.133.xpi"
-        "https://addons.mozilla.org/firefox/downloads/file/5055786/darkreader-4.9.133.xpi"
-        "sha256-6wbFCW12FhbH8dlUwRUkykv/T+cikETcH84oiowIU6s=";
+    darkReader = pkgs.fetchurl {
+      name = "darkreader-4.9.133.xpi";
+      url = "https://addons.mozilla.org/firefox/downloads/file/5055786/darkreader-4.9.133.xpi";
+      hash = "sha256-6wbFCW12FhbH8dlUwRUkykv/T+cikETcH84oiowIU6s=";
+    };
   };
 
   firefoxWithManagedThemeAndExtensions = pkgs.firefox.override {
@@ -71,16 +68,10 @@ in
     grim
     slurp
     # OCR engine behind noctalia's fel/ocr plugin (see wm/mango/noctalia.nix),
-    # which shells out to `tesseract` on a grim+slurp region. nixpkgs builds it
-    # with English only; chi_sim is enabled explicitly because Chinese text is
-    # the case that actually comes up here. The language set is baked in at
-    # build time, so adding one later means another rebuild.
-    (tesseract5.override {
-      enableLanguages = [
-        "eng"
-        "chi_sim"
-      ];
-    })
+    # which shells out to `tesseract` on a grim+slurp region. The override in
+    # pkgs/tesseract-ocr.nix adds chi_sim, and screenshot.nix uses the same
+    # derivation so its `-l eng+chi_sim` pass has the data.
+    (callPackage ../../pkgs/tesseract-ocr.nix { })
     swayimg
     libheif
     brightnessctl

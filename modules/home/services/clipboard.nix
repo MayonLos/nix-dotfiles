@@ -173,17 +173,15 @@ let
       esac
     '';
   };
+
+  mkGraphicalService = import ../../../lib/graphical-service.nix;
 in
 {
   home.packages = [ clipboardBridge ];
 
-  systemd.user.services.clipboard-bridge = {
-    Unit = {
-      Description = "Clipboard bridge between Wayland and X11 (the compositor does not sync selections)";
-      PartOf = [ "graphical-session.target" ];
-      After = [ "graphical-session.target" ];
-    };
-    Service = {
+  systemd.user.services.clipboard-bridge = mkGraphicalService {
+    description = "Clipboard bridge between Wayland and X11 (the compositor does not sync selections)";
+    service = {
       Type = "simple";
       # DISPLAY is exported into the user bus by the dbus-update-activation-environment
       # line in mango's autostart.sh (see desktop-mango on why autostart_sh
@@ -195,9 +193,6 @@ in
       # on-failure would leave that dead; always brings it back.
       Restart = "always";
       RestartSec = 2;
-    };
-    Install = {
-      WantedBy = [ "graphical-session.target" ];
     };
   };
 }

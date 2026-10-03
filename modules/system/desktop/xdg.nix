@@ -1,4 +1,9 @@
 { pkgs, ... }:
+
+let
+  desktop = import ../../../lib/desktop.nix;
+in
+
 {
   # Two things used to arrive for free with `programs.niri.enable` and have to
   # be asked for by name now that mango is the only compositor:
@@ -75,7 +80,7 @@
     # One output, so skip the chooser rather than install a picker to answer a
     # question with one possible answer. Revisit if a second output appears.
     wlr.settings.screencast = {
-      output_name = "eDP-1";
+      output_name = desktop.primaryOutput;
       chooser_type = "none";
       max_fps = 60;
     };

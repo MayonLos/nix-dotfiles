@@ -33,6 +33,29 @@ let
       return "${pythonWithDebugpy}"
     end
   '';
+  cLaunch = language: {
+    type = "lldb";
+    request = "launch";
+    name = "${language}: Launch";
+    cwd = "$\{workspaceFolder}";
+    stopOnEntry = false;
+    program.__raw = cProgramResolver;
+  };
+  cLaunchWithArgs =
+    language:
+    (cLaunch language)
+    // {
+      name = "${language}: Launch (+args)";
+      args.__raw = cArgsResolver;
+    };
+  pythonLaunch = {
+    type = "debugpy";
+    request = "launch";
+    cwd = "$\{workspaceFolder}";
+    console = "integratedTerminal";
+    justMyCode = true;
+    pythonPath.__raw = pythonResolver;
+  };
 
   mkDapMap = key: luaBody: desc: {
     mode = "n";
@@ -58,78 +81,40 @@ in
       enable = true;
       configurations = {
         c = [
-          {
-            type = "lldb";
-            request = "launch";
-            name = "C: Launch";
-            cwd = "$\{workspaceFolder}";
-            stopOnEntry = false;
-            program.__raw = cProgramResolver;
-          }
-          {
-            type = "lldb";
-            request = "launch";
-            name = "C: Launch (+args)";
-            cwd = "$\{workspaceFolder}";
-            stopOnEntry = false;
-            program.__raw = cProgramResolver;
-            args.__raw = cArgsResolver;
-          }
+          (cLaunch "C")
+          (cLaunchWithArgs "C")
         ];
         cpp = [
-          {
-            type = "lldb";
-            request = "launch";
-            name = "C++: Launch";
-            cwd = "$\{workspaceFolder}";
-            stopOnEntry = false;
-            program.__raw = cProgramResolver;
-          }
-          {
-            type = "lldb";
-            request = "launch";
-            name = "C++: Launch (+args)";
-            cwd = "$\{workspaceFolder}";
-            stopOnEntry = false;
-            program.__raw = cProgramResolver;
-            args.__raw = cArgsResolver;
-          }
+          (cLaunch "C++")
+          (cLaunchWithArgs "C++")
         ];
         python = [
-          {
-            type = "debugpy";
-            request = "launch";
-            name = "Python: Current File";
-            program = "$\{file}";
-            cwd = "$\{workspaceFolder}";
-            console = "integratedTerminal";
-            justMyCode = true;
-            pythonPath.__raw = pythonResolver;
-          }
-          {
-            type = "debugpy";
-            request = "launch";
-            name = "Python: Module";
-            module.__raw = "function() return vim.fn.input('Module name: ') end";
-            cwd = "$\{workspaceFolder}";
-            console = "integratedTerminal";
-            justMyCode = true;
-            pythonPath.__raw = pythonResolver;
-          }
-          {
-            type = "debugpy";
-            request = "launch";
-            name = "Python: Pytest Current File";
-            module = "pytest";
-            args = [
-              "$\{file}"
-              "-q"
-            ];
-            cwd = "$\{workspaceFolder}";
-            console = "integratedTerminal";
-            justMyCode = false;
-            pythonPath.__raw = pythonResolver;
-          }
+          (
+            pythonLaunch
+            // {
+              name = "Python: Current File";
+              program = "$\{file}";
+            }
+          )
+          (
+            pythonLaunch
+            // {
+              name = "Python: Module";
+              module.__raw = "function() return vim.fn.input('Module name: ') end";
+            }
+          )
+          (
+            pythonLaunch
+            // {
+              name = "Python: Pytest Current File";
+              module = "pytest";
+              args = [
+                "$\{file}"
+                "-q"
+              ];
+              justMyCode = false;
+            }
+          )
         ];
       };
 
@@ -196,8 +181,9 @@ in
     local dap = require("dap")
     local dapui = require("dapui")
 
-    dap.adapters.debugpy = { type = "executable", command = "${pythonWithDebugpy}", args = { "-m", "debugpy.adapter" } }
-    dap.adapters.python  = { type = "executable", command = "${pythonWithDebugpy}", args = { "-m", "debugpy.adapter" } }
+    local debugpy_adapter = { type = "executable", command = "${pythonWithDebugpy}", args = { "-m", "debugpy.adapter" } }
+    dap.adapters.debugpy = debugpy_adapter
+    dap.adapters.python = debugpy_adapter
 
     dap.listeners.before.attach.dapui_auto_open = function()
       dapui.open()

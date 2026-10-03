@@ -245,11 +245,15 @@ in
         "n"
         "v"
       ];
-      mkMap = mode: key: action: desc: {
-        inherit mode key action;
-        options.desc = desc;
+      mkMap = import ../../lib/keymaps.nix;
+      lua = body: {
+        __raw = ''
+          function()
+            require('lz.n').trigger_load('codecompanion.nvim')
+            ${body}
+          end
+        '';
       };
-      lua = code: { __raw = code; };
     in
     [
       (mkMap nv "<leader>aa" "<cmd>CodeCompanionChat Toggle<cr>" "CodeCompanion: toggle chat")
@@ -258,24 +262,21 @@ in
       (mkMap "n" "<leader>ai" "<cmd>CodeCompanion<cr>" "CodeCompanion: inline assistant")
       (mkMap "v" "<leader>ai" ":CodeCompanion<cr>" "CodeCompanion: inline assistant (selection)")
       (mkMap "n" "<leader>at" "<cmd>CodeCompanionCLI<cr>" "CodeCompanion: CLI (default agent)")
-      (mkMap "n" "<leader>ah"
-        (lua "function() require('lz.n').trigger_load('codecompanion.nvim'); require('codecompanion').extensions.history.browse_chats() end")
+      (mkMap "n" "<leader>ah" (lua "require('codecompanion').extensions.history.browse_chats()")
         "CodeCompanion: chat history"
       )
-      (mkMap nv "<leader>acp"
-        (lua "function() require('lz.n').trigger_load('codecompanion.nvim'); require('codecompanion').cli({ prompt = true }) end")
+      (mkMap nv "<leader>acp" (lua "require('codecompanion').cli({ prompt = true })")
         "CLI agent: prompt (selection-aware)"
       )
-      (mkMap nv "<leader>aca"
-        (lua "function() require('lz.n').trigger_load('codecompanion.nvim'); require('codecompanion').cli('#{this}', { focus = false }) end")
+      (mkMap nv "<leader>aca" (lua "require('codecompanion').cli('#{this}', { focus = false })")
         "CLI agent: add buffer/selection as context"
       )
       (mkMap "n" "<leader>acd"
-        (lua "function() require('lz.n').trigger_load('codecompanion.nvim'); require('codecompanion').cli('#{diagnostics} 请修复这些问题', { focus = false, submit = true }) end")
+        (lua "require('codecompanion').cli('#{diagnostics} 请修复这些问题', { focus = false, submit = true })")
         "CLI agent: fix LSP diagnostics"
       )
       (mkMap "n" "<leader>act"
-        (lua "function() require('lz.n').trigger_load('codecompanion.nvim'); require('codecompanion').cli('#{terminal} 这是终端输出，请帮我修复', { focus = false, submit = true }) end")
+        (lua "require('codecompanion').cli('#{terminal} 这是终端输出，请帮我修复', { focus = false, submit = true })")
         "CLI agent: fix terminal output"
       )
       {

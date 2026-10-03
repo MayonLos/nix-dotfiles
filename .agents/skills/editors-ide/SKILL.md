@@ -62,7 +62,8 @@ Resolve file ownership before adding `force = true`; see `desktop-apps`.
 ZCode was explicitly removed after it pushed to a user repository without
 being asked. Do not restore it unless the user explicitly requests it.
 Antigravity (IDE + CLI) was removed on 2026-09-20 as unused and re-added on
-2026-10-01 at the user's request; `programs/antigravity.nix` is the module.
+2026-10-01 at the user's request; `modules/home/programs/dev/antigravity.nix` is
+the module.
 The IDE needs `pkgs-unstable.antigravity-ide-fhs` (stable 26.05 has no
 `antigravity-ide-fhs` attribute; the FHS build is what lets extension language
 servers load), while the CLI is `agents.antigravity-cli` from llm-agents

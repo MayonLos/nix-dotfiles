@@ -1,5 +1,9 @@
 { pkgs, ... }:
 let
+  filetypes = [
+    "markdown"
+    "codecompanion"
+  ];
   latexConverter = pkgs.writeShellScript "md-utftex" ''
     set -euo pipefail
     ${pkgs.luajit}/bin/luajit -e '
@@ -12,15 +16,9 @@ in
 {
   plugins.render-markdown = {
     enable = true;
-    lazyLoad.settings.ft = [
-      "markdown"
-      "codecompanion"
-    ];
+    lazyLoad.settings.ft = filetypes;
     settings = {
-      file_types = [
-        "markdown"
-        "codecompanion"
-      ];
+      file_types = filetypes;
       completions.lsp.enabled = true;
 
       # Insert mode included. `render_modes` defaults to `{ "n", "c", "t" }`

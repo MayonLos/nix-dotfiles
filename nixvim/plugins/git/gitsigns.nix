@@ -13,10 +13,7 @@
   keymaps =
     let
       gs = body: { __raw = "function() require('gitsigns').${body} end"; };
-      mkMap = mode: key: action: desc: {
-        inherit mode key action;
-        options.desc = desc;
-      };
+      mkMap = import ../../lib/keymaps.nix;
     in
     [
       (mkMap "n" "]h" (gs "nav_hunk('next')") "Next git hunk")

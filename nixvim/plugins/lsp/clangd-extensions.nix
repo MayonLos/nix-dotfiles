@@ -1,15 +1,15 @@
+{ config, ... }:
+let
+  # Same list as the clangd server in servers.nix, so the extension's
+  # lazy-load filetypes cannot drift from the server it decorates.
+  clangdFiletypes = config.lsp.servers.clangd.config.filetypes;
+in
 {
   plugins.clangd-extensions = {
     enable = true;
 
     lazyLoad.settings = {
-      ft = [
-        "c"
-        "cpp"
-        "objc"
-        "objcpp"
-        "cuda"
-      ];
+      ft = clangdFiletypes;
       cmd = [
         "ClangdAST"
         "ClangdTypeHierarchy"

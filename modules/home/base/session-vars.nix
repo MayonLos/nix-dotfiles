@@ -1,22 +1,32 @@
-{ pkgs, pkgs-unstable, ... }:
+{
+  pkgs,
+  pkgs-unstable,
+  lib,
+  ...
+}:
 
 let
-  temurin = pkgs.javaPackages.compiler.temurin-bin;
-  # 26 is not in stable 26.05 yet.
-  temurin-unstable = pkgs-unstable.javaPackages.compiler.temurin-bin;
+  java = import ../../../lib/java.nix { inherit pkgs pkgs-unstable; };
 
   # Needed both by systemd user services (which do not source the shell profile)
   # and by interactive shells, so the same set is exported through both paths.
   shared = {
     NIXOS_OZONE_WL = "1";
     _JAVA_AWT_WM_NONREPARENTING = "1";
-    JAVA8_HOME = "${temurin.jdk-8}";
-    JAVA17_HOME = "${temurin.jdk-17}";
-    JAVA21_HOME = "${temurin.jdk-21}";
-    JAVA25_HOME = "${temurin.jdk-25}";
-    JAVA26_HOME = "${temurin-unstable.jdk-26}";
-    JAVA_HOME = "${temurin.jdk-25}";
-  };
+    # Qt apps started outside mango (systemd user units, desktop launchers)
+    # need this too; base/qt.nix seeds the qt6ct palette. Octave pins itself
+    # back to qt5ct in its own wrapper.
+    QT_QPA_PLATFORMTHEME = "qt6ct";
+    # The HM fcitx5 module writes these to home.sessionVariables only, which
+    # interactive shells and mango pick up but systemd-launched desktop apps
+    # do not (verified: systemd.user.sessionVariables had none). Same values,
+    # exported through both paths.
+    GLFW_IM_MODULE = "ibus";
+    SDL_IM_MODULE = "fcitx";
+    XMODIFIERS = "@im=fcitx";
+    JAVA_HOME = "${java.jdks.${java.default}}";
+  }
+  // lib.mapAttrs' (version: jdk: lib.nameValuePair "JAVA${version}_HOME" "${jdk}") java.jdks;
 in
 {
   # Xft.dpi and the xrdb merge that actually delivers it live in xresources.nix.
@@ -24,12 +34,13 @@ in
 
   home = {
     sessionPath = [
-      "${temurin.jdk-25}/bin"
+      "${java.jdks.${java.default}}/bin"
       "$HOME/.local/bin"
     ];
 
-    # GLFW_IM_MODULE / SDL_IM_MODULE / XMODIFIERS are not here: the
-    # i18n.inputMethod.fcitx5 module sets all three itself.
+    # IME variables now live in `shared` above; the HM fcitx5 module only
+    # contributes the home-side set, so systemd-launched apps needed the
+    # mirror to get them too.
     sessionVariables = shared // {
       EDITOR = "nvim";
       VISUAL = "nvim";

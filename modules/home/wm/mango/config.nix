@@ -5,6 +5,10 @@
   ...
 }:
 
+let
+  desktop = import ../../../../lib/desktop.nix;
+in
+
 {
   imports = [ inputs.mango.hmModules.mango ];
 
@@ -23,7 +27,7 @@
       ];
 
       monitorrule = [
-        "name:^eDP-1$,width:2560,height:1600,refresh:165.002,x:0,y:0,scale:1.5,vrr:1"
+        "name:^${desktop.primaryOutput}$,width:2560,height:1600,refresh:165.002,x:0,y:0,scale:1.5,vrr:1"
       ];
 
       # Let X11 clients render at real pixels instead of being upscaled.
@@ -72,23 +76,16 @@
       # nothing else, so a `${...}` or `$(...)` would be set as that literal
       # string. TMUX_TMPDIR is the one that hits this today; shells still get
       # it from hm-session-vars.sh, which is where it matters.
-      env =
-        lib.mapAttrsToList (n: v: "${n},${toString v}") (
-          lib.filterAttrs (_: v: !(lib.hasInfix "$" (toString v))) config.home.sessionVariables
-        )
-        ++ [
-          # Not a session variable: niri carried this in its own `environment`
-          # block. Without it Qt apps come up in default light Fusion and
-          # base/qt.nix's qt6ct palette is never consulted.
-          "QT_QPA_PLATFORMTHEME,qt6ct"
-        ];
+      env = lib.mapAttrsToList (n: v: "${n},${toString v}") (
+        lib.filterAttrs (_: v: !(lib.hasInfix "$" (toString v))) config.home.sessionVariables
+      );
 
       # Carried over from niri's `cursor` block. cursor_hide_on_keypress is
       # mango's spelling of niri's `hide-when-typing`; there is no global
       # prefer-no-csd equivalent (mango's allow_csd is a windowrule field only,
       # and it does not ask clients for decorations anyway).
-      cursor_theme = "Bibata-Modern-Ice";
-      cursor_size = 24;
+      cursor_theme = desktop.cursor.name;
+      cursor_size = desktop.cursor.size;
       cursor_hide_on_keypress = 1;
 
       # Noctalia draws its own layer effects, so only Mango's window blur and
@@ -112,14 +109,14 @@
       shadows_position_y = 2;
       shadowscolor = "0x000000ff";
 
-      # Mango 0.17.3: keep the focused window at full brightness and add a
-      # subtle overlay to unfocused windows. This improves focus visibility
-      # without changing application opacity or the Noctalia shell.
+      # Keep client opacity independent from focus dimming: Mango composites
+      # the dim overlay separately, so unfocused windows can stay crisp while
+      # still reading as secondary.
       dim_enable = 1;
       dim_focused_color = "0x00000000";
       dim_unfocused_color = "0x00000033";
 
-      borderpx = 4;
+      borderpx = 2;
       # 16, not 18, to match noctalia's `bar.main.radius` -- and every panel,
       # since `corner_radius_scale` is 1.0. Window corners and shell chrome sit
       # adjacent on screen; two rounding values that differ by 2px read as a
@@ -139,12 +136,14 @@
       animation_fade_out = 1;
       fadein_begin_opacity = 0.5;
       fadeout_begin_opacity = 0.5;
-      zoom_initial_ratio = 0.4;
+      zoom_initial_ratio = 0.94;
+      # The current close animation is slide, whose compositor branch does not
+      # use zoom_end_ratio. Keep the existing value for zoom-close behavior.
       zoom_end_ratio = 0.8;
-      animation_duration_move = 500;
-      animation_duration_open = 400;
-      animation_duration_tag = 300;
-      animation_duration_close = 300;
+      animation_duration_move = 180;
+      animation_duration_open = 200;
+      animation_duration_tag = 200;
+      animation_duration_close = 160;
       animation_duration_focus = 0;
       animation_curve_open = "0.46,1.0,0.29,0.99";
       animation_curve_move = "0.46,1.0,0.29,0.99";
@@ -179,6 +178,19 @@
       default_mfact = 0.55;
       default_nmaster = 1;
       tag_num = 9;
+      # switch_layout walks only this list. The three names are layouts[]
+      # entries in the pinned arrange.c: tile, scroller, monocle.
+      circle_layout = "tile,scroller,monocle";
+
+      # Tabbed monocle: the full-screen stack gets a tab bar (click to switch)
+      # instead of keyboard-only cycling. deck_tab_mode stays at its default:
+      # deck is not in circle_layout, and its master+stack shape is a
+      # different workflow. Tab bar colors/height come from mango's defaults,
+      # which already match Tokyo Night.
+      # Tab bar keeps mango's default styling on purpose: the upstream colors
+      # (bg 1a1b26, blue focus chip) read better under the Noctalia bar than
+      # the muted window-chrome variant tried on 2026-10-02.
+      monocle_tab_mode = 1;
 
       repeat_rate = 30;
       repeat_delay = 400;
@@ -193,6 +205,14 @@
       trackpad_accel_profile = 2;
       button_map = 0;
       sloppyfocus = 1;
+
+      # 4 selects the nearest corner from the press point. 0 leaves the
+      # pointer where it is. Pinned defaults are the southeast corner and a
+      # warp (pointer.c treats 0 as "do not warp", not as "no corner").
+      drag_corner = 4;
+      drag_warp_cursor = 0;
+      enable_floating_snap = 1;
+      snap_distance = 12;
 
       # Window rules use app-id/title regular-expression matching. Mango has no
       # layer-rule equivalent, so Noctalia's layer effects
@@ -218,7 +238,12 @@
         # line asks for -- the rule had simply never matched anything.
         "isfloating:1,width:1080,height:920,appid:^dev\\.noctalia\\.Noctalia$"
         "vrr_only_fullscreen:1,isnoradius:1,appid:^steam_app_"
-        "focused_opacity:0.8,unfocused_opacity:0.8,appid:^kitty$"
+        # Kitty applies its own 0.92 alpha to terminal backgrounds. Keep the
+        # whole client opaque so glyphs and foregrounds stay crisp; focus dim
+        # remains Mango's separate overlay above. The named scratchpad uses
+        # its own app id, so it has to be listed here too.
+        "focused_opacity:1.0,unfocused_opacity:1.0,appid:^(kitty|mayon-scratch)$"
+        "isnamedscratchpad:1,appid:^mayon-scratch$"
       ];
 
       # Launches, Noctalia shell controls, tag navigation, and dwm-style
@@ -227,10 +252,17 @@
         "SUPER,E,spawn,thunar"
         "SUPER,B,spawn,firefox"
         "SUPER,Return,spawn,kitty"
+        # Title argument "none" means match by app id only. Size stays at the
+        # scratchpad default ratios; do not set width or height here.
+        "SUPER+SHIFT,Return,toggle_named_scratchpad,mayon-scratch,none,kitty --class=mayon-scratch"
         "ALT,space,spawn,noctalia msg panel-toggle launcher"
         "SUPER,S,spawn,noctalia msg panel-toggle control-center"
+        # No argument: the keybind path has no client, so this toggles tag 0
+        # on the selected monitor.
+        "SUPER+SHIFT,S,toggle_special_tag"
         "SUPER+ALT,L,spawn,noctalia msg session lock"
         "SUPER,0,toggleoverview"
+        "SUPER+SHIFT,0,togglejump"
 
         "SUPER,H,focusdir,left"
         "SUPER,Left,focusdir,left"
@@ -241,19 +273,21 @@
         "SUPER,L,focusdir,right"
         "SUPER,Right,focusdir,right"
 
-        "SUPER+CTRL,H,exchange_client,left"
-        "SUPER+CTRL,Left,exchange_client,left"
-        "SUPER+CTRL,J,exchange_client,down"
-        "SUPER+CTRL,Down,exchange_client,down"
-        "SUPER+CTRL,K,exchange_client,up"
-        "SUPER+CTRL,Up,exchange_client,up"
-        "SUPER+CTRL,L,exchange_client,right"
-        "SUPER+CTRL,Right,exchange_client,right"
+        "SUPER+SHIFT,H,move_client,left"
+        "SUPER+SHIFT,Left,move_client,left"
+        "SUPER+SHIFT,J,move_client,down"
+        "SUPER+SHIFT,Down,move_client,down"
+        "SUPER+SHIFT,K,move_client,up"
+        "SUPER+SHIFT,Up,move_client,up"
+        "SUPER+SHIFT,L,move_client,right"
+        "SUPER+SHIFT,Right,move_client,right"
 
-        "SUPER+SHIFT+CTRL,H,move_client,left"
-        "SUPER+SHIFT+CTRL,J,move_client,down"
-        "SUPER+SHIFT+CTRL,K,move_client,up"
-        "SUPER+SHIFT+CTRL,L,move_client,right"
+        # Directions only. parse_monitor_arg accepts left/right/up/down.
+        # HJKL is not bound: those chords used to be exchange_client.
+        "SUPER+CTRL,Left,tagmon,left"
+        "SUPER+CTRL,Down,tagmon,down"
+        "SUPER+CTRL,Up,tagmon,up"
+        "SUPER+CTRL,Right,tagmon,right"
 
         "SUPER,Page_Down,viewtoright"
         "SUPER,U,viewtoright"
@@ -314,10 +348,9 @@
         "SUPER,Home,focusstack,prev"
         "SUPER,End,focusstack,next"
         "SUPER,Tab,focuslast"
-        # niri's Mod+R was switch-preset-column-width; this is its real
-        # counterpart, cycling scroller_proportion_preset on a scroller tag.
-        # It used to be a second copy of SUPER+Equal.
-        "SUPER,R,switch_proportion_preset"
+        # Super+R enters resize. The scroller width cycle moved to
+        # Super+Shift+R and still returns immediately outside scroller.
+        "SUPER,R,setkeymode,resize"
         "SUPER+CTRL,R,setmfact,1.55"
         "SUPER,F,togglemaximizescreen"
         "SUPER+SHIFT,F,togglefullscreen"
@@ -325,8 +358,10 @@
         "SUPER,C,centerwin"
         "SUPER,Minus,setmfact,-0.05"
         "SUPER,Equal,setmfact,+0.05"
-        "SUPER+SHIFT,Minus,resizewin,0,-10"
-        "SUPER+SHIFT,Equal,resizewin,0,+10"
+        # Unsigned 0 is a target size on a floating window. +0 is a zero delta
+        # on both tiled and floating windows, so the other axis stays put.
+        "SUPER+SHIFT,Minus,resizewin,+0,-10"
+        "SUPER+SHIFT,Equal,resizewin,+0,+10"
         "SUPER+SHIFT,space,togglefloating"
         "SUPER,W,switch_layout"
         "SUPER,Z,zoom"
@@ -348,14 +383,14 @@
         # slot and no noctalia restart.
         "SUPER,Print,spawn,ocr-region"
         "SUPER+SHIFT,Print,spawn,ocr-screen"
-        "SUPER+SHIFT,E,spawn,noctalia msg panel-toggle session"
-        "CTRL+ALT,Delete,quit"
+        "CTRL+ALT,Delete,spawn,noctalia msg panel-toggle session"
         "SUPER,V,spawn,noctalia msg panel-toggle clipboard"
-        "SUPER+SHIFT,P,sleep_monitor,eDP-1"
+        "SUPER+SHIFT,P,sleep_monitor,${desktop.primaryOutput}"
+        "SUPER+SHIFT,O,wakeup_monitor,${desktop.primaryOutput}"
         "SUPER+SHIFT,W,spawn,noctalia msg wallpaper-random"
         "SUPER+SHIFT,A,spawn,noctalia msg caffeine-toggle"
 
-        "SUPER+SHIFT,R,setkeymode,resize"
+        "SUPER+SHIFT,R,switch_proportion_preset"
         # These two are a pair. `toggle_scratchpad` only ever acts on a client
         # whose `is_in_scratchpad` flag is set, and mango sets that flag only
         # inside `set_minimized()` (src/manage/client.c) -- so without a
@@ -366,24 +401,18 @@
         "SUPER+ALT,T,switcher,next"
       ];
 
-      # Match the old niri mouse workflow: Super+left-drag moves the focused
-      # window and Super+right-drag resizes it.
-      mousebind = [
-        "SUPER,btn_left,moveresize,curmove"
-        "SUPER,btn_right,moveresize,curresize"
-      ];
-
-      bindl = [
-        "NONE,XF86AudioRaiseVolume,spawn,noctalia msg volume-up"
-        "NONE,XF86AudioLowerVolume,spawn,noctalia msg volume-down"
-        "NONE,XF86AudioMute,spawn,noctalia msg volume-mute"
-        "NONE,XF86AudioMicMute,spawn,noctalia msg mic-mute"
-        "NONE,XF86MonBrightnessUp,spawn,noctalia msg brightness-up"
-        "NONE,XF86MonBrightnessDown,spawn,noctalia msg brightness-down"
-        "NONE,XF86AudioPlay,spawn,playerctl play-pause"
-        "NONE,XF86AudioStop,spawn,playerctl stop"
-        "NONE,XF86AudioPrev,spawn,playerctl previous"
-        "NONE,XF86AudioNext,spawn,playerctl next"
+      # Default-mode gestures. none is a real modifier token and sets no
+      # bits. Four-finger left/right switch occupied tags; both vertical
+      # swipes toggle overview. Three-finger swipes are focusdir.
+      gesturebind = [
+        "none,left,4,viewnext_have_client"
+        "none,right,4,viewprev_have_client"
+        "none,up,4,toggleoverview"
+        "none,down,4,toggleoverview"
+        "none,up,3,focusdir,up"
+        "none,down,3,focusdir,down"
+        "none,left,3,focusdir,left"
+        "none,right,3,focusdir,right"
       ];
 
       # Binds that stay live in EVERY keymode. Three facts forced this block
@@ -402,13 +431,16 @@
       #      only reachable layer.
       #   3. A bare key must not go here. `common` applies globally, so a
       #      `NONE,Escape` row would swallow Escape for every application --
-      #      unusable in a terminal or editor. Everything below carries a
-      #      modifier for that reason.
+      #      unusable in a terminal or editor. The common `bind` rows carry a
+      #      modifier for that reason. Hardware `bindl` rows use `NONE`
+      #      because those keys have none; bare Escape stays in resize only.
       #
-      # These are MOVED, not copied, out of `bind` above:
+      # These are MOVED, not copied, out of the top-level lists above.
       # check_key_binding_conflicts (parse_config.c:3279-3345) calls a chord
-      # conflicting when either side is `common` (`any_common`), so a copy left
-      # in `default` warns at parse time unless both rows are `bindc`.
+      # conflicting when either side is `common` (`any_common`), and the same
+      # test covers mousebind and bindl. A copy left in `default` warns at
+      # parse time unless both rows are `bindc`. Home Manager writes
+      # `keymode = common` and then these bind / bindl / mousebind lines.
       keymode.common.bind = [
         # mango hot-reloads config.conf; without a bind there is no way to ask
         # for it after editing the file by hand.
@@ -419,23 +451,45 @@
         "SUPER,Escape,setkeymode,default"
       ];
 
+      # Same chords as the old top-level mousebind. Not repeated in default.
+      keymode.common.mousebind = [
+        "SUPER,btn_left,moveresize,curmove"
+        "SUPER,btn_right,moveresize,curresize"
+      ];
+
+      # Hardware keys stay available in every keymode, including while locked.
+      # Bare Escape stays out of common; only resize mode binds it.
+      keymode.common.bindl = [
+        "NONE,XF86AudioRaiseVolume,spawn,noctalia msg volume-up"
+        "NONE,XF86AudioLowerVolume,spawn,noctalia msg volume-down"
+        "NONE,XF86AudioMute,spawn,noctalia msg volume-mute"
+        "NONE,XF86AudioMicMute,spawn,noctalia msg mic-mute"
+        "NONE,XF86MonBrightnessUp,spawn,noctalia msg brightness-up"
+        "NONE,XF86MonBrightnessDown,spawn,noctalia msg brightness-down"
+        "NONE,XF86AudioPlay,spawn,playerctl play-pause"
+        "NONE,XF86AudioStop,spawn,playerctl stop"
+        "NONE,XF86AudioPrev,spawn,playerctl previous"
+        "NONE,XF86AudioNext,spawn,playerctl next"
+      ];
+
       keymode.resize.bind = [
-        "NONE,H,resizewin,-10,0"
-        "NONE,Left,resizewin,-10,0"
-        "NONE,J,resizewin,0,+10"
-        "NONE,Down,resizewin,0,+10"
-        "NONE,K,resizewin,0,-10"
-        "NONE,Up,resizewin,0,-10"
-        "NONE,L,resizewin,+10,0"
-        "NONE,Right,resizewin,+10,0"
+        "NONE,H,resizewin,-10,+0"
+        "NONE,Left,resizewin,-10,+0"
+        "NONE,J,resizewin,+0,+10"
+        "NONE,Down,resizewin,+0,+10"
+        "NONE,K,resizewin,+0,-10"
+        "NONE,Up,resizewin,+0,-10"
+        "NONE,L,resizewin,+10,+0"
+        "NONE,Right,resizewin,+10,+0"
         "NONE,Escape,setkeymode,default"
       ];
     };
 
     # Mango has no column consume/expel, first/last-column movement,
     # preset column/window heights, center-visible-columns, floating/tiling
-    # focus switching, keyboard-shortcut inhibition, or compositor screenshot
-    # dispatcher. Those actions are intentionally not recreated with unrelated
+    # focus switching, or compositor screenshot dispatcher. Shortcut
+    # inhibition is supported: allow_shortcuts_inhibit defaults to on.
+    # Those missing actions are intentionally not recreated with unrelated
     # commands.
 
     # `systemd.enable` above only *defines* mango-session.target. The line that

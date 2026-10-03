@@ -8,6 +8,7 @@ let
   kittyDir = "${config.xdg.configHome}/kitty";
   noctaliaTheme = "${kittyDir}/themes/noctalia.conf";
   mainConf = "${kittyDir}/kitty.conf";
+  seedFile = import ../../../../lib/seed-file.nix { inherit lib pkgs; };
 
   # A store file rather than a heredoc in the activation script below: a
   # heredoc inside a Nix indented string loses its terminator's indentation and
@@ -59,9 +60,10 @@ in
     # except under the cursor, so the character being edited stays identifiable.
     disable_ligatures cursor
 
-    # Matches the alpha foot used. mango composites it (blur is on in
-    # wm/mango/config.nix), so this is real translucency.
-    background_opacity 0.8
+    # Kitty applies this alpha to terminal backgrounds only; Mango keeps the
+    # whole client opaque so text and foregrounds remain crisp. Mango's blur
+    # composites the translucent background against the desktop.
+    background_opacity 0.92
 
     cursor_shape           beam
     cursor_beam_thickness  1.5
@@ -72,7 +74,7 @@ in
 
     # mango draws the border and owns the layout; kitty's own chrome is noise.
     hide_window_decorations     yes
-    window_padding_width        4
+    window_padding_width        8
     confirm_os_window_close     0
     enable_audio_bell           no
 
@@ -102,9 +104,7 @@ in
   home.activation.seedKittyConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     run mkdir -p "${kittyDir}/themes"
 
-    if [ ! -e "${noctaliaTheme}" ]; then
-      run ${pkgs.coreutils}/bin/install -m 0644 /dev/null "${noctaliaTheme}"
-    fi
+    ${seedFile.mkScript "${noctaliaTheme}" { }}
 
     # A missing `include mayon.conf` loses every setting silently, so repair
     # that case too rather than only the file-absent one.
