@@ -32,7 +32,6 @@ _: {
       vim.api.nvim_set_hl(0, "TabLineSel", { bg = visual.bg, fg = normal.fg, bold = true })
 
       local links = {
-        DapStoppedLine = "CursorLine",
         TreesitterContext = "NormalFloat",
         TreesitterContextSeparator = "FloatBorder",
         SoftFloatBorder = "FloatBorder",

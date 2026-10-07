@@ -10,7 +10,7 @@ _: {
     ./ts-comment.nix
     ./surround.nix
     ./flash.nix
-    ./rainbow-delimiters.nix
+    ./mini.nix
     ./dial.nix
     ./vim-matchup.nix
   ];

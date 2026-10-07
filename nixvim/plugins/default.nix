@@ -7,7 +7,6 @@
     ./appearance
     ./editing
     ./ai
-    ./debug
     ./git
     ./utility
   ];

@@ -7,6 +7,5 @@
     ./noice.nix
     ./snacks.nix
     ./colorizer.nix
-    ./motion.nix
   ];
 }

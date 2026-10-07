@@ -28,10 +28,6 @@ _: {
           group = "󰒋 LSP";
         }
         {
-          __unkeyed-1 = "<leader>d";
-          group = " Debug";
-        }
-        {
           __unkeyed-1 = "<leader>w";
           group = " Window";
           proxy = "<C-w>";

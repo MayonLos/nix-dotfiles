@@ -1,8 +1,6 @@
 _: {
   # A navigable list for the things that are currently lists of locations:
-  # diagnostics, LSP references, the quickfix stack. bqf (plugins/utility/bqf)
-  # improves the quickfix window itself; this is the layer above it, where you
-  # decide which list to look at.
+  # diagnostics, LSP references and the quickfix stack.
   plugins.trouble = {
     enable = true;
 

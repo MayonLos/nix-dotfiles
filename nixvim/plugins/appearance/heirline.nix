@@ -206,6 +206,11 @@
       group = vim.api.nvim_create_augroup("HeirlineState", { clear = true }),
       callback = vim.schedule_wrap(redraw_status),
     })
+    vim.api.nvim_create_autocmd("User", {
+      group = "HeirlineState",
+      pattern = "GitSignsUpdate",
+      callback = vim.schedule_wrap(redraw_status),
+    })
     local FilePercent = { provider = "%P " }
     local Ruler = { provider = "%l:%v ", hl = { fg = "fg", bold = true } }
 
@@ -307,10 +312,72 @@
       hl = function(self) return { fg = self.icon_color } end,
     }
 
+    local tabline_names, tabline_names_dirty = {}, true
+    -- Resolve duplicate basenames only when the listed buffers or their paths change.
+    local function buffer_path_parts(filename)
+      return vim.split(vim.fn.fnamemodify(filename, ":~:."), "/", { trimempty = true })
+    end
+    local function refresh_tabline_names()
+      if not tabline_names_dirty then return end
+
+      local buffers, basename_counts = {}, {}
+      for _, info in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
+        local filename = vim.api.nvim_buf_get_name(info.bufnr)
+        local parts = filename == "" and {} or buffer_path_parts(filename)
+        local basename = parts[#parts] or "[No Name]"
+        buffers[#buffers + 1] = { bufnr = info.bufnr, parts = parts, basename = basename }
+        basename_counts[basename] = (basename_counts[basename] or 0) + 1
+      end
+
+      local suffix_counts = {}
+      for _, buffer in ipairs(buffers) do
+        local suffix = ""
+        for index = #buffer.parts, 1, -1 do
+          suffix = suffix == "" and buffer.parts[index] or (buffer.parts[index] .. "/" .. suffix)
+          suffix_counts[suffix] = (suffix_counts[suffix] or 0) + 1
+        end
+      end
+
+      tabline_names = {}
+      for _, buffer in ipairs(buffers) do
+        local label = buffer.basename
+        if basename_counts[label] > 1 then
+          if #buffer.parts == 0 then
+            label = label .. " #" .. buffer.bufnr
+          else
+            local suffix = buffer.basename
+            for index = #buffer.parts - 1, 1, -1 do
+              suffix = buffer.parts[index] .. "/" .. suffix
+              label = suffix
+              if suffix_counts[suffix] == 1 then break end
+            end
+            if suffix_counts[label] ~= 1 then label = label .. " #" .. buffer.bufnr end
+          end
+        end
+        tabline_names[buffer.bufnr] = {
+          label = label,
+          duplicate = basename_counts[buffer.basename] > 1,
+        }
+      end
+      tabline_names_dirty = false
+    end
+    vim.api.nvim_create_autocmd({ "BufAdd", "BufDelete", "BufFilePost", "DirChanged" }, {
+      group = vim.api.nvim_create_augroup("HeirlineBufferNames", { clear = true }),
+      callback = function() tabline_names_dirty = true end,
+    })
+    vim.api.nvim_create_autocmd("OptionSet", {
+      group = "HeirlineBufferNames",
+      pattern = "buflisted",
+      callback = function() tabline_names_dirty = true end,
+    })
+
     local TablineFileName = {
       provider = function(self)
         local name = vim.fn.fnamemodify(self.filename, ":t")
-        return text(name == "" and "[No Name]" or name, 28)
+        local buffer_name = tabline_names[self.bufnr]
+        local width = 28
+        if buffer_name and buffer_name.duplicate then width = nil end
+        return text(buffer_name and buffer_name.label or (name == "" and "[No Name]" or name), width)
       end,
       hl = function(self) return { bold = self.is_active or self.is_visible } end,
     }
@@ -356,9 +423,6 @@
     }
 
     local TablineCloseButton = {
-      condition = function(self)
-        return not vim.api.nvim_get_option_value("modified", { buf = self.bufnr })
-      end,
       { provider = " " },
       {
         provider = "×",
@@ -381,6 +445,11 @@
       { provider = " ‹ ", hl = { fg = "gray" } },
       { provider = " › ", hl = { fg = "gray" } }
     )
+    local make_buflist_init = BufferList.init
+    BufferList.init = function(self)
+      refresh_tabline_names()
+      make_buflist_init(self)
+    end
 
     local Tabpage = {
       provider = function(self) return "%" .. self.tabnr .. "T " .. self.tabnr .. " %T" end,

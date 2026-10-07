@@ -12,6 +12,17 @@ same command works after opening a related feature. A keymap not represented in
 check commands with `vim.fn.exists(":Command")` and inspect mappings with
 `vim.fn.maparg(lhs, mode, false, true)`.
 
+DAP, goto-preview, bqf, smear-cursor and rainbow-delimiters were removed
+at the user's request to simplify the editor. Use native LSP jumps and Trouble
+for location lists. Do not restore debug key groups or the DAP-only highlight
+without restoring an explicitly requested debugging workflow.
+
+`mini.align` (`ga`/`gA`) and `mini.splitjoin` (`gS`) share the lazily loaded
+mini.nvim package. Keep both normal and visual modes in their key triggers;
+the first keypress must load the generated module setups and replay into the
+new mappings. Probe `VjgA=<CR>` on two assignment lines and `gS` twice on an
+argument list in separate fresh sessions.
+
 ## Merged plugin runtime files
 
 `combinePlugins` merges most plugins into one pack directory. If a plugin ships
