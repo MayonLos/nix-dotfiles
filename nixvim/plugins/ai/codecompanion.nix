@@ -236,6 +236,9 @@ in
     }))
   ];
 
+  # CodeCompanion uses file to detect MIME types for image attachments.
+  extraPackages = [ pkgs.file ];
+
   extraFiles = {
     "lua/cc_fidget.lua".source = ./lua/cc_fidget.lua;
     "lua/cc_inline_indicator.lua".source = ./lua/cc_inline_indicator.lua;
