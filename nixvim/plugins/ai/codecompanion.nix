@@ -52,6 +52,30 @@ in
       "CodeCompanionCmd"
     ];
     settings = {
+      adapters.http."llama.cpp".__raw = ''
+        function()
+          return require("codecompanion.adapters").extend("openai_compatible", {
+            opts = { vision = false },
+            env = {
+              url = "http://127.0.0.1:8080",
+              api_key = "local",
+              chat_url = "/v1/chat/completions",
+            },
+            schema = {
+              model = {
+                default = "qwen2.5-coder-7b",
+                choices = { "qwen2.5-coder-7b", "qwen3.5-9b" },
+              },
+              max_tokens = {
+                mapping = "parameters",
+                type = "integer",
+                default = 2048,
+              },
+            },
+          })
+        end
+      '';
+
       interactions = {
         chat = {
           adapter = "copilot_acp";
@@ -78,6 +102,8 @@ in
             # <leader>aT. `grok` is the interactive binary; `agent` is automation.
             grok.cmd = "grok";
             opencode.cmd = "opencode";
+            pi.cmd = "pi";
+            pi_local.cmd = "pi-local";
           };
         };
       };
@@ -257,6 +283,9 @@ in
     in
     [
       (mkMap nv "<leader>aa" "<cmd>CodeCompanionChat Toggle<cr>" "CodeCompanion: toggle chat")
+      (mkMap "n" "<leader>al" "<cmd>CodeCompanionChat adapter=llama.cpp<cr>"
+        "CodeCompanion: local llama.cpp chat"
+      )
       (mkMap nv "<leader>ap" "<cmd>CodeCompanionActions<cr>" "CodeCompanion: action palette")
       (mkMap "v" "<leader>av" "<cmd>CodeCompanionChat Add<cr>" "CodeCompanion: add selection to chat")
       (mkMap "n" "<leader>ai" "<cmd>CodeCompanion<cr>" "CodeCompanion: inline assistant")
