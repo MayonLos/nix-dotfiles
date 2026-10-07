@@ -333,16 +333,18 @@
       },
     }
 
+    local function close_buffer(bufnr)
+      require("snacks").bufdelete({ buf = bufnr })
+      vim.cmd.redrawtabline()
+    end
+
     local TablineFileNameBlock = {
       init = function(self) self.filename = vim.api.nvim_buf_get_name(self.bufnr) end,
       hl = function(self) return self.is_active and "TabLineSel" or "TabLine" end,
       on_click = {
         callback = function(_, minwid, _, button)
           if button == "m" then
-            vim.schedule(function()
-              vim.api.nvim_buf_delete(minwid, { force = false })
-              vim.cmd.redrawtabline()
-            end)
+            vim.schedule(function() close_buffer(minwid) end)
           else
             vim.api.nvim_win_set_buf(0, minwid)
           end
@@ -362,12 +364,7 @@
         provider = "×",
         hl = { fg = "gray" },
         on_click = {
-          callback = function(_, minwid)
-            vim.schedule(function()
-              vim.api.nvim_buf_delete(minwid, { force = false })
-              vim.cmd.redrawtabline()
-            end)
-          end,
+          callback = function(_, minwid) vim.schedule(function() close_buffer(minwid) end) end,
           minwid = function(self) return self.bufnr end,
           name = "heirline_tabline_close_buffer_callback",
         },
@@ -379,7 +376,7 @@
       TablineFileNameBlock, TablineCloseButton, Space,
     }
 
-    local BufferLine = utils.make_buflist(
+    local BufferList = utils.make_buflist(
       TablineBufferBlock,
       { provider = " ‹ ", hl = { fg = "gray" } },
       { provider = " › ", hl = { fg = "gray" } }
@@ -397,7 +394,7 @@
       TabpageClose,
     }
 
-    local TabLine = { hl = "TabLineFill", BufferLine, TabPages }
+    local TabLine = { hl = "TabLineFill", BufferList, TabPages }
 
     heirline.setup({ statusline = StatusLines, tabline = TabLine })
     heirline.load_colors(setup_colors())
