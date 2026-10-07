@@ -1,6 +1,10 @@
 { inputs, pkgs, ... }:
 {
-  home.packages = [ inputs.llm-agents.packages.${pkgs.system}.herdr ];
+  home.packages = [ inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.herdr ];
+
+  # Agent integrations live in their mutable user configuration, outside Nix.
+  # Install/refresh with `herdr integration install codex` or `opencode`;
+  # the upstream installer merges its hooks without managing authentication.
 
   xdg.configFile."herdr/config.toml".text = ''
     # Skip the first-run wizard; Home Manager owns this configuration.
