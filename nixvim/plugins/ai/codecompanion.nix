@@ -189,11 +189,8 @@ in
           enabled = true;
           opts = {
             auto_save = true;
-            auto_generate_title = true;
-            title_generation_opts = {
-              adapter = "deepseek";
-              model = "deepseek-chat";
-            };
+            # Local chats must not trigger a separate cloud request for titles.
+            auto_generate_title = false;
             continue_last_chat = false;
             keymap = "gh";
             # Avoid making Flash's single-key s jump wait for a chat sc chord.

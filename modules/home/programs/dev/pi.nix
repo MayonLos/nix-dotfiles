@@ -63,7 +63,7 @@ let
           --model|--model=*) exec pi --extension ${piLocalExtension} --provider llama-local "$@" ;;
         esac
       done
-      exec pi --extension ${piLocalExtension} --provider llama-local --model qwen2.5-coder-7b "$@"
+      exec pi --extension ${piLocalExtension} --provider llama-local --model qwen3.5-9b "$@"
     '';
   };
 in

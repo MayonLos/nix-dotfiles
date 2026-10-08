@@ -71,11 +71,11 @@ herdr integration status
 tmux 仍保留：workmux 用它为 Git worktree 创建窗口，Noctalia 配置了 tmux provider，
 tmux 的终端 passthrough 也供 Yazi 图片预览使用。Herdr 用于智能体会话，tmux 继续承载这些通用终端工作流。
 
-本地 Pi 入口是 `pi-local`：
+本地 Pi 入口是 `pi-local`，默认使用已验证能调用文件读取工具的 9B：
 
 ```sh
+pi-local
 pi-local --model qwen2.5-coder-7b
-pi-local --model qwen3.5-9b
 ```
 
 它通过只在此入口加载的 `llama-local` provider 连接本地模型，不需要云端账号或订阅；常规 `pi` 保留原有 provider 和账号配置。

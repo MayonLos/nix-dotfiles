@@ -28,9 +28,11 @@ Neovim 的 `<leader>al` 打开本地 CodeCompanion chat，默认用 7B 编码模
 `:CodeCompanionCLI agent=pi_local` 打开本地 Pi；`agent=pi` 使用 Pi 原有 provider。
 现有 Copilot chat、DeepSeek inline 和 Codex CLI 默认配置保留。
 
-`pi-local` 显式加载由同一模型清单生成的 `llama-local` provider，默认选择 7B；
-进入后可用 `/model` 选择 9B。Router 自动加载、切换模型；输出上限为 2048 tokens。
+`pi-local` 显式加载由同一模型清单生成的 `llama-local` provider，默认选择 9B；
+进入后可用 `/model` 选择其他模型。Router 自动加载、切换模型；输出上限为 2048 tokens。
 该入口不修改 `auth.json` 或 `models.json`，常规 `pi` 保留所有原有 provider。
+9B 已实测通过 Pi 调用 `read` 工具读取文件；7B 聊天正常，但两次只读工具测试
+均未实际调用工具，因此将 7B 用于 CodeCompanion 聊天，9B 用作 Pi 默认。
 
 锁定的 Pi 1.0.0 原生 `llama.cpp` provider 在启动时依赖已保存的连接及缓存目录，
 而 b9190 router 未提供其自动发现未加载模型所需的 `source` 字段，可能导致 CLI 找不到模型
