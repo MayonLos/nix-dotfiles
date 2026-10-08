@@ -54,6 +54,81 @@ sudo nixos-rebuild switch --flake .#nixos-btw
 
 声明式配置修改需重建才生效；应用维护的可写运行时配置可以即时修改，见下节。
 
+## 终端会话与本地智能体
+
+Herdr 已安装，快捷键前缀为 `Ctrl+A`；Codex、OpenCode 和 Pi 的 hooks 当前可用。
+Herdr 的集成状态保存在用户配置中，Home Manager 管理的是 Herdr 本身和前缀设置。
+
+首次配置或升级后，可安装并检查集成：
+
+```sh
+herdr integration install codex
+herdr integration install opencode
+herdr integration install pi
+herdr integration status
+```
+
+tmux 仍保留：workmux 用它为 Git worktree 创建窗口，Noctalia 配置了 tmux provider，
+tmux 的终端 passthrough 也供 Yazi 图片预览使用。Herdr 用于智能体会话，tmux 继续承载这些通用终端工作流。
+
+本地 Pi 入口是 `pi-local`：
+
+```sh
+pi-local --model qwen2.5-coder-7b
+pi-local --model qwen3.5-9b
+```
+
+它连接 Pi 自带的 llama.cpp provider 和本地模型，不需要云端账号或订阅；云端 provider 仍按各自账号规则使用。
+
+## 本地模型
+
+`llama-cpp` 是绑定 `127.0.0.1:8080` 的 CUDA router，最多同时加载一个模型。
+模型权重保存在用户目录，不进入 Nix store；详细下载、校验和服务命令见[本地模型说明](docs/local-models.md)。
+
+4B 已完成 GPU 推理测试并删除，只保留以下两个模型：
+
+| 模型 | 用途 | 上下文 | GGUF 文件大小 |
+|---|---|---:|---:|
+| `qwen2.5-coder-7b` | 代码任务 | 8192 | 4.36 GiB |
+| `qwen3.5-9b` | 通用任务 | 4096 | 5.29 GiB |
+
+两者合计约 9.65 GiB。文件大小不是运行时显存占用；RTX 4060 Laptop 的 8 GiB 显存下，较大的上下文可能需要降低或使用部分 CPU offload。
+
+## Neovim
+
+Heirline 提供 buffer tabline，因此不再安装独立 bufferline；关闭 buffer 保留窗口布局，
+未保存修改会要求确认，同名文件通过最短路径区分。
+插件配置已移除 nvim-dap、goto-preview、bqf、smear-cursor 和 rainbow-delimiters。
+
+| 功能 | 键位 |
+|---|---|
+| Mini 文本对齐 / 预览对齐 | `ga` / `gA` |
+| Mini 拆分与合并 | `gS` |
+| CodeCompanion 本地模型聊天 | `<leader>al` |
+| CodeCompanion 聊天开关 / 动作菜单 | `<leader>aa` / `<leader>ap` |
+| 将选区加入聊天 | `<leader>av` |
+| 默认 Codex CLI / 选择 CLI agent | `<leader>at` / `<leader>aT` |
+| 聊天内重新生成 / 保存历史 | `<leader>ar` / `<leader>as` |
+
+CodeCompanion 的 `<leader>al` 打开本地 llama.cpp chat；`<leader>at` 使用默认 Codex CLI，
+`<leader>aT` 输入 agent 名称选择 CLI。选择 `pi` 使用常规 Pi，选择 `pi_local` 使用 `pi-local`。
+
+健康检查请在真实终端运行 `nvim '+checkhealth'`。Snacks 的图像协议和 `UIEnter`
+初始化依赖终端环境，纯 headless 检查可能误报。Avante、CopilotChat、mini.icons
+是未采用的可选项；已使用 CodeCompanion 和 nvim-web-devicons。Dashboard 有意关闭，
+Neovim 内置的 `gc` / `gcc` 注释键也有意共用前缀。
+
+## Grok Bot 桌面客户端
+
+`grok-bot` 启动 Grok Bot，桌面菜单中也有同名入口；它与 `grok`（Grok Build CLI）分别安装。
+首次启动按界面使用 Cursor 账号登录，需要符合条件的 Cursor / SuperGrok 套餐。
+Grok Bot 的任务、记忆和定时流程运行在云端电脑；Pi 配合本地 llama.cpp 不需要该订阅。
+
+模板用于创建有固定职责的 Bot，例如 PR 审查或资料调研。打开 `x.ai/bot/...` 分享页，
+查看描述、技能、定时流程和插件，再选择 Add to Grok Bot；导入后仍需连接自己的账号。
+社区的 `PROFILE.md` 则是可复制的角色说明文本，不等同于可安装的分享模板。
+安装细节、官方文档、社区目录和第一条任务示例见 [Grok Bot 使用说明](docs/grok-bot.md)。
+
 ## 目录结构
 
 ```
