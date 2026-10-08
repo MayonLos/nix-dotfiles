@@ -35,6 +35,12 @@ executable versions keeps the profile and the editor from drifting.
   can still add packages implicitly; see
   [closure and PATH notes](references/closure-and-path.md).
 
+Gradle's user-level `~/.gradle/gradle.properties` is managed by `dev/java.nix`.
+Its toolchain paths derive from `lib/java.nix`, and automatic JDK downloads are
+disabled to avoid a duplicate set in `~/.gradle/jdks`. Projects requiring an
+unavailable version or vendor need an explicit project environment or a change
+to the shared JDK set; do not silently re-enable downloads globally.
+
 ## Interpreter and editor-specific rules
 
 - Tools invoked as commands can be in the profile. Tools imported by the

@@ -34,7 +34,7 @@ For a missing shared library, first identify whether the game runs inside Steam'
 
 ## PrismLauncher and JDKs
 
-PrismLauncher pins no JDKs: `jdks = [ ]` in `modules/home/programs/games/prismlauncher.nix` keeps nixpkgs' default OpenJDK set out of the launcher closure. The module also filters the resulting empty `PRISMLAUNCHER_JAVA_PATHS` prefix out of `qtWrapperArgs`, because wrapQtAppsHook word-splits it and the wrapper build fails otherwise. Prism detects the `java` on PATH (Temurin, via `session-vars.nix`) by itself; add an older JDK manually in Settings when an instance needs one. The installed Temurin set is single-sourced in `lib/java.nix`; Java 26 still comes from `pkgs-unstable`, so recheck channel availability when updating the package set.
+PrismLauncher reuses the Temurin JDK set from `lib/java.nix` via `jdks = lib.attrValues java.jdks` in `modules/home/programs/games/prismlauncher.nix`. The nixpkgs wrapper exposes their exact `bin/java` store paths through `PRISMLAUNCHER_JAVA_PATHS`, so Detect can find all configured versions without adding nixpkgs' default OpenJDK set or duplicate installations. The previous empty-path `qtWrapperArgs` filter is unnecessary with this nonempty set. Java 26 still comes from `pkgs-unstable`, so recheck channel availability when updating the package set.
 
 Minecraft instances, worlds, and user data live under `~/.local/share/PrismLauncher`; the Nix module configures the application package rather than managing that mutable data.
 

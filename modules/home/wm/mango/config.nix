@@ -94,7 +94,7 @@ in
       blur_layer = 0;
       blur_optimized = 1;
       blur_params_num_passes = 2;
-      blur_params_radius = 5;
+      blur_params_radius = 6;
       blur_params_noise = 0.02;
       blur_params_brightness = 0.9;
       blur_params_contrast = 0.9;
@@ -103,25 +103,22 @@ in
       shadows = 1;
       layer_shadows = 0;
       shadow_only_floating = 0;
-      shadows_size = 4;
-      shadows_blur = 12;
+      shadows_size = 6;
+      shadows_blur = 16;
       shadows_position_x = 2;
-      shadows_position_y = 2;
-      shadowscolor = "0x000000ff";
+      shadows_position_y = 4;
+      shadowscolor = "0x00000099";
 
       # Keep client opacity independent from focus dimming: Mango composites
       # the dim overlay separately, so unfocused windows can stay crisp while
       # still reading as secondary.
       dim_enable = 1;
       dim_focused_color = "0x00000000";
-      dim_unfocused_color = "0x00000033";
+      dim_unfocused_color = "0x00000022";
 
       borderpx = 2;
-      # 16, not 18, to match noctalia's `bar.main.radius` -- and every panel,
-      # since `corner_radius_scale` is 1.0. Window corners and shell chrome sit
-      # adjacent on screen; two rounding values that differ by 2px read as a
-      # mistake rather than as a choice.
-      border_radius = 16;
+      # Match the compact Noctalia bar's corner radius.
+      border_radius = 12;
       gappih = 5;
       gappiv = 5;
       gappoh = 10;
@@ -131,19 +128,17 @@ in
 
       animations = 1;
       animation_type_open = "zoom";
-      animation_type_close = "slide";
+      animation_type_close = "zoom";
       animation_fade_in = 1;
       animation_fade_out = 1;
       fadein_begin_opacity = 0.5;
       fadeout_begin_opacity = 0.5;
-      zoom_initial_ratio = 0.94;
-      # The current close animation is slide, whose compositor branch does not
-      # use zoom_end_ratio. Keep the existing value for zoom-close behavior.
-      zoom_end_ratio = 0.8;
+      zoom_initial_ratio = 0.88;
+      zoom_end_ratio = 0.9;
       animation_duration_move = 180;
-      animation_duration_open = 200;
+      animation_duration_open = 240;
       animation_duration_tag = 200;
-      animation_duration_close = 160;
+      animation_duration_close = 180;
       animation_duration_focus = 0;
       animation_curve_open = "0.46,1.0,0.29,0.99";
       animation_curve_move = "0.46,1.0,0.29,0.99";

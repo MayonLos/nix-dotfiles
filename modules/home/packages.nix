@@ -101,7 +101,6 @@ in
     kicad
     kdePackages.kdenlive
     gimp
-    go-musicfox
     firefoxWithManagedThemeAndExtensions
     # Official client. The nixpkgs wrapper follows NIXOS_OZONE_WL from
     # session-vars.nix, and Noctalia's notification daemon is already on

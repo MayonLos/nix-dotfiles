@@ -379,11 +379,11 @@ in
         bar.main = {
           position = "top";
           thickness = 30;
-          background_opacity = 0.88;
-          radius = 16;
-          margin_ends = 8;
-          margin_edge = 6;
-          padding = 8;
+          background_opacity = 0.92;
+          radius = 12;
+          margin_ends = 10;
+          margin_edge = 8;
+          padding = 6;
           widget_spacing = 6;
           shadow = true;
           contact_shadow = true;
@@ -566,7 +566,7 @@ in
         };
 
         widget.clock = {
-          format = "{:%H:%M}";
+          format = "{:%m-%d  %H:%M}";
           vertical_format = "{:%H\n%M}";
         };
 
@@ -577,10 +577,12 @@ in
           hide_when_empty = true;
         };
 
+        desktop_widgets.enabled = false;
+
         wallpaper = {
           enabled = true;
           directory = wallpaperDir;
-          fill_mode = "stretch";
+          fill_mode = "crop";
           fill_color = "surface";
           transition_on_startup = true;
           transition = [
@@ -623,7 +625,7 @@ in
         };
 
         # Screen corner triggers, on the bottom corners rather than the top
-        # ones -- the bar sits at the top (margin_edge 6, margin_ends 8) and the
+        # ones -- the bar sits at the top (margin_edge 8, margin_ends 10) and the
         # top corners are close enough to its hover area to fire by accident,
         # while the bottom edge is completely free now that the dock is off.
         # action only accepts none / launcher / control_center / window_switcher

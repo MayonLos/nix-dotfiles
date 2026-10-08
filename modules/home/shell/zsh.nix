@@ -13,8 +13,8 @@ let
   javaSwitchFns = lib.concatStringsSep "\n" (
     lib.mapAttrsToList (version: _: "use-java${version}() { use-java JAVA${version}_HOME; }") java.jdks
   );
-  javaPathCleanup = lib.concatMapStringsSep " " (
-    version: ''"''${(@)path:#''${JAVA${version}_HOME}/bin}"''
+  javaPathCleanup = lib.concatMapStringsSep "\n" (
+    version: ''path=("''${(@)path:#''${JAVA${version}_HOME}/bin}")''
   ) (lib.attrNames java.jdks);
 
   zshInit = ''
@@ -55,7 +55,8 @@ let
       fi
 
       export JAVA_HOME="$java_home"
-      path=("''${JAVA_HOME}/bin" ${javaPathCleanup})
+      ${javaPathCleanup}
+      path=("''${JAVA_HOME}/bin" "''${path[@]}")
       hash -r
       java -version
     }
@@ -98,16 +99,18 @@ in
       };
 
       shellAliases = {
-        ls = "eza --icons";
-        ll = "eza -l --icons --git";
-        la = "eza -la --icons --git";
-        lt = "eza --tree --icons";
+        ls = "eza --icons=auto --group-directories-first";
+        ll = "eza -l --icons=auto --git --group-directories-first --time-style=long-iso";
+        la = "eza -la --icons=auto --git --group-directories-first --time-style=long-iso";
+        lt = "eza --tree --level=2 --icons=auto --group-directories-first";
         cat = "bat";
         ".." = "cd ..";
         "..." = "cd ../..";
         nr = "nh os switch";
         nc = "nh clean all";
         lg = "lazygit";
+        ff = "fastfetch";
+        bt = "btop";
       };
 
       initContent = zshInit;

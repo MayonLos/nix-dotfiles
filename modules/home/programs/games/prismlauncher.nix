@@ -1,26 +1,23 @@
-{ pkgs, lib, ... }:
+{
+  pkgs,
+  pkgs-unstable,
+  lib,
+  ...
+}:
 
 let
-  # `jdks = [ ]` leaves lib.makeSearchPath with an empty value, and
-  # wrapQtAppsHook word-splits the serialized qtWrapperArgs, so the following
-  # `--set` would be consumed as the prefix value and the wrapper build fails.
-  # Drop that one prefix instead; Prism detects the `java` on PATH (Temurin,
-  # via session-vars.nix) by itself.
-  prismlauncher =
-    (pkgs.prismlauncher.override {
-      additionalPrograms = [
-        pkgs.ffmpeg
-        pkgs.mangohud
-        pkgs.gamescope
-      ];
-      jdks = [ ];
-      gamemodeSupport = true;
-    }).overrideAttrs
-      (old: {
-        qtWrapperArgs = builtins.filter (
-          arg: !(lib.hasPrefix "--prefix PRISMLAUNCHER_JAVA_PATHS" arg)
-        ) old.qtWrapperArgs;
-      });
+  java = import ../../../../lib/java.nix { inherit pkgs pkgs-unstable; };
+  prismlauncher = pkgs.prismlauncher.override {
+    additionalPrograms = [
+      pkgs.ffmpeg
+      pkgs.mangohud
+      pkgs.gamescope
+    ];
+    # Reuse the installed Temurin set; the wrapper exposes these exact store
+    # paths through PRISMLAUNCHER_JAVA_PATHS without adding default OpenJDKs.
+    jdks = lib.attrValues java.jdks;
+    gamemodeSupport = true;
+  };
 in
 {
   home.packages = [ prismlauncher ];

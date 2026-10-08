@@ -23,7 +23,7 @@ The configuration is split across these Home Manager modules:
 - `nr` switches with nh, `nc` runs nh cleanup, `lg` opens lazygit; `y` comes from yazi's shell integration. The JDK selectors (`use-java8/17/21/25/26`) and the one-shot `javaNN`/`javacNN` wrappers are generated from the version set in `lib/java.nix`.
 - Interactive zsh initialization does not supply environment variables to systemd user units, desktop launchers, or compositor-spawned applications. Put nonsecret shared variables in both `systemd.user.sessionVariables` and `home.sessionVariables` in `session-vars.nix`; keep interactive-only variables on the Home Manager side.
 - Secret delivery is handled separately. Never embed credential values in session variables or shell startup code; the existing export loop reads runtime files provided by sops-nix. Read [sops-secrets](../sops-secrets/SKILL.md) when changing secret delivery.
-- The installed Temurin set is single-sourced in `lib/java.nix`: `JAVA*_HOME` in `session-vars.nix`, the wrappers in `java.nix`, and the zsh selectors all derive from it. Add or drop a version only there. PrismLauncher pins no JDKs and uses the `java` on PATH.
+- The installed Temurin set is single-sourced in `lib/java.nix`: `JAVA*_HOME` in `session-vars.nix`, the wrappers in `java.nix`, and the zsh selectors all derive from it. Add or drop a version only there. PrismLauncher reuses the same JDK set and exposes its Java executable paths to automatic detection.
 - Keep `use-luarocks` opt-in: exporting Lua 5.4 paths globally can contaminate Neovim's LuaJIT environment.
 - Terminal UI colors use ANSI indexes so they follow Noctalia at runtime. Consult [desktop-apps](../desktop-apps/SKILL.md) before adding fixed theme colors.
 

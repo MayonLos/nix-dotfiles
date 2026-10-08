@@ -1,10 +1,7 @@
-{ pkgs, ... }:
+_:
 
 let
-  # Keep the image above the text so narrow windows need no logo column.
-  fastfetchLogo = "${pkgs.nixos-icons}/share/icons/hicolor/512x512/apps/nix-snowflake.png";
-  # Colour strings are SGR codes, not palette indexes: 5/6 blink, 8 conceals.
-  # Named colours follow Noctalia's terminal palette without text effects.
+  # Named ANSI colours follow Noctalia's terminal palette without text effects.
   section = label: color: {
     type = "custom";
     format = "{#${color}}── ${label} {#light_black}────────────────{#}";
@@ -17,12 +14,10 @@ in
       enable = true;
       settings = {
         logo = {
-          type = "kitty-direct";
-          source = fastfetchLogo;
-          position = "top";
-          width = 16;
-          height = 8;
-          padding.right = 0;
+          type = "builtin";
+          source = "NixOS_small";
+          position = "left";
+          padding.right = 2;
           color = {
             "1" = "blue";
             "2" = "cyan";
@@ -34,7 +29,7 @@ in
           brightColor = false;
           separator = "  ";
           key = {
-            width = 16;
+            width = 12;
             paddingLeft = 1;
           };
           color = {
@@ -72,17 +67,17 @@ in
           }
           {
             type = "uptime";
-            key = " Uptime";
+            key = " Up";
             keyColor = "green";
           }
           {
             type = "packages";
-            key = "󰏖 Packages";
+            key = "󰏖 Pkgs";
             keyColor = "yellow";
           }
           {
             type = "wm";
-            key = " Compositor";
+            key = " WM";
             keyColor = "magenta";
           }
           {
@@ -146,7 +141,12 @@ in
     # the value here ever stops being "noctalia".
     btop = {
       enable = true;
-      settings.color_theme = "noctalia";
+      settings = {
+        color_theme = "noctalia";
+        # Use Kitty's background so Mango's blur remains visible behind panels.
+        theme_background = false;
+        vim_keys = true;
+      };
     };
   };
 }

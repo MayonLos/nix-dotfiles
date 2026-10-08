@@ -38,8 +38,10 @@
         };
 
         addons.classicui.globalSection = {
-          Theme = "Tokyonight-Storm";
-          DarkTheme = "Tokyonight-Storm";
+          Theme = "Tokyonight-Mayon";
+          DarkTheme = "Tokyonight-Mayon";
+          Font = "Noto Sans CJK SC 10";
+          "Vertical Candidate List" = "True";
 
           # No ForceWaylandDPI here. It was tried on 2026-08-21 and is wrong:
           # classicui already gets 1.5 from wp_fractional_scale_v1 on Wayland
@@ -64,6 +66,45 @@
   };
 
   home = {
+    # Compact the packaged theme's padding and improve contrast, including
+    # its black-on-dark context menu. DPI still follows the client protocol.
+    file.".local/share/fcitx5/themes/Tokyonight-Mayon/theme.conf".text =
+      let
+        themeDir = "${pkgs.fcitx5-tokyonight}/share/fcitx5/themes/Tokyonight-Storm";
+      in
+      builtins.replaceStrings
+        [
+          "Name=Tokyonight-storm"
+          "#222436"
+          "#000000"
+          "#62a0ea"
+          "#82aaff"
+          "Image=radio.png"
+          "Image=arrow.png"
+          "Left=10"
+          "Right=10"
+          "Top=7"
+          "Bottom=7"
+          "Top=6"
+          "Bottom=6"
+        ]
+        [
+          "Name=Tokyonight-Mayon"
+          "#1a1b26"
+          "#c0caf5"
+          "#7aa2f7"
+          "#c0caf5"
+          "Image=${themeDir}/radio.png"
+          "Image=${themeDir}/arrow.png"
+          "Left=7"
+          "Right=7"
+          "Top=3"
+          "Bottom=3"
+          "Top=3"
+          "Bottom=3"
+        ]
+        (builtins.readFile "${themeDir}/theme.conf");
+
     file.".local/share/fcitx5/rime/default.custom.yaml".text = ''
       patch:
         __include: rime_ice_suggestion:/
@@ -71,13 +112,22 @@
         schema_list:
           - schema: rime_ice
 
-        menu/page_size: 9
+        menu/page_size: 5
 
         key_binder/bindings/+:
           - { when: paging, accept: comma, send: Page_Up }
           - { when: has_menu, accept: period, send: Page_Down }
 
         ascii_composer/good_old_caps_lock: true
+    '';
+
+    file.".local/share/fcitx5/rime/rime_ice.custom.yaml".text = ''
+      patch:
+        # Explicitly retain learning and sentence composition for personal words.
+        translator/enable_user_dict: true
+        translator/enable_sentence: true
+        # Lower short English collisions while retaining mixed-language input.
+        reduce_english_filter/mode: all
     '';
   };
 }

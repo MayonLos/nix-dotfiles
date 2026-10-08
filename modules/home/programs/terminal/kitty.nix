@@ -85,10 +85,11 @@ in
     # protocol that this whole migration is for.
     shell_integration           enabled
 
-    # foot's bindings, kept so the muscle memory survives the swap.
+    # Keep shell editing keys free: Ctrl+U deletes to the start of the line,
+    # and Ctrl+D sends EOF. Scrollback uses explicit terminal shortcuts.
     map ctrl+shift+o        open_url_with_hints
-    map ctrl+u              scroll_page_up
-    map ctrl+d              scroll_page_down
+    map ctrl+shift+page_up   scroll_page_up
+    map ctrl+shift+page_down scroll_page_down
     map ctrl+shift+home     scroll_home
     map ctrl+shift+end      scroll_end
     map ctrl+equal          change_font_size all +1.0

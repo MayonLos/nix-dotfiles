@@ -19,4 +19,11 @@ let
 in
 {
   home.packages = [ java.jdks.${java.default} ] ++ launchers;
+
+  # Gradle uses the same JDKs as the shell and Prism rather than downloading
+  # another set into ~/.gradle/jdks. Paths track the pinned Nix packages.
+  home.file.".gradle/gradle.properties".text = ''
+    org.gradle.java.installations.paths=${lib.concatStringsSep "," (map toString (lib.attrValues java.jdks))}
+    org.gradle.java.installations.auto-download=false
+  '';
 }
