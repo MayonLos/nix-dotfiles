@@ -1,11 +1,12 @@
-_: {
+{ pkgs, ... }:
+{
   # One plugin replacing five. dressing.nvim was the forcing function — its
   # author archived it with "use snacks.nvim instead for your vim.ui.*
   # interfaces" — and once snacks is here, nvim-notify, neoscroll,
   # indent-blankline and vim-illuminate are all a sub-module of it.
   #
-  # Only the modules named below are enabled. picker is on solely because
-  # explorer is built on it — see the `ui_select = false` note down there.
+  # Only the modules named below are enabled. picker is on because explorer
+  # is built on it, and it also owns vim.ui.select.
   plugins.snacks = {
     enable = true;
 
@@ -111,14 +112,14 @@ _: {
 
       # Everything else stays off explicitly rather than by omission, so a
       # snacks release that flips a default on cannot change this config.
-      # explorer is built on picker, so picker has to be on for the tree to
-      # exist at all. `ui_select = false` is the load-bearing part: picker
-      # otherwise claims vim.ui.select, which fzf-lua already owns
-      # (plugins/navigation/fzf.nix registers it), and the two would fight over
-      # every selection prompt.
+      # Snacks owns vim.ui.select; its picker is already enabled for explorer.
       picker = {
         enabled = true;
-        ui_select = false;
+        ui_select = true;
+        # LuaJIT FFI cannot find Nix store libraries through the system loader
+        # path. Point Snacks directly at the locked SQLite library instead of
+        # setting a global LD_LIBRARY_PATH for every editor subprocess.
+        db.sqlite3_path = "${pkgs.lib.getLib pkgs.sqlite}/lib/libsqlite3.so";
       };
       explorer.enabled = true;
 
@@ -367,4 +368,8 @@ _: {
   extraFiles = {
     "lua/math_preview.lua".source = ./lua/math_preview.lua;
   };
+
+  # Snacks uses mmdc for Mermaid images. nixpkgs' wrapper supplies its pinned
+  # Chromium executable and disables Puppeteer's runtime browser download.
+  extraPackages = [ pkgs.mermaid-cli ];
 }

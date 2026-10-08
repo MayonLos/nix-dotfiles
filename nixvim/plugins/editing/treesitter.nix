@@ -3,33 +3,49 @@
   plugins.treesitter = {
     enable = true;
 
-    grammarPackages = with pkgs.vimPlugins.nvim-treesitter.builtGrammars; [
-      c
-      cpp
-      cuda
-      python
-      nix
-      lua
-      luadoc
-      vim
-      vimdoc
-      html
-      markdown
-      markdown_inline
-      bash
-      java
-      matlab
-      latex
-      bibtex
-      yaml
-      json
-      toml
-      kdl
-      gitcommit
-      diff
-      regex
-      query
-    ];
+    grammarPackages =
+      with pkgs.vimPlugins.nvim-treesitter.builtGrammars;
+      [
+        c
+        cpp
+        cuda
+        python
+        nix
+        lua
+        luadoc
+        vim
+        vimdoc
+        html
+        markdown
+        markdown_inline
+        bash
+        java
+        matlab
+        latex
+        bibtex
+        yaml
+        json
+        toml
+        kdl
+        gitcommit
+        diff
+        regex
+        query
+        css
+        javascript
+        scss
+        svelte
+        tsx
+        typst
+        vue
+      ]
+      ++ [
+        # Snacks' image parser check covers document languages beyond the
+        # current code set. norg is in the stable tree-sitter grammar set even
+        # though this pinned nvim-treesitter package does not expose it under
+        # builtGrammars.
+        pkgs.tree-sitter-grammars.tree-sitter-norg
+      ];
 
     highlight = {
       enable = true;
@@ -63,4 +79,9 @@
   extraConfigLua = ''
     vim.treesitter.language.register("matlab", "octave")
   '';
+
+  # nvim-treesitter invokes this CLI to install/update parsers. The stable
+  # `tree-sitter` package provides the `tree-sitter` executable required by
+  # its health check.
+  extraPackages = [ pkgs.tree-sitter ];
 }

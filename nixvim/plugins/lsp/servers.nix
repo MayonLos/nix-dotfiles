@@ -8,6 +8,13 @@ let
     // server;
 in
 _: {
+  # Neovim 0.12.4 does not assign a filetype to `.mdx` by default. Map the
+  # Markdown portion to the canonical Markdown filetype so Marksman can attach
+  # to MDX buffers without inventing a server-only filetype alias.
+  extraConfigLua = ''
+    vim.filetype.add({ extension = { mdx = "markdown" } })
+  '';
+
   # Every `cmd` below names its binary rather than interpolating a store path.
   # Two reasons: nvim then starts the *same* server that
   # modules/home/programs/dev/toolchain.nix installs; and a pinned path drags
@@ -163,7 +170,6 @@ _: {
           ];
           filetypes = [
             "markdown"
-            "markdown.mdx"
           ];
           root_markers = [
             ".marksman.toml"
@@ -365,10 +371,8 @@ _: {
           filetypes = [
             "javascript"
             "javascriptreact"
-            "javascript.jsx"
             "typescript"
             "typescriptreact"
-            "typescript.tsx"
           ];
           # tsconfig/jsconfig before package.json: in a monorepo the nearest
           # tsconfig is the right project root, and package.json would pick the

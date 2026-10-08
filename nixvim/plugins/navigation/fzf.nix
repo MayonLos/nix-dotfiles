@@ -95,12 +95,4 @@
       };
     };
   };
-
-  extraConfigLua = ''
-    vim.ui.select = function(items, opts, on_choice)
-      require("lz.n").trigger_load("fzf-lua")
-      require("fzf-lua").register_ui_select()
-      return vim.ui.select(items, opts, on_choice)
-    end
-  '';
 }

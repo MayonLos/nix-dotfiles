@@ -34,4 +34,7 @@ let
 in
 {
   home.packages = [ nvim ];
+  # Keep Neovim's standard config path in sync with the wrapper's generated RC.
+  # This also lets :checkhealth recognize the declaratively managed config.
+  xdg.configFile."nvim/init.lua".source = nvim.config.build.initFile;
 }

@@ -84,6 +84,8 @@ in
             n = "<CR>";
             i = "<C-s>";
           };
+          # Keep the chat action out of Neovim's built-in gr* LSP prefix.
+          keymaps.regenerate.modes.n = "<leader>ar";
         };
 
         inline.adapter = "deepseek";
@@ -194,7 +196,8 @@ in
             };
             continue_last_chat = false;
             keymap = "gh";
-            save_chat_keymap = "sc";
+            # Avoid making Flash's single-key s jump wait for a chat sc chord.
+            save_chat_keymap = "<leader>as";
           };
         };
 

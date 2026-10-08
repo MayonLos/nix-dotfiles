@@ -89,7 +89,7 @@ _: {
         };
         providers.codecompanion = {
           name = "CodeCompanion";
-          module = "codecompanion.providers.completion.blink";
+          module = "cc_blink_proxy";
           score_offset = 100;
         };
       };
@@ -101,4 +101,6 @@ _: {
       };
     };
   };
+
+  extraFiles."lua/cc_blink_proxy.lua".source = ./lua/cc_blink_proxy.lua;
 }
