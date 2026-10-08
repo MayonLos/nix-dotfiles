@@ -78,7 +78,7 @@ pi-local --model qwen2.5-coder-7b
 pi-local --model qwen3.5-9b
 ```
 
-它连接 Pi 自带的 llama.cpp provider 和本地模型，不需要云端账号或订阅；云端 provider 仍按各自账号规则使用。
+它通过只在此入口加载的 `llama-local` provider 连接本地模型，不需要云端账号或订阅；常规 `pi` 保留原有 provider 和账号配置。
 
 ## 本地模型
 
@@ -90,7 +90,7 @@ pi-local --model qwen3.5-9b
 | 模型 | 用途 | 上下文 | GGUF 文件大小 |
 |---|---|---:|---:|
 | `qwen2.5-coder-7b` | 代码任务 | 8192 | 4.36 GiB |
-| `qwen3.5-9b` | 通用任务 | 4096 | 5.29 GiB |
+| `qwen3.5-9b` | 通用任务 | 8192 | 5.29 GiB |
 
 两者合计约 9.65 GiB。文件大小不是运行时显存占用；RTX 4060 Laptop 的 8 GiB 显存下，较大的上下文可能需要降低或使用部分 CPU offload。
 
