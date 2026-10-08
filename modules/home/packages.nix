@@ -100,7 +100,6 @@ in
     zotero
     kicad
     kdePackages.kdenlive
-    stellarium
     gimp
     go-musicfox
     firefoxWithManagedThemeAndExtensions
