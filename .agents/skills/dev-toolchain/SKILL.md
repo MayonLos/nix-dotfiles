@@ -25,8 +25,7 @@ executable versions keeps the profile and the editor from drifting.
 - Activation/build-time scripts may use `pkgs.python3` directly (for example,
   `screenshot.nix`, `firefox.nix`, `wm/mango/noctalia.nix`, and
   `pkgs/matlab.nix`); they need not track `lib/toolchains.nix`. That shared
-  Python source covers the development interpreter, its packages, and
-  nvim-dap's bare `python3` command only.
+  Python source covers the development interpreter and its packages.
 - A server declared for an editor must also exist on that editor's effective
   PATH. Desktop applications inherit the user systemd environment, so a tool
   working in an interactive shell does not prove it is available to an editor.
@@ -43,10 +42,10 @@ to the shared JDK set; do not silently re-enable downloads globally.
 
 ## Interpreter and editor-specific rules
 
-- Tools invoked as commands can be in the profile. Tools imported by the
-  debuggee interpreter cannot: `debugpy` belongs in `python.nix`'s
-  `python3.withPackages`, so `python -m debugpy` uses an interpreter that can
-  import it.
+- nvim-dap was removed; its global CodeLLDB and debugpy dependencies were
+  removed as well. If debugging is requested again, install adapters for the
+  actual consumer. A Python adapter invoked as `python -m debugpy` must be
+  importable by that interpreter; a loose profile package does not ensure this.
 - Emacs was removed and is not installed. Do not add it back unless the user
   asks; the editor tools come from `toolchain.nix` and are started by nvim.
 
@@ -58,6 +57,10 @@ For the measured Nixvim closure tradeoffs and PATH checks, read
 `embedded.nix` uses `gcc-arm-embedded`, including `arm-none-eabi-gdb`;
 host GDB is not a substitute for Cortex-M debugging. Probe permissions belong
 in `modules/system/hardware/debug-probes.nix`. Avoid duplicating LLVM module tools.
+`pkgs/stm32cubeprogrammer.nix` packages ST's official Linux 2.23.0 installer
+with `requireFile` and an FHS runtime, exposing `stm32cubeprogrammer` (GUI) and
+`STM32_Programmer_CLI`. Import the exact official ZIP into the store as described
+in the package before building on a new host; updates require a new version/hash.
 
 `octave.nix` provides Octave with matching toolboxes. MATLAB also has a separate
 `matlab.nix` / `pkgs/matlab.nix` FHS wrapper around the user's installed tree;

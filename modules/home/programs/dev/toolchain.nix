@@ -78,10 +78,5 @@ in
     (callPackage ../../../../pkgs/libtexprintf.nix { }) # utftex
     toolchains.python.pkgs.pylatexenc # latex2text; same interpreter as python.nix
 
-    # Debug adapters. gdb (llvm.nix) speaks DAP natively since 14; codelldb is
-    # what nvim-dap uses for C/C++/Rust. The Python adapter
-    # is not here — it must be importable by the interpreter itself, so it
-    # rides along with python.nix's python3.withPackages.
-    vscode-extensions.vadimcn.vscode-lldb.adapter
   ];
 }

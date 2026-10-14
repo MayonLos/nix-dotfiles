@@ -34,9 +34,10 @@ reduced the Nixvim runtime closure from 8.9 GiB to 824 MB when there were nine
 servers. Treat the sizes as historical measurements; the rule remains to keep
 servers in the shared profile and out of the editor closure.
 
-## debugpy
+## Python debug adapters
 
-Neovim DAP invokes the adapter through Python. A separately
-installed `python3Packages.debugpy` is not necessarily importable by the Python
-used to run the debuggee. Keep it in `python3.withPackages` in
-`modules/home/programs/dev/python.nix` and check the actual interpreter path.
+nvim-dap and its global debugpy/CodeLLDB dependencies are no longer installed.
+If a project needs debugpy, add it to the Python environment that will invoke
+`python -m debugpy` and check that interpreter's imports. Installing a separate
+`python3Packages.debugpy` profile package does not ensure it is importable by
+the project's Python.

@@ -38,14 +38,14 @@ The codex package here is the user's ChatGPT-account CLI; its
 `sandbox-runtime` (binary `srt`), and `workmux`; verify current package
 attributes before adding or removing entries.
 
-`bin/codex` is shadowed by a `--no-daemon` shim in the same module, because
-codex 0.157 needs a complete CLI package layout (manifest, `codex-path/rg`, an
-in-root `codex-resources/bwrap`) before it will install its app-server daemon,
-and llm-agents ships only the binaries. Do not "fix" this by completing the
-layout: the daemon copies the CLI into `~/.codex` and then runs a network
-auto-updater, which would replace the Nix-provided binary. Re-read the comment
-in `ai-agents.nix` before touching it, and drop the shim only when llm-agents
-handles the layout itself.
+The former `--no-daemon` shim was removed after verifying the locked
+llm-agents package provides the manifest, `codex-path/rg`, and bundled
+`codex-resources/bwrap`. Its daemon patch selects the immutable store package
+instead of downloading a replacement. An isolated Codex 0.162.1 cold start on
+2026-10-14 started the shared daemon and created `packages/app-server-daemon/current`
+pointing to that store package, with no downloaded release. Recheck the package
+layout and daemon patch when updating this input; these observations are tied
+to that pin.
 
 `dsh` uses the shipped web/headless profiles; do not assume every profile named
 in upstream help is packaged. Its plugins are mutable runtime data.
@@ -61,14 +61,8 @@ Resolve file ownership before adding `force = true`; see `desktop-apps`.
 
 ZCode was explicitly removed after it pushed to a user repository without
 being asked. Do not restore it unless the user explicitly requests it.
-Antigravity (IDE + CLI) was removed on 2026-09-20 as unused and re-added on
-2026-10-01 at the user's request; `modules/home/programs/dev/antigravity.nix` is
-the module.
-The IDE needs `pkgs-unstable.antigravity-ide-fhs` (stable 26.05 has no
-`antigravity-ide-fhs` attribute; the FHS build is what lets extension language
-servers load), while the CLI is `agents.antigravity-cli` from llm-agents
-(binary `agy`, newer than unstable). `codecompanion`'s CLI agent list drives
-`agy`; keep the three in sync when moving packages around.
+Antigravity (IDE + CLI) was removed at the user's request. Do not restore it
+unless the user explicitly asks for it.
 
 ## Verification
 

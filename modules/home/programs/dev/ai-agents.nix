@@ -1,6 +1,5 @@
 {
   pkgs,
-  lib,
   inputs,
   ...
 }:
@@ -13,45 +12,6 @@
 # closely.
 let
   agents = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system};
-
-  # codex 0.157 split its app-server daemon out into a package it installs for
-  # itself. Interactive startup now requires the directory above `bin/codex` to
-  # look like a complete upstream CLI package — `codex-package.json`,
-  # `codex-path/rg`, and a `codex-resources/bwrap` that is a real copy inside
-  # the package root, because the installer rejects any link escaping it. The
-  # llm-agents build ships the three binaries and nothing else, so bare `codex`
-  # dies immediately with "this CLI has no complete local package"; the same
-  # error names the workaround, `--no-daemon`, which is also what the pending
-  # upstream fix (llm-agents.nix#9889) leaves as the non-daemon path.
-  #
-  # Completing the package here would be the other way out, and it is the wrong
-  # one on NixOS. The daemon installs by copying the CLI out of the store into
-  # ~/.codex/packages/app-server-daemon/releases, and because that root is not
-  # named `standalone`, upstream's `is_stable_standalone_release` guard against
-  # GNU/distro packages does not fire: the daemon would start its
-  # `pid-update-loop` and quietly replace the Nix-provided binary with whatever
-  # it downloads. `--no-daemon` keeps codex entirely under Nix and costs only
-  # the shared-server features. `codex agents` is the one entry point that
-  # rejects the flag — it *is* the daemon overview — so it is passed through
-  # and still reports "no complete local package; the agents overview requires a
-  # shared server". That subcommand is knowingly unavailable here, not broken.
-  #
-  # `--no-daemon` is a root-level clap flag, so it has to be inserted before the
-  # subcommand. hiPrio wins the bin/codex collision with agents.codex in the
-  # Home Manager buildEnv; the original wrapper is still what gets exec'd, so
-  # codex's own helper lookup next to libexec/codex/bin is unchanged.
-  codexCli = lib.hiPrio (
-    pkgs.writeShellScriptBin "codex" ''
-      for arg in "$@"; do
-        case "$arg" in
-          -*) continue ;;
-          agents) exec ${agents.codex}/bin/codex "$@" ;;
-          *) break ;;
-        esac
-      done
-      exec ${agents.codex}/bin/codex --no-daemon "$@"
-    ''
-  );
 
   # dsh's app-boot loads `node-addon-require-builtin`, a native addon that
   # decodes the machine code of a V8-internal getter to find
@@ -93,7 +53,7 @@ let
 in
 {
   home.packages = [
-    # DeepSeek's own agent harness ("everything is a plugin"), still 0.1.x.
+    # DeepSeek's own agent harness ("everything is a plugin").
     # `dsh` alone is an error: it needs a profile, and only two ship —
     # `dsh web` (the browser UI, the one you actually want) and
     # `dsh --profile headless "<task>"` for one-shot answers. The `tui` and
@@ -106,33 +66,22 @@ in
     # dshCli, not agents.dsh directly, because of the loader stub above.
     dshCli
 
-    # OpenAI's CLI agent. Was ./codex until 2026-08-30: a symlinkJoin around
-    # the sadjow/codex-cli-nix input, whose launcher injected ~10 `-c` overrides
-    # to make bare `codex` mean DeepSeek. All of that is gone — bare `codex` is
-    # now the ChatGPT account, which is the point. This source is also newer
-    # than what it replaced (0.157.1 now; the sadjow input was 0.149.0, and
-    # nixpkgs-unstable is on 0.156.1) and drops the `stdenv.isLinux`
-    # deprecation-warning workaround that the old module carried, since it is
-    # not built from upstream's package.nix.
-    # ~/.codex/config.toml is still codex's own, unmanaged by Nix.
+    # OpenAI's CLI agent, authenticated through the user's ChatGPT account.
+    # Its ~/.codex/config.toml remains user-managed, outside Nix.
     #
-    # codexCli shadows bin/codex with the --no-daemon shim explained above; the
-    # package itself stays because the shim execs through its wrapper and the
-    # rest of the CLI (libexec helpers, completions) comes from here.
+    # llm-agents provides the complete package layout and a daemon patch using
+    # the immutable store package. Verified with an isolated 0.162.1 cold start;
+    # the former --no-daemon wrapper is no longer needed.
     agents.codex
-    codexCli
 
     # xAI's official Grok Build coding agent. Provides both `grok` for
     # interactive sessions and `agent` for automation. Authentication is via
     # browser OAuth on first launch or XAI_API_KEY for non-browser use.
     agents.grok
 
-    # Terminal coding agent, provider-agnostic. OpenCode v2 (2.0.18), switched
-    # from v1 (1.18.32) on 2026-09-28. Config path is unchanged
-    # (~/.config/opencode/opencode.jsonc, currently just the schema stub).
-    # Credentials move from ~/.local/share/opencode/auth.json into SQLite
-    # (~/.local/share/opencode/opencode.db), migrated on first v2 run. v2 runs
-    # through a shared background server and stores sessions in that database.
+    # Terminal coding agent with provider support. The locked llm-agents input
+    # exposes v2 as `opencode2`; the wrapper above also provides `opencode`.
+    # Configuration and credentials remain mutable runtime state outside Nix.
     agents.opencode2
     opencodeCli
 
@@ -162,17 +111,4 @@ in
   # NOT here: `agents.zcode` (Z.ai's Electron IDE). Removed 2026-09-19 at the
   # user's instruction after it was observed pushing to a user repository
   # without being asked. Do not add it back.
-  #
-  # It also carried a desktop-entry workaround that this file used to own:
-  # ZCode rewrote ~/.local/share/applications/zcode.desktop on every launch,
-  # pointing Exec at the raw Electron binary instead of the `bin/zcode` wrapper
-  # (losing --enable-wayland-ime, so fcitx5 stopped working in it) and
-  # hard-coding a store path that `nh clean` later turned into a dangling one.
-  # That block went with it — if zcode ever returns, the workaround is in
-  # `git log -- modules/home/programs/dev/ai-agents.nix`, not lost.
-  #
-  # Its local state (~/.zcode, 724 MB of workspace/checkpoints/logs plus
-  # v2/credentials.json, and ~/.config/ZCode, 19 MB) was deleted by hand at the
-  # same time; nothing in Nix manages those paths, so a rebuild does not
-  # recreate them.
 }

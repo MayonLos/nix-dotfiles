@@ -56,6 +56,10 @@
     # here.
     stm32cubemx
 
+    # CubeProgrammer is separate from CubeMX. The official Linux download is
+    # pinned in the local package; it supplies both the GUI and MPU-capable CLI.
+    (import ../../../../pkgs/stm32cubeprogrammer.nix { inherit pkgs; })
+
     # Serial console for the board's UART. tio over minicom/picocom: it
     # reconnects when the adapter is re-enumerated, which is what happens on
     # every reset of a board whose USB-serial is on the same chip.

@@ -99,11 +99,37 @@ _: {
           filetypes = [ "python" ];
           root_markers = [
             "pyproject.toml"
+            "pyrightconfig.json"
+            "uv.lock"
             "setup.py"
             "setup.cfg"
             "requirements.txt"
             ".git"
           ];
+          # uv's project interpreter must win over the shell's global Python
+          # (or another project's activated environment). This also works when
+          # opening a project by absolute path without first entering direnv.
+          before_init.__raw = ''
+            function(_, config)
+              local root = config.root_dir
+              local python = root and (root .. "/.venv/bin/python")
+              if not python or vim.fn.executable(python) ~= 1 then
+                python = vim.env.VIRTUAL_ENV and (vim.env.VIRTUAL_ENV .. "/bin/python")
+              end
+              if python and vim.fn.executable(python) == 1 then
+                config.settings = config.settings or {}
+                config.settings.python = config.settings.python or {}
+                config.settings.python.pythonPath = python
+              end
+            end
+          '';
+          settings.python.analysis = {
+            autoSearchPaths = true;
+            useLibraryCodeForTypes = true;
+            autoImportCompletions = true;
+            diagnosticMode = "openFilesOnly";
+            typeCheckingMode = "basic";
+          };
         };
       };
 

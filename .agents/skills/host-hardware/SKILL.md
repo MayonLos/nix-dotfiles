@@ -40,6 +40,8 @@ description: 修改或排查 nixos-btw 的内核/NVIDIA、硬件加速、Docker/
 `modules/system/hardware/debug-probes.nix` 安装 openocd/stlink 的 udev 规则，调试探针通过
 `uaccess` 给登录会话授权；不补造 plugdev。串口 ttyUSB/ttyACM 使用 dialout，
 用户组在 `modules/system/user/mayon.nix`。工具链由 `dev-toolchain` 管。
+STM32MP157 的 USB DFU（0483:df11）另由该模块的 `70-stm32-dfu.rules`
+赋予 `uaccess`，不能用 ST-Link 规则替代。
 
 音频、蓝牙、固件分别在 `modules/system/hardware/{audio,bluetooth,firmware}.nix`；
 电源相关服务在 `modules/system/services/systemd.nix`。先确认运行中的具体 unit，再调整模块。

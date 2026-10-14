@@ -9,8 +9,7 @@
   # C/C++: clang, lld and clang-tools (clangd + clang-format).
   llvm = pkgs.llvmPackages;
 
-  # Python: the interpreter, its package set (`<python>.pkgs.*`) and the bare
-  # `python3` nvim-dap starts from PATH.
+  # Python: the development interpreter and its package set (`<python>.pkgs.*`).
   python = pkgs.python3;
 
   # Lua 5.4: interpreter and package set (luarocks, luacheck). nixpkgs names

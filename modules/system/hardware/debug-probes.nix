@@ -13,6 +13,11 @@
   services.udev.packages = [
     pkgs.openocd
     pkgs.stlink
+    # STM32MP157's BootROM, TF-A and U-Boot DFU stages use 0483:df11
+    # (ST AN5275). Tag the device before systemd's 71-seat.rules runs.
+    (pkgs.writeTextDir "lib/udev/rules.d/70-stm32-dfu.rules" ''
+      SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="df11", TAG+="uaccess"
+    '')
   ];
 
   # The serial console is the other half, and it is not uaccess-tagged: a
