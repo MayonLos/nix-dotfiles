@@ -147,10 +147,11 @@ lib/
   import-dir.nix       递归导入一个目录下所有 .nix
   java.nix             Temurin JDK 版本集合（8/17/21/25/26）
   toolchains.nix       LLVM / Python / Lua 版本集合
+  local-models.nix    llama.cpp 与 Pi 共用的本地模型清单
   desktop.nix          跨 NixOS/HM 的桌面常量（光标、显示器、仓库路径）
   graphical-service.nix 图形会话 systemd 用户单元模板
   seed-file.nix        可变配置文件的"缺失才创建" activation
-pkgs/                  不在 nixpkgs 的包表达式（matlab、utftex、tesseract-ocr…）
+pkgs/                  不在 nixpkgs 的包表达式（matlab、libtexprintf、tesseract-ocr…）
 modules/
   home/                → Home Manager（用户 mayon）
     base/              身份、GTK、Qt、输入法、XDG、会话变量、Xresources
@@ -207,7 +208,7 @@ Home Manager 把配置文件从 `/nix/store` 链接到家目录。**store 里的
 ### 真目录里只链接了个别文件 → 应用可以在旁边写
 
 ```
-~/.config/mango/       真目录（config.conf 是链接，noctalia.conf 由主题模板写入）
+~/.config/mango/       真目录（config.conf 是链接，noctalia-colors.conf 由主题模板写入）
 ~/.config/kitty/       真目录（mayon.conf 是链接；kitty.conf 和主题文件可写）
 ~/.config/noctalia/    真目录（具体文件的归属见 noctalia.nix）
 ~/.config/yazi/        真目录（声明式配置和运行时状态共存）
@@ -215,7 +216,7 @@ Home Manager 把配置文件从 `/nix/store` 链接到家目录。**store 里的
 
 这类由 `xdg.configFile."kitty/mayon.conf".source = ...` 产生 —— 路径里带了文件名，HM 就只建这一个链接，父目录保持可写。
 
-**这个区别决定了应用能不能保存自己的运行时状态**：noctalia 要写 `settings.json`，主题模板要往 `~/.config/mango/noctalia.conf` 里渲染配色。要是把它们的整个目录都链成 store，这些全都会失败。
+**这个区别决定了应用能不能保存自己的运行时状态**：Noctalia GUI 保存的设置位于 `~/.local/state/noctalia/settings.toml`；主题模板把配色渲染到 `~/.config/mango/noctalia-colors.conf`。要是把应用需要写入的整个目录都链成 store，这些操作就会失败。
 
 > 需要「配置进版本库、同时又能即时编辑」时，用 `config.lib.file.mkOutOfStoreSymlink` 链到仓库里的真实路径。本仓库目前没有用到这种模式。
 
@@ -255,7 +256,7 @@ sops secrets/secrets.yaml            # 编辑
 
 | 改了什么 | 还要做 |
 |---|---|
-| fcitx5 配置 | `systemctl --user restart app-org.fcitx.Fcitx5@autostart.service`（**不是** `fcitx5-daemon`，那个是登录时竞争失败的那份） |
+| fcitx5 配置 | 先用 `systemctl --user status fcitx5-daemon.service` 检查当前实际运行的单元，再重启该单元；不要在已有 daemon 时再启动第二个实例 |
 | nvim 配置 | 无，重建即生效 |
 | mango 配置 | `Super+Alt+R`（reload_config）或重登；键位、窗口规则、动画都能热重载 |
 | QQ 的 wrapper | 从托盘完全退出再开 |
