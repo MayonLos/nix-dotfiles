@@ -11,9 +11,10 @@
   # no log (modules/system/desktop/xdg.nix) and keys the bar's backlight
   # control off a stale output.
   primaryOutput = "eDP-1";
+  primaryOutputScale = 1.5;
 
-  # Must stay a mutable path, not a store copy: programs.nh.flake and the
-  # Noctalia plugin tooling read the live repo.
+  # Must stay a mutable path, not a store copy: programs.nh.flake reads the
+  # live repo when running nh from another working directory.
   repoPath = "/home/mayon/nix-dotfiles";
 
   # GTK (home.pointerCursor/gtk.iconTheme) and the qt6ct/qt5ct conf written by

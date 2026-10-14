@@ -38,7 +38,12 @@ let
     # answered when this session unit first runs.
     for _ in $(seq 50); do
       if ${lib.getExe pkgs.xrdb} -merge ${config.xresources.path}; then
-        exit 0
+        # Pyglet/ManimGL inherits the X11 root cursor. Mango seeds that cursor
+        # with an output-scaled bitmap, unlike clients loading Xcursor.size.
+        # On this 1.5x panel it was 32px despite Xcursor.size=24; explicitly
+        # loading the root cursor after xrdb gives a measured 24px bitmap.
+        ${lib.getExe pkgs.xsetroot} -cursor_name left_ptr
+        exit $?
       fi
       sleep 0.2
     done

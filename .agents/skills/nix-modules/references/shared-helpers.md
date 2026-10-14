@@ -10,6 +10,7 @@
 | `import-dir.nix` | 递归导入目录下所有 `.nix` | `flake/system.nix`、`hosts/nixos-btw/default.nix` | 不改；无排除机制，非模块 `.nix` 不能放 `modules/` 下 |
 | `java.nix` | Temurin JDK 集合：`default` + `jdks`（8/17/21/25/26，26 来自 unstable） | `dev/java.nix`（包与 `javaNN` 包装器）、`games/prismlauncher.nix`（JDK 检测路径）、`base/session-vars.nix`（`JAVA*_HOME`）、`shell/zsh.nix`（`use-javaNN`） | 增删版本只动 `jdks` 一行；换默认版本改 `default` |
 | `toolchains.nix` | 语言版本集合：`llvm`（clang/lld/clang-tools）、`python`（含 `<python>.pkgs`）、`lua` + `luaPackages` | `dev/llvm.nix`、`dev/toolchain.nix`、`dev/python.nix`、`dev/lua.nix` | 换 LLVM/Python 改一行；Lua 的 `lua` 与 `luaPackages` 必须一起换（nixpkgs 包集按版本命名） |
+| `local-models.nix` | 本地模型的共享清单与参数 | `home/programs/dev/llama-cpp.nix`、`home/programs/dev/pi.nix` | 增删模型时同步检查下载文档与服务参数；权重保存在用户目录，不进入 Nix store |
 | `desktop.nix` | 跨 NixOS/HM 的桌面常量：`cursor`、`primaryOutput`、`repoPath`、`iconTheme` | `home/base/gtk.nix`、`home/base/qt.nix`、`system/desktop/greetd.nix`、`wm/mango/config.nix`、`wm/mango/noctalia.nix`、`system/desktop/xdg.nix`、`system/programs/nh.nix` | 换光标、显示器名、仓库路径或图标主题只改这里；`repoPath` 必须保持可变真实路径，不能换成 store 路径 |
 | `graphical-service.nix` | 图形会话 systemd 用户单元模板（Unit/Install 固定，只填 `description` 与 `service`） | `home/services/cliphist.nix`、`home/services/clipboard.nix`、`home/base/xresources.nix` | 新增随会话启停的服务时用它；`Type`/`Restart` 等仍写在调用处 |
 | `seed-file.nix` | 激活脚本里"缺失才创建"的可变文件（应用自己会重写） | `home/base/qt.nix`（qt6ct/qt5ct.conf）、`home/programs/terminal/kitty.nix`（noctalia 主题）、`home/programs/apps/zathura.nix`（noctaliarc） | `mkActivation` 生成独立 activation；要嵌进别的脚本用 `mkScript`；永远不覆盖已有文件 |
@@ -37,7 +38,7 @@
 |---|---|---|
 | 增/删/换默认 JDK | `lib/java.nix` | `nix flake check --no-build`；构建后 `java -version`、`use-javaNN` |
 | 换光标主题/大小 | `lib/desktop.nix` | 构建后查 greetd 配置与 HM `home.pointerCursor` 的值 |
-| 换显示器名 | `lib/desktop.nix` | mango `config.conf` 的 monitorrule/sleep/wakeup、xdg screencast、noctalia monitor |
+| 换显示器名 | `lib/desktop.nix` | mango `config.conf` 的 monitor_rule/sleep/wakeup、xdg screencast、noctalia monitor |
 | 换 LLVM/Python/Lua 版本 | `lib/toolchains.nix` | `nix eval` 对比 `clang` 与 `clang-tools` 的 drvPath 是否同源 |
 | 加 nvim server/formatter | `modules/home/programs/dev/toolchain.nix`（nixvim 里声明裸命令） | 构建后 `command -v <tool>`；`:checkhealth` |
 | 加随图形会话的服务 | `lib/graphical-service.nix` + 调用模块 | 构建后查 `home-files/.config/systemd/user/<unit>.service` |

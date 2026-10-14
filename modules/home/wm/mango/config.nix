@@ -22,12 +22,12 @@ in
 
     settings = {
       # The broad default is dwm's master-stack tile layout for all tags.
-      tagrule = [
+      tag_rule = [
         "id:*,layout_name:tile"
       ];
 
-      monitorrule = [
-        "name:^${desktop.primaryOutput}$,width:2560,height:1600,refresh:165.002,x:0,y:0,scale:1.5,vrr:1"
+      monitor_rule = [
+        "name:^${desktop.primaryOutput}$,width:2560,height:1600,refresh:165.002,x:0,y:0,scale:${toString desktop.primaryOutputScale},vrr:1"
       ];
 
       # Let X11 clients render at real pixels instead of being upscaled.
@@ -75,14 +75,19 @@ in
       # Values needing shell expansion are dropped: mango expands `~/` and
       # nothing else, so a `${...}` or `$(...)` would be set as that literal
       # string. TMUX_TMPDIR is the one that hits this today; shells still get
-      # it from hm-session-vars.sh, which is where it matters.
+      # it from hm-session-vars.sh, which is where it matters. Mango also caps
+      # values at 255 bytes (including the generated leading space); long
+      # values such as FZF_DEFAULT_OPTS stay in the
+      # shell environment rather than making the compositor config invalid.
       env = lib.mapAttrsToList (n: v: "${n},${toString v}") (
-        lib.filterAttrs (_: v: !(lib.hasInfix "$" (toString v))) config.home.sessionVariables
+        lib.filterAttrs (
+          n: v: !(lib.hasInfix "$" (toString v)) && builtins.stringLength " ${n},${toString v}" <= 255
+        ) config.home.sessionVariables
       );
 
       # Carried over from niri's `cursor` block. cursor_hide_on_keypress is
       # mango's spelling of niri's `hide-when-typing`; there is no global
-      # prefer-no-csd equivalent (mango's allow_csd is a windowrule field only,
+      # prefer-no-csd equivalent (mango's allow_csd is a window_rule field only,
       # and it does not ask clients for decorations anyway).
       cursor_theme = desktop.cursor.name;
       cursor_size = desktop.cursor.size;
@@ -107,7 +112,7 @@ in
       shadows_blur = 16;
       shadows_position_x = 2;
       shadows_position_y = 4;
-      shadowscolor = "0x00000099";
+      shadows_color = "0x00000099";
 
       # Keep client opacity independent from focus dimming: Mango composites
       # the dim overlay separately, so unfocused windows can stay crisp while
@@ -116,14 +121,14 @@ in
       dim_focused_color = "0x00000000";
       dim_unfocused_color = "0x00000022";
 
-      borderpx = 2;
+      border_px = 2;
       # Match the compact Noctalia bar's corner radius.
       border_radius = 12;
-      gappih = 5;
-      gappiv = 5;
-      gappoh = 10;
-      gappov = 10;
-      smartgaps = 0;
+      gap_inner_horizontal = 5;
+      gap_inner_vertical = 5;
+      gap_outer_horizontal = 10;
+      gap_outer_vertical = 10;
+      smart_gaps = 0;
       no_border_when_single = 0;
 
       animations = 1;
@@ -131,8 +136,8 @@ in
       animation_type_close = "zoom";
       animation_fade_in = 1;
       animation_fade_out = 1;
-      fadein_begin_opacity = 0.5;
-      fadeout_begin_opacity = 0.5;
+      fade_in_begin_opacity = 0.5;
+      fade_out_begin_opacity = 0.5;
       zoom_initial_ratio = 0.88;
       zoom_end_ratio = 0.9;
       animation_duration_move = 180;
@@ -145,12 +150,12 @@ in
       animation_curve_tag = "0.46,1.0,0.29,0.99";
       animation_curve_close = "0.46,1.0,0.29,0.99";
       animation_curve_focus = "0.46,1.0,0.29,0.99";
-      animation_curve_opafadein = "0.46,1.0,0.29,0.99";
+      animation_curve_opacity_fade_in = "0.46,1.0,0.29,0.99";
       # Was "0.5,0.5,0.5,0.5" -- a bezier straight down the diagonal, i.e.
       # constant velocity. Every other curve here, including its own
       # opafadein counterpart, eases; the fade-out was the one motion in the
       # compositor that did not.
-      animation_curve_opafadeout = "0.46,1.0,0.29,0.99";
+      animation_curve_opacity_fade_out = "0.46,1.0,0.29,0.99";
       tag_animation_direction = 1;
 
       scroller_structs = 20;
@@ -167,11 +172,11 @@ in
       # Avoid accidental tag changes at the screen edge while a game or video
       # is fullscreen, and keep the display awake during fullscreen playback.
       hotarea_disable_on_fullscreen = 1;
-      idleinhibit_when_fullscreen = 1;
+      idle_inhibit_when_fullscreen = 1;
 
       new_is_master = 1;
-      default_mfact = 0.55;
-      default_nmaster = 1;
+      default_master_factor = 0.55;
+      default_master_count = 1;
       tag_num = 9;
       # switch_layout walks only this list. The three names are layouts[]
       # entries in the pinned arrange.c: tile, scroller, monocle.
@@ -189,7 +194,7 @@ in
 
       repeat_rate = 30;
       repeat_delay = 400;
-      numlockon = 1;
+      numlock_on = 1;
       xkb_rules_layout = "us";
       tap_to_click = 1;
       trackpad_natural_scrolling = 1;
@@ -199,7 +204,7 @@ in
       trackpad_middle_button_emulation = 1;
       trackpad_accel_profile = 2;
       button_map = 0;
-      sloppyfocus = 1;
+      sloppy_focus = 1;
 
       # 4 selects the nearest corner from the press point. 0 leaves the
       # pointer where it is. Pinned defaults are the southeast corner and a
@@ -212,33 +217,33 @@ in
       # Window rules use app-id/title regular-expression matching. Mango has no
       # layer-rule equivalent, so Noctalia's layer effects
       # are handled by the effect settings above instead.
-      windowrule = [
-        "isfloating:1,width:0.5,isnoborder:1,appid:^swayimg$"
-        "isfloating:1,appid:^thunar$,title:^(Rename|重命名)"
-        "isfloating:1,width:480,appid:^[Ff]irefox$,title:^Picture-in-Picture$"
+      window_rule = [
+        "is_floating:1,width:0.5,no_border:1,app_id:^swayimg$"
+        "is_floating:1,app_id:^thunar$,title:^(Rename|重命名)"
+        "is_floating:1,width:480,app_id:^[Ff]irefox$,title:^Picture-in-Picture$"
         # blueman-manager, nm-connection-editor and org.gnome.Calculator were
         # in this alternation and are installed nowhere -- not on PATH, not in
-        # any module. Template leftovers. Add an appid back when the program
+        # any module. Template leftovers. Add an app_id back when the program
         # that carries it actually arrives, not before: a rule that cannot
         # match is indistinguishable from one that is broken.
-        "isfloating:1,appid:^(pavucontrol|org\\.pulseaudio\\.pavucontrol|xdg-desktop-portal-gtk)$"
+        "is_floating:1,app_id:^(pavucontrol|org\\.pulseaudio\\.pavucontrol|xdg-desktop-portal-gtk)$"
         # No polkit rule. This host runs no standalone polkit GUI agent --
         # noctalia's built-in one is the only authentication agent (see
         # noctalia.nix's `polkit_agent`), and it draws in the shell rather than
         # opening a top-level window, so nothing can ever carry a `polkit-*` or
-        # `org.freedesktop.PolicyKit*` appid here.
-        # `.Settings` was never an appid. Measured with `mmsg get all-clients`
+        # `org.freedesktop.PolicyKit*` app_id here.
+        # `.Settings` was never an app_id. Measured with `mmsg get all-clients`
         # while the window was open: it reports `dev.noctalia.Noctalia`, and the
         # window came up tiled at 936x1010 instead of the floating 1080x920 this
         # line asks for -- the rule had simply never matched anything.
-        "isfloating:1,width:1080,height:920,appid:^dev\\.noctalia\\.Noctalia$"
-        "vrr_only_fullscreen:1,isnoradius:1,appid:^steam_app_"
+        "is_floating:1,width:1080,height:920,app_id:^dev\\.noctalia\\.Noctalia$"
+        "vrr_only_fullscreen:1,no_radius:1,app_id:^steam_app_"
         # Kitty applies its own 0.92 alpha to terminal backgrounds. Keep the
         # whole client opaque so glyphs and foregrounds stay crisp; focus dim
         # remains Mango's separate overlay above. The named scratchpad uses
         # its own app id, so it has to be listed here too.
-        "focused_opacity:1.0,unfocused_opacity:1.0,appid:^(kitty|mayon-scratch)$"
-        "isnamedscratchpad:1,appid:^mayon-scratch$"
+        "focused_opacity:1.0,unfocused_opacity:1.0,app_id:^(kitty|mayon-scratch)$"
+        "is_named_scratchpad:1,app_id:^mayon-scratch$"
       ];
 
       # Launches, Noctalia shell controls, tag navigation, and dwm-style
@@ -357,7 +362,7 @@ in
         # on both tiled and floating windows, so the other axis stays put.
         "SUPER+SHIFT,Minus,resizewin,+0,-10"
         "SUPER+SHIFT,Equal,resizewin,+0,+10"
-        "SUPER+SHIFT,space,togglefloating"
+        "SUPER,space,togglefloating"
         "SUPER,W,switch_layout"
         "SUPER,Z,zoom"
         "SUPER+SHIFT,G,togglegaps"
@@ -410,7 +415,7 @@ in
         "none,right,3,focusdir,right"
       ];
 
-      # Binds that stay live in EVERY keymode. Three facts forced this block
+      # Binds that stay live in EVERY key_mode. Three facts forced this block
       # into existence, all read off the pinned source:
       #
       #   1. A bind fires only when its mode matches. keyboard.c:587-589 accepts
@@ -435,8 +440,8 @@ in
       # conflicting when either side is `common` (`any_common`), and the same
       # test covers mousebind and bindl. A copy left in `default` warns at
       # parse time unless both rows are `bindc`. Home Manager writes
-      # `keymode = common` and then these bind / bindl / mousebind lines.
-      keymode.common.bind = [
+      # `key_mode = common` and then these bind / bindl / mousebind lines.
+      key_mode.common.bind = [
         # mango hot-reloads config.conf; without a bind there is no way to ask
         # for it after editing the file by hand.
         "SUPER+ALT,R,reload_config"
@@ -447,14 +452,14 @@ in
       ];
 
       # Same chords as the old top-level mousebind. Not repeated in default.
-      keymode.common.mousebind = [
+      key_mode.common.mousebind = [
         "SUPER,btn_left,moveresize,curmove"
         "SUPER,btn_right,moveresize,curresize"
       ];
 
-      # Hardware keys stay available in every keymode, including while locked.
+      # Hardware keys stay available in every key_mode, including while locked.
       # Bare Escape stays out of common; only resize mode binds it.
-      keymode.common.bindl = [
+      key_mode.common.bindl = [
         "NONE,XF86AudioRaiseVolume,spawn,noctalia msg volume-up"
         "NONE,XF86AudioLowerVolume,spawn,noctalia msg volume-down"
         "NONE,XF86AudioMute,spawn,noctalia msg volume-mute"
@@ -467,7 +472,7 @@ in
         "NONE,XF86AudioNext,spawn,playerctl next"
       ];
 
-      keymode.resize.bind = [
+      key_mode.resize.bind = [
         "NONE,H,resizewin,-10,+0"
         "NONE,Left,resizewin,-10,+0"
         "NONE,J,resizewin,+0,+10"
@@ -491,27 +496,27 @@ in
     # actually runs `dbus-update-activation-environment --systemd` and
     # `systemctl --user start mango-session.target` lives in the autostart
     # script the module generates -- and the module only writes that script,
-    # and only adds its `exec-once`, when `autostart_sh` is non-empty
+    # and only adds its `exec_once`, when `autostart_sh` is non-empty
     # (nix/hm-modules.nix). Starting noctalia from `extraConfig` instead left
     # autostart_sh empty, so the target never started; graphical-session.target
     # BindsTo it, so every user unit hanging off it stayed dead -- cliphist,
     # xrdb-merge, fcitx5-daemon -- and D-Bus-activated launches never saw
     # NIXOS_OZONE_WL, which sent Electron apps to XWayland and made them blurry.
-    # Anything to autostart belongs here, not in an `exec-once` of its own.
+    # Anything to autostart belongs here, not in an `exec_once` of its own.
     autostart_sh = ''
       noctalia &
     '';
 
     extraConfig = ''
-      # Noctalia's builtin "mango" theme template renders the palette to
-      # $XDG_CONFIG_HOME/mango/noctalia.conf (assets/templates/builtin.toml).
-      # Sourced last so those colours win over anything set above.
+      # noctalia.nix uses the upstream Mango template with a reload-only hook.
+      # The fresh output path avoids reading an existing palette that still
+      # uses pre-migration keys. Sourced last so theme colours win.
       #
-      # source-optional, not source: the file does not exist until Noctalia
+      # source_optional, not source: the file does not exist until Noctalia
       # first applies a theme, and a plain `source` of a missing file is a
       # parse error. This is what niri needed a seed-an-empty-file activation
       # script for -- mango has the optional form built in.
-      source-optional=${config.xdg.configHome}/mango/noctalia.conf
+      source_optional=${config.xdg.configHome}/mango/noctalia-colors.conf
     '';
   };
 }
