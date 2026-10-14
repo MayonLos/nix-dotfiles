@@ -17,7 +17,9 @@ in
     extraConfig = "include noctaliarc";
 
     options = {
-      adjust-open = "best-fit";
+      # Technical manuals are easier to read at the window's full width.
+      # `a` fits the whole page; `s` restores fit-to-width.
+      adjust-open = "width";
       selection-clipboard = "clipboard";
 
       synctex = true;
@@ -40,13 +42,22 @@ in
       recolor-keephue = true;
       recolor-reverse-video = true;
 
-      guioptions = "sv";
+      # Keep the page counter, without a permanent scrollbar or long path.
+      guioptions = "s";
+      font = "Noto Sans CJK SC 11";
+      page-v-padding = 12;
+      page-h-padding = 12;
+      statusbar-h-padding = 12;
+      statusbar-v-padding = 5;
+      statusbar-basename = true;
       statusbar-home-tilde = true;
       window-title-basename = true;
-      statusbar-page-percent = true;
+      statusbar-page-percent = false;
       incremental-search = true;
       selection-notification = false;
-      zoom-step = 10;
+      scroll-step = 30;
+      scroll-full-overlap = 0.15;
+      zoom-step = 5;
     };
   };
 

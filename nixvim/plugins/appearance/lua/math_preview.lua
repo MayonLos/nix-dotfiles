@@ -42,9 +42,19 @@ local DEBOUNCE = 250
 ---@type {win?:table, img?:table, src?:string, kind?:"image"|"error"}
 local state = {}
 local timer ---@type any
+local generation = 0
 local augroup = vim.api.nvim_create_augroup("math_preview", { clear = true })
 
+local function invalidate()
+  generation = generation + 1
+  return generation
+end
+
 local function close()
+  invalidate()
+  if timer then
+    timer:stop()
+  end
   if state.img then
     pcall(function()
       state.img:close()
@@ -167,6 +177,7 @@ local function show_image(src)
 end
 
 local function update()
+  local request = invalidate()
   if not FILETYPES[vim.bo.filetype] then
     return close()
   end
@@ -174,6 +185,11 @@ local function update()
   local buf = vim.api.nvim_get_current_buf()
 
   local ok = pcall(Snacks.image.doc.at_cursor, function(src)
+    -- Cursor movement, buffer changes, and a newer update invalidate this
+    -- request before its asynchronous conversion can publish a result.
+    if request ~= generation then
+      return
+    end
     if not src then
       return close()
     end
@@ -205,8 +221,13 @@ local function update()
         src = src,
         on_done = function(convert)
           vim.schedule(function()
-            -- The cursor may have moved on while pdflatex was running.
-            if vim.api.nvim_get_current_buf() ~= buf then
+            -- The cursor may have moved, left math, changed buffers, or
+            -- started a newer conversion while pdflatex was running.
+            if request ~= generation
+              or not vim.api.nvim_buf_is_valid(buf)
+              or vim.api.nvim_get_current_buf() ~= buf
+              or not FILETYPES[vim.bo.filetype]
+            then
               return
             end
             -- The log is the authority here, not `convert:error()`.
@@ -242,6 +263,9 @@ local function update()
 end
 
 local function schedule()
+  -- Invalidate immediately, rather than waiting for the debounce: an older
+  -- render can finish during that interval and otherwise replace the new one.
+  invalidate()
   timer = timer or assert(uv.new_timer())
   timer:stop()
   timer:start(DEBOUNCE, 0, vim.schedule_wrap(update))
@@ -261,7 +285,7 @@ function M.setup()
 
   -- Nothing to preview if the window or buffer is gone. Immediate, not
   -- debounced -- a float left over another buffer is worse than a late one.
-  vim.api.nvim_create_autocmd({ "BufLeave", "WinLeave", "CmdlineEnter" }, {
+  vim.api.nvim_create_autocmd({ "BufLeave", "WinLeave", "CmdlineEnter", "VimLeavePre" }, {
     group = augroup,
     callback = close,
   })

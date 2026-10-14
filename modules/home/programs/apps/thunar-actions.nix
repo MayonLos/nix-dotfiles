@@ -55,6 +55,7 @@ let
       # "[0]" takes the first frame so animations and multi-page TIFFs don't
       # make magick emit a whole pile of files.
       tmp=""
+      trap '[ -z "$tmp" ] || rm -f "$tmp"' EXIT
       if [ "$mime" = "image/png" ]; then
         png="$src"
       else
@@ -154,6 +155,7 @@ let
         n=$((n + 1))
       done
       part="$(mktemp -t paste-clipboard-image.XXXXXX)"
+      trap 'rm -f "$part"' EXIT
       if [ "$source" = "wayland" ]; then
         wl-paste --type "$mime" >"$part" || fail "Could not read the Wayland clipboard"
       else
