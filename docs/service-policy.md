@@ -6,11 +6,11 @@
 
 | 功能 | 声明和启动方 | 停止、恢复与数据边界 |
 |---|---|---|
-| 登录与会话 | host 明选 [login-screen](../aspects/interactive-session/greeter.nix)，greetd 默认启动 Mango，并提供独立 Hyprland 登录项。同一 UID 一次只运行一个图形会话。锁定 Mango C 实现先导入动态 DISPLAY/WAYLAND/cursor 环境并请求 `mango-session.target`；HM 非空 `autostart_sh = ":"` 是补充同步钩子，不是唯一启动路径。 | Mango 退出由其会话 target 路径结束；Hyprland 登录 wrapper 在 launcher 退出后停止其 session/graphical targets，覆盖正常与 TERM/INT 退出。wrapper 的隔离检查不代替冷登录/退出实测；当前 greetd 因 `restartIfChanged=false` 继续使用旧 desktop store，新增入口须下次重启 greetd/系统后可见；时序未实机验证，不依赖 autostart 比 C 路径先运行。 |
-| Noctalia | [HM renderer](../aspects/interactive-session/noctalia.nix) 启用官方 systemd unit，`PartOf`/`After`/`WantedBy` 均指向所选 Mango/Hyprland targets；无直接 `noctalia &`。安全静态环境由同源白名单提供，`launch_apps_as_systemd_services = true`。 | `Restart=on-failure`、2 秒、60 秒内最多 3 次。应用独立 systemd 启动；本轮正常 shell 交接中受保护业务存活已核验，故障注入与会话退出仍未验证。启动前先做有限字段归属交接，旧 writer 活跃时拒绝修改。 |
-| 输入法 | [Fcitx5/Rime](../aspects/interactive-session/input-method.nix) 的官方 HM daemon 绑定所选 Mango/Hyprland targets。输入法环境仅共享明确的键，不复制全部 home vars。 | 用户词库、学习数据和应用状态保留。候选框缩放、QQ/微信、实际退出与恢复未验证。 |
-| 剪贴板 | Noctalia 原生历史是唯一日用历史生产者，不声明 cliphist watcher；[clipboard bridge](../aspects/interactive-session/clipboard.nix) 只做 Wayland/X11 selection 桥接，仅 Mango target 拉起，Hyprland 使用原生多 MIME selection 同步。 | 桥接 `Restart=always`、2 秒、3 次/60 秒；一侧 watcher 退出则结束两侧并重启，读操作有超时。历史、旧数据库与 Secret Service 状态不清理。真实图片/文字双向复制及 Secret Service 解锁待验收。 |
-| X11 DPI | [xrdb-merge](../aspects/interactive-session/xresources.nix) 随所选 Mango/Hyprland target 运行 oneshot，有限重试等待 Xwayland。 | 不替代客户端实际缩放检查；无常驻轮询进程。 |
+| 登录与会话 | host 明选 [login-screen](../aspects/interactive-session/greeter.nix)，greetd 启动 Mango。锁定 Mango C 实现先导入动态 DISPLAY/WAYLAND/cursor 环境并请求 `mango-session.target`；HM 非空 `autostart_sh = ":"` 是补充同步钩子，不是唯一启动路径。 | Mango 退出由其会话 target 路径结束。冷登录/退出时序仍需实机核验，不依赖 autostart 比 C 路径先运行。当前移除状态见[执行记录](hyprland-removal-execution.md)。 |
+| Noctalia | [HM renderer](../aspects/interactive-session/noctalia.nix) 启用官方 systemd unit，`PartOf`/`After`/`WantedBy` 均指向 Mango target；无直接 `noctalia &`。安全静态环境由同源白名单提供，`launch_apps_as_systemd_services = true`。 | `Restart=on-failure`、2 秒、60 秒内最多 3 次。应用独立 systemd 启动；本轮正常 shell 交接中受保护业务存活已核验，故障注入与会话退出仍未验证。启动前先做有限字段归属交接，旧 writer 活跃时拒绝修改。 |
+| 输入法 | [Fcitx5/Rime](../aspects/interactive-session/input-method.nix) 的官方 HM daemon 绑定 Mango target。输入法环境仅共享明确的键，不复制全部 home vars。 | 用户词库、学习数据和应用状态保留。候选框缩放、QQ/微信、实际退出与恢复未验证。 |
+| 剪贴板 | Noctalia 原生历史是唯一日用历史生产者，不声明 cliphist watcher；[clipboard bridge](../aspects/interactive-session/clipboard.nix) 只做 Wayland/X11 selection 桥接，随 Mango target 拉起。 | 桥接 `Restart=always`、2 秒、3 次/60 秒；一侧 watcher 退出则结束两侧并重启，读操作有超时。历史、旧数据库与 Secret Service 状态不清理。真实图片/文字双向复制及 Secret Service 解锁待验收。 |
+| X11 DPI | [xrdb-merge](../aspects/interactive-session/xresources.nix) 随 Mango target 运行 oneshot，有限重试等待 Xwayland。 | 不替代客户端实际缩放检查；无常驻轮询进程。 |
 | Portal / keyring / polkit | [交互宿主支持](../aspects/interactive-session/default.nix) 共享提供 portal backend、keyring/PAM 和系统 polkit；Noctalia 提供图形认证 agent。 | 这些是宿主共享能力，不是每账号私有的访问控制。每个 bus 名称只能有实际预期 backend；屏幕共享、解锁与单 agent 需实测。 |
 | 音频 | [PipeWire/WirePlumber](../aspects/interactive-session/host/audio.nix) 是共享宿主支持，保留 ALSA/Pulse/JACK、echo cancellation 和现有通信兼容规则。全局 `sockets.target` wants 关闭，只有选中账号的桌面 targets 请求 PipeWire sockets。 | 支持 socket 按需激活，音频进程继续遵循 user manager 生命周期，不随 Noctalia 重启。未选账号不会自动得到个人音频启动配置；共享系统能力仍可被显式请求。实际音频设备与休眠恢复待验收。 |
 | 网络与设备 | NM/resolved、Clash、Bluetooth、Intel/NVIDIA、power profiles、thermald、upower、earlyoom 等由真实 laptop host 明确选择。Nix daemon 代理只在 laptop-network，不进入通用维护。 | 不按通用身份或平台隐式启用。休眠不主动关闭业务/VM/容器；无新增周期设备轮询或通用 sleep inhibitor。 |
@@ -23,7 +23,7 @@
 
 ## 环境、文件与授权
 
-Noctalia/Mango/Hyprland 只消费 [白名单投影](../lib/session-environment.nix) 的安全静态值；动态 DISPLAY/WAYLAND 由 compositor 导入。不是所有 `home.sessionVariables` 都进入 user manager，更不将 secret 复制进去。Docker 的动态运行时 socket 值由所选账号 environment.d 提供，首次应用需完整重登录以刷新旧 manager。
+Noctalia/Mango 只消费 [白名单投影](../lib/session-environment.nix) 的安全静态值；动态 DISPLAY/WAYLAND 由 Mango 导入。不是所有 `home.sessionVariables` 都进入 user manager，更不将 secret 复制进去。Docker 的动态运行时 socket 值由所选账号 environment.d 提供，首次应用需完整重登录以刷新旧 manager。
 
 [写入归属](config-ownership.md) 规定声明文件、应用 mutable 设置、历史/缓存/模型与 runtime secret 的边界。Noctalia sidecar 交接不覆盖整个 state；GTK/Qt/Firefox 模板、Kitty/Mango 单 renderer 及逐字段 patch 的实际 apply/undo 仍需应用后验证。用户组按 binding，host udev/portal/PAM 是共享支持；USB `uaccess` 按活动 seat，并不提供按 Den binding 的 USB 隔离。
 
@@ -39,7 +39,7 @@ Noctalia/Mango/Hyprland 只消费 [白名单投影](../lib/session-environment.n
 
 应用后按实际 generation 记录以下项目，未完成者不得标成通过：
 
-1. 唯一 Noctalia writer、冷登录/退出的 Mango/Hyprland target 顺序，两个方向切换及退出后共享服务清理、unit PartOf/After/WantedBy、manager 安全环境与 D-Bus 单 agent。
+1. 唯一 Noctalia writer、Mango 冷登录/退出 target 顺序、退出后共享服务清理、unit PartOf/After/WantedBy、manager 安全环境与 D-Bus 单 agent。
 2. 旧 llama/cliphist 的有序停用与历史/模型保留；新服务故障恢复和已启动应用存活。
 3. Noctalia 逐键备份及 GTK/Qt/Firefox apply/undo，Kitty/Mango 不被模板改写；IME、截图、剪贴板与屏幕共享。
 4. Docker timer 仅预期用户运行、socket 环境正确、prune 范围；libvirt socket 连接、各 URI 的 domain XML/autostart 只读核对。
@@ -48,4 +48,4 @@ Noctalia/Mango/Hyprland 只消费 [白名单投影](../lib/session-environment.n
 
 长期不可恢复任务可由用户选择 sleep inhibitor；配置不自动阻止休眠、杀游戏、暂停/关闭 VM 或容器。未来服务器另按[真实实例规划](server-plan.md)确定服务账号、端口、数据保护和部署。
 
-源码依据为当前 `flake.lock` 的 Mango C/HM、stable Hyprland 0.55.4/HM、Noctalia HM 和 stable nixpkgs 的 docker-rootless/libvirtd/pipewire 模块；本轮以实际锁定源码核实，不沿用旧注释推断启动行为。
+源码依据为当前 `flake.lock` 的 Mango C/HM、Noctalia HM 和 stable nixpkgs 的 docker-rootless/libvirtd/pipewire 模块；本轮以实际锁定源码核实，不沿用旧注释推断启动行为。

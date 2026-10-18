@@ -6,7 +6,7 @@
 ## 仓库
 
 NixOS + Home Manager，Den + flake-parts。当前真实实例为单主机 `nixos-btw`、用户
-`mayon`：Intel + NVIDIA 笔记本，默认 Mango、可选 Hyprland 桌面。Home Manager 随 NixOS 重建，没有独立
+`mayon`：Intel + NVIDIA 笔记本，使用 Mango 桌面。Home Manager 随 NixOS 重建，没有独立
 switch。
 
 | 路径 | 职责 |

@@ -9,7 +9,7 @@
 
 ## 视觉方向与责任
 
-默认采用 Mango + Noctalia、One Dark Darker、Kitty + tmux 和 Lua + Nix Neovim。用户随后明确增加 Hyprland 可选登录会话，复用同一视觉方向；不同时运行同账号的两个 compositor。桌面呈现深石墨底色、蓝色焦点、青紫辅助色、清楚的表面层次；通过胶囊分组、媒体封面与频谱、BongoCat、细描边和短动画获得丰富感。基础背景固定为 `#1f2329`，壁纸不参与自动取色，白天也不切换浅色主题。
+桌面采用 Mango + Noctalia、One Dark Darker、Kitty + tmux 和 Lua + Nix Neovim。桌面呈现深石墨底色、蓝色焦点、青紫辅助色、清楚的表面层次；通过胶囊分组、媒体封面与频谱、BongoCat、细描边和短动画获得丰富感。基础背景固定为 `#1f2329`，壁纸不参与自动取色，白天也不切换浅色主题。Hyprland 移除后的应用状态见[执行记录](hyprland-removal-execution.md)。
 
 外观数据与各软件适配遵守 [架构设计](architecture-design.md)：外观拥有语义色、字体等公共数据，Noctalia、Mango、Kitty、Neovim 等各自消费；greeter 是主机的明确选择。最终文件只有一个写入者。本文中的尺寸、布局和时长是设计目标；硬件相关参数以验收结果决定是否保留。
 
@@ -209,14 +209,13 @@ One Dark Darker；TokyoNight 只作历史画面参考。实际 Astra 负责本�
 | Noctalia 配置、模板选择 | HM renderer；sidecar helper 仅移除已声明公开键的 override，未知 state 保留 |
 | GTK CSS、Qt palette、Firefox managed CSS、已选社区主题输出 | Noctalia 模板及所属 feature 的有限 hook；Nix 不重复拥有同一完整文件 |
 | Mango 配置与颜色 | Mango renderer，包含 tab/group/jump、scratchpad/global/overlay/最大化边框 |
-| Hyprland 配置与颜色 | Hyprland HM Lua renderer，包含 dwindle/scrolling、special workspace 与原生规则 |
 | Greeter palette 与公共资源引用 | host greeter renderer；不依赖用户会话同步取得登录前资源 |
 
 首次应用仍需检查旧文件类型、冲突与备份，完整退出旧 writer 后交接，再验证 Noctalia theme
 apply/undo、Kitty 新窗口、tmux attach、Neovim 与 GTK/Qt/Firefox。不得删除应用历史、模型、
 项目或整个 Noctalia state。运行 mod 任务期间不注销、不切换当前 compositor、不终止业务；只按核验过的边界交接独立服务。
 
-Noctalia 由 systemd 用户服务唯一启动，随所选 Mango 或 Hyprland session target 拉起，设置有限 on-failure 恢复预算。
+Noctalia 由 systemd 用户服务唯一启动，随 Mango session target 拉起，设置有限 on-failure 恢复预算。
 Mango HM 的非空 autostart 是补充同步；C 实现会更早请求 session target。安全静态环境经同源
 白名单预先投递给 user manager 与 Noctalia，不依赖 autostart 与 C 启动的先后顺序。
 新 manager 环境、冷登录/退出顺序和 `launch_apps_as_systemd_services` 下的应用存活仍需实测。
@@ -230,7 +229,7 @@ Mango HM 的非空 autostart 是补充同步；C 实现会更早请求 session t
 
 透明表面的实际对比取决于背后的画面，不能直接套用上述数值。用纯白窗口、浅色网页、高细节壁纸与深色壁纸分别置于浮层后方，检查 100% 与实际 150% 缩放下的中文字、数字、选中项。验收目标：必要小字 ≥4.5:1，大字/主要非文本状态指示 ≥3:1；装饰边框不承担唯一状态信息。这些是本项目验收门槛，本文没有声称整桌面已经符合某项无障碍认证。
 
-内屏事实保持 `eDP-1`、2560×1600、165.002 Hz、scale 1.5；约 1707×1067 逻辑工作区。面板 38 在此对应 57 物理像素，2 像素边框对应 3；字体应用自身单位，不机械换算所有 pt 为逻辑 px。`Xft.dpi = 144` 与 Mango `xwayland_ignore_scale = 1` 的现有配对、Mango 会话环境注入以及 Fcitx `PerScreenDPI` 修正按源码/运行行为保留。Hyprland 使用 `xwayland.force_zero_scaling`，实际 X11/候选框缩放须另验。[桌面常量](../inventory/hosts/nixos-btw/facts.nix)、[Mango 模块](../aspects/interactive-session/mango.nix)、[输入法模块](../aspects/interactive-session/input-method.nix)
+内屏事实保持 `eDP-1`、2560×1600、165.002 Hz、scale 1.5；约 1707×1067 逻辑工作区。面板 38 在此对应 57 物理像素，2 像素边框对应 3；字体应用自身单位，不机械换算所有 pt 为逻辑 px。`Xft.dpi = 144` 与 Mango `xwayland_ignore_scale = 1` 的现有配对、Mango 会话环境注入以及 Fcitx `PerScreenDPI` 修正按源码/运行行为保留。[桌面常量](../inventory/hosts/nixos-btw/facts.nix)、[Mango 模块](../aspects/interactive-session/mango.nix)、[输入法模块](../aspects/interactive-session/input-method.nix)
 
 外屏连接器、分辨率、刷新率与物理尺寸尚未取得；实施时读取真实输出，按 EDID/connector 配置。通常 1080p/1440p 外屏从 1.0、4K 从 1.5 或 2.0 做现场字号比较，这些是测试起点，不是硬件事实。不得直接复制内屏 scale 1.5 到所有外屏。Noctalia 每屏使用相同逻辑尺寸，必要时以 `bar.main.monitor.<id>` 覆盖 `start/center/end`；窄屏先折叠工具组，完整功能仍由原生面板/launcher 可达。
 
@@ -310,20 +309,3 @@ workspace/外屏恢复没有作为当前实现承诺，也未安装第二套 she
 | 社区插件 | `7691612a091ac903cab79ffa5b3f740a04808ef1` |
 
 BongoCat 的 evtest/input_devices/audio_spectrum 与布局插件的 show_text/show_glyph 来自相应 locked `plugin.toml`；它们继续使用现有权限与依赖，不新增私有插件 API。配置查证覆盖 Noctalia palette、bar/per-monitor/group/widget、工作区、shell/launcher/control-center、通知、锁屏、greeter，以及 Mango 颜色/标签栏 parser、Kitty hook 和 HM 服务接线；既有模糊/动画字段也对照当前模块。本次 Den 实现已将目标生成 TOML/Mango 配置并通过锁定 validator 和严格结构检查；构建结果见实施记录。所选参数仍须经过真实应用启动和上述 GUI 验收。未验证：外屏硬件与混合 DPI、solid 浮层在多屏/不同内容上的最终观感、全部插件同时出现时的面板宽度、锁屏坐标、Qt5/私有应用主题、颜色模板衍生 token 与性能预算。实施中若 pin 改变，应重查这些字段与原有 workaround 原因。
-
-
-## Hyprland 可选会话
-
-当前 stable 锁定 Hyprland 0.55.4 使用原生 Lua；配置由
-[`hyprland.nix`](../aspects/interactive-session/hyprland.nix) 与
-[`hyprland.lua`](../aspects/interactive-session/resources/hyprland.lua) 生成。
-Astra 依据实际 API 实现蓝青渐变焦点边框、12 圆角、浮窗独占阴影与短窗口/工作区动画。
-默认 dwindle，工作区 2 使用原生 scrolling；保留原生 transient-parent 处理，文件选择器、
-设置、图片与 PiP 使用窄规则，三个临时工具放入 special workspace。
-`reducedMotion` 关闭动画，面板表面继续由 Noctalia 自己处理，不叠加 compositor 层动画。
-
-Noctalia 的 Hyprland 变体只移除 Mango 专属布局/模式插件，其他 HM 视觉资源复用；
-state/data 中壁纸选择、历史仍共用。变体配置位于只读 store link farm，GUI 自建 palette
-的保存/非 HM palette 导入不在这一配置接口中，应改共享声明。它不是另一套用户状态目录。
-Mango 继续是默认登录项。Hyprland 配置解析与构建不代表已登录、硬件表现或视觉验收，
-实际状态见[本轮记录](system-experience-execution.md)。

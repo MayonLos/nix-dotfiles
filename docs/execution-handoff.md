@@ -2,7 +2,7 @@
 
 更新：2026-10-19。Den 批次 0–7 已完成实现、文档与构建，详见[实施记录](den-execution.md)。
 该初轮没有应用系统；其后用户已 nr 并授权后续自主应用，当前运行与待验项以各轮记录为准。
-最新 CLI、媒体、桌面及可选 Hyprland 见[系统界面记录](system-experience-execution.md)。
+最新 CLI、媒体与桌面见[系统界面记录](system-experience-execution.md)；Hyprland 当前移除状态见[移除记录](hyprland-removal-execution.md)。
 下文起点、旧提交清单和批次执行顺序保留为历史设计依据，不重做已完成迁移或软件选择；
 继续工作应先读最新记录中的真实 generation、写入交接和未验证项目。没有部署真实服务器。
 
@@ -42,7 +42,7 @@
 |---|---|
 | 框架 | Den，薄 flake-parts 接线；真实 inventory + 完整功能 aspects + 普通 includes bundles |
 | 支持对象 | 先迁当前 NixOS 笔记本；架构允许以后按真实实例添加无头服务器及其他 CPU 平台 |
-| 桌面 | Mango 默认、Hyprland 可选，共用 Noctalia，固定 One Dark Darker `#1f2329`；用户后续明确授权增加 Hyprland，不换 niri |
+| 桌面 | Mango 与 Noctalia，固定 One Dark Darker `#1f2329`；当前状态见[Hyprland 移除记录](hyprland-removal-execution.md) |
 | 终端和编辑器 | Kitty + tmux；原生 Lua + Nix Neovim，保留已完成的自有功能及确认保留的插件 |
 | IDE 和应用 | 沿用重构计划已决定的保留/删除；VS Code + IDEA/PyCharm/CLion，不重开一轮全量软件选择 |
 | 开发环境 | 全局基础工具 + 项目 flake；项目拥有依赖/SDK 版本，PATH 允许项目覆盖 |
