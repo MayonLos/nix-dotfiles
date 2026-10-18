@@ -2,6 +2,8 @@
 
 独立求值的子 flake，用真实 NixOS / Home Manager 选项验证 shell、嵌入式和外观/默认工具/语言接口。主仓库尚未接入 Den，不导出测试主机为可部署配置，也不会激活账号或切换系统。
 
+这里是自动验证代码，不是系统开机时需要运行的服务。fixture 的 host/account 只验证作用域和组合；专项程序检查与构建也不能代替真实桌面、设备和游戏验收。未来整体迁移的测试边界和执行顺序见 [执行交接](../../docs/execution-handoff.md)。
+
 Den 固定为 [v0.19.0 / 37eb88c](https://github.com/denful/den/tree/37eb88ce28a9e42d5b367b967a9097030ff4f665)。nixpkgs、Home Manager、flake-parts 使用建立样本时主仓库的相同 revision；只有本目录的锁文件记录样本输入。实现通过非 flake 的相对 path input 引用 `aspects/` 下的嵌入式、外观、默认工具和语言目录，无需加载根 flake。这些输入跟随本仓库内容，提交负责固定它们，不能单独复制 `tests/den/` 就假定样本完整。Den 内部还使用其源码固定的 fetch 依赖，不能将 flake 的空 inputs 解释成没有上游依赖。
 
 ## 运行
