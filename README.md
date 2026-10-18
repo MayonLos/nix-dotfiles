@@ -1,7 +1,7 @@
 # nix-dotfiles
 
 NixOS + Home Manager 配置，当前只有一个真实主机实例 `nixos-btw`（Intel + NVIDIA 笔记本，
-Mango 桌面）和用户 `mayon`。Home Manager 随 NixOS 重建，没有 standalone switch。
+默认 Mango、可选 Hyprland 桌面）和用户 `mayon`。Home Manager 随 NixOS 重建，没有 standalone switch。
 
 仓库使用 Den 与 flake-parts。`aspects/default.nix` 显式登记完整功能，`bundles/default.nix`
 组合常用 `includes`，`inventory/` 描述真实主机、账号、事实和绑定参数。资源、模块 helper 与
@@ -9,7 +9,8 @@ Mango 桌面）和用户 `mayon`。Home Manager 随 NixOS 重建，没有 standa
 重构逐批实施、构建证据与运行态限制见[执行记录](docs/den-execution.md)。
 后续窗口、临时工具层与视觉动效的实现和验收见[桌面优化记录](docs/desktop-polish-execution.md)。
 系统/编辑器应用见[应用记录](docs/system-polish-execution.md)，最后一轮面板、场景和输入法
-见[收尾记录](docs/panel-rime-execution.md)；其中区分构建、应用与用户验收。
+见[收尾记录](docs/panel-rime-execution.md)；最新 CLI、媒体、桌面与可选 Hyprland
+见[系统界面记录](docs/system-experience-execution.md)，均区分构建、应用与用户验收。
 
 ## 目录
 
@@ -57,11 +58,16 @@ nix build --no-link --no-write-lock-file .#nixosConfigurations.nixos-btw.config.
 
 ## 桌面与操作
 
-Mango 负责窗口、显示器、工作区和 Super 系列快捷键；Noctalia 提供面板、通知、启动器、控制
+Mango 默认负责窗口、显示器、工作区和 Super 系列快捷键；Noctalia 提供面板、通知、启动器、控制
 中心与桌面剪贴板历史。固定主题是 One Dark Darker，背景 `#1f2329`，壁纸不改写配色。按
 `Super+F1` 可打开当前配置生成的 Mango 快捷键说明；该说明从同一组 Nix 键位数据生成。
 
-终端内分工：Mango 管桌面操作，tmux 使用 `Ctrl+a` 前缀，Neovim 保留自己的 Ctrl/leader 键。
+Hyprland 已作为独立登录选项配置，Mango 默认不变；本次不重启正在运行的 greetd，保存工作并在下次系统重启后，
+可在登录屏幕选择 Hyprland。它复用 Noctalia/OneDark，常用快捷键对齐，`Super+F1` 同样提供当前键位帮助；
+工作区 2 为原生 scrolling，其他默认 dwindle，详情见[操作说明](docs/workflow-design.md)。
+右下鼠标热区已关闭，左下启动器保留。同一账号一次只运行一个 compositor。
+
+终端内分工：所选 compositor 管桌面操作，tmux 使用 `Ctrl+a` 前缀，Neovim 保留自己的 Ctrl/leader 键。
 tmux 有前缀导航：`h/j/k/l` 切换 pane，Tab 与 `n/p` 切换窗口，`1`–`9` 选窗口；旧的无前缀
 Alt pane/window 截获已移除。输入完整快捷键与布局以 [Mango](aspects/interactive-session/mango.nix)
 及 [tmux](aspects/command-line/tmux.nix) 当前配置为准。
@@ -73,7 +79,7 @@ Alt pane/window 截获已移除。输入完整快捷键与布局以 [Mango](aspe
 
 音量和日常混音由 Noctalia 控制中心管理。可用 `wpctl status`、`wpctl inspect ID` 查看实际
 PipeWire 设备，再根据设备支持的 profile/route 查询结果操作，不照抄其他机器编号。`Super+V`
-使用 Noctalia 原生剪贴板历史；X11/Wayland 剪贴板桥为跨协议应用保留。配置迁移不删除已有
+使用 Noctalia 原生剪贴板历史；Mango 的 X11/Wayland 剪贴板桥为跨协议应用保留，Hyprland 使用原生同步。配置迁移不删除已有
 剪贴板历史数据库。
 
 ## 终端、工具与 Neovim

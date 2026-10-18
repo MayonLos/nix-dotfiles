@@ -142,3 +142,24 @@ mod 任务继续受保护，不注销 Mango 或终止业务。本轮明确获授
 
 `Super+Alt+D` 或右键铃铛切换勿扰，被隐藏的外部通知保留在 Noctalia 历史中，退出勿扰
 不会重放旧弹窗。Kitty 有前台任务时关闭窗口会请求确认；tmux/编辑器不会被强制重载。
+
+## 日常播放器与主题交接
+
+mpv 使用 uosc 时间线/播放列表/菜单与 thumbfast 缩略图。空格暂停、左方向键后退；右方向键由 evafast 保留轻按跳转、长按临时加速。`Ctrl+1` 开启原 Anime4K HQ 链、`Ctrl+0` 关闭，默认不对所有视频套用 CNN。菜单删除使用垃圾桶，media 自行提供 trash-cli。
+
+Yazi 主题由 HM 消费共享 OneDark palette，不再由 Noctalia yazi 模板写入。原公开主题在交接前备份，数据与历史保持原样；tmux/Kitty/Yazi 的已运行实例不会被强制重启，重新打开时读取新配置。具体运行证据见[系统界面记录](system-experience-execution.md)。
+
+## 可选 Hyprland 登录
+
+Mango 保持默认。本轮保留运行中的 greetd，它仍使用启动时固定的 desktop store 目录；
+仅注销可能仍显示旧列表。保存工作并在下次系统重启后，可从登录屏幕会话列表选择 **Hyprland**。
+两个桌面安装共存，但同一账号一次只运行一个图形会话。新增配置不自动注销、切换或迁移窗口。
+`Super+F1` 打开由本配置生成的键位帮助；终端、浏览器、文件管理、启动器、控制中心、
+剪贴板、锁屏及 Print/OCR 家族沿用 Mango 常用入口。`Super+0` 使用 Noctalia 窗口列表，
+不模拟 Mango 专属 overview；`Super+R` 进入调整模式，Esc/Return 返回。
+`Super+Shift+Return`、`Super+Alt+E`、`Super+Alt+M` 分别唤出临时终端、Yazi、btop。
+
+右下角鼠标热区已关闭；左下启动器热区保留。新登录环境的 `BAT_THEME=base16` 与 Bat/Delta
+声明一致。旧桌面含 HM 已加载标记，新终端也可能继承旧值，完整重登录后刷新；
+当前终端可用 `env BAT_THEME=base16 bat 文件` 临时采用新主题。
+Hyprland 冷登录、外屏与混合 GPU、锁屏/恢复、剪贴板多 MIME 和屏幕共享仍须在该会话验收。

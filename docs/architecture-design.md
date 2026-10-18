@@ -30,7 +30,7 @@ PCI 地址是事实，选择省电策略是意图，驱动与 PRIME 配置是实
   └── 主机共享支持    → 该主机，按真实资源合并
 ```
 
-例如 `embedded-workbench` 拥有工具、探针规则、当前账号权限的完整配套；`interactive-session` 拥有会话、shell、portal、输入/音频等必需集成。另一个账号不会仅因存在于该主机上就得到相同的个人环境。
+例如 `embedded-workbench` 拥有工具、探针规则、当前账号权限的完整配套；`interactive-session` 拥有会话、shell、portal、输入/音频等必需集成。另一个账号不会仅因存在于该主机上就得到相同的个人环境。 `hyprland-session` 显式复用 `interactive-session` 的桌面配套并增加独立登录入口；当前 Mango 默认保留，共享用户服务按声明的 session targets 拉起，不支持同 UID 同时运行两套 compositor。
 
 “一次选择”不等于多个 class 会自动投递到正确位置。功能内部必须使用所锁版本的 `user` class、Home Manager 和定向宿主提供机制。用户作用域的裸 `nixos` 不能作为路由保证。原生机制与落点依据：[机制选择](https://den.denful.dev/explanation/choosing-a-mechanism/)、[配置落点](https://den.denful.dev/explanation/where-config-lands/)。
 
@@ -69,7 +69,7 @@ PCI 地址是事实，选择省电策略是意图，驱动与 PRIME 配置是实
 │   ├── editing/neovim/                # 丰富 Lua、包/插件/parser 与专项测试
 │   ├── languages/                     # 工具与有序编辑器贡献
 │   ├── appearance/ / default-tools/   # 公开数据协议
-│   ├── interactive-session/           # Mango/Noctalia/IME、资源与 host 支持
+│   ├── interactive-session/           # Mango/可选 Hyprland/Noctalia/IME 及 host 支持
 │   ├── embedded-workbench/            # 工具、共享规则及 binding 授权
 │   ├── local-containers/ / local-virtual-machines/
 │   └── firefox/ / communication/ / documents/ / media/ / file-manager/ / ai-workbench/ / gaming/ / remote-access/

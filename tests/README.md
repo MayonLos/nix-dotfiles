@@ -18,9 +18,12 @@
 | `checks.local-services-composition` | `composition/local-services.nix` | 本地容器/VM daemon 与远程 client 的隔离、宿主资源去重和撤销行为 |
 | `checks.embedded-composition` | `composition/embedded.nix` | 嵌入式工具、权限组、udev host provider 的选择/共享/移除边界 |
 
-根 feature checks 另有 `interactive-session-config`、`command-line-runtime`、`neovim`、
+根 feature checks 另有 `hyprland-session`、`interactive-session-config`、`command-line-runtime`、`neovim`、
 `embedded-home`、`embedded-udev`、`embedded-tools` 和 `treefmt`。这些检查验证当前锁定输入
 下的生成配置、解析器、工具产物或隔离工作负载；名称以 `nix/checks.nix` 实际接线为准。
+
+`checks.hyprland-session` 使用真实 Hyprland `--verify-config` 解析生成 Lua，并验证
+Noctalia 会话变体、默认登录项、portal 和 target 接线；隔离 fake launcher/systemctl 验证信号转发、退出码与 target 清理，真实 Noctalia merged 导出验证 Hyprland 变体不覆盖 Mango。它不启动图形会话，不证明登录或设备表现。
 
 `checks.neovim` 使用固定插件和临时 XDG 目录运行配置内的 headless Lua 检查：
 

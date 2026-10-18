@@ -1,6 +1,10 @@
 # 新对话执行交接
 
-更新：2026-10-18。批次 0–7 已按当前 goal 执行到实现和构建边界，详见 [实施记录](den-execution.md)。下文执行顺序保留为设计依据；起点/旧提交清单是迁移前历史，不能作为当前状态。本次未 switch/test、执行真实配置迁移、停止旧服务或部署服务器；下一次应用任务从批次 8 和写入归属/服务验收继续，不重做软件选择。
+更新：2026-10-19。Den 批次 0–7 已完成实现、文档与构建，详见[实施记录](den-execution.md)。
+该初轮没有应用系统；其后用户已 nr 并授权后续自主应用，当前运行与待验项以各轮记录为准。
+最新 CLI、媒体、桌面及可选 Hyprland 见[系统界面记录](system-experience-execution.md)。
+下文起点、旧提交清单和批次执行顺序保留为历史设计依据，不重做已完成迁移或软件选择；
+继续工作应先读最新记录中的真实 generation、写入交接和未验证项目。没有部署真实服务器。
 
 后续桌面与窗口优化由实际 Astra 设计实施，独立 goal 的进度和验证见
 [桌面优化实施记录](desktop-polish-execution.md)。它延续实现与构建边界，未授权系统应用。
@@ -15,6 +19,9 @@
 用户随后指出 Neovim 的实机回归，要求多代理破坏性重构并由实际 Astra 重新设计，旧 Nixvim
 仅作效果参考，OneDark 约束继续。该轮当前状态见[Neovim 重建记录](neovim-rebuild-execution.md)，
 此前自写 UI 的设计和验证不能代替新实现的证据。
+
+其后用户要求其余系统界面同样参考社区优化，由实际 Astra 继续设计。最新状态见
+[系统界面优化记录](system-experience-execution.md)，具体构建、应用与待验项以该记录为准。
 
 ## 阅读顺序与设计依据
 
@@ -35,7 +42,7 @@
 |---|---|
 | 框架 | Den，薄 flake-parts 接线；真实 inventory + 完整功能 aspects + 普通 includes bundles |
 | 支持对象 | 先迁当前 NixOS 笔记本；架构允许以后按真实实例添加无头服务器及其他 CPU 平台 |
-| 桌面 | Mango + Noctalia，精致丰富，固定 One Dark Darker `#1f2329`；不换 niri |
+| 桌面 | Mango 默认、Hyprland 可选，共用 Noctalia，固定 One Dark Darker `#1f2329`；用户后续明确授权增加 Hyprland，不换 niri |
 | 终端和编辑器 | Kitty + tmux；原生 Lua + Nix Neovim，保留已完成的自有功能及确认保留的插件 |
 | IDE 和应用 | 沿用重构计划已决定的保留/删除；VS Code + IDEA/PyCharm/CLion，不重开一轮全量软件选择 |
 | 开发环境 | 全局基础工具 + 项目 flake；项目拥有依赖/SDK 版本，PATH 允许项目覆盖 |
