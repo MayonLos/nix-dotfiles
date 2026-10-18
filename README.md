@@ -6,15 +6,16 @@ NixOS + Home Manager 配置，单主机 `nixos-btw`（Intel + NVIDIA 笔记本�
 - **通道**：`nixpkgs` = nixos-26.05（稳定），`nixpkgs-unstable` = nixos-unstable
 - **Home Manager**：作为 NixOS 模块运行，不是 standalone
 
-仓库工作流以 **Codex** 为入口：[AGENTS.md](AGENTS.md) 放公共约定，
-十个领域技能在 [.agents/skills/](.agents/skills/)，详细排障资料按需从技能的 `references/` 读取。
-技能不是配置真相的替代品：版本以 `flake.lock` 为准，行为以当前模块和实际验证为准。
+仓库工作流以 **Codex** 为入口：[AGENTS.md](AGENTS.md) 放公共约定。
+配置依据是当前模块、`flake.lock` 锁定源码和实际运行行为。
+
+本轮选型、软件取舍与实施验收见[重构执行计划](docs/refactor-plan.md)。
+保留应用的逐项替换分析与缺失推荐见[应用评估](docs/application-review.md)。
+软件选型已结束；Neovim 已迁入原生 Lua + Nix 包入口，Den 接线仍在后续计划中。迁移范围和待核验项见[Neovim 迁移计划](docs/neovim-migration-plan.md)。
 
 ## Codex 工作流
 
-在仓库目录启动 `codex`。Codex 自动发现 `.agents/skills/`；
-可用 `/skills` 查看，或在请求中显式写 `$nix-modules` 等技能名。
-共享的项目配置在 [.codex/config.toml](.codex/config.toml)，
+在仓库目录启动 `codex`。共享的项目配置在 [.codex/config.toml](.codex/config.toml)，
 只设置子代理启用与并发；主模型、账号与权限仍使用个人配置。
 项目配置受 Codex 的仓库信任机制控制，未信任时可能不加载。
 
@@ -28,13 +29,12 @@ NixOS + Home Manager 配置，单主机 `nixos-btw`（Intel + NVIDIA 笔记本�
 
 例如：“审核最近的改动，让 luna-review 检查文档与模块是否一致，主代理复核结论。”
 实现任务先划分互不重叠的文件，主代理合并检查；没有必要时不拆任务。
-角色和技能未刷新时重开会话。只读角色也明确禁止编辑，不把 sandbox 默认值当成绝对保证：
+角色配置未刷新时重开会话。只读角色也明确禁止编辑，不把 sandbox 默认值当成绝对保证：
 当前会话的权限覆盖可能优先于角色配置。
 
 旧的 Claude 技能、CLI 包装代理和 `CLAUDE.md` 已移出共享工作流；
 个人的 Claude 设置、登录状态和已安装软件不由此次迁移改动。
-目录与角色格式依据 [官方技能说明](https://learn.chatgpt.com/docs/build-skills)
-及 [子代理说明](https://learn.chatgpt.com/docs/agent-configuration/subagents)。
+角色格式依据 [子代理说明](https://learn.chatgpt.com/docs/agent-configuration/subagents)。
 
 ## 日常命令
 
@@ -54,75 +54,69 @@ sudo nixos-rebuild switch --flake .#nixos-btw
 
 声明式配置修改需重建才生效；应用维护的可写运行时配置可以即时修改，见下节。
 
-## 终端会话与本地智能体
+## 音频与剪贴板
 
-Herdr 已安装，快捷键前缀为 `Ctrl+A`；Codex、OpenCode 和 Pi 的 hooks 当前可用。
-Herdr 的集成状态保存在用户配置中，Home Manager 管理的是 Herdr 本身和前缀设置。
+音量键和日常混音由 Noctalia 管理：`noctalia msg panel-toggle control-center audio`
+打开音频面板，可调输入/输出、默认设备及应用音量和输出路由。不再安装 pamixer、pavucontrol。
+声卡硬件 profile/端口不等同于面板里的 EasyEffects 预设；高级排障使用已有的
+`wpctl status`、`wpctl inspect ID`，通过 `pw-cli enum-params DEVICE_ID EnumProfile`
+或 `EnumRoute` 查询对应设备支持的索引，再用 `wpctl set-profile DEVICE_ID INDEX`
+或 `wpctl set-route DEVICE_ID INDEX` 选择，不照抄其他机器的设备编号。
 
-首次配置或升级后，可安装并检查集成：
+`Super+V` 使用 Noctalia 原生剪贴板历史，不再运行 cliphist watcher；历史持久化依赖
+Secret Service 解锁。X11/Wayland 剪贴板桥继续保留，供 QQ 等应用跨协议复制文字/图片。
+此次精简不删除已有历史数据库，也不迁移旧历史。
 
-```sh
-herdr integration install codex
-herdr integration install opencode
-herdr integration install pi
-herdr integration status
-```
+## 终端
 
-tmux 仍保留：workmux 用它为 Git worktree 创建窗口，Noctalia 配置了 tmux provider，
-tmux 的终端 passthrough 也供 Yazi 图片预览使用。Herdr 用于智能体会话，tmux 继续承载这些通用终端工作流。
-
-本地 Pi 入口是 `pi-local`，默认使用已验证能调用文件读取工具的 9B：
-
-```sh
-pi-local
-pi-local --model qwen2.5-coder-7b
-```
-
-它通过只在此入口加载的 `llama-local` provider 连接本地模型，不需要云端账号或订阅；常规 `pi` 保留原有 provider 和账号配置。
-
-## 本地模型
-
-`llama-cpp` 是绑定 `127.0.0.1:8080` 的 CUDA router，最多同时加载一个模型。
-模型权重保存在用户目录，不进入 Nix store；详细下载、校验和服务命令见[本地模型说明](docs/local-models.md)。
-
-4B 已完成 GPU 推理测试并删除，只保留以下两个模型：
-
-| 模型 | 用途 | 上下文 | GGUF 文件大小 |
-|---|---|---:|---:|
-| `qwen2.5-coder-7b` | 代码任务 | 8192 | 4.36 GiB |
-| `qwen3.5-9b` | 通用任务 | 8192 | 5.29 GiB |
-
-两者合计约 9.65 GiB。文件大小不是运行时显存占用；RTX 4060 Laptop 的 8 GiB 显存下，较大的上下文可能需要降低或使用部分 CPU offload。
+tmux 继续用于终端会话；Noctalia 配置了 tmux provider，tmux 的终端 passthrough
+也供 Yazi 图片预览使用。
 
 ## Neovim
 
-Heirline 提供 buffer tabline，因此不再安装独立 bufferline；关闭 buffer 保留窗口布局，
+普通入口使用固定在 store 中的 Lua 配置和插件集合；显式开发入口可覆盖工作树配置目录：
+
+```sh
+nix run .#neovim
+NVIM_CONFIG_DIR="$PWD/config/nvim" nix run .#neovim-dev
+```
+
+普通包忽略 `NVIM_CONFIG_DIR`。Home Manager 的 XDG init 与包入口共用 `config/nvim/init.lua`，由配置内幂等保护避免重复初始化。普通/dev 包及 `checks.neovim` 已构建通过；检查包含完整启动、Blink C++ snippet 加载/展开/跳转和 native、状态栏、标签栏、面包屑及 LSP 样本。flake check、treefmt、host toplevel、最终 Home Manager 输出和实际图形启动待最终核验。
+
+自有 Lua 提供原生 statusline 与 buffer tabline，因此不再安装独立 bufferline；关闭 buffer 保留窗口布局，
 未保存修改会要求确认，同名文件通过最短路径区分。
 插件配置已移除 nvim-dap、goto-preview、bqf、smear-cursor 和 rainbow-delimiters。
+自动公式预览、Mermaid 渲染依赖和旧主题选择器已移除。当前使用仓库内手写 One Dark Darker，主背景为 `#1f2329`；没有性能改善结论。
+原生 matchit/matchparen 替代 vim-matchup；LSP documentColor 替代 Colorizer，
+`<leader>uc` 切换当前 buffer 色块。颜色覆盖以服务端能力为准，不再独立扫描 Tailwind 类名或无相关 LSP 的文件。
 
 | 功能 | 键位 |
 |---|---|
-| Mini 文本对齐 / 预览对齐 | `ga` / `gA` |
-| Mini 拆分与合并 | `gS` |
-| CodeCompanion 本地模型聊天 | `<leader>al` |
 | CodeCompanion 聊天开关 / 动作菜单 | `<leader>aa` / `<leader>ap` |
 | 将选区加入聊天 | `<leader>av` |
 | 默认 Codex CLI / 选择 CLI agent | `<leader>at` / `<leader>aT` |
 | 聊天内重新生成 / 保存历史 | `<leader>ar` / `<leader>as` |
 
-CodeCompanion 的 `<leader>al` 打开本地 llama.cpp chat；`<leader>at` 使用默认 Codex CLI，
-`<leader>aT` 输入 agent 名称选择 CLI。选择 `pi` 使用常规 Pi，选择 `pi_local` 使用 `pi-local`。
+CodeCompanion chat 使用 DeepSeek adapter，inline 和 cmd 交互也使用 DeepSeek；
+`<leader>at` 使用默认 Codex CLI，`<leader>aT` 输入 agent 名称选择 CLI。
 
-健康检查请在真实终端运行 `nvim '+checkhealth'`。Snacks 的图像协议和 `UIEnter`
+健康检查请在真实终端运行 `nvim '+checkhealth'`。Kitty 图像协议和 `UIEnter`
 初始化依赖终端环境，纯 headless 检查可能误报。Avante、CopilotChat、mini.icons
 是未采用的可选项；已使用 CodeCompanion 和 nvim-web-devicons。Dashboard 有意关闭，
 Neovim 内置的 `gc` / `gcc` 注释键也有意共用前缀。
+
+## DeepSeek Harness 桌面入口
+
+菜单中的 **DeepSeek Harness** 或 `dsh-desktop` 启动独立窗口，关闭窗口后停止本地服务。
+运行数据位于 `~/.local/share/dsh-desktop/harness/`，后端作为私有依赖使用，不单独安装 `dsh` 命令。
+当前使用官方 Web 界面配合 Chromium 应用窗口，
+因为[官方桌面打包](https://github.com/deepseek-ai/deepseek-harness/blob/687f282e8625c6b8d11ff58211a90524be2e4317/apps/desktop/scripts/package-target.ts)尚未提供 Linux 目标。
 
 ## Grok Bot 桌面客户端
 
 `grok-bot` 启动 Grok Bot，桌面菜单中也有同名入口；它与 `grok`（Grok Build CLI）分别安装。
 首次启动按界面使用 Cursor 账号登录，需要符合条件的 Cursor / SuperGrok 套餐。
-Grok Bot 的任务、记忆和定时流程运行在云端电脑；Pi 配合本地 llama.cpp 不需要该订阅。
+Grok Bot 的任务、记忆和定时流程运行在云端电脑；本地仓库编码可使用 Codex、OpenCode 或 Grok Build。
 
 模板用于创建有固定职责的 Bot，例如 PR 审查或资料调研。打开 `x.ai/bot/...` 分享页，
 查看描述、技能、定时流程和插件，再选择 Add to Grok Bot；导入后仍需连接自己的账号。
@@ -133,8 +127,7 @@ Grok Bot 的任务、记忆和定时流程运行在云端电脑；Pi 配合本�
 
 ```
 flake.nix              inputs 与 flake-parts 编排
-AGENTS.md              Codex 常驻约定与领域技能索引
-.agents/skills/        Codex 领域技能与按需 references
+AGENTS.md              Codex 常驻约定与工作流
 .codex/               共享项目配置与原生子代理角色
 flake/
   system.nix           NixOS + Home Manager 接线，自动导入 modules/
@@ -147,11 +140,10 @@ lib/
   import-dir.nix       递归导入一个目录下所有 .nix
   java.nix             Temurin JDK 版本集合（8/17/21/25/26）
   toolchains.nix       LLVM / Python / Lua 版本集合
-  local-models.nix    llama.cpp 与 Pi 共用的本地模型清单
   desktop.nix          跨 NixOS/HM 的桌面常量（光标、显示器、仓库路径）
   graphical-service.nix 图形会话 systemd 用户单元模板
   seed-file.nix        可变配置文件的"缺失才创建" activation
-pkgs/                  不在 nixpkgs 的包表达式（matlab、libtexprintf、tesseract-ocr…）
+pkgs/                  不在 nixpkgs 的包表达式（matlab、tesseract-ocr…）
 modules/
   home/                → Home Manager（用户 mayon）
     base/              身份、GTK、Qt、输入法、XDG、会话变量、Xresources
@@ -162,7 +154,7 @@ modules/
       games/           prismlauncher
       terminal/        kitty、tmux
     shell/             zsh（无框架）、starship、zoxide
-    services/          剪贴板桥接、cliphist
+    services/          X11/Wayland 剪贴板桥接（历史由 Noctalia 管理）
     packages.nix       用户级 CLI 工具
   system/              → NixOS
     core/              boot、locale、网络、nix 设置
@@ -173,7 +165,9 @@ modules/
     services/          earlyoom、openssh、docker、systemd
     user/              用户、字体、环境变量
     virtualisation/    libvirt/KVM
-nixvim/                Neovim 配置（显式 imports 的 nixvim 模块树）
+config/nvim/           Neovim 原生 Lua 配置、主题、片段、query 与检查
+pkgs/neovim/           stable Neovim wrapper、插件与 Tree-sitter parser 固定清单
+flake/neovim.nix       packages.neovim 与 packages.neovim-dev 输出
 secrets/secrets.yaml   sops 加密的 API key（可安全提交）
 ```
 
@@ -181,12 +175,11 @@ secrets/secrets.yaml   sops 加密的 API key（可安全提交）
 
 `lib/import-dir.nix` 里的 `importDir` **递归导入目录下每一个 `.nix`**，`modules/home/` 进 Home Manager，`modules/system/` 进 NixOS。新增模块不需要在任何地方登记，丢个文件进去即可。
 
-共享抽象接口（`lib/`）与关键配置文件的索引、改动步骤和验证方式，见
-[.agents/skills/nix-modules/references/shared-helpers.md](.agents/skills/nix-modules/references/shared-helpers.md)。
+共享抽象接口见 `lib/`；模块组织和选项行为以对应的 `modules/` 配置及锁定源码为准。
 
 **它没有排除机制** —— 连下划线前缀都不跳过。资源目录只有在不含 `.nix` 文件时才不会被当成模块导入。
 
-这就是 **`nixvim/` 放在仓库根目录而不是 `modules/` 下**的原因：这里是 nixvim 模块，不是 Home Manager 模块。由 `modules/home/programs/dev/nvim.nix` 统一引用。
+Neovim 的 Lua 配置和包定义放在仓库根目录，避免被 `importDir` 当作 Home Manager 模块递归导入。Home Manager 从 `modules/home/programs/dev/nvim.nix` 接入包并设置 XDG init。
 
 ## 软链接：哪些能改，哪些不能
 

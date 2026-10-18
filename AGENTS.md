@@ -1,7 +1,7 @@
 # AGENTS.md
 
-本仓库使用 Codex。这里是常驻上下文；领域知识放在 `.agents/skills/`，
-只读取当前任务涉及的技能及其相关 references。以下路径均相对仓库根目录。
+本仓库使用 Codex。以下路径均相对仓库根目录；以当前模块、`flake.lock` 锁定源码
+和实际运行行为为配置依据。
 
 ## 仓库
 
@@ -13,41 +13,24 @@ Intel + NVIDIA 笔记本，mango 桌面。Home Manager 随 NixOS 重建，无独
 | `flake.nix`、`flake/` | 输入、主机接线、开发 shell、格式检查 |
 | `hosts/nixos-btw/` | 主机入口及硬件扫描配置 |
 | `modules/system/`、`modules/home/` | 自动导入的 NixOS / Home Manager 模块 |
-| `nixvim/` | 显式导入的 Neovim 模块树 |
+| `config/nvim/` | Neovim 原生 Lua 配置、主题、片段、queries 与检查 |
+| `pkgs/neovim/`、`flake/neovim.nix` | 固定 Neovim wrapper、插件/parser 与 flake 包输出 |
 | `pkgs/`、`lib/` | 自定义包与共享 helper（`importDir`、版本集合、桌面常量） |
 | `secrets/` | sops 加密数据 |
 
-抽象接口（`lib/`）与关键配置文件的索引和改动指引：
-`.agents/skills/nix-modules/references/shared-helpers.md`。
+共享抽象接口见 `lib/`；模块组织和选项行为以对应的 `modules/` 配置及锁定源码为准。
 
 ## 不能在整理中丢失的约束
 
 - `importDir` 递归加载 `modules/` 下**所有** `.nix`，没有跳过目录机制。
-  helper、包表达式、nixvim 模块不能放进去。模块采用函数形式。
+  helper、包表达式、Neovim Lua 配置不能放进去。模块采用函数形式。
 - `pkgs` 默认是 stable `nixos-26.05`；`pkgs-unstable` 只用于现有明确例外或
   stable 确实不能满足的包。两者和 `inputs` 的接线见 `nix-modules`。
 - 不给 `mango`、`noctalia-greeter`、`mark-shot`、`wayscrollshot`、`llm-agents`
   添加 `follows`：其源码依赖组合或预构建缓存依赖各自的 pin。
 - 秘密不进入 Nix 字符串、日志或 store；使用 sops 的运行时文件 / 模板。
 - 修改 workaround 前先读原因，并按当前锁定源码或实际行为验证；旧测量不是永恒结论。
-  `flake.lock` 和模块优先于技能里记载的旧版本，发现矛盾时一起更新说明。
-
-## 技能路由
-
-编辑相关领域前读取对应入口；跨领域只加载必要的几份。
-
-| 技能 | 何时读取 |
-|---|---|
-| [nix-modules](.agents/skills/nix-modules/SKILL.md) | 模块增删移动、flake 接线、通道、开发 shell |
-| [sops-secrets](.agents/skills/sops-secrets/SKILL.md) | 秘密增删轮换、凭据传递与运行时缺失 |
-| [nvim-config](.agents/skills/nvim-config/SKILL.md) | `nixvim/` 插件、加载、键位及编辑器行为 |
-| [dev-toolchain](.agents/skills/dev-toolchain/SKILL.md) | LSP、formatter、DAP、语言工具链 |
-| [editors-ide](.agents/skills/editors-ide/SKILL.md) | JetBrains、VS Code、AI CLI 的安装与包装 |
-| [shell-terminal](.agents/skills/shell-terminal/SKILL.md) | zsh、环境变量、kitty、tmux、yazi、git |
-| [desktop-mango](.agents/skills/desktop-mango/SKILL.md) | mango、noctalia、portal、截图、剪贴板、fcitx5 |
-| [desktop-apps](.agents/skills/desktop-apps/SKILL.md) | GTK/Qt/字体、默认应用、Thunar、媒体、IM |
-| [gaming-stack](.agents/skills/gaming-stack/SKILL.md) | Steam、gamescope、gamemode、MangoHud、Prism |
-| [host-hardware](.agents/skills/host-hardware/SKILL.md) | 内核/NVIDIA、虚拟化、内存、网络、系统服务 |
+  `flake.lock` 和当前模块优先于旧记录，发现矛盾时一起更新说明。
 
 ## 工作与验证
 

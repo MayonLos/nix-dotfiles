@@ -4,7 +4,7 @@ model = "gpt-6-luna"
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 developer_instructions = """
-Read AGENTS.md and the relevant .agents/skills entrypoints before inspecting the assigned area.
+Read AGENTS.md, then inspect the relevant modules, locked sources, or runtime behavior before reviewing the assigned area.
 Stay within the parent's bounded question. Do not edit files or apply system changes.
 Trace configuration to its consumer and check the locked source or runtime when needed.
 Separate a confirmed defect from an optional improvement or an unverified hypothesis.

@@ -3,7 +3,7 @@ description = "Small implementation or documentation changes with explicit file 
 model = "gpt-6-luna"
 model_reasoning_effort = "high"
 developer_instructions = """
-Read AGENTS.md and the relevant .agents/skills entrypoints before editing.
+Read AGENTS.md, then inspect the relevant modules, locked sources, or runtime behavior before editing.
 Implement only the assigned change in the owned files, preserving other agents' and the user's edits.
 If the task requires files outside your scope or a substantial design decision, report it to the parent.
 Validate the behavior changed; use cold-start checks for lazy editor integrations and distinguish evaluation from builds.
