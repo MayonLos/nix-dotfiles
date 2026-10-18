@@ -1,0 +1,70 @@
+{ inputs, pkgs }:
+let
+  evaluate =
+    system: leak:
+    (inputs.flake-parts.lib.mkFlake { inherit inputs; } (
+      { den, ... }: {
+        imports = [
+          inputs.den.flakeModule
+          ../../aspects/system
+        ];
+        den.systems = [ system ];
+        den.hosts.${system}.headless-fixture = { };
+        den.aspects.headless-fixture = {
+          includes = [
+            den.aspects.system-maintenance
+          ]
+          ++ inputs.nixpkgs.lib.optional leak den.aspects.laptop-network;
+          nixos = {
+            system.stateVersion = "26.05";
+            boot.loader.grub.enable = false;
+            fileSystems."/" = {
+              device = "none";
+              fsType = "tmpfs";
+            };
+          };
+        };
+      }
+    )).nixosConfigurations.headless-fixture.config;
+  inspect =
+    system: leak:
+    let
+      c = evaluate system leak;
+    in
+    {
+      maintenanceSelected = !c.nix.channel.enable;
+      platform = c.nixpkgs.hostPlatform.system == system;
+      noDesktop =
+        !(c.programs ? mango)
+        && !c.services.greetd.enable
+        && !c.services.displayManager.gdm.enable
+        && !c.services.xserver.enable;
+      noGpu =
+        !(builtins.elem "nvidia" c.services.xserver.videoDrivers)
+        && !c.hardware.nvidia.prime.offload.enable
+        && !c.hardware.nvidia.nvidiaPersistenced;
+      noGraphics = !c.hardware.graphics.enable && c.hardware.graphics.extraPackages == [ ];
+      noPersonalAccount = !(c.users.users ? mayon);
+      noLaptopPower = !c.services.thermald.enable && !c.services.upower.enable;
+      noProxy = !(c.systemd.services.nix-daemon.environment ? https_proxy);
+      noTunTrust = builtins.all (i: !(builtins.elem i c.networking.firewall.trustedInterfaces)) [
+        "Meta"
+        "Mihomo"
+      ];
+      noPersonalTrust = !(builtins.elem "mayon" c.nix.settings.trusted-users);
+      noSecrets = !(c ? sops);
+      noInboundSsh = !c.services.openssh.enable && c.networking.firewall.allowedTCPPorts == [ ];
+    };
+  results = {
+    x86 = inspect "x86_64-linux" false;
+    arm = inspect "aarch64-linux" false;
+  };
+  rejectsLaptopNetwork = !(builtins.all (v: v) (builtins.attrValues (inspect "x86_64-linux" true)));
+  passed =
+    rejectsLaptopNetwork
+    && builtins.all (r: builtins.all (v: v) (builtins.attrValues r)) (builtins.attrValues results);
+in
+assert passed;
+pkgs.writeText "den-system-boundaries.json" (
+  builtins.toJSON (results // { inherit rejectsLaptopNetwork; })
+)

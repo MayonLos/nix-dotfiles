@@ -16,7 +16,15 @@ Den v0.19.0 使用测试子 flake 已验证的同一 revision。只新增 Den �
 
 Den 的 `host.instantiate` 显式复用 stable/unstable package instances，并向 NixOS `specialArgs` 提供 inputs 和 unstable；HM 同样保留原 extraSpecialArgs、全局包与备份设置。不能仅依赖 Den 的 module args 提供 imports 所需 inputs。
 
-重新求值通过。迁移前后 JSON 比较：磁盘/交换、启动参数及 loader、系统/HM stateVersion、账号 UID/home/shell/groups、secret owner/mode/path 均完全相同。treefmt 与完整主机 toplevel 构建通过；独立复核见后续记录。构建不会执行 activation。
+重新求值通过。迁移前后 JSON 比较：磁盘/交换、启动参数及 loader、系统/HM stateVersion、账号 UID/home/shell/groups、secret owner/mode/path 均完全相同。treefmt 与完整主机 toplevel 构建通过；独立 reviewer 未发现阻塞，新旧 HM profile 内容对比一致。构建不会执行 activation。
+
+## 批次 2：系统边界
+
+系统侧递归导入已退出，登记入口为 `aspects/system/default.nix`。通用维护不携带代理、个人 Nix trusted-user、秘密或笔记本电源/GPU；这些由真实 host 选择。扫描工件、PCI/显示事实、账号绑定和凭据授权分别位于 inventory。系统与 HM stateVersion 保持 25.11，账号 UID 沿用原声明的自动分配，未重分配实机 UID 1000。
+
+flake 求值、完整主机构建与系统隔离检查通过。磁盘、账号、启动、stateVersion、secret owner/mode/path 不变量相同；独立 modprobe 配置行发生排序变化，去除空行后逐行集合一致。独立 reviewer 未发现回归，建议补充的 greeter/Intel graphics 断言已纳入。
+
+`checks.system-boundaries` 对 x86_64/aarch64 的内部无头维护 fixture 强制检查无桌面/greeter/GPU/笔记本电源/代理/TUN信任/个人账号及授权/秘密/入站SSH，并以误选 laptop-network 的负例证明守卫可拒绝泄漏。仅为 ARM 求值检查和 x86 检查产物构建，没有 ARM 系统构建或部署；账号绑定隔离仍由后续生产功能组合检查补齐。
 
 ## 应用后验收
 

@@ -12,11 +12,12 @@
 
     # access-tokens cannot live in nix.settings: every module ends up
     # world-readable in /nix/store. Render it into a fragment that
-    # /etc/nix/nix.conf !includes instead (see modules/system/core/nix.nix).
+    # /etc/nix/nix.conf !includes instead (see this host's nix.extraOptions below).
     templates."nix-access-tokens.conf" = {
       content = "access-tokens = github.com=${config.sops.placeholder.github-token}\n";
       owner = "mayon";
       mode = "0400";
     };
   };
+  nix.extraOptions = "!include ${config.sops.templates."nix-access-tokens.conf".path}\n";
 }

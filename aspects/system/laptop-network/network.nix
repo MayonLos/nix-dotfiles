@@ -1,6 +1,5 @@
 _: {
   networking = {
-    hostName = "nixos-btw";
     networkmanager.enable = true;
     firewall = {
       # Clash Verge's TUN interface. verge-mihomo 1.19.x names the device

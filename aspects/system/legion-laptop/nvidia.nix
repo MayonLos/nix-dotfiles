@@ -1,4 +1,9 @@
-{ config, inputs, ... }:
+{
+  config,
+  inputs,
+  hostFacts,
+  ...
+}:
 {
   # Stated here rather than left to Steam: nixpkgs' programs/steam.nix assigns
   # both of these plainly (not mkDefault) whenever Steam is enabled, so the
@@ -35,8 +40,8 @@
         enable = true;
         enableOffloadCmd = true;
       };
-      intelBusId = "PCI:0:2:0";
-      nvidiaBusId = "PCI:1:0:0";
+      intelBusId = hostFacts.gpu.intelBusId;
+      nvidiaBusId = hostFacts.gpu.nvidiaBusId;
     };
   };
 

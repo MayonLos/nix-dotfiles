@@ -4,6 +4,7 @@
     inputs.den.flakeModule
     inputs.home-manager.flakeModules.home-manager
     inputs.treefmt-nix.flakeModule
+    ./checks.nix
     ./den.nix
     ./nixpkgs.nix
     ../flake/dev.nix

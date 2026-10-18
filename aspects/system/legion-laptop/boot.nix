@@ -1,5 +1,11 @@
 { config, pkgs, ... }:
 {
+  assertions = [
+    {
+      assertion = pkgs.stdenv.hostPlatform.system == "x86_64-linux";
+      message = "legion-laptop requires the verified x86_64-linux platform";
+    }
+  ];
   boot = {
     # Linux 7.2 needs the newer NVIDIA driver selected in hardware/nvidia.nix.
     kernelPackages = pkgs.linuxPackages_zen;
