@@ -5,6 +5,7 @@
       embedded = import ../tests/composition/embedded.nix { inherit inputs pkgs; };
     in
     {
+      checks.project-workbench = import ../aspects/project-workbench/checks.nix { inherit pkgs; };
       checks.protocols-composition = import ../tests/composition/protocols.nix { inherit inputs pkgs; };
       checks.remote-workspace-composition = import ../tests/composition/remote.nix {
         inherit inputs pkgs;

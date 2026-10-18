@@ -16,6 +16,16 @@ in
     appearance = import ../../../aspects/appearance/onedark-darker.nix;
     users.mayon = {
       appearance = import ../../../aspects/appearance/onedark-darker.nix;
+      workspaceProjects = {
+        dotfiles = {
+          directory = "/home/mayon/nix-dotfiles";
+          label = "Nix 配置工作台";
+        };
+        newnuclear = {
+          directory = "/home/mayon/Documents/NewNuclear";
+          label = "NewNuclear 工作台";
+        };
+      };
       defaultTools = {
         terminal.argv = [ "kitty" ];
         editor.argv = [ "nvim" ];
@@ -91,6 +101,7 @@ in
     includes = with den.aspects; [
       personal-desktop
       engineering-workbench
+      project-workbench
       embedded-workbench
       gaming
       local-containers

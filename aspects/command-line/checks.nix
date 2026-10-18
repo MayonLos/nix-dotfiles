@@ -10,7 +10,7 @@ let
     from kitty.config import load_config
     bad = []
     opts = load_config("${home.xdg.configFile."kitty/kitty.conf".source}", accumulate_bad_lines=bad)
-    if bad or opts.background_opacity != 1.0 or opts.font_size != 11.0:
+    if bad or opts.background_opacity != 1.0 or opts.font_size != 11.0 or opts.confirm_os_window_close[0] != -1:
         raise RuntimeError("Invalid Kitty workspace settings")
     if opts.cursor.as_sharp != "${palette.brightFg}" or opts.selection_foreground.as_sharp != "${palette.brightFg}":
         raise RuntimeError("Invalid cursor/selection roles")

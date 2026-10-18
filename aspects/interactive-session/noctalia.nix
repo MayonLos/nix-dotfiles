@@ -390,6 +390,7 @@ in
                 "bluetooth"
                 "volume"
                 "brightness"
+                "notifications"
               ];
               accordion = false;
               padding = 6.0;
@@ -400,6 +401,7 @@ in
               members = [
                 "sysmon"
                 "power_profile"
+                "caffeine"
                 "battery"
               ];
               accordion = false;
@@ -440,6 +442,9 @@ in
           max_length = 160;
           title_scroll = if reducedMotion then "none" else "on_hover";
         };
+
+        # Keep DND visible even without unread items; right-click toggles it.
+        widget.notifications.hide_when_no_unread = false;
 
         # A compact spectrum beside the existing media controls. PipeWire is
         # handled by Noctalia itself; no separate cava process is needed.

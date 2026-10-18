@@ -3,6 +3,7 @@ _: {
   imports = [
     ./appearance
     ./default-tools
+    ./project-workbench
     ./languages
     ./system
     ./command-line

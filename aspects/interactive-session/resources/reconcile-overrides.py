@@ -222,7 +222,7 @@ def reconcile(state_path: Path, managed_path: Path, backup_dir: Path, require_no
 
     current_uid = os.getuid()
     if require_no_noctalia and _proc_has_noctalia(current_uid):
-        raise ReconcileError("Noctalia is still running for this user; sign out completely before starting it again")
+        raise ReconcileError("Noctalia is still running for this user; gracefully stop the old shell writer before starting the managed service (no session logout is required)")
 
     if not state_path.exists() and not state_path.is_symlink():
         return []

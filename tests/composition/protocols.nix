@@ -47,6 +47,7 @@ let
           # their real terminal/default-tools consumers below.
           ../../aspects/command-line
           ../../aspects/default-tools
+          ../../aspects/project-workbench
         ];
 
         den.systems = [ system ];
@@ -58,6 +59,10 @@ let
                 reducedMotion = true;
               };
               defaultTools = tools;
+              workspaceProjects.sample = {
+                directory = "/home/alice/project space";
+                label = "Example workspace";
+              };
             };
             bob = lib.optionalAttrs withData {
               appearance = paletteA;
@@ -117,6 +122,7 @@ let
       "alice@hostA" = [
         "terminal"
         "default-tools"
+        "project-workbench"
       ];
       "bob@hostB" = [
         "terminal"
@@ -146,6 +152,7 @@ let
   protocolSchema = [
     ../../aspects/appearance/contract.nix
     ../../aspects/default-tools/contract.nix
+    ../../aspects/project-workbench/contract.nix
   ];
   schema = modules: evaluateSchema (protocolSchema ++ modules);
   fails = value: !(builtins.tryEval (builtins.deepSeq value true)).success;
@@ -175,6 +182,14 @@ let
   badPaletteType = schema [ { appearance.bg = 123; } ];
   badReducedMotionType = schema [ { appearance.reducedMotion = "yes"; } ];
   defaultAppearance = schema [ { appearance = builtins.removeAttrs paletteA [ "reducedMotion" ]; } ];
+  badProjectDirectory = schema [
+    {
+      workspaceProjects.sample = {
+        directory = "relative/path";
+        label = "Sample";
+      };
+    }
+  ];
 
   cpp = import ../../aspects/languages/cpp-data.nix;
   languageContract = import ../../aspects/languages/contract.nix { inherit lib; };
@@ -216,6 +231,12 @@ let
   selectedPaletteB = selectedBobB.xdg.configFile."kitty/kitty.conf".text or "";
 
   results = {
+    projectEntriesAreBindingScopedAndRemovedWithConsumer =
+      selectedAliceA.xdg.desktopEntries ? workspace-project-sample
+      && !(selectedBobB.xdg.desktopEntries ? workspace-project-sample)
+      && !((home selected "hostB" "alice").xdg.desktopEntries ? workspace-project-sample)
+      && !(dataAliceA.xdg.desktopEntries ? workspace-project-sample)
+      && !(baselineAliceA.xdg.desktopEntries ? workspace-project-sample);
     dataOnlyDoesNotInstallApplications =
       dataDoesNotEnableFeatures
       && lib.all (name: !(builtins.elem name (packageNames defaultsAliceB))) [
@@ -241,6 +262,7 @@ let
       && fails badDesktopId.defaultTools.guiTextEditor
       && fails badPaletteType.appearance.bg
       && fails badReducedMotionType.appearance.reducedMotion
+      && fails badProjectDirectory.workspaceProjects.sample.directory
       && defaultAppearance.appearance.reducedMotion == false;
 
     identicalDataIsIdempotent = sameTools.defaultTools == tools;

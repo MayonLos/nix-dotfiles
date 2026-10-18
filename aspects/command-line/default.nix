@@ -7,6 +7,7 @@
         "yazi"
       ];
       homeManager.imports = [
+        ({ pkgs, ... }: { home.packages = [ (import ./task-package.nix { inherit pkgs; }) ]; })
         ./zsh.nix
         ./git.nix
         ./direnv.nix

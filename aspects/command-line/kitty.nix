@@ -32,13 +32,28 @@ in
     selection_background ${palette.selection}
     selection_foreground ${palette.brightFg}
 
+    # Match the editor's quiet tabs without adding a second project manager.
+    tab_bar_min_tabs 2
+    tab_bar_style separator
+    tab_separator " │ "
+    tab_title_template "{index}: {title}"
+    active_tab_foreground ${palette.brightFg}
+    active_tab_background ${palette.surface}
+    active_tab_font_style bold
+    inactive_tab_foreground ${palette.muted}
+    inactive_tab_background ${palette.deep}
+    tab_bar_background ${palette.deep}
+
     scrollback_lines 5000
     wheel_scroll_multiplier 5.0
 
     hide_window_decorations yes
     window_padding_width 8
-    confirm_os_window_close 0
+    # Ask before closing a window with a running foreground task.
+    confirm_os_window_close -1
     enable_audio_bell no
+    visual_bell_duration ${if palette.reducedMotion or false then "0" else "0.1"}
+    bell_on_tab yes
     shell_integration enabled
 
     map ctrl+shift+o open_url_with_hints

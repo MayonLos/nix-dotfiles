@@ -41,6 +41,8 @@ let
     "SUPER+ALT,G,toggleoverlay"
     "SUPER+CTRL,S,tag_special_silent"
     "ALT,space,spawn,noctalia msg panel-toggle launcher"
+    "SUPER+ALT,D,spawn,noctalia msg notification-dnd-toggle"
+    "SUPER+ALT,I,spawn,noctalia msg caffeine-toggle"
     "SUPER,S,spawn,noctalia msg panel-toggle control-center"
     # No argument: the keybind path has no client, so this toggles tag 0
     # on the selected monitor.
