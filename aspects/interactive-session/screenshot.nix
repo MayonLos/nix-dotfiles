@@ -18,10 +18,8 @@ let
   # mango, so this one is added rather than replacing a file of the same name.
   # mark-shot resolves windowDetection.command through PATH, but that command
   # is recorded in ~/.config/mark-shot/config.json -- a file mark-shot rewrites
-  # itself, so Home Manager cannot own it. It still says
-  # `mark-shot-window-detection-niri` on a machine that came from the niri
-  # branch, which under mango would silently run upstream's niri script and
-  # get nothing back. The activation below repoints it.
+  # itself, so Home Manager cannot own it. The activation below points it at a
+  # dispatcher that selects the Mango or Hyprland detector from session markers.
   #
   # symlinkJoin rather than overrideAttrs, because overrideAttrs folds the script
   # into the main derivation and every edit to it would then recompile the whole
@@ -35,7 +33,11 @@ let
       rm -f "$out/bin/mark-shot-window-detection-mango"
       install -Dm755 ${./resources/window-detection-mango} \
         "$out/bin/mark-shot-window-detection-mango"
+      install -Dm755 ${./resources/window-detection-wayland} \
+        "$out/bin/mark-shot-window-detection-wayland"
       substituteInPlace "$out/bin/mark-shot-window-detection-mango" \
+        --replace-fail '#!/usr/bin/env python3' '#!${pkgs.python3}/bin/python3'
+      substituteInPlace "$out/bin/mark-shot-window-detection-wayland" \
         --replace-fail '#!/usr/bin/env python3' '#!${pkgs.python3}/bin/python3'
     '';
     inherit (mark-shot-unpatched) meta;
@@ -46,38 +48,30 @@ let
     img="$(${pkgs.coreutils}/bin/mktemp --suffix=.png)"
     trap '${pkgs.coreutils}/bin/rm -f "$img"' EXIT
 
-    # The pointer's monitor is the current screen, even with several outputs.
-    output="$(${config.wayland.windowManager.mango.package}/bin/mmsg get cursorpos | ${pkgs.jq}/bin/jq -er '.monitor')"
+    session="$(${mark-shot}/bin/mark-shot-window-detection-wayland --session)"
+    case "$session" in
+      hyprland)
+        # `monitors -j` exposes the focused output. Hyprland has no screenshot
+        # IPC; grim captures through wlr-screencopy.
+        output="$(${pkgs.hyprland}/bin/hyprctl -j monitors | ${pkgs.jq}/bin/jq -er '[.[] | select(.focused == true) | .name] | if length == 1 then .[0] else error("expected one focused Hyprland monitor") end')"
+        ;;
+      mango)
+        output="$(${config.wayland.windowManager.mango.package}/bin/mmsg get cursorpos | ${pkgs.jq}/bin/jq -er '.monitor')"
+        ;;
+      *)
+        echo "screenshot-screen: unsupported or unidentified Wayland session" >&2
+        exit 1
+        ;;
+    esac
     ${pkgs.grim}/bin/grim -o "$output" "$img"
     ${pkgs.wl-clipboard}/bin/wl-copy --type image/png <"$img" >/dev/null 2>&1
     ${pkgs.libnotify}/bin/notify-send "截图已复制" "当前屏幕：$output" || true
   '';
 
-  # Screen-text OCR behind the two Print-family binds in
-  # ../../wm/mango/config.nix. Two entry points rather than one script with a
-  # flag, so each mango bind stays a plain `spawn,<command>` and does not depend
-  # on how mango passes trailing arguments.
-  #
-  # The full-screen variant calls `grim` with no -g/-o, which captures every
-  # output. Hardcoding eDP-1 would break the day a second monitor appears, and
-  # `mmsg get all-monitors` reports neither `focused` nor `sel`, so there is no
-  # output name to discover from the CLI.
-  #
-  # libnotify rides in the script's own paths rather than home.packages: this
-  # script is its only user, and notify-send is the only feedback available here
-  # -- noctalia exposes no `msg notify`, and its own OCR plugin reaches the user
-  # only through a control-center tile capped at six entries (see config.nix).
-  #
-  # writeShellScriptBin, not writeShellApplication: the latter runs shellcheck in
-  # its checkPhase, and shellcheck's Haskell closure is build-time only, so it is
-  # never retained by a generation and has to be fetched again after any `nh
-  # clean`. That cost lands on a 40-line script that only glues five binaries
-  # together. Every tool is therefore named by store path, the same way the
-  # activation script further down already does it.
-  #
-  # The adjacent tesseract-ocr.nix recipe adds chi_sim,
-  # without which Chinese text comes back empty rather than wrong -- easy to
-  # mistake for the script being broken.
+  # Both compositor configurations use these Print-family OCR entry points.
+  # The full-screen variant captures every output; the region variant permits
+  # cancellation without an error. Tools are store-qualified, and the adjacent
+  # Tesseract recipe includes both English and simplified Chinese data.
   tesseractOcr = pkgs.callPackage ./tesseract-ocr.nix { };
 
   mkOcr =
@@ -143,11 +137,11 @@ in
   ];
 
   # Rewrite only windowDetection.command, leaving every other key mark-shot
-  # stores in that file alone. Idempotent, and a no-op once it already points
-  # at the mango helper.
+  # stores in that file alone. The dispatcher chooses one of the two explicitly
+  # supported sessions at runtime, since this file is shared between them.
   home.activation.markShotWindowDetection = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     target="${config.xdg.configHome}/mark-shot/config.json"
-    want="mark-shot-window-detection-mango"
+    want="mark-shot-window-detection-wayland"
     if [ -r "$target" ] \
       && ! ${lib.getExe pkgs.jq} -e --arg w "$want" \
              '.windowDetection.command == $w' "$target" >/dev/null; then

@@ -188,12 +188,15 @@ in
   home.packages = [ clipboardBridge ];
 
   systemd.user.services.clipboard-bridge = mkGraphicalService {
+    # This measured workaround belongs to Mango only. Hyprland 0.55.4
+    # XWM.cpp already bridges all offered MIME types in both directions;
+    # this single-MIME bridge would compete with that native selection owner.
     target = "mango-session.target";
     unit = {
       StartLimitIntervalSec = 60;
       StartLimitBurst = 3;
     };
-    description = "Clipboard bridge between Wayland and X11 (the compositor does not sync selections)";
+    description = "Mango clipboard bridge between Wayland and X11";
     service = {
       Type = "simple";
       # Mango's C startup imports dynamic DISPLAY/WAYLAND environment before

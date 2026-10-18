@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+"""Select mark-shot's window detector for the active Mango or Hyprland session."""
+
+import os
+import re
+import shutil
+import subprocess
+import sys
+
+
+def active_session():
+    desktops = {
+        item.strip().casefold()
+        for name in ("XDG_CURRENT_DESKTOP", "XDG_SESSION_DESKTOP", "DESKTOP_SESSION")
+        for item in re.split(r"[;:]", os.environ.get(name, ""))
+        if item.strip()
+    }
+    detected = set()
+    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        detected.add("hyprland")
+    if "hyprland" in desktops:
+        detected.add("hyprland")
+    if "mango" in desktops:
+        detected.add("mango")
+
+    if len(detected) == 1:
+        return detected.pop()
+    if not detected:
+        raise RuntimeError("unsupported or unidentified Wayland session")
+    raise RuntimeError("conflicting compositor session markers")
+
+
+def main():
+    session = active_session()
+    if sys.argv[1:] == ["--session"]:
+        print(session)
+        return
+    if sys.argv[1:]:
+        raise RuntimeError("unexpected arguments")
+
+    command = {
+        "mango": "mark-shot-window-detection-mango",
+        "hyprland": "mark-shot-window-detection-hyprland",
+    }[session]
+    executable = shutil.which(command)
+    if not executable:
+        raise RuntimeError(f"{command} command not found")
+    result = subprocess.run([executable], check=False)
+    raise SystemExit(result.returncode)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as error:
+        print('{"windows":[]}')
+        print(str(error), file=sys.stderr)
+        sys.exit(1)

@@ -5,11 +5,13 @@
       homeManager =
         {
           noctaliaIntegrations ? [ ],
+          config,
           lib,
           ...
         }:
         {
           imports = [
+            ./session-targets.nix
             (import ./mango.nix { palette = user.appearance; })
             (import ./noctalia.nix {
               palette = user.appearance;
@@ -24,10 +26,15 @@
             ./screenshot.nix
             ./tools.nix
           ];
-          systemd.user.targets.mango-session.Unit.Wants = [
-            "pipewire.socket"
-            "pipewire-pulse.socket"
-          ];
+          nixDotfiles.desktopSessionTargets = [ "mango-session.target" ];
+          systemd.user.targets =
+            lib.genAttrs (map (lib.removeSuffix ".target") config.nixDotfiles.desktopSessionTargets)
+              (_: {
+                Unit.Wants = [
+                  "pipewire.socket"
+                  "pipewire-pulse.socket"
+                ];
+              });
           programs.btop.settings.color_theme = lib.mkIf (builtins.elem "btop" noctaliaIntegrations) "noctalia";
         };
       user.extraGroups = [ "input" ];
@@ -42,6 +49,15 @@
         (import ./host/fonts.nix { palette = host.appearance; })
       ];
     };
+    hyprland-session = { host, user, ... }: {
+      includes = [ den.aspects.interactive-session ];
+      homeManager = {
+        imports = [ (import ./hyprland.nix { palette = user.appearance; }) ];
+        nixDotfiles.desktopSessionTargets = [ "hyprland-session.target" ];
+      };
+      provides.${host.name}.includes = [ den.aspects.hyprland-session-host ];
+    };
+    hyprland-session-host.nixos.imports = [ ./host/hyprland.nix ];
     login-screen = { host, ... }: { nixos = import ./greeter.nix { palette = host.appearance; }; };
   };
 }
