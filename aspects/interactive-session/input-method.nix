@@ -166,8 +166,16 @@
         # Retain learning and sentence composition for personal words.
         translator/enable_user_dict: true
         translator/enable_sentence: true
+        # Read the upstream Rime-Ice dictionary plus our small supplemental
+        # table, while keeping writes in the existing rime_ice.userdb.
+        translator/dictionary: rime_ice_technical
+        translator/user_dict: rime_ice
         # Lower short English collisions while retaining mixed-language input.
         reduce_english_filter/mode: all
     '';
+
+    dataFile."fcitx5/rime/rime_ice_technical.dict.yaml".source = ./rime/rime_ice_technical.dict.yaml;
+    dataFile."fcitx5/rime/nixdotfiles_technical.dict.yaml".source =
+      ./rime/nixdotfiles_technical.dict.yaml;
   };
 }

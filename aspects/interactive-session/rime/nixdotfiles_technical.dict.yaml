@@ -1,0 +1,30 @@
+# Rime dictionary
+# encoding: utf-8
+---
+name: nixdotfiles_technical
+version: "1.0"
+...
+# Conservative frequency keeps domain terms available without pinning them
+# above established common words. Learning remains in rime_ice.userdb.
+# Format: phrase<Tab>full pinyin<Tab>weight
+依赖闭包	yi lai bi bao	100
+声明式配置	sheng ming shi pei zhi	100
+不可变基础设施	bu ke bian ji chu she shi	100
+零成本抽象	ling cheng ben chou xiang	100
+可复现构建	ke fu xian gou jian	100
+属性集	shu xing ji	100
+模块选项	mo kuai xuan xiang	100
+纯求值	chun qiu zhi	100
+硬件抽象层	ying jian chou xiang ceng	100
+串行外设接口	chuan xing wai she jie kou	100
+热工水力	re gong shui li	100
+辐照损伤	fu zhao sun shang	100
+燃耗深度	ran hao shen du	100
+核素迁移	he su qian yi	100
+中子输运	zhong zi shu yun	100
+沸水堆	fei shui dui	100
+红石中继器	hong shi zhong ji qi	100
+末影水晶	mo ying shui jing	100
+深板岩	shen ban yan	100
+远古残骸	yuan gu can hai	100
+监守者	jian shou zhe	100

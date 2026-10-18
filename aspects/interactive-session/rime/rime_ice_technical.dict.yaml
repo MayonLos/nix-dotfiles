@@ -1,0 +1,16 @@
+# Rime dictionary
+# encoding: utf-8
+---
+name: rime_ice_technical
+version: "1.0"
+import_tables:
+  # librime 1.16 does not recursively import tables: retain the pinned
+  # rime_ice imports explicitly, in their original order, plus its body.
+  - cn_dicts/8105
+  - cn_dicts/base
+  - cn_dicts/ext
+  - cn_dicts/tencent
+  - cn_dicts/others
+  - rime_ice
+  - nixdotfiles_technical
+...
