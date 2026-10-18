@@ -432,7 +432,7 @@ flake/neovim.nix             # neovim / neovim-dev outputs
 
 ### 4. 接入 Den 主机与职责边界
 
-新方案见 [架构设计](architecture-design.md)，已由主代理与 Astra 交叉设计；先验证完整功能的纵向路由，再逐项适配现有配置，以下接线尚未实施。
+新方案见 [架构设计](architecture-design.md)，已由主代理与 Astra 交叉设计。首个 [独立 Den 样本](../tests/den/README.md) 已固定 v0.19.0 并通过 shell 路由、两主机/两账号隔离、共享文件去重和单值冲突检查，选中账号的 HM 输出已构建。主 flake 和真实主机尚未接入 Den；接下来验证嵌入式资源/权限及小型公开协议，再逐项适配现有配置。
 
 - 先选定并锁定 Den revision，只增加所需新锁项、不顺带升级现有输入；读取该 revision 的源码文档和导入/模块行为，记录真实 API 和接线图后实现。
 - 建立实体/绑定、普通组合 aspect 和完整功能入口；先验证 shell 与嵌入式功能的系统/HM/账号路由，随后逐项适配软件和服务。
