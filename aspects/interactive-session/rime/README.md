@@ -37,8 +37,9 @@ mixed-language translators unless a Chinese phrase is actually missing.
 
 ## Data and isolated validation
 
-The managed files are read-only Nix outputs. Do not edit or replace files in
-`~/.local/share/fcitx5/rime` in place. Preserve `rime_ice.userdb`, Rime sync
+The four managed YAML files are read-only Nix outputs. Edit their repository
+sources rather than replacing their links in `~/.local/share/fcitx5/rime`.
+Personal `custom_phrase` remains user-owned and editable. Preserve `rime_ice.userdb`, Rime sync
 data, `user.yaml`, `installation.yaml`, `custom_phrase`, and existing build
 backups. Do not export or commit personal learned entries.
 

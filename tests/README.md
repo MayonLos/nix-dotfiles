@@ -26,6 +26,11 @@
 `protocols-composition` 另检查项目选择/撤销不跨用户或主机。它们不启动真实项目，不在开机
 或后台运行。Neovim `layout.lua` 验证树窗口隔离、标签点击目标及减少动画滚动。
 
+`rime-technical-runtime` 用真实 librime 编译生成的 Rime 配置，在临时用户目录验证普通中文、
+专业词、错拼和英文候选可达，以及现有学习库名称仍为 `rime_ice`。它不打开个人词库，不验证
+个人排名或学习持久化；曾实际拒绝错误的非递归词表组合。词表维护见
+[Rime 说明](../aspects/interactive-session/rime/README.md)。
+
 ## 证据范围
 
 `nix flake check --no-build --no-write-lock-file` 只求值 checks，不代表 derivation 构建通过。
