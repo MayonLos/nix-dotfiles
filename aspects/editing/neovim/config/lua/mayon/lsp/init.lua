@@ -1,4 +1,52 @@
 local M = {}
+local active_progress = {}
+local progress_revision = 0
+
+local function progress_message(tasks)
+	local messages = {}
+	local count = 0
+	for _, task in pairs(tasks) do
+		count = count + 1
+		if #messages < 3 then
+			messages[#messages + 1] = task.message or task.title
+		end
+	end
+	if count > #messages then
+		messages[#messages + 1] = string.format("… and %d more", count - #messages)
+	end
+	return table.concat(messages, "\n"), count
+end
+
+local function progress_status()
+	local clients = {}
+	for client_id, progress in pairs(active_progress) do
+		local message, count = progress_message(progress.tasks)
+		clients[#clients + 1] = {
+			id = client_id,
+			name = progress.client_name,
+			message = message,
+			task_count = count,
+			updated_at = progress.updated_at,
+		}
+	end
+	table.sort(clients, function(left, right)
+		return left.updated_at < right.updated_at
+	end)
+	for _, client in ipairs(clients) do
+		client.updated_at = nil
+	end
+	return clients
+end
+
+M.progress_status = progress_status
+
+local function progress_changed()
+	vim.api.nvim_exec_autocmds("User", {
+		pattern = "MayonLspProgressChanged",
+		modeline = false,
+		data = progress_status(),
+	})
+end
 
 local function map(bufnr, lhs, rhs, desc)
 	vim.keymap.set("n", lhs, rhs, { buffer = bufnr, desc = desc, silent = true })
@@ -66,7 +114,27 @@ local function diagnostics()
 end
 
 local function progress()
-	local active_progress = {}
+	local function update_progress(client_id, progress, done)
+		local message, count = progress_message(progress.tasks)
+		if done then
+			message = "Ready"
+		elseif count > 1 then
+			message = string.format("%d tasks in progress\n%s", count, message)
+		end
+		local opts = { title = progress.client_name, silent = true }
+		if progress.notification_id then
+			opts.replace = progress.notification_id
+		end
+		progress.notification_id = vim.notify(message, vim.log.levels.INFO, opts)
+		if not done then
+			progress_revision = progress_revision + 1
+			progress.updated_at = progress_revision
+		end
+		if done then
+			active_progress[client_id] = nil
+		end
+		progress_changed()
+	end
 	local group = vim.api.nvim_create_augroup("NativeLspProgress", { clear = true })
 	vim.api.nvim_create_autocmd("LspProgress", {
 		group = group,
@@ -79,24 +147,19 @@ local function progress()
 			end
 			local client = vim.lsp.get_client_by_id(client_id)
 			local client_name = client and client.name or "LSP"
-			local tasks = active_progress[client_id]
+			local progress = active_progress[client_id]
 			if value.kind == "begin" then
-				tasks = tasks or {}
-				active_progress[client_id] = tasks
-				local title = value.title or "Progress"
-				tasks[token] = { title = title, client_name = client_name }
-				vim.notify(value.message or title, vim.log.levels.INFO, { title = client_name })
-			elseif value.kind == "end" and tasks and tasks[token] then
-				local task = tasks[token]
-				tasks[token] = nil
-				if next(tasks) == nil then
-					active_progress[client_id] = nil
-				end
-				vim.notify(
-					value.message or (task.title .. " completed"),
-					vim.log.levels.INFO,
-					{ title = task.client_name }
-				)
+				progress = progress or { tasks = {}, client_name = client_name }
+				active_progress[client_id] = progress
+				progress.tasks[token] = { title = value.title or "Progress", message = value.message }
+				update_progress(client_id, progress)
+			elseif value.kind == "report" and progress and progress.tasks[token] then
+				local task = progress.tasks[token]
+				task.message = value.message or task.message
+				update_progress(client_id, progress)
+			elseif value.kind == "end" and progress and progress.tasks[token] then
+				progress.tasks[token] = nil
+				update_progress(client_id, progress, next(progress.tasks) == nil)
 			end
 		end,
 	})
@@ -110,7 +173,10 @@ local function progress()
 			vim.schedule(function()
 				local client = vim.lsp.get_client_by_id(client_id)
 				if not client or not next(client.attached_buffers or {}) then
-					active_progress[client_id] = nil
+					local progress = active_progress[client_id]
+					if progress then
+						update_progress(client_id, progress, true)
+					end
 				end
 			end)
 		end,

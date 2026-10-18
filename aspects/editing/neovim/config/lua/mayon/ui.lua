@@ -493,7 +493,7 @@ function M.notify(message, level, opts)
 	end
 	entry.closing = false
 
-	if has_ui() then
+	if has_ui() and not opts.silent then
 		local buf = vim.api.nvim_create_buf(false, true)
 		vim.bo[buf].buftype = "nofile"
 		vim.bo[buf].bufhidden = "wipe"
@@ -537,7 +537,7 @@ function M.notify(message, level, opts)
 	if timeout == nil or timeout == true then
 		timeout = 2500
 	end
-	if timeout ~= false and tonumber(timeout) and tonumber(timeout) > 0 then
+	if not opts.silent and timeout ~= false and tonumber(timeout) and tonumber(timeout) > 0 then
 		entry.timer = vim.uv.new_timer()
 		entry.timer:start(tonumber(timeout), 0, function()
 			vim.schedule(function()

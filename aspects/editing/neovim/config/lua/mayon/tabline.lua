@@ -121,16 +121,23 @@ local function refresh()
 end
 
 local function current_window()
+	local function editor_window(win)
+		local buf = api.nvim_win_get_buf(win)
+		local bt = vim.bo[buf].buftype
+		return api.nvim_win_get_config(win).relative == "" and (bt == "" or bt == "acwrite")
+	end
 	local win = api.nvim_get_current_win()
-	if api.nvim_win_get_config(win).relative == "" then
+	if editor_window(win) then
 		return win
 	end
 	for _, candidate in ipairs(api.nvim_tabpage_list_wins(0)) do
-		if api.nvim_win_get_config(candidate).relative == "" then
+		if editor_window(candidate) then
 			return candidate
 		end
 	end
-	return win
+	-- A tab click must not replace a tree, terminal, or quickfix tool window.
+	vim.cmd("botright vnew")
+	return api.nvim_get_current_win()
 end
 
 function M.click(buf, _, button)
@@ -211,8 +218,8 @@ local function pages(limit)
 	return table.concat(result), size
 end
 
-local function entry(buf, available)
-	local active = buf == api.nvim_get_current_buf()
+local function entry(buf, available, current)
+	local active = buf == current
 	local visible = #vim.fn.win_findbuf(buf) > 0
 	local base = active and "TabLineSel" or (visible and "MayonTabVisible" or "TabLine")
 	local name = names[buf] or { label = "[No Name]" }
@@ -238,7 +245,7 @@ local function entry(buf, available)
 		local suffix = " #" .. buf
 		label = clip(name.label, math.max(0, max_name - width(suffix)), true) .. suffix
 	end
-	local content = "%#" .. base .. "#%" .. buf .. "@v:lua.MayonBufferClick@ "
+	local content = "%#" .. base .. "#%" .. buf .. "@v:lua.MayonBufferClick@" .. (active and "▎" or " ")
 	if glyph ~= "" then
 		content = content .. "%#" .. icon.group .. (active and "Sel" or "") .. "#" .. glyph .. "%#" .. base .. "#"
 	end
@@ -262,11 +269,38 @@ function M.render()
 		refresh_names(list)
 	end
 	local tabpages, page_width = pages(math.max(8, math.floor(vim.o.columns / 3)))
-	local budget = math.max(1, vim.o.columns - page_width)
+	local offset, sidebar = 0, ""
+	if vim.o.columns >= 80 then
+		for _, win in ipairs(api.nvim_tabpage_list_wins(0)) do
+			if
+				api.nvim_win_get_config(win).relative == ""
+				and api.nvim_win_get_position(win)[2] == 0
+				and vim.bo[api.nvim_win_get_buf(win)].filetype == "mayon-file-tree"
+			then
+				local size = api.nvim_win_get_width(win) + 1
+				if size < vim.o.columns / 2 then
+					offset = size
+					local label = " 󰉋 Files"
+					sidebar = "%#MayonTreeRoot#" .. label .. string.rep(" ", offset - width(label))
+				end
+				break
+			end
+		end
+	end
+	local budget = math.max(1, vim.o.columns - page_width - offset)
 	if #list == 0 then
 		return "%#TabLineFill#%=" .. tabpages
 	end
 	local selected, current = 1, api.nvim_get_current_buf()
+	-- Focusing a tool preserves the selected document and horizontal tab scroll.
+	if
+		not vim.bo[current].buflisted
+		and previous_buffer
+		and api.nvim_buf_is_valid(previous_buffer)
+		and vim.bo[previous_buffer].buflisted
+	then
+		current = previous_buffer
+	end
 	for index, buf in ipairs(list) do
 		if buf == current then
 			selected = index
@@ -281,7 +315,7 @@ function M.render()
 	local available = math.max(1, budget - 6)
 	local items = {}
 	for index, buf in ipairs(list) do
-		items[index] = entry(buf, available)
+		items[index] = entry(buf, available, current)
 	end
 	local function last_visible(start)
 		local last, used = start - 1, 0
@@ -303,7 +337,7 @@ function M.render()
 		end
 		last = last_visible(first)
 	end
-	local result = { "%#TabLineFill#" }
+	local result = { "%#TabLineFill#" .. sidebar }
 	if first > 1 then
 		result[#result + 1] = "%1@v:lua.MayonBufferScroll@ ‹ %T"
 	end

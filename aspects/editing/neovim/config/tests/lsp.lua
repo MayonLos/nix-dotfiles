@@ -8,7 +8,8 @@ if vim.env.NVIM_BLINK_PATH then
 	vim.opt.rtp:prepend(vim.env.NVIM_BLINK_PATH)
 end
 
-require("mayon.lsp").setup()
+local lsp = require("mayon.lsp")
+lsp.setup()
 
 local configs = require("mayon.lsp.servers").servers
 assert(vim.tbl_count(configs) == 16, "expected all 16 LSP servers")
@@ -16,6 +17,88 @@ assert(vim.bo.filetype == "", "test expects an empty current buffer")
 assert(vim.diagnostic.config().virtual_text == false)
 assert(vim.diagnostic.config().virtual_lines.current_line == true)
 assert(vim.diagnostic.config().severity_sort == true)
+
+-- LSP startup work can expose several concurrent tokens. Keep their updates in
+-- one history entry and publish a compact statusline snapshot.
+do
+	local client_id = 987654
+	local other_client_id = 987655
+	local original_notify = vim.notify
+	local original_get_client = vim.lsp.get_client_by_id
+	local notifications = {}
+	local progress_events = {}
+	local event_group = vim.api.nvim_create_augroup("LspProgressTest", { clear = true })
+	vim.api.nvim_create_autocmd("User", {
+		group = event_group,
+		pattern = "MayonLspProgressChanged",
+		callback = function(event)
+			progress_events[#progress_events + 1] = event.data
+		end,
+	})
+	vim.notify = function(message, level, opts)
+		opts = opts or {}
+		local id = opts.replace or (#notifications + 1)
+		notifications[#notifications + 1] = { id = id, message = message, level = level, opts = opts }
+		return id
+	end
+	vim.lsp.get_client_by_id = function(id)
+		if id == client_id then
+			return { name = "jdtls", attached_buffers = {} }
+		elseif id == other_client_id then
+			return { name = "clangd", attached_buffers = {} }
+		end
+		return original_get_client(id)
+	end
+	local function emit(id, token, kind, message)
+		vim.api.nvim_exec_autocmds("LspProgress", {
+			data = {
+				client_id = id,
+				params = { token = token, value = { kind = kind, title = token, message = message } },
+			},
+		})
+	end
+	emit(client_id, "jvm", "begin", "Detect installed JVMs")
+	local first_id = notifications[1].id
+	assert(notifications[1].opts.silent, "LSP progress should update history without opening a toast")
+	assert(#lsp.progress_status() == 1 and lsp.progress_status()[1].name == "jdtls")
+	emit(client_id, "sync", "begin", "Synchronizing projects")
+	assert(#notifications == 2, "each LSP token should update the client's existing progress entry")
+	assert(notifications[2].opts.replace == first_id, "parallel LSP tasks should replace the same history entry")
+	assert(lsp.progress_status()[1].task_count == 2, "parallel tasks should be aggregated for the statusline")
+	assert(progress_events[#progress_events][1].task_count == 2, "progress change event should publish the aggregate")
+	emit(client_id, "jvm", "report", "Using configured JVM")
+	assert(
+		#notifications == 3 and notifications[3].opts.replace == first_id,
+		"progress reports should update the history entry"
+	)
+	assert(
+		notifications[3].message:find("Synchronizing projects", 1, true),
+		"active parallel task should remain summarized"
+	)
+	emit(client_id, "jvm", "end", "")
+	assert(
+		#notifications == 4 and notifications[4].opts.replace == first_id,
+		"partial completion should update, not add a history entry"
+	)
+	emit(client_id, "sync", "end", "")
+	assert(
+		#notifications == 5 and notifications[5].opts.replace == first_id,
+		"final completion should update the same history entry"
+	)
+	assert(notifications[5].message == "Ready", "completed progress should leave one concise completion message")
+	assert(notifications[5].opts.silent, "completion should remain in history without a toast")
+	assert(#lsp.progress_status() == 0, "completed progress should leave no stale statusline entry")
+	emit(client_id, "restart", "begin", "Restarting language server")
+	emit(other_client_id, "index", "begin", "Indexing workspace")
+	emit(client_id, "restart", "report", "Loading project")
+	local latest = lsp.progress_status()
+	assert(#latest == 2 and latest[1].name == "clangd" and latest[2].name == "jdtls")
+	emit(client_id, "restart", "end", "")
+	emit(other_client_id, "index", "end", "")
+	vim.notify = original_notify
+	vim.lsp.get_client_by_id = original_get_client
+end
+
 assert(vim.lsp.config.lua_ls.settings.Lua.runtime.version == "LuaJIT")
 assert(vim.lsp.config.yamlls.settings.yaml.schemaStore.enable == false)
 assert(vim.lsp.config.matlab_ls.settings.MATLAB.telemetry == false)

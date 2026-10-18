@@ -383,6 +383,10 @@ function M.scroll(direction, amount)
 		vim.cmd.normal({ args = { tostring(count) .. key }, bang = true })
 	end)
 	local after = vim.api.nvim_win_call(win, vim.fn.winsaveview)
+	if config.scroll_duration <= 0 then
+		schedule_refresh(buf)
+		return
+	end
 	vim.api.nvim_win_call(win, function()
 		vim.fn.winrestview(before)
 	end)
@@ -721,12 +725,16 @@ function M.setup(opts)
 	end
 	setup_done = true
 	config = vim.tbl_deep_extend("force", config, opts or {})
+	local ok, generated = pcall(require, "mayon.generated")
+	if ok and generated.palette and generated.palette.reducedMotion == true then
+		config.scroll_duration = 0
+	end
 
 	local function apply_highlights()
-		vim.api.nvim_set_hl(0, "MayonIndent", { link = "Comment" })
-		vim.api.nvim_set_hl(0, "MayonIndentScope", { link = "SpecialComment" })
+		vim.api.nvim_set_hl(0, "MayonIndent", { link = "MayonIndentGuide" })
+		vim.api.nvim_set_hl(0, "MayonIndentScope", { link = "MayonScopeGuide" })
 		vim.api.nvim_set_hl(0, "MayonWord", { link = "LspReferenceText" })
-		vim.api.nvim_set_hl(0, "MayonDim", { fg = "#777777" })
+		vim.api.nvim_set_hl(0, "MayonDim", { link = "Comment" })
 	end
 	apply_highlights()
 

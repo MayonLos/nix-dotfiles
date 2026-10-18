@@ -8,6 +8,8 @@ function M.setup()
 	end
 	local options = {
 		clipboard = "unnamedplus",
+		breakindent = true,
+		breakindentopt = "shift:2,min:20",
 		concealcursor = "nvic",
 		conceallevel = 2,
 		cursorline = true,
@@ -25,6 +27,10 @@ function M.setup()
 		scrolloff = 8,
 		shiftwidth = 4,
 		showmode = false,
+		showbreak = "↪ ",
+		sidescrolloff = 8,
+		smoothscroll = true,
+		linebreak = true,
 		showtabline = 2,
 		signcolumn = "yes",
 		smartcase = true,
@@ -39,6 +45,7 @@ function M.setup()
 		undofile = true,
 		updatetime = 250,
 		winborder = "rounded",
+		wrap = false,
 	}
 	for name, value in pairs(options) do
 		vim.opt[name] = value

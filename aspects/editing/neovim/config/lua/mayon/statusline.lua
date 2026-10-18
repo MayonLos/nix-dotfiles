@@ -189,6 +189,13 @@ local function render_current(target_width, active_win)
 	local active = win == active_win
 	local base_hl = active and "StatusLine" or "StatusLineNC"
 
+	if vim.bo[buf].filetype == "mayon-file-tree" then
+		local root = vim.b[buf].mayon_tree_root or ""
+		local label = "Files · " .. vim.fn.fnamemodify(root, ":~:.")
+		right = width_px >= 70 and { part(" K path · g? help ", "MayonSLMuted") } or {}
+		left[#left + 1] = part(truncate(label, math.max(1, width_px - width(left) - width(right) - 1)), "MayonSLText")
+		return "%#" .. base_hl .. "#" .. format(left) .. "%=" .. format(right)
+	end
 	if is_special(buf) then
 		right = { part(string.format("%d:%d ", vim.fn.line("."), vim.fn.virtcol(".")), "MayonSLText") }
 		left[#left + 1] = part(
@@ -249,16 +256,16 @@ local function render_current(target_width, active_win)
 	local breadcrumbs_list =
 		breadcrumbs(buf, vim.api.nvim_win_get_cursor(win)[1] - 1, vim.api.nvim_win_get_cursor(win)[2])
 	local crumb_parts = {}
-	for i = math.max(1, #breadcrumbs_list - 2), #breadcrumbs_list do
+	for i = math.max(1, #breadcrumbs_list - 1), #breadcrumbs_list do
 		local item = breadcrumbs_list[i]
-		crumb_parts[#crumb_parts + 1] = (item.icon or "") .. (item.name or "")
+		crumb_parts[#crumb_parts + 1] = (item.icon or "") .. truncate(item.name or "", 22)
 	end
 	local crumbs = #crumb_parts > 0 and (" › " .. table.concat(crumb_parts, " › ")) or ""
 	local git = vim.b[buf].gitsigns_status_dict
 	local git_parts = {}
 	if type(git) == "table" and git.head then
 		git_parts[#git_parts + 1] =
-			part(" " .. truncate(git.head, math.max(1, math.floor(width_px * 0.12))) .. " ", "MayonSLMuted")
+			part(" ·  " .. truncate(git.head, math.max(1, math.floor(width_px * 0.12))) .. " ", "MayonSLMuted")
 		if (git.added or 0) > 0 then
 			git_parts[#git_parts + 1] = part("+" .. git.added .. " ", "MayonSLGitAdd")
 		end
@@ -281,6 +288,17 @@ local function render_current(target_width, active_win)
 				math.floor(width_px * 0.14)
 			) .. " "))
 		or ""
+
+	local lsp = package.loaded["mayon.lsp"]
+	if lsp and type(lsp.progress_status) == "function" then
+		local ok, progress = pcall(lsp.progress_status)
+		if ok and type(progress) == "table" and #progress > 0 then
+			local task = progress[#progress]
+			lsp_text = "⋯ "
+				.. truncate((task.name or "LSP") .. " " .. (task.message or ""), math.floor(width_px * 0.22))
+				.. " "
+		end
+	end
 
 	local rec = vim.fn.reg_recording()
 	if rec ~= "" then
@@ -314,7 +332,7 @@ local function render_current(target_width, active_win)
 	-- Optional context is dropped in order as the target window narrows.
 	local optional = {}
 	if width_px >= 120 and crumbs ~= "" then
-		optional[#optional + 1] = part(truncate(crumbs, math.floor(width_px * 0.18)), "MayonSLMuted")
+		optional[#optional + 1] = part(truncate(crumbs, math.floor(width_px * 0.26)), "MayonSLMuted")
 	end
 	if width_px >= 90 then
 		vim.list_extend(optional, git_parts)
@@ -327,7 +345,7 @@ local function render_current(target_width, active_win)
 		end
 	end
 	if width_px >= 70 and lsp_text ~= "" then
-		optional[#optional + 1] = part(lsp_text, "MayonSLGreen")
+		optional[#optional + 1] = part(" · " .. lsp_text, "MayonSLGreen")
 	end
 	local fixed_left_width = width(left) - width(left[filename_index])
 	local available = math.max(1, width_px - fixed_left_width - width(right) - 2)
@@ -335,6 +353,20 @@ local function render_current(target_width, active_win)
 	for _, item in ipairs(optional) do
 		if width(left) + width(item) + width(right) + 2 <= width_px then
 			left[#left + 1] = item
+		end
+	end
+	if width_px >= 100 and vim.bo[buf].filetype ~= "" then
+		local detail = vim.bo[buf].filetype
+		local encoding = vim.bo[buf].fileencoding
+		if encoding ~= "" and encoding ~= "utf-8" then
+			detail = detail .. " · " .. encoding
+		end
+		if vim.bo[buf].fileformat ~= "unix" then
+			detail = detail .. " · " .. vim.bo[buf].fileformat
+		end
+		local item = part(" " .. detail .. " · ", "MayonSLMuted")
+		if width(left) + width(right) + width(item) + 2 <= width_px then
+			table.insert(right, 1, item)
 		end
 	end
 	return "%#" .. base_hl .. "#" .. format(left) .. "%=" .. format(right)
@@ -356,7 +388,7 @@ end
 local function refresh_highlights()
 	local links = {
 		MayonSLText = "StatusLine",
-		MayonSLMuted = "NonText",
+		MayonSLMuted = "Comment",
 		MayonSLGreen = "String",
 		MayonSLPurple = "Statement",
 		MayonSLOrange = "Constant",
@@ -426,7 +458,10 @@ function M.setup()
 		"CursorMoved",
 		"CursorMovedI",
 	}, { group = augroup, callback = schedule_redraw })
-	vim.api.nvim_create_autocmd("User", { group = augroup, pattern = "GitSignsUpdate", callback = schedule_redraw })
+	vim.api.nvim_create_autocmd(
+		"User",
+		{ group = augroup, pattern = { "GitSignsUpdate", "MayonLspProgressChanged" }, callback = schedule_redraw }
+	)
 	vim.api.nvim_create_autocmd("User", {
 		group = augroup,
 		pattern = {

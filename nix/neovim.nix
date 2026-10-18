@@ -30,7 +30,7 @@ _: {
                   ${neovim.normal}/bin/nvim --headless -c 'luafile ${neovim.configDir}/tests/run.lua'
                 done
                 export NVIM_LSP_INTEGRATION=1
-                for test in native statusline tabline breadcrumbs lsp; do
+                for test in native statusline tabline breadcrumbs lsp layout; do
                   export NVIM_TEST_FILE="${neovim.configDir}/tests/$test.lua"
                   ${neovim.normal}/bin/nvim --clean --headless \
                     -c 'luafile ${neovim.configDir}/tests/run.lua'

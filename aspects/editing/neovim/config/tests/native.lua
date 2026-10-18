@@ -110,8 +110,9 @@ local function run()
 	assert(calls == 1, "headless input must cancel once")
 	local first = ui.notify("first", vim.log.levels.INFO, { timeout = false })
 	ui.notify("replacement", vim.log.levels.WARN, { replace = first, timeout = false })
+	ui.notify("progress summary", vim.log.levels.INFO, { replace = first, silent = true })
 	local history = ui.history()
-	assert(#history == 1 and history[1].message == "replacement", "replacement must update its history entry")
+	assert(#history == 1 and history[1].message == "progress summary", "silent replacement must update history")
 end
 local ok, err = xpcall(run, debug.traceback)
 vim.ui.select, vim.ui.input, vim.notify = original_select, original_input, original_notify

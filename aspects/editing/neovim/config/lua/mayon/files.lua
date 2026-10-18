@@ -1,9 +1,10 @@
 -- Small file-management helpers used by the native Nvim configuration.
--- This module intentionally has no plugin or shell-string dependency.
+-- File actions have no plugin or shell-string dependency; icons reuse optional devicons.
 local M = {}
 
 local api = vim.api
 local uv = vim.uv or vim.loop
+local tree_ns = api.nvim_create_namespace("mayon.file-tree")
 local tree = { expanded = {}, entries = {}, root = nil, win = nil, target_win = nil, show_hidden = false }
 
 local function notify(message, level)
@@ -145,17 +146,46 @@ local function render_tree()
 		return
 	end
 	tree.entries = {}
-	local lines = { vim.fn.fnamemodify(tree.root, ":~:.") .. "/" }
+	local lines = { "󰉋 " .. (vim.fs.basename(tree.root) or tree.root):gsub("[%c]", " ") .. "/" }
+	vim.b[tree.buf].mayon_tree_root = tree.root
+	local highlights = { { 0, 0, -1, "MayonTreeRoot" } }
+	local has_icons, devicons = pcall(require, "nvim-web-devicons")
 	tree.entries[1] = { path = tree.root, dir = true, root = true }
 	scan_dir(tree.root, 0, tree.entries)
 	for i = 2, #tree.entries do
 		local entry = tree.entries[i]
 		local indent = string.rep("  ", entry.depth)
 		local marker = entry.dir and (tree.expanded[entry.path] and "▾ " or "▸ ") or "  "
-		lines[#lines + 1] = indent .. marker .. entry.name .. (entry.dir and "/" or "")
+		local icon, icon_hl = "", nil
+		if not entry.dir and has_icons then
+			icon, icon_hl = devicons.get_icon(entry.name, vim.fn.fnamemodify(entry.name, ":e"), { default = true })
+			icon = icon and (icon .. " ") or ""
+		end
+		-- Display text is independent of the exact path used by every file action.
+		local label = entry.name:gsub("[%c]", " ")
+		lines[#lines + 1] = indent .. marker .. icon .. label .. (entry.dir and "/" or "")
+		highlights[#highlights + 1] = { i - 1, 0, #indent + #marker, "MayonTreeGuide" }
+		if icon_hl then
+			highlights[#highlights + 1] = { i - 1, #indent + #marker, #indent + #marker + #icon, icon_hl }
+		end
+		if entry.dir or entry.name:sub(1, 1) == "." then
+			highlights[#highlights + 1] = {
+				i - 1,
+				#indent + #marker + #icon,
+				-1,
+				entry.dir and "MayonTreeDirectory" or "MayonTreeHidden",
+			}
+		end
 	end
 	vim.bo[tree.buf].modifiable = true
 	api.nvim_buf_set_lines(tree.buf, 0, -1, false, lines)
+	api.nvim_buf_clear_namespace(tree.buf, tree_ns, 0, -1)
+	for _, hl in ipairs(highlights) do
+		api.nvim_buf_set_extmark(tree.buf, tree_ns, hl[1], hl[2], {
+			end_col = hl[3] == -1 and #lines[hl[1] + 1] or hl[3],
+			hl_group = hl[4],
+		})
+	end
 	vim.bo[tree.buf].modifiable = false
 end
 
@@ -399,6 +429,28 @@ local function set_tree_mappings(buf)
 		vim.fn.setreg("+", entry.path)
 		notify("Copied path: " .. entry.path)
 	end, "Copy absolute path")
+	map("K", function()
+		local entry = entry_at_cursor()
+		if entry then
+			vim.lsp.util.open_floating_preview({ (entry.path:gsub("[%c]", " ")) }, "text", {
+				border = "rounded",
+				title = " Full path ",
+				max_width = math.max(20, vim.o.columns - 8),
+				wrap = true,
+				focusable = false,
+			})
+		end
+	end, "Show full path")
+	map("g?", function()
+		vim.lsp.util.open_floating_preview({
+			"Enter / l  Open file or expand directory",
+			"h / BS     Collapse or parent directory",
+			"a  Create    r  Rename    d  Move to trash",
+			"R  Refresh   H  Hidden files   y  Copy path",
+			"K  Full path   zL / zH  Scroll sideways",
+			"q  Close tree",
+		}, "text", { border = "rounded", title = " Files · help ", focusable = false })
+	end, "Tree help")
 	map("q", close_tree, "Close tree")
 end
 
@@ -437,6 +489,17 @@ function M.explorer(opts)
 	vim.wo[tree.win].relativenumber = false
 	vim.wo[tree.win].signcolumn = "no"
 	vim.wo[tree.win].winfixwidth = true
+	vim.wo[tree.win].wrap = false
+	vim.wo[tree.win].list = false
+	vim.wo[tree.win].spell = false
+	vim.wo[tree.win].cursorline = true
+	vim.wo[tree.win].cursorlineopt = "line"
+	vim.wo[tree.win].statuscolumn = ""
+	vim.wo[tree.win].foldcolumn = "0"
+	vim.wo[tree.win].winhighlight = "Normal:MayonTreeNormal,NormalNC:MayonTreeNormal,CursorLine:MayonTreeCursorLine"
+	vim.wo[tree.win].fillchars =
+		"eob: ,horiz:─,vert: ,diff:╱,fold: ,foldopen: ,foldclose: ,foldsep: ,lastline:…,msgsep:─"
+	vim.wo[tree.win].winbar = ""
 	set_tree_mappings(buf)
 end
 
