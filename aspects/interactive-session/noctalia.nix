@@ -139,7 +139,13 @@ in
         shell = {
           lang = "zh-CN";
           font_family = palette.fonts.sans;
-          corner_radius_scale = 1.0;
+          corner_radius_scale = 1.1;
+          # One outer outline, quieter cards, and distinct input boundaries.
+          button_borders = false;
+          card_borders = false;
+          input_borders = true;
+          popup_borders = true;
+          popup_shadows = true;
           # Native history owns collection and persistence; no parallel
           # cliphist watchers. The X11/Wayland bridge is a separate service.
           clipboard_enabled = true;
@@ -156,7 +162,7 @@ in
 
           shadow = {
             direction = "down";
-            alpha = 0.30;
+            alpha = 0.38;
           };
 
           panel = {
@@ -167,7 +173,13 @@ in
             shadow = true;
             launcher_placement = "floating";
             clipboard_placement = "floating";
-            control_center_placement = "attached";
+            control_center_placement = "floating";
+            launcher_position = "center";
+            control_center_position = "center";
+            open_near_click_launcher = false;
+            open_near_click_control_center = false;
+            floating_offset = 12;
+            list_item_background = true;
             wallpaper_placement = "attached";
             session_placement = "attached";
           };
@@ -344,6 +356,8 @@ in
           start = [
             "launcher"
             "workspaces"
+            # Mode feedback must stay visible even when tool drawers collapse.
+            "gambled23/mangowm-keymode:mangowm-keymode"
             "group:dev"
             "group:panels"
             "group:media"
@@ -376,9 +390,10 @@ in
               members = [
                 "fel/quill:status" # Markdown notes + todos; replaced noctalia/notes
                 "8bury/mini-docker:mini-docker" # Docker management
-                "rxtsel/portctl:indicator" # inspect and kill port listeners
               ];
-              accordion = false;
+              # First member stays visible; hover reveals Docker, not a click toggle.
+              accordion = true;
+              accordion_direction = "end";
               padding = 6.0;
               widget_spacing = 4;
             }
@@ -412,9 +427,11 @@ in
               id = "dev";
               members = [
                 "ezequiel/mango_layouts:btn"
-                "gambled23/mangowm-keymode:mangowm-keymode"
+                "rxtsel/portctl:indicator" # inspect and kill port listeners
               ];
-              accordion = false;
+              # Keep layout as the anchor; /pan also exposes both tool panels.
+              accordion = true;
+              accordion_direction = "end";
               padding = 6.0;
               widget_spacing = 4;
             }
@@ -529,8 +546,8 @@ in
 
         backdrop = {
           enabled = true;
-          blur_intensity = 0.55;
-          tint_intensity = 0.65;
+          blur_intensity = 0.40;
+          tint_intensity = 0.50;
         };
 
         audio = {
@@ -646,7 +663,7 @@ in
         control_center = {
           sidebar = "full";
           sidebar_section = "full";
-          width = 700;
+          width = 720;
           show_shortcut_labels = true;
         };
 
@@ -656,8 +673,8 @@ in
           transition = lib.optional (!reducedMotion) "fade";
           transition_duration = 550;
           edge_smoothness = 0.3;
-          blur_intensity = 0.5;
-          tint_intensity = 0.45;
+          blur_intensity = 0.40;
+          tint_intensity = 0.60;
           blurred_desktop = false;
         };
 
@@ -681,9 +698,9 @@ in
               show_caps_lock = true;
               show_keyboard_layout = true;
               background_color = "surface_variant";
-              background_opacity = 0.96;
-              background_radius = 12.0;
-              input_radius = 6.0;
+              background_opacity = 0.94;
+              background_radius = 14.0;
+              input_radius = 8.0;
               input_opacity = 1.0;
             };
           };
@@ -696,7 +713,11 @@ in
             box_height = 100.0;
             settings = {
               format = "{:%H:%M}";
-              font_family = palette.fonts.mono;
+              font_family = palette.fonts.sans;
+              center_text = true;
+              background = false;
+              color = "on_surface";
+              shadow = true;
             };
           };
         };
