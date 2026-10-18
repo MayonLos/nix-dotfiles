@@ -41,11 +41,14 @@ in
       name = desktop.iconTheme;
       package = pkgs.papirus-icon-theme;
     };
+    gtk3.extraConfig.gtk-enable-animations = !(palette.reducedMotion or false);
+    gtk4.extraConfig.gtk-enable-animations = !(palette.reducedMotion or false);
   };
 
   dconf.settings = {
     "org/gnome/desktop/interface" = {
       color-scheme = "prefer-dark";
+      enable-animations = !(palette.reducedMotion or false);
     };
   };
 }

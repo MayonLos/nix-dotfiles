@@ -467,8 +467,8 @@ in
       cursor_size = palette.cursor.size;
       cursor_hide_on_keypress = 1;
 
-      # Noctalia draws its own layer effects, so only Mango's window blur and
-      # shadows remain enabled.
+      # Noctalia owns layer shadows/animations. Its reading panels are opaque;
+      # client blur remains available for apps that explicitly use transparency.
       blur = 1;
       blur_layer = 0;
       blur_optimized = 1;
@@ -481,17 +481,18 @@ in
       layer_animations = 0;
       shadows = 1;
       layer_shadows = 0;
-      shadow_only_floating = 0;
-      shadows_size = 6;
-      shadows_blur = 16;
-      shadows_position_x = 2;
-      shadows_position_y = 4;
-      shadows_color = "0x00000066";
+      # Elevation belongs to floating tools/dialogs. Tiled documents use the
+      # existing border/focus colours instead of a shadow in every narrow gap.
+      shadow_only_floating = 1;
+      shadows_size = 10;
+      shadows_blur = 20;
+      shadows_position_x = 0;
+      shadows_position_y = 5;
+      shadows_color = "0x00000059";
 
-      # Keep client opacity independent from focus dimming: Mango composites
-      # the dim overlay separately, so unfocused windows can stay crisp while
-      # still reading as secondary.
-      dim_enable = 1;
+      # Comparing multiple documents should not change their text contrast.
+      # The accent border identifies focus without tinting the other clients.
+      dim_enable = 0;
       dim_focused_color = "0x00000000";
       dim_unfocused_color = "0x00000010";
 

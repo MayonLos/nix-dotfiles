@@ -139,7 +139,7 @@ in
         shell = {
           lang = "zh-CN";
           font_family = palette.fonts.sans;
-          corner_radius_scale = 1.1;
+          corner_radius_scale = 1.2;
           # One outer outline, quieter cards, and distinct input boundaries.
           button_borders = false;
           card_borders = false;
@@ -162,11 +162,13 @@ in
 
           shadow = {
             direction = "down";
-            alpha = 0.38;
+            alpha = 0.32;
           };
 
           panel = {
-            transparency_mode = "soft";
+            # Reading surfaces stay opaque: Mango layer blur is deliberately
+            # off, so transparency would expose sharp application text behind.
+            transparency_mode = "solid";
             borders = true;
             border_color = "outline";
             border_width = 1;
@@ -175,24 +177,29 @@ in
             clipboard_placement = "floating";
             control_center_placement = "floating";
             launcher_position = "center";
-            control_center_position = "center";
+            control_center_position = "top_right";
             open_near_click_launcher = false;
             open_near_click_control_center = false;
-            floating_offset = 12;
-            list_item_background = true;
+            floating_offset = 16;
+            # Hover/selection provides the row emphasis without a card per row.
+            list_item_background = false;
             wallpaper_placement = "attached";
             session_placement = "attached";
           };
 
           launcher = {
             layout = "full";
-            width = 720;
+            width = 680;
             search_position = "top";
             default_view = "recent";
             categories = true;
+            category_icons_only = false;
             show_icons = true;
             compact = false;
-            app_grid = true;
+            # List rows retain long names and descriptions; provider search,
+            # pinned apps, categories and desktop actions remain available.
+            app_grid = false;
+            show_app_actions = true;
             sort_by_usage = true;
             pinned = [
               "kitty.desktop"
@@ -327,12 +334,12 @@ in
 
         bar.main = {
           position = "top";
-          thickness = 36;
+          thickness = 38;
           reserve_space = true;
           auto_hide = false;
           layer = "top";
           panel_overlap = 1;
-          background_opacity = 0.96;
+          background_opacity = 0.98;
           border = "outline";
           border_width = 1;
           radius = 12;
@@ -342,7 +349,9 @@ in
           widget_spacing = 8;
           shadow = true;
           contact_shadow = true;
-          capsule = true;
+          # Only semantic groups and the launcher get a persistent surface.
+          # Group capsules are independent of this per-widget default.
+          capsule = false;
           capsule_opacity = 0.96;
           capsule_fill = "surface_variant";
           capsule_radius = 8;
@@ -382,6 +391,8 @@ in
               id = "time";
               members = [ "clock" ] ++ lib.optional (!reducedMotion) "noctalia/bongocat:cat";
               accordion = false;
+              fill = palette.deep;
+              foreground = "on_surface";
               padding = 8.0;
               widget_spacing = 8;
             }
@@ -408,6 +419,7 @@ in
                 "notifications"
               ];
               accordion = false;
+              fill = "surface";
               padding = 6.0;
               widget_spacing = 4;
             }
@@ -420,6 +432,7 @@ in
                 "battery"
               ];
               accordion = false;
+              fill = "surface";
               padding = 6.0;
               widget_spacing = 4;
             }
@@ -436,6 +449,13 @@ in
               widget_spacing = 4;
             }
           ];
+        };
+
+        widget.launcher = {
+          capsule = true;
+          capsule_fill = "primary";
+          color = "on_primary";
+          icon_color = "on_primary";
         };
 
         widget."control-center" = {
@@ -516,13 +536,13 @@ in
           hide_when_empty = false;
           show_all_outputs = false;
           focused_output_only = true;
-          active_pill_size = 1.35;
+          active_pill_size = 1.5;
           inactive_pill_size = 1.0;
           focused_color = "primary";
           occupied_color = "surface_variant";
           empty_color = palette.deep;
           urgent_color = "error";
-          font_scale = 1.18;
+          font_scale = 1.0;
         };
 
         desktop_widgets.enabled = false;
@@ -609,20 +629,23 @@ in
           enable_daemon = true;
           position = "top_right";
           layer = "overlay";
-          width = 360;
+          width = 380;
           offset_x = 14;
-          offset_y = 56;
+          offset_y = 62;
           max_visible = 3;
           border = true;
           border_width = 1;
           background_opacity = 0.97;
-          # New in 5.2.1. No-op on the single panel, correct once a second
-          # output is attached.
+          # Keep transient messages on the output currently being used.
           follow_focused_output = true;
         };
 
         osd = {
-          position = "top_right";
+          # Separate transient device feedback from notifications/control center.
+          position = "bottom_center";
+          orientation = "horizontal";
+          offset_y = 28;
+          hide_delay_ms = 1400;
           background_opacity = 0.97;
           follow_focused_output = true;
         };
@@ -662,7 +685,9 @@ in
 
         control_center = {
           sidebar = "full";
-          sidebar_section = "full";
+          # Direct volume/network/etc. entry keeps an icon rail; Home retains
+          # its full labelled navigation and all tabs stay reachable.
+          sidebar_section = "compact";
           width = 720;
           show_shortcut_labels = true;
         };
@@ -682,13 +707,14 @@ in
           enabled = true;
           widget_order = [
             "lockscreen-widget-clock"
+            "lockscreen-widget-date"
             "lockscreen-login-box@${desktop.primaryOutput}"
           ];
           widget."lockscreen-login-box@${desktop.primaryOutput}" = {
             type = "login_box";
             output = desktop.primaryOutput;
             cx = logicalWidth / 2;
-            cy = logicalHeight / 2;
+            cy = logicalHeight * 0.54;
             settings = {
               layout = "regular";
               show_media = false;
@@ -698,9 +724,9 @@ in
               show_caps_lock = true;
               show_keyboard_layout = true;
               background_color = "surface_variant";
-              background_opacity = 0.94;
-              background_radius = 14.0;
-              input_radius = 8.0;
+              background_opacity = 1.0;
+              background_radius = 16.0;
+              input_radius = 10.0;
               input_opacity = 1.0;
             };
           };
@@ -708,11 +734,27 @@ in
             type = "clock";
             output = desktop.primaryOutput;
             cx = logicalWidth / 2;
-            cy = logicalHeight * 0.225;
-            box_width = 360.0;
-            box_height = 100.0;
+            cy = logicalHeight * 0.24;
+            box_width = 420.0;
+            box_height = 110.0;
             settings = {
               format = "{:%H:%M}";
+              font_family = palette.fonts.sans;
+              center_text = true;
+              background = false;
+              color = "on_surface";
+              shadow = true;
+            };
+          };
+          widget.lockscreen-widget-date = {
+            type = "clock";
+            output = desktop.primaryOutput;
+            cx = logicalWidth / 2;
+            cy = logicalHeight * 0.325;
+            box_width = 360.0;
+            box_height = 32.0;
+            settings = {
+              format = "{:%m-%d  %A}";
               font_family = palette.fonts.sans;
               center_text = true;
               background = false;

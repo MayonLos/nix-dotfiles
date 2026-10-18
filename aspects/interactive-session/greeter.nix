@@ -21,7 +21,7 @@ in
         password_style = "random";
         theme_mode = "dark";
         # Match the shell's central authentication scene and rounded surfaces.
-        corner_radius_scale = 1.1;
+        corner_radius_scale = 1.2;
         hide_logo = true;
         font_family = palette.fonts.sans;
         scheme_selector_position = "hidden";
