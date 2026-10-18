@@ -1,6 +1,6 @@
 # 后台服务策略
 
-状态：2026-10-18，Den 声明已实现，未执行 switch/test、activation 或服务启停。构建及源码证据见[实施记录](den-execution.md)；真实运行态仍可能来自旧 generation。服务可安装、可激活与当前正在运行是三个不同结论。
+状态：2026-10-18，Den 声明已由用户 nr 应用，后续优化也获得应用授权；实现阶段历史证据见[Den 记录](den-execution.md)，当前运行交接见[应用记录](system-polish-execution.md)。服务可安装、可激活与实际正常运行仍须分别核实。
 
 ## 当前声明与生命周期
 
@@ -29,7 +29,7 @@ Noctalia/Mango 只消费 [白名单投影](../lib/session-environment.nix) 的�
 
 ## 迁移前只读快照
 
-基线阶段重新检查了系统/user unit、进程元数据和 Linger；没有读取剪贴板、认证、模型或业务数据。发现仓库已移除的 llama-cpp 和两条 cliphist watcher 仍从旧持久用户 unit 运行，Noctalia 也有非新 unit 管理的实例。未停止它们、删除其文件或声称声明变化已经生效。应用阶段应先确认 writer/数据归属，再有序退出旧服务；当前 Noctalia guard 在旧 writer 存在时会拒绝交接，需完整注销登录。
+基线阶段重新检查了系统/user unit、进程元数据和 Linger；没有读取剪贴板、认证、模型或业务数据。发现仓库已移除的 llama-cpp 和两条 cliphist watcher 仍从旧持久用户 unit 运行，Noctalia 也有非新 unit 管理的实例。未停止它们、删除其文件或声称声明变化已经生效。应用阶段应先确认 writer/数据归属，再有序退出旧服务；Noctalia guard 继续拒绝活 writer。本轮已在核实进程身份后，只对旧 shell 通过 pidfd 发 SIGTERM，等其优雅退出并确认 writer scan 为空，再 reset-failed/start 新 unit；无需注销 Mango，不终止终端或业务任务。
 
 先前只读查询 `qemu:///system` 与 `qemu:///session` 未发现 domain，这是当时快照；不推断后续创建的 guest。Docker/VM 卷和镜像没有复制、清理或修改。
 

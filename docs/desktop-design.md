@@ -1,6 +1,6 @@
 # Mango + Noctalia 桌面视觉设计
 
-状态：**Astra 的“石墨玻璃工作台”及窗口体验优化已写入 Den 声明，未应用系统**。
+状态：**此前桌面配置已由用户 nr 应用；本轮系统与编辑器优化获授权继续应用**。
 此前 Den 迁移的构建证据见[实施记录](den-execution.md)，本轮检查与交付状态另见
 [视觉优化执行记录](desktop-polish-execution.md)。尺寸、动画、混合缩放与功耗仍需本机验收，
 构建不证明视觉效果；用户正在运行的 mod 任务不受本轮配置编辑影响。
@@ -148,6 +148,31 @@ Greeter 由主机显式生成 `appearance.scheme = "Synced"`、`theme_mode = "da
 | 其他模板消费者 | btop、Obsidian、VS Code、Yazi、Zathura 继续现有模板选择，逐个检查生成文件与重载行为；不因统一外观删除现有软件或插件 |
 
 鼠标保持 Bibata-Modern-Ice 24，应用图标保持 Papirus-Dark；中文 UI 使用 Noto Sans CJK SC，等宽内容使用 JetBrainsMono Nerd Font。不把 Nerd Font 作为全部桌面文字字体。GTK/Qt 的字体设置需各自适配，不能以设置 Noctalia `font_family` 代替。浏览器与代码编辑区保持足够内容密度，应用自己的标题栏高度不强行伪装为同一个 36 像素条。
+
+## Neovim：由实机画面调整信息层次
+
+2026-10-18 的 Java 与文件树截图显示：长代码续行顶到左边、目录树长路径和文件名折成多行，
+以及常规 JDTLS 进度通知覆盖正文。本轮保留现有原生 Lua 组件与文件保护链路，按这些可见问题调整，
+不把截图当作性能测量。代码背景仍为 `#1f2329`；树侧栏和粘性上下文用 `deep`，选中行用
+`selection`，活动标签用 `surface` / `brightFg`。普通缩进线降低到 `selection`，当前作用域线用
+`border`，正文和注释的语义色保留。
+
+目录树一项一行、不软折行，根标题只显示目录名；文件名本体保留完整文本，可横向滚动或按 `K`
+查看完整路径。文件图标复用已有 devicons，目录/隐藏项分色；窄屏不为了顶部侧栏对齐牺牲文档标签。
+当前文档标签有 `▎` 标记，聚焦树时仍保留该标签，点击标签会使用正文窗口，避免覆盖树或终端工具。
+原有重复文件名消歧、标签溢出滚动、未保存关闭确认继续保留。
+
+底部状态栏保留模式、文件、诊断、Git、AI 请求与位置；文件类型和异常编码/换行格式只在宽度允许时
+出现。目录树聚焦时显示项目路径与帮助入口；LSP 常规进度使用短摘要并在完成后移除。符号面包屑
+保留最近两级，单项限长，减少与粘性上下文重复的长文本。代码默认不软折行，手动开启后使用词边界、
+续行缩进与 `↪` 标记；`smoothscroll` 是 Neovim 的屏幕行滚动语义，不是额外动画。
+原有 120 ms 视口插值消费 `palette.reducedMotion`，启用减少动效时直接保留原生滚动目标，不启动插值计时器。
+
+参考 [LazyVim 的状态栏分区与侧栏偏移](https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/plugins/ui.lua)、
+[mini.files 的文件图标与局部帮助](https://github.com/nvim-mini/mini.files/blob/main/doc/mini-files.txt) 和
+[Neovim 原生窗口选项](https://neovim.io/doc/user/options/)。借鉴呈现方式，不引入整套发行版或新的文件操作后端。
+隔离检查覆盖状态栏、标签宽度、原生文件保护、目录树与标签交互、减少动效滚动目标；
+Java 项目通知、实际 Nerd Font 字形、tmux 内宽度、粘性上下文和长文件名仍需新会话实机验收。
 
 ## 单一写入者与现场交接
 

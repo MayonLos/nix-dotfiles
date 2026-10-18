@@ -1,5 +1,4 @@
-{ den, ... }:
-{
+_: {
   den.schema.user.imports = [ ./contract.nix ];
 
   den.aspects.project-workbench =

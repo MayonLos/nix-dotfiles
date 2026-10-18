@@ -22,6 +22,10 @@
 `embedded-home`、`embedded-udev`、`embedded-tools` 和 `treefmt`。这些检查验证当前锁定输入
 下的生成配置、解析器、工具产物或隔离工作负载；名称以 `nix/checks.nix` 实际接线为准。
 
+`project-workbench` 使用临时目录和 spy 命令检查 cwd、argv、缺目录拒绝与 direnv 拒绝；
+`protocols-composition` 另检查项目选择/撤销不跨用户或主机。它们不启动真实项目，不在开机
+或后台运行。Neovim `layout.lua` 验证树窗口隔离、标签点击目标及减少动画滚动。
+
 ## 证据范围
 
 `nix flake check --no-build --no-write-lock-file` 只求值 checks，不代表 derivation 构建通过。

@@ -64,6 +64,11 @@ tmux 有前缀导航：`h/j/k/l` 切换 pane，Tab 与 `n/p` 切换窗口，`1`�
 Alt pane/window 截获已移除。输入完整快捷键与布局以 [Mango](aspects/interactive-session/mango.nix)
 及 [tmux](aspects/command-line/tmux.nix) 当前配置为准。
 
+`Super+Alt+D` 切换勿扰，`Super+Alt+I` 切换防空闲；面板铃铛与咖啡显示状态。
+启动器提供“Nix 配置工作台”“NewNuclear 工作台”和“长任务终端”。
+`workspace-project list` 列出显式项目，`workspace-task -- 命令 参数` 在命令运行期间
+阻止普通睡眠请求；它与防空闲开关各有范围，详见[操作说明](docs/workflow-design.md)。
+
 音量和日常混音由 Noctalia 控制中心管理。可用 `wpctl status`、`wpctl inspect ID` 查看实际
 PipeWire 设备，再根据设备支持的 profile/route 查询结果操作，不照抄其他机器编号。`Super+V`
 使用 Noctalia 原生剪贴板历史；X11/Wayland 剪贴板桥为跨协议应用保留。配置迁移不删除已有
@@ -91,7 +96,8 @@ tabline、面包屑、LSP、completion、formatter、lint、会话等实现位�
 
 声明式服务的 session 边界和所有权见 [服务策略](docs/service-policy.md)。删去旧模块不代表旧
 Home Manager generation 中的 unit 或进程已经停止；切换前后都需按执行记录区分构建结果与当前
-运行状态。本轮实现和构建不执行系统 switch，也不停止或清理服务。
+运行状态。用户已应用 Den 配置，后续系统/编辑器优化也获授权应用；实际交接、验证和未完成的
+GUI 项目见[当前应用记录](docs/system-polish-execution.md)，不能把 nr 成功视作全部实机验收。
 
 ## 配置、状态和秘密
 
