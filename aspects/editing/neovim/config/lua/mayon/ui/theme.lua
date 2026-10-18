@@ -61,6 +61,7 @@ local function overrides()
 	end
 	set("RenderMarkdownCode", { bg = c.deep })
 	set("RenderMarkdownCodeInline", { fg = c.cyan, bg = c.surface })
+	set("SnacksImageMath", { fg = c.brightFg })
 	set("RenderMarkdownCodeBorder", { fg = c.deep, bg = c.bg })
 	set("RenderMarkdownTableHead", { fg = c.cyan, bold = true })
 	set("@markup.heading.markdown", { link = "RenderMarkdownTableHead" })

@@ -16,7 +16,7 @@
 --- Only the *when* and the *error path* are ours.
 ---
 --- snacks' own doc handling must be off for this to be the only thing
---- drawing: `doc.inline = false` and `doc.float = false` in snacks.nix make
+--- drawing: `doc.inline = false` and `doc.float = false` in plugins/snacks.lua make
 --- `_attach` return early while leaving the API above callable.
 
 local M = {}
