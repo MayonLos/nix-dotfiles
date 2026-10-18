@@ -166,7 +166,7 @@ in
           };
 
           panel = {
-            transparency_mode = "glass";
+            transparency_mode = "soft";
             borders = true;
             border_color = "outline";
             border_width = 1;

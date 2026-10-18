@@ -100,12 +100,17 @@ Kitty 主背景设为不透明 1.0，使 shell、tmux 和 Neovim 的 `#1f2329` �
 
 | 层 | 设计值 | 约束 |
 | --- | --- | --- |
-| Noctalia 浮层 | 现有 `shell.panel.transparency_mode = "glass"`，border 1、shadow 开启 | 锁定实现的浮动背景为 0.55、内部卡片为 0.65；亮壁纸上读不清则验收后调整为已支持的 soft |
+| Noctalia 浮层 | `shell.panel.transparency_mode = "soft"`，border 1、shadow 开启 | 锁定实现的浮动背景为 0.80、内部卡片为 0.88；保留轻透感，优先保证应用名称和输入文字清楚 |
 | 通知 / OSD | alpha 0.97 | 不与文本一起降低透明度 |
 | 背景遮罩 | `backdrop.blur_intensity = 0.40`、`tint_intensity = 0.50` | 核对覆盖范围、首开成本和文字对比 |
 | Mango 客户端模糊 | 沿用 `blur = 1`、optimized、2 passes、radius 6 | 仅实际透明的客户端受益；Noctalia 的玻璃和 backdrop 不能等同于 Mango 的 client blur |
 | layer 效果 | 保持 `blur_layer = 0`、`layer_animations = 0`、`layer_shadows = 0` | 不叠加两套阴影/动画；bar blur 协议请求是否生效单独验收 |
 | 窗口阴影 | size 6、blur 16、offset 2/4、`0x00000066` | 浮窗有层次，平铺间隙不形成黑色污边 |
+
+2026-10-18 收尾实机截图显示，居中 Launcher 使用 glass 时后方终端文字清晰透出，干扰应用名称阅读。
+据此将共享浮层模式改为 soft，不改 compositor；阴影、圆角、动画与居中构图保持。
+上述 0.80/0.88 来自锁定源码，仍需应用后的同场景截图确认改善；若文字穿透仍影响阅读，
+官方支持的进一步选择是 `solid`（浮动背景与卡片均为 1.0），不依赖 layer blur 获得可读性。
 
 Noctalia bar 的 `compositor_blur` 只在 compositor 支持相应协议并实际处理请求时有意义。现有 `blur_layer = 0` 下，不承诺面板背后必然出现实时场景模糊，也不为达到效果擅自翻转它；首先检查协议与画面，必要时以 panel 内部 backdrop/更实的表面完成设计。[Bar blur 说明](https://github.com/noctalia-dev/noctalia-shell/blob/fc2af27c0e616006bf858cad3b7c9711a028e501/docs/user/bar/index.mdx)
 
@@ -301,4 +306,4 @@ workspace/外屏恢复没有作为当前实现承诺，也未安装第二套 she
 | 官方插件 | `9aec34181e46789b281263942092ac552f661d1a` |
 | 社区插件 | `7691612a091ac903cab79ffa5b3f740a04808ef1` |
 
-BongoCat 的 evtest/input_devices/audio_spectrum 与布局插件的 show_text/show_glyph 来自相应 locked `plugin.toml`；它们继续使用现有权限与依赖，不新增私有插件 API。配置查证覆盖 Noctalia palette、bar/per-monitor/group/widget、工作区、shell/launcher/control-center、通知、锁屏、greeter，以及 Mango 颜色/标签栏 parser、Kitty hook 和 HM 服务接线；既有模糊/动画字段也对照当前模块。本次 Den 实现已将目标生成 TOML/Mango 配置并通过锁定 validator 和严格结构检查；构建结果见实施记录。所选参数仍须经过真实应用启动和上述 GUI 验收。未验证：外屏硬件与混合 DPI、glass 在当前协议组合下的最终效果、全部插件同时出现时的面板宽度、锁屏坐标、Qt5/私有应用主题、颜色模板衍生 token 与性能预算。实施中若 pin 改变，应重查这些字段与原有 workaround 原因。
+BongoCat 的 evtest/input_devices/audio_spectrum 与布局插件的 show_text/show_glyph 来自相应 locked `plugin.toml`；它们继续使用现有权限与依赖，不新增私有插件 API。配置查证覆盖 Noctalia palette、bar/per-monitor/group/widget、工作区、shell/launcher/control-center、通知、锁屏、greeter，以及 Mango 颜色/标签栏 parser、Kitty hook 和 HM 服务接线；既有模糊/动画字段也对照当前模块。本次 Den 实现已将目标生成 TOML/Mango 配置并通过锁定 validator 和严格结构检查；构建结果见实施记录。所选参数仍须经过真实应用启动和上述 GUI 验收。未验证：外屏硬件与混合 DPI、soft 在明亮/高密度背景上的最终可读性、全部插件同时出现时的面板宽度、锁屏坐标、Qt5/私有应用主题、颜色模板衍生 token 与性能预算。实施中若 pin 改变，应重查这些字段与原有 workaround 原因。
