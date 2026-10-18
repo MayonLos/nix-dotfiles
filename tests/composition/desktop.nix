@@ -49,8 +49,14 @@ let
         den.hosts.${system} = lib.genAttrs [ "hostA" "hostB" ] (_: {
           appearance = palette;
           users = {
-            alice.appearance = palette;
-            bob.appearance = palette;
+            # Exercise two independent user preferences while both share the
+            # same host-level compositor support.
+            alice.appearance = palette // {
+              reducedMotion = true;
+            };
+            bob.appearance = palette // {
+              reducedMotion = false;
+            };
           };
           instantiate =
             args:
@@ -124,6 +130,8 @@ let
   sharedHostConfig = host sharedHost "hostA";
   selectedHome = home aliceOnly "hostA" "alice";
   unselectedHome = home aliceOnly "hostA" "bob";
+  sharedAliceHome = home sharedHost "hostA" "alice";
+  sharedBobHome = home sharedHost "hostA" "bob";
   hostBHome = home aliceOnly "hostB" "alice";
   hostBBobHome = home aliceOnly "hostB" "bob";
 
@@ -174,6 +182,14 @@ let
         "alice"
         "bob"
       ]
+      && sharedAliceHome.wayland.windowManager.mango.settings.animations == 0
+      && sharedBobHome.wayland.windowManager.mango.settings.animations == 1
+      && !sharedAliceHome.programs.noctalia.settings.shell.animation.enabled
+      && sharedBobHome.programs.noctalia.settings.shell.animation.enabled
+      && sharedAliceHome.programs.noctalia.settings.wallpaper.transition == [ ]
+      && sharedBobHome.programs.noctalia.settings.wallpaper.transition == [ "fade" ]
+      && sharedAliceHome.programs.noctalia.settings.lockscreen.transition == [ ]
+      && sharedBobHome.programs.noctalia.settings.lockscreen.transition == [ "fade" ]
       && !((host sharedHost "hostB").programs.mango.enable or false);
 
     desktopDoesNotSelectLoginScreen =
@@ -206,6 +222,18 @@ assert lib.assertMsg passed
     builtins.toJSON (lib.filterAttrs (_: value: !value) results)
   }";
 pkgs.runCommand "den-interactive-session-composition" { } ''
+  export HOME="$TMPDIR/home" XDG_CONFIG_HOME="$TMPDIR/config" XDG_CACHE_HOME="$TMPDIR/cache" XDG_STATE_HOME="$TMPDIR/state" XDG_DATA_HOME="$TMPDIR/data"
+  mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" "$XDG_STATE_HOME" "$XDG_DATA_HOME"
   mkdir -p "$out"
   cp ${report} "$out/results.json"
+  # Validate the reduced-motion branch with the actual pinned parsers as well
+  # as checking its composition. The real host check covers the rich default.
+  ${lib.getExe sharedAliceHome.programs.noctalia.package} config validate ${
+    sharedAliceHome.xdg.configFile."noctalia/config.toml".source
+  } > "$out/noctalia-reduced-motion.log" 2>&1 || { cat "$out/noctalia-reduced-motion.log"; exit 1; }
+  if grep -iE '\[WARN\]|warning:|\[ERROR\]' "$out/noctalia-reduced-motion.log"; then exit 1; fi
+  ${lib.getExe sharedAliceHome.wayland.windowManager.mango.package} -c ${
+    sharedAliceHome.xdg.configFile."mango/config.conf".source
+  } -p > "$out/mango-reduced-motion.log" 2>&1 || { cat "$out/mango-reduced-motion.log"; exit 1; }
+  if grep -iE 'conflict|unknown|invalid|error' "$out/mango-reduced-motion.log"; then exit 1; fi
 ''

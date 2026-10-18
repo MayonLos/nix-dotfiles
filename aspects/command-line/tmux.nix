@@ -3,7 +3,7 @@
 let
   tmuxTheme = ''
     # tmux draws its own status bar, so use ANSI palette indexes and the
-    # default background to follow Kitty and preserve terminal transparency.
+    # default background to follow the terminal, including opaque Kitty.
     set -g status on
     set -g status-position bottom
     set -g status-interval 30

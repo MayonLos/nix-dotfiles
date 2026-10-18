@@ -28,6 +28,11 @@ in
       lib.types.submodule {
         options = {
           name = lib.mkOption { type = lib.types.nonEmptyStr; };
+          reducedMotion = lib.mkOption {
+            type = lib.types.bool;
+            default = false;
+            description = "Reduce desktop transitions and continuous decorative motion in selected adapters.";
+          };
           fonts = lib.mkOption {
             type = lib.types.submodule {
               options = lib.genAttrs [ "sans" "mono" "serif" ] (

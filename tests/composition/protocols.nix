@@ -54,7 +54,9 @@ let
         den.hosts.${system} = {
           hostA.users = {
             alice = lib.optionalAttrs withData {
-              appearance = paletteA;
+              appearance = paletteA // {
+                reducedMotion = true;
+              };
               defaultTools = tools;
             };
             bob = lib.optionalAttrs withData {
@@ -68,7 +70,9 @@ let
               defaultTools = tools;
             };
             bob = lib.optionalAttrs withData {
-              appearance = paletteB;
+              appearance = paletteB // {
+                reducedMotion = false;
+              };
               defaultTools = tools;
             };
           };
@@ -169,6 +173,8 @@ let
   badArgv = schema [ { defaultTools.terminal.argv = [ ]; } ];
   badDesktopId = schema [ { defaultTools.guiTextEditor = "code desktop"; } ];
   badPaletteType = schema [ { appearance.bg = 123; } ];
+  badReducedMotionType = schema [ { appearance.reducedMotion = "yes"; } ];
+  defaultAppearance = schema [ { appearance = builtins.removeAttrs paletteA [ "reducedMotion" ]; } ];
 
   cpp = import ../../aspects/languages/cpp-data.nix;
   languageContract = import ../../aspects/languages/contract.nix { inherit lib; };
@@ -226,12 +232,16 @@ let
       lib.hasInfix "background ${paletteA.bg}" selectedPaletteA
       && lib.hasInfix "background ${paletteB.bg}" selectedPaletteB
       && !(lib.hasInfix "background ${paletteB.bg}" selectedPaletteA)
-      && !(lib.hasInfix "background ${paletteA.bg}" selectedPaletteB);
+      && !(lib.hasInfix "background ${paletteA.bg}" selectedPaletteB)
+      && lib.hasInfix "cursor_blink_interval 0\n" selectedPaletteA
+      && lib.hasInfix "cursor_blink_interval 0.5\n" selectedPaletteB;
 
     invalidProtocolDataRejected =
       fails badArgv.defaultTools.terminal.argv
       && fails badDesktopId.defaultTools.guiTextEditor
-      && fails badPaletteType.appearance.bg;
+      && fails badPaletteType.appearance.bg
+      && fails badReducedMotionType.appearance.reducedMotion
+      && defaultAppearance.appearance.reducedMotion == false;
 
     identicalDataIsIdempotent = sameTools.defaultTools == tools;
 

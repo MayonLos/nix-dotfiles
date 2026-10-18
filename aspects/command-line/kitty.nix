@@ -25,7 +25,7 @@ in
 
     cursor_shape beam
     cursor_beam_thickness 1.5
-    cursor_blink_interval 0.5
+    cursor_blink_interval ${if palette.reducedMotion or false then "0" else "0.5"}
     cursor ${palette.brightFg}
     cursor_text_color ${palette.bg}
 

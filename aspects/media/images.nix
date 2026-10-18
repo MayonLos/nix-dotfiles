@@ -84,7 +84,9 @@ in
       recursive = "no";
     };
     font = {
-      color = "${palette.fg}ff";
+      name = palette.fonts.sans;
+      size = 11;
+      color = "${palette.brightFg}ff";
       background = "${palette.deep}d0";
     };
     "info.viewer" = {

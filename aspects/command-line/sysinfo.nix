@@ -1,6 +1,6 @@
 { lib, ... }:
 let
-  # Named ANSI colours follow Noctalia's terminal palette without text effects.
+  # Named ANSI colours consume the terminal's palette without extra effects.
   section = label: color: {
     type = "custom";
     format = "{#${color}}── ${label} {#light_black}────────────────{#}";
@@ -114,7 +114,7 @@ in
           {
             type = "battery";
             key = " Battery";
-            keyColor = "red";
+            keyColor = "blue";
             percent.type = 3;
           }
           "break"

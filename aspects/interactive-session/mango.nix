@@ -9,6 +9,7 @@
 }:
 let
   inherit (hostFacts) display;
+  reducedMotion = palette.reducedMotion or false;
   color = value: "0x${lib.removePrefix "#" value}ff";
   helpPath = "${config.xdg.dataHome}/mango/keybindings.txt";
   renderBind =
@@ -16,7 +17,9 @@ let
     if lib.hasInfix ",__MANGO_HELP__" row then
       lib.replaceStrings
         [ ",__MANGO_HELP__" ]
-        [ ",kitty --title Mango-keybindings ${pkgs.less}/bin/less ${lib.escapeShellArg helpPath}" ]
+        [
+          ",${lib.getExe pkgs.kitty} --title Mango-keybindings ${pkgs.less}/bin/less ${lib.escapeShellArg helpPath}"
+        ]
         row
     else
       row;
@@ -29,9 +32,14 @@ let
     "SUPER,E,spawn,workspace-files"
     "SUPER,B,spawn,workspace-browser"
     "SUPER,Return,spawn,workspace-terminal"
-    # Title argument "none" means match by app id only. Size stays at the
-    # scratchpad default ratios; do not set width or height here.
-    "SUPER+SHIFT,Return,toggle_named_scratchpad,mayon-scratch,none,kitty --class=mayon-scratch"
+    # A unique app id distinguishes each tool from ordinary Kitty windows.
+    # Title argument "none" means match by app id only.
+    "SUPER+SHIFT,Return,toggle_named_scratchpad,mayon-scratch,none,${lib.getExe pkgs.kitty} --class=mayon-scratch"
+    "SUPER+ALT,E,toggle_named_scratchpad,mayon-files,none,${lib.getExe pkgs.kitty} --class=mayon-files ${lib.getExe pkgs.yazi}"
+    "SUPER+ALT,M,toggle_named_scratchpad,mayon-monitor,none,${lib.getExe pkgs.kitty} --class=mayon-monitor ${lib.getExe pkgs.btop}"
+    "SUPER+CTRL,G,toggleglobal"
+    "SUPER+ALT,G,toggleoverlay"
+    "SUPER+CTRL,S,tag_special_silent"
     "ALT,space,spawn,noctalia msg panel-toggle launcher"
     "SUPER,S,spawn,noctalia msg panel-toggle control-center"
     # No argument: the keybind path has no client, so this toggles tag 0
@@ -261,7 +269,10 @@ let
     switch_proportion_preset = "切换滚动布局比例";
     minimized = "最小化窗口";
     toggle_scratchpad = "找回最小化窗口";
-    toggle_named_scratchpad = "切换临时终端";
+    toggle_named_scratchpad = "呼出或隐藏命名工具";
+    toggleglobal = "切换跨工作区可见";
+    toggleoverlay = "切换窗口置顶";
+    tag_special_silent = "移入或取回特殊工作区窗口";
     sleep_monitor = "关闭显示器";
     wakeup_monitor = "唤醒显示器";
     reload_config = "重载配置";
@@ -270,11 +281,23 @@ let
   keyRow =
     row:
     let
-      fields = lib.splitString "," row;
+      # This is display-only text. Splitting a store-backed command otherwise
+      # carries its Nix string context into action/app-id attribute lookups.
+      # The real bindings above retain their executable dependencies.
+      fields = lib.splitString "," (builtins.unsafeDiscardStringContext row);
       key = lib.concatStringsSep "," (lib.take 2 fields);
       action = lib.elemAt fields 2;
       label = actionNames.${action} or action;
-      args = lib.concatStringsSep "," (lib.drop 3 fields);
+      scratchpadNames = {
+        mayon-scratch = "临时终端";
+        mayon-files = "临时文件 Yazi";
+        mayon-monitor = "系统监视 btop";
+      };
+      args =
+        if action == "toggle_named_scratchpad" then
+          scratchpadNames.${lib.elemAt fields 3} or (lib.elemAt fields 3)
+        else
+          lib.concatStringsSep "," (lib.drop 3 fields);
     in
     if
       builtins.elem action [
@@ -314,6 +337,7 @@ let
           "toggleoverview"
           "togglejump"
           "toggle_special_tag"
+          "tag_special_silent"
         ]
       ) helpKeyRows;
     }
@@ -330,6 +354,8 @@ let
           "centerwin"
           "resizewin"
           "togglefloating"
+          "toggleglobal"
+          "toggleoverlay"
           "switch_layout"
           "zoom"
           "togglegaps"
@@ -374,11 +400,6 @@ in
     systemd.enable = true;
 
     settings = {
-      # The broad default is dwm's master-stack tile layout for all tags.
-      tag_rule = [
-        "id:*,layout_name:tile"
-      ];
-
       monitor_rule = [
         "name:^${display.name}$,width:${toString display.width},height:${toString display.height},refresh:${toString display.refresh},x:0,y:0,scale:${toString display.scale},vrr:1"
       ];
@@ -477,6 +498,9 @@ in
       focus_color = "${color palette.blue}";
       urgent_color = "${color palette.red}";
       scratchpad_color = "${color palette.purple}";
+      global_color = "${color palette.cyan}";
+      overlay_color = "${color palette.purple}";
+      maximized_screen_color = "${color palette.blue}";
       border_radius = 12;
       gap_inner_horizontal = 6;
       gap_inner_vertical = 6;
@@ -485,7 +509,7 @@ in
       smart_gaps = 0;
       no_border_when_single = 0;
 
-      animations = 1;
+      animations = if reducedMotion then 0 else 1;
       animation_type_open = "zoom";
       animation_type_close = "zoom";
       animation_fade_in = 1;
@@ -495,8 +519,8 @@ in
       zoom_initial_ratio = 0.94;
       zoom_end_ratio = 0.96;
       animation_duration_move = 160;
-      animation_duration_open = 180;
-      animation_duration_tag = 180;
+      animation_duration_open = 200;
+      animation_duration_tag = 220;
       animation_duration_close = 140;
       animation_duration_focus = 0;
       animation_curve_open = "0.46,1.0,0.29,0.99";
@@ -532,6 +556,29 @@ in
       default_master_factor = 0.55;
       default_master_count = 1;
       tag_num = 9;
+      # Layout defaults describe activities, not app-id destinations. Users can
+      # still move any application to any tag and change its layout.
+      tag_rule = [
+        "id:*,layout_name:tile"
+        "id:0,layout_name:scroller,scroller_default_proportion:0.65"
+        "id:1,layout_name:tile,master_factor:0.60"
+        "id:2,layout_name:scroller,scroller_default_proportion:0.80"
+        "id:4,layout_name:monocle"
+        "id:5,layout_name:tile,master_factor:0.65"
+        "id:6,layout_name:monocle"
+        "id:8,layout_name:monocle"
+      ];
+      overview_gap_inner = 12;
+      overview_gap_outer = 24;
+      scratchpad_width_ratio = 0.78;
+      scratchpad_height_ratio = 0.78;
+      single_scratchpad = 1;
+      scratchpad_cross_monitor = 1;
+      special_dim = 0.32;
+      special_gap_inner_horizontal = 8;
+      special_gap_inner_vertical = 8;
+      special_gap_outer_horizontal = 20;
+      special_gap_outer_vertical = 20;
       # switch_layout walks only this list. The three names are layouts[]
       # entries in the pinned arrange.c: tile, scroller, monocle.
       circle_layout = "tile,scroller,monocle";
@@ -593,19 +640,29 @@ in
       enable_floating_snap = 1;
       snap_distance = 12;
 
-      # Window rules use app-id/title regular-expression matching. Mango has no
-      # layer-rule equivalent, so Noctalia's layer effects
-      # are handled by the effect settings above instead.
+      # Pinned Mango supports layer_rule. Noctalia owns its animations/shadows;
+      # these namespaces come from its pinned C++ layer-surface constructors.
+      # Keep the global layer effects off too: this is not an instruction to
+      # animate or blur every surface, nor a promise of compositor bar blur.
+      layer_rule = [
+        "layer_name:^noctalia-(bar-.*|panel|attached-panel|notification|osd|window-switcher|panel-click-shield)$,no_animation:1,no_shadow:1"
+        "layer_name:^noctalia-(screenshot-region|annotate)$,no_animation:1,no_blur:1,no_shadow:1"
+      ];
+
+      # Exact app-id/title rules; leave transient-parent detection and size hints
+      # intact. Offsets are percentages of remaining space, not pixel positions.
       window_rule = [
-        "is_floating:1,width:0.5,no_border:1,app_id:^swayimg$"
-        "is_floating:1,app_id:^thunar$,title:^(Rename|重命名)"
-        "is_floating:1,width:480,app_id:^[Ff]irefox$,title:^Picture-in-Picture$"
+        "is_floating:1,width:0.60,height:0.72,animation_type_open:fade,animation_type_close:fade,app_id:^swayimg$"
+        "is_floating:1,animation_type_open:fade,animation_type_close:fade,app_id:^thunar$,title:^(Rename|重命名)"
+        # Global means visible across this output's tags, not forced above
+        # fullscreen games. Super+Alt+G opts into overlay for the focused PiP.
+        "is_floating:1,is_global:1,is_open_silent:1,width:480,height:270,offset_x:85,offset_y:80,animation_type_open:fade,animation_type_close:fade,app_id:^[Ff]irefox$,title:^Picture-in-Picture$"
         # blueman-manager, nm-connection-editor and org.gnome.Calculator were
         # in this alternation and are installed nowhere -- not on PATH, not in
         # any module. Template leftovers. Add an app_id back when the program
         # that carries it actually arrives, not before: a rule that cannot
         # match is indistinguishable from one that is broken.
-        "is_floating:1,app_id:^xdg-desktop-portal-gtk$"
+        "is_floating:1,width:0.62,height:0.68,animation_type_open:fade,animation_type_close:fade,app_id:^xdg-desktop-portal-gtk$"
         # No polkit rule. This host runs no standalone polkit GUI agent --
         # noctalia's built-in one is the only authentication agent (see
         # noctalia.nix's `polkit_agent`), and it draws in the shell rather than
@@ -613,16 +670,16 @@ in
         # `org.freedesktop.PolicyKit*` app_id here.
         # `.Settings` was never an app_id. Measured with `mmsg get all-clients`
         # while the window was open: it reports `dev.noctalia.Noctalia`, and the
-        # window came up tiled at 936x1010 instead of the floating 1080x920 this
-        # line asks for -- the rule had simply never matched anything.
-        "is_floating:1,width:1080,height:920,app_id:^dev\\.noctalia\\.Noctalia$"
-        "vrr_only_fullscreen:1,no_radius:1,app_id:^steam_app_"
-        # Kitty applies its own 0.92 alpha to terminal backgrounds. Keep the
-        # whole client opaque so glyphs and foregrounds stay crisp; focus dim
-        # remains Mango's separate overlay above. The named scratchpad uses
-        # its own app id, so it has to be listed here too.
-        "focused_opacity:1.0,unfocused_opacity:1.0,app_id:^(kitty|mayon-scratch)$"
-        "is_named_scratchpad:1,app_id:^mayon-scratch$"
+        # window came up tiled at 936x1010 instead of its requested floating
+        # geometry. Keep the observed id; sizes now follow each output.
+        "is_floating:1,width:0.68,height:0.82,animation_type_open:fade,animation_type_close:fade,app_id:^dev\\.noctalia\\.Noctalia$"
+        "vrr_only_fullscreen:1,no_radius:1,no_animation:1,app_id:^steam_app_"
+        # Kitty's own background is opaque. Keep client glyphs/content opaque
+        # too; focus dim is a separate compositor overlay. Include named tools.
+        "focused_opacity:1.0,unfocused_opacity:1.0,app_id:^(kitty|mayon-scratch|mayon-files|mayon-monitor)$"
+        "is_named_scratchpad:1,width:0.78,height:0.78,animation_type_open:fade,animation_type_close:fade,app_id:^mayon-scratch$"
+        "is_named_scratchpad:1,width:0.78,height:0.78,animation_type_open:fade,animation_type_close:fade,app_id:^mayon-files$"
+        "is_named_scratchpad:1,width:0.72,height:0.74,animation_type_open:fade,animation_type_close:fade,app_id:^mayon-monitor$"
       ];
 
       # Launches, Noctalia shell controls, tag navigation, and dwm-style

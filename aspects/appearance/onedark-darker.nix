@@ -2,6 +2,7 @@
 # Palette origin: navarasu/onedark.nvim (MIT); no highlight implementation here.
 {
   name = "onedark-darker";
+  reducedMotion = false;
   fonts = {
     sans = "Noto Sans CJK SC";
     mono = "JetBrainsMono Nerd Font";

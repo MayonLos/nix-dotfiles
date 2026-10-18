@@ -11,10 +11,10 @@
 |---|---|---|
 | `checks.system-boundaries` | `composition/system.nix` | x86_64 主机策略与 ARM headless 求值 fixture；笔记本 GPU、greeter、代理、用户/秘密权限不泄漏 |
 | `checks.remote-workspace-composition` | `composition/remote.nix` | x86_64 与 aarch64 远程 CLI workspace 求值；无桌面、秘密、个人授权或本地 daemon |
-| `checks.protocols-composition` | `composition/protocols.nix` | 外观/默认工具的数据边界、类型与冲突负例、两绑定 palette 和固定参数 argv |
+| `checks.protocols-composition` | `composition/protocols.nix` | 外观/默认工具的数据边界、类型与冲突负例、两绑定 palette/Kitty 动效偏好和固定参数 argv |
 | `checks.workspace-composition` | `composition/workspace.nix` | 多 host/user 的命令行选择、共享/移除、CLI/桌面隔离和账号权限 |
 | `checks.editing-composition` | `composition/editing.nix` | 编辑器与所选语言组合、数据冲突、未选择工具隔离、实际 clangd 工作负载 |
-| `checks.desktop-composition` | `composition/desktop.nix` | 两 host/two user 的交互会话、palette、共享 host provider 与移除行为 |
+| `checks.desktop-composition` | `composition/desktop.nix` | 两 host/two user 的交互会话、palette、动效偏好隔离、共享 host provider 与移除行为；减少动画分支的锁定 Mango/Noctalia 解析检查 |
 | `checks.local-services-composition` | `composition/local-services.nix` | 本地容器/VM daemon 与远程 client 的隔离、宿主资源去重和撤销行为 |
 | `checks.embedded-composition` | `composition/embedded.nix` | 嵌入式工具、权限组、udev host provider 的选择/共享/移除边界 |
 
@@ -34,5 +34,6 @@
 Noctalia、输入法、显示器、NVIDIA、音频、USB、休眠或游戏的实机行为。需要图形/设备的验收项
 按应用后记录；未运行的项目保持未验证状态，不因静态检查通过标记完成。
 
-检查实际运行结果和限制见[Den 执行记录](../docs/den-execution.md)。各批与相关产物链接在那里
-更新；本文件描述检查职责，不替代当次构建日志或应用后证据。
+检查实际运行结果和限制见[Den 执行记录](../docs/den-execution.md)及
+[后续桌面优化记录](../docs/desktop-polish-execution.md)。本文件描述检查职责，不替代当次
+构建日志或应用后证据。

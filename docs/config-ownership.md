@@ -8,7 +8,7 @@
 
 | 功能或路径 | 当前声明的唯一 owner / renderer | 可变状态与边界 |
 |---|---|---|
-| 外观数据 `host.appearance`、`user.appearance` | `aspects/appearance/onedark-darker.nix` 提供 One Dark Darker 语义颜色、字体、光标和图标主题；具体消费者由 `aspects/appearance` schema 接收。 | palette 本身不安装应用或选择功能。当前 host 与 mayon 分别绑定同一 palette。 |
+| 外观数据 `host.appearance`、`user.appearance` | `aspects/appearance/onedark-darker.nix` 提供 One Dark Darker 语义颜色、字体、光标、图标主题和 `reducedMotion` 偏好；具体消费者由 `aspects/appearance` schema 接收。 | 数据本身不安装应用或选择功能。当前 host 与 mayon 分别绑定同一 palette；动效偏好是声明式输入，不另写 GUI state。 |
 | `~/.config/mango/config.conf`、Mango 快捷键说明 | 选择 `interactive-session` 后，`aspects/interactive-session/mango.nix` 配合锁定 Mango HM module 渲染完整配置；`~/.local/share/mango/keybindings.txt` 也由该 aspect 生成。 | Noctalia 不生成 Mango 主题片段，也不写入或 include `noctalia-colors.conf`。配置为声明式输出；Mango 会话实际加载与快捷键手感仍待应用后核验。 |
 | `~/.config/kitty/kitty.conf` | `aspects/command-line/kitty.nix` 是唯一 HM renderer，生成完整 One Dark Darker 配置和 ANSI 色。 | Noctalia Kitty builtin/template 不再启用。不存在由 Nix stub 与 Noctalia 主题文件拼装的当前声明。真实 Kitty parser / 主题应用情况需在新 generation 中复核。 |
 | `~/.config/noctalia/config.toml` 与 custom palette | `aspects/interactive-session/noctalia.nix` 通过锁定 HM module 生成配置和 `One-Dark-Darker` palette；同一 aspect 生成 bar、launcher、widget、plugin、wallpaper、lockscreen 等声明。 | GUI sidecar `~/.local/state/noctalia/settings.toml` 仍是 Noctalia 可变状态，不由 HM 整文件接管。插件运行数据、历史和其他 state 保留给应用。 |

@@ -12,6 +12,9 @@
 }:
 
 let
+  reducedMotion = palette.reducedMotion or false;
+  logicalWidth = hostFacts.display.width / hostFacts.display.scale;
+  logicalHeight = hostFacts.display.height / hostFacts.display.scale;
   wallpaperDir = "${./resources/wallpaper}";
   desktop = {
     primaryOutput = hostFacts.display.name;
@@ -28,7 +31,7 @@ let
       --require-no-noctalia
   '';
 
-  defaultWallpaperPath = "${./resources/wallpaper/wallpaper-001.png}";
+  defaultWallpaperPath = "${./resources/wallpaper/wallpaper-009.png}";
 
   distroLogo = "${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg";
 
@@ -146,7 +149,7 @@ in
           readline_shortcuts = true;
 
           animation = {
-            enabled = true;
+            enabled = !reducedMotion;
             speed = 1.0;
           };
           launch_apps_as_systemd_services = true;
@@ -356,20 +359,14 @@ in
           capsule_group = [
             {
               id = "media";
-              members = [
-                "media"
-                "audio_visualizer"
-              ];
+              members = [ "media" ] ++ lib.optional (!reducedMotion) "audio_visualizer";
               accordion = false;
               padding = 6.0;
               widget_spacing = 4;
             }
             {
               id = "time";
-              members = [
-                "clock"
-                "noctalia/bongocat:cat"
-              ];
+              members = [ "clock" ] ++ lib.optional (!reducedMotion) "noctalia/bongocat:cat";
               accordion = false;
               padding = 8.0;
               widget_spacing = 8;
@@ -441,7 +438,7 @@ in
         widget.media = {
           hide_when_no_media = true;
           max_length = 160;
-          title_scroll = "on_hover";
+          title_scroll = if reducedMotion then "none" else "on_hover";
         };
 
         # A compact spectrum beside the existing media controls. PipeWire is
@@ -459,8 +456,8 @@ in
         widget."noctalia/bongocat:cat" = {
           executable_path = "${pkgs.evtest}/bin/evtest";
           input_devices = hostFacts.keyboardDevices;
-          audio_spectrum = true;
-          tappy_mode = true;
+          audio_spectrum = !reducedMotion;
+          tappy_mode = !reducedMotion;
           rave_mode = false;
           use_mpris_filter = true;
         };
@@ -513,8 +510,8 @@ in
           directory = wallpaperDir;
           fill_mode = "crop";
           fill_color = "surface";
-          transition_on_startup = true;
-          transition = [ "fade" ];
+          transition_on_startup = !reducedMotion;
+          transition = lib.optional (!reducedMotion) "fade";
           transition_duration = 450;
           default.path = defaultWallpaperPath;
           automation = {
@@ -573,7 +570,7 @@ in
         weather = {
           enabled = true;
           unit = "metric";
-          effects = true;
+          effects = !reducedMotion;
         };
 
         system.monitor = {
@@ -650,6 +647,10 @@ in
 
         lockscreen = {
           enabled = true;
+          # Lock/unlock has its own effect pool; it does not inherit wallpaper.
+          transition = lib.optional (!reducedMotion) "fade";
+          transition_duration = 550;
+          edge_smoothness = 0.3;
           blur_intensity = 0.5;
           tint_intensity = 0.45;
           blurred_desktop = false;
@@ -664,8 +665,8 @@ in
           widget."lockscreen-login-box@${desktop.primaryOutput}" = {
             type = "login_box";
             output = desktop.primaryOutput;
-            cx = hostFacts.display.width / (hostFacts.display.scale * 2);
-            cy = hostFacts.display.height / (hostFacts.display.scale * 2);
+            cx = logicalWidth / 2;
+            cy = logicalHeight / 2;
             settings = {
               layout = "regular";
               show_media = false;
@@ -684,8 +685,8 @@ in
           widget.lockscreen-widget-clock = {
             type = "clock";
             output = desktop.primaryOutput;
-            cx = 853.0;
-            cy = 240.0;
+            cx = logicalWidth / 2;
+            cy = logicalHeight * 0.225;
             box_width = 360.0;
             box_height = 100.0;
             settings = {
