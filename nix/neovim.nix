@@ -19,6 +19,7 @@ _: {
           {
             nativeBuildInputs = [
               pkgs.git
+              pkgs.lua-language-server
               pkgs.vscode-langservers-extracted
               pkgs.stylua
             ];
@@ -31,7 +32,7 @@ _: {
                 export NVIM_APPNAME=nvim
                 unset VIMINIT
                 mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"
-                for test in startup completion integration workflow fileops; do
+                for test in startup completion integration workflow fileops lua_workspace; do
                   export NVIM_TEST_FILE="${neovim.configDir}/tests/$test.lua"
                   ${neovim.normal}/bin/nvim --headless -c 'luafile ${neovim.configDir}/tests/run.lua'
                 done

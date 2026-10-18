@@ -1,6 +1,7 @@
 local M = {}
 
 function M.setup()
+	require("mayon.plugins.lua").setup()
 	require("mayon.plugins.ai").setup()
 	require("mayon.plugins.completion").setup()
 	require("mayon.plugins.editing").setup()

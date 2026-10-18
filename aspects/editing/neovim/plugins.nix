@@ -17,6 +17,7 @@ let
     vimPlugins.gitsigns-nvim
     vimPlugins.grug-far-nvim
     vimPlugins.heirline-nvim
+    vimPlugins.lazydev-nvim
     vimPlugins.nvim-lint
     vimPlugins.nvim-navic
     vimPlugins.noice-nvim

@@ -23,21 +23,55 @@ function M.setup()
 		},
 		completion = {
 			menu = {
+				min_width = 28,
+				max_height = 9,
 				border = "rounded",
 				draw = {
 					padding = 1,
 					gap = 1,
 					treesitter = { "lsp" },
-					columns = { { "label" }, { "kind_icon", "kind", gap = 1 }, { "source_name" } },
+					columns = {
+						{ "kind_icon" },
+						{ "label", "label_description", gap = 1 },
+						{ "source_name" },
+					},
+					components = {
+						label = { width = { fill = true, max = 48 } },
+						label_description = { width = { max = 22 }, ellipsis = true },
+						source_name = {
+							width = { max = 14 },
+							ellipsis = true,
+							text = function(ctx)
+								local short_names = {
+									buffer = "Buf",
+									path = "Path",
+									snippets = "Snip",
+									["lua modules"] = "Lua",
+								}
+								return short_names[ctx.source_name:lower()] or ctx.source_name
+							end,
+						},
+					},
 				},
 			},
 			trigger = { show_in_snippet = false },
-			documentation = { auto_show = true, window = { border = "rounded" } },
+			documentation = {
+				auto_show = true,
+				window = { max_width = 60, max_height = 18, border = "rounded" },
+			},
 			accept = { auto_brackets = { enabled = false } },
 		},
 		sources = {
-			per_filetype = { codecompanion = { "codecompanion", inherit_defaults = true } },
+			per_filetype = {
+				codecompanion = { "codecompanion", inherit_defaults = true },
+				lua = { "lazydev", inherit_defaults = true },
+			},
 			providers = {
+				lazydev = {
+					name = "Lua Modules",
+					module = "lazydev.integrations.blink",
+					score_offset = 100,
+				},
 				codecompanion = {
 					name = "CodeCompanion",
 					-- This proxy avoids loading CodeCompanion during ordinary completion.
