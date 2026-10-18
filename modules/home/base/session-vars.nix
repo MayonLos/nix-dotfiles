@@ -14,8 +14,7 @@ let
     NIXOS_OZONE_WL = "1";
     _JAVA_AWT_WM_NONREPARENTING = "1";
     # Qt apps started outside mango (systemd user units, desktop launchers)
-    # need this too; base/qt.nix seeds the qt6ct palette. Octave pins itself
-    # back to qt5ct in its own wrapper.
+    # need this too; base/qt.nix seeds the qt6ct palette.
     QT_QPA_PLATFORMTHEME = "qt6ct";
     # The HM fcitx5 module writes these to home.sessionVariables only, which
     # interactive shells and mango pick up but systemd-launched desktop apps

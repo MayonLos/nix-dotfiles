@@ -1,0 +1,33 @@
+{
+  "cpt": {
+    "prefix": "cpt",
+    "body": [
+      "#include <bits/stdc++.h>",
+      "using namespace std;",
+      "",
+      "int main() {",
+      "    ios::sync_with_stdio(false);",
+      "    cin.tie(nullptr);",
+      "",
+      "    ${0}",
+      "",
+      "",
+      "    return 0;",
+      "}"
+    ]
+  },
+  "forr": {
+    "prefix": "forr",
+    "body": [
+      "for (int ${1:i} = 0; ${2:i} < ${3:n}; ${4:i}++) {",
+      "    ${0}",
+      "}"
+    ]
+  },
+  "vt": {
+    "prefix": "vt",
+    "body": [
+      "vector<${1:int}> ${2:v}(${3:n});${0}"
+    ]
+  }
+}

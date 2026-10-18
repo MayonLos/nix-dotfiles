@@ -1,4 +1,4 @@
-{ pkgs, pkgs-unstable, ... }:
+{ pkgs, ... }:
 
 let
   firefoxAddons = {
@@ -34,13 +34,9 @@ in
 {
   home.packages = with pkgs; [
     qt6Packages.qt6ct
-    # Qt5 counterpart, for Octave's Qt5 GUI -- see base/qt.nix. Only
-    # 1.1 MiB on top, because Octave already drags Qt5 in.
-    libsForQt5.qt5ct
-    pkgs-unstable.github-copilot-cli
     # codex, dsh, grok, opencode and the agent-side tooling come from
     # programs/dev/ai-agents.nix — packaged by the llm-agents.nix input.
-    # nvim comes from programs/dev/nvim.nix — built from ./nixvim in this repo.
+    # nvim comes from programs/dev/nvim.nix — built from pkgs/neovim with the config/nvim Lua tree.
     imagemagick
     nodejs
     bat
@@ -77,8 +73,8 @@ in
     brightnessctl
     # Noctalia external-monitor brightness. eDP-1 stays on the backlight backend.
     ddcutil
-    pamixer
-    pavucontrol
+    # Noctalia owns volume keys and the audio panel. WirePlumber's wpctl
+    # remains available for device/profile diagnostics without another mixer.
     playerctl
     libdecor
     lenovo-legion
@@ -90,15 +86,16 @@ in
     # imagemagick above covers stills; this is the video/audio half. OBS bundles
     # its own copy but does not put it on PATH.
     ffmpeg
-    yt-dlp
     # system/user/environment.nix has unzip and unrar; 7z covers the rest.
     p7zip
+    # GUI archive manager; system/programs/thunar.nix connects its helper to
+    # the Thunar archive plugin's compiled lookup path.
+    xarchiver
     # ships the `qalc` CLI calculator.
     libqalculate
-    protonup-qt
     obsidian
     zotero
-    kicad
+    kdePackages.okular
     kdePackages.kdenlive
     gimp
     firefoxWithManagedThemeAndExtensions

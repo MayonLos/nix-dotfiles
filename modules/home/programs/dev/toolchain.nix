@@ -14,8 +14,8 @@ in
   # those are about *running* code, which is a separate concern from editing it.
   #
   # The trade-off this buys: nvim is no longer self-contained. `nix run` on the
-  # nixvim package alone gets an editor with no language servers, because
-  # nixvim/packages.nix no longer declares them.
+  # Neovim package alone gets an editor with no language servers; language
+  # tools come from the selected Home profile or the project environment.
   home.packages = with pkgs; [
     # Language servers
     bash-language-server
@@ -51,32 +51,7 @@ in
     ruff # linter *and* Python formatter
     shellcheck
 
-    # snacks' delete (explorer, picker) shells out to a trash command and
-    # `:checkhealth` reported none of `trash`/`gio`/`kioclient` present — every
-    # delete would have been permanent. oil is unaffected: since 2.x it writes
-    # the FreeDesktop trash spec itself, which is why ~/.local/share/Trash has
-    # been filling up correctly all along. trash-cli provides `trash`, the first
-    # name snacks looks for.
+    # The native Neovim file tree uses the FreeDesktop trash command.
     trash-cli
-
-    # Formula rendering for markdown notes, kept as the *fallback* path.
-    # snacks.nvim renders a formula as a typeset image over the kitty graphics
-    # protocol and that is what a normal session uses; render-markdown.nvim
-    # turns `$...$` into unicode *text* instead, which is what still works on a
-    # plain tty or over ssh without `kitten ssh`. Its latex handler shells out
-    # to `utftex` and falls back to `latex2text`; neither was installed, so it
-    # hit ConverterNotFound and silently left every formula raw.
-    #
-    # Both are needed, for different shapes. utftex draws the real two-level
-    # box and is what a display block gets. It cannot keep an unmappable
-    # subscript on one line though -- `T_W` comes back two rows tall -- and two
-    # rows is unusable inline, so latex2text handles those by substituting
-    # symbols only. It is never allowed near \frac, which it would flatten to
-    # "a/b" without brackets: silently wrong maths in a notes vault is worse
-    # than an unrendered formula. nixvim/plugins/utility/lua/md_latex.lua picks
-    # between them. texliveFull (latex.nix) ships no such converter.
-    (callPackage ../../../../pkgs/libtexprintf.nix { }) # utftex
-    toolchains.python.pkgs.pylatexenc # latex2text; same interpreter as python.nix
-
   ];
 }

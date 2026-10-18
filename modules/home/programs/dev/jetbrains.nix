@@ -31,21 +31,25 @@ let
           ln -s "$target"/* "$out/bin/"
         fi
         wrapProgram "$out/bin/${ide.meta.mainProgram}" \
-          --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath skikoLibs}"
+          --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath skikoLibs}" \
+          --add-flags '-Dide.expansion.hints.enabled=false'
       '';
       inherit (ide) meta;
     };
 in
 {
+  # On Mango + JBR 25's WLToolkit, AbstractExpandableItemsHandler's tiny
+  # MovablePopup (the clipped end of a tree/list row) takes focus away from its
+  # owner despite being non-focusable, then immediately disposes itself. Live
+  # window tracing on 2026-10-17 confirmed the repeating JWindow/focus cycle.
+  # Disable only these overflow hints across the shared IntelliJ platform;
+  # completion, documentation and ordinary tooltips keep their normal behavior.
   home.packages = map fixSkiko (
     with pkgs.jetbrains;
     [
       idea
       pycharm
       clion
-      webstorm
-      datagrip
-      rust-rover
     ]
   );
 }

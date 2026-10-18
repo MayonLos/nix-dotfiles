@@ -62,6 +62,8 @@ in
           lang = "zh-CN";
           font_family = "Noto Sans CJK SC";
           corner_radius_scale = 1.0;
+          # Native history owns collection and persistence; no parallel
+          # cliphist watchers. The X11/Wayland bridge is a separate service.
           clipboard_enabled = true;
           show_location = true;
           # New in noctalia 5.2.1: readline-style editing (Ctrl+A/E/U/K) in
@@ -198,13 +200,9 @@ in
             "8bury/mini-docker"
             "cleboost/jetbrains-provider"
             "dunarand/tmux-provider"
-            "noctalia/kaomoji"
             "noctalia/bongocat"
             "radimous/prismlauncher-instances"
             "rxtsel/portctl"
-            "whyoolw/sharednd"
-
-            "alpzy/deepseek-peak" # no deps; DeepSeek/Ollama Cloud peak-hour countdown
             "ezequiel/mango_layouts" # jq + mmsg
             # Markdown notes, todos and /nt launcher entry; optional AI uses OpenCode.
             "fel/quill"

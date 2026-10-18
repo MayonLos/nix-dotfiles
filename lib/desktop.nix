@@ -17,7 +17,7 @@
   # live repo when running nh from another working directory.
   repoPath = "/home/mayon/nix-dotfiles";
 
-  # GTK (home.pointerCursor/gtk.iconTheme) and the qt6ct/qt5ct conf written by
+  # GTK (home.pointerCursor/gtk.iconTheme) and the qt6ct config written by
   # base/qt.nix must name the same icon theme or Qt apps fall back to the
   # default icons.
   iconTheme = "Papirus-Dark";

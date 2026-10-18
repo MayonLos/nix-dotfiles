@@ -20,7 +20,7 @@ _: {
           packages = with pkgs.cudaPackages; [
             cudatoolkit
             cudnn
-            cuda_nvcc
+            # cudatoolkit already includes this pinned cuda_nvcc output.
           ];
           CUDA_PATH = "${pkgs.cudaPackages.cudatoolkit}";
         };
@@ -32,6 +32,7 @@ _: {
           nixfmt.enable = true;
           deadnix.enable = true;
           statix.enable = true;
+          stylua.enable = true;
         };
       };
     };

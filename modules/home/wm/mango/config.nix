@@ -226,7 +226,7 @@ in
         # any module. Template leftovers. Add an app_id back when the program
         # that carries it actually arrives, not before: a rule that cannot
         # match is indistinguishable from one that is broken.
-        "is_floating:1,app_id:^(pavucontrol|org\\.pulseaudio\\.pavucontrol|xdg-desktop-portal-gtk)$"
+        "is_floating:1,app_id:^xdg-desktop-portal-gtk$"
         # No polkit rule. This host runs no standalone polkit GUI agent --
         # noctalia's built-in one is the only authentication agent (see
         # noctalia.nix's `polkit_agent`), and it draws in the shell rather than
@@ -368,9 +368,11 @@ in
         "SUPER+SHIFT,G,togglegaps"
 
         "NONE,Print,spawn,mark-shot"
+        "CTRL,Print,spawn,screenshot-screen"
         "SHIFT,Print,spawn,wayscrollshot"
         # Screen-text OCR, so the whole Print family is capture: bare = region
-        # screenshot, Shift = scrolling capture, Super = OCR the selection,
+        # screenshot, Ctrl = copy current screen, Shift = scrolling capture,
+        # Super = OCR the selection,
         # Super+Shift = OCR the entire desktop. Scripts come from
         # programs/apps/screenshot.nix.
         #
@@ -499,7 +501,7 @@ in
     # and only adds its `exec_once`, when `autostart_sh` is non-empty
     # (nix/hm-modules.nix). Starting noctalia from `extraConfig` instead left
     # autostart_sh empty, so the target never started; graphical-session.target
-    # BindsTo it, so every user unit hanging off it stayed dead -- cliphist,
+    # BindsTo it, so every user unit hanging off it stayed dead --
     # xrdb-merge, fcitx5-daemon -- and D-Bus-activated launches never saw
     # NIXOS_OZONE_WL, which sent Electron apps to XWayland and made them blurry.
     # Anything to autostart belongs here, not in an `exec_once` of its own.

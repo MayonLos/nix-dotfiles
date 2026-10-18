@@ -5,10 +5,10 @@ let
 in
 
 {
-  # IPython uses the shared interpreter; project dependencies go through
-  # uv + direnv rather than this global environment.
+  # Keep the native interpreter available in the shell; project dependencies
+  # and version-specific environments go through uv + direnv.
   home.packages = with pkgs; [
-    (python.withPackages (ps: [ ps.ipython ]))
+    python
     uv
     # ruff (linter + formatter) lives in toolchain.nix.
   ];

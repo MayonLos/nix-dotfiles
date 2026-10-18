@@ -1,6 +1,5 @@
 # Package expressions live at the repo root rather than under modules/ because
 # lib/import-dir.nix imports every .nix file there as a Home Manager module.
-# Same reason as pkgs/libtexprintf.nix -- see the comment there.
 #
 # sindrets/diffview.nvim last pushed 2024-08-02 and nixpkgs pins 2024-06-13;
 # this fork last pushed 2026-09-08, with 686 commits against the original's 312

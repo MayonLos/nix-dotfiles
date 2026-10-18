@@ -41,6 +41,18 @@ let
     inherit (mark-shot-unpatched) meta;
   };
 
+  screenshotScreen = pkgs.writeShellScriptBin "screenshot-screen" ''
+    set -euo pipefail
+    img="$(${pkgs.coreutils}/bin/mktemp --suffix=.png)"
+    trap '${pkgs.coreutils}/bin/rm -f "$img"' EXIT
+
+    # The pointer's monitor is the current screen, even with several outputs.
+    output="$(${config.wayland.windowManager.mango.package}/bin/mmsg get cursorpos | ${pkgs.jq}/bin/jq -er '.monitor')"
+    ${pkgs.grim}/bin/grim -o "$output" "$img"
+    ${pkgs.wl-clipboard}/bin/wl-copy --type image/png <"$img" >/dev/null 2>&1
+    ${pkgs.libnotify}/bin/notify-send "截图已复制" "当前屏幕：$output" || true
+  '';
+
   # Screen-text OCR behind the two Print-family binds in
   # ../../wm/mango/config.nix. Two entry points rather than one script with a
   # flag, so each mango bind stays a plain `spawn,<command>` and does not depend
@@ -124,6 +136,7 @@ in
   # needs slurp and grim at runtime.
   home.packages = [
     mark-shot
+    screenshotScreen
     inputs.wayscrollshot.packages.${system}.default
     (mkOcr "ocr-region" false)
     (mkOcr "ocr-screen" true)

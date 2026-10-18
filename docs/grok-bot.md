@@ -20,7 +20,7 @@ grok-bot
 
 Grok Bot 需要符合条件的 Cursor / SuperGrok 套餐，并有用量限制；不是本地模型的免费运行器。
 各 Bot 使用账号的云端电脑，电脑中的文件和登录态可共享。访问本机文件需要另外启用相应功能。
-本地仓库编码可继续使用 Codex、Pi、Grok Build；跨应用、浏览器和持续后台任务适合 Grok Bot。
+本地仓库编码可使用 Codex、OpenCode 或 Grok Build；跨应用、浏览器和持续后台任务适合 Grok Bot。
 
 ## 模板与样板文本
 

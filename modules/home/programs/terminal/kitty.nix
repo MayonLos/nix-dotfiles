@@ -24,20 +24,8 @@ let
   '';
 in
 {
-  # kitty replaced foot on 2026-09-19 for exactly one reason: the kitty
-  # graphics protocol. snacks.nvim renders LaTeX as *typeset images* --
-  # snacks/image/init.lua drives pdflatex over a `standalone` document and
-  # pipes it through ImageMagick -- and snacks/image/terminal.lua only speaks
-  # kitty, ghostty and wezterm. foot implements sixel and nothing else, which
-  # is why nixvim/plugins/appearance/snacks.nix had `image.enabled = false`.
-  # The alternative, utftex, draws maths as Unicode art; it is legible but it
-  # is not typesetting, and this machine's notes are full of control-theory
-  # formulae.
-  #
-  # foot was 96 MiB and this is not; that is the price. Reverting is one
-  # commit -- nothing outside this file depended on the terminal beyond four
-  # references (mango keybind and window rule, thunar's "open terminal",
-  # noctalia's theme template).
+  # Kitty graphics are shared by Yazi and Snacks' ordinary image previews.
+  # Automatic Neovim formula rendering is no longer a terminal requirement.
   home.packages = [ pkgs.kitty ];
 
   # NOT `programs.kitty.settings`. That module owns kitty.conf and makes it a

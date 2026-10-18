@@ -1,6 +1,5 @@
 # MATLAB cannot be a derivation: the installer is behind a MathWorks login, so
-# nothing can fetch it -- that is the caveat modules/home/programs/dev/octave.nix
-# refers to. What *is* packageable is the environment it needs.
+# nothing can fetch it. What *is* packageable is the environment it needs.
 #
 # MATLAB's binaries are built for an FHS distribution: they dlopen bare sonames,
 # expect /usr/lib and /bin/sh to exist, and ship a bundled libstdc++ older than
@@ -343,7 +342,7 @@ let
   # The flags below are the fallback, not the configuration. A client that
   # advertises workspace/configuration -- nvim does -- makes the server discard
   # every CLI argument and read its settings over LSP instead
-  # (ConfigurationManager.ts:150). nixvim/plugins/lsp/servers.nix carries the
+  # (ConfigurationManager.ts:150). config/nvim/lua/mayon/lsp/servers.lua carries the
   # values that actually apply there; these are what a client without that
   # capability gets, and they are kept in step deliberately.
   #
@@ -384,8 +383,7 @@ let
     # -desktop is required when the Exec line is not a login shell, otherwise
     # MATLAB starts headless and the launcher appears to do nothing.
     # @out@ is substituted below: a launcher does not necessarily run with the
-    # Home Manager profile on PATH, the same reason octave.nix rewrites its
-    # Exec line.
+    # Home Manager profile on PATH.
     exec = "@out@/bin/matlab -desktop %F";
     # An absolute path into the install tree: the only icon available is the
     # one the installer writes, and vendoring MathWorks' logo into this repo is

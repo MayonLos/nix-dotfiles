@@ -5,11 +5,9 @@
 }:
 
 # AI coding agents that come from the llm-agents.nix flake input rather than
-# nixpkgs. Everything here is prebuilt on cache.numtide.com (the substituter is
-# added in modules/system/core/nix.nix), so none of it compiles locally.
-#
-# github-copilot-cli stays in ../../packages.nix — its source tracks upstream
-# closely.
+# nixpkgs. The base packages are prebuilt on cache.numtide.com (configured in
+# modules/system/core/nix.nix); the local compatibility fix and desktop launcher
+# below reuse those packages.
 let
   agents = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system};
 
@@ -41,6 +39,8 @@ let
     '';
   });
 
+  dshDesktop = pkgs.callPackage ../../../../pkgs/dsh-desktop.nix { dsh = dshCli; };
+
   # llm-agents.nix ships OpenCode v2's binary as `opencode2` (upstream's real
   # name is `opencode`; the suffix avoids colliding with the v1 package). The
   # fel/quill noctalia plugin drives the literal name `opencode` and its backend
@@ -53,18 +53,11 @@ let
 in
 {
   home.packages = [
-    # DeepSeek's own agent harness ("everything is a plugin").
-    # `dsh` alone is an error: it needs a profile, and only two ship —
-    # `dsh web` (the browser UI, the one you actually want) and
-    # `dsh --profile headless "<task>"` for one-shot answers. The `tui` and
-    # `code` profiles in upstream's --help examples do NOT exist here; they are
-    # out-of-tree plugin bundles you would have to add yourself. Profiles and
-    # plugins live in $DSH_HOME and are installed at runtime by `dsh plugin add`,
-    # which shells out to pnpm — mutable state outside the store, needing
-    # corepack/pnpm on PATH (nodejs in ../../packages.nix provides corepack).
-    # Credentials are configured on first run, not read from DEEPSEEK_API_KEY.
-    # dshCli, not agents.dsh directly, because of the loader stub above.
-    dshCli
+    # Upstream has no Linux Electron release yet. Keep its official Web UI in
+    # a dedicated desktop window; the patched CLI is a private backend only.
+    # Runtime state lives in $XDG_DATA_HOME/dsh-desktop/harness (defaulting to
+    # ~/.local/share), isolated from the removed CLI's ~/.dsh plugins.
+    dshDesktop
 
     # OpenAI's CLI agent, authenticated through the user's ChatGPT account.
     # Its ~/.codex/config.toml remains user-managed, outside Nix.
@@ -84,28 +77,6 @@ in
     # Configuration and credentials remain mutable runtime state outside Nix.
     agents.opencode2
     opencodeCli
-
-    # Token usage and cost across the agent CLIs, read from their local session
-    # files — nothing is uploaded. Covers codex and the other installed agents.
-    agents.ccusage
-
-    # Local-first review of agent output: plans, diffs, web pages. Useful with
-    # the agents producing changes here.
-    agents.crit
-
-    # MCP runtime and CLI — for driving and debugging MCP servers from the
-    # shell. nvim already talks to them through mcphub (see
-    # nixvim/plugins/ai/mcphub.nix and the mcp-hub flake input).
-    agents.mcporter
-
-    # Filesystem and network restrictions for agent processes. The binary is
-    # `srt`, not `sandbox-runtime`. The lightweight option; `nono` in the same
-    # flake is the kernel-enforced one, deliberately not installed here.
-    agents.sandbox-runtime
-
-    # git worktree per branch, tmux window per worktree — for running several
-    # agents in parallel. Pairs with ../terminal/tmux.nix.
-    agents.workmux
   ];
 
   # NOT here: `agents.zcode` (Z.ai's Electron IDE). Removed 2026-09-19 at the

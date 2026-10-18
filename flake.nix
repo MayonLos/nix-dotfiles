@@ -12,23 +12,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Neovim. The config itself lives in ./nixvim (repo root, *not* under
-    # modules/ — lib/import-dir.nix recurses through every .nix file there and
-    # would try to load each nixvim module as a Home Manager one). Built in
-    # modules/home/programs/dev/nvim.nix.
-    nixvim = {
-      url = "github:nix-community/nixvim/nixos-26.05";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.flake-parts.follows = "flake-parts";
-    };
-
-    # The MCP server binary nixvim/plugins/ai/mcphub.nix points mcphub.nvim at.
-    # Not in nixpkgs.
-    mcp-hub = {
-      url = "github:ravitemer/mcp-hub";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     noctalia = {
       url = "github:noctalia-dev/noctalia-shell";
       inputs.nixpkgs.follows = "nixpkgs-unstable";
@@ -106,6 +89,7 @@
       imports = [
         ./flake/system.nix
         ./flake/dev.nix
+        ./flake/neovim.nix
         inputs.home-manager.flakeModules.home-manager
         inputs.treefmt-nix.flakeModule
       ];

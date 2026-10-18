@@ -88,6 +88,14 @@ let
 
       sync_from_wayland() {
         local types mime tmp hash
+        # --watch has already requested a transfer and passes its pipe on stdin.
+        # Drain it before asking the owner for anything else: wl-copy serves
+        # requests serially, so an unread image larger than the pipe buffer
+        # blocks the owner and our second wl-paste times out after five seconds.
+        # Read again below with an explicit offered MIME: watch's automatic
+        # choice can be text/uri-list even when image/png is also available.
+        timeout "$READ_TIMEOUT" cat >/dev/null || return 0
+
         types="$(timeout "$READ_TIMEOUT" wl-paste --list-types 2>/dev/null)" || return 0
         mime="$(pick_type "$types")" || return 0
 
