@@ -2,10 +2,6 @@ _: {
   programs.git = {
     enable = true;
     settings = {
-      user = {
-        name = "MayonLos";
-        email = "ml20061023@outlook.com";
-      };
       alias = {
         lg = "log --oneline --graph --decorate --all";
         st = "status -s";
@@ -34,7 +30,7 @@ _: {
   };
 
   # The `lg` alias in shell/zsh.nix points here. Use terminal ANSI colors so
-  # the UI follows the active Noctalia palette.
+  # the UI follows the terminal ANSI palette.
   programs.lazygit = {
     enable = true;
     settings.gui = {

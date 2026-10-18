@@ -12,9 +12,28 @@ in
   imports = [
     ./accounts.nix
     ../../../aspects/system
+    ../../../aspects/command-line
+    ../../../aspects/default-tools
+    ../../../aspects/appearance
+    ../../users/mayon.nix
   ];
   den.hosts.${facts.system}.nixos-btw = {
-    users.mayon = { };
+    users.mayon = {
+      appearance = import ../../../aspects/appearance/onedark-darker.nix;
+      defaultTools = {
+        terminal.argv = [ "kitty" ];
+        editor.argv = [ "nvim" ];
+        browser = {
+          argv = [ "firefox" ];
+          desktopId = "firefox.desktop";
+        };
+        fileManager = {
+          argv = [ "thunar" ];
+          desktopId = "thunar.desktop";
+        };
+        guiTextEditor = "code.desktop";
+      };
+    };
     # Den owns output generation. Preserve the existing package instances and
     # explicit special arguments at the OS instantiation boundary.
     instantiate =
@@ -59,7 +78,6 @@ in
         ../../../modules/system/programs/nix-ld.nix
         ../../../modules/system/programs/steam.nix
         ../../../modules/system/programs/thunar.nix
-        ../../../modules/system/programs/zsh.nix
         ../../../modules/system/security/polkit.nix
         ../../../modules/system/services/docker.nix
         ../../../modules/system/user/fonts.nix
@@ -78,5 +96,14 @@ in
       };
     };
   };
-  den.aspects."mayon@nixos-btw".homeManager.imports = importDir ../../../modules/home;
+  den.aspects."mayon@nixos-btw" = {
+    includes = with den.aspects; [
+      command-line
+      terminal
+      default-tools
+    ];
+    homeManager.imports = importDir ../../../modules/home;
+    # This binding selects the Noctalia template consumer; remote CLI keeps Default.
+    homeManager.programs.btop.settings.color_theme = "noctalia";
+  };
 }

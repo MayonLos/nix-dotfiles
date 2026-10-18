@@ -1,29 +1,10 @@
 {
   pkgs,
-  pkgs-unstable,
-  lib,
   ...
 }:
 
 let
-  java = import ../../../lib/java.nix { inherit pkgs pkgs-unstable; };
-
-  # Built from the same JDK set as java.nix and session-vars.nix, so the
-  # selectors cannot drift from what is installed.
-  javaSwitchFns = lib.concatStringsSep "\n" (
-    lib.mapAttrsToList (version: _: "use-java${version}() { use-java JAVA${version}_HOME; }") java.jdks
-  );
-  javaPathCleanup = lib.concatMapStringsSep "\n" (
-    version: ''path=("''${(@)path:#''${JAVA${version}_HOME}/bin}")''
-  ) (lib.attrNames java.jdks);
-
   zshInit = ''
-    for _s in deepseek-api-key:DEEPSEEK_API_KEY; do
-      _file="/run/secrets/''${_s%%:*}"
-      _var="''${_s##*:}"
-      [ -r "$_file" ] && export "$_var=$(cat "$_file")"
-    done
-    unset _s _file _var
 
     # fzf-tab supplies its own height after FZF_DEFAULT_OPTS; override it in
     # fzf-flags (appended last), while sharing the terminal palette with fzf.
@@ -46,22 +27,6 @@ let
     bindkey "^[OA" up-line-or-beginning-search
     bindkey "^[OB" down-line-or-beginning-search
 
-    use-java() {
-      local java_home_var="$1"
-      local java_home="''${(P)java_home_var}"
-      if [ -z "$java_home" ]; then
-        echo "Unknown Java home: $java_home_var" >&2
-        return 1
-      fi
-
-      export JAVA_HOME="$java_home"
-      ${javaPathCleanup}
-      path=("''${JAVA_HOME}/bin" "''${path[@]}")
-      hash -r
-      java -version
-    }
-
-    ${javaSwitchFns}
   '';
 in
 {
@@ -167,14 +132,7 @@ in
         "--preview=eza --color=always --icons --group-directories-first -- {}"
         "--preview-window=right,45%,border-left"
       ];
-      # ANSI named colours, not hex. fzf renders inside kitty, and
-      # kitty's palette is rewritten by noctalia on every theme change (the
-      # `include themes/noctalia.conf` in programs/terminal/kitty.nix) -- so an
-      # ANSI name tracks the desktop for free while a hex value silently becomes
-      # the odd one out. `-1` is fzf's "leave it to the terminal", which is
-      # also what keeps kitty's `background_opacity 0.92` visible behind the
-      # list. Same reasoning as the status bar in programs/terminal/tmux.nix.
-      # The zstyle above explicitly opts fzf-tab into FZF_DEFAULT_OPTS.
+      # ANSI roles follow the selected terminal palette without a second renderer.
       colors = {
         fg = "-1";
         bg = "-1";

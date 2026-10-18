@@ -2,8 +2,8 @@
 
 let
   tmuxTheme = ''
-    # tmux draws its own status bar, so use terminal palette indexes and the
-    # default background to follow Noctalia and preserve kitty transparency.
+    # tmux draws its own status bar, so use ANSI palette indexes and the
+    # default background to follow Kitty and preserve terminal transparency.
     set -g status on
     set -g status-position bottom
     set -g status-interval 30
@@ -21,7 +21,7 @@ let
     set -g pane-border-style        "fg=colour8"
     set -g pane-active-border-style "fg=colour4"
     set -g message-style            "bg=colour8,fg=colour15"
-    set -g mode-style               "bg=colour4,fg=colour0"
+    set -g mode-style               "bg=colour3,fg=colour0"
 
     set -g @prefix_highlight_fg 'colour0'
     set -g @prefix_highlight_bg 'colour4'
@@ -34,7 +34,6 @@ let
     TMUX_FZF_ORDER="session|window|pane|command|keybinding"
   '';
 in
-
 {
   programs.tmux = {
     enable = true;
@@ -91,8 +90,8 @@ in
 
       # True color + undercurl support
       set -sa terminal-overrides ",*256col*:Tc"
-      set -sa terminal-overrides ",*:Smulx=\E[4::%p1%dm"
-      set -sa terminal-overrides ",*:Setulc=\E[58::2::%p1%{65536}%/%d::%p1%{256}%/%{255}%&%d::%p1%{255}%&%d%;m"
+      set -sa terminal-overrides ",*:Smulx=\\E[4::%p1%dm"
+      set -sa terminal-overrides ",*:Setulc=\\E[58::2::%p1%{65536}%/%d::%p1%{256}%/%{255}%&%d::%p1%{255}%&%d%;m"
       # Passthrough for sixel/kitty graphics (used by yazi image preview)
       set -g allow-passthrough on
       set -ga update-environment TERM
@@ -106,28 +105,45 @@ in
       unbind %
       bind c new-window -c "#{pane_current_path}"
 
-      ##### Pane Navigation (no prefix) #####
+      ##### Prefix Navigation #####
 
-      bind -n M-h select-pane -L
-      bind -n M-j select-pane -D
-      bind -n M-k select-pane -U
-      bind -n M-l select-pane -R
-      bind -n M-z resize-pane -Z
+      # Release the former root-table navigation bindings when this file is
+      # reloaded into an already-running tmux server.
+      unbind -n M-h
+      unbind -n M-j
+      unbind -n M-k
+      unbind -n M-l
+      unbind -n M-z
+      unbind -n M-n
+      unbind -n M-p
+      unbind -n M-Tab
+      unbind -n M-1
+      unbind -n M-2
+      unbind -n M-3
+      unbind -n M-4
+      unbind -n M-5
+      unbind -n M-6
+      unbind -n M-7
+      unbind -n M-8
+      unbind -n M-9
 
-      ##### Window Navigation (no prefix) #####
-
-      bind -n M-n next-window
-      bind -n M-p previous-window
-      bind -n M-Tab last-window
-      bind -n M-1 select-window -t 1
-      bind -n M-2 select-window -t 2
-      bind -n M-3 select-window -t 3
-      bind -n M-4 select-window -t 4
-      bind -n M-5 select-window -t 5
-      bind -n M-6 select-window -t 6
-      bind -n M-7 select-window -t 7
-      bind -n M-8 select-window -t 8
-      bind -n M-9 select-window -t 9
+      # Keep Alt combinations available to shells, TUIs, and Neovim.
+      bind h select-pane -L
+      bind j select-pane -D
+      bind k select-pane -U
+      bind l select-pane -R
+      bind Tab last-window
+      bind n next-window
+      bind p previous-window
+      bind 1 select-window -t 1
+      bind 2 select-window -t 2
+      bind 3 select-window -t 3
+      bind 4 select-window -t 4
+      bind 5 select-window -t 5
+      bind 6 select-window -t 6
+      bind 7 select-window -t 7
+      bind 8 select-window -t 8
+      bind 9 select-window -t 9
 
       ##### Resize Panes (prefix, repeatable) #####
 
@@ -141,7 +157,6 @@ in
       bind -T copy-mode-vi v send-keys -X begin-selection
       bind -T copy-mode-vi C-v send-keys -X rectangle-toggle
       bind -T copy-mode-vi y send-keys -X copy-selection-and-cancel
-
     '';
   };
 }

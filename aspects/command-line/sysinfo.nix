@@ -1,5 +1,4 @@
-_:
-
+{ lib, ... }:
 let
   # Named ANSI colours follow Noctalia's terminal palette without text effects.
   section = label: color: {
@@ -127,23 +126,13 @@ in
       };
     };
 
-    # btop's palette comes from noctalia, which renders
-    # themes/noctalia.theme. What is declared here is only which theme
-    # btop *selects*, and that selection lives in btop.conf -- a file btop
-    # itself rewrites on exit, which is why it was unmanaged and drifting.
-    #
-    # This does not fight noctalia even though noctalia's template does touch
-    # btop.conf: its post_hook (assets/templates/btop/apply.sh) starts with
-    # `grep -qE '^color_theme\s*=\s*"noctalia"'` and returns immediately when
-    # the value is already right. Home Manager pins it to exactly that value,
-    # so the hook always takes the no-op branch. Same arrangement as kitty's
-    # `include` in programs/terminal/kitty.nix, and it breaks the same way if
-    # the value here ever stops being "noctalia".
+    # The portable CLI uses btop's built-in theme. A selected desktop may
+    # choose Noctalia's palette; HM remains the single btop.conf renderer.
     btop = {
       enable = true;
       settings = {
-        color_theme = "noctalia";
-        # Use Kitty's background so Mango's blur remains visible behind panels.
+        color_theme = lib.mkDefault "Default";
+        # Keep the terminal background consistent with other CLI tools.
         theme_background = false;
         vim_keys = true;
       };

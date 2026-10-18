@@ -41,8 +41,6 @@ in
     # contributes the home-side set, so systemd-launched apps needed the
     # mirror to get them too.
     sessionVariables = shared // {
-      EDITOR = "nvim";
-      VISUAL = "nvim";
       # bat and delta share one syntax theme on purpose -- they were on
       # OneHalfDark and Nord respectively, so the same hunk looked different
       # depending on whether git paged it. bat ships no Tokyo Night, and its

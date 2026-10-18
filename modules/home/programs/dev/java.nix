@@ -18,6 +18,7 @@ let
   );
 in
 {
+  imports = [ ../../../../aspects/languages/java-shell.nix ];
   home.packages = [ java.jdks.${java.default} ] ++ launchers;
 
   # Gradle uses the same JDKs as the shell and Prism rather than downloading

@@ -249,9 +249,9 @@ in
       # Launches, Noctalia shell controls, tag navigation, and dwm-style
       # master-stack operations.
       bind = [
-        "SUPER,E,spawn,thunar"
-        "SUPER,B,spawn,firefox"
-        "SUPER,Return,spawn,kitty"
+        "SUPER,E,spawn,workspace-files"
+        "SUPER,B,spawn,workspace-browser"
+        "SUPER,Return,spawn,workspace-terminal"
         # Title argument "none" means match by app id only. Size stays at the
         # scratchpad default ratios; do not set width or height here.
         "SUPER+SHIFT,Return,toggle_named_scratchpad,mayon-scratch,none,kitty --class=mayon-scratch"

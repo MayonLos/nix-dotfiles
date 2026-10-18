@@ -8,7 +8,7 @@ in
     executable = true;
     text = ''
       #!/usr/bin/env sh
-      exec kitty
+      exec ${config.home.sessionVariables.TERMINAL} "$@"
     '';
   };
 

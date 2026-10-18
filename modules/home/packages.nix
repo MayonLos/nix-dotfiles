@@ -39,26 +39,15 @@ in
     # nvim comes from programs/dev/nvim.nix — built from pkgs/neovim with the config/nvim Lua tree.
     imagemagick
     nodejs
-    bat
-    eza
-    ripgrep
-    duf
-    nix-output-monitor
     # `find` to ripgrep/eza/bat's `grep`/`ls`/`cat`; the one missing sibling of
     # the set above.
-    fd
     # Not only for interactive use: screenshot.nix's activation reaches for it
     # through lib.getExe, and mmsg / noctalia both speak JSON.
-    jq
-    hexyl
     # `duf` covers filesystems; this is the "what ate the disk" half. Worth
     # having when the system closure is 60+ GiB.
-    dust
     # tldr client. Complements nix-index + comma, which answer "which package
     # has this binary" rather than "how do I use it".
-    tealdeer
     # Editing secrets/secrets.yaml is routine enough to want outside `nix develop`.
-    sops
     wl-clipboard
     xclip
     grim
@@ -87,12 +76,10 @@ in
     # its own copy but does not put it on PATH.
     ffmpeg
     # system/user/environment.nix has unzip and unrar; 7z covers the rest.
-    p7zip
     # GUI archive manager; system/programs/thunar.nix connects its helper to
     # the Thunar archive plugin's compiled lookup path.
     xarchiver
     # ships the `qalc` CLI calculator.
-    libqalculate
     obsidian
     zotero
     kdePackages.okular

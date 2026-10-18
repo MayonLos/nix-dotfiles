@@ -151,7 +151,6 @@ in
             };
             builtin_ids = [
               "btop"
-              "kitty"
               "gtk3"
               "gtk4"
               "qt"

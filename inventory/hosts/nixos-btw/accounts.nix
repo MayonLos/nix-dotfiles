@@ -1,4 +1,4 @@
-_: {
+{ lib, ... }: {
   den.aspects."mayon@nixos-btw" = {
     user = { pkgs, ... }: {
       isNormalUser = true;
@@ -10,13 +10,23 @@ _: {
         "input"
         "dialout"
       ];
-      shell = pkgs.zsh;
       packages = [ pkgs.tree ];
     };
-    homeManager.home = {
-      username = "mayon";
-      homeDirectory = "/home/mayon";
-      stateVersion = "25.11";
+    homeManager = {
+      programs.zsh.initContent = lib.mkBefore ''
+        for _s in deepseek-api-key:DEEPSEEK_API_KEY; do
+          _file="/run/secrets/''${_s%%:*}"
+          _var="''${_s##*:}"
+          [ -r "$_file" ] && export "$_var=$(<"$_file")"
+        done
+        unset _s _file _var
+
+      '';
+      home = {
+        username = "mayon";
+        homeDirectory = "/home/mayon";
+        stateVersion = "25.11";
+      };
     };
   };
 }
