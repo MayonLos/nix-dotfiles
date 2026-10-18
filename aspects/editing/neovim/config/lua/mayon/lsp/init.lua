@@ -115,17 +115,6 @@ end
 
 local function progress()
 	local function update_progress(client_id, progress, done)
-		local message, count = progress_message(progress.tasks)
-		if done then
-			message = "Ready"
-		elseif count > 1 then
-			message = string.format("%d tasks in progress\n%s", count, message)
-		end
-		local opts = { title = progress.client_name, silent = true }
-		if progress.notification_id then
-			opts.replace = progress.notification_id
-		end
-		progress.notification_id = vim.notify(message, vim.log.levels.INFO, opts)
 		if not done then
 			progress_revision = progress_revision + 1
 			progress.updated_at = progress_revision

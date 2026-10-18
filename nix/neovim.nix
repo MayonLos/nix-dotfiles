@@ -3,6 +3,12 @@ _: {
     { pkgs, ... }:
     let
       neovim = import ../aspects/editing/neovim/package.nix { inherit pkgs; };
+      reduced = import ../aspects/editing/neovim/package.nix {
+        inherit pkgs;
+        palette = (import ../aspects/appearance/onedark-darker.nix) // {
+          reducedMotion = true;
+        };
+      };
     in
     {
       packages.neovim = neovim.normal;
@@ -25,20 +31,30 @@ _: {
                 export NVIM_APPNAME=nvim
                 unset VIMINIT
                 mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"
-                for test in startup completion integration; do
+                for test in startup completion integration workflow fileops; do
                   export NVIM_TEST_FILE="${neovim.configDir}/tests/$test.lua"
                   ${neovim.normal}/bin/nvim --headless -c 'luafile ${neovim.configDir}/tests/run.lua'
                 done
                 export NVIM_LSP_INTEGRATION=1
-                for test in native statusline tabline breadcrumbs lsp layout; do
+                for test in lsp; do
                   export NVIM_TEST_FILE="${neovim.configDir}/tests/$test.lua"
                   ${neovim.normal}/bin/nvim --clean --headless \
                     -c 'luafile ${neovim.configDir}/tests/run.lua'
                 done
-                NVIM_CONFIG_DIR=${../aspects/editing/neovim/config} ${neovim.dev}/bin/nvim --headless \
-              -c "lua assert(vim.g.colors_name == 'onedark-darker'); assert(require('mayon.generated').languages.servers.clangd)" -c 'qa!'
-            NVIM_CONFIG_DIR=/invalid-config ${neovim.normal}/bin/nvim --headless \
-              -c "lua assert(vim.env.NVIM_CONFIG_DIR ~= '/invalid-config'); assert(vim.g.colors_name == 'onedark-darker')" -c 'qa!'
+                export NVIM_TEST_FILE="${neovim.configDir}/tests/wrapper.lua"
+                NVIM_CHECK_MODE=reduced ${reduced.normal}/bin/nvim --headless \
+                  -c 'luafile ${neovim.configDir}/tests/run.lua'
+                NVIM_CHECK_MODE=dev NVIM_EXPECTED_CONFIG_DIR=${../aspects/editing/neovim/config} \
+                  NVIM_CONFIG_DIR=${../aspects/editing/neovim/config} ${neovim.dev}/bin/nvim --headless \
+                  -c 'luafile ${neovim.configDir}/tests/run.lua'
+                NVIM_CHECK_MODE=normal NVIM_CONFIG_DIR=/invalid-config ${neovim.normal}/bin/nvim --headless \
+                  -c 'luafile ${neovim.configDir}/tests/run.lua'
+                echo 'error("expected failure")' > "$TMPDIR/failure.lua"
+                if NVIM_TEST_FILE="$TMPDIR/failure.lua" ${neovim.normal}/bin/nvim --headless \
+                  -c 'luafile ${neovim.configDir}/tests/run.lua' > "$TMPDIR/failure.log" 2>&1; then
+                  echo "failed assertion was swallowed"
+                  exit 1
+                fi
             touch "$out"
           '';
     };

@@ -11,7 +11,11 @@ function M.setup()
 			["_"] = { "squeeze_blanks", "trim_whitespace", "trim_newlines" },
 		}),
 		format_on_save = function(bufnr)
-			if _G.autoformat_disabled(bufnr) or _G.slow_format_filetypes[vim.bo[bufnr].filetype] then
+			if
+				vim.bo[bufnr].filetype == "bigfile"
+				or _G.autoformat_disabled(bufnr)
+				or _G.slow_format_filetypes[vim.bo[bufnr].filetype]
+			then
 				return
 			end
 			local function on_format(err)

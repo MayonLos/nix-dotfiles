@@ -18,8 +18,8 @@ assert(vim.diagnostic.config().virtual_text == false)
 assert(vim.diagnostic.config().virtual_lines.current_line == true)
 assert(vim.diagnostic.config().severity_sort == true)
 
--- LSP startup work can expose several concurrent tokens. Keep their updates in
--- one history entry and publish a compact statusline snapshot.
+-- LSP startup work can expose several concurrent tokens. Publish only a
+-- compact statusline snapshot; routine progress must never create toasts.
 do
 	local client_id = 987654
 	local other_client_id = 987655
@@ -58,35 +58,25 @@ do
 		})
 	end
 	emit(client_id, "jvm", "begin", "Detect installed JVMs")
-	local first_id = notifications[1].id
-	assert(notifications[1].opts.silent, "LSP progress should update history without opening a toast")
+	assert(#notifications == 0, "LSP begin progress must not notify")
 	assert(#lsp.progress_status() == 1 and lsp.progress_status()[1].name == "jdtls")
 	emit(client_id, "sync", "begin", "Synchronizing projects")
-	assert(#notifications == 2, "each LSP token should update the client's existing progress entry")
-	assert(notifications[2].opts.replace == first_id, "parallel LSP tasks should replace the same history entry")
+	assert(#notifications == 0, "parallel LSP progress must not notify")
 	assert(lsp.progress_status()[1].task_count == 2, "parallel tasks should be aggregated for the statusline")
 	assert(progress_events[#progress_events][1].task_count == 2, "progress change event should publish the aggregate")
 	emit(client_id, "jvm", "report", "Using configured JVM")
+	assert(#notifications == 0, "progress reports must not notify")
 	assert(
-		#notifications == 3 and notifications[3].opts.replace == first_id,
-		"progress reports should update the history entry"
-	)
-	assert(
-		notifications[3].message:find("Synchronizing projects", 1, true),
+		lsp.progress_status()[1].message:find("Synchronizing projects", 1, true),
 		"active parallel task should remain summarized"
 	)
 	emit(client_id, "jvm", "end", "")
 	assert(
-		#notifications == 4 and notifications[4].opts.replace == first_id,
-		"partial completion should update, not add a history entry"
+		#notifications == 0 and lsp.progress_status()[1].task_count == 1,
+		"partial completion should update the aggregate without notifying"
 	)
 	emit(client_id, "sync", "end", "")
-	assert(
-		#notifications == 5 and notifications[5].opts.replace == first_id,
-		"final completion should update the same history entry"
-	)
-	assert(notifications[5].message == "Ready", "completed progress should leave one concise completion message")
-	assert(notifications[5].opts.silent, "completion should remain in history without a toast")
+	assert(#notifications == 0, "completed LSP progress must not notify")
 	assert(#lsp.progress_status() == 0, "completed progress should leave no stale statusline entry")
 	emit(client_id, "restart", "begin", "Restarting language server")
 	emit(other_client_id, "index", "begin", "Indexing workspace")
@@ -94,7 +84,23 @@ do
 	local latest = lsp.progress_status()
 	assert(#latest == 2 and latest[1].name == "clangd" and latest[2].name == "jdtls")
 	emit(client_id, "restart", "end", "")
-	emit(other_client_id, "index", "end", "")
+	assert(#lsp.progress_status() == 1 and lsp.progress_status()[1].name == "clangd")
+	-- A synthetic last-client detach resets Neovim buffer-local hint state.
+	-- Keep that lifecycle event off the buffer used by the attach tests below.
+	local detached_buf = vim.api.nvim_create_buf(false, true)
+	vim.api.nvim_exec_autocmds("LspDetach", {
+		buffer = detached_buf,
+		data = { client_id = other_client_id },
+	})
+	assert(
+		vim.wait(1000, function()
+			return #lsp.progress_status() == 0
+		end, 10),
+		"detaching the last buffer should clear the client's progress status"
+	)
+	vim.api.nvim_buf_delete(detached_buf, { force = true })
+	assert(#notifications == 0, "progress end and detach must never notify")
+	assert(progress_events[#progress_events][1] == nil, "cleared status should be published after detach")
 	vim.notify = original_notify
 	vim.lsp.get_client_by_id = original_get_client
 end

@@ -12,6 +12,7 @@ let
     + pkgs.lib.generators.toLua { } {
       inherit palette;
       ansi = import ../../appearance/ansi.nix palette;
+      tools.sqlite3 = "${pkgs.lib.getLib pkgs.sqlite}/lib/libsqlite3.so";
       languages = { inherit (languages) servers formatters linters; };
     }
   );

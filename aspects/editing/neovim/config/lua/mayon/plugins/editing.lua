@@ -9,11 +9,13 @@ function M.setup()
 	require("nvim-surround").setup({})
 	require("flash").setup({})
 	require("treesitter-context").setup({
-		max_lines = 4,
+		max_lines = 3,
 		multiline_threshold = 1,
 		trim_scope = "outer",
 		mode = "cursor",
-		separator = "─",
+		on_attach = function(buf)
+			return not vim.tbl_contains({ "markdown", "codecompanion" }, vim.bo[buf].filetype)
+		end,
 		zindex = 20,
 	})
 	require("nvim-treesitter-textobjects").setup({
@@ -22,7 +24,7 @@ function M.setup()
 	})
 	require("ufo").setup({
 		provider_selector = function(bufnr)
-			if vim.b[bufnr].mayon_bigfile then
+			if vim.bo[bufnr].filetype == "bigfile" then
 				return ""
 			end
 			-- Keep folding independent of each server's folding capability.

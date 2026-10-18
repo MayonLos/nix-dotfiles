@@ -16,7 +16,9 @@ let
     vimPlugins.fzf-lua
     vimPlugins.gitsigns-nvim
     vimPlugins.grug-far-nvim
+    vimPlugins.heirline-nvim
     vimPlugins.nvim-lint
+    vimPlugins.nvim-navic
     vimPlugins.noice-nvim
     vimPlugins.nvim-autopairs
     vimPlugins.multicursor-nvim
@@ -25,14 +27,18 @@ let
     vimPlugins.nvim-treesitter-textobjects
     vimPlugins.nvim-ufo
     vimPlugins.nvim-web-devicons
+    vimPlugins.onedark-nvim
+    vimPlugins.render-markdown-nvim
+    vimPlugins.snacks-nvim
+    vimPlugins.trouble-nvim
     vimPlugins.which-key-nvim
   ];
 
   parsers = import ./parsers.nix { inherit pkgs; };
   configured = configuredPlugins ++ [ parsers.plugin ];
   # The LSP setup uses Nixpkgs' pinned nvim-lspconfig server definitions.
-  # Keep it in the package graph while matching the baseline's 20 explicit
-  # plugin roots (the LSP package is a runtime dependency, not an extra plugin).
+  # Server definitions are a runtime dependency of the language contribution
+  # consumer, independent of the visual plugins above.
   runtimeDependencies = [ vimPlugins.nvim-lspconfig ];
   roots = configured ++ runtimeDependencies;
 

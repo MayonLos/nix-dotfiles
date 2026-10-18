@@ -1,415 +1,268 @@
--- Native buffer labels and tab-page controls. Rendering only reads editor state.
+-- Ported from a9d5614:nixvim/plugins/appearance/heirline.nix.
 local M = {}
-local api = vim.api
-local names, icons = {}, {}
-local dirty, pending, ready = true, false, false
-local first, previous_buffer, manual_scroll = 1, nil, false
 
-local function width(value)
-	return vim.fn.strdisplaywidth(value)
-end
-
-local function safe(value)
-	return tostring(value):gsub("[\r\n\t]", " ")
-end
-
-local function escape(value)
-	return safe(value):gsub("%%", "%%%%")
-end
-
-local function clip(value, limit, tail)
-	value = safe(value)
-	if width(value) <= limit then
-		return value
-	end
-	if limit <= 1 then
-		return limit == 1 and "…" or ""
-	end
-	local chars, result = vim.fn.strchars(value), ""
-	for step = 0, chars - 1 do
-		local index = tail and chars - step - 1 or step
-		local char = vim.fn.strcharpart(value, index, 1)
-		if width(result .. char) > limit - 1 then
-			break
-		end
-		result = tail and char .. result or result .. char
-	end
-	return tail and "…" .. result or result .. "…"
-end
-
-local function buffers()
+-- Presentation filtering never deletes a buffer or hides unsaved scratch work.
+function M.buffers()
 	local result = {}
 	for _, info in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
-		if api.nvim_buf_is_valid(info.bufnr) then
-			result[#result + 1] = info.bufnr
+		local buf = info.bufnr
+		local empty = vim.api.nvim_buf_get_name(buf) == ""
+			and vim.bo[buf].buftype == ""
+			and not vim.bo[buf].modified
+			and vim.api.nvim_buf_is_loaded(buf)
+			and vim.api.nvim_buf_line_count(buf) == 1
+			and vim.api.nvim_buf_get_lines(buf, 0, 1, false)[1] == ""
+		if not empty then
+			result[#result + 1] = buf
 		end
 	end
 	return result
 end
 
-local function refresh_names(list)
-	local paths, counts, suffixes = {}, {}, {}
-	for _, buf in ipairs(list) do
-		local filename = api.nvim_buf_get_name(buf)
-		local parts = filename == "" and {}
-			or vim.split(vim.fn.fnamemodify(filename, ":~:."), "/", { trimempty = true })
-		local basename = parts[#parts] or "[No Name]"
-		paths[buf] = { parts = parts, basename = basename }
-		counts[basename] = (counts[basename] or 0) + 1
-		local suffix = ""
-		for index = #parts, 1, -1 do
-			suffix = parts[index] .. (suffix == "" and "" or "/" .. suffix)
-			suffixes[suffix] = (suffixes[suffix] or 0) + 1
-		end
-	end
-	names = {}
-	for _, buf in ipairs(list) do
-		local item = paths[buf]
-		local label, duplicate = item.basename, counts[item.basename] > 1
-		if duplicate then
-			for index = #item.parts - 1, 1, -1 do
-				label = item.parts[index] .. "/" .. label
-				if suffixes[label] == 1 then
-					break
-				end
-			end
-			if #item.parts == 0 or suffixes[label] ~= 1 then
-				label = label .. " #" .. buf
-			end
-		end
-		names[buf] = { label = safe(label), duplicate = duplicate }
-	end
-	dirty = false
-end
-
-local function highlight(name)
-	return api.nvim_get_hl(0, { name = name, link = false })
-end
-
-local function refresh_icons(list)
-	icons = {}
-	local ok, devicons = pcall(require, "nvim-web-devicons")
-	if not ok then
+function M.select(buf)
+	if not vim.api.nvim_buf_is_valid(buf) then
 		return
 	end
-	local regular, selected = highlight("TabLine"), highlight("TabLineSel")
-	for _, buf in ipairs(list) do
-		local filename = api.nvim_buf_get_name(buf)
-		local glyph, color = devicons.get_icon_color(filename, vim.fn.fnamemodify(filename, ":e"), { default = true })
-		if glyph then
-			local suffix = tostring(color or regular.fg or ""):gsub("[^%w]", "")
-			local base = "MayonTabIcon" .. suffix
-			api.nvim_set_hl(0, base, { fg = color or regular.fg, bg = regular.bg })
-			api.nvim_set_hl(0, base .. "Sel", { fg = color or selected.fg, bg = selected.bg, bold = true })
-			icons[buf] = { glyph = glyph, group = base }
+	local function document_window(win)
+		local bt = vim.bo[vim.api.nvim_win_get_buf(win)].buftype
+		return vim.api.nvim_win_get_config(win).relative == "" and (bt == "" or bt == "acwrite")
+	end
+	local win = vim.api.nvim_get_current_win()
+	if not document_window(win) then
+		win = nil
+		for _, candidate in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+			if document_window(candidate) then
+				win = candidate
+				break
+			end
+		end
+		if not win then
+			vim.cmd("botright vnew")
+			win = vim.api.nvim_get_current_win()
 		end
 	end
+	vim.api.nvim_win_set_buf(win, buf)
+	vim.api.nvim_set_current_win(win)
 end
 
-local function refresh()
-	if pending then
-		return
-	end
-	pending = true
-	vim.schedule(function()
-		pending = false
-		-- BufDelete fires before the buffer leaves the listed set.
-		dirty = true
-		refresh_icons(buffers())
-		vim.cmd.redrawtabline()
-	end)
-end
+function M.build(text)
+	local utils = require("heirline.utils")
+	local Space = { provider = " " }
+	local TablineFileIcon = {
+		init = function(self)
+			local ext = vim.fn.fnamemodify(self.filename, ":e")
+			self.icon, self.icon_color =
+				require("nvim-web-devicons").get_icon_color(self.filename, ext, { default = true })
+		end,
+		provider = function(self)
+			return self.icon and (self.icon .. " ")
+		end,
+		hl = function(self)
+			return { fg = self.icon_color }
+		end,
+	}
 
-local function current_window()
-	local function editor_window(win)
-		local buf = api.nvim_win_get_buf(win)
-		local bt = vim.bo[buf].buftype
-		return api.nvim_win_get_config(win).relative == "" and (bt == "" or bt == "acwrite")
+	local tabline_names, tabline_names_dirty = {}, true
+	-- Resolve duplicate basenames only when the listed buffers or their paths change.
+	local function buffer_path_parts(filename)
+		return vim.split(vim.fn.fnamemodify(filename, ":~:."), "/", { trimempty = true })
 	end
-	local win = api.nvim_get_current_win()
-	if editor_window(win) then
-		return win
-	end
-	for _, candidate in ipairs(api.nvim_tabpage_list_wins(0)) do
-		if editor_window(candidate) then
-			return candidate
-		end
-	end
-	-- A tab click must not replace a tree, terminal, or quickfix tool window.
-	vim.cmd("botright vnew")
-	return api.nvim_get_current_win()
-end
-
-function M.click(buf, _, button)
-	vim.schedule(function()
-		if not api.nvim_buf_is_valid(buf) then
+	local function refresh_tabline_names()
+		if not tabline_names_dirty then
 			return
 		end
-		if button == "m" then
-			require("mayon.files").bufdelete({ buf = buf })
-		elseif button == "l" then
-			local win = current_window()
-			local ok, err = pcall(api.nvim_win_set_buf, win, buf)
-			if ok then
-				api.nvim_set_current_win(win)
-			else
-				vim.notify(tostring(err), vim.log.levels.WARN, { title = "Buffer switch" })
+
+		local buffers, basename_counts = {}, {}
+		for _, bufnr in ipairs(M.buffers()) do
+			local filename = vim.api.nvim_buf_get_name(bufnr)
+			local parts = filename == "" and {} or buffer_path_parts(filename)
+			local basename = parts[#parts] or "[No Name]"
+			buffers[#buffers + 1] = { bufnr = bufnr, parts = parts, basename = basename }
+			basename_counts[basename] = (basename_counts[basename] or 0) + 1
+		end
+
+		local suffix_counts = {}
+		for _, buffer in ipairs(buffers) do
+			local suffix = ""
+			for index = #buffer.parts, 1, -1 do
+				suffix = suffix == "" and buffer.parts[index] or (buffer.parts[index] .. "/" .. suffix)
+				suffix_counts[suffix] = (suffix_counts[suffix] or 0) + 1
 			end
 		end
-		refresh()
-	end)
-end
 
-function M.close(buf)
-	M.click(buf, 1, "m")
-end
-
-function M.scroll(direction, _, button)
-	if button ~= "l" then
-		return
-	end
-	first = math.max(1, math.min(#buffers(), first + (direction == 1 and -1 or 1)))
-	manual_scroll = true
-	refresh()
-end
-
-local function pages(limit)
-	local tabs = api.nvim_list_tabpages()
-	if #tabs < 2 then
-		return "", 0
-	end
-	local current = api.nvim_get_current_tabpage()
-	local labels, count, current_index = {}, 3, 1
-	for index, tab in ipairs(tabs) do
-		local text = " " .. index .. " "
-		labels[index] = {
-			raw = "%#" .. (tab == current and "TabLineSel" or "TabLine") .. "#%" .. index .. "T" .. text .. "%T",
-			width = width(text),
-		}
-		count = count + width(text)
-		if tab == current then
-			current_index = index
-		end
-	end
-	local low, high = 1, #tabs
-	while count > limit and low < high do
-		if current_index - low >= high - current_index then
-			count = count - labels[low].width
-			low = low + 1
-		else
-			count = count - labels[high].width
-			high = high - 1
-		end
-	end
-	local result, size = {}, 3
-	if low > 1 then
-		result[#result + 1] = "%" .. (low - 1) .. "T‹%T"
-		size = size + 1
-	end
-	for index = low, high do
-		result[#result + 1] = labels[index].raw
-		size = size + labels[index].width
-	end
-	if high < #tabs then
-		result[#result + 1] = "%" .. (high + 1) .. "T›%T"
-		size = size + 1
-	end
-	result[#result + 1] = "%#TabLine#%999X × %X"
-	return table.concat(result), size
-end
-
-local function entry(buf, available, current)
-	local active = buf == current
-	local visible = #vim.fn.win_findbuf(buf) > 0
-	local base = active and "TabLineSel" or (visible and "MayonTabVisible" or "TabLine")
-	local name = names[buf] or { label = "[No Name]" }
-	local flags = (vim.bo[buf].modified and " ●" or "")
-		.. ((vim.bo[buf].readonly or not vim.bo[buf].modifiable) and " 󰌾" or "")
-	local icon = icons[buf]
-	local glyph = icon and (icon.glyph .. " ") or ""
-	local fixed = width(glyph .. flags .. "  × ")
-	if available < fixed + 1 then
-		glyph = ""
-		fixed = width(flags .. "  × ")
-	end
-	if available < fixed + 1 then
-		flags = ""
-		fixed = width("  × ")
-	end
-	local max_name = math.max(1, available - fixed)
-	if not name.duplicate then
-		max_name = math.min(28, max_name)
-	end
-	local label = clip(name.label, max_name, name.duplicate)
-	if name.duplicate and width(name.label) > max_name then
-		local suffix = " #" .. buf
-		label = clip(name.label, math.max(0, max_name - width(suffix)), true) .. suffix
-	end
-	local content = "%#" .. base .. "#%" .. buf .. "@v:lua.MayonBufferClick@" .. (active and "▎" or " ")
-	if glyph ~= "" then
-		content = content .. "%#" .. icon.group .. (active and "Sel" or "") .. "#" .. glyph .. "%#" .. base .. "#"
-	end
-	if visible then
-		content = content .. "%#" .. (active and "TabLineSel" or "MayonTabVisible") .. "#"
-	end
-	content = content .. escape(label)
-	if flags:find("●", 1, true) then
-		content = content .. "%#MayonTabModified" .. (active and "Sel" or "") .. "# ●%#" .. base .. "#"
-	end
-	if flags:find("󰌾", 1, true) then
-		content = content .. "%#MayonTabLocked" .. (active and "Sel" or "") .. "# 󰌾%#" .. base .. "#"
-	end
-	content = content .. "%T %" .. buf .. "@v:lua.MayonBufferClose@×%T%#" .. base .. "# "
-	return { raw = content, width = width(" " .. glyph .. label .. flags .. " × ") }
-end
-
-function M.render()
-	local list = buffers()
-	if dirty then
-		refresh_names(list)
-	end
-	local tabpages, page_width = pages(math.max(8, math.floor(vim.o.columns / 3)))
-	local offset, sidebar = 0, ""
-	if vim.o.columns >= 80 then
-		for _, win in ipairs(api.nvim_tabpage_list_wins(0)) do
-			if
-				api.nvim_win_get_config(win).relative == ""
-				and api.nvim_win_get_position(win)[2] == 0
-				and vim.bo[api.nvim_win_get_buf(win)].filetype == "mayon-file-tree"
-			then
-				local size = api.nvim_win_get_width(win) + 1
-				if size < vim.o.columns / 2 then
-					offset = size
-					local label = " 󰉋 Files"
-					sidebar = "%#MayonTreeRoot#" .. label .. string.rep(" ", offset - width(label))
+		tabline_names = {}
+		for _, buffer in ipairs(buffers) do
+			local label = buffer.basename
+			if basename_counts[label] > 1 then
+				if #buffer.parts == 0 then
+					label = label .. " #" .. buffer.bufnr
+				else
+					local suffix = buffer.basename
+					for index = #buffer.parts - 1, 1, -1 do
+						suffix = buffer.parts[index] .. "/" .. suffix
+						label = suffix
+						if suffix_counts[suffix] == 1 then
+							break
+						end
+					end
+					if suffix_counts[label] ~= 1 then
+						label = label .. " #" .. buffer.bufnr
+					end
 				end
-				break
 			end
+			tabline_names[buffer.bufnr] = {
+				label = label,
+				duplicate = basename_counts[buffer.basename] > 1,
+			}
 		end
+		tabline_names_dirty = false
 	end
-	local budget = math.max(1, vim.o.columns - page_width - offset)
-	if #list == 0 then
-		return "%#TabLineFill#%=" .. tabpages
-	end
-	local selected, current = 1, api.nvim_get_current_buf()
-	-- Focusing a tool preserves the selected document and horizontal tab scroll.
-	if
-		not vim.bo[current].buflisted
-		and previous_buffer
-		and api.nvim_buf_is_valid(previous_buffer)
-		and vim.bo[previous_buffer].buflisted
-	then
-		current = previous_buffer
-	end
-	for index, buf in ipairs(list) do
-		if buf == current then
-			selected = index
-			break
-		end
-	end
-	if current ~= previous_buffer then
-		manual_scroll = false
-		previous_buffer = current
-	end
-	first = math.max(1, math.min(first, #list))
-	local available = math.max(1, budget - 6)
-	local items = {}
-	for index, buf in ipairs(list) do
-		items[index] = entry(buf, available, current)
-	end
-	local function last_visible(start)
-		local last, used = start - 1, 0
-		for index = start, #list do
-			if used + items[index].width > available and last >= start then
-				break
-			end
-			last, used = index, used + items[index].width
-		end
-		return last
-	end
-	local last = last_visible(first)
-	if not manual_scroll and (selected < first or selected > last) then
-		first = selected
-		local used = items[selected].width
-		while first > 1 and used + items[first - 1].width <= available do
-			first = first - 1
-			used = used + items[first].width
-		end
-		last = last_visible(first)
-	end
-	local result = { "%#TabLineFill#" .. sidebar }
-	if first > 1 then
-		result[#result + 1] = "%1@v:lua.MayonBufferScroll@ ‹ %T"
-	end
-	for index = first, last do
-		result[#result + 1] = items[index].raw
-	end
-	if last < #list then
-		result[#result + 1] = "%#TabLine#%2@v:lua.MayonBufferScroll@ › %T"
-	end
-	result[#result + 1] = "%#TabLineFill#%=" .. tabpages
-	return table.concat(result)
-end
+	vim.api.nvim_create_autocmd({ "BufAdd", "BufDelete", "BufFilePost", "DirChanged", "BufModifiedSet" }, {
+		group = vim.api.nvim_create_augroup("HeirlineBufferNames", { clear = true }),
+		callback = function()
+			tabline_names_dirty = true
+		end,
+	})
+	vim.api.nvim_create_autocmd("OptionSet", {
+		group = "HeirlineBufferNames",
+		pattern = "buflisted",
+		callback = function()
+			tabline_names_dirty = true
+		end,
+	})
 
-function M.setup()
-	if ready then
-		return
+	local TablineFileName = {
+		provider = function(self)
+			local name = vim.fn.fnamemodify(self.filename, ":t")
+			local buffer_name = tabline_names[self.bufnr]
+			local width = math.max(1, math.min(28, vim.o.columns - 14))
+			local label = buffer_name and buffer_name.label or (name == "" and "[No Name]" or name)
+			if buffer_name and buffer_name.duplicate and vim.fn.strdisplaywidth(label) > width then
+				local suffix = " #" .. self.bufnr
+				return text(label, math.max(1, width - #suffix)) .. suffix
+			end
+			return text(label, width)
+		end,
+		hl = function(self)
+			return { bold = self.is_active or self.is_visible }
+		end,
+	}
+
+	local TablineFileFlags = {
+		{
+			condition = function(self)
+				return vim.api.nvim_get_option_value("modified", { buf = self.bufnr })
+			end,
+			provider = " ●",
+			hl = { fg = "green" },
+		},
+		{
+			condition = function(self)
+				return not vim.api.nvim_get_option_value("modifiable", { buf = self.bufnr })
+					or vim.api.nvim_get_option_value("readonly", { buf = self.bufnr })
+			end,
+			provider = " 󰌾",
+			hl = { fg = "orange" },
+		},
+	}
+
+	local function close_buffer(bufnr)
+		require("snacks").bufdelete({ buf = bufnr })
+		vim.cmd.redrawtabline()
 	end
-	ready = true
-	local function colors()
-		local regular = highlight("TabLine")
-		api.nvim_set_hl(0, "MayonTabVisible", { fg = regular.fg, bg = regular.bg, bold = true })
-		api.nvim_set_hl(0, "MayonTabModified", { fg = highlight("String").fg, bg = regular.bg })
-		api.nvim_set_hl(0, "MayonTabLocked", { fg = highlight("Constant").fg, bg = regular.bg })
-		local selected = highlight("TabLineSel")
-		api.nvim_set_hl(0, "MayonTabModifiedSel", { fg = highlight("String").fg, bg = selected.bg, bold = true })
-		api.nvim_set_hl(0, "MayonTabLockedSel", { fg = highlight("Constant").fg, bg = selected.bg, bold = true })
+
+	local TablineFileNameBlock = {
+		init = function(self)
+			self.filename = vim.api.nvim_buf_get_name(self.bufnr)
+		end,
+		hl = function(self)
+			return self.is_active and "TabLineSel" or "TabLine"
+		end,
+		on_click = {
+			callback = function(_, minwid, _, button)
+				if button == "m" then
+					vim.schedule(function()
+						close_buffer(minwid)
+					end)
+				elseif button == "l" then
+					vim.schedule(function()
+						M.select(minwid)
+					end)
+				end
+			end,
+			minwid = function(self)
+				return self.bufnr
+			end,
+			name = "heirline_tabline_buffer_callback",
+		},
+		{ provider = " " },
+		TablineFileIcon,
+		TablineFileName,
+		TablineFileFlags,
+	}
+
+	local TablineCloseButton = {
+		{ provider = " " },
+		{
+			provider = "×",
+			hl = { fg = "gray" },
+			on_click = {
+				callback = function(_, minwid)
+					vim.schedule(function()
+						close_buffer(minwid)
+					end)
+				end,
+				minwid = function(self)
+					return self.bufnr
+				end,
+				name = "heirline_tabline_close_buffer_callback",
+			},
+		},
+	}
+
+	local TablineBufferBlock = {
+		hl = function(self)
+			return self.is_active and "TabLineSel" or "TabLine"
+		end,
+		TablineFileNameBlock,
+		TablineCloseButton,
+		Space,
+	}
+
+	local BufferList = utils.make_buflist(
+		TablineBufferBlock,
+		{ provider = " ‹ ", hl = { fg = "gray" } },
+		{ provider = " › ", hl = { fg = "gray" } },
+		M.buffers,
+		false
+	)
+	local make_buflist_init = BufferList.init
+	BufferList.init = function(self)
+		refresh_tabline_names()
+		make_buflist_init(self)
 	end
-	colors()
-	refresh_icons(buffers())
-	_G.MayonTabline = M.render
-	_G.MayonBufferClick = M.click
-	_G.MayonBufferClose = M.close
-	_G.MayonBufferScroll = M.scroll
-	vim.o.tabline = "%!v:lua.MayonTabline()"
-	local group = api.nvim_create_augroup("MayonTabline", { clear = true })
-	api.nvim_create_autocmd({
-		"BufAdd",
-		"BufDelete",
-		"BufWipeout",
-		"BufFilePost",
-		"DirChanged",
-		"BufEnter",
-		"BufWinEnter",
-		"BufModifiedSet",
-		"WinClosed",
-		"TabEnter",
-		"TabClosed",
-		"TabNew",
-	}, {
-		group = group,
-		callback = function()
-			dirty = true
-			refresh()
+
+	local Tabpage = {
+		provider = function(self)
+			return "%" .. self.tabnr .. "T " .. self.tabnr .. " %T"
 		end,
-	})
-	api.nvim_create_autocmd("OptionSet", {
-		group = group,
-		pattern = { "buflisted", "readonly", "modifiable" },
-		callback = function()
-			dirty = true
-			refresh()
+		hl = function(self)
+			return self.is_active and "TabLineSel" or "TabLine"
 		end,
-	})
-	api.nvim_create_autocmd("ColorScheme", {
-		group = group,
-		callback = function()
-			vim.schedule(function()
-				colors()
-				refresh()
-			end)
+	}
+	local TabpageClose = { provider = "%999X × %X", hl = "TabLine" }
+	local TabPages = {
+		condition = function()
+			return #vim.api.nvim_list_tabpages() >= 2
 		end,
-	})
+		{ provider = "%=" },
+		utils.make_tablist(Tabpage),
+		TabpageClose,
+	}
+
+	local TabLine = { hl = "TabLineFill", BufferList, TabPages }
+
+	return TabLine
 end
 
 return M

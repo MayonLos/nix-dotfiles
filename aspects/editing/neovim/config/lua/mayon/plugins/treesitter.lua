@@ -12,12 +12,12 @@ function M.setup()
 		group = group,
 		callback = function(args)
 			local buf = args.buf
+			if vim.bo[buf].filetype == "bigfile" or vim.b[buf].ts_highlight == false then
+				return
+			end
 			vim.bo[buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
 			vim.wo.foldexpr = "v:lua.vim.treesitter.foldexpr()"
 			vim.wo.foldmethod = "expr"
-			if vim.b[buf].mayon_bigfile or vim.b[buf].mayon_treesitter_disabled then
-				return
-			end
 			local ft = vim.bo[buf].filetype
 			local lang = vim.treesitter.language.get_lang(ft) or ft
 			-- Keep LaTeX highlighting off to preserve the existing math-rendering boundary.

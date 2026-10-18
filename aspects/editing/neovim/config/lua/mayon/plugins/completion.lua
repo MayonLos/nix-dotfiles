@@ -4,7 +4,7 @@ function M.setup()
 	require("blink-cmp").setup({
 		appearance = { kind_icons = require("mayon.kinds") },
 		enabled = function()
-			return not vim.b.mayon_bigfile
+			return vim.bo.filetype ~= "bigfile"
 				and vim.bo.buftype ~= "prompt"
 				and vim.b.completion ~= false
 				and vim.g.completion ~= false
