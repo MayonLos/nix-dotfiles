@@ -58,6 +58,14 @@ assert(
 	"scratch was not saved"
 )
 assert(vim.fn.readfile(vim.api.nvim_buf_get_name(note))[1] == "temporary scratch note")
+-- Big-file classification must keep expensive syntax/completion/folds off.
+local big = root .. "/large.lua"
+vim.fn.writefile({ string.rep("x", 1024 * 1024 + 1) }, big)
+vim.cmd.edit(vim.fn.fnameescape(big))
+assert(vim.bo.filetype == "bigfile", "large-file handler did not claim the buffer")
+assert(vim.b.completion == false, "completion remained enabled for a large file")
+assert(vim.wo.foldmethod == "manual", "Tree-sitter overrode the large-file fold guard")
+assert(not vim.treesitter.highlighter.active[vim.api.nvim_get_current_buf()], "large file started highlighting")
 vim.cmd.colorscheme("onedark-darker")
 assert(vim.api.nvim_get_hl(0, { name = "Normal", link = false }).bg == 0x1f2329)
 assert(vim.v.errmsg == "", vim.v.errmsg)

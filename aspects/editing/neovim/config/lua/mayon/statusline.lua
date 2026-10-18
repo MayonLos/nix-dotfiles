@@ -1,4 +1,4 @@
--- Ported from a9d5614:nixvim/plugins/appearance/heirline.nix.
+-- A quiet workspace rail: editing mode, location, attention, then cursor position.
 local M = {}
 local ready = false
 
@@ -38,12 +38,12 @@ function M.setup()
 
 	-- Statusline providers parse %, and byte counts mismeasure Chinese names.
 	local function text(value, width)
-		value = tostring(value):gsub("[\r\n]", " ")
-		if width and vim.fn.strdisplaywidth(value) > width then
+		value = tostring(value):gsub("[\r\n\t]", " ")
+		if width and vim.fn.strwidth(value) > width then
 			local result = ""
 			for index = 0, vim.fn.strchars(value) - 1 do
 				local char = vim.fn.strcharpart(value, index, 1)
-				if vim.fn.strdisplaywidth(result .. char .. "…") > width then
+				if vim.fn.strwidth(result .. char .. "…") > width then
 					break
 				end
 				result = result .. char
@@ -55,7 +55,7 @@ function M.setup()
 
 	local function badge(color, inner)
 		inner.hl = function(self)
-			return { fg = "bg", bg = type(color) == "function" and color(self) or color, bold = true }
+			return { fg = type(color) == "function" and color(self) or color, bg = "bg", bold = true }
 		end
 		return inner
 	end
@@ -106,7 +106,8 @@ function M.setup()
 		return mode_colors[self.mode:sub(1, 1)] or "blue"
 	end, {
 		provider = function(self)
-			return " " .. (mode_names[self.mode] or self.mode:upper()) .. " "
+			local name = mode_names[self.mode] or self.mode:upper()
+			return " ▎" .. (vim.o.columns < 80 and name:sub(1, 1) or name) .. " "
 		end,
 	})
 	ViMode.init = function(self)
@@ -157,23 +158,13 @@ function M.setup()
 			self.filename = vim.api.nvim_buf_get_name(0)
 		end,
 	}
-	local FileIcon = {
-		init = function(self)
-			local ext = vim.fn.fnamemodify(self.filename, ":e")
-			self.icon, self.icon_color =
-				require("nvim-web-devicons").get_icon_color(self.filename, ext, { default = true })
-		end,
-		provider = function(self)
-			return self.icon and (self.icon .. " ")
-		end,
-		hl = function(self)
-			return { fg = self.icon_color }
-		end,
-	}
 	local FileName = {
 		provider = function(self)
-			local name = vim.fn.fnamemodify(self.filename, ":t")
-			return text(name == "" and "[No Name]" or name, math.max(12, math.floor(vim.o.columns * 0.22)))
+			local path = vim.fn.fnamemodify(self.filename, ":~:.:h")
+			if self.filename == "" then
+				return "scratch"
+			end
+			return text(path == "." and "workspace" or path, math.max(10, math.floor(vim.o.columns * 0.16)))
 		end,
 		hl = { fg = "fg" },
 	}
@@ -193,7 +184,13 @@ function M.setup()
 			hl = { fg = "orange" },
 		},
 	}
-	FileNameBlock = utils.insert(FileNameBlock, FileIcon, FileName, FileFlags, { provider = "%<" })
+	FileNameBlock = utils.insert(
+		FileNameBlock,
+		{ provider = "󰉋 ", hl = { fg = "gray" } },
+		FileName,
+		FileFlags,
+		{ provider = "%<" }
+	)
 
 	local Navic = {
 		condition = function()
@@ -257,33 +254,35 @@ function M.setup()
 	}
 	local LSPActive = {
 		condition = conditions.lsp_attached,
-		provider = function()
-			local clients = vim.lsp.get_clients({ bufnr = 0 })
-			if #clients == 0 then
-				return ""
+		init = function(self)
+			local attached = {}
+			for _, client in ipairs(vim.lsp.get_clients({ bufnr = 0 })) do
+				attached[client.id] = true
 			end
 			local lsp = package.loaded["mayon.lsp"]
 			local progress = lsp and lsp.progress_status and lsp.progress_status() or {}
-			if #progress > 0 then
-				local task = progress[#progress]
-				return "⋯ "
-					.. text(
-						(task.name or "LSP") .. " " .. (task.message or ""),
-						math.max(8, math.floor(vim.o.columns * 0.20))
-					)
-					.. " "
+			local count, names = 0, {}
+			for _, task in ipairs(progress) do
+				if attached[task.id] then
+					count = count + (task.task_count or 1)
+					names[#names + 1] = task.name or "LSP"
+				end
 			end
-			local names = vim.tbl_map(function(c)
-				return c.name
-			end, clients)
-			table.sort(names)
-			if vim.o.columns < 120 then
-				return "LSP " .. #names .. " "
-			end
-			return text(table.concat(names, ","), math.floor(vim.o.columns * 0.14)) .. " "
+			self.busy = #names > 0
+			-- Raw progress messages can contain several rapidly changing file
+			-- counters. Keep the status rail stable; the LSP owns those details.
+			self.label = self.busy
+					and ("⋯ " .. (#names == 1 and names[1] or "LSP") .. (count > 1 and (" · " .. count .. " tasks") or ""))
+				or "● LSP"
 		end,
-		hl = { fg = "green" },
+		provider = function(self)
+			return text(self.label, math.max(8, math.min(26, math.floor(vim.o.columns * 0.20)))) .. "  "
+		end,
+		hl = function(self)
+			return { fg = self.busy and "blue" or "gray" }
+		end,
 	}
+
 	local Recording = {
 		condition = function()
 			return vim.fn.reg_recording() ~= ""
@@ -318,8 +317,22 @@ function M.setup()
 		pattern = { "GitSignsUpdate", "MayonLspProgressChanged" },
 		callback = vim.schedule_wrap(redraw_status),
 	})
-	local FilePercent = { provider = "%P " }
-	local Ruler = { provider = "%l:%v ", hl = { fg = "fg", bold = true } }
+	local FilePercent = { provider = "%p%% ", hl = { fg = "gray" } }
+	local Ruler = {
+		provider = function()
+			return vim.o.columns < 80 and " %l:%v " or " LN %l : %v "
+		end,
+		hl = "MayonPosition",
+	}
+	local Language = {
+		condition = function()
+			return vim.o.columns >= 80 and vim.bo.filetype ~= ""
+		end,
+		provider = function()
+			return text(vim.bo.filetype, 14) .. "  "
+		end,
+		hl = { fg = "gray" },
+	}
 
 	local cc = { count = 0, name = nil, requests = {}, order = {} }
 	vim.api.nvim_create_autocmd("User", {
@@ -360,9 +373,10 @@ function M.setup()
 		ViMode,
 		Space,
 		-- Drop optional context before Neovim truncates diagnostics on narrow UIs.
+		{ flexible = 3, FileNameBlock, {} },
+		{ flexible = 4, Navic, {} },
+		Space,
 		{ flexible = 2, Git, {} },
-		FileNameBlock,
-		{ flexible = 3, Navic, {} },
 		Space,
 		Align,
 		Recording,
@@ -370,6 +384,7 @@ function M.setup()
 		CodeCompanion,
 		Diagnostics,
 		{ flexible = 1, LSPActive, {} },
+		Language,
 		FilePercent,
 		Ruler,
 	}
@@ -385,7 +400,22 @@ function M.setup()
 		Space,
 		{
 			provider = function()
-				return " " .. vim.bo.filetype:upper() .. " "
+				local ft = vim.bo.filetype
+				if ft:match("^snacks_picker") then
+					for _, picker in ipairs(require("snacks").picker.get()) do
+						for _, part in ipairs({ "list", "input", "preview" }) do
+							local pane = picker[part]
+							if pane and pane.win and pane.win.win == vim.api.nvim_get_current_win() then
+								local title = picker.opts.title or picker.opts.source or "Search"
+								return " " .. text(title:gsub("_", " "):gsub("^%l", string.upper), 28) .. " "
+							end
+						end
+					end
+					return " Files & search "
+				end
+				local names = { help = "Help", qf = "Quickfix", terminal = "Terminal", grug_far = "Search & replace" }
+				local name = names[ft] or names[vim.bo.buftype] or (ft ~= "" and ft:gsub("_", " ") or "Tools")
+				return " " .. text(name, 28) .. " "
 			end,
 			hl = { fg = "fg", bold = true },
 		},

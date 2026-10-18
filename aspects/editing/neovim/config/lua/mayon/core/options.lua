@@ -27,7 +27,7 @@ function M.setup()
 		scrolloff = 8,
 		shiftwidth = 4,
 		showmode = false,
-		showbreak = "↪ ",
+		showbreak = "",
 		sidescrolloff = 8,
 		smoothscroll = true,
 		linebreak = true,
@@ -47,7 +47,7 @@ function M.setup()
 		winborder = "rounded",
 		-- The Nixvim baseline left `wrap` at Neovim's default (`true`). Keep
 		-- long prose and Markdown lines visible instead of clipping them at the
-		-- right edge; break at word boundaries and mark continuation rows.
+		-- right edge; break at word boundaries without noisy continuation arrows.
 		wrap = true,
 	}
 	for name, value in pairs(options) do

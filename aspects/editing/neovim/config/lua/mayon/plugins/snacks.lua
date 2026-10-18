@@ -28,6 +28,10 @@ function M.setup(overrides)
 			timeout = 2500,
 			style = "compact",
 			top_down = false,
+			width = { min = 28, max = 0.34 },
+			height = { min = 1, max = 0.25 },
+			margin = { top = 1, right = 2, bottom = 1 },
+			gap = 1,
 		},
 		scroll = {
 			enabled = not motion_reduced,
@@ -39,8 +43,8 @@ function M.setup(overrides)
 		indent = {
 			enabled = true,
 			animate = { enabled = false },
-			indent = { char = "│" },
-			scope = { enabled = true, char = "│" },
+			indent = { char = "│", hl = "SnacksIndent" },
+			scope = { enabled = true, char = "▎", hl = "SnacksIndentScope" },
 		},
 		words = { enabled = true, debounce = 150 },
 		scope = { enabled = true },
@@ -60,11 +64,18 @@ function M.setup(overrides)
 			enabled = true,
 			ui_select = true,
 			db = { sqlite3_path = sqlite3_path() },
+			layout = {
+				preset = "default",
+				layout = { width = 0.86, height = 0.78, min_width = 80 },
+			},
 			sources = {
 				explorer = {
 					layout = {
-						layout = { width = 36, min_width = 36 },
+						preset = "sidebar",
+						preview = false,
+						layout = { width = 38, min_width = 30, height = 0 },
 					},
+					formatters = { file = { truncate = "center", min_width = 12 } },
 					win = { list = { wo = { wrap = false } } },
 				},
 			},

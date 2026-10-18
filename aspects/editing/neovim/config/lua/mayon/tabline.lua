@@ -1,5 +1,30 @@
--- Ported from a9d5614:nixvim/plugins/appearance/heirline.nix.
+-- Project identity and document tabs; Heirline owns paging and click dispatch.
 local M = {}
+local active_documents = {}
+
+-- Focus may move to a sidebar or prompt without changing the active document.
+function M.active_buffer()
+	local tab, buf = vim.api.nvim_get_current_tabpage(), vim.api.nvim_get_current_buf()
+	local function document(candidate)
+		return candidate
+			and vim.api.nvim_buf_is_valid(candidate)
+			and vim.bo[candidate].buflisted
+			and (vim.bo[candidate].buftype == "" or vim.bo[candidate].buftype == "acwrite")
+	end
+	if document(buf) then
+		active_documents[tab] = buf
+	elseif not document(active_documents[tab]) then
+		active_documents[tab] = nil
+		for _, win in ipairs(vim.api.nvim_tabpage_list_wins(tab)) do
+			local visible = vim.api.nvim_win_get_buf(win)
+			if document(visible) then
+				active_documents[tab] = visible
+				break
+			end
+		end
+	end
+	return active_documents[tab]
+end
 
 -- Presentation filtering never deletes a buffer or hides unsaved scratch work.
 function M.buffers()
@@ -17,6 +42,24 @@ function M.buffers()
 		end
 	end
 	return result
+end
+
+-- Align document tabs with the editor when Snacks owns a real left split.
+-- Inspect the split, not its floating input/list children or a fixed column count.
+function M.sidebar_width()
+	for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+		if
+			vim.api.nvim_win_get_config(win).relative == ""
+			and vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "snacks_layout_box"
+			and vim.api.nvim_win_get_position(win)[2] == 0
+		then
+			local width = vim.api.nvim_win_get_width(win)
+			if width < vim.o.columns then
+				return width + 1
+			end
+		end
+	end
+	return 0
 end
 
 function M.select(buf)
@@ -47,7 +90,28 @@ end
 
 function M.build(text)
 	local utils = require("heirline.utils")
+	local focus_group = vim.api.nvim_create_augroup("MayonDocumentFocus", { clear = true })
+	vim.api.nvim_create_autocmd({ "BufEnter", "WinEnter" }, {
+		group = focus_group,
+		callback = function()
+			M.active_buffer()
+		end,
+	})
+	vim.api.nvim_create_autocmd("TabClosed", {
+		group = focus_group,
+		callback = function()
+			for tab in pairs(active_documents) do
+				if not vim.api.nvim_tabpage_is_valid(tab) then
+					active_documents[tab] = nil
+				end
+			end
+		end,
+	})
+	M.active_buffer()
 	local Space = { provider = " " }
+	local function tab_highlight(self)
+		return self.is_active and "TabLineSel" or (self.is_visible and "MayonTabVisible" or "TabLine")
+	end
 	local TablineFileIcon = {
 		init = function(self)
 			local ext = vim.fn.fnamemodify(self.filename, ":e")
@@ -137,7 +201,7 @@ function M.build(text)
 			local buffer_name = tabline_names[self.bufnr]
 			local width = math.max(1, math.min(28, vim.o.columns - 14))
 			local label = buffer_name and buffer_name.label or (name == "" and "[No Name]" or name)
-			if buffer_name and buffer_name.duplicate and vim.fn.strdisplaywidth(label) > width then
+			if buffer_name and buffer_name.duplicate and vim.fn.strwidth(label) > width then
 				local suffix = " #" .. self.bufnr
 				return text(label, math.max(1, width - #suffix)) .. suffix
 			end
@@ -176,7 +240,7 @@ function M.build(text)
 			self.filename = vim.api.nvim_buf_get_name(self.bufnr)
 		end,
 		hl = function(self)
-			return self.is_active and "TabLineSel" or "TabLine"
+			return tab_highlight(self)
 		end,
 		on_click = {
 			callback = function(_, minwid, _, button)
@@ -202,6 +266,9 @@ function M.build(text)
 	}
 
 	local TablineCloseButton = {
+		condition = function(self)
+			return self.is_active
+		end,
 		{ provider = " " },
 		{
 			provider = "×",
@@ -222,8 +289,16 @@ function M.build(text)
 
 	local TablineBufferBlock = {
 		hl = function(self)
-			return self.is_active and "TabLineSel" or "TabLine"
+			return tab_highlight(self)
 		end,
+		{
+			provider = function(self)
+				return self.is_active and "▎" or " "
+			end,
+			hl = function(self)
+				return self.is_active and "MayonTabAccent" or "TabLine"
+			end,
+		},
 		TablineFileNameBlock,
 		TablineCloseButton,
 		Space,
@@ -240,6 +315,14 @@ function M.build(text)
 	BufferList.init = function(self)
 		refresh_tabline_names()
 		make_buflist_init(self)
+		local active = M.active_buffer()
+		self.active_child = false
+		for index, bufnr in ipairs(self.buffers) do
+			self[index].is_active = bufnr == active
+			if bufnr == active then
+				self.active_child = index
+			end
+		end
 	end
 
 	local Tabpage = {
@@ -247,7 +330,7 @@ function M.build(text)
 			return "%" .. self.tabnr .. "T " .. self.tabnr .. " %T"
 		end,
 		hl = function(self)
-			return self.is_active and "TabLineSel" or "TabLine"
+			return tab_highlight(self)
 		end,
 	}
 	local TabpageClose = { provider = "%999X × %X", hl = "TabLine" }
@@ -260,7 +343,34 @@ function M.build(text)
 		TabpageClose,
 	}
 
-	local TabLine = { hl = "TabLineFill", BufferList, TabPages }
+	local Project = {
+		condition = function()
+			return vim.o.columns >= 90 or M.sidebar_width() > 0
+		end,
+		provider = function()
+			local name = vim.fn.fnamemodify(vim.fn.getcwd(), ":t")
+			local offset = M.sidebar_width()
+			if offset > 0 then
+				local label = " 󰉋 " .. text(name, math.max(1, offset - 6)) .. " "
+				local width = vim.fn.strwidth((label:gsub("%%%%", "%%")))
+				-- The following Space component occupies the split separator.
+				return label .. string.rep(" ", math.max(0, offset - 1 - width))
+			end
+			return "  󰉋 " .. text(name, math.min(20, math.floor(vim.o.columns * 0.14))) .. "  "
+		end,
+		hl = "MayonProject",
+	}
+	local Count = {
+		condition = function()
+			return vim.o.columns >= 120 and #vim.api.nvim_list_tabpages() == 1
+		end,
+		provider = function()
+			local count = #M.buffers()
+			return count > 0 and ("  " .. count .. (count == 1 and " file  " or " files  ")) or ""
+		end,
+		hl = "MayonMuted",
+	}
+	local TabLine = { hl = "TabLineFill", Project, Space, BufferList, { provider = "%=" }, Count, TabPages }
 
 	return TabLine
 end
