@@ -1,4 +1,29 @@
+{
+  palette ? null,
+}:
 { pkgs, ... }:
+let
+  # Yazi accepts terminal ANSI names or RGB values. Use the user's shared
+  # palette when it is wired in, with ANSI roles as a safe standalone fallback.
+  colors =
+    if palette == null then
+      {
+        black = "black";
+        bg = "reset";
+        deep = "darkgray";
+        selection = "darkgray";
+        border = "darkgray";
+        fg = "white";
+        muted = "darkgray";
+        blue = "blue";
+        cyan = "cyan";
+        green = "green";
+        yellow = "yellow";
+        red = "red";
+      }
+    else
+      palette;
+in
 
 {
   programs.yazi = {
@@ -140,6 +165,101 @@
             group = "git";
           }
         ];
+      };
+    };
+
+    # The selected row and hovered preview receive separate cues. Colors are
+    # the shared One Dark roles when available; named colors follow Kitty's
+    # shared ANSI palette in standalone configurations.
+    theme = {
+      mgr = {
+        cwd = {
+          fg = colors.cyan;
+        };
+        find_keyword = {
+          fg = colors.yellow;
+          bold = true;
+        };
+        marker_copied = {
+          fg = colors.black;
+          bg = colors.green;
+        };
+        marker_cut = {
+          fg = colors.black;
+          bg = colors.red;
+        };
+        marker_marked = {
+          fg = colors.black;
+          bg = colors.cyan;
+        };
+        marker_selected = {
+          fg = colors.black;
+          bg = colors.blue;
+        };
+        count_selected = {
+          fg = colors.black;
+          bg = colors.blue;
+        };
+        border_style = {
+          fg = colors.border;
+        };
+      };
+
+      tabs = {
+        active = {
+          fg = colors.black;
+          bg = colors.blue;
+          bold = true;
+        };
+        inactive = {
+          fg = colors.blue;
+          bg = colors.deep;
+        };
+      };
+
+      mode = {
+        normal_main = {
+          fg = colors.black;
+          bg = colors.blue;
+          bold = true;
+        };
+        normal_alt = {
+          fg = colors.blue;
+          bg = colors.deep;
+        };
+        select_main = {
+          fg = colors.black;
+          bg = colors.green;
+          bold = true;
+        };
+        select_alt = {
+          fg = colors.green;
+          bg = colors.deep;
+        };
+        unset_main = {
+          fg = colors.black;
+          bg = colors.red;
+          bold = true;
+        };
+        unset_alt = {
+          fg = colors.red;
+          bg = colors.deep;
+        };
+      };
+
+      indicator = {
+        parent = {
+          inherit (colors) fg;
+          bg = colors.selection;
+        };
+        current = {
+          fg = colors.black;
+          bg = colors.blue;
+          bold = true;
+        };
+        preview = {
+          underline = true;
+        };
       };
     };
 

@@ -1,6 +1,5 @@
 { pkgs, ... }: {
   home.packages = with pkgs; [
-    bat
     eza
     ripgrep
     duf
@@ -14,4 +13,12 @@
     p7zip
     libqalculate
   ];
+
+  programs.bat = {
+    enable = true;
+    config = {
+      theme = "base16";
+      style = "numbers,changes,header";
+    };
+  };
 }

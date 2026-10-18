@@ -1,3 +1,6 @@
+{
+  palette ? null,
+}:
 _: {
   programs.git = {
     enable = true;
@@ -29,8 +32,9 @@ _: {
     };
   };
 
-  # The `lg` alias in shell/zsh.nix points here. Use terminal ANSI colors so
-  # the UI follows the terminal ANSI palette.
+  # The `lg` alias in zsh.nix points here. Standalone consumers use ANSI;
+  # a selected appearance supplies a quiet selection surface instead of
+  # reversing the entire row's foreground and background.
   programs.lazygit = {
     enable = true;
     settings.gui = {
@@ -55,7 +59,27 @@ _: {
         markedBaseCommitBgColor = [ "yellow" ];
         unstagedChangesColor = [ "red" ];
         defaultFgColor = [ "default" ];
-      };
+      }
+      // (
+        if palette == null then
+          { }
+        else
+          {
+            activeBorderColor = [
+              palette.blue
+              "bold"
+            ];
+            searchingActiveBorderColor = [
+              palette.cyan
+              "bold"
+            ];
+            inactiveBorderColor = [ palette.border ];
+            optionsTextColor = [ palette.cyan ];
+            selectedLineBgColor = [ palette.selection ];
+            inactiveViewSelectedLineBgColor = [ palette.deep ];
+            defaultFgColor = [ palette.fg ];
+          }
+      );
     };
   };
 
@@ -67,6 +91,9 @@ _: {
     # rendered through git's own pager until this line existed.
     enableGitIntegration = true;
     options = {
+      # This complete built-in syntax theme consumes the terminal's ANSI
+      # palette, shared with Bat, Kitty and tmux.
+      syntax-theme = "base16";
       navigate = true;
       side-by-side = true;
       line-numbers = true;

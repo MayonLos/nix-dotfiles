@@ -15,8 +15,8 @@ let
     set -g status-right "#{prefix_highlight}#[default]#{?#{>=:#{client_width},100}, #[fg=colour8]│ #[fg=colour7]%a %d %b #[fg=colour4,bold]%H:%M#[default],} "
 
     set -g window-status-separator "#[fg=colour8]·#[default]"
-    setw -g window-status-format         "#[fg=colour8] #I #[fg=colour7]#W #[default]"
-    setw -g window-status-current-format "#[fg=colour0,bg=colour4,bold] #I:#W #[default]"
+    setw -g window-status-format         "#[fg=colour8] #I #[fg=colour7]#W#[fg=colour8]#{window_flags} #[default]"
+    setw -g window-status-current-format "#[fg=colour0,bg=colour4,bold] #I:#W #[default]#[fg=colour8]#{?#{>=:#{client_width},100},·,}#[fg=colour7]#{?#{>=:#{client_width},100},#{b:pane_current_path},} #[default]"
 
     set -g pane-border-style        "fg=colour8"
     set -g pane-active-border-style "fg=colour4"
