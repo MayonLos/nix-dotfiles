@@ -1,8 +1,8 @@
 # Den 纵向组合样本
 
-独立求值的子 flake，用真实 NixOS / Home Manager 选项验证 shell 与嵌入式两条路径。主仓库尚未接入 Den，不导出测试主机为可部署配置，也不会激活账号或切换系统。
+独立求值的子 flake，用真实 NixOS / Home Manager 选项验证 shell、嵌入式和外观/默认工具/语言接口。主仓库尚未接入 Den，不导出测试主机为可部署配置，也不会激活账号或切换系统。
 
-Den 固定为 [v0.19.0 / 37eb88c](https://github.com/denful/den/tree/37eb88ce28a9e42d5b367b967a9097030ff4f665)。nixpkgs、Home Manager、flake-parts 使用建立样本时主仓库的相同 revision；只有本目录的锁文件记录样本输入。嵌入式实现通过非 flake 的相对 path input 引用 `aspects/embedded-workbench/`，无需加载根 flake。该输入跟随本仓库内容，提交负责固定它，不能单独复制 `tests/den/` 就假定样本完整。Den 内部还使用其源码固定的 fetch 依赖，不能将 flake 的空 inputs 解释成没有上游依赖。
+Den 固定为 [v0.19.0 / 37eb88c](https://github.com/denful/den/tree/37eb88ce28a9e42d5b367b967a9097030ff4f665)。nixpkgs、Home Manager、flake-parts 使用建立样本时主仓库的相同 revision；只有本目录的锁文件记录样本输入。实现通过非 flake 的相对 path input 引用 `aspects/` 下的嵌入式、外观、默认工具和语言目录，无需加载根 flake。这些输入跟随本仓库内容，提交负责固定它们，不能单独复制 `tests/den/` 就假定样本完整。Den 内部还使用其源码固定的 fetch 依赖，不能将 flake 的空 inputs 解释成没有上游依赖。
 
 ## 运行
 
@@ -14,9 +14,12 @@ nix eval ./tests/den#lib.composition.results --json --no-write-lock-file
 nix eval ./tests/den#lib.composition.observations --json --no-write-lock-file
 nix eval ./tests/den#lib.embedded.results --json --no-write-lock-file
 nix eval ./tests/den#lib.embedded.observations --json --no-write-lock-file
+nix eval ./tests/den#lib.contracts.results --json --no-write-lock-file
 ```
 
 第一条命令构建组合报告、选中账号的真实 HM activationPackage、最终 udev 规则和工具启动检查；构建不会执行 activation。shell 报告位于 `checks.x86_64-linux.composition` 输出的 `results.json`，嵌入式报告是 `checks.x86_64-linux.embedded-composition` 输出的 JSON 文件。求值用 `--no-build` 只能检查求值，不构建用户环境。
+
+共享接口报告为 `checks.x86_64-linux.contracts`，`contracts-home` 构建带显式应用选择的用户环境；其余共享接口检查见下表。
 
 ## 样本边界
 
@@ -34,7 +37,21 @@ nix eval ./tests/den#lib.embedded.observations --json --no-write-lock-file
 
 最终规则检查发现原始 ST-Link 包实际使用 0666，与旧注释不同；现由本地规则包修正，同时保持 CLI 二进制与别名。兼容入口也获得该修正，但尚未应用到运行系统。
 
-这里验证的是上述具体配置路径，尚未证明所有桌面入口、平台、真实硬件或上游所有作用域行为都正确。没有构建测试主机的完整系统、启动 VM、执行 HM activation、启动 ST GUI 或进行烧写/ACL 验证。外观、默认工具、语言协议和真实主机 Den 接线仍待后续阶段验证。
+## 共享接口样本
+
+`contracts-fixture.nix` 只提供最小 Kitty/Neovim 消费者和明确选择的 GUI 应用，不代替现有完整桌面或编辑器。`contracts-suite.nix` 验证两主机/两账号选择、数据不启用功能、默认工具不安装应用、CLI/GUI 编辑器分开、语言与编辑器独立选择、重复贡献幂等以及同语言 ID/跨 ID 的 server 冲突。
+
+| 接口与检查 | 实际验证 |
+|---|---|
+| [外观](../../aspects/appearance/README.md)：`appearance-kitty`、`appearance-neovim` | Kitty 自己解析最终配置；Neovim 实际高亮和 ANSI 值；同一输入被两个消费者使用 |
+| [默认工具](../../aspects/default-tools/README.md)：`default-tools-runtime` | 真实 wrapper 用 spy 程序记录参数；空格、引号、`$`、命令替换文本及空参数保真；MIME 内容和 Desktop ID 文件存在 |
+| [语言](../../aspects/languages/README.md)：`language-clangd`、`language-not-selected` | 实际 C++ 编译检查、clangd 连接、项目根和 hover；未选择语言的 profile 没有启用或带入 clangd |
+
+Kitty 检查避免优化 Python 删除 `assert`：显式错误加完成结果文件判定。另在仅含样本和四个功能目录的临时副本做负例：错误背景、删除 argv 转义、删除 LSP 启用，相关运行检查均失败。
+
+新适配器没有与当前桌面共同启用。真实接入前须先转移 Kitty/Noctalia 的文件所有权、旧 EDITOR/MIME 声明和现有完整 Lua/LSP 接线；不能把本样本的“单写入者”断言当成已验证旧配置兼容。具体迁移前提在各接口说明中。
+
+这里验证的是上述具体配置路径，尚未证明所有桌面入口、平台、真实硬件或上游所有作用域行为都正确。没有构建测试主机的完整系统、启动 VM、执行 HM activation、启动 ST GUI 或进行烧写/ACL 验证；GUI、项目 direnv 切换和真实主机 Den 接线仍未验证。
 
 ## 已发现并修正的接线陷阱
 
@@ -50,5 +67,8 @@ nix eval ./tests/den#lib.embedded.observations --json --no-write-lock-file
 - [Home Manager 集成](https://github.com/denful/den/blob/37eb88ce28a9e42d5b367b967a9097030ff4f665/modules/aspects/batteries/home-manager.nix)
 - [`provides` 目标匹配](https://github.com/denful/den/blob/37eb88ce28a9e42d5b367b967a9097030ff4f665/nix/lib/aspects/fx/aspect/provide.nix)
 - [裸用户与 host-qualified aspect 组合的上游测试](https://github.com/denful/den/blob/37eb88ce28a9e42d5b367b967a9097030ff4f665/templates/ci/modules/public-api/aspect-host-qualified-lookup.nix)
+- [用户 schema 扩展](https://github.com/denful/den/blob/37eb88ce28a9e42d5b367b967a9097030ff4f665/templates/fleet-demo/modules/users.nix)
+- [同 scope quirk 贡献与消费](https://github.com/denful/den/blob/37eb88ce28a9e42d5b367b967a9097030ff4f665/templates/ci/modules/public-api/pipes.nix)
+- [锁定 HM 的 Neovim initLua](https://github.com/nix-community/home-manager/blob/32904dfe1cf86039f3c8c9f41f94e1cfd76dbb34/modules/programs/neovim/default.nix)
 
 用户作用域裸 OS class 的行为存在上游 [#694](https://github.com/denful/den/issues/694)，本样本使用显式 provider，不把当前实现的隐式投递当作公开路由保证。

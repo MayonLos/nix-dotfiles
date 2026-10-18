@@ -432,7 +432,9 @@ flake/neovim.nix             # neovim / neovim-dev outputs
 
 ### 4. 接入 Den 主机与职责边界
 
-新方案见 [架构设计](architecture-design.md)，已由主代理与 Astra 交叉设计。[Den 样本](../tests/den/README.md) 已固定 v0.19.0，通过 shell 与嵌入式两条路径的两主机/两账号选择、共享资源去重及 shell 单值冲突检查。嵌入式工具、规则、包配方已收拢到 [功能目录](../aspects/embedded-workbench/README.md)，旧入口兼容引用；最终规则检查发现并修正 ST-Link 0666 权限，改为 0660/uaccess 且保留别名。真实笔记本构建、样本 HM/udev 与 ARM 编译/GDB/CLI 检查通过，尚未切换或验证设备。主 flake 尚未接入 Den；接下来验证小型公开协议，再逐项适配其他配置。
+新方案见 [架构设计](architecture-design.md)，已由主代理与 Astra 交叉设计。[Den 样本](../tests/den/README.md) 已固定 v0.19.0，通过 shell 与嵌入式两条路径的两主机/两账号选择、共享资源去重及 shell 单值冲突检查。嵌入式工具、规则、包配方已收拢到 [功能目录](../aspects/embedded-workbench/README.md)，旧入口兼容引用；最终规则检查发现并修正 ST-Link 0666 权限，改为 0660/uaccess 且保留别名。真实笔记本构建、样本 HM/udev 与 ARM 编译/GDB/CLI 检查通过，尚未切换或验证设备。
+
+外观、默认工具和语言协议已各自进入功能目录并由同一样本消费。数据/启用/安装的边界、用户与主机隔离、命令整体合并及同 ID/跨 ID 冲突已验证；Kitty parser、Neovim 高亮、wrapper 参数与 MIME、C++ 编译和 clangd hover 的运行检查通过，相关负例也被拒绝。真实桌面的写入者和旧默认项尚未迁移，不能直接叠加新适配器。主 flake 尚未接入 Den；下一步先保存已完成软件/Neovim 工作的可回退基线，再接入真实主机并逐项适配功能。
 
 - 先选定并锁定 Den revision，只增加所需新锁项、不顺带升级现有输入；读取该 revision 的源码文档和导入/模块行为，记录真实 API 和接线图后实现。
 - 建立实体/绑定、普通组合 aspect 和完整功能入口；先验证 shell 与嵌入式功能的系统/HM/账号路由，随后逐项适配软件和服务。

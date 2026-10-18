@@ -2,6 +2,8 @@
   choices,
   conflictingSupport,
   embeddedChoices,
+  userSettings,
+  featureChoices,
 }:
 {
   den,
@@ -10,17 +12,13 @@
   ...
 }:
 {
-  imports = [ "${inputs.embedded-workbench}/default.nix" ];
-  den.hosts.x86_64-linux = {
-    probe-a.users = {
-      alice = { };
-      bob = { };
-    };
-    probe-b.users = {
-      alice = { };
-      bob = { };
-    };
-  };
+  imports = [
+    "${inputs.embedded-workbench}/default.nix"
+    ./contracts-fixture.nix
+  ];
+  den.hosts.x86_64-linux = lib.genAttrs [ "probe-a" "probe-b" ] (host: {
+    users = lib.genAttrs [ "alice" "bob" ] (name: userSettings."${name}@${host}" or { });
+  });
 
   den.schema.user.classes = [ "homeManager" ];
   den.default = {
@@ -76,6 +74,7 @@
       lib.optionals (lib.elem binding choices) (
         [ den.aspects.command-line ] ++ lib.optional conflictingSupport den.aspects.conflicting-support
       )
-      ++ lib.optional (lib.elem binding embeddedChoices) den.aspects.embedded-workbench;
+      ++ lib.optional (lib.elem binding embeddedChoices) den.aspects.embedded-workbench
+      ++ map (name: den.aspects.${name}) (featureChoices.${binding} or [ ]);
   });
 }

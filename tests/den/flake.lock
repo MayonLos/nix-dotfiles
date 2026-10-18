@@ -1,5 +1,29 @@
 {
   "nodes": {
+    "appearance": {
+      "flake": false,
+      "locked": {
+        "path": "../../aspects/appearance",
+        "type": "path"
+      },
+      "original": {
+        "path": "../../aspects/appearance",
+        "type": "path"
+      },
+      "parent": []
+    },
+    "default-tools": {
+      "flake": false,
+      "locked": {
+        "path": "../../aspects/default-tools",
+        "type": "path"
+      },
+      "original": {
+        "path": "../../aspects/default-tools",
+        "type": "path"
+      },
+      "parent": []
+    },
     "den": {
       "locked": {
         "lastModified": 1790283496,
@@ -70,6 +94,18 @@
         "type": "github"
       }
     },
+    "languages": {
+      "flake": false,
+      "locked": {
+        "path": "../../aspects/languages",
+        "type": "path"
+      },
+      "original": {
+        "path": "../../aspects/languages",
+        "type": "path"
+      },
+      "parent": []
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1791765022,
@@ -88,10 +124,13 @@
     },
     "root": {
       "inputs": {
+        "appearance": "appearance",
+        "default-tools": "default-tools",
         "den": "den",
         "embedded-workbench": "embedded-workbench",
         "flake-parts": "flake-parts",
         "home-manager": "home-manager",
+        "languages": "languages",
         "nixpkgs": "nixpkgs"
       }
     }

@@ -2,6 +2,18 @@
   description = "Isolated Den composition acceptance tests; no deployable hosts";
 
   inputs = {
+    appearance = {
+      url = "path:../../aspects/appearance";
+      flake = false;
+    };
+    default-tools = {
+      url = "path:../../aspects/default-tools";
+      flake = false;
+    };
+    languages = {
+      url = "path:../../aspects/languages";
+      flake = false;
+    };
     embedded-workbench = {
       url = "path:../../aspects/embedded-workbench";
       flake = false;
@@ -28,17 +40,41 @@
           choices ? [ ],
           conflictingSupport ? false,
           embeddedChoices ? [ ],
+          userSettings ? { },
+          featureChoices ? { },
         }:
         (inputs.flake-parts.lib.mkFlake { inherit inputs; } {
           imports = [
             inputs.den.flakeModule
-            (import ./fixture.nix { inherit choices conflictingSupport embeddedChoices; })
+            (import ./fixture.nix {
+              inherit
+                choices
+                conflictingSupport
+                embeddedChoices
+                userSettings
+                featureChoices
+                ;
+            })
           ];
           systems = [ system ];
         }).nixosConfigurations;
       tests = import ./suite.nix {
         inherit evaluate;
         inherit (pkgs) lib;
+      };
+      contractTests = import ./contracts-suite.nix {
+        inherit evaluate inputs;
+        inherit (pkgs) lib;
+      };
+      appearanceChecks = import "${inputs.appearance}/checks.nix" {
+        inherit pkgs;
+        home = contractTests.homes.selected;
+        inherit (contractTests) palette;
+      };
+      languageChecks = import "${inputs.languages}/checks.nix" {
+        inherit pkgs;
+        home = contractTests.homes.selected;
+        editorOnly = contractTests.homes.editorOnly;
       };
       embeddedTests = import ./embedded-suite.nix {
         inherit evaluate pkgs;
@@ -56,6 +92,7 @@
     {
       lib.composition = tests;
       lib.embedded = embeddedTests;
+      lib.contracts = { inherit (contractTests) results observations; };
       checks.${system} = {
         composition =
           assert tests.passed;
@@ -73,6 +110,19 @@
         embedded-home = embeddedHost.home-manager.users.alice.home.activationPackage;
         embedded-udev = embeddedChecks.udev;
         embedded-tools = embeddedChecks.tools;
+        contracts =
+          assert contractTests.passed;
+          pkgs.writeText "den-contract-results.json" (builtins.toJSON contractTests.results);
+        contracts-home = contractTests.homes.selected.home.activationPackage;
+        appearance-kitty = appearanceChecks.kitty;
+        appearance-neovim = appearanceChecks.neovim;
+        language-clangd = languageChecks.clangd;
+        language-not-selected = languageChecks.noLanguage;
+        default-tools-runtime = import "${inputs.default-tools}/checks.nix" {
+          inherit pkgs;
+          home = contractTests.homes.selected;
+          quotedHome = contractTests.homes.quoted;
+        };
       };
     };
 }
