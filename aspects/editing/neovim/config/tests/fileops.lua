@@ -1,4 +1,4 @@
-local source = debug.getinfo(1, "S").source:sub(2)
+local source = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p")
 local root = vim.fs.dirname(vim.fs.dirname(source))
 vim.opt.rtp:prepend(root)
 if vim.env.NVIM_SNACKS_PATH and vim.env.NVIM_SNACKS_PATH ~= "" then
@@ -48,10 +48,24 @@ do
 	assert(vim.api.nvim_buf_get_name(buf) == new, "renamed buffer path should follow the file")
 	assert(vim.bo[buf].modified, "unsaved buffer text should remain modified after rename")
 	assert(vim.deep_equal(vim.api.nvim_buf_get_lines(buf, 0, -1, false), { "unsaved editor version" }))
+	local pre_calls, post_calls = 0, 0
+	vim.api.nvim_create_autocmd("BufWritePre", {
+		buffer = buf,
+		callback = function()
+			pre_calls = pre_calls + 1
+		end,
+	})
+	vim.api.nvim_create_autocmd("BufWritePost", {
+		buffer = buf,
+		callback = function()
+			post_calls = post_calls + 1
+		end,
+	})
 	local write_ok = pcall(vim.api.nvim_buf_call, buf, function()
 		vim.cmd.write()
 	end)
 	assert(write_ok, "ordinary write should persist after a safe rename")
+	assert(pre_calls == 1 and post_calls == 1, "ordinary write should run each write autocmd exactly once")
 	assert(read(new) == "unsaved editor version", "ordinary write should safely save the renamed buffer")
 	assert(
 		not vim.bo[buf].modified and vim.bo[buf].buftype == "",

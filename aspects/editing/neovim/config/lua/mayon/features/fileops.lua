@@ -63,6 +63,7 @@ local function arm_renamed_write(buf, path)
 		end
 		id = api.nvim_create_autocmd("BufWriteCmd", {
 			buffer = buf,
+			nested = true,
 			desc = "Safely write a buffer after native file rename",
 			callback = function()
 				if api.nvim_buf_get_name(buf) ~= path then
@@ -77,9 +78,10 @@ local function arm_renamed_write(buf, path)
 				vim.b[buf].mayon_rename_write_autocmd = nil
 				vim.bo[buf].buftype = buftype
 				local ok, err = pcall(api.nvim_buf_call, buf, function()
-					api.nvim_exec_autocmds("BufWritePre", { buffer = buf })
+					-- Let Neovim run BufWritePre and BufWritePost once as part of
+					-- the real write. Manually dispatching these events from inside
+					-- BufWriteCmd skips non-nested user autocmds.
 					vim.cmd("write!")
-					api.nvim_exec_autocmds("BufWritePost", { buffer = buf })
 				end)
 				if not ok then
 					vim.bo[buf].buftype = "acwrite"
