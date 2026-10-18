@@ -14,8 +14,9 @@
     # gdb,...}. Not `pkgsCross.arm-embedded`, which would build the whole
     # toolchain locally; this one substitutes from cache.
     #
-    # It brings its own arm-none-eabi-gdb, which is the one to point at
-    # OpenOCD's :3333 -- the host `gdb` from default.nix cannot debug a Cortex-M.
+    # Use its arm-none-eabi-gdb with OpenOCD's :3333 for this firmware workflow.
+    # The host gdb stays available too: locked nixpkgs enables all targets by
+    # default, so its presence does not imply that it cannot debug Cortex-M.
     #
     # `lowPrio` because it collides with that host gdb on 78 paths:
     # include/gdb/jit-reader.h and the whole share/gdb/python/gdb tree, which

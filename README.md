@@ -7,6 +7,7 @@ Mango 桌面）和用户 `mayon`。Home Manager 随 NixOS 重建，没有 standa
 组合常用 `includes`，`inventory/` 描述真实主机、账号、事实和绑定参数。资源、模块 helper 与
 软件配方都可放在所属 aspect 内；不会递归扫描目录。架构/操作约定见 [AGENTS.md](AGENTS.md)，
 重构逐批实施、构建证据与运行态限制见[执行记录](docs/den-execution.md)。
+后续窗口、临时工具层与视觉动效的实现和验收见[桌面优化记录](docs/desktop-polish-execution.md)。
 
 ## 目录
 
