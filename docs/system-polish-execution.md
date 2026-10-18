@@ -65,11 +65,30 @@ TreesitterContext 背景预期随 Astra 深色层次设计更新；Kitty 的 clo
 
 实现提交 `1c46de6`（编辑器）与 `cb9fa57`（项目/终端/桌面操作）；最后 unused 参数格式
 修正与本文一起提交。构建命令均使用 `--no-write-lock-file --max-jobs 1 --cores 2` 串行执行。
-完整主机构建与授权应用正在完成，结果在下节补齐。
+完整主机构建与授权应用均已完成，结果见下节。
 
 ## 应用与验收
 
-待完成最终 toplevel 构建和 nr。当前打开的 Neovim/Kitty 不强制重启，新开实例读取新配置；
+使用 `sudo nixos-rebuild switch --flake /home/mayon/nix-dotfiles#nixos-btw --no-write-lock-file
+--max-jobs 1 --cores 2` 成功应用。`/run/current-system` 与构建的
+`/nix/store/k3k3m81j2cc4f67a5yylpwd7sip8j3d1-nixos-system-nixos-btw-26.05.20261012.7993f34`
+一致。应用前比对显示管理器/greetd、NetworkManager 和 Nix daemon unit 内容未变化。
+实际 switch 重启 Home Manager、正常 reactivation；没有注销 Mango 或重启机器。
+
+应用后核对：Noctalia/Fcitx5/clipboard bridge active/running，Mango target active，
+Home Manager unit Result=success；`workspace-project list` 给出两个预期项目；三个 desktop
+入口和已安装 Mango 配置/帮助均存在；`workspace-task -- true` 返回成功并释放抑制，
+勿扰 status 查询返回 off。没有为测试切换用户 caffeine/DND 状态或启动真实项目。
+
+初次使用旧 `mmsg -d` 语法被当前 CLI 拒绝；查锁定源码/实际 help 后使用
+`mmsg dispatch reload_config` 返回 `success:true`，已热加载新键位，无需重启 compositor。
+应用前记录的两个 Codex 与五个 Java 进程 PID/start-time 均保持，未向它们发信号；
+进程检查未收集命令参数或环境。Noctalia 公开设置备份目录仍为 `0700`。
+
+当前打开的 Neovim/Kitty 不强制重启，新开实例读取新配置；
 用户随后验收字体、状态栏密度、真实 jdtls、多屏、树点击、弹窗、动画与终端关闭确认。
 外屏/设备/游戏/休眠和性能比较未执行，不声称更快或更省电。运行日志仅记录对应结果，
 不输出凭据、剪贴板、完整进程命令或环境。
+
+本轮检查与应用日志为 `/tmp/codex-system-polish-{eval,checks,final-checks,toplevel,switch}.log`。
+16 项根检查、真实主机 toplevel 和应用 smoke checks 属于各自证据层级，不等于视觉验收。
