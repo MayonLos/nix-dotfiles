@@ -2,6 +2,10 @@
   description = "Isolated Den composition acceptance tests; no deployable hosts";
 
   inputs = {
+    embedded-workbench = {
+      url = "path:../../aspects/embedded-workbench";
+      flake = false;
+    };
     den.url = "github:denful/den/37eb88ce28a9e42d5b367b967a9097030ff4f665"; # v0.19.0
     nixpkgs.url = "github:NixOS/nixpkgs/7993f34ee47e28a3d607a525aadc6c94b73be728";
     home-manager = {
@@ -23,11 +27,12 @@
         {
           choices ? [ ],
           conflictingSupport ? false,
+          embeddedChoices ? [ ],
         }:
         (inputs.flake-parts.lib.mkFlake { inherit inputs; } {
           imports = [
             inputs.den.flakeModule
-            (import ./fixture.nix { inherit choices conflictingSupport; })
+            (import ./fixture.nix { inherit choices conflictingSupport embeddedChoices; })
           ];
           systems = [ system ];
         }).nixosConfigurations;
@@ -35,9 +40,22 @@
         inherit evaluate;
         inherit (pkgs) lib;
       };
+      embeddedTests = import ./embedded-suite.nix {
+        inherit evaluate pkgs;
+        inherit (pkgs) lib;
+        stlinkRules = import "${inputs.embedded-workbench}/rules.nix" { inherit pkgs; };
+      };
+      embeddedHost = (evaluate { embeddedChoices = [ "alice@probe-a" ]; }).probe-a.config;
+      embeddedProfile = embeddedHost.home-manager.users.alice.home.path;
+      embeddedChecks = import "${inputs.embedded-workbench}/checks.nix" {
+        inherit pkgs;
+        profile = embeddedProfile;
+        rules = embeddedHost.environment.etc."udev/rules.d".source;
+      };
     in
     {
       lib.composition = tests;
+      lib.embedded = embeddedTests;
       checks.${system} = {
         composition =
           assert tests.passed;
@@ -49,6 +67,12 @@
         shell-home =
           (evaluate { choices = [ "alice@probe-a" ]; })
           .probe-a.config.home-manager.users.alice.home.activationPackage;
+        embedded-composition =
+          assert embeddedTests.passed;
+          pkgs.writeText "den-embedded-results.json" (builtins.toJSON embeddedTests.results);
+        embedded-home = embeddedHost.home-manager.users.alice.home.activationPackage;
+        embedded-udev = embeddedChecks.udev;
+        embedded-tools = embeddedChecks.tools;
       };
     };
 }

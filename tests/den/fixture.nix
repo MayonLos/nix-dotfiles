@@ -1,6 +1,16 @@
-{ choices, conflictingSupport }:
-{ den, lib, ... }:
 {
+  choices,
+  conflictingSupport,
+  embeddedChoices,
+}:
+{
+  den,
+  lib,
+  inputs,
+  ...
+}:
+{
+  imports = [ "${inputs.embedded-workbench}/default.nix" ];
   den.hosts.x86_64-linux = {
     probe-a.users = {
       alice = { };
@@ -23,6 +33,7 @@
         fsType = "tmpfs";
       };
       home-manager.useGlobalPkgs = true;
+      nixpkgs.config.allowUnfree = true;
     };
     homeManager.home.stateVersion = "26.05";
   };
@@ -61,8 +72,10 @@
   }
   // lib.genAttrs [ "alice@probe-a" "bob@probe-a" "alice@probe-b" "bob@probe-b" ] (binding: {
     user.isNormalUser = true;
-    includes = lib.optionals (lib.elem binding choices) (
-      [ den.aspects.command-line ] ++ lib.optional conflictingSupport den.aspects.conflicting-support
-    );
+    includes =
+      lib.optionals (lib.elem binding choices) (
+        [ den.aspects.command-line ] ++ lib.optional conflictingSupport den.aspects.conflicting-support
+      )
+      ++ lib.optional (lib.elem binding embeddedChoices) den.aspects.embedded-workbench;
   });
 }

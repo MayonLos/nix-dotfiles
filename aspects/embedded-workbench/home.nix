@@ -1,8 +1,7 @@
 { pkgs, lib, ... }:
 
 {
-  # STM32 / Cortex-M development. Per the dev-toolchain skill's split, this is a
-  # per-language module: it carries the things that *build and run* firmware.
+  # STM32 / Cortex-M tools that build, flash and debug firmware.
   # The editor side (clangd, clang-format) is already in toolchain.nix and works
   # on firmware sources unchanged, because clangd reads a compile_commands.json
   # rather than a toolchain.
