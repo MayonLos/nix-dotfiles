@@ -1,4 +1,5 @@
-{ pkgs, ... }:
+{ palette }:
+{ lib, pkgs, ... }:
 
 let
   anime4k-assets = pkgs.fetchzip {
@@ -26,7 +27,9 @@ in
 
       vo = "gpu-next";
       gpu-api = "vulkan";
-      hwdec = "nvdec-copy";
+      # Hardware-specific decoding belongs to the host binding. Keep a safe,
+      # portable default when this media aspect is used elsewhere.
+      hwdec = lib.mkDefault "auto-safe";
       video-sync = "display-resample";
       interpolation = "yes";
       tscale = "oversample";
@@ -36,7 +39,7 @@ in
       # family means every CJK glyph is a fontconfig fallback, so the line
       # renders in two typefaces with two different vertical metrics.
       # Noto Sans CJK SC covers both scripts in one family.
-      sub-font = "Noto Sans CJK SC";
+      sub-font = if palette == null then "Noto Sans CJK SC" else palette.fonts.sans;
       sub-font-size = 45;
       sub-auto = "fuzzy";
       slang = "chs,sc,zh,chi,zho";

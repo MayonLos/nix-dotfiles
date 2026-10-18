@@ -6,7 +6,7 @@
 }:
 
 let
-  java = import ../../../../lib/java.nix { inherit pkgs pkgs-unstable; };
+  java = import ../../lib/java.nix { inherit pkgs pkgs-unstable; };
   prismlauncher = pkgs.prismlauncher.override {
     additionalPrograms = [
       pkgs.ffmpeg

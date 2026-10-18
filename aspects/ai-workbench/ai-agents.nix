@@ -39,7 +39,7 @@ let
     '';
   });
 
-  dshDesktop = pkgs.callPackage ../../../../pkgs/dsh-desktop.nix { dsh = dshCli; };
+  dshDesktop = pkgs.callPackage ./dsh-desktop.nix { dsh = dshCli; };
 
   # llm-agents.nix ships OpenCode v2's binary as `opencode2` (upstream's real
   # name is `opencode`; the suffix avoids colliding with the v1 package). The

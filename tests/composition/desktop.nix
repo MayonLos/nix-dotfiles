@@ -134,6 +134,9 @@ let
       && builtins.elem "pipewire.socket" selectedHome.systemd.user.targets.mango-session.Unit.Wants
       && !(unselectedHome.systemd.user.targets ? mango-session);
 
+    browserIntegrationRequiresBrowserSelection =
+      !(selectedHome.programs.noctalia.settings.theme.templates.user ? noctalia-firefox);
+
     selectedUserGetsDesktopAndInputAuthorization =
       selectedHost.programs.mango.enable
       && selectedHost.services.pipewire.enable

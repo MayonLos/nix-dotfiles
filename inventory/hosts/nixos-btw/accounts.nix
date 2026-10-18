@@ -6,8 +6,6 @@
       extraGroups = [
         "wheel"
         "networkmanager"
-        "gamemode"
-        "dialout"
       ];
       packages = [ pkgs.tree ];
     };

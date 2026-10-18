@@ -1,4 +1,7 @@
-{ palette }:
+{
+  palette,
+  noctaliaIntegrations ? [ ],
+}:
 {
   config,
   lib,
@@ -215,13 +218,15 @@ in
           templates = {
             enable_builtin_templates = true;
             enable_community_templates = true;
-            user.noctalia-firefox = {
-              input_path = "${../../modules/home/programs/apps/_firefox/noctalia-userChrome.css}";
-              output_path = "$XDG_CACHE_HOME/noctalia/firefox/userChrome.css";
-              post_hook = "${pkgs.writeShellScript "noctalia-firefox-theme-apply" ''
-                exec ${pkgs.python3}/bin/python3 ${../../modules/home/programs/apps/_firefox}/apply-noctalia-userChrome.py "''${XDG_CACHE_HOME:-$HOME/.cache}/noctalia/firefox/userChrome.css"
-              ''}";
-              hook_async = false;
+            user = lib.optionalAttrs (builtins.elem "firefox" noctaliaIntegrations) {
+              noctalia-firefox = {
+                input_path = "${../firefox/resources/noctalia-userChrome.css}";
+                output_path = "$XDG_CACHE_HOME/noctalia/firefox/userChrome.css";
+                post_hook = "${pkgs.writeShellScript "noctalia-firefox-theme-apply" ''
+                  exec ${pkgs.python3}/bin/python3 ${../firefox/resources}/apply-noctalia-userChrome.py "''${XDG_CACHE_HOME:-$HOME/.cache}/noctalia/firefox/userChrome.css"
+                ''}";
+                hook_async = false;
+              };
             };
             builtin_ids = [
               "btop"

@@ -1,5 +1,8 @@
 { inputs, config, ... }: {
   perSystem = { pkgs, ... }: {
+    checks.local-services-composition = import ../tests/composition/local-services.nix {
+      inherit inputs pkgs;
+    };
     checks.desktop-composition = import ../tests/composition/desktop.nix { inherit inputs pkgs; };
     checks.interactive-session-config = import ../aspects/interactive-session/checks.nix {
       inherit pkgs;

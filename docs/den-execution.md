@@ -54,6 +54,14 @@ Noctalia、Fcitx5、clipboard bridge、xrdb 定向绑定 Mango session；Noctali
 
 独立复核发现并修复面板顺序、F1 的 XDG 路径和 shell quoting、Fcitx5 默认菜单/翻页图像漏项。GUI 缩放/动画/对比、插件交互、真实 IME/剪贴板/截图、冷登录及退出顺序、GTK/Qt/Firefox apply/undo、greeter 和低电量休眠均留待应用后验证。
 
+## 批次 6：其余完整功能
+
+日用通信、Firefox、文档、媒体、Thunar、AI、游戏、嵌入式、本地容器和虚拟机均已从旧模块迁入完整 aspects；`modules/` 不再导入。原软件选择和扩展/插件/脚本保留；LibreOffice/词典与 virt-manager 从全局包移动至选中用户。Firefox fallback、图片查看器及字幕字体消费同一 appearance。NVIDIA 的 mpv 解码和 GameMode 调优明确留在真实绑定/host，通用 feature 不假定 NVIDIA。
+
+Docker 客户端可独立安装。local-containers 只为选择者声明 Docker daemon/prune user units，复用锁定 NixOS 的 daemon 命令、PATH、限制和环境；宿主的全局 default.target wants 关闭，DOCKER_HOST 只给该绑定的 shell/environment.d，保留每周 prune -f（无 --volumes）和既有 user manager 生命周期，不新增 linger。libvirt 服务去除开机 wants，保留 Unix sockets；客户端可独立选择，local VM 绑定保留 qemu:///system 连接偏好与 libvirtd/kvm 授权，guest helper 仍关闭，未修改任何 domain/镜像/TPM 状态。串口 dialout、游戏 gamemode 同样随功能绑定。
+
+独立复核的软件清单比较无漏包；发现并补回 Lenovo CLI、实际主机 nvdec-copy、virt-manager 连接默认值。最终 flake 求值、完整 host、命令行/桌面 parser 检查以及本地服务的两主机两账号组合构建通过；独立复核无剩余阻塞。Firefox 的模板只在该功能选择时贡献，独立 MIME 功能各自启用同一个 HM renderer。没有启动容器/虚拟机或运行 prune；USB 探针、VM/游戏、GUI/AI认证/网络、实际环境继承与数据保持仍需应用后验收。
+
 ## 应用后验收
 
 未执行系统应用。文件归属交接、旧持久用户 unit 停用、重登录环境、GUI/设备、休眠与游戏验证仍按专项设计执行，不能由构建结果替代。

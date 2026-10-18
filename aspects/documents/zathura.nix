@@ -1,3 +1,4 @@
+{ palette }:
 {
   pkgs,
   lib,
@@ -6,7 +7,7 @@
 }:
 
 let
-  seedFile = import ../../../../lib/seed-file.nix { inherit lib pkgs; };
+  seedFile = import ../../lib/seed-file.nix { inherit lib pkgs; };
 in
 
 {
@@ -44,7 +45,7 @@ in
 
       # Keep the page counter, without a permanent scrollbar or long path.
       guioptions = "s";
-      font = "Noto Sans CJK SC 11";
+      font = "${if palette == null then "Noto Sans CJK SC" else palette.fonts.sans} 11";
       page-v-padding = 12;
       page-h-padding = 12;
       statusbar-h-padding = 12;

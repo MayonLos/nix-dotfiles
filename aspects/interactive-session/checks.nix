@@ -55,6 +55,7 @@ pkgs.runCommand "interactive-session-config" { nativeBuildInputs = [ python ]; }
   assert settings["theme"]["custom_palette"] == "One-Dark-Darker"
   assert "kitty" not in settings["theme"]["templates"]["builtin_ids"]
   assert "mango" not in settings["theme"]["templates"]["builtin_ids"]
+  assert "noctalia-firefox" in settings["theme"]["templates"]["user"]
   assert "noctalia-mango" not in settings["theme"]["templates"]["user"]
   assert settings["shell"]["launch_apps_as_systemd_services"]
   for name, unit in m["units"].items():

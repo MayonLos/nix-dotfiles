@@ -4,6 +4,7 @@ _: {
       ./maintenance/nix.nix
       ./maintenance/locale.nix
       ./maintenance/tools.nix
+      ./maintenance/nh.nix
     ];
     legion-laptop.nixos.imports = [
       ./legion-laptop/boot.nix

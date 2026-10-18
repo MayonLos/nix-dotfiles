@@ -1,4 +1,5 @@
-{ lib, ... }:
+{ palette }:
+{ lib, pkgs, ... }:
 let
   # Formats decoded by the locked swayimg 4.7 build. Keep explicit MIME types:
   # image/* is not a wildcard in mimeapps.list.
@@ -29,22 +30,13 @@ let
   ];
 in
 {
+  home.packages = [
+    pkgs.swayimg
+    pkgs.libheif
+  ];
   xdg.mimeApps = {
     enable = true;
-    # Keep Zathura as the default while offering Okular for richer GUI
-    # annotation and document navigation when explicitly requested.
-    associations.added = {
-      "application/pdf" = [ "org.kde.okular.desktop" ];
-    };
-    defaultApplications = (lib.genAttrs imageTypes (_: [ "swayimg.desktop" ])) // {
-      "application/pdf" = [ "org.pwmt.zathura-pdf-mupdf.desktop" ];
-      "video/mp4" = [ "mpv.desktop" ];
-      "video/x-matroska" = [ "mpv.desktop" ];
-      "video/webm" = [ "mpv.desktop" ];
-      "video/quicktime" = [ "mpv.desktop" ];
-      "x-scheme-handler/about" = [ "firefox.desktop" ];
-      "x-scheme-handler/unknown" = [ "firefox.desktop" ];
-    };
+    defaultApplications = lib.genAttrs imageTypes (_: [ "swayimg.desktop" ]);
   };
 
   # The packaged entry has NoDisplay=true. Override the same desktop ID so
@@ -72,7 +64,7 @@ in
       overlay = "no";
     };
     viewer = {
-      window = "#1f2329ff";
+      window = "${palette.bg}ff";
       transparency = "grid";
       scale = "optimal";
     };
@@ -80,10 +72,10 @@ in
       size = 180;
       padding = 8;
       aspect = "fit";
-      window = "#1f2329ff";
-      background = "#282c34ff";
-      select = "#323844ff";
-      border_color = "#4fa6edff";
+      window = "${palette.bg}ff";
+      background = "${palette.surface}ff";
+      select = "${palette.selection}ff";
+      border_color = "${palette.blue}ff";
       border_width = 3;
     };
     list = {
@@ -92,8 +84,8 @@ in
       recursive = "no";
     };
     font = {
-      color = "#a0a8b7ff";
-      background = "#181b20d0";
+      color = "${palette.fg}ff";
+      background = "${palette.deep}d0";
     };
     "info.viewer" = {
       top_left = "name";

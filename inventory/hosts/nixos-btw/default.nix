@@ -5,7 +5,6 @@
   ...
 }:
 let
-  inherit (import ../../../lib) importDir;
   facts = import ./facts.nix;
 in
 {
@@ -17,6 +16,16 @@ in
     ../../../aspects/appearance
     ../../../aspects/languages
     ../../../aspects/editing
+    ../../../aspects/gaming
+    ../../../aspects/ai-workbench
+    ../../../aspects/firefox
+    ../../../aspects/communication
+    ../../../aspects/documents
+    ../../../aspects/file-manager
+    ../../../aspects/media
+    ../../../aspects/local-containers
+    ../../../aspects/local-virtual-machines
+    ../../../aspects/embedded-workbench
     ../../../aspects/interactive-session
     ../../users/mayon.nix
   ];
@@ -71,17 +80,14 @@ in
       imports = [
         ./discovered.nix
         ./credentials.nix
-        ../../../modules/system/desktop/gamemode.nix
-        ../../../modules/system/hardware/debug-probes.nix
-        ../../../modules/system/programs/gamescope.nix
-        ../../../modules/system/programs/libreoffice.nix
-        ../../../modules/system/programs/nh.nix
-        ../../../modules/system/programs/steam.nix
-        ../../../modules/system/programs/thunar.nix
-        ../../../modules/system/services/docker.nix
-        ../../../modules/system/virtualisation/libvirt.nix
         inputs.sops-nix.nixosModules.sops
       ];
+      programs.gamemode.settings.gpu = {
+        apply_gpu_optimisations = "accept-responsibility";
+        gpu_device = facts.gpu.gameModeDevice;
+        nv_powermizer_mode = 1;
+      };
+      programs.nh.flake = "/home/mayon/nix-dotfiles";
       home-manager = {
         useGlobalPkgs = true;
         useUserPackages = true;
@@ -95,7 +101,22 @@ in
     };
   };
   den.aspects."mayon@nixos-btw" = {
+    homeManager = { pkgs, ... }: {
+      programs.mpv.config.hwdec = "nvdec-copy";
+      home.packages = [ pkgs.lenovo-legion ];
+    };
     includes = with den.aspects; [
+      embedded-workbench
+      gaming
+      ai-workbench
+      firefox
+      communication
+      documents
+      file-manager
+      media
+      local-containers
+      local-virtual-machines
+      virtual-machine-client
       command-line
       terminal
       interactive-session
@@ -117,6 +138,5 @@ in
       web-support
       yaml-support
     ];
-    homeManager.imports = importDir ../../../modules/home;
   };
 }

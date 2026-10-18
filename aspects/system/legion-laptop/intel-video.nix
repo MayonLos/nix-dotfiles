@@ -12,6 +12,8 @@
   # The impact was system-wide: hardware decoding in browsers and mpv all fell
   # back to the CPU. With this in place vainfo lists H264 / HEVC / AV1 decode and
   # encode entrypoints.
+  boot.extraModprobeConfig = "options kvm_intel nested=1";
+
   hardware.graphics.extraPackages = with pkgs; [
     intel-media-driver # iHD, Gen8 and newer
     vpl-gpu-rt # oneVPL runtime, drives codecs on Gen12 and newer

@@ -2,6 +2,7 @@
 {
   system = "x86_64-linux";
   gpu = {
+    gameModeDevice = 0; # Preserve the existing NVIDIA tuning index.
     intelBusId = "PCI:0:2:0";
     nvidiaBusId = "PCI:1:0:0";
   };
