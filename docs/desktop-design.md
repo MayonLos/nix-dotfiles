@@ -169,30 +169,34 @@ Greeter 由主机显式生成 `appearance.scheme = "Synced"`、`theme_mode = "da
 
 鼠标保持 Bibata-Modern-Ice 24，应用图标保持 Papirus-Dark；中文 UI 使用 Noto Sans CJK SC，等宽内容使用 JetBrainsMono Nerd Font。不把 Nerd Font 作为全部桌面文字字体。GTK/Qt 的字体设置需各自适配，不能以设置 Noctalia `font_family` 代替。浏览器与代码编辑区保持足够内容密度，应用自己的标题栏高度不强行伪装为同一个 36 像素条。
 
-## Neovim：由实机画面调整信息层次
+## Neovim：OneDark 工作台重设计
 
-2026-10-18 的 Java 与文件树截图显示：长代码续行顶到左边、目录树长路径和文件名折成多行，
-以及常规 JDTLS 进度通知覆盖正文。本轮保留现有原生 Lua 组件与文件保护链路，按这些可见问题调整，
-不把截图当作性能测量。代码背景仍为 `#1f2329`；树侧栏和粘性上下文用 `deep`，选中行用
-`selection`，活动标签用 `surface` / `brightFg`。普通缩进线降低到 `selection`，当前作用域线用
-`border`，正文和注释的语义色保留。
+用户随后否定自写组件的实机表现，要求按旧 Nixvim 的效果重新设计，并明确继续采用当前
+One Dark Darker；TokyoNight 只作历史画面参考。实际 Astra 负责本轮设计，不以历史截图
+推导性能结论。具体实施和构建/应用证据见[重建记录](neovim-rebuild-execution.md)。
 
-目录树一项一行、不软折行，根标题只显示目录名；文件名本体保留完整文本，可横向滚动或按 `K`
-查看完整路径。文件图标复用已有 devicons，目录/隐藏项分色；窄屏不为了顶部侧栏对齐牺牲文档标签。
-当前文档标签有 `▎` 标记，聚焦树时仍保留该标签，点击标签会使用正文窗口，避免覆盖树或终端工具。
-原有重复文件名消歧、标签溢出滚动、未保存关闭确认继续保留。
+- 主题由锁定的 `onedark.nvim` darker 完整实现负责，共享 `#1f2329`、palette 和终端 ANSI
+  保留。薄适配管理表面关系，不再手写整套语法高亮。正文不透明，Context 融入正文；
+  通知和搜索正文使用实底，避免文字叠读。浮窗、输入框和补全保留圆角与清楚边界。
+- Snacks explorer 左侧默认 38 列，一项一行；文档保持自动折行和按词断行，保留续行缩进，
+  不再用全局 nowrap 裁掉 Markdown 段落。代码 Context 最多三行、不另占分隔线，
+  Markdown/AI 文档不重复固定标题。
+- Heirline 使用深底状态栏、小面积模式强调与右侧位置胶囊，按可用宽度组合 Git、文件、诊断、LSP、AI 和位置；Navic 最多三级。
+  顶部项目区随 Explorer 实际宽度对齐正文，当前、可见、后台文件有三级区分。
+  未修改的空白占位从标签展示过滤，未保存内容继续可见；标签点击选择正文窗口，保留侧栏。
+- Markdown/CodeCompanion 恢复原插件的标题、代码、表格等渲染；插入模式仍渲染，Visual
+  使用源字符以准确选择。公式使用 Snacks 图像与专门触发器，PDF 外开保留单一 owner。
+- Snacks 通知采用 compact、2500 ms、从底部出现；普通 LSP 进度只更新状态栏，不刷 toast。
+  状态栏只显示当前缓冲的紧凑进度，不放滚动的扫描计数。滚动短动效尊重 `reducedMotion`，
+  dim 同步关闭范围动画，缩进线为静态作用域提示。
+- Blink 菜单按图标、名称/描述、来源分列，最多九项，省去重复类型名称；文档窗上限 60×18。
+  Lua 补全接入 lazydev，LuaLS 只按需补充依赖库，不再预加载全部 runtimepath；项目自有
+  `.luarc.json` / `.luarc.jsonc` 时退出库注入，保持原生根目录探测。
 
-底部状态栏保留模式、文件、诊断、Git、AI 请求与位置；文件类型和异常编码/换行格式只在宽度允许时
-出现。目录树聚焦时显示项目路径与帮助入口；LSP 常规进度使用短摘要并在完成后移除。符号面包屑
-保留最近两级，单项限长，减少与粘性上下文重复的长文本。代码默认不软折行，手动开启后使用词边界、
-续行缩进与 `↪` 标记；`smoothscroll` 是 Neovim 的屏幕行滚动语义，不是额外动画。
-原有 120 ms 视口插值消费 `palette.reducedMotion`，启用减少动效时直接保留原生滚动目标，不启动插值计时器。
-
-参考 [LazyVim 的状态栏分区与侧栏偏移](https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/plugins/ui.lua)、
-[mini.files 的文件图标与局部帮助](https://github.com/nvim-mini/mini.files/blob/main/doc/mini-files.txt) 和
-[Neovim 原生窗口选项](https://neovim.io/doc/user/options/)。借鉴呈现方式，不引入整套发行版或新的文件操作后端。
-隔离检查覆盖状态栏、标签宽度、原生文件保护、目录树与标签交互、减少动效滚动目标；
-Java 项目通知、实际 Nerd Font 字形、tmux 内宽度、粘性上下文和长文件名仍需新会话实机验收。
+文件树和成熟插件仍需数据保护适配：重命名保留未保存正文、拒绝覆盖目标，删除须有垃圾桶
+工具且不能丢掉未保存缓冲。会话、草稿、撤销和 AI 历史不随配置重做而迁移或清空。
+真实文件树操作、窄窗口/CJK 标签、Markdown 长段落、补全和 Java LSP 仍按记录区分隔离
+检查与真实终端验收；不把插件配置或无报错启动当作视觉已完成。
 
 ## 单一写入者与现场交接
 

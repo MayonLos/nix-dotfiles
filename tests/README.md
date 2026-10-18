@@ -22,9 +22,26 @@
 `embedded-home`、`embedded-udev`、`embedded-tools` 和 `treefmt`。这些检查验证当前锁定输入
 下的生成配置、解析器、工具产物或隔离工作负载；名称以 `nix/checks.nix` 实际接线为准。
 
+`checks.neovim` 使用固定插件和临时 XDG 目录运行配置内的 headless Lua 检查：
+
+| 脚本 | 检查范围 |
+|---|---|
+| `startup.lua` | 完整生产配置能启动；One Dark Darker 背景、常用命令、插件和 parser 可用；入口幂等；Snacks picker SQLite 可读写。 |
+| `completion.lua` | Blink 从仓库片段目录发现真实 C++ 片段，提供补全并可展开、跳转原生 snippet 占位符。 |
+| `integration.lua` | 真实 Conform/StyLua 接收生成的语言 formatter 配置并格式化隔离临时文件。 |
+| `workflow.lua` | 长 Markdown 的折行、宽度变化时状态栏/标签栏不溢出、侧栏和未保存内容保护、临时草稿保存及 palette 背景。 |
+| `fileops.lua` | 隔离临时目录中的重命名、buffer 更新、外部修改保护、保存钩子失败时阻止退出、目录移动，以及真实 Explorer 调用链中未保存子文件保护和回收站工具缺失场景。该脚本覆盖配置内防护逻辑，不代替用户文件上的交互验收。 |
+| `lsp.lua` | 以 `nvim --clean` 启动并显式装载 LSP 配置；检查服务器设置、生成参数、诊断和并行进度处理，并运行真实 CSSLS 的临时文档诊断。 |
+| `lua_workspace.lua` | 真实 LuaLS 附着临时项目、保留根探测、仅按 require 补充库，检查祖先 JSON/JSONC 配置与全局 opt-out 不被 lazydev 接管。 |
+
+同一 derivation 还检查 reduced-motion 包分支关闭 Snacks 滚动与 Dim 动画，并检查开发 wrapper 的工作树配置覆盖和普通 wrapper 对无效覆盖路径的处理。这些是隔离 headless 检查，不代表 GUI 帧率、桌面字体观感、终端图像预览或真实项目 LSP 已验收。脚本和包接线分别见
+[`config/tests/`](../aspects/editing/neovim/config/tests/) 与 [`nix/neovim.nix`](../nix/neovim.nix)。
+
 `project-workbench` 使用临时目录和 spy 命令检查 cwd、argv、缺目录拒绝与 direnv 拒绝；
 `protocols-composition` 另检查项目选择/撤销不跨用户或主机。它们不启动真实项目，不在开机
-或后台运行。Neovim `layout.lua` 验证树窗口隔离、标签点击目标及减少动画滚动。
+或后台运行。Neovim 旧版 `layout.lua` 专属检查已随界面重做移除；其职责现在由
+`workflow.lua` 中的真实插件组合布局检查和 reduced-motion 包分支检查承接，其他 UI 组件
+不再按旧手写 widget 的内部语义单独断言。
 
 `rime-technical-runtime` 用真实 librime 编译生成的 Rime 配置，在临时用户目录验证普通中文、
 专业词、错拼和英文候选可达，以及现有学习库名称仍为 `rime_ice`。它不打开个人词库，不验证

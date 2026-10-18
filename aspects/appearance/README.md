@@ -12,7 +12,7 @@ host/user scope 单独提供数据，不隐式跨用户或跨主机传播。功�
 `noctaliaIntegrations` quirk 由 registry 声明，各应用仅在被选择时贡献集成标记；Noctalia 据此
 渲染相应集成，不会另有功能写同一配置文件。Kitty 与 Mango 模板始终不由 Noctalia 接管。
 
-Neovim 保留完整 Lua 高亮实现，只从生成的 `mayon.generated` 数据读取 palette 与 ANSI；语言
+Neovim 使用锁定 OneDark 完整主题和薄 Lua 适配，从 `mayon.generated` 读取 palette 与 ANSI；语言
 aspect 向生成数据贡献 LSP、formatter 和 linter。唯一的数据协议由各 renderer 消费，不再维护
 仅供示例的 adapters。Kitty 使用 HM renderer 生成完整配置，Noctalia 不拥有 Kitty 模板。
 

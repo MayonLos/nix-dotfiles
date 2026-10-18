@@ -95,8 +95,8 @@
 | Neovim | 已迁移到原生 Lua + Nix 包 | `aspects/editing/neovim/config/` 承载配置，`aspects/editing/neovim/` 固定插件/parser 和 wrapper；保留插件由 Nix 提供，不使用在线插件管理器。专项包检查已通过；见[迁移计划](neovim-migration-plan.md)了解尚待核验项目。没有性能比较结论。 |
 | colorizer | 已改原生 | 移除外部插件，使用内建 LSP documentColor 和 `<leader>uc` 当前 buffer 开关；不再独立扫描无相关 LSP 的文件/Tailwind 类名，没有新写 CSS 解析器。 |
 | vim-matchup | 已改原生 | 移除外部插件，使用内建 matchit/matchparen；不保留 matchup 离屏 popup、专有 surround/transmute，独立 nvim-surround 保留。 |
-| Heirline | 已由原生 statusline/tabline 替代 | 保留状态栏、tabline、同名路径消歧、点击关闭和 LSP/Git/AI 状态；旧 Nixvim 实现只作为历史记录。 |
-| Kitty | 保留 | 图形协议、Yazi/自有 Neovim 图片预览和主题已有接线；服务器终端可用 `kitten ssh` 处理 terminfo，不需换整个终端。 |
+| Heirline | 已恢复固定插件 | 按旧 Nixvim 效果参考重建状态栏、标签和宽度收缩，保留同名消歧、未保存保护和 LSP/Git/AI 状态，主题保持 OneDark。 |
+| Kitty | 保留 | 图形协议、Yazi/Snacks Neovim 图片预览和主题已有接线；服务器终端可用 `kitten ssh` 处理 terminfo，不需换整个终端。 |
 | tmux | 保留 | 会话持久化和远程复用。passthrough 用于图像；后续按实际终端能力核对宽泛 overrides，而非直接关闭造成预览退化。 |
 | tmuxp | 保留 | Noctalia tmux provider 的依赖，不是额外启动的常驻会话管理服务。 |
 | Git | 保留 | 基础版本控制和 diff3 冲突上下文；现有编辑器/IDE 已有差异工具，不再默认添加另一个 diff GUI。 |
@@ -147,10 +147,10 @@
 | Node.js | 保留现有脚本/开发入口；编辑器服务自己的依赖不能仅看 shell 的 node 来判断重复。项目仍可固定其他版本。 |
 | JDK 8/17/21/25/26 | 已确认全部保留，Prism 与开发共用，默认 25。IDE 自带启动运行时和项目目标 JDK 不等价；不凭 IDEA 自带 JBR 就删这些版本。 |
 | TeX Live Full | 用户编译完整文档，保留。项目固定小集合更可控但会持续补包，当前不接受以公式预览用途代替实际文档需求。 |
-| Ghostscript | 保留，普通 PDF/文档转换仍有用途；自动公式预览已移除，不再以该 helper 为保留理由。 |
+| Ghostscript | 保留，普通 PDF/文档转换仍有用途；公式预览已通过 Snacks 恢复，渲染与错误提示仍需分别验收。 |
 | 编辑器 LSP | 保留按现有语言使用的 bash、clangd、CMake、Docker、Java、Lua、Markdown、MATLAB、Nix、Python、TeX、TS/HTML/CSS/JSON/YAML 服务；迁移时验证启动及项目根识别。 |
 | 格式化与检查 | 保留 clang-format、google-java-format、nixfmt、shfmt、stylua、luacheck、ruff、shellcheck；它们与完整 IDE 并非所有调用方都相同。暂不为统一品牌换一整套。 |
-| trash-cli | 保留，自有 Neovim 文件树删除功能需要回收站命令；不是无消费者的杂项。 |
+| trash-cli | 保留，Neovim 文件树的安全适配需要回收站命令；不是无消费者的杂项。 |
 | MATLAB | 保留课程/工具箱/Simulink 工作流；Python 科学计算和 Octave 都不是保证等价的替代，且 Octave 已确认删除。 |
 | CUDA toolkit / cuDNN | 继续放 `.#cuda`，不迁入全局。重复 nvcc 声明已经精简，不把共享闭包去重说成额外释放空间。 |
 | ARM GCC / 交叉 GDB | 保留 STM32 编译调试；与主机 Clang/GDB 分工。 |
@@ -265,7 +265,7 @@
 
 1. 软件选型已结束，新增 Xarchiver、Okular。备份、密码库、Connector 及其他条件项以后有实际需求再纳入，不继续阻塞 Neovim 迁移。
 2. `pamixer`、重复 `cliphist` 和 `pavucontrol` 已按用户确认精简配置；验证状态单列在执行计划。不顺带删截图/OCR、剪贴板桥或用户历史。
-3. 先删无用，再原生替换；Neovim Lua + Nix 入口现已接入。Colorizer/matchup、Heirline/Navic 已改原生，自动公式预览和旧主题选择器已删；完整 LaTeX 保留。性能结论需独立测量。
+3. 先删无用，再原生替换；Neovim Lua + Nix 入口现已接入。先前 Heirline/Navic 原生替代已被用户后续重建要求覆盖；现恢复成熟界面插件与公式预览，OneDark 继续固定，主题选择器不恢复。完整 LaTeX 保留。当前状态见[重建记录](neovim-rebuild-execution.md)，性能结论需独立测量。
 4. 在 Den 重构中，把桌面、开发、游戏、备份和服务器能力组合起来；实际主机只启用需要的能力，不把笔记本应用全集给服务器。
 5. 每批实现后做模块求值、相关构建；涉及剪贴板、音频、截图、分享、游戏和编辑器交互时做运行验证。应用配置另作明确步骤。
 

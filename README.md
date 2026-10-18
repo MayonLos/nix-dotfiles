@@ -92,7 +92,8 @@ NVIM_CONFIG_DIR="$PWD/aspects/editing/neovim/config" nix run .#neovim-dev
 普通包忽略 `NVIM_CONFIG_DIR`。Home Manager init 与包入口共用这套配置；完整 statusline、buffer
 tabline、面包屑、LSP、completion、formatter、lint、会话等实现位于
 `aspects/editing/neovim/config/`。主题采用共享 palette 数据生成，不用少量示例高亮覆盖 Lua
-主题。Neovim 的功能和检查范围见[执行记录](docs/den-execution.md)。
+主题。界面按原 Nixvim 效果重新设计：固定 OneDark 完整主题、Heirline/Navic、Snacks 与
+Markdown 渲染，替换此前自写组件。功能与最新验证见[重建记录](docs/neovim-rebuild-execution.md)。
 
 ## 服务与运行状态
 

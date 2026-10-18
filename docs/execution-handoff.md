@@ -12,6 +12,10 @@
 最后一轮面板/场景与 Rime 收尾见[面板和输入法记录](panel-rime-execution.md)。用户已明确
 要求收尾并 push，覆盖此前“仅本地提交”的限制；后续任务仍须以当时授权为准。
 
+用户随后指出 Neovim 的实机回归，要求多代理破坏性重构并由实际 Astra 重新设计，旧 Nixvim
+仅作效果参考，OneDark 约束继续。该轮当前状态见[Neovim 重建记录](neovim-rebuild-execution.md)，
+此前自写 UI 的设计和验证不能代替新实现的证据。
+
 ## 阅读顺序与设计依据
 
 1. 仓库 [AGENTS.md](../AGENTS.md)：操作约束、验证与分工；新对话先读当时版本。

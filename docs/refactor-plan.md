@@ -2,6 +2,10 @@
 
 本文件保留已确认的软件取舍及各历史批次证据；不是当前代码入口说明。Den 整仓迁移已实现，当前结构见 [架构](architecture-design.md)，本轮重新执行的验证与回退点见 [实施记录](den-execution.md)。旧 Nixvim 名称、store 路径和早期样本结果只对应当时提交，不能代替当前源码或检查。
 
+Neovim 后续已按用户新要求再次重建：旧 Nixvim 只作效果参考，主题继续 OneDark，Snacks、
+Heirline/Navic、Markdown 等成熟组件重新接入。下文“20 插件”“手写主题”“原生替代”和
+对应测试文件均是先前阶段快照；当前设计与验收以[重建记录](neovim-rebuild-execution.md)为准。
+
 软件选型已结束：保留 VS Code、IDEA/PyCharm/CLion、原生 Lua Neovim、Mango/Noctalia、Kitty/tmux 及下文确定的全部软件。新增 Xarchiver/Okular，未选择的条件推荐不纳入本轮。完整功能已迁入 `aspects/`，inventory 只接真实笔记本，旧兼容入口与测试子 flake 已移除。没有 switch/test、部署服务器或删除用户数据；运行态仍可能来自旧 generation。
 
 ## Neovim Lua + Nix 入口迁移（2026-10-18）

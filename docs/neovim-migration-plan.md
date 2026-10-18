@@ -1,124 +1,47 @@
-# Neovim 原生 Lua + Nix 迁移计划
+# Neovim 重构设计与验收边界
 
-状态：**丰富 Lua 与固定 Nix 包已接入真实 Den 功能**。源码在 `aspects/editing/neovim/`，输出在 `nix/neovim.nix`，语言通过所选 feature 的有序贡献生成数据，完整高亮和编辑行为继续由原生 Lua 拥有。本轮包、HM、完整 host 与专项检查证据见 [实施记录](den-execution.md)，未应用系统；GUI/图像、MATLAB/AI 和所有项目覆盖仍待实机验证。以下保留先前替换插件时的范围与历史验证，不作性能结论。
+本文件记录当前重构方案。用户要求整体推翻有问题的原生配置，以旧 Nixvim 的界面和操作效果作为参考；旧 Nixvim 的配色不作为目标，One Dark Darker（主背景 `#1f2329`）仍是明确约束。主代理保留 Den 功能入口、native Lua 配置、固定 Nix wrapper 和语言参数贡献；桌面视觉由 Astra 设计。当前实现和验证进度以[本轮执行记录](neovim-rebuild-execution.md)及工作树为准。
 
-## 顺序和已确认范围
+## 当前结构
 
-按用户要求，先删除无用功能，再手工实现需要保留的功能，最后考虑新增、美化和结构整理。Nix 固定程序、插件、parser 和必要依赖；Lua 表达编辑行为。不预设移除插件必然提高性能。
+- [Neovim aspect](../aspects/editing/neovim/)通过 Den 接入真实主机。Home Manager 使用同一固定 Neovim 包；没有单独的 Home Manager switch。
+- [Lua 配置](../aspects/editing/neovim/config/)负责界面和编辑行为；[package.nix](../aspects/editing/neovim/package.nix)固定 wrapper、配置树和工具路径，[plugins.nix](../aspects/editing/neovim/plugins.nix)固定插件闭包，[nix/neovim.nix](../nix/neovim.nix)提供普通包、开发包和检查输出。
+- 语言服务、formatter 与 linter 仍通过 Den 语言贡献生成配置，不在本次界面重构中改写其主机选择和参数。
+- One Dark Darker 由固定的 `onedark.nvim` 提供完整语法和插件高亮，再由仓库配置叠加 palette 对齐与浮窗关系。主背景来自 palette 的 `#1f2329`。
 
-本批按上一轮插件表 P 编号删除：
+## 本轮重做内容
 
-| 编号 | 删除项 | 结果 |
-|---|---|---|
-| P02 | blink-cmp-latex | 删除独立 LaTeX 命令补全源；服务端提供的补全仍由 Blink 展示。 |
-| P03 | friendly-snippets | 删除通用片段集合；自定义 C++ `cpt` / `forr` / `vt`、原生片段展开/跳转保留。 |
-| P12 | mini.nvim | 删除对齐和代码拆合扩展，撤掉其 `ga/gA/gS` 映射。 |
-| P15 | clangd_extensions.nvim | 删除 AST、类型层次、符号信息 UI；保留 clangd 服务和原生 `<leader>lh` 源/头切换请求。 |
-| P20 | Neogen | 删除注释模板生成及其映射。 |
-| P29 | MCPHub | 删除编辑器面板、CodeCompanion MCPHub 扩展、专用 binary/input 和第二份 nixpkgs 接线；各独立 AI CLI 的 MCP 配置不受影响。 |
-| P30 | TokyoNight | 当时删除外部主题后暂用内置 `habamax`；目前已由仓库内手写 One Dark Darker 取代，主背景 `#1f2329`。 |
-| P31 | lz.n | 删除运行时加载器与所有触发声明，保留的插件直接加载，原 keys 映射迁到普通 keymaps。 |
+本轮恢复完整界面插件组合：Snacks、Heirline、Navic、One Dark Darker、render-markdown 和 Trouble。Snacks 负责 picker、explorer、通知、输入/选择、buffer 操作、窗口工具和图片组件；Heirline 与 Navic 提供状态栏、标签栏及 LSP 符号路径；Trouble 提供诊断、符号、LSP 位置和 quickfix 面板；render-markdown 提供 Markdown 呈现。配置仍由 Nix 固定依赖、Lua 配置插件行为。
 
-Snacks 整个依赖移除，参考锁定源码，用 [自有 Lua](../aspects/editing/neovim/config/lua/mayon/) 与 Nix 固定的插件和运行时接线保留需要的功能。不引入新的替代插件或自制加载器，也不清理旧 Scratch、主题偏好、会话或其他用户数据。
+新增 `lazydev.nvim` 只管理 Lua 按需库和模块补全；不加载运行时插件管理器，不覆盖原生 LuaLS 根探测。项目及祖先目录已有 `.luarc.json` / `.luarc.jsonc` 时不注入库。
 
-此前已删除 render-markdown、浏览器 Markdown 预览、Harpoon、Todo Comments、自动数学预览 helper、旧主题选择器和无调用方的 editor Mermaid CLI；不恢复这些功能。Undotree、Persistence、LuaSnip、ts-comments、Trouble、Fidget、Dial、Colorizer、vim-matchup 的外部插件已由先前的原生实现替代；旧同名适配文件已退出，不是当前插件声明。
+先前手写的 `ui.lua`、`editor.lua`、`files.lua`、`image.lua` 及对应旧 UI widget 检查已删除。小而明确的个人行为放在 feature 模块中：
 
-## 第三批：只替换 Heirline 与 Navic
+- `features/scratch.lua` 使用 `stdpath("data")/mayon-scratch` 存新草稿；原 Snacks `scratch` 目录及旧草稿保持原样，不迁移、不覆盖、不清理。
+- `features/math_preview.lua` 将数学预览触发、浮窗和 LaTeX 错误反馈接回 Snacks 图片和转换组件。保持一个渲染入口，避免自动图像布局与公式预览同时认领内容。
+- `features/fileops.lua` 为 Snacks rename/trash 操作提供文件安全保护，涵盖目标冲突、已打开 buffer、未保存内容和缺少回收站命令等场景。隔离检查覆盖真实插件调用链；用户完整项目操作仍由最终验收确认。
 
-用户确认本批仅替换这两项，其余保留，避免扩大手工维护范围。实现位于 [statusline.lua](../aspects/editing/neovim/config/lua/mayon/statusline.lua)、[tabline.lua](../aspects/editing/neovim/config/lua/mayon/tabline.lua)、[breadcrumbs.lua](../aspects/editing/neovim/config/lua/mayon/breadcrumbs.lua)，由 Lua 插件入口直接加载。
+Screenshots 曾显示长 Markdown 行被截断，并指出空 `[No Name]` 标签影响界面。本轮将围绕旧 Nixvim 的实际视觉与操作结果重新检查这些路径，不以“模块存在”或 headless 启动成功代替 GUI 验收。
 
-- 状态栏继续显示模式、文件/图标/标记、Git、诊断、LSP、宏/搜索、CodeCompanion 请求和 chat metadata，并按可用宽度减少可选信息。
-- 标签栏保留同名路径区分、中文/百分号、未保存/只读标记、可见 buffer、左键切换、中键或关闭按钮安全关闭、溢出入口和原生 tab-page 切换/关闭。
-- 面包屑从 documentSymbol 缓存查询当前符号路径；支持树状/平列表、LSP 编码换算、旧请求取消和过期响应保护。渲染不发送 LSP 请求，不用循环轮询。
-- 语法 parser/query、UFO、Which-key、图标插件、格式化、Git、补全和 AI 插件保持当前选型；不新增替代插件。
+## 被最新要求覆盖的历史选择
 
-## 手工实现的边界
+先前迁移计划曾决定完整移除 Snacks、用自写 Lua 替代 UI，并删除或不恢复 Heirline、Navic、render-markdown、Trouble、math preview 等行为；还曾暂用 `habamax`，以及把界面重构限制为仅替换状态栏和面包屑。用户最新明确要求整体推翻这些结果，并按旧 Nixvim 的效果重新配置。因此这些内容只说明决策历史，不再约束当前实现。当前主题仍固定为 One Dark Darker，截图参考仅用于判断布局、密度、信息层级和操作流。
 
-| 模块 | 保留的入口和行为 | 与 Snacks 的区别 |
-|---|---|---|
-| [ui.lua](../aspects/editing/neovim/config/lua/mayon/ui.lua) | `vim.ui.input/select` 圆角浮窗、默认输入、取消回调、格式化选项；`vim.notify` 分级通知、超时、替换、历史 | 选择器使用普通列表，不包含 Snacks 通用 picker 的模糊搜索/SQLite 排序。文件/内容搜索继续用 FzfLua。 |
-| [files.lua](../aspects/editing/neovim/config/lua/mayon/files.lua) | 文件树、目录入口、文件操作、保持布局的 buffer 关闭、LSP-aware 重命名、草稿、Lazygit、远程行链接 | 文件树不是完整通用 picker，不继承上游 explorer 的搜索/Git 聚合能力；草稿使用 `stdpath("data")/mayon-scratch` 独立目录，不自动转换或删除旧 `stdpath("data")/scratch` 中的 Snacks 草稿。 |
-| [editor.lua](../aspects/editing/neovim/config/lua/mayon/editor.lua) | 缩进/作用域线、同词高亮、状态列、作用域跳转、平滑滚动、1 MiB 大文件保护、Dim/Zen、编辑开关 | 作用域基于命名语法节点/缩进，缩进回退向上下各扫描最多 2000 行；滚动覆盖 Ctrl-D/U/F/B。Zen 为简洁专注布局；大文件阈值按字节，不承诺上游全部超长行启发式。Quickfile 由原生读取负责，不保留插件专属提前绘制机制。 |
-| [image.lua](../aspects/editing/neovim/config/lua/mayon/image.lua) | 普通图片预览与显式 PDF 首页预览；不可用时交桌面程序 | 不做 Markdown/TeX 文档内图像或公式自动渲染。直接打开 PDF 继续由现有自动命令交给桌面默认阅读器。 |
+历史迁移记录保存在[Den 执行记录](den-execution.md)；其中基于旧实现的结论不能当作当前实现或验收证据。
 
-Noice 继续负责命令行、消息、悬停布局；关闭其 `vim.notify` 接管，消息走 `mini` 视图，应用通知由自有模块负责。状态栏、标签栏和 LSP 面包屑已由自有 Lua 实现，Which-key 继续展示键位。没有测量依据宣称新实现更省资源或更快。
+## 数据和验证边界
 
-## 保留功能与来源
+重构只调整配置与程序接线。不得删除或改写 undo、会话、草稿、插件历史、项目文件、模型、凭据或用户状态。尤其不要把旧 `scratch` 目录当作可清理的缓存。
 
-| 功能 | 当前来源与保留内容 |
-|---|---|
-| 基础操作 | [core](../aspects/editing/neovim/config/lua/mayon/core/)：选项、键位、autocmd、图标；撤销文件、剪贴板、分屏、保存、恢复光标、复制高亮、PDF 外开。 |
-| 补全与片段 | [completion.lua](../aspects/editing/neovim/config/lua/mayon/plugins/completion.lua)、[片段](../aspects/editing/neovim/config/snippets/)：LSP/path/buffer、自定义 C++、文档、签名、CodeCompanion 来源；原生 snippet 跳转。 |
-| 语法与编辑 | [editing.lua](../aspects/editing/neovim/config/lua/mayon/plugins/editing.lua) 与 [queries](../aspects/editing/neovim/config/after/queries/)：显式 parser 集合、Octave→MATLAB、文本对象、注释、自动括号、Surround、Flash、多光标、UFO 折叠及 Treesitter Context。 |
-| 原生编辑辅助 | 内建撤销树、布尔切换、matchit/matchparen；原生 LSP documentColor 色块和 `<leader>uc`，不新增 CSS/Tailwind scanner。 |
-| 文件和搜索 | 自有文件树/重命名、FzfLua、GrugFar、URL 打开模块。 |
-| 会话 | [原生会话](../aspects/editing/neovim/config/lua/mayon/features/sessions.lua)：目录/Git 分支、最近会话、未保存保护、mtime 并发保护、原子写入和旧文件名兼容。 |
-| 语言工具 | [LSP](../aspects/editing/neovim/config/lua/mayon/lsp/)、Conform、lint：现有服务、根识别、项目环境、原生 LSP 面包屑、MATLAB 超时后格式化路径、诊断/quickfix/进度。 |
-| Git | [git.lua](../aspects/editing/neovim/config/lua/mayon/plugins/git.lua)：Gitsigns、Diffview 和 [现有 fork](../aspects/editing/neovim/diffview-plus.nix)，自有 Lazygit 浮窗/远程链接入口。 |
-| AI | [ai.lua](../aspects/editing/neovim/config/lua/mayon/plugins/ai.lua)：DeepSeek chat/inline/cmd、Codex 默认 CLI、Grok/OpenCode 可选、历史、中文工作流、上下文和请求进度。 |
-| 界面 | 自有 UI + Noice + 原生状态栏/标签栏 + 图标 + [高亮](../aspects/editing/neovim/config/lua/mayon/ui/theme.lua)。 |
+`nix flake check --no-build` 是求值检查；构建普通包或 `checks.neovim` 只证明相应 derivation 成功。真实启动、快捷键/弹窗、字体和配色观感、终端图片、桌面菜单入口及当前会话中的用户操作需要分别验证。没有运行的项目须保持待验收，构建不能代替图形界面验收。
 
-LSP/formatter/linter 继续从 Home profile/project PATH 解析。完整 TeX、Ghostscript、ImageMagick 保留；不将它们重新捆进 editor 包。Ruby/Python/Node/Perl remote-plugin providers 继续关闭。
+本轮相关输出：`nix build --no-link --no-write-lock-file .#checks.x86_64-linux.neovim`、普通/开发 Neovim 包和主机 toplevel；实际执行状态由主代理在[执行记录](neovim-rebuild-execution.md)填写。系统应用沿用会话中既有自主 nr 授权，构建与应用分别记录，不强制重启已有编辑器。
 
-## 核心键位
-
-Leader 为空格；特殊 buffer 的局部映射优先，例如 chat 插入模式 Ctrl-S 发送。
-
-| 操作 | 入口 |
-|---|---|
-| 保存/布局/buffer | Ctrl-S、Ctrl-h/j/k/l、Ctrl+方向键、Tab/Shift-Tab、`<leader>bd/ws/wv/q` |
-| 补全 | Ctrl-Space/E、方向键、Tab/Shift-Tab、Ctrl-B/F 文档、Ctrl-K 签名 |
-| 文件与搜索 | `<leader>e/ff/fg/fb/fr/fh/f./fR/sr/fu/fU`、`gx` |
-| 编辑 | `gc/gcc`、`zR/zM/zK`、`[i/]i`、`<leader>m*`、`<leader>ub/uu` |
-| LSP与诊断 | `gd/gD/grt/gi/K`、内建 `gr*`、`<leader>rn/ca/wd/lr/lf/ll/lh`、`[d/]d`、`<leader>xx/xX/xs/xl/xq` |
-| 会话 | `<leader>ps/pl/pd` |
-| Git | `]h/[h`、`<leader>gs/gr/gS/gR/gp/gb/gB/gd/gq/gg/go/gD/gH/gC` |
-| AI | `<leader>aa/ap/av/ai/at/aT/ah` 和现有上下文/工作流键；chat 内 `<leader>ar` |
-| 界面 | `<leader>us/uS` 草稿；`uz/ud` 专注/Dim；`un` 通知历史；`uh/uD/ue` Noice 消息入口；`uw/up/ur/ux/ui/ut/uc` 编辑开关 |
-| 图片 | `:ImagePreview [path]`；普通图片文件入口由 image 模块处理 |
-| 格式化控制 | `<leader>lf`、`:FormatDisable`、`:FormatEnable` |
-
-撤掉的扩展键包括 `ga/gA/gS`、`<leader>la/lt/li`、Neogen 的映射、`<leader>am`；原生默认键可能仍有自己的含义。不重新利用已经退休的 `<leader>fs`。
-
-## 当前 Lua + Nix 入口与使用方式
-
-Lua 配置位于 `aspects/editing/neovim/config/`，包装和固定依赖位于 `aspects/editing/neovim/`，flake 输出位于 `nix/neovim.nix`。Home Manager 已切到 `pkgs/neovim`，旧 Nixvim input 与模块树已退出，XDG init 指向同一份 `aspects/editing/neovim/config/init.lua`。入口内有全局幂等保护，避免 wrapper 和 XDG init 重复执行；最终 Home Manager 求值确认仅安装这一份编辑器，XDG init 与其配置目录同源。
+## 入口
 
 ```sh
 nix run .#neovim
 NVIM_CONFIG_DIR="$PWD/aspects/editing/neovim/config" nix run .#neovim-dev
 ```
 
-普通包使用 store 中固定的配置树，忽略 `NVIM_CONFIG_DIR`；显式 dev 包允许该变量覆盖配置目录，便于工作树编辑。两者共用锁定的插件和 parser 依赖。包保留 20 个直接插件、递归运行时依赖去重后的闭包、16 个语言服务和 32 个显式 Tree-sitter grammar；构建与运行检查结果见下表。
-
-`aspects/editing/neovim/config/` 包含 `init.lua`、`lua/mayon/{core,features,lsp,plugins,ui}`、`after/queries/`、主题、片段和可重跑 Lua 检查。`aspects/editing/neovim/{default,plugins,parsers}.nix` 固定 wrapper、插件和 parser 接线；`nix/neovim.nix` 暴露普通与开发调试入口。Nix 管理可复现的程序、插件、parser/query 资源及必要基础工具；LSP、formatter、linter 和项目编译器继续从 Home profile 或项目环境 PATH 获取。
-
-- wrapper 使用锁定 stable 的 `wrapNeovimUnstable pkgs.neovim-unwrapped` API；名称不表示切到 unstable 包集合，也不使用 deprecated `makeNeovimConfig`。
-- 插件直接加载，不恢复 lz.n 或另造加载器；递归依赖不应重新引入已删插件。Diffview fork 与 CodeCompanion history override 保持原依赖约束。
-- One Dark Darker 是仓库内手写主题，主背景为 `#1f2329`；当前已接入配置，不添加主题插件。没有测量依据宣称迁移或删插件改善性能。
-- Ruby/Python/Node/Perl remote hosts 关闭；完整 TeX/JDK、语言服务与格式化工具不捆进 editor 包。额外包只提供 baseline editor tools。
-
-## 迁移验收状态
-
-| 项目 | 当前记录 |
-|---|---|
-| 基线与回退 | 保存了可恢复 tar、diff、manifest 与 runtime.json 快照；迁移前后用户状态数据不由包管理器清理。 |
-| Neovim 包专项检查 | 普通/dev 包和 `checks.neovim` 已构建通过；检查包含完整 startup、真实 Blink C++ snippet 加载/展开/跳转，以及 native、statusline、tabline、breadcrumbs、LSP 样本。 |
-| flake 与主机输出 | `nix fmt`、`nix flake check --no-build --no-write-lock-file`、treefmt、`checks.neovim` 与完整 host toplevel 构建通过；未切换系统。裁剪锁图只移除 Nixvim 及孤立 systems 节点，其余锁定 revision/hash 不变。 |
-| Home Manager 与桌面入口 | HM 求值仅安装同一普通包、链接同源 init；新旧 `nvim.desktop` 入口无功能差异。实际验证普通包固定路径、dev 覆盖、`--clean` 和显式 XDG `-u`；桌面菜单点击未实测。 |
-| UI/交互与性能 | 隔离 PTY 验证输入/选择、FzfLua 文件搜索、会话保存与恢复。完整 dev 包下真实 LuaLS 符号面包屑随光标变化，CSSLS 对未保存修改发布诊断，Conform 调用 StyLua 格式化均通过。未实测本轮 Kitty/tmux 图像、MATLAB、AI 网络请求或桌面字体观感；没有性能结论。 |
-
-不为验证改用户项目、不发真实付费 AI 请求、不输出密钥、不删除用户状态。构建本身不会应用配置或替代真实交互验收。
-
-单独运行检查：`nix build --no-link .#checks.x86_64-linux.neovim`。检查入口在 Lua 内将失败转为非零退出，并用故意失败的断言验证了退出码为 1。该检查中的 LSP 样本是配置断言；本轮真实语言服务与 PTY 结果来自另行执行的隔离集成测试，不混同为构建覆盖。开发包依赖已确定的 Home profile / 项目 PATH，空环境下不会自动下载语言服务。
-
-基线保存于用户状态目录的 `nix-dotfiles/baselines/neovim-lua-20261018T013041Z`，含迁移前工作树、索引差异、内容校验、生成入口和运行报告；没有清理现有会话、草稿与插件历史。
-
-## 接口依据
-
-- 仓库：[安装入口](../aspects/editing/default.nix)、[包定义](../aspects/editing/neovim/package.nix)、[插件](../aspects/editing/neovim/plugins.nix)、[解析器](../aspects/editing/neovim/parsers.nix)、[flake 输出](../nix/neovim.nix)、[工具链](../aspects/languages/support.nix)。
-- [锁定 nixpkgs wrapper](https://github.com/NixOS/nixpkgs/blob/7993f34ee47e28a3d607a525aadc6c94b73be728/pkgs/applications/editors/neovim/wrapper.nix)、[utils](https://github.com/NixOS/nixpkgs/blob/7993f34ee47e28a3d607a525aadc6c94b73be728/pkgs/applications/editors/neovim/utils.nix)：实施以本地锁定源码为准。
-- 手工实现参考锁定 Snacks 2.31.0 对应的未编译源码；源码仅用于行为核对，不再作为运行依赖。
-- [Neovim 启动文档](https://neovim.io/doc/user/starting/)：实际 wrapper 和本机版本帮助优先。
-
-手写主题的调色板参考 [One Dark 官方 darker palette](https://github.com/navarasu/onedark.nvim/blob/master/lua/onedark/palette.lua)，保留 [MIT 许可](../aspects/editing/neovim/config/colors/ONEDARK-LICENSE)。主编辑区、浮窗和状态栏分层，Treesitter Context 保持编辑区背景。
+普通包固定使用 store 配置；开发包默认同一配置，并允许 `NVIM_CONFIG_DIR` 覆盖以检查工作树。两者使用相同的锁定插件和 parser 依赖。
