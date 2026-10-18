@@ -12,7 +12,7 @@
 
 ## 批次 1：真实主机接线
 
-Den v0.19.0 使用测试子 flake 已验证的同一 revision。只新增 Den 锁节点，没有升级其他输入。根 flake 通过薄 `nix/` 接线，真实 inventory 仅有 `nixos-btw`；Den 生成部署输出，原手写 `flake/system.nix` 已退出导入。系统和 HM 的旧模块入口暂为兼容接线，后续按功能迁出。
+Den v0.19.0 使用测试子 flake 已验证的同一 revision。只新增 Den 锁节点，没有升级其他输入。根 flake 通过薄 `nix/` 接线，真实 inventory 仅有 `nixos-btw`；Den 生成部署输出，原手写 `flake/system.nix` 已退出导入。批次 1 当时系统和 HM 的旧模块入口暂作兼容接线；批次 2–7 已按功能迁出，并在批次 7 完成旧入口清理。
 
 Den 的 `host.instantiate` 显式复用 stable/unstable package instances，并向 NixOS `specialArgs` 提供 inputs 和 unstable；HM 同样保留原 extraSpecialArgs、全局包与备份设置。不能仅依赖 Den 的 module args 提供 imports 所需 inputs。
 

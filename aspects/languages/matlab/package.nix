@@ -335,9 +335,9 @@ let
   # is why the failure is partial and confusing rather than obvious.
   #
   # matlab-language-server is resolved from PATH, not pinned into this closure:
-  # buildFHSEnv keeps the caller's PATH, so the profile copy that
-  # toolchain.nix installs is what runs, and nvim cannot drift onto a second
-  # server.
+  # buildFHSEnv keeps the caller's PATH, so the profile copy contributed by the
+  # selected matlab-support aspect (languages/support.nix) is the default.
+  # A project environment can override PATH; this wrapper adds no second pin.
   #
   # The flags below are the fallback, not the configuration. A client that
   # advertises workspace/configuration -- nvim does -- makes the server discard

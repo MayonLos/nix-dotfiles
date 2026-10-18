@@ -2,20 +2,20 @@
 
 {
   # STM32 / Cortex-M tools that build, flash and debug firmware.
-  # The editor side (clangd, clang-format) is already in toolchain.nix and works
-  # on firmware sources unchanged, because clangd reads a compile_commands.json
-  # rather than a toolchain.
+  # The selected cpp-support language aspect supplies clangd and clang-format;
+  # they work on firmware sources unchanged because clangd reads a
+  # compile_commands.json rather than a toolchain.
   #
-  # cmake, ninja, pkg-config and host gdb are NOT here -- llvm.nix already
-  # installs them, and a second copy would be the exact redundancy this repo
-  # keeps auditing out.
+  # cmake, ninja, pkg-config and host gdb are declared by the
+  # embedded-workbench aspect in default.nix, outside this firmware-specific
+  # package list.
   home.packages = with pkgs; [
     # The cross compiler, as ARM ships it: arm-none-eabi-{gcc,g++,objcopy,size,
     # gdb,...}. Not `pkgsCross.arm-embedded`, which would build the whole
     # toolchain locally; this one substitutes from cache.
     #
     # It brings its own arm-none-eabi-gdb, which is the one to point at
-    # OpenOCD's :3333 -- the host `gdb` from llvm.nix cannot debug a Cortex-M.
+    # OpenOCD's :3333 -- the host `gdb` from default.nix cannot debug a Cortex-M.
     #
     # `lowPrio` because it collides with that host gdb on 78 paths:
     # include/gdb/jit-reader.h and the whole share/gdb/python/gdb tree, which

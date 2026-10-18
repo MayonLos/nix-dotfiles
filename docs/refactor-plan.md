@@ -428,7 +428,7 @@ nix/neovim.nix             # neovim / neovim-dev outputs
 
 ### 4. 接入 Den 主机与职责边界
 
-新方案见 [架构设计](architecture-design.md)，已由主代理与 Astra 交叉设计。[Den 样本](../tests/README.md) 已固定 v0.19.0，通过 shell 与嵌入式两条路径的两主机/两账号选择、共享资源去重及 shell 单值冲突检查。嵌入式工具、规则、包配方已收拢到 [功能目录](../aspects/embedded-workbench/README.md)，旧入口兼容引用；最终规则检查发现并修正 ST-Link 0666 权限，改为 0660/uaccess 且保留别名。真实笔记本构建、样本 HM/udev 与 ARM 编译/GDB/CLI 检查通过，尚未切换或验证设备。
+新方案见 [架构设计](architecture-design.md)，已由主代理与 Astra 交叉设计。[Den 样本](../tests/README.md) 已固定 v0.19.0，通过 shell 与嵌入式两条路径的两主机/两账号选择、共享资源去重及 shell 单值冲突检查。嵌入式工具、规则、包配方已收拢到 [功能目录](../aspects/embedded-workbench/README.md)；旧入口兼容引用仅用于当时的迁移过渡，批次 7 完成后旧适配器与兼容入口已退出。最终规则检查发现并修正 ST-Link 0666 权限，改为 0660/uaccess 且保留别名。真实笔记本构建、样本 HM/udev 与 ARM 编译/GDB/CLI 检查通过，尚未切换或验证设备。
 
 外观、默认工具和语言协议已各自进入功能目录并由同一样本消费。数据/启用/安装的边界、用户与主机隔离、命令整体合并及同 ID/跨 ID 冲突已验证；Kitty parser、Neovim 高亮、wrapper 参数与 MIME、C++ 编译和 clangd hover 的运行检查通过，相关负例也被拒绝。以上为接入前样本阶段的历史结果。真实主机现已迁入 Den，旧适配器与兼容入口已退出；当前检查见实施记录。
 

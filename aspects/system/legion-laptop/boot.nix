@@ -7,7 +7,7 @@
     }
   ];
   boot = {
-    # Linux 7.2 needs the newer NVIDIA driver selected in hardware/nvidia.nix.
+    # Linux 7.2 needs the newer NVIDIA driver selected in ./nvidia.nix.
     kernelPackages = pkgs.linuxPackages_zen;
     kernelModules = [
       "tun"
