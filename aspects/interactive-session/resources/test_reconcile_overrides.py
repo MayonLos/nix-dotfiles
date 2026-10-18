@@ -10,6 +10,7 @@ from pathlib import Path
 import stat
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest import mock
 
 
@@ -150,18 +151,61 @@ input_path = "/user/custom"
         self.assertEqual(self.state.read_bytes(), bad)
         self.assertFalse(self.backups.exists())
 
-    def test_live_noctalia_guard_refuses_only_a_required_write(self) -> None:
+    def test_live_noctalia_guard_refuses_even_without_a_required_write(self) -> None:
         original = '[theme]\nmode = "dark"\n'
         self.state.write_text(original, encoding="utf-8")
-        with mock.patch.object(reconcile_overrides, "_proc_has_noctalia", return_value=True):
+        proc_root = self.root / "proc"
+        self._add_proc_entry(proc_root, "2378", "/nix/store/noctalia/bin/.noctalia-wrapped (deleted)")
+        proc_check = reconcile_overrides._proc_has_noctalia
+        has_live_writer = lambda uid: proc_check(uid, proc_root)
+        with mock.patch.object(reconcile_overrides, "_proc_has_noctalia", side_effect=has_live_writer):
             with self.assertRaisesRegex(reconcile_overrides.ReconcileError, "still running"):
                 reconcile_overrides.reconcile(self.state, self.managed, self.backups, True)
         self.assertEqual(self.state.read_text(encoding="utf-8"), original)
         self.assertFalse(self.backups.exists())
 
         self.managed.write_text("{}", encoding="utf-8")
-        with mock.patch.object(reconcile_overrides, "_proc_has_noctalia", return_value=True):
-            self.assertEqual(reconcile_overrides.reconcile(self.state, self.managed, self.backups, True), [])
+        with mock.patch.object(reconcile_overrides, "_proc_has_noctalia", side_effect=has_live_writer):
+            with self.assertRaisesRegex(reconcile_overrides.ReconcileError, "still running"):
+                reconcile_overrides.reconcile(self.state, self.managed, self.backups, True)
+        self.assertEqual(self.state.read_text(encoding="utf-8"), original)
+        self.assertFalse(self.backups.exists())
+
+        self.state.unlink()
+        with mock.patch.object(reconcile_overrides, "_proc_has_noctalia", side_effect=has_live_writer):
+            with self.assertRaisesRegex(reconcile_overrides.ReconcileError, "still running"):
+                reconcile_overrides.reconcile(self.state, self.managed, self.backups, True)
+        self.assertFalse(self.state.exists())
+        self.assertFalse(self.backups.exists())
+
+    def _add_proc_entry(self, proc_root: Path, pid: str, executable: str) -> Path:
+        entry = proc_root / pid
+        entry.mkdir(parents=True, exist_ok=True)
+        (entry / "exe").symlink_to(executable)
+        return entry
+
+    def _probe_proc_executable(self, executable: str, entry_uid: int | None = None) -> bool:
+        proc_root = self.root / f"proc-{len(list(self.root.glob('proc-*')))}"
+        entry = self._add_proc_entry(proc_root, "42", executable)
+        current_uid = os.getuid()
+        process_uid = current_uid if entry_uid is None else entry_uid
+        real_stat = Path.stat
+
+        def fake_stat(path: Path, *args, **kwargs):
+            result = real_stat(path, *args, **kwargs)
+            if path == entry:
+                return SimpleNamespace(st_uid=process_uid)
+            return result
+
+        with mock.patch.object(Path, "stat", autospec=True, side_effect=fake_stat):
+            return reconcile_overrides._proc_has_noctalia(current_uid, proc_root)
+
+    def test_proc_guard_matches_only_noctalia_executable_metadata(self) -> None:
+        self.assertTrue(self._probe_proc_executable("/nix/store/noctalia/bin/noctalia"))
+        self.assertTrue(self._probe_proc_executable("/nix/store/noctalia/bin/.noctalia-wrapped"))
+        self.assertTrue(self._probe_proc_executable("/nix/store/noctalia/bin/.noctalia-wrapped (deleted)"))
+        self.assertFalse(self._probe_proc_executable("/usr/bin/other-shell"))
+        self.assertFalse(self._probe_proc_executable("/nix/store/noctalia/bin/.noctalia-wrapped", os.getuid() + 1))
 
     def test_detects_external_edit_before_replace(self) -> None:
         self.state.write_text('[theme]\nmode = "dark"\n', encoding="utf-8")

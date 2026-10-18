@@ -98,8 +98,8 @@ def _fingerprint(path: Path) -> tuple[bytes, os.stat_result]:
         os.close(fd)
 
 
-def _proc_has_noctalia(uid: int) -> bool:
-    proc = Path("/proc")
+def _proc_has_noctalia(uid: int, proc_root: Path = Path("/proc")) -> bool:
+    proc = proc_root
     try:
         entries = list(proc.iterdir())
     except OSError as exc:
@@ -113,7 +113,7 @@ def _proc_has_noctalia(uid: int) -> bool:
             # Inspect executable link metadata only. Do not read environ/cmdline.
             executable = os.readlink(entry / "exe")
             executable_name = Path(executable.removesuffix(" (deleted)")).name
-            if executable_name == "noctalia":
+            if executable_name in {"noctalia", ".noctalia-wrapped"}:
                 return True
         except (FileNotFoundError, ProcessLookupError, PermissionError, OSError):
             continue
@@ -220,9 +220,15 @@ def reconcile(state_path: Path, managed_path: Path, backup_dir: Path, require_no
     if not isinstance(managed, dict):
         raise ReconcileError("managed JSON root must be an object")
 
+    current_uid = os.getuid()
+    if require_no_noctalia and _proc_has_noctalia(current_uid):
+        raise ReconcileError("Noctalia is still running for this user; sign out completely before starting it again")
+
     if not state_path.exists() and not state_path.is_symlink():
         return []
     original, info = _fingerprint(state_path)
+    if require_no_noctalia and info.st_uid != current_uid:
+        raise ReconcileError("Noctalia state file is owned by a different UID; refusing to reconcile it")
     try:
         document = tomlkit.parse(original.decode("utf-8"))
     except (UnicodeError, tomlkit.exceptions.ParseError) as exc:
@@ -250,9 +256,6 @@ def reconcile(state_path: Path, managed_path: Path, backup_dir: Path, require_no
             removed.append({"path": list(path), "value": _plain(node)})
     if not removed:
         return []
-
-    if require_no_noctalia and _proc_has_noctalia(info.st_uid):
-        raise ReconcileError("Noctalia is still running for the state-file owner; sign out completely before retrying")
 
     # Back up only precisely selected public configuration values, never the state file.
     _backup(backup_dir, removed)
