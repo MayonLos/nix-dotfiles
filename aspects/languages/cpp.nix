@@ -1,11 +1,8 @@
 _: {
   den.aspects.cpp-support = {
     homeManager = { pkgs, ... }: {
-      home.packages = with pkgs.llvmPackages; [
-        clang
-        lld
-        clang-tools
-      ];
+      imports = [ ./cpp-tools.nix ];
+      home.packages = [ pkgs.llvmPackages.clang-tools ];
     };
     editorLanguages = [ (import ./cpp-data.nix) ];
   };

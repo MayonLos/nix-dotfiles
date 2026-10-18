@@ -1,5 +1,6 @@
 { inputs, config, ... }: {
   perSystem = { pkgs, ... }: {
+    checks.editing-composition = import ../tests/composition/editing.nix { inherit inputs pkgs; };
     checks.workspace-composition = import ../tests/composition/workspace.nix { inherit inputs pkgs; };
     checks.command-line-runtime = import ../aspects/command-line/checks.nix {
       inherit pkgs;

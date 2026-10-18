@@ -36,6 +36,14 @@ flake 求值、完整主机构建与系统隔离检查通过。磁盘、账号�
 
 独立 reviewer 发现迁移脚本误改 `...` 别名，已恢复并重新构建检查；无剩余阻塞。只读确认现有 Kitty 主配置仅旧两条 include，没有额外手工设置；没有修改真实 Home。Kitty 文件备份/接管、Noctalia 实际 apply、GUI/Alt 键盘效果仍需应用后验收。
 
+## 批次 4：完整编辑器与语言
+
+完整 Neovim 配置、包配方、插件/parser、Diffview 与专项测试已收拢到 `aspects/editing/neovim/`，没有使用隔离样本覆盖丰富 Lua。共享 palette 与语言贡献生成 `mayon.generated`；Lua 继续拥有高亮、handlers、Python 环境选择、MATLAB 通知/设置和编辑行为。语言工具包与有序 server/formatter/linter 数据随显式 support 选择，编辑器只消费，不反向启用语言。VS Code 和三个 JetBrains 继续保留，所需 nix-ld 共享支持由功能投递；Java 环境/Gradle/selectors 随 Java。
+
+重新求值、treefmt、完整 host、普通/dev 包、Neovim 全部原专项检查及 editor composition 构建通过。生产 Neovim 的空语言/C++ 独立组合通过；有序 cmd/root/formatter 冲突负例被拒绝，filetypes 按集合合并。真实 CSS LS 对临时项目未保存内容发布诊断，Conform 调用真实 StyLua 完成格式化；普通入口忽略配置覆盖、dev 使用源码覆盖并找到生成数据的检查通过。独立 reviewer 未发现漏迁或回归。
+
+没有测试 MATLAB 本体/授权、AI 网络请求、IDE GUI、Kitty 图像或所有用户项目；用户安装树、授权、历史、会话、草稿与缓存均未迁移或删除。
+
 ## 应用后验收
 
 未执行系统应用。文件归属交接、旧持久用户 unit 停用、重登录环境、GUI/设备、休眠与游戏验证仍按专项设计执行，不能由构建结果替代。

@@ -11,7 +11,7 @@ let
       doCheck = false;
     }))
     vimPlugins.conform-nvim
-    (pkgs.callPackage ../diffview-plus.nix { })
+    (pkgs.callPackage ./diffview-plus.nix { })
     vimPlugins.flash-nvim
     vimPlugins.fzf-lua
     vimPlugins.gitsigns-nvim

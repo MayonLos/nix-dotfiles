@@ -4,7 +4,7 @@
 }:
 
 {
-  # texlab lives in toolchain.nix. Keep the full environment for the user's
+  # texlab lives in the selected language aspect. Keep the full environment for the user's
   # complete LaTeX documents; Neovim formula previews are not the reason to
   # retain it. Automatic editor formula rendering has been removed.
   home.packages = with pkgs; [

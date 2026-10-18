@@ -3,23 +3,7 @@ local M = {}
 -- One Dark Darker palette, from navarasu/onedark.nvim (MIT).
 -- https://github.com/navarasu/onedark.nvim/blob/master/lua/onedark/palette.lua
 -- The highlight definitions below belong to this configuration.
-local c = {
-	black = "#0e1013",
-	bg = "#1f2329",
-	surface = "#282c34",
-	selection = "#30363f",
-	border = "#535965",
-	deep = "#181b20",
-	fg = "#a0a8b7",
-	muted = "#7a818e",
-	purple = "#bf68d9",
-	green = "#8ebd6b",
-	orange = "#cc9057",
-	blue = "#4fa6ed",
-	yellow = "#e2b86b",
-	cyan = "#48b0bd",
-	red = "#e55561",
-}
+local c = require("mayon.generated").palette
 
 function M.apply()
 	vim.cmd.highlight("clear")
@@ -27,7 +11,7 @@ function M.apply()
 		vim.cmd.syntax("reset")
 	end
 	vim.o.background = "dark"
-	vim.g.colors_name = "onedark-darker"
+	vim.g.colors_name = c.name
 	local groups = {
 		Normal = { fg = c.fg, bg = c.bg },
 		NormalNC = { fg = c.fg, bg = c.bg },
@@ -212,24 +196,7 @@ function M.apply()
 	for name, target in pairs(links) do
 		vim.api.nvim_set_hl(0, name, { link = target })
 	end
-	local terminal = {
-		c.black,
-		c.red,
-		c.green,
-		c.yellow,
-		c.blue,
-		c.purple,
-		c.cyan,
-		c.fg,
-		c.border,
-		c.red,
-		c.green,
-		c.yellow,
-		c.blue,
-		c.purple,
-		c.cyan,
-		"#d1d5de",
-	}
+	local terminal = require("mayon.generated").ansi
 	for i, color in ipairs(terminal) do
 		vim.g["terminal_color_" .. (i - 1)] = color
 	end

@@ -44,27 +44,11 @@ local function matlab_notifications()
 	}
 end
 
-local servers = {
-	clangd = {
-		cmd = { "clangd", "--background-index", "--clang-tidy" },
-		filetypes = { "c", "cpp", "objc", "objcpp", "cuda" },
-		root_markers = { "compile_commands.json", ".clangd", "CMakeLists.txt", ".git" },
-	},
-	dockerls = {
-		cmd = { "docker-langserver", "--stdio" },
-		filetypes = { "dockerfile" },
-		root_markers = { ".git" },
-	},
+local adapters = {
 	nixd = {
-		cmd = { "nixd" },
-		filetypes = { "nix" },
-		root_markers = { "flake.nix", ".git" },
 		settings = { nixd = { formatting = { command = { "nixfmt" } } } },
 	},
 	lua_ls = {
-		cmd = { "lua-language-server" },
-		filetypes = { "lua" },
-		root_markers = { ".luarc.json", ".luarc.jsonc", ".stylua.toml", ".git" },
 		settings = {
 			Lua = {
 				runtime = { version = "LuaJIT" },
@@ -74,17 +58,6 @@ local servers = {
 		},
 	},
 	pyright = {
-		cmd = { "pyright-langserver", "--stdio" },
-		filetypes = { "python" },
-		root_markers = {
-			"pyproject.toml",
-			"pyrightconfig.json",
-			"uv.lock",
-			"setup.py",
-			"setup.cfg",
-			"requirements.txt",
-			".git",
-		},
 		before_init = python_path,
 		settings = {
 			python = {
@@ -98,20 +71,7 @@ local servers = {
 			},
 		},
 	},
-	jdtls = {
-		cmd = { "jdtls" },
-		filetypes = { "java" },
-		root_markers = { "pom.xml", "build.gradle", "settings.gradle", ".git" },
-	},
-	bashls = {
-		cmd = { "bash-language-server", "start" },
-		filetypes = { "bash", "sh" },
-		root_markers = { ".git" },
-	},
 	texlab = {
-		cmd = { "texlab" },
-		filetypes = { "tex", "plaintex", "bib" },
-		root_markers = { ".latexmkrc", ".git" },
 		settings = {
 			texlab = {
 				bibtexFormatter = "texlab",
@@ -123,15 +83,9 @@ local servers = {
 		},
 	},
 	marksman = {
-		cmd = { "marksman", "server" },
-		filetypes = { "markdown" },
-		root_markers = { ".marksman.toml", ".git" },
 		handlers = { ["textDocument/publishDiagnostics"] = marksman_diagnostics },
 	},
 	matlab_ls = {
-		cmd = { "matlab-ls" },
-		filetypes = { "matlab" },
-		root_markers = { ".git" },
 		settings = {
 			MATLAB = {
 				installPath = vim.env.MATLAB_INSTALL_DIR or vim.fn.expand("~/.local/share/MATLAB/R2026a"),
@@ -142,38 +96,15 @@ local servers = {
 		},
 		handlers = matlab_notifications(),
 	},
-	cmake = {
-		cmd = { "cmake-language-server" },
-		filetypes = { "cmake" },
-		root_markers = { "CMakeLists.txt", "CMakePresets.json", ".git" },
-	},
-	html = {
-		cmd = { "vscode-html-language-server", "--stdio" },
-		filetypes = { "html", "templ" },
-		root_markers = { "package.json", ".git" },
-	},
-	cssls = {
-		cmd = { "vscode-css-language-server", "--stdio" },
-		filetypes = { "css", "scss", "less" },
-		root_markers = { "package.json", ".git" },
-	},
-	jsonls = {
-		cmd = { "vscode-json-language-server", "--stdio" },
-		filetypes = { "json", "jsonc" },
-		root_markers = { "package.json", ".git" },
-	},
-	ts_ls = {
-		cmd = { "typescript-language-server", "--stdio" },
-		filetypes = { "javascript", "javascriptreact", "typescript", "typescriptreact" },
-		root_markers = { "tsconfig.json", "jsconfig.json", "package.json", ".git" },
-	},
 	yamlls = {
-		cmd = { "yaml-language-server", "--stdio" },
-		filetypes = { "yaml" },
-		root_markers = { ".git" },
 		settings = { yaml = { schemaStore = { enable = false } } },
 	},
 }
+
+local servers = vim.deepcopy(require("mayon.generated").languages.servers)
+for name, settings in pairs(servers) do
+	servers[name] = vim.tbl_deep_extend("force", settings, adapters[name] or {})
+end
 
 function M.setup()
 	vim.filetype.add({ extension = { mdx = "markdown" } })

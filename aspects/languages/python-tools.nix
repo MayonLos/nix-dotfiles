@@ -1,7 +1,7 @@
 { pkgs, ... }:
 
 let
-  inherit ((import ../../../../lib/toolchains.nix { inherit pkgs; })) python;
+  inherit ((import ../../lib/toolchains.nix { inherit pkgs; })) python;
 in
 
 {
@@ -10,6 +10,6 @@ in
   home.packages = with pkgs; [
     python
     uv
-    # ruff (linter + formatter) lives in toolchain.nix.
+    # ruff (linter + formatter) lives in the selected language aspect.
   ];
 }

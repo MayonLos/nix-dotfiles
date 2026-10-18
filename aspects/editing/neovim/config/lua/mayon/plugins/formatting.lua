@@ -7,21 +7,9 @@ function M.setup()
 	end
 
 	require("conform").setup({
-		formatters_by_ft = {
-			lua = { "stylua" },
-			python = { "ruff_organize_imports", "ruff_format" },
-			nix = { "nixfmt" },
-			java = { "google-java-format" },
-			c = { "clang-format" },
-			cpp = { "clang-format" },
-			bash = { "shfmt" },
-			sh = { "shfmt" },
-			tex = { "latexindent" },
-			-- Keep this explicit so MATLAB LS handles .m files instead of `_`;
-			-- its first format can exceed the 200ms synchronous save budget.
-			matlab = { lsp_format = "fallback" },
+		formatters_by_ft = vim.tbl_extend("force", vim.deepcopy(require("mayon.generated").languages.formatters), {
 			["_"] = { "squeeze_blanks", "trim_whitespace", "trim_newlines" },
-		},
+		}),
 		format_on_save = function(bufnr)
 			if _G.autoformat_disabled(bufnr) or _G.slow_format_filetypes[vim.bo[bufnr].filetype] then
 				return

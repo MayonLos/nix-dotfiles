@@ -15,6 +15,8 @@ in
     ../../../aspects/command-line
     ../../../aspects/default-tools
     ../../../aspects/appearance
+    ../../../aspects/languages
+    ../../../aspects/editing
     ../../users/mayon.nix
   ];
   den.hosts.${facts.system}.nixos-btw = {
@@ -75,7 +77,6 @@ in
         ../../../modules/system/programs/gamescope.nix
         ../../../modules/system/programs/libreoffice.nix
         ../../../modules/system/programs/nh.nix
-        ../../../modules/system/programs/nix-ld.nix
         ../../../modules/system/programs/steam.nix
         ../../../modules/system/programs/thunar.nix
         ../../../modules/system/security/polkit.nix
@@ -101,6 +102,22 @@ in
       command-line
       terminal
       default-tools
+      neovim
+      vscode
+      jetbrains
+      cpp-support
+      docker-support
+      nix-support
+      lua-support
+      python-support
+      java-support
+      shell-support
+      latex-support
+      markdown-support
+      matlab-support
+      cmake-support
+      web-support
+      yaml-support
     ];
     homeManager.imports = importDir ../../../modules/home;
     # This binding selects the Noctalia template consumer; remote CLI keeps Default.

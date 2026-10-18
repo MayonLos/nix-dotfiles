@@ -6,7 +6,12 @@
 }:
 
 let
-  java = import ../../../../lib/java.nix { inherit pkgs pkgs-unstable; };
+  java = import ../../lib/java.nix { inherit pkgs pkgs-unstable; };
+
+  environment = {
+    JAVA_HOME = "${java.jdks.${java.default}}";
+  }
+  // lib.mapAttrs' (version: jdk: lib.nameValuePair "JAVA${version}_HOME" "${jdk}") java.jdks;
 
   # One launcher pair per installed version. The default runs as the profile
   # `java`; the rest are reachable as javaNN/javacNN or via use-javaNN.
@@ -18,7 +23,10 @@ let
   );
 in
 {
-  imports = [ ../../../../aspects/languages/java-shell.nix ];
+  imports = [ ./java-shell.nix ];
+  home.sessionPath = [ "${java.jdks.${java.default}}/bin" ];
+  home.sessionVariables = environment;
+  systemd.user.sessionVariables = environment;
   home.packages = [ java.jdks.${java.default} ] ++ launchers;
 
   # Gradle uses the same JDKs as the shell and Prism rather than downloading

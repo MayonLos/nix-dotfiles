@@ -28,11 +28,11 @@
   # it without new evidence.
 
   home.packages = [
-    # Not callPackage: pkgs/matlab.nix needs the whole package set to build its
+    # Not callPackage: package.nix needs the whole package set to build its
     # FHS target list, and the user's real home directory to find the install
     # tree. See the header comment there for why MATLAB itself cannot be a
     # derivation.
-    (import ../../../../pkgs/matlab.nix {
+    (import ./package.nix {
       inherit pkgs;
       inherit (config.home) homeDirectory;
     })

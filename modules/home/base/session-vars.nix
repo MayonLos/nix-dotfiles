@@ -1,12 +1,6 @@
-{
-  pkgs,
-  pkgs-unstable,
-  lib,
-  ...
-}:
+_:
 
 let
-  java = import ../../../lib/java.nix { inherit pkgs pkgs-unstable; };
 
   # Needed both by systemd user services (which do not source the shell profile)
   # and by interactive shells, so the same set is exported through both paths.
@@ -23,9 +17,7 @@ let
     GLFW_IM_MODULE = "ibus";
     SDL_IM_MODULE = "fcitx";
     XMODIFIERS = "@im=fcitx";
-    JAVA_HOME = "${java.jdks.${java.default}}";
-  }
-  // lib.mapAttrs' (version: jdk: lib.nameValuePair "JAVA${version}_HOME" "${jdk}") java.jdks;
+  };
 in
 {
   # Xft.dpi and the xrdb merge that actually delivers it live in xresources.nix.
@@ -33,7 +25,6 @@ in
 
   home = {
     sessionPath = [
-      "${java.jdks.${java.default}}/bin"
       "$HOME/.local/bin"
     ];
 

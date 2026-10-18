@@ -38,7 +38,6 @@ in
     # programs/dev/ai-agents.nix — packaged by the llm-agents.nix input.
     # nvim comes from programs/dev/nvim.nix — built from pkgs/neovim with the config/nvim Lua tree.
     imagemagick
-    nodejs
     # `find` to ripgrep/eza/bat's `grep`/`ls`/`cat`; the one missing sibling of
     # the set above.
     # Not only for interactive use: screenshot.nix's activation reaches for it

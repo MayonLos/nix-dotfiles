@@ -1,12 +1,26 @@
-{ pkgs }:
+{
+  pkgs,
+  palette ? import ../../appearance/onedark-darker.nix,
+  contributions ? builtins.attrValues (import ../../languages/data.nix),
+}:
 
 let
-  configDir = ../../config/nvim;
-  # The runtime needs only the Lua tree, not the entire flake source closure.
-  configPath = builtins.path {
-    path = configDir;
-    name = "nvim-config";
-  };
+  sourceConfig = ./config;
+  languages = (import ../../languages/contract.nix { inherit (pkgs) lib; }).collect contributions;
+  dataRuntime = pkgs.writeTextDir "lua/mayon/generated.lua" (
+    "return "
+    + pkgs.lib.generators.toLua { } {
+      inherit palette;
+      ansi = import ../../appearance/ansi.nix palette;
+      languages = { inherit (languages) servers formatters linters; };
+    }
+  );
+  configPath = pkgs.runCommand "nvim-config" { } ''
+    mkdir -p "$out"
+    cp -R ${sourceConfig}/. "$out/"
+    chmod -R u+w "$out"
+    cp ${dataRuntime}/lua/mayon/generated.lua "$out/lua/mayon/generated.lua"
+  '';
   pluginSet = import ./plugins.nix { inherit pkgs; };
   editorTools = with pkgs; [
     file
@@ -28,6 +42,7 @@ let
       # for callers that reach it through another Neovim entry point.
       luaRcContent = ''
         local config_dir = vim.env.NVIM_CONFIG_DIR or "${configPath}"
+        vim.opt.runtimepath:prepend("${dataRuntime}")
         vim.opt.runtimepath:prepend(config_dir)
         vim.opt.runtimepath:append(config_dir .. "/after")
         dofile(config_dir .. "/init.lua")
