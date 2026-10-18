@@ -75,7 +75,7 @@ let
   # together. Every tool is therefore named by store path, the same way the
   # activation script further down already does it.
   #
-  # Same derivation packages.nix installs: pkgs/tesseract-ocr.nix adds chi_sim,
+  # The adjacent tesseract-ocr.nix recipe adds chi_sim,
   # without which Chinese text comes back empty rather than wrong -- easy to
   # mistake for the script being broken.
   tesseractOcr = pkgs.callPackage ./tesseract-ocr.nix { };
@@ -88,7 +88,7 @@ let
       # mango spawns children without a login shell, so LANG may be unset and
       # coreutils would fall back to a byte-oriented C locale -- `cut -c` below
       # would then split a multi-byte Chinese character in the notification
-      # preview. C.UTF-8 is built by modules/system/core/locale.nix.
+      # preview. C.UTF-8 is built by aspects/system/maintenance/locale.nix.
       export LC_ALL=C.UTF-8
 
       img="$(${pkgs.coreutils}/bin/mktemp --suffix=.png)"

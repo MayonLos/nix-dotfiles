@@ -1,6 +1,6 @@
 # Mango + Noctalia 桌面视觉设计
 
-状态：**设计已确定，运行配置尚未实施**。本轮只写本文，不修改主题、应用配置、锁文件或系统状态。设计基于 2026-10-18 工作树及其 `flake.lock`；源码核对证明配置能力存在，不能代替本机 GUI、外屏和功耗验收。
+状态：**既定 Astra 规格已落实到 Den 配置，未应用系统**。固定 palette、Mango/Noctalia/greeter/IME/Kitty 和丰富 Lua 适配已实现；锁定配置 parser、组合及构建证据见 [实施记录](den-execution.md)。尺寸和动画仍需本机 GUI、外屏和功耗验收，构建不证明视觉效果。
 
 ## 视觉方向与责任
 
@@ -8,11 +8,11 @@
 
 外观数据与各软件适配遵守 [架构设计](architecture-design.md)：外观拥有语义色、字体等公共数据，Noctalia、Mango、Kitty、Neovim 等各自消费；greeter 是主机的明确选择。最终文件只有一个写入者。本文中的尺寸、布局和时长是设计目标；硬件相关参数以验收结果决定是否保留。
 
-现有配置已经具备丰富的基础：[Noctalia](../modules/home/wm/mango/noctalia.nix) 有分组胶囊、媒体频谱、BongoCat、开发工具、通知和锁屏；[Mango](../modules/home/wm/mango/config.nix) 有圆角、窗口模糊、动画和 monocle 标签栏。实施以这些能力为基础，插件继续从 flake 锁定路径加载，`auto_update = "none"`。
+现有配置已经具备丰富的基础：[Noctalia](../aspects/interactive-session/noctalia.nix) 有分组胶囊、媒体频谱、BongoCat、开发工具、通知和锁屏；[Mango](../aspects/interactive-session/mango.nix) 有圆角、窗口模糊、动画和 monocle 标签栏。实施以这些能力为基础，插件继续从 flake 锁定路径加载，`auto_update = "none"`。
 
 ## 语义调色板
 
-下表是外观接口的数据，不是所有应用都原样接受的选项名。Neovim 的现有 [Darker palette](../config/nvim/lua/mayon/ui/theme.lua) 是颜色依据，桌面文字增加已有 ANSI bright-white 作为强调前景。
+下表是外观接口的数据，不是所有应用都原样接受的选项名。共享 [Darker palette](../aspects/appearance/onedark-darker.nix) 是颜色依据，Neovim 的丰富高亮消费生成数据，桌面文字增加已有 ANSI bright-white 作为强调前景。
 
 | 语义 | 值 | 使用位置 |
 | --- | --- | --- |
@@ -140,7 +140,7 @@ Greeter 由主机显式生成 `appearance.scheme = "Synced"`、`theme_mode = "da
 
 ## 单一写入者与迁移次序
 
-现状是 Noctalia `theme.mode = "auto"`、`builtin = "Tokyo-Night"`；Kitty 的 `kitty.conf` 是 activation seeded mutable stub，包含 `mayon.conf` 与 `themes/noctalia.conf`。这个 workaround 有当前源码依据：Noctalia kitty `apply.sh` 先 `touch` 主配置，再维护 include，最后发 USR1；主配置直接变成 store symlink 会让 hook 中途失败。[Kitty 模块](../modules/home/programs/terminal/kitty.nix)、[锁定 apply.sh](https://github.com/noctalia-dev/noctalia-shell/blob/fc2af27c0e616006bf858cad3b7c9711a028e501/assets/templates/kitty/apply.sh)
+现状是 Noctalia `theme.mode = "auto"`、`builtin = "Tokyo-Night"`；Kitty 的 `kitty.conf` 是 activation seeded mutable stub，包含 `mayon.conf` 与 `themes/noctalia.conf`。这个 workaround 有当前源码依据：Noctalia kitty `apply.sh` 先 `touch` 主配置，再维护 include，最后发 USR1；主配置直接变成 store symlink 会让 hook 中途失败。[Kitty 模块](../aspects/command-line/kitty.nix)、[锁定 apply.sh](https://github.com/noctalia-dev/noctalia-shell/blob/fc2af27c0e616006bf858cad3b7c9711a028e501/assets/templates/kitty/apply.sh)
 
 最终所有权明确如下：
 
@@ -169,7 +169,7 @@ Greeter 由主机显式生成 `appearance.scheme = "Synced"`、`theme_mode = "da
 
 透明表面的实际对比取决于背后的画面，不能直接套用上述数值。用纯白窗口、浅色网页、高细节壁纸与深色壁纸分别置于浮层后方，检查 100% 与实际 150% 缩放下的中文字、数字、选中项。验收目标：必要小字 ≥4.5:1，大字/主要非文本状态指示 ≥3:1；装饰边框不承担唯一状态信息。这些是本项目验收门槛，本文没有声称整桌面已经符合某项无障碍认证。
 
-内屏事实保持 `eDP-1`、2560×1600、165.002 Hz、scale 1.5；约 1707×1067 逻辑工作区。面板 36 在此对应 54 物理像素，2 像素边框对应 3；字体应用自身单位，不机械换算所有 pt 为逻辑 px。`Xft.dpi = 144` 与 `xwayland_ignore_scale = 1` 的现有配对、Mango 会话环境注入以及 Fcitx `PerScreenDPI` 修正按源码/运行行为保留。[桌面常量](../lib/desktop.nix)、[Mango 模块](../modules/home/wm/mango/config.nix)、[输入法模块](../modules/home/base/input-method.nix)
+内屏事实保持 `eDP-1`、2560×1600、165.002 Hz、scale 1.5；约 1707×1067 逻辑工作区。面板 36 在此对应 54 物理像素，2 像素边框对应 3；字体应用自身单位，不机械换算所有 pt 为逻辑 px。`Xft.dpi = 144` 与 `xwayland_ignore_scale = 1` 的现有配对、Mango 会话环境注入以及 Fcitx `PerScreenDPI` 修正按源码/运行行为保留。[桌面常量](../inventory/hosts/nixos-btw/facts.nix)、[Mango 模块](../aspects/interactive-session/mango.nix)、[输入法模块](../aspects/interactive-session/input-method.nix)
 
 外屏连接器、分辨率、刷新率与物理尺寸尚未取得；实施时读取真实输出，按 EDID/connector 配置。通常 1080p/1440p 外屏从 1.0、4K 从 1.5 或 2.0 做现场字号比较，这些是测试起点，不是硬件事实。不得直接复制内屏 scale 1.5 到所有外屏。Noctalia 每屏使用相同逻辑尺寸，必要时以 `bar.main.monitor.<id>` 覆盖 `start/center/end`；窄屏先折叠工具组，完整功能仍由原生面板/launcher 可达。
 
@@ -194,9 +194,9 @@ Greeter 由主机显式生成 `appearance.scheme = "Synced"`、`theme_mode = "da
 
 最终交付至少留以下截图与记录：空桌面、双窗代码+浏览器、全部面板区块最宽状态、launcher 中文结果、控制中心、三条通知/OSD、Fcitx 候选、锁屏与 greeter、实际混合缩放双屏。截图只使用无敏感内容的测试工作区。确认颜色、字体、裁切、焦点、点击热区、接缝、tooltip、键盘导航，再将采用的参数写回声明配置。
 
-## 本轮证据与未验证项
+## 设计阶段证据与应用后未验证项
 
-本轮只新增本文。读取当前模块、公共桌面常量、Neovim Lua palette 和架构设计；通过只读 Nix 输入求值得到当前 locked store source，检查官方随包文档、Mango parser、Noctalia template 与插件 manifest。额外打开官方 GitHub 固定 revision 页面确认来源。上述对比度已实际运行 Python 按 sRGB 线性化和相对亮度公式计算，并非目测；只证明列出的不透明色对，不证明透明合成后或屏幕校色后的对比。没有运行全仓 `nix fmt`、系统构建或 switch，因为未改运行配置且工作树有大量已有修改。
+早期设计阶段只新增本文；以下保留该阶段证据。读取当时模块、公共桌面常量、Neovim Lua palette 和架构设计；通过只读 Nix 输入求值得到当前 locked store source，检查官方随包文档、Mango parser、Noctalia template 与插件 manifest。额外打开官方 GitHub 固定 revision 页面确认来源。上述对比度已实际运行 Python 按 sRGB 线性化和相对亮度公式计算，并非目测；只证明列出的不透明色对，不证明透明合成后或屏幕校色后的对比。没有运行全仓 `nix fmt`、系统构建或 switch，因为未改运行配置且工作树有大量已有修改。
 
 | 输入 | 本轮核对 revision |
 | --- | --- |
@@ -206,4 +206,4 @@ Greeter 由主机显式生成 `appearance.scheme = "Synced"`、`theme_mode = "da
 | 官方插件 | `9aec34181e46789b281263942092ac552f661d1a` |
 | 社区插件 | `7691612a091ac903cab79ffa5b3f740a04808ef1` |
 
-BongoCat 的 evtest/input_devices/audio_spectrum 与布局插件的 show_text/show_glyph 来自相应 locked `plugin.toml`；它们继续使用现有权限与依赖，不新增私有插件 API。配置查证覆盖 Noctalia palette、bar/per-monitor/group/widget、工作区、shell/launcher/control-center、通知、锁屏、greeter，以及 Mango 颜色/标签栏 parser、Kitty hook 和 HM 服务接线；既有模糊/动画字段也对照当前模块。尚未将全文目标组合生成为 TOML/Mango 配置送入实际 validator；所选参数仍须经过配置验证、reload、应用启动和上述 GUI 验收。未验证：外屏硬件与混合 DPI、glass 在当前协议组合下的最终效果、全部插件同时出现时的面板宽度、锁屏坐标、Qt5/私有应用主题、颜色模板衍生 token 与性能预算。实施中若 pin 改变，应重查这些字段与原有 workaround 原因。
+BongoCat 的 evtest/input_devices/audio_spectrum 与布局插件的 show_text/show_glyph 来自相应 locked `plugin.toml`；它们继续使用现有权限与依赖，不新增私有插件 API。配置查证覆盖 Noctalia palette、bar/per-monitor/group/widget、工作区、shell/launcher/control-center、通知、锁屏、greeter，以及 Mango 颜色/标签栏 parser、Kitty hook 和 HM 服务接线；既有模糊/动画字段也对照当前模块。本次 Den 实现已将目标生成 TOML/Mango 配置并通过锁定 validator 和严格结构检查；构建结果见实施记录。所选参数仍须经过真实应用启动和上述 GUI 验收。未验证：外屏硬件与混合 DPI、glass 在当前协议组合下的最终效果、全部插件同时出现时的面板宽度、锁屏坐标、Qt5/私有应用主题、颜色模板衍生 token 与性能预算。实施中若 pin 改变，应重查这些字段与原有 workaround 原因。

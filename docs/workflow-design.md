@@ -1,6 +1,6 @@
 # 操作方式设计
 
-状态：2026-10-18 的实施目标，尚未修改快捷键。与 [桌面视觉](desktop-design.md)、[默认工具接口](../aspects/default-tools/README.md) 一起实施。保留 Mango、Noctalia、Kitty、tmux、原生 Lua Neovim；不重开软件选型。
+状态：2026-10-18 的操作设计已在 Den 配置实现，尚未应用系统。按键/argv/cwd、tmux 键表及编辑器的隔离检查见 [实施记录](den-execution.md)；实际 GUI、文件管理器和项目交互仍待验收。
 
 ## 操作层次
 
@@ -12,11 +12,11 @@
 | 编辑器窗口与功能 | `Ctrl+h/j/k/l`、Space leader | 保留现有 Neovim 行为；不跨层猜测当前应用然后转发按键 |
 | shell 与 TUI | 原应用按键 | `Alt+b/f`、`Ctrl+r`、Esc 等正常到达应用 |
 
-当前 tmux 的无前缀 `M-h/j/k/l`、`M-n/p`、`M-Tab`、`M-1…9` 会在 pane 内应用收到之前截获按键；这轮目标改为前缀操作。`Ctrl+a Ctrl+a` 仍发送字面 Ctrl+a 给 shell；复制、选区和窗口管理不自动互相接管。依据当前 [tmux 配置](../modules/home/programs/terminal/tmux.nix) 和 [tmux 官方入门](https://github.com/tmux/tmux/wiki/Getting-Started)。
+迁移前 tmux 的无前缀 `M-h/j/k/l`、`M-n/p`、`M-Tab`、`M-1…9` 会在 pane 内应用收到之前截获按键；现已改为前缀操作。`Ctrl+a Ctrl+a` 仍发送字面 Ctrl+a 给 shell；复制、选区和窗口管理不自动互相接管。依据当前 [tmux 配置](../aspects/command-line/tmux.nix) 和 [tmux 官方入门](https://github.com/tmux/tmux/wiki/Getting-Started)。
 
 ## 桌面主要操作
 
-下表是完整保留的主要入口；具体命令沿用已锁 Mango 行为，默认应用启动改为 default-tools 的 argv wrapper。此表的“目标变化”不能被误读成已经实施。
+下表是完整保留的主要入口；具体命令沿用已锁 Mango 行为，默认应用启动改为 default-tools 的 argv wrapper。此表描述已实现的声明；实际按键效果仍需应用后核验。
 
 | 操作 | 目标按键 | 目标变化 |
 |---|---|---|
@@ -40,7 +40,7 @@
 
 工作区仅作建议用途：1 开发、2 浏览、3 通讯、4 文档、5 专业工具、6 媒体、7 虚拟化、8 游戏、9 临时。不强制按 app-id 自动搬走窗口；多项目、多个浏览器与临时用途不受限。显示器使用各自实际输出事实；不得把笔记本屏幕名写成通用协议默认值。
 
-现有进阶操作（master 数量/比例、scroller 比例、隐藏边距、特定显示器开关等）在首轮迁移保留，归入帮助的进阶分组；只对重复或冲突的入口去重，禁止因未列入主表就静默删除。完整来源是 [Mango 配置](../modules/home/wm/mango/config.nix)。
+现有进阶操作（master 数量/比例、scroller 比例、隐藏边距、特定显示器开关等）在首轮迁移保留，归入帮助的进阶分组；只对重复或冲突的入口去重，禁止因未列入主表就静默删除。完整来源是 [Mango 配置](../aspects/interactive-session/mango.nix)。
 
 ## 截图、文件和剪贴板
 
@@ -53,7 +53,7 @@
 | 截图文件位置 | 应用保存动作 | 显示真实目标路径；用户已选路径不被激活脚本重置 |
 | 打开 / 看图 | MIME 默认 | Thunar；图片 Swayimg；PDF Zathura 默认、Okular 可选；文本图形默认 VS Code，CLI 默认 Neovim |
 
-保留 Thunar 的“在此打开终端”“复制为图片”“复制路径”“粘贴剪贴板图片”“粘贴为链接”。文件 URI、路径文字、图片像素是三种不同用途，不能为了减少代码把它们合并成一种复制。迁移终端入口时保持当前文件夹作为 cwd，路径包含空格/中文/引号仍正常，不经拼接 shell 字符串。当前实现见 [文件动作](../modules/home/programs/apps/thunar-actions.nix)、[终端入口](../modules/home/programs/apps/thunar-terminal.nix)、[截图](../modules/home/programs/apps/screenshot.nix)。
+保留 Thunar 的“在此打开终端”“复制为图片”“复制路径”“粘贴剪贴板图片”“粘贴为链接”。文件 URI、路径文字、图片像素是三种不同用途，不能为了减少代码把它们合并成一种复制。迁移终端入口时保持当前文件夹作为 cwd，路径包含空格/中文/引号仍正常，不经拼接 shell 字符串。当前实现见 [文件动作](../aspects/file-manager/thunar-actions.nix)、[终端入口](../aspects/file-manager/thunar-terminal.nix)、[截图](../aspects/interactive-session/screenshot.nix)。
 
 剪贴板历史只由 Noctalia 管理；现有 Wayland/X11 桥接不是第二个历史后端，其退出与轮询策略按 [服务设计](service-policy.md) 核验。保留 WeChat/XWayland 与原生 Wayland 间文字、图片互通。锁屏和秘密复制行为先按锁定实现验证，不声称所有密码管理器内容都会自动排除；不输出剪贴板内容到测试日志。
 
@@ -72,7 +72,7 @@ Kitty 新窗口默认进入普通 shell，不自动套 tmux。用户需要保持
 | 离开但不结束 | `d` |
 | 重载 | `r` |
 
-tmux 会话恢复继续保留布局与编辑会话，禁止保存 pane 滚屏文本。恢复不等于重启数据库、容器、SSH 或付费 AI 任务；不能把“恢复窗口”实现成无条件重放历史命令。见 [现有恢复设置](../modules/home/programs/terminal/tmux.nix)。
+tmux 会话恢复继续保留布局与编辑会话，禁止保存 pane 滚屏文本。恢复不等于重启数据库、容器、SSH 或付费 AI 任务；不能把“恢复窗口”实现成无条件重放历史命令。见 [现有恢复设置](../aspects/command-line/tmux.nix)。
 
 项目的依赖、编译器和 SDK 版本由项目 `flake.nix`/`flake.lock` 拥有；全局只提供确认保留的基础工具和交互工具。direnv/nix-direnv 负责目录环境缓存：新的或变化的 `.envrc` 需用户信任，首次缺依赖时下载是正常行为，不承诺进入项目零等待。编辑器、语言服务器必须从项目 cwd/环境启动；桌面打开目录不能假装自动获得其 devShell。全局 clangd 用 PATH，项目可覆盖，已有语言接口不把所有工具写死成 store 路径。
 

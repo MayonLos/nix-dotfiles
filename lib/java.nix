@@ -1,9 +1,9 @@
 { pkgs, pkgs-unstable }:
 
 # Single source of truth for the Temurin JDKs installed on this host.
-# Consumers: modules/home/programs/dev/java.nix (packages and javaNN wrappers),
-# modules/home/base/session-vars.nix (JAVA*_HOME) and
-# modules/home/shell/zsh.nix (use-javaNN selectors).
+# Consumers: aspects/languages/java-tools.nix (packages and javaNN wrappers),
+# aspects/languages/java-tools.nix (JAVA*_HOME) and
+# aspects/languages/java-shell.nix (use-javaNN selectors).
 let
   temurin = pkgs.javaPackages.compiler.temurin-bin;
   # 26 is not in stable 26.05 yet.

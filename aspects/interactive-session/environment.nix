@@ -32,13 +32,8 @@ in
     # contributes the home-side set, so systemd-launched apps needed the
     # mirror to get them too.
     sessionVariables = shared // {
-      # bat and delta share one syntax theme on purpose -- they were on
-      # OneHalfDark and Nord respectively, so the same hunk looked different
-      # depending on whether git paged it. bat ships no Tokyo Night, and its
-      # only palette-following themes are 16-colour; Catppuccin Mocha is the
-      # closest of the built-ins (#1e1e2e against the terminal's #1a1b26, same
-      # blue-dark ground and pastel syntax family). `bat --list-themes` to see
-      # the set.
+      # A built-in syntax preset; terminal surfaces and ANSI colors remain
+      # owned by the shared fixed palette. No runtime theme writer is needed.
       BAT_THEME = "Catppuccin Mocha";
     };
   };

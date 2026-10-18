@@ -1,4 +1,5 @@
 { den, ... }: {
+  imports = [ ../appearance ];
   den.aspects = {
     neovim = { user, ... }: {
       homeManager =
@@ -25,6 +26,7 @@
         };
     };
     vscode = { host, ... }: {
+      noctaliaIntegrations = [ "vscode" ];
       homeManager.imports = [ ./vscode.nix ];
       provides.${host.name}.includes = [ den.aspects.editing-runtime ];
     };

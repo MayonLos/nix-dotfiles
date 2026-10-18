@@ -209,6 +209,40 @@ let
     vim.cmd("qa!")
   '';
 
+  clangdIntegrationCheck = pkgs.writeText "editing-clangd-integration.lua" ''
+    local ok, err = xpcall(function()
+      assert(vim.deep_equal(vim.lsp.config.clangd.cmd, {
+        "clangd", "--background-index", "--clang-tidy",
+      }), "production clangd command or arguments changed")
+      assert(vim.lsp.is_enabled("clangd"), "C/C++ profile must enable clangd")
+
+      vim.cmd.edit(vim.env.CONTRACT_PROJECT .. "/main.cpp")
+      assert(vim.bo.filetype == "cpp", "C++ filetype detection is missing")
+      local client
+      assert(vim.wait(30000, function()
+        client = vim.lsp.get_clients({ bufnr = 0, name = "clangd" })[1]
+        return client and client.initialized
+      end, 50), "production clangd did not attach")
+      assert(
+        vim.fs.normalize(client.config.root_dir) == vim.fs.normalize(vim.env.CONTRACT_PROJECT),
+        "clangd selected the wrong project root"
+      )
+
+      local response = client:request_sync("textDocument/hover", {
+        textDocument = { uri = vim.uri_from_bufnr(0) },
+        position = { line = 0, character = 5 },
+      }, 15000, 0)
+      assert(response and response.result, "clangd returned no hover for the C++ function")
+      local contents = response.result.contents
+      assert(contents and (type(contents) == "string" or vim.tbl_isempty(contents) == false),
+        "clangd hover response has no content")
+      assert(vim.fn.writefile({ vim.json.encode(response.result) }, vim.env.CONTRACT_RESULT) == 0,
+        "could not write the clangd hover artifact")
+    end, debug.traceback)
+    if not ok then io.stderr:write(err .. "\n"); vim.cmd("cquit 1") end
+    vim.cmd("qa!")
+  '';
+
   passed = lib.all (value: value) (builtins.attrValues results);
   report = pkgs.writeText "den-editing-composition.json" (builtins.toJSON results);
 in
@@ -247,4 +281,30 @@ pkgs.runCommand "den-editing-composition" { } ''
 
   run_editor ${runtimeHome editorOnly "hostA" "alice"} 0
   run_editor ${runtimeHome editorAndCpp "hostB" "alice"} 1
+
+  profile=${runtimeHome editorAndCpp "hostB" "alice"}
+  project="$TMPDIR/clangd-project"
+  mkdir -p "$project" "$TMPDIR/lsp-home" "$TMPDIR/lsp-config" "$TMPDIR/lsp-cache" "$TMPDIR/lsp-state" "$out"
+  cat > "$project/main.cpp" <<'CPP'
+  int answer() { return 42; }
+  int main() { return answer(); }
+  CPP
+  printf '[{"directory":"%s","arguments":["%s/bin/clang++","-std=c++20","-c","main.cpp"],"file":"%s/main.cpp"}]' \
+    "$project" "$profile" "$project" > "$project/compile_commands.json"
+  test -x "$profile/bin/clang++"
+  test -x "$profile/bin/clangd"
+  "$profile/bin/clang++" -std=c++20 -fsyntax-only "$project/main.cpp"
+  HOME="$TMPDIR/lsp-home" \
+    XDG_CONFIG_HOME="$TMPDIR/lsp-config" \
+    XDG_CACHE_HOME="$TMPDIR/lsp-cache" \
+    XDG_STATE_HOME="$TMPDIR/lsp-state" \
+    PATH="$profile/bin:${
+      pkgs.lib.makeBinPath [
+        pkgs.coreutils
+        pkgs.git
+      ]
+    }" \
+    CONTRACT_PROJECT="$project" \
+    CONTRACT_RESULT="$out/hover.json" \
+    "$profile/bin/nvim" --headless -c 'lua dofile("${clangdIntegrationCheck}")'
 ''

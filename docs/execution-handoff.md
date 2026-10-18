@@ -1,6 +1,6 @@
 # 新对话执行交接
 
-更新：2026-10-18。本文是后续 goal 的执行入口；本轮只完成设计文档，没有启动 goal、切换系统或部署服务器。用户允许大幅重构、推翻不合适的实现，要求多子代理、频繁本地提交。文档中的目标设计尚未应用，不能当作已完成的运行结果。
+更新：2026-10-18。批次 0–7 已按当前 goal 执行到实现和构建边界，详见 [实施记录](den-execution.md)。下文执行顺序保留为设计依据；起点/旧提交清单是迁移前历史，不能作为当前状态。本次未 switch/test、执行真实配置迁移、停止旧服务或部署服务器；下一次应用任务从批次 8 和写入归属/服务验收继续，不重做软件选择。
 
 ## 阅读顺序与设计依据
 
@@ -31,9 +31,9 @@
 | 数据 | 配置迁移和数据删除分开；模型权重、项目、历史、登录 state、VM/容器卷不能顺手清空 |
 | 提交 | 每个可审查闭环及时本地 commit；不 push，不把无关工具配置/用户改动混入提交 |
 
-## 起点：哪些已完成，哪些没有
+## 迁移前起点（历史）
 
-已经有 `aspects/embedded-workbench`、`appearance`、`default-tools`、`languages` 和 `tests/den`。Den 固定在测试子 flake；主根 flake 尚未接入。嵌入式旧入口已引用完整实现，并修正 ST-Link 世界可写规则；外观、默认工具、语言消费者仍是隔离样本。
+已经有 `aspects/embedded-workbench`、`appearance`、`default-tools`、`languages` 和 `tests/composition`。Den 固定在测试子 flake；主根 flake 尚未接入。嵌入式旧入口已引用完整实现，并修正 ST-Link 世界可写规则；外观、默认工具、语言消费者仍是隔离样本。
 
 最近的可回退提交：`7c75b78`（隔离消费者）、`c97d4f9`（语言）、`e8b0e88`（默认工具）、`e2874f6`（外观）、`58dcc18`（嵌入式组合）、`284da94`（ST-Link 权限）。新对话必须查看实际 HEAD，不能假定这份列表是最新提交。
 
@@ -65,7 +65,7 @@
 
 ## tests/ 的职责与投入范围
 
-`tests/` 是自动验证代码，不是系统后台服务，也不是正常开机要启动的额外主机。当前 `tests/den` 是隔离子 flake；目标中的 `tests/composition` 是责任示意，迁移时可在适合的阶段统一名字，不能仅改目录而破坏相对输入。
+`tests/` 是自动验证代码，不是系统后台服务，也不是正常开机要启动的额外主机。旧 `tests/den` 隔离子 flake 已整合到根 checks；当前 `tests/composition` 直接组合生产功能，复用根锁输入。
 
 | 检查层 | 验证什么 | 不证明什么 |
 |---|---|---|
@@ -75,7 +75,7 @@
 | 少量 VM 集成（需要时新增） | 真正依赖 systemd/网络/账号启动的关键路径 | 不模拟真实 NVIDIA、显示器/音频/USB、游戏帧时间 |
 | 实机验收记录 | 登录/退出、输入法、屏幕共享、剪贴板、权限、休眠、MC 等 | 只对所记录版本、设备、场景有效 |
 
-专项检查优先跟功能放，跨功能不变量放顶层 tests；不为每个可逆小修改写镜像实现的测试。新增负例应能故意破坏关键保障并触发失败；大而慢的 VM 测试只用于轻量检查覆盖不了的边界。真实秘密不用作 fixture，测试账号不授予真实设备或公网权限。官方测试机制见 [NixOS Tests](https://nixos.org/manual/nixos/stable/#sec-nixos-tests)，当前样本的实测范围见 [tests/den](../tests/den/README.md)。
+专项检查优先跟功能放，跨功能不变量放顶层 tests；不为每个可逆小修改写镜像实现的测试。新增负例应能故意破坏关键保障并触发失败；大而慢的 VM 测试只用于轻量检查覆盖不了的边界。真实秘密不用作 fixture，测试账号不授予真实设备或公网权限。官方测试机制见 [NixOS Tests](https://nixos.org/manual/nixos/stable/#sec-nixos-tests)，当前样本的实测范围见 [tests/composition](../tests/README.md)。
 
 ## 多代理分工与集成
 
@@ -92,13 +92,13 @@ Luna 负责窄任务：源码/锁定 API 搜索、单一 feature 小迁移、文
 ```sh
 git status --short
 git diff --check
-nix flake check ./tests/den --no-write-lock-file
+nix flake check --no-write-lock-file
 nix flake check --no-build --no-write-lock-file
 nix build --no-link --no-write-lock-file .#checks.x86_64-linux.treefmt
 nix build --no-link --no-write-lock-file .#nixosConfigurations.nixos-btw.config.system.build.toplevel
 ```
 
-上面 tests/den 命令在该路径存在期间使用，根 checks/输出也以届时源码为准。新文件经审查后进入 Git 可见范围；不要用包含整个脏工作树的 `path:.` 绕过，因为 Git 忽略文件里可能有运行时秘密。需要最小 source snapshot 时明确列出复制范围并检查。`nix fmt` 会修改文件，只在核对已有改动后对明确范围使用。
+旧测试子 flake 已移除；以上检查使用根锁和生产配置，输出以当前源码为准。新文件经审查后进入 Git 可见范围；不要用包含整个脏工作树的 `path:.` 绕过，因为 Git 忽略文件里可能有运行时秘密。需要最小 source snapshot 时明确列出复制范围并检查。`nix fmt` 会修改文件，只在核对已有改动后对明确范围使用。
 
 应用不是构建的隐式后续：本次设计轮不应用；新对话 goal 是否包含应用，以用户当时指令为准。用户明确授权应用后持续执行，不重复请求相同授权；若只要求实现与构建则交付到该边界并列出未做的实机项。系统入口仍是 `sudo nixos-rebuild switch --flake .#nixos-btw`，没有独立 Home Manager switch。`test` 同样会即时改运行系统，不能冒充只读检查。
 

@@ -7,13 +7,13 @@
 | 位置 | 证据及处理 |
 |---|---|
 | `nixvim/plugins/appearance/lua/math_preview.lua` | 原异步回调只检查当前 buffer，公式 A 晚于公式 B 完成时可能覆盖 B。增加请求代次，光标变化、文本变化、关闭与离开窗口时使旧请求失效；正常结果与错误结果都经过检查。 |
-| `modules/home/programs/apps/thunar-actions.nix` | 图像转换或剪贴板读取失败时，原临时文件没有统一退出清理。两条操作补上 EXIT trap，失败注入验证无残留。 |
-| `modules/home/programs/dev/ai-agents.nix` | 旧 Codex 包布局限制已被锁定 llm-agents 源码修复。原包 0.162.1 在隔离配置目录冷启动共享 daemon，`packages/app-server-daemon/current` 指向 Nix store，未下载 release。移除强制 `--no-daemon` 包装；保留仍有依据的 dsh 与 OpenCode 包装。 |
-| `modules/home/programs/dev/toolchain.nix`、`python.nix` | nvim-dap 已移除，仓库没有剩余 CodeLLDB/debugpy 消费配置。移除这两项全局依赖，保留 IPython、语言工具链与 GDB；同步开发技能说明。 |
-| `modules/home/wm/mango/noctalia.nix` | 已启用的 OCR 和 DeepSeek balance 插件没有配置 bar/control-center 入口，且没有 service/launcher 入口。移除这两个闲置插件；原生 Print OCR 快捷键保留，用户运行时数据未删除。 |
+| `aspects/file-manager/thunar-actions.nix` | 图像转换或剪贴板读取失败时，原临时文件没有统一退出清理。两条操作补上 EXIT trap，失败注入验证无残留。 |
+| `aspects/ai-workbench/ai-agents.nix` | 旧 Codex 包布局限制已被锁定 llm-agents 源码修复。原包 0.162.1 在隔离配置目录冷启动共享 daemon，`packages/app-server-daemon/current` 指向 Nix store，未下载 release。移除强制 `--no-daemon` 包装；保留仍有依据的 dsh 与 OpenCode 包装。 |
+| `aspects/languages/support.nix`、`python.nix` | nvim-dap 已移除，仓库没有剩余 CodeLLDB/debugpy 消费配置。移除这两项全局依赖，保留 IPython、语言工具链与 GDB；同步开发技能说明。 |
+| `aspects/interactive-session/noctalia.nix` | 已启用的 OCR 和 DeepSeek balance 插件没有配置 bar/control-center 入口，且没有 service/launcher 入口。移除这两个闲置插件；原生 Print OCR 快捷键保留，用户运行时数据未删除。 |
 | 同上 | 未安装 Cava，但启用了 Cava 主题模板。删除模板，保留 Noctalia 原生 PipeWire 频谱。 |
 | 同上 | 空 calculator `prefix` 实际恢复默认 `calc`，不是禁用开关。删去无效字段并纠正说明；calculator-plus 插件已移除，内置计算器不参与普通搜索，但显式 `/calc` 仍可用。 |
-| `README.md`、`lib/desktop.nix`、技能索引 | 修正 Noctalia 状态文件路径、Mango 配色输出文件名、fcitx 重启指引、libtexprintf 包名，补上共享本地模型清单索引。 |
+| `README.md`、`inventory/hosts/nixos-btw/facts.nix`、技能索引 | 修正 Noctalia 状态文件路径、Mango 配色输出文件名、fcitx 重启指引、libtexprintf 包名，补上共享本地模型清单索引。 |
 
 同时压缩了 Noctalia、AI 工具及字体配置中的旧版本流水和已失效注释，保留输入 pin、只读配置、运行时覆盖层和仍需保留的 workaround 理由。
 

@@ -353,7 +353,7 @@ let
     + ''
       if ! command -v matlab-language-server >/dev/null 2>&1; then
         echo "matlab-ls: matlab-language-server is not on PATH" >&2
-        echo "add it to modules/home/programs/dev/toolchain.nix" >&2
+        echo "add it to aspects/languages/support.nix" >&2
         exit 1
       fi
       exec matlab-language-server --stdio \

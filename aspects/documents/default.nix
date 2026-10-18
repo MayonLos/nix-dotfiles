@@ -1,5 +1,10 @@
 _: {
+  imports = [ ../appearance ];
   den.aspects.documents = { user, ... }: {
+    noctaliaIntegrations = [
+      "obsidian"
+      "zathura"
+    ];
     homeManager = { pkgs, ... }: {
       imports = [
         (import ./zathura.nix { palette = user.appearance; })

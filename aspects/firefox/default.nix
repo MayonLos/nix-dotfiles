@@ -1,5 +1,5 @@
 _: {
-  den.quirks.noctaliaIntegrations.description = "Selected applications requesting Noctalia palette integration";
+  imports = [ ../appearance ];
   den.aspects.firefox = { user, ... }: {
     noctaliaIntegrations = [ "firefox" ];
     homeManager =
@@ -47,8 +47,8 @@ _: {
               user.appearance.bg
               user.appearance.deep
               user.appearance.selection
+              user.appearance.brightFg
               user.appearance.fg
-              user.appearance.muted
               user.appearance.blue
               user.appearance.purple
               user.appearance.cyan

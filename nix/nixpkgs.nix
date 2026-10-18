@@ -9,7 +9,7 @@
       };
     in
     {
-      # Single unstable instantiation: flake/system.nix consumes it through
+      # Single unstable instantiation: inventory/hosts/nixos-btw/default.nix consumes it through
       # withSystem's module args, and the portal-wlr overlay below takes
       # its package from the same set.
       _module.args.pkgs-unstable = pkgs-unstable;

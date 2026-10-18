@@ -5,9 +5,8 @@
   systemPath,
 }:
 let
-  kittyCheck = (import ../appearance/checks.nix { inherit pkgs home palette; }).kitty;
   kittyExtra = pkgs.writeText "kitty-workspace-check.py" ''
-    import os
+    import os, json
     from kitty.config import load_config
     bad = []
     opts = load_config("${home.xdg.configFile."kitty/kitty.conf".source}", accumulate_bad_lines=bad)
@@ -15,7 +14,25 @@ let
         raise RuntimeError("Invalid Kitty workspace settings")
     if opts.cursor.as_sharp != "${palette.brightFg}" or opts.selection_foreground.as_sharp != "${palette.brightFg}":
         raise RuntimeError("Invalid cursor/selection roles")
-    open(os.environ["KITTY_RESULT"], "w").write("ok")
+    expected = ${
+      builtins.toJSON (
+        {
+          background = palette.bg;
+          foreground = palette.fg;
+        }
+        // pkgs.lib.listToAttrs (
+          pkgs.lib.imap0 (i: value: {
+            name = "color${toString i}";
+            inherit value;
+          }) (import ../appearance/ansi.nix palette)
+        )
+      )
+    }
+    for key, value in expected.items():
+        if getattr(opts, key).as_sharp != value:
+            raise RuntimeError(f"Kitty palette mismatch: {key}")
+    with open(os.environ["KITTY_RESULT"], "w") as result:
+        json.dump(expected, result)
   '';
 in
 assert !(home.xdg.configFile ? "kitty/mayon.conf");
@@ -31,8 +48,7 @@ pkgs.runCommand "command-line-runtime"
   ''
     export HOME="$TMPDIR/home" XDG_CONFIG_HOME="$TMPDIR/config" XDG_CACHE_HOME="$TMPDIR/cache"
     mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" "$out"
-    cp ${kittyCheck}/kitty.json "$out/kitty.json"
-    export KITTY_RESULT="$out/kitty-settings"
+    export KITTY_RESULT="$out/kitty.json"
     ${pkgs.kitty}/bin/kitty +runpy "exec(open('${kittyExtra}').read())"
     test -s "$KITTY_RESULT"
     zsh -n ${home.home.file."./.zshrc".source}

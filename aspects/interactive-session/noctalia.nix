@@ -228,13 +228,12 @@ in
                 hook_async = false;
               };
             };
-            builtin_ids = [
-              "btop"
+            builtin_ids = lib.optional (builtins.elem "btop" noctaliaIntegrations) "btop" ++ [
               "gtk3"
               "gtk4"
               "qt"
             ];
-            community_ids = [
+            community_ids = builtins.filter (id: builtins.elem id noctaliaIntegrations) [
               "obsidian"
               "vscode"
               "yazi"

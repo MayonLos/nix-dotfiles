@@ -1,6 +1,11 @@
 { den, ... }: {
+  imports = [ ../appearance ];
   den.aspects = {
     command-line = { host, ... }: {
+      noctaliaIntegrations = [
+        "btop"
+        "yazi"
+      ];
       homeManager.imports = [
         ./zsh.nix
         ./git.nix

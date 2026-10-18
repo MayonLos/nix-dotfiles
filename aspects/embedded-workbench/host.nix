@@ -21,5 +21,5 @@
   # The serial console is the other half, and it is not uaccess-tagged: a
   # USB-serial adapter comes up as /dev/ttyUSB* or /dev/ttyACM* owned by
   # root:dialout. The feature's user class grants that group only to selected
-  # accounts. The legacy entry still gets it from modules/system/user/mayon.nix.
+  # accounts. The feature grants dialout only to selecting bindings.
 }

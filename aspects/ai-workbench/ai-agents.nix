@@ -6,7 +6,7 @@
 
 # AI coding agents that come from the llm-agents.nix flake input rather than
 # nixpkgs. The base packages are prebuilt on cache.numtide.com (configured in
-# modules/system/core/nix.nix); the local compatibility fix and desktop launcher
+# aspects/system/maintenance/nix.nix); the local compatibility fix and desktop launcher
 # below reuse those packages.
 let
   agents = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system};

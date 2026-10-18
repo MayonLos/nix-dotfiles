@@ -1,8 +1,6 @@
 # Den 架构设计：实体、选择与完整功能
 
-状态：**shell、嵌入式及三个共享接口样本已验证，主配置尚未接入 Den**。按用户最新要求与 Astra 共同设计，取消前版按当前目录和软件分类迁移的约束。嵌入式实现已收拢到功能目录，旧入口保留兼容引用；其余配置以后逐项适配，文件名、目录、包配方和资源位置都可改变。Den v0.19.0 仅进入 [测试子 flake](../tests/den/README.md) 的锁文件，未进入主仓库 `flake.lock`；除下文列出的结果外，其余行为仍是设计目标。
-
-后续实施入口见 [新对话执行交接](execution-handoff.md)。专项设计分别规定 [Astra 桌面视觉](desktop-design.md)、[操作方式](workflow-design.md)、[文件写入归属](config-ownership.md)、[后台服务](service-policy.md) 和 [未来服务器](server-plan.md)；这些是下一轮实施规格，不代表已应用。
+状态：Den v0.19.0 已锁入根 flake，真实 `nixos-btw`/`mayon` 已完成逐功能迁移。本文规定架构边界；当前接线见 `nix/`、`aspects/default.nix`、`bundles/default.nix` 和 inventory。各批实现与重新执行的检查见 [实施记录](den-execution.md)。未执行 activation、switch/test 或实机 GUI 验收。
 
 ## 设计结论
 
@@ -42,77 +40,47 @@ PCI 地址是事实，选择省电策略是意图，驱动与 PRIME 配置是实
 
 功能意图和具体选型要分清，但不为每个应用强制建立 interface/backend 两层。固定选择直接由功能实现；出现真实替换需求和稳定消费者后再提取共同接口。
 
-- `personal-workspace` 组合交互会话、命令行、日用功能与默认工具。
-- `engineering-workspace` 组合编辑、语言支持和已经确认需要的专业工具。
+- `personal-desktop` 组合交互会话、命令行、日用功能与默认工具。
+- `engineering-workbench` 组合编辑、语言支持和已经确认需要的专业工具。
 - `remote-workspace` 组合命令行、编辑和实际需要的语言；这是组合示意，不是提前部署的服务器。
 - 桌面内部，会话实现与桌面 shell 是不同选择维度；更换其中一项时，其余消费者不应引用旧应用私有配置。
 - 安装多个编辑器是有效选择；默认编辑器是另一项单值选择。
 
-这些名称描述用途，均是普通 Den aspect。具体软件今后按既定保留决定逐项接入，组合变化不自动成为删软件的理由。
+这些名称描述用途，均是普通 Den aspect。具体软件已按既定保留决定逐项接入，组合变化不自动成为删软件的理由。
 
-## 目标树状图
-
-目录围绕变更局部性组织，以下是责任示意，不要求一次创建全部文件。薄功能可用单文件，只有复杂功能才展开目录。
+## 当前结构
 
 ```text
 .
-├── flake.nix
-├── flake.lock
-├── nix/                              # 薄接线，不实现第二套框架
-│   ├── default.nix                   # 显式加载定义入口
-│   ├── den.nix                       # Den、所需 class 与集成
-│   ├── nixpkgs.nix                   # 按目标平台解析包集合
-│   └── outputs.nix                   # 包、devShell、checks 等输出
-├── inventory/                        # 真实实体、实例与选择
-│   ├── schema.nix                    # 少量确有需要的共享实体字段
-│   ├── users/
-│   │   └── mayon.nix                 # 跨机器身份与偏好
-│   └── hosts/
-│       └── nixos-btw/
-│           ├── default.nix           # Den 实体、主机策略与功能选择
-│           ├── facts.nix             # 设备/平台事实；复杂时才拆出
-│           ├── accounts.nix          # 本机账号绑定；复杂时才拆出
-│           └── discovered.nix        # 扫描工件，由正确 class 显式引用
+├── flake.nix / flake.lock             # 锁定输入与薄 flake-parts 入口
+├── nix/                              # Den、包集合、devShell、Neovim 输出和 checks
+├── inventory/
+│   ├── users/mayon.nix                # 跨主机身份
+│   └── hosts/nixos-btw/               # 唯一部署实例
+│       ├── default.nix                # 实体、选择和实际主机策略
+│       ├── facts.nix                  # 平台/PCI/显示器/键盘公开事实
+│       ├── accounts.nix               # 本机账号与运行时凭据读取授权
+│       ├── credentials.nix            # sops runtime owner/mode/template
+│       └── discovered.nix             # 未改磁盘/交换的扫描工件
 ├── aspects/
-│   ├── bundles/                      # 只组合，不重复最终配置
-│   │   ├── personal-workspace.nix
-│   │   ├── engineering-workspace.nix
-│   │   └── remote-workspace.nix
-│   ├── system/                       # 系统维护、设备适配、存储/网络等功能
-│   ├── interactive-session/          # 完整图形会话及其配套
-│   │   ├── default.nix               # 功能公开入口
-│   │   ├── implementation/           # 私有 NixOS/HM 实现与适配
-│   │   └── resources/                # 本功能配置、脚本与资源
-│   ├── command-line/                 # shell 注册、账号 shell、用户环境
-│   ├── editing/
-│   │   ├── default.nix
-│   │   ├── neovim/                   # 可选具体实现，自有 Lua/包配方/测试
-│   │   └── …
-│   ├── languages/
-│   │   ├── contract.nix              # 稳定语言贡献协议
-│   │   └── …                         # 各语言及其工具、编辑器专属适配
-│   ├── appearance/
-│   │   ├── contract.nix              # 公开的语义色/外观接口
-│   │   └── …                         # 调色板与各输出适配
-│   ├── default-tools/
-│   │   ├── contract.nix              # 公开的默认工具接口
-│   │   └── …                         # 启动/MIME 等实际消费者
-│   ├── embedded-workbench/
-│   ├── local-containers/
-│   ├── local-virtual-machines/
-│   ├── reading-and-writing/
-│   ├── media-creation/
-│   ├── gaming/
-│   └── remote-access/
-├── packages/                         # 确实跨功能复用或独立发布的包，按需建立
-├── lib/                              # 确实共享的小型纯函数，按需建立
-├── tests/
-│   └── composition/                  # 作用域、授权、冲突与组合不变量
-├── secrets/                          # 加密输入，按实例授权
+│   ├── default.nix                    # 显式 registry；登记不代表启用
+│   ├── system/                        # 维护、实际笔记本设备策略与本地网络策略
+│   ├── command-line/                  # 完整 CLI 与独立 terminal
+│   ├── editing/neovim/                # 丰富 Lua、包/插件/parser 与专项测试
+│   ├── languages/                     # 工具与有序编辑器贡献
+│   ├── appearance/ / default-tools/   # 公开数据协议
+│   ├── interactive-session/           # Mango/Noctalia/IME、资源与 host 支持
+│   ├── embedded-workbench/            # 工具、共享规则及 binding 授权
+│   ├── local-containers/ / local-virtual-machines/
+│   └── firefox/ / communication/ / documents/ / media/ / file-manager/ / ai-workbench/ / gaming/ / remote-access/
+├── bundles/default.nix                # personal-desktop / engineering-workbench / remote-workspace
+├── lib/                              # 有实际共享价值的小函数
+├── tests/composition/                 # 生产模块组合、不导出部署 fixture
+├── secrets/                          # 仅加密输入
 └── docs/
 ```
 
-`tests/` 存放验证代码和内部 fixture，不是开机服务，也不导出虚构的部署主机。跨功能隔离、冲突与授权不变量放这里；专项检查靠近功能。当前实际入口是 `tests/den/`，树中的 `composition/` 为目标职责示意。构建检查不执行 Home Manager activation，实际设备与桌面行为另做运行验收。
+旧递归模块树、兼容包入口及测试子 flake 已退出；所有检查使用根输入锁。专项检查靠近功能，跨功能隔离、冲突和授权检查放 `tests/composition/`。构建不执行 activation，设备与桌面行为另做运行验收。
 
 资源、配置脚本、包配方与专项测试优先靠近其功能。没有跨功能复用价值时，不为了沿用旧布局强制拆到顶层 `config/`、`pkgs/` 或公共 helpers。
 
@@ -128,6 +96,7 @@ PCI 地址是事实，选择省电策略是意图，驱动与 PRIME 配置是实
 |---|---|---|
 | 外观 | 一个有效外观选择；各应用适配消费相同语义色、字体等真实共享字段 | 同一用户/绑定明确选择；宿主 greeter 有自己的选择；不跨账号隐式继承 |
 | 默认工具 | 绑定选择默认 terminal/editor/browser/fileManager；启动入口、快捷键、MIME 消费 | 安装与设默认分开；参数用结构化 argv；仅建立实际消费者需要的字段 |
+| Noctalia 模板请求 | 所选应用贡献 `noctaliaIntegrations` 标记；会话中的唯一 Noctalia renderer 消费 | 只启用实际选中应用的模板；不隐式安装应用，不写 Kitty/Mango |
 | 语言支持 | 所选语言贡献稳定 ID、包和命令描述；所选编辑器消费 | 编辑器只解释自己支持的贡献；专属设置/扩展保留明确命名，不伪造通用编辑器配置语言 |
 
 One Dark Darker、具体终端和编辑器属于这些接口的实际选择，不决定架构层次。语言到编辑器的数据贡献可借鉴官方 [Quirk Recipes](https://den.denful.dev/guides/quirk-recipes/)；本仓库的字段、类型和冲突检查仍需自行明确。
@@ -161,7 +130,7 @@ One Dark Darker、具体终端和编辑器属于这些接口的实际选择，�
   事实：真实平台、磁盘、GPU 地址、显示器
   主机选择：系统维护、启动/图形/电源策略
   mayon 绑定：
-    personal-workspace + engineering-workspace
+    personal-desktop + engineering-workbench
     + 本地容器/虚拟机 + 嵌入式工作台 + 游戏
     + 该机明确授权与默认工具
 
@@ -191,16 +160,10 @@ One Dark Darker、具体终端和编辑器属于这些接口的实际选择，�
 
 每个可审查的设计决策、纵向验证闭环或功能迁移及时提交。允许推翻已有抽象与实现；发现边界不成立时直接修正，不为保持旧目录或减少 diff 保留错误设计。提交前完成该阶段必要核验，保留清晰的回退点。
 
-## 本次设计与限制
+## 实现证据与限制
 
-主代理提出独立方案；Astra 完成独立架构设计并交叉讨论；另有官方资料核对和概念复核。采纳了取消人工双侧配对、事实与策略分离、功能资源就近、显式入口、少量协议与写入者约束等结论。
+架构与桌面规格来自先前主代理和实际 Astra 设计；本轮实现没有重新设计视觉。Den 的共享 host 支持使用具名 aspect，账号授权仍在 binding，避免多个账号重复输出同一文本。根组合检查覆盖命令行、丰富编辑器/语言、桌面、容器/VM、嵌入式及无头工作台；负例检查有序数据冲突与系统边界。实际包和程序检查见 [tests/README](../tests/README.md) 与 [实施记录](den-execution.md)。
 
-`tests/den/` 固定 Den v0.19.0，使用与主仓库相同 revision 的 stable/HM/flake-parts。两主机、两账号样本已验证 shell 功能的 HM、账号和定向宿主路由、身份与绑定组合、共享文件去重及文件 mode 冲突；组合检查与选中账号的 HM activationPackage 构建通过。故意移除宿主投递的临时负例也按预期失败。
+同宿主的 portal、PAM/keyring、polkit、udev 等是共享系统能力，不是账号级访问控制。串口组、input/libvirtd/kvm/gamemode 授权按绑定；USB uaccess 仍按活动 seat。PipeWire 自动 socket wants 与本地 Docker daemon 自动启动均不再套到所有用户。
 
-嵌入式功能已进入 `aspects/embedded-workbench/`，测试直接引用同一入口，旧 HM/system/package 路径暂为兼容接线。实测验证了工具和串口组按绑定分配、共享 udev 去重、移除一个使用者后仍保留共享支持、与 shell 功能共存；HM、最终 udev 和 ARM 编译/GDB/CLI 检查通过。USB 探针是活动 seat 的 uaccess 授权，不承诺按绑定隔离 USB。最终产物核验还发现原 ST-Link 包使用 `MODE:=0666`，已修正为 0660/uaccess，保留设备别名；现有笔记本构建也引用该修正。
-
-外观与默认工具采用 `den.schema.user.imports` 的类型化输入，语言使用同 scope 的 `editorLanguages` quirk，消费者用原生模块类型检查 ID、server 及有序命令。数据存在不启用应用，默认设置不安装目标应用；语言和编辑器可独立选择。两主机/两账号隔离、同值贡献幂等和异值冲突检查通过。真实 Kitty parser、headless Neovim 高亮、参数保真脚本、C++ 编译和 clangd 连接/root/hover 检查通过；错误配色、删除转义和删除 LSP 启用的负例也被拒绝。Kitty 的优化 Python 会移除 assert，检查改为显式错误与完成文件判定。
-
-这些适配器仍只用于隔离样本。Kitty 的固定主题接入须先停用 Noctalia 同目标模板并迁移可变 stub；默认工具须迁走旧 EDITOR/MIME 声明；现有丰富 Lua/LSP 实现要保留功能后再适配。不能同时叠加新旧写入者，也不把当前最小 Neovim 样本当作完整编辑器迁移。
-
-实测发现内联 provider 会使共享文本在两账号组合时重复，现用 provider 包含共享具名 aspect 解决。具体代码、命令、锁定源码证据与验证范围见 [样本说明](../tests/den/README.md)。这不是整个 Den 架构或现有桌面的完整验收：真实主机 Den 接线尚未实施，没有执行 activation、系统切换或用户数据迁移，也没有真实设备/GUI 或项目 direnv 切换验证。下一阶段先为此前已完成的软件/Neovim 修改保存可回退基线，再接入真实主机并逐项迁移功能。
+当前只有真实笔记本部署输出。ARM 无头 fixture 验证到求值，未做 ARM closure 构建、跨架构运行或服务器部署。没有切换系统、执行真实数据迁移、停止旧服务或清理用户状态。冷登录/退出、GUI/设备、休眠、VM/游戏及性能对比均待应用后验收。

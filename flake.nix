@@ -1,5 +1,5 @@
 {
-  description = "NixOS from Scratch";
+  description = "Den-based NixOS and Home Manager configuration";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
@@ -22,7 +22,7 @@
     # Noctalia plugin repositories, consumed as plain source trees rather than
     # through noctalia's own git fetcher. A `kind = "path"` plugin source points
     # straight at the store path, so nothing is cloned at startup — see the
-    # comment on settings.plugins in modules/home/wm/mango/noctalia.nix.
+    # comment on settings.plugins in aspects/interactive-session/noctalia.nix.
     noctalia-plugins-official = {
       url = "github:noctalia-dev/official-plugins";
       flake = false;
@@ -38,8 +38,8 @@
     # against its own tested nixpkgs to avoid attr/version drift breaking the build.
     noctalia-greeter.url = "github:noctalia-dev/noctalia-greeter";
 
-    # MangoWC: the compositor this host runs (modules/system/desktop/mango.nix,
-    # modules/home/wm/mango/), a dwl derivative. It is in
+    # MangoWC: the compositor this host runs (aspects/interactive-session/host/mango.nix,
+    # aspects/interactive-session/), a dwl derivative. It is in
     # nixpkgs-unstable, but the flake is what carries the home-manager module
     # that renders ~/.config/mango/config.conf from Nix, so we take the flake.
     #
@@ -61,12 +61,12 @@
 
     # Daily-updated packages for AI coding agents: codex, dsh, grok, opencode
     # and the review/usage tooling around them. zcode is deliberately NOT
-    # installed -- see programs/dev/ai-agents.nix. Deliberately NOT
+    # installed -- see aspects/ai-workbench/ai-agents.nix. Deliberately NOT
     # `follows`-ed: upstream only builds and caches against its own pinned
     # nixpkgs-unstable, and pointing it at this flake's stable `nixpkgs` would
     # both break eventually and miss every prebuilt binary. The cost is one
     # extra nixpkgs evaluation; the payoff is cache.numtide.com hits, wired up
-    # in modules/system/core/nix.nix.
+    # in aspects/system/maintenance/nix.nix.
     llm-agents.url = "github:numtide/llm-agents.nix";
 
     sops-nix = {

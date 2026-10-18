@@ -1,6 +1,6 @@
 # 保留应用逐项评估与补充候选
 
-核对日期：2026-10-18。本文先记录选型提案；随后用户确认的 pamixer、cliphist、pavucontrol 精简，以及 Xarchiver、Okular 新增已修改配置，验证状态见[重构执行计划](refactor-plan.md)。软件选型阶段已结束；其余条件推荐未纳入本轮，也未切换系统。
+核对日期：2026-10-18。当前功能已迁入 Den，本文保留软件决定，新的构建及未应用边界见[实施记录](den-execution.md)。本文先记录选型提案；随后用户确认的 pamixer、cliphist、pavucontrol 精简，以及 Xarchiver、Okular 新增已修改配置，验证状态见[重构执行计划](refactor-plan.md)。软件选型阶段已结束；其余条件推荐未纳入本轮，也未切换系统。
 
 依据包括当前工作树、`flake.lock`、已取得的锁定源码、官方文档，以及项目 issue 中的具体兼容案例。范围是用户直接使用的应用、桌面插件和工具组，不逐个罗列传递依赖。仓库没有声明某项，不代表用户在运行时没有手动安装或使用其他方案。没有做应用间的内存、功耗、速度基准测试；不据语言或界面技术推断谁一定更轻。
 
@@ -19,11 +19,11 @@
 | 按需 | Discord → Vesktop | 仅在 Linux 屏幕共享带音频是明确需求时试用；非官方客户端和 Portal 兼容是代价。 |
 | 按需 | 跨设备同步、远程开发 | 有第二台设备/服务器后，再选 Syncthing、Remote-SSH、Tailscale；不提前把所有服务打开。 |
 
-固定方向继续沿用：Mango + Noctalia、Kitty + tmux、One Dark Darker、原生 Lua + Nix 管理 Neovim 插件、混合工具链、未来 Den 多主机。本文不重新打开这些选择。
+固定方向继续沿用：Mango + Noctalia、Kitty + tmux、One Dark Darker、原生 Lua + Nix 管理 Neovim 插件、混合工具链、Den 实体与绑定。本文不重新打开这些选择。
 
 ## 日用桌面
 
-仓库入口：[应用清单](../modules/home/packages.nix)、[应用模块](../modules/home/programs/apps/)、[MIME 与图片配置](../modules/home/base/xdg.nix)、[Mango 配置](../modules/home/wm/mango/config.nix)。
+仓库入口：[应用清单](../aspects/default.nix)、[应用模块](../aspects/)、[MIME 与图片配置](../aspects/media/images.nix)、[Mango 配置](../aspects/interactive-session/mango.nix)。
 
 | 应用 | 判断 | 更优解、收益和代价 |
 |---|---|---|
@@ -59,7 +59,7 @@
 
 ## 创作、办公、笔记与阅读
 
-入口：[应用清单](../modules/home/packages.nix)、[Blender](../modules/home/programs/apps/blender.nix)、[OBS](../modules/home/programs/apps/obs-studio.nix)、[LibreOffice](../modules/system/programs/libreoffice.nix)、[Thunderbird](../modules/home/programs/apps/thunderbird.nix)、[Zathura](../modules/home/programs/apps/zathura.nix)、[Musicfox](../modules/home/programs/apps/musicfox.nix)。
+入口：[应用清单](../aspects/default.nix)、[Blender](../aspects/media/blender.nix)、[OBS](../aspects/media/obs-studio.nix)、[LibreOffice](../aspects/documents/default.nix)、[Thunderbird](../aspects/communication/thunderbird.nix)、[Zathura](../aspects/documents/zathura.nix)、[Musicfox](../aspects/media/musicfox.nix)。
 
 | 应用 | 判断 | 更优解、收益和代价 |
 |---|---|---|
@@ -84,7 +84,7 @@
 
 ## 编辑器、终端与 Git
 
-入口：[JetBrains](../modules/home/programs/dev/jetbrains.nix)、[VSCode](../modules/home/programs/dev/vscode.nix)、[Neovim](../modules/home/programs/dev/nvim.nix)、[Kitty](../modules/home/programs/terminal/kitty.nix)、[tmux](../modules/home/programs/terminal/tmux.nix)、[Git](../modules/home/programs/dev/git.nix)、[Shell](../modules/home/shell/zsh.nix)。
+入口：[JetBrains](../aspects/editing/jetbrains.nix)、[VSCode](../aspects/editing/vscode.nix)、[Neovim](../aspects/editing/default.nix)、[Kitty](../aspects/command-line/kitty.nix)、[tmux](../aspects/command-line/tmux.nix)、[Git](../aspects/command-line/git.nix)、[Shell](../aspects/command-line/zsh.nix)。
 
 | 项目 | 判断 | 更优解、收益和代价 |
 |---|---|---|
@@ -92,7 +92,7 @@
 | PyCharm | 保留；可选合并入口 | IDEA 官方有 Python 插件。只有现有许可、插件和 Python 工作流都满足时，才值得试把 PyCharm 项目放入 IDEA；会改变独立设置与窗口习惯。用户已确认常用，本轮不删。 |
 | CLion | 保留 | C/C++ 项目模型、调试与嵌入式支持不是 clangd 的等价功能；无需额外安装 DataGrip 才能获得全部基础数据库入口，具体能力看 IDE 功能和许可。 |
 | VSCode FHS | 保留 | 为扩展附带的二进制和 USB/调试库提供兼容环境。改普通包会重新承担逐个扩展追依赖的工作。Remote-SSH 是否已手动安装需核对。 |
-| Neovim | 已迁移到原生 Lua + Nix 包 | `config/nvim/` 承载配置，`pkgs/neovim/` 固定插件/parser 和 wrapper；保留插件由 Nix 提供，不使用在线插件管理器。专项包检查已通过；见[迁移计划](neovim-migration-plan.md)了解尚待核验项目。没有性能比较结论。 |
+| Neovim | 已迁移到原生 Lua + Nix 包 | `aspects/editing/neovim/config/` 承载配置，`aspects/editing/neovim/` 固定插件/parser 和 wrapper；保留插件由 Nix 提供，不使用在线插件管理器。专项包检查已通过；见[迁移计划](neovim-migration-plan.md)了解尚待核验项目。没有性能比较结论。 |
 | colorizer | 已改原生 | 移除外部插件，使用内建 LSP documentColor 和 `<leader>uc` 当前 buffer 开关；不再独立扫描无相关 LSP 的文件/Tailwind 类名，没有新写 CSS 解析器。 |
 | vim-matchup | 已改原生 | 移除外部插件，使用内建 matchit/matchparen；不保留 matchup 离屏 popup、专有 surround/transmute，独立 nvim-surround 保留。 |
 | Heirline | 已由原生 statusline/tabline 替代 | 保留状态栏、tabline、同名路径消歧、点击关闭和 LSP/Git/AI 状态；旧 Nixvim 实现只作为历史记录。 |
@@ -116,7 +116,7 @@
 
 ## AI 应用与编辑器集成
 
-入口：[AI agents](../modules/home/programs/dev/ai-agents.nix)、[Grok Bot](../modules/home/programs/dev/grok-bot.nix)、[DSH 包装](../pkgs/dsh-desktop.nix)、[CodeCompanion](../config/nvim/lua/mayon/plugins/ai.lua)。以下软件按用户此前决定继续保留，不以未经测量的模型排名替用户删项。
+入口：[AI agents](../aspects/ai-workbench/ai-agents.nix)、[Grok Bot](../aspects/ai-workbench/grok-bot.nix)、[DSH 包装](../aspects/ai-workbench/dsh-desktop.nix)、[CodeCompanion](../aspects/editing/neovim/config/lua/mayon/plugins/ai.lua)。以下软件按用户此前决定继续保留，不以未经测量的模型排名替用户删项。
 
 | 项目 | 当前定位与建议 | 代价或边界 |
 |---|---|---|
@@ -125,7 +125,7 @@
 | OpenCode v2 | 保留，兼顾 CLI 与已有调用方 | `opencode2` 包和 `opencode` wrapper 是版本兼容接线，Quill/CodeCompanion 仍依赖后者；不是装了两套独立 agent。v2 配置不要照抄 v1 schema。 |
 | DeepSeek Harness 桌面入口 | 保留为实验性图形入口 | 当前是官方 Web UI + Chromium 应用窗口和私有后端，不是官方 Linux Electron 安装包。预览版变化与自维护包装有成本，不引入同名第三方桌面客户端。 |
 | Grok Bot | 保留，承担云端持续任务/流程 | 云端电脑可在本机关闭后继续工作；资格/账户和网络依赖不同于本地 CLI。不是本地终端复用器。当前 Electron workaround 另见使用文档，不能随意删除。 |
-| CodeCompanion | 保留 | Nvim 内联/聊天/选区上下文有独立价值；默认 DeepSeek 与可选 CLI agent 分工。原生 Lua 配置保留现有历史和快捷键；插件由 `pkgs/neovim/plugins.nix` 固定提供。 |
+| CodeCompanion | 保留 | Nvim 内联/聊天/选区上下文有独立价值；默认 DeepSeek 与可选 CLI agent 分工。原生 Lua 配置保留现有历史和快捷键；插件由 `aspects/editing/neovim/plugins.nix` 固定提供。 |
 | MCPHub | 用户最新确认删除 | 编辑器面板、CodeCompanion 扩展、专用输入与二次 nixpkgs 接线移除；各 agent 的独立 MCP 设置保留。 |
 
 更优解先是**分配使用角色和共享项目指令**：日常固定一个本地入口，另一个用于具体任务比较，图形与云端入口按需打开。进程数、模型费用和实际速度取决于使用方式，单纯安装多个 CLI 不等于全部常驻。各工具的账号/密钥及运行时状态不强制合并进 Nix。
@@ -134,7 +134,7 @@
 
 ## 语言工具链、工程与虚拟化
 
-入口：[工具链模块](../modules/home/programs/dev/)、[共享版本](../lib/toolchains.nix)、[Java 版本](../lib/java.nix)、[开发 shell](../flake/dev.nix)、[Docker](../modules/system/services/docker.nix)、[libvirt](../modules/system/virtualisation/libvirt.nix)。同组中的工具分别说明，相关安装可按项目长期使用情况再收敛。
+入口：[工具链模块](../aspects/)、[共享版本](../lib/toolchains.nix)、[Java 版本](../lib/java.nix)、[开发 shell](../nix/dev.nix)、[Docker](../aspects/local-containers/host.nix)、[libvirt](../aspects/local-virtual-machines/host.nix)。同组中的工具分别说明，相关安装可按项目长期使用情况再收敛。
 
 | 工具 | 判断与更优解 |
 |---|---|
@@ -188,7 +188,7 @@
 
 ## Noctalia 插件与系统集成
 
-入口：[Noctalia 配置](../modules/home/wm/mango/noctalia.nix)、[输入法](../modules/home/base/input-method.nix)、[Portal/keyring](../modules/system/desktop/xdg.nix)。十个插件此前已确认全部保留，以下说明适合怎样优化。
+入口：[Noctalia 配置](../aspects/interactive-session/noctalia.nix)、[输入法](../aspects/interactive-session/input-method.nix)、[Portal/keyring](../aspects/interactive-session/host/portal.nix)。十个插件此前已确认全部保留，以下说明适合怎样优化。
 
 | 项目 | 结论 |
 |---|---|
@@ -211,7 +211,7 @@
 
 ## 常用小工具
 
-主要声明见[应用清单](../modules/home/packages.nix)、[系统小工具](../modules/system/user/environment.nix)。这些程序多数按需运行；不把安装数量等同于常驻占用。原生命令可替代基础用法，但会减少交互便利，不建议为删包统一重写。
+主要声明见[应用清单](../aspects/default.nix)、[系统小工具](../aspects/system/maintenance/tools.nix)。这些程序多数按需运行；不把安装数量等同于常驻占用。原生命令可替代基础用法，但会减少交互便利，不建议为删包统一重写。
 
 | 工具 | 判断与用途 |
 |---|---|

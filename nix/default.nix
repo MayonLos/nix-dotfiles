@@ -7,8 +7,10 @@
     ./checks.nix
     ./den.nix
     ./nixpkgs.nix
-    ../flake/dev.nix
-    ../flake/neovim.nix
+    ./dev.nix
+    ./neovim.nix
+    ../aspects
+    ../bundles
     ../inventory/hosts/nixos-btw
   ];
 }

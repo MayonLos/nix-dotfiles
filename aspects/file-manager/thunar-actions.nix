@@ -68,8 +68,7 @@ let
       #   wl-copy -> native Wayland clients (QQ, Firefox and Typora)
       #   xclip   -> XWayland clients (wechat-uos pins QT_QPA_PLATFORM=xcb)
       # Mango does *not* synchronise the two selections (measured 2026-09-15,
-      # see the desktop-mango skill) -- services/clipboard.nix bridges them on a
-      # timer. Writing both sides directly here makes this action independent of
+      # see the desktop-mango skill) -- interactive-session/clipboard.nix bridges them with watchers. Writing both sides directly here makes this action independent of
       # that bridge, of selection ownership, and of focus timing.
       #
       # Both commands slurp stdin into memory before forking off to serve the
@@ -235,7 +234,7 @@ in
   # uca.xml used to be Thunar's own file (mode 600); home-manager owns it now.
   # The cost is that the "Configure custom actions" dialog can no longer save —
   # new actions go here instead. backupFileExtension = "backup" in
-  # flake/system.nix preserves the old file as uca.xml.backup.
+  # inventory/hosts/nixos-btw/default.nix preserves the old file as uca.xml.backup.
   #
   # "Open Terminal Here" is pre-existing and pairs with thunar-terminal.nix
   # (helpers.rc -> ~/.local/bin/thunar-open-terminal -> kitty). Don't drop it.

@@ -35,7 +35,7 @@ let
   # That half was verified under niri, whose portal setup served
   # org.gnome.Mutter.ScreenCast. It does NOT carry over to mango: mango is
   # plain wlroots with no Mutter interface, so screen capture goes through
-  # xdg-desktop-portal-wlr instead (modules/system/desktop/xdg.nix). The
+  # xdg-desktop-portal-wlr instead (aspects/interactive-session/host/portal.nix). The
   # LD_LIBRARY_PATH wrap below is about QQ's own dlopen and is unaffected by
   # which portal backend serves the request.
   #

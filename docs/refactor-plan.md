@@ -1,20 +1,14 @@
 # 仓库全面重构执行计划
 
-本文是后续实施的执行基线。目标是围绕 Den 框架重新组织 NixOS 与 Home Manager 配置，面向当前笔记本和未来服务器；允许破坏性重构，但每个阶段都要保留可审查的配置与回退点。目录树是本仓库的设计草案，不代表 Den 强制规定的结构或 API。Den 的实际接口必须以届时锁定源码和文档为准。
+本文件保留已确认的软件取舍及各历史批次证据；不是当前代码入口说明。Den 整仓迁移已实现，当前结构见 [架构](architecture-design.md)，本轮重新执行的验证与回退点见 [实施记录](den-execution.md)。旧 Nixvim 名称、store 路径和早期样本结果只对应当时提交，不能代替当前源码或检查。
 
-最新执行顺序、完成条件与新对话 goal 任务文本统一见 [执行交接](execution-handoff.md)。桌面视觉、操作方式、写入归属、后台服务和服务器方案已分文档规划并由该入口索引；下文保留软件决定和各批次历史证据。本轮只补设计，没有切换系统或部署服务器。
-
-状态约定：**已决定**表示用户已确认；**已修改并验证**表示通过下文列出的检查，仍不代表系统已经应用；**待选择**表示需要之后结合使用情况作出取舍；**未实施**表示目标仍需实现。
-
-保留软件的逐项替换评估、精简候选与缺失功能推荐见[应用评估](application-review.md)（2026-10-18）。用户已确认的变更单列记录；未纳入的条件推荐留待以后有实际需求时再看，不阻塞当前迁移。
-
-当前顺序按用户最新选择调整：**软件选型结束 → Neovim 先删无用、再原生替换 → 最后考虑新增/改进/整理 → Den 和桌面统一**。新增软件确定 Xarchiver、Okular；其他条件推荐暂不纳入。Neovim Lua + Nix 入口已接入，专项包检查、flake/host 构建与最终 Home Manager 接线检查通过，尚未切换系统。本文前面的 Nixvim 输出和 store 路径均属于当时批次的历史记录，不代表当前入口。主机、用户与功能边界已按最新要求和 Astra 重新设计，见[独立设计稿](architecture-design.md)；现有文件不约束目标架构。Den 目前仅在隔离测试子 flake 固定，真实主机尚未接入；嵌入式实现已收拢到完整功能目录，活动旧入口保留兼容引用。
+软件选型已结束：保留 VS Code、IDEA/PyCharm/CLion、原生 Lua Neovim、Mango/Noctalia、Kitty/tmux 及下文确定的全部软件。新增 Xarchiver/Okular，未选择的条件推荐不纳入本轮。完整功能已迁入 `aspects/`，inventory 只接真实笔记本，旧兼容入口与测试子 flake 已移除。没有 switch/test、部署服务器或删除用户数据；运行态仍可能来自旧 generation。
 
 ## Neovim Lua + Nix 入口迁移（2026-10-18）
 
-- Home Manager 已改为安装 `pkgs/neovim`；配置迁入 `config/nvim/`，包定义和固定依赖位于 `pkgs/neovim/`，flake 输出位于 `flake/neovim.nix`。旧 Nixvim input 与模块树已退出。
-- 普通与开发入口分别是 `nix run .#neovim` 和 `NVIM_CONFIG_DIR="$PWD/config/nvim" nix run .#neovim-dev`。普通包使用固定 store 配置，只有显式 dev 包允许环境变量覆盖配置路径。
-- 当前包固定 20 个直接插件、16 个语言服务、32 个 Tree-sitter grammar；parser/query 资源继续由 Nix 提供，历史 Nixvim 配置的 injections 行为由 `config/nvim/after/queries/` 保留。
+- Home Manager 安装编辑器功能生成的固定 Neovim 包；配置迁入 `aspects/editing/neovim/config/`，包定义和固定依赖位于 `aspects/editing/neovim/`，flake 输出位于 `nix/neovim.nix`。旧 Nixvim input 与模块树已退出。
+- 普通与开发入口分别是 `nix run .#neovim` 和 `NVIM_CONFIG_DIR="$PWD/aspects/editing/neovim/config" nix run .#neovim-dev`。普通包使用固定 store 配置，只有显式 dev 包允许环境变量覆盖配置路径。
+- 当前包固定 20 个直接插件、16 个语言服务、32 个 Tree-sitter grammar；parser/query 资源继续由 Nix 提供，历史 Nixvim 配置的 injections 行为由 `aspects/editing/neovim/config/after/queries/` 保留。
 - 手写 One Dark Darker 已接入，主背景 `#1f2329`；未做性能对比，不作更快或更省资源的结论。
 - 普通/dev 包及 `checks.neovim` 已构建通过；专项检查包含完整 startup、Blink C++ snippet 加载/展开/跳转和 native、statusline、tabline、breadcrumbs、LSP 样本。`nix fmt`、flake check 求值、treefmt、host toplevel 与最终 HM 输出检查均通过。
 - 锁定 Neovim 的 `nvim.desktop` 在旧/新包中无功能差异；HM 最终求值确认只有这一份编辑器和同源 init；实际桌面菜单启动未测。基线快照含 tar、diff、manifest 与 runtime.json，可用于审查和恢复；不在此重复个人状态目录路径。
@@ -95,9 +89,9 @@
 
 状态：**已修改并验证，未切换系统**。用户选择这两个新增项，软件选型阶段结束；Xournal++ 未选，不添加。
 
-- `modules/home/packages.nix` 添加 stable Xarchiver 0.5.4.26 和 Okular 26.04.3。
-- `modules/home/base/xdg.nix` 使用当前锁定 Home Manager 的 `xdg.mimeApps.associations.added` 将 `org.kde.okular.desktop` 加入 PDF 可选打开方式；Zathura 继续作为默认，Zotero 和编辑器 PDF 外开行为不被替换。
-- `modules/system/programs/thunar.nix` 为 archive plugin 做局部 override。锁定插件只从编译进自身输出的 libexec 路径查找 `.tap`，不会自动找到另一个 store 输出的 Xarchiver helper；因此在插件内创建 wrapper，调用 Xarchiver 已经由 wrapGAppsHook3 包装过的 helper，同时提供 GUI 的固定 PATH。不把已经是 ELF 的 helper 当文本修改，也不依赖 Thunar 是否继承用户 profile PATH。
+- `aspects/default.nix` 添加 stable Xarchiver 0.5.4.26 和 Okular 26.04.3。
+- `aspects/media/images.nix` 使用当前锁定 Home Manager 的 `xdg.mimeApps.associations.added` 将 `org.kde.okular.desktop` 加入 PDF 可选打开方式；Zathura 继续作为默认，Zotero 和编辑器 PDF 外开行为不被替换。
+- `aspects/file-manager/host.nix` 为 archive plugin 做局部 override。锁定插件只从编译进自身输出的 libexec 路径查找 `.tap`，不会自动找到另一个 store 输出的 Xarchiver helper；因此在插件内创建 wrapper，调用 Xarchiver 已经由 wrapGAppsHook3 包装过的 helper，同时提供 GUI 的固定 PATH。不把已经是 ELF 的 helper 当文本修改，也不依赖 Thunar 是否继承用户 profile PATH。
 - 不额外接管全部归档 MIME。插件可按 Xarchiver desktop 声明发现处理程序；保留 Thunar 自定义菜单、GVFS 与其他插件。
 
 验证：
@@ -114,9 +108,9 @@
 
 用户确认处理 pamixer、cliphist、pavucontrol。状态：**已修改并验证，未切换系统**。
 
-- 从 `modules/home/packages.nix` 移除 pamixer、pavucontrol；删除 Mango 中匹配 pavucontrol 的浮窗分支，保留 GTK Portal 规则。
+- 从 `aspects/default.nix` 移除 pamixer、pavucontrol；删除 Mango 中匹配 pavucontrol 的浮窗分支，保留 GTK Portal 规则。
 - 删除 `modules/home/services/cliphist.nix`，移除文字和图片两个 watcher 及其包引用；Noctalia 原生历史和 Super+V 入口继续保留。
-- 保留 `modules/home/services/clipboard.nix` 的 X11/Wayland 桥、截图/OCR 及 wl-clipboard/xclip，不读取、清理或迁移历史数据库。
+- 保留 `aspects/interactive-session/clipboard.nix` 的 X11/Wayland 桥、截图/OCR 及 wl-clipboard/xclip，不读取、清理或迁移历史数据库。
 - 锁定 Noctalia 5.2.1 的源码覆盖总音量/麦克风、静音、默认设备、应用音量及输出路由；其 EasyEffects profile 不是声卡硬件 profile。后者及硬件端口高级操作使用已有 wpctl/pw-cli，README 已记录查询和选择方式，不新造图形混音器。
 - 音量键和麦克风静音键继续直接调用 Noctalia IPC，没有改成新脚本。
 
@@ -218,7 +212,7 @@ IDEA/PyCharm/CLion 已确认保留。用途比较后，用户确认删除其余�
 
 ## 软件盘点与待选择项
 
-盘点以当前 `modules/`、`config/nvim/`、`pkgs/` 中的声明为起点。决定删除某项前，先确认它是否有用户数据、项目或桌面入口消费者；清理配置不等于清理用户目录。
+盘点以当前 `modules/`、`aspects/editing/neovim/config/`、`pkgs/` 中的声明为起点。决定删除某项前，先确认它是否有用户数据、项目或桌面入口消费者；清理配置不等于清理用户目录。
 
 | 类别 | 当前清单 | 状态 |
 |---|---|---|
@@ -240,7 +234,7 @@ Obsidian、Typora、Zathura、Quill 已全部确认保留，不再重复询问�
 |---|---|
 | 视频剪辑 | Kdenlive 暂留待考虑。 |
 
-开发工具声明集中在 [dev 模块目录](../modules/home/programs/dev/)，日用包见 [packages.nix](../modules/home/packages.nix) 和 [apps 模块目录](../modules/home/programs/apps/)，容器与虚拟机分别见 [docker.nix](../modules/system/services/docker.nix)、[libvirt.nix](../modules/system/virtualisation/libvirt.nix)。本次是声明和引用盘点，未据此推断实际使用频率。
+开发工具声明集中在 [dev 模块目录](../aspects/)，日用包见 [packages.nix](../aspects/default.nix) 和 [apps 模块目录](../aspects/)，容器与虚拟机分别见 [docker.nix](../aspects/local-containers/host.nix)、[libvirt.nix](../aspects/local-virtual-machines/host.nix)。本次是声明和引用盘点，未据此推断实际使用频率。
 
 JDK 同时供 Prism 使用；TeX 用于完整文档编译，Ghostscript 保留供普通 PDF/文档转换，编辑器自动公式图像流程已移除；ImageMagick 还供 Thunar 图片动作使用；编辑器工具按消费者保留。
 
@@ -281,10 +275,10 @@ nix shell --no-write-lock-file --inputs-from . nixpkgs#lua5_4 nixpkgs#lua54Packa
 
 | 组 | 当前配置 | 选择边界 |
 |---|---|---|
-| Docker | [rootless Docker 与每周 prune](../modules/system/services/docker.nix)，以及 Noctalia mini-docker 入口。 | 本机运行容器时保留引擎；仅管理远程服务器可另设计 CLI/远程连接，笔记本不必同时运行本地引擎。项目 devShell 提供编译环境，不直接提供系统 Docker 服务。 |
-| 虚拟机 | [libvirt/QEMU/KVM、virt-manager、TPM、USB 重定向](../modules/system/virtualisation/libvirt.nix)，并启用嵌套 KVM；`libvirt-guests` 被关闭，未检查现有 VM 自启动状态。 | 本机运行完整客体系统时保留；以后只管理远端虚拟机时，可将客户端与本地虚拟化服务分开。未来服务器需要虚拟化，不要求当前笔记本也启用。 |
-| MATLAB | [FHS 启动集成](../modules/home/programs/dev/matlab.nix) 和编辑器语言支持；MATLAB 本体由用户手工安装。 | 课程/项目依赖 MATLAB、Simulink 或工具箱时保留；移除 Nix 集成不等于卸载手工安装树，也不自动删除 `.m` 文件。未检查授权和安装状态。 |
-| STM32/Cortex-M | [ARM GCC、OpenOCD/ST-Link/probe-rs、DFU/UART、CubeMX、CubeProgrammer、tio](../modules/home/programs/dev/embedded.nix)，另有 [USB 探针权限](../modules/system/hardware/debug-probes.nix)。 | 编写、烧录、调试开发板固件时使用，独立于已经删除的 KiCad。可保留设备权限和常用 GUI，将版本敏感的编译/调试命令放进项目 flake；普通 devShell 不能代替系统 udev 权限配置。 |
+| Docker | [rootless Docker 与每周 prune](../aspects/local-containers/host.nix)，以及 Noctalia mini-docker 入口。 | 本机运行容器时保留引擎；仅管理远程服务器可另设计 CLI/远程连接，笔记本不必同时运行本地引擎。项目 devShell 提供编译环境，不直接提供系统 Docker 服务。 |
+| 虚拟机 | [libvirt/QEMU/KVM、virt-manager、TPM、USB 重定向](../aspects/local-virtual-machines/host.nix)，并启用嵌套 KVM；`libvirt-guests` 被关闭，未检查现有 VM 自启动状态。 | 本机运行完整客体系统时保留；以后只管理远端虚拟机时，可将客户端与本地虚拟化服务分开。未来服务器需要虚拟化，不要求当前笔记本也启用。 |
+| MATLAB | [FHS 启动集成](../aspects/languages/matlab/home.nix) 和编辑器语言支持；MATLAB 本体由用户手工安装。 | 课程/项目依赖 MATLAB、Simulink 或工具箱时保留；移除 Nix 集成不等于卸载手工安装树，也不自动删除 `.m` 文件。未检查授权和安装状态。 |
+| STM32/Cortex-M | [ARM GCC、OpenOCD/ST-Link/probe-rs、DFU/UART、CubeMX、CubeProgrammer、tio](../aspects/embedded-workbench/home.nix)，另有 [USB 探针权限](../aspects/embedded-workbench/host.nix)。 | 编写、烧录、调试开发板固件时使用，独立于已经删除的 KiCad。可保留设备权限和常用 GUI，将版本敏感的编译/调试命令放进项目 flake；普通 devShell 不能代替系统 udev 权限配置。 |
 
 功能依据：[Docker 概览](https://docs.docker.com/get-started/docker-overview/) 与 [rootless 模式](https://docs.docker.com/engine/security/rootless/)、[virt-manager](https://virt-manager.org/)、[MATLAB](https://www.mathworks.com/products/matlab.html)、[STM32CubeMX](https://www.st.com/en/development-tools/stm32cubemx.html)。本轮只核对配置和资料，未更改四组模块或运行服务。
 
@@ -360,7 +354,7 @@ Mango + Noctalia 已选定，以下是删除 ShareDND、Kaomoji、DeepSeek Peak 
 ### Lua 编辑器分层（当前实现）
 
 ```text
-config/nvim/
+aspects/editing/neovim/config/
 ├── init.lua
 ├── after/queries/           # 自定义 highlights 与 Nix injections
 ├── colors/                  # 手写 One Dark Darker
@@ -371,15 +365,15 @@ config/nvim/
 │   ├── plugins/             # 保留插件的直接 setup
 │   └── ui/                  # 主题、Noice 与界面适配
 └── snippets/               # 仓库自有片段
-pkgs/neovim/                 # stable wrapper、插件、parser 清单
-flake/neovim.nix             # neovim / neovim-dev outputs
+aspects/editing/neovim/                 # stable wrapper、插件、parser 清单
+nix/neovim.nix             # neovim / neovim-dev outputs
 ```
 
 - Nix 声明 Neovim、20 个直接插件、32 个显式 parser 及必要依赖；Lua 直接配置插件。使用锁定 stable 的 `wrapNeovimUnstable pkgs.neovim-unwrapped`；不使用 deprecated `makeNeovimConfig`。
 - 用户最新确认移除 `lz.n`；保留插件显式直接加载，迁出原触发配置内的映射；不引入在线安装/升级或另一套自制加载器。
 - 先建立现有功能到新文件的映射，再搬配置；此前已删除的 render-markdown、Harpoon、Todo Comments 等保持删除状态，原生替代功能继续保留。
 - LSP/格式化工具按所选语言由 Nix 提供；项目特定编译器和依赖从项目环境获得。CLI 启动与图形启动的 PATH 都要验证。
-- 普通入口为 `nix run .#neovim`，开发入口为 `NVIM_CONFIG_DIR="$PWD/config/nvim" nix run .#neovim-dev`；只有 dev 包响应环境变量覆盖。仅将 Lua 写进 store 不会自动获得免构建热修改能力。
+- 普通入口为 `nix run .#neovim`，开发入口为 `NVIM_CONFIG_DIR="$PWD/aspects/editing/neovim/config" nix run .#neovim-dev`；只有 dev 包响应环境变量覆盖。仅将 Lua 写进 store 不会自动获得免构建热修改能力。
 - 求值、构建、隔离启动、终端交互与真实语言服务核验已完成，详细记录见本文开头和 [Neovim 迁移计划](neovim-migration-plan.md)。Colorizer/Matchup 与 Heirline/Navic 已由原生实现替代，后续接线仍需保留功能。
 
 ### One Dark Darker 配色与文件归属
@@ -426,7 +420,7 @@ flake/neovim.nix             # neovim / neovim-dev outputs
 
 ### 3. Neovim 迁移到原生 Lua（已接入并验证，未应用）
 
-- 配置已整理为 `config/nvim/` 原生 Lua 模块；插件与 parser 由 Nix 固定提供，不使用在线自更新插件管理器。
+- 配置已整理为 `aspects/editing/neovim/config/` 原生 Lua 模块；插件与 parser 由 Nix 固定提供，不使用在线自更新插件管理器。
 - 独立入口为普通 `neovim` 和可覆盖配置路径的 `neovim-dev`；Home Manager XDG init 与包入口共用 Lua init，并以幂等标记避免双重执行。
 - `checks.neovim` 已通过完整 startup、真实 Blink C++ snippet 加载/展开/跳转和 native、statusline、tabline、breadcrumbs、LSP 样本；flake check、treefmt、host toplevel、HM 输出与实际 PTY 交互也通过。真实 LuaLS/CSSLS 和 StyLua 另行集成验证通过，见专项记录。
 - 已确认单一活动入口、旧 Nixvim input/module 移除及运行时选项/键位/解析器/服务配置保留；桌面菜单、Kitty 图像、MATLAB 和 AI 网络调用等未实测，求值/构建不等同于完整 UI 验收。
@@ -434,9 +428,9 @@ flake/neovim.nix             # neovim / neovim-dev outputs
 
 ### 4. 接入 Den 主机与职责边界
 
-新方案见 [架构设计](architecture-design.md)，已由主代理与 Astra 交叉设计。[Den 样本](../tests/den/README.md) 已固定 v0.19.0，通过 shell 与嵌入式两条路径的两主机/两账号选择、共享资源去重及 shell 单值冲突检查。嵌入式工具、规则、包配方已收拢到 [功能目录](../aspects/embedded-workbench/README.md)，旧入口兼容引用；最终规则检查发现并修正 ST-Link 0666 权限，改为 0660/uaccess 且保留别名。真实笔记本构建、样本 HM/udev 与 ARM 编译/GDB/CLI 检查通过，尚未切换或验证设备。
+新方案见 [架构设计](architecture-design.md)，已由主代理与 Astra 交叉设计。[Den 样本](../tests/README.md) 已固定 v0.19.0，通过 shell 与嵌入式两条路径的两主机/两账号选择、共享资源去重及 shell 单值冲突检查。嵌入式工具、规则、包配方已收拢到 [功能目录](../aspects/embedded-workbench/README.md)，旧入口兼容引用；最终规则检查发现并修正 ST-Link 0666 权限，改为 0660/uaccess 且保留别名。真实笔记本构建、样本 HM/udev 与 ARM 编译/GDB/CLI 检查通过，尚未切换或验证设备。
 
-外观、默认工具和语言协议已各自进入功能目录并由同一样本消费。数据/启用/安装的边界、用户与主机隔离、命令整体合并及同 ID/跨 ID 冲突已验证；Kitty parser、Neovim 高亮、wrapper 参数与 MIME、C++ 编译和 clangd hover 的运行检查通过，相关负例也被拒绝。真实桌面的写入者和旧默认项尚未迁移，不能直接叠加新适配器。主 flake 尚未接入 Den；下一步先保存已完成软件/Neovim 工作的可回退基线，再接入真实主机并逐项适配功能。
+外观、默认工具和语言协议已各自进入功能目录并由同一样本消费。数据/启用/安装的边界、用户与主机隔离、命令整体合并及同 ID/跨 ID 冲突已验证；Kitty parser、Neovim 高亮、wrapper 参数与 MIME、C++ 编译和 clangd hover 的运行检查通过，相关负例也被拒绝。以上为接入前样本阶段的历史结果。真实主机现已迁入 Den，旧适配器与兼容入口已退出；当前检查见实施记录。
 
 - 先选定并锁定 Den revision，只增加所需新锁项、不顺带升级现有输入；读取该 revision 的源码文档和导入/模块行为，记录真实 API 和接线图后实现。
 - 建立实体/绑定、普通组合 aspect 和完整功能入口；先验证 shell 与嵌入式功能的系统/HM/账号路由，随后逐项适配软件和服务。

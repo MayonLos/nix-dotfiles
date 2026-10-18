@@ -1,275 +1,103 @@
 # nix-dotfiles
 
-NixOS + Home Manager 配置，单主机 `nixos-btw`（Intel + NVIDIA 笔记本，2560×1600 @ 165 Hz，mango 合成器）。
+NixOS + Home Manager 配置，当前只有一个真实主机实例 `nixos-btw`（Intel + NVIDIA 笔记本，
+Mango 桌面）和用户 `mayon`。Home Manager 随 NixOS 重建，没有 standalone switch。
 
-- **框架**：flake-parts
-- **通道**：`nixpkgs` = nixos-26.05（稳定），`nixpkgs-unstable` = nixos-unstable
-- **Home Manager**：作为 NixOS 模块运行，不是 standalone
+仓库使用 Den 与 flake-parts。`aspects/default.nix` 显式登记完整功能，`bundles/default.nix`
+组合常用 `includes`，`inventory/` 描述真实主机、账号、事实和绑定参数。资源、模块 helper 与
+软件配方都可放在所属 aspect 内；不会递归扫描目录。架构/操作约定见 [AGENTS.md](AGENTS.md)，
+重构逐批实施、构建证据与运行态限制见[执行记录](docs/den-execution.md)。
 
-仓库工作流以 **Codex** 为入口：[AGENTS.md](AGENTS.md) 放公共约定。
-配置依据是当前模块、`flake.lock` 锁定源码和实际运行行为。
+## 目录
 
-本轮选型、软件取舍与实施验收见[重构执行计划](docs/refactor-plan.md)。
-保留应用的逐项替换分析与缺失推荐见[应用评估](docs/application-review.md)。
-软件选型已结束；Neovim 已迁入原生 Lua + Nix 包入口，Den 接线仍在后续计划中。迁移范围和待核验项见[Neovim 迁移计划](docs/neovim-migration-plan.md)。
+```text
+flake.nix                 flake-parts 外层入口与锁定 inputs
+nix/                      Den、nixpkgs、开发环境、包输出和 root checks
+aspects/default.nix       显式登记所有 aspect
+aspects/*/                完整功能、共享协议、renderer、资源和专项检查
+bundles/default.nix       personal-desktop / engineering-workbench / remote-workspace 组合
+inventory/hosts/          真实主机 facts、账号、绑定与系统入口
+inventory/users/          用户级身份
+lib/                      跨功能 helper
+secrets/                  sops 加密数据
+tests/composition/        跨 aspect 组合、隔离及边界 fixture
+docs/                     架构、视觉、操作、归属、服务策略和迁移记录
+```
 
-## Codex 工作流
-
-在仓库目录启动 `codex`。共享的项目配置在 [.codex/config.toml](.codex/config.toml)，
-只设置子代理启用与并发；主模型、账号与权限仍使用个人配置。
-项目配置受 Codex 的仓库信任机制控制，未信任时可能不加载。
-
-三个原生代理角色在 [.codex/agents/](.codex/agents/)：
-
-| 角色 | 用途 | 模型 |
-|---|---|---|
-| `luna-review` | 小范围只读审核、资料核对 | `gpt-6-luna` |
-| `luna-worker` | 已明确范围的小改动 | `gpt-6-luna` |
-| `reviewer` | 跨模块独立复核 | 继承主代理 |
-
-例如：“审核最近的改动，让 luna-review 检查文档与模块是否一致，主代理复核结论。”
-实现任务先划分互不重叠的文件，主代理合并检查；没有必要时不拆任务。
-角色配置未刷新时重开会话。只读角色也明确禁止编辑，不把 sandbox 默认值当成绝对保证：
-当前会话的权限覆盖可能优先于角色配置。
-
-旧的 Claude 技能、CLI 包装代理和 `CLAUDE.md` 已移出共享工作流；
-个人的 Claude 设置、登录状态和已安装软件不由此次迁移改动。
-角色格式依据 [子代理说明](https://learn.chatgpt.com/docs/agent-configuration/subagents)。
+常用代码入口：桌面与外观在 `aspects/interactive-session/`、`aspects/appearance/`；命令行、
+Kitty 与 tmux 在 `aspects/command-line/`；丰富 Neovim Lua、插件和 parser 位于
+`aspects/editing/neovim/`，薄包输出在 `nix/neovim.nix`。语言数据与工具在
+`aspects/languages/`。容器、虚拟机、Firefox、媒体、游戏、AI、嵌入式等各自位于
+`aspects/<feature>/`。
 
 ## 日常命令
 
 ```sh
-nr                  # 重建系统（nh os switch，含 home-manager）
-nc                  # 清理旧世代（每周自动跑一次，保留最近 5 个和 14 天内的）
-nix fmt             # 格式化全部 .nix（nixfmt + deadnix + statix，走 treefmt）
-nix develop         # 开发 shell：git、gnumake、clang-tools、sops、age、ssh-to-age
-nix develop .#cuda  # CUDA 工具链单独一个 shell
+nr                  # nh os switch --flake .#nixos-btw，含 Home Manager
+nc                  # 清理旧 generation/store；运行前确认保留策略
+nix fmt             # 格式化 Nix 与 Lua（treefmt）
+nix develop         # git、gnumake、clang-tools、sops、age、ssh-to-age
+nix develop .#cuda  # CUDA 开发 shell
 ```
 
-底层命令（`nr` 出问题时用）：
+求值和构建不会应用配置；`nixos-rebuild switch` 会更改运行系统。`nixos-rebuild test` 也会临时
+激活配置，不是只读检查。host 输出：
 
 ```sh
-sudo nixos-rebuild switch --flake .#nixos-btw
+nix flake check --no-build --no-write-lock-file
+nix build --no-link --no-write-lock-file .#checks.x86_64-linux.treefmt
+nix build --no-link --no-write-lock-file .#nixosConfigurations.nixos-btw.config.system.build.toplevel
 ```
 
-声明式配置修改需重建才生效；应用维护的可写运行时配置可以即时修改，见下节。
+按改动选择专项 check 并构建。构建通过只证明所检查的求值/产物；桌面、设备和服务行为需要
+配置应用后的相应实机验收。
 
-## 音频与剪贴板
+## 桌面与操作
 
-音量键和日常混音由 Noctalia 管理：`noctalia msg panel-toggle control-center audio`
-打开音频面板，可调输入/输出、默认设备及应用音量和输出路由。不再安装 pamixer、pavucontrol。
-声卡硬件 profile/端口不等同于面板里的 EasyEffects 预设；高级排障使用已有的
-`wpctl status`、`wpctl inspect ID`，通过 `pw-cli enum-params DEVICE_ID EnumProfile`
-或 `EnumRoute` 查询对应设备支持的索引，再用 `wpctl set-profile DEVICE_ID INDEX`
-或 `wpctl set-route DEVICE_ID INDEX` 选择，不照抄其他机器的设备编号。
+Mango 负责窗口、显示器、工作区和 Super 系列快捷键；Noctalia 提供面板、通知、启动器、控制
+中心与桌面剪贴板历史。固定主题是 One Dark Darker，背景 `#1f2329`，壁纸不改写配色。按
+`Super+F1` 可打开当前配置生成的 Mango 快捷键说明；该说明从同一组 Nix 键位数据生成。
 
-`Super+V` 使用 Noctalia 原生剪贴板历史，不再运行 cliphist watcher；历史持久化依赖
-Secret Service 解锁。X11/Wayland 剪贴板桥继续保留，供 QQ 等应用跨协议复制文字/图片。
-此次精简不删除已有历史数据库，也不迁移旧历史。
+终端内分工：Mango 管桌面操作，tmux 使用 `Ctrl+a` 前缀，Neovim 保留自己的 Ctrl/leader 键。
+tmux 有前缀导航：`h/j/k/l` 切换 pane，Tab 与 `n/p` 切换窗口，`1`–`9` 选窗口；旧的无前缀
+Alt pane/window 截获已移除。输入完整快捷键与布局以 [Mango](aspects/interactive-session/mango.nix)
+及 [tmux](aspects/command-line/tmux.nix) 当前配置为准。
 
-## 终端
+音量和日常混音由 Noctalia 控制中心管理。可用 `wpctl status`、`wpctl inspect ID` 查看实际
+PipeWire 设备，再根据设备支持的 profile/route 查询结果操作，不照抄其他机器编号。`Super+V`
+使用 Noctalia 原生剪贴板历史；X11/Wayland 剪贴板桥为跨协议应用保留。配置迁移不删除已有
+剪贴板历史数据库。
 
-tmux 继续用于终端会话；Noctalia 配置了 tmux provider，tmux 的终端 passthrough
-也供 Yazi 图片预览使用。
+## 终端、工具与 Neovim
 
-## Neovim
+真实 binding 显式区分 CLI 与 GUI 默认工具：`EDITOR`/`VISUAL` 使用 Neovim，GUI 文本入口使用
+VS Code；终端、浏览器和文件管理器经 `default-tools` wrapper 传递原始参数。
 
-普通入口使用固定在 store 中的 Lua 配置和插件集合；显式开发入口可覆盖工作树配置目录：
+Neovim 原生 Lua 配置、插件集合与 Tree-sitter parsers 由 Nix 包固定。普通包使用 store 配置，
+开发包允许覆盖配置目录：
 
 ```sh
 nix run .#neovim
-NVIM_CONFIG_DIR="$PWD/config/nvim" nix run .#neovim-dev
+NVIM_CONFIG_DIR="$PWD/aspects/editing/neovim/config" nix run .#neovim-dev
 ```
 
-普通包忽略 `NVIM_CONFIG_DIR`。Home Manager 的 XDG init 与包入口共用 `config/nvim/init.lua`，由配置内幂等保护避免重复初始化。普通/dev 包及 `checks.neovim` 已构建通过；检查包含完整启动、Blink C++ snippet 加载/展开/跳转和 native、状态栏、标签栏、面包屑及 LSP 样本。flake check、treefmt、host toplevel、最终 Home Manager 输出和实际图形启动待最终核验。
+普通包忽略 `NVIM_CONFIG_DIR`。Home Manager init 与包入口共用这套配置；完整 statusline、buffer
+tabline、面包屑、LSP、completion、formatter、lint、会话等实现位于
+`aspects/editing/neovim/config/`。主题采用共享 palette 数据生成，不用少量示例高亮覆盖 Lua
+主题。Neovim 的功能和检查范围见[执行记录](docs/den-execution.md)。
 
-自有 Lua 提供原生 statusline 与 buffer tabline，因此不再安装独立 bufferline；关闭 buffer 保留窗口布局，
-未保存修改会要求确认，同名文件通过最短路径区分。
-插件配置已移除 nvim-dap、goto-preview、bqf、smear-cursor 和 rainbow-delimiters。
-自动公式预览、Mermaid 渲染依赖和旧主题选择器已移除。当前使用仓库内手写 One Dark Darker，主背景为 `#1f2329`；没有性能改善结论。
-原生 matchit/matchparen 替代 vim-matchup；LSP documentColor 替代 Colorizer，
-`<leader>uc` 切换当前 buffer 色块。颜色覆盖以服务端能力为准，不再独立扫描 Tailwind 类名或无相关 LSP 的文件。
+## 服务与运行状态
 
-| 功能 | 键位 |
-|---|---|
-| CodeCompanion 聊天开关 / 动作菜单 | `<leader>aa` / `<leader>ap` |
-| 将选区加入聊天 | `<leader>av` |
-| 默认 Codex CLI / 选择 CLI agent | `<leader>at` / `<leader>aT` |
-| 聊天内重新生成 / 保存历史 | `<leader>ar` / `<leader>as` |
+声明式服务的 session 边界和所有权见 [服务策略](docs/service-policy.md)。删去旧模块不代表旧
+Home Manager generation 中的 unit 或进程已经停止；切换前后都需按执行记录区分构建结果与当前
+运行状态。本轮实现和构建不执行系统 switch，也不停止或清理服务。
 
-CodeCompanion chat 使用 DeepSeek adapter，inline 和 cmd 交互也使用 DeepSeek；
-`<leader>at` 使用默认 Codex CLI，`<leader>aT` 输入 agent 名称选择 CLI。
+## 配置、状态和秘密
 
-健康检查请在真实终端运行 `nvim '+checkhealth'`。Kitty 图像协议和 `UIEnter`
-初始化依赖终端环境，纯 headless 检查可能误报。Avante、CopilotChat、mini.icons
-是未采用的可选项；已使用 CodeCompanion 和 nvim-web-devicons。Dashboard 有意关闭，
-Neovim 内置的 `gc` / `gcc` 注释键也有意共用前缀。
+HM 管理的 store 文件只读。应用可写设置、用户偏好和历史需要按 feature 声明目录/文件所有权，
+详见[写入归属](docs/config-ownership.md)。变更声明不自动删除项目、模型权重、登录 state、
+剪贴板历史、容器卷或 VM 镜像。
 
-## DeepSeek Harness 桌面入口
-
-菜单中的 **DeepSeek Harness** 或 `dsh-desktop` 启动独立窗口，关闭窗口后停止本地服务。
-运行数据位于 `~/.local/share/dsh-desktop/harness/`，后端作为私有依赖使用，不单独安装 `dsh` 命令。
-当前使用官方 Web 界面配合 Chromium 应用窗口，
-因为[官方桌面打包](https://github.com/deepseek-ai/deepseek-harness/blob/687f282e8625c6b8d11ff58211a90524be2e4317/apps/desktop/scripts/package-target.ts)尚未提供 Linux 目标。
-
-## Grok Bot 桌面客户端
-
-`grok-bot` 启动 Grok Bot，桌面菜单中也有同名入口；它与 `grok`（Grok Build CLI）分别安装。
-首次启动按界面使用 Cursor 账号登录，需要符合条件的 Cursor / SuperGrok 套餐。
-Grok Bot 的任务、记忆和定时流程运行在云端电脑；本地仓库编码可使用 Codex、OpenCode 或 Grok Build。
-
-模板用于创建有固定职责的 Bot，例如 PR 审查或资料调研。打开 `x.ai/bot/...` 分享页，
-查看描述、技能、定时流程和插件，再选择 Add to Grok Bot；导入后仍需连接自己的账号。
-社区的 `PROFILE.md` 则是可复制的角色说明文本，不等同于可安装的分享模板。
-安装细节、官方文档、社区目录和第一条任务示例见 [Grok Bot 使用说明](docs/grok-bot.md)。
-
-## 目录结构
-
-```
-flake.nix              inputs 与 flake-parts 编排
-AGENTS.md              Codex 常驻约定与工作流
-.codex/               共享项目配置与原生子代理角色
-flake/
-  system.nix           NixOS + Home Manager 接线，自动导入 modules/
-  dev.nix              开发 shell、treefmt 配置
-hosts/nixos-btw/
-  default.nix          主机入口，自动导入 modules/system/
-  hardware.nix         nixos-generate-config 产物
-lib/
-  default.nix          只导出 importDir
-  import-dir.nix       递归导入一个目录下所有 .nix
-  java.nix             Temurin JDK 版本集合（8/17/21/25/26）
-  toolchains.nix       LLVM / Python / Lua 版本集合
-  desktop.nix          跨 NixOS/HM 的桌面常量（光标、显示器、仓库路径）
-  graphical-service.nix 图形会话 systemd 用户单元模板
-  seed-file.nix        可变配置文件的"缺失才创建" activation
-pkgs/                  不在 nixpkgs 的包表达式（matlab、tesseract-ocr…）
-modules/
-  home/                → Home Manager（用户 mayon）
-    base/              身份、GTK、Qt、输入法、XDG、会话变量、Xresources
-    wm/mango/          mango 配置（key=value，由 Nix 生成）、noctalia
-    programs/
-      apps/            浏览器、mpv、截图、yazi、IM 等
-      dev/             编辑器、语言工具链、direnv、git
-      games/           prismlauncher
-      terminal/        kitty、tmux
-    shell/             zsh（无框架）、starship、zoxide
-    services/          X11/Wayland 剪贴板桥接（历史由 Noctalia 管理）
-    packages.nix       用户级 CLI 工具
-  system/              → NixOS
-    core/              boot、locale、网络、nix 设置
-    desktop/           mango、xdg portal、greetd、gamemode
-    hardware/          nvidia（PRIME offload）、音频、蓝牙、固件
-    programs/          clash、nix-ld、thunar 等
-    security/          polkit、sops
-    services/          earlyoom、openssh、docker、systemd
-    user/              用户、字体、环境变量
-    virtualisation/    libvirt/KVM
-config/nvim/           Neovim 原生 Lua 配置、主题、片段、query 与检查
-pkgs/neovim/           stable Neovim wrapper、插件与 Tree-sitter parser 固定清单
-flake/neovim.nix       packages.neovim 与 packages.neovim-dev 输出
-secrets/secrets.yaml   sops 加密的 API key（可安全提交）
-```
-
-### 自动导入：加文件就够了
-
-`lib/import-dir.nix` 里的 `importDir` **递归导入目录下每一个 `.nix`**，`modules/home/` 进 Home Manager，`modules/system/` 进 NixOS。新增模块不需要在任何地方登记，丢个文件进去即可。
-
-共享抽象接口见 `lib/`；模块组织和选项行为以对应的 `modules/` 配置及锁定源码为准。
-
-**它没有排除机制** —— 连下划线前缀都不跳过。资源目录只有在不含 `.nix` 文件时才不会被当成模块导入。
-
-Neovim 的 Lua 配置和包定义放在仓库根目录，避免被 `importDir` 当作 Home Manager 模块递归导入。Home Manager 从 `modules/home/programs/dev/nvim.nix` 接入包并设置 XDG init。
-
-## 软链接：哪些能改，哪些不能
-
-Home Manager 把配置文件从 `/nix/store` 链接到家目录。**store 里的东西是只读的**，所以直接编辑 `~/.config/...` 要么失败，要么在下次重建时被覆盖。
-
-但链接的**粒度**有两种，区别很大：
-
-### 整个目录被链接 → 应用无法在里面写任何东西
-
-```
-~/.config/fcitx5      → /nix/store/…（只读目录）
-~/.Xresources         → /nix/store/…
-~/.zshrc              → /nix/store/…
-~/.config/mimeapps.list → /nix/store/…
-```
-
-这类由 `xdg.configFile."fcitx5".source = <整个目录>` 产生。后果是**连临时试验都做不了** —— 想改一行 fcitx5 配置试试效果，只能改 Nix 然后重建。
-
-### 真目录里只链接了个别文件 → 应用可以在旁边写
-
-```
-~/.config/mango/       真目录（config.conf 是链接，noctalia-colors.conf 由主题模板写入）
-~/.config/kitty/       真目录（mayon.conf 是链接；kitty.conf 和主题文件可写）
-~/.config/noctalia/    真目录（具体文件的归属见 noctalia.nix）
-~/.config/yazi/        真目录（声明式配置和运行时状态共存）
-```
-
-这类由 `xdg.configFile."kitty/mayon.conf".source = ...` 产生 —— 路径里带了文件名，HM 就只建这一个链接，父目录保持可写。
-
-**这个区别决定了应用能不能保存自己的运行时状态**：Noctalia GUI 保存的设置位于 `~/.local/state/noctalia/settings.toml`；主题模板把配色渲染到 `~/.config/mango/noctalia-colors.conf`。要是把应用需要写入的整个目录都链成 store，这些操作就会失败。
-
-> 需要「配置进版本库、同时又能即时编辑」时，用 `config.lib.file.mkOutOfStoreSymlink` 链到仓库里的真实路径。本仓库目前没有用到这种模式。
-
-### 判断某个路径属于哪种
-
-```sh
-ls -la ~/.config/foo          # 是链接还是目录
-readlink ~/.config/foo        # 指向 store 就是只读
-find ~/.config/foo -maxdepth 1 -type l -lname '/nix/store/*'
-```
-
-## 密钥
-
-API key 用 sops-nix 加密存在 `secrets/secrets.yaml`（**可以安全提交**），重建时解密到 `/run/secrets/<name>`，属主 `mayon`。
-
-- 解密用主机 SSH ed25519 密钥；编辑用你的个人 age 密钥（`~/.config/sops/age/keys.txt`）
-- 配置在 `modules/system/security/sops.nix`，收件人在 `.sops.yaml`
-- shell 通过 `modules/home/shell/zsh.nix` 导出成环境变量
-
-加一个新 key：
-
-```sh
-sops secrets/secrets.yaml            # 编辑
-# 然后在 sops.nix 加 secrets.<name>.owner，在 zsh.nix 的循环里加 <name>:ENV_VAR
-```
-
-**注意**：systemd 用户服务和桌面启动的应用不会 source 交互式 zsh 初始化，不能依赖这些变量；
-可直接读 `/run/secrets/<name>`。
-
-## 修改流程
-
-1. 改对应配置并检查 `git diff`；新文件需进入 Git flake 的源集合
-2. `nix fmt`
-3. `nix flake check --no-build --no-write-lock-file` 求值，再按影响构建相关输出或 `nix build --no-link .#nixosConfigurations.nixos-btw.config.system.build.toplevel`；求值通过不等于构建或运行时通过
-4. 需要应用配置时用 `nr` 切换；仅工作流文档和技能变更不需要重建系统
-5. 有些东西需要额外一步才生效：
-
-| 改了什么 | 还要做 |
-|---|---|
-| fcitx5 配置 | 先用 `systemctl --user status fcitx5-daemon.service` 检查当前实际运行的单元，再重启该单元；不要在已有 daemon 时再启动第二个实例 |
-| nvim 配置 | 无，重建即生效 |
-| mango 配置 | `Super+Alt+R`（reload_config）或重登；键位、窗口规则、动画都能热重载 |
-| QQ 的 wrapper | 从托盘完全退出再开 |
-
-## 排查
-
-```sh
-# 构建报错但看不出哪里
-nix build --show-trace .#nixosConfigurations.nixos-btw.config.system.build.toplevel
-
-# 某个选项最终的值是什么
-nix eval .#nixosConfigurations.nixos-btw.config.<option.path>
-
-# 某个包的闭包多大、被什么撑着
-nix path-info -Sh <store-path>
-nix path-info -rS <store-path> | sort -k2 -rn | head
-
-# 回退到上一个世代
-sudo nixos-rebuild switch --rollback
-```
-
-`flake.lock` 更新后检查 `evaluation warning:` 和构建结果，再验证受影响的运行时行为；
-没有弃用提示不代表没有兼容性问题。
+API key 等秘密使用 sops-nix，秘密经运行时文件或模板交给消费者，不进入 Nix 字符串、日志或
+store。机器密钥与编辑密钥的所有权和操作步骤见 [secret 接线](inventory/hosts/nixos-btw/credentials.nix)
+及 `docs/config-ownership.md`。

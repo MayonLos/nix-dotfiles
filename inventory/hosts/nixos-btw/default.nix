@@ -10,23 +10,6 @@ in
 {
   imports = [
     ./accounts.nix
-    ../../../aspects/system
-    ../../../aspects/command-line
-    ../../../aspects/default-tools
-    ../../../aspects/appearance
-    ../../../aspects/languages
-    ../../../aspects/editing
-    ../../../aspects/gaming
-    ../../../aspects/ai-workbench
-    ../../../aspects/firefox
-    ../../../aspects/communication
-    ../../../aspects/documents
-    ../../../aspects/file-manager
-    ../../../aspects/media
-    ../../../aspects/local-containers
-    ../../../aspects/local-virtual-machines
-    ../../../aspects/embedded-workbench
-    ../../../aspects/interactive-session
     ../../users/mayon.nix
   ];
   den.hosts.${facts.system}.nixos-btw = {
@@ -106,37 +89,12 @@ in
       home.packages = [ pkgs.lenovo-legion ];
     };
     includes = with den.aspects; [
+      personal-desktop
+      engineering-workbench
       embedded-workbench
       gaming
-      ai-workbench
-      firefox
-      communication
-      documents
-      file-manager
-      media
       local-containers
       local-virtual-machines
-      virtual-machine-client
-      command-line
-      terminal
-      interactive-session
-      default-tools
-      neovim
-      vscode
-      jetbrains
-      cpp-support
-      docker-support
-      nix-support
-      lua-support
-      python-support
-      java-support
-      shell-support
-      latex-support
-      markdown-support
-      matlab-support
-      cmake-support
-      web-support
-      yaml-support
     ];
   };
 }

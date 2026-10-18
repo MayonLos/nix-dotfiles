@@ -1,10 +1,11 @@
 { den, ... }: {
-  den.schema.host.imports = [ ../appearance/contract.nix ];
+  imports = [ ../appearance ];
   den.aspects = {
     interactive-session = { host, user, ... }: {
       homeManager =
         {
           noctaliaIntegrations ? [ ],
+          lib,
           ...
         }:
         {
@@ -27,7 +28,7 @@
             "pipewire.socket"
             "pipewire-pulse.socket"
           ];
-          programs.btop.settings.color_theme = "noctalia";
+          programs.btop.settings.color_theme = lib.mkIf (builtins.elem "btop" noctaliaIntegrations) "noctalia";
         };
       user.extraGroups = [ "input" ];
       provides.${host.name}.includes = [ den.aspects.interactive-session-host ];
