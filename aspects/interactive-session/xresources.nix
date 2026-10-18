@@ -2,6 +2,7 @@
   pkgs,
   config,
   lib,
+  hostFacts,
   ...
 }:
 
@@ -51,15 +52,16 @@ let
     exit 1
   '';
 
-  mkGraphicalService = import ../../../lib/graphical-service.nix;
+  mkGraphicalService = import ../../lib/graphical-service.nix;
 in
 {
   # 2560x1600 at mango scale 1.5. Consumed by fcitx5's X11 candidate window
   # (which needs PerScreenDPI=False in base/input-method.nix to look at it at
   # all) and by any other X client that reads Xft.dpi.
-  xresources.properties."Xft.dpi" = 144;
+  xresources.properties."Xft.dpi" = hostFacts.display.x11Dpi;
 
   systemd.user.services.xrdb-merge = mkGraphicalService {
+    target = "mango-session.target";
     description = "Merge ~/.Xresources into mango's built-in Xwayland server";
     service = {
       Type = "oneshot";

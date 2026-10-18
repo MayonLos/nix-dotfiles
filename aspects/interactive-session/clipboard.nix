@@ -182,19 +182,23 @@ let
     '';
   };
 
-  mkGraphicalService = import ../../../lib/graphical-service.nix;
+  mkGraphicalService = import ../../lib/graphical-service.nix;
 in
 {
   home.packages = [ clipboardBridge ];
 
   systemd.user.services.clipboard-bridge = mkGraphicalService {
+    target = "mango-session.target";
+    unit = {
+      StartLimitIntervalSec = 60;
+      StartLimitBurst = 3;
+    };
     description = "Clipboard bridge between Wayland and X11 (the compositor does not sync selections)";
     service = {
       Type = "simple";
-      # DISPLAY is exported into the user bus by the dbus-update-activation-environment
-      # line in mango's autostart.sh (see desktop-mango on why autostart_sh
-      # is what runs it); without it the X11 half silently no-ops. Verify
-      # with `systemctl --user show-environment`.
+      # Mango's C startup imports dynamic DISPLAY/WAYLAND environment before
+      # requesting its session target; HM autostart supplies an additional sync.
+      # Verify actual manager values on cold login, rather than assuming ordering.
       ExecStart = "${clipboardBridge}/bin/clipboard-bridge bridge";
       # `wait` in bridge() returns as soon as the first watcher exits, so the
       # service can end with status 0 while the clipboard is no longer bridged.

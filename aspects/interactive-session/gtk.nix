@@ -1,10 +1,11 @@
+{ palette }:
 {
   pkgs,
   ...
 }:
 
 let
-  desktop = import ../../../lib/desktop.nix;
+  desktop = palette;
 in
 {
   home.pointerCursor = {
@@ -23,6 +24,10 @@ in
 
   gtk = {
     enable = true;
+    font = {
+      name = palette.fonts.sans;
+      size = 11;
+    };
     # GTK4/libadwaita stays unthemed → reads Noctalia's generated ~/.config/gtk-4.0/gtk.css
     gtk4.theme = null;
     theme = {

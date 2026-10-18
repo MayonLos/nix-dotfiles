@@ -2,6 +2,16 @@
 # Palette origin: navarasu/onedark.nvim (MIT); no highlight implementation here.
 {
   name = "onedark-darker";
+  fonts = {
+    sans = "Noto Sans CJK SC";
+    mono = "JetBrainsMono Nerd Font";
+    serif = "Noto Serif CJK SC";
+  };
+  cursor = {
+    name = "Bibata-Modern-Ice";
+    size = 24;
+  };
+  iconTheme = "Papirus-Dark";
   black = "#0e1013";
   bg = "#1f2329";
   surface = "#282c34";

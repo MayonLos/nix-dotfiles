@@ -44,6 +44,16 @@ flake 求值、完整主机构建与系统隔离检查通过。磁盘、账号�
 
 没有测试 MATLAB 本体/授权、AI 网络请求、IDE GUI、Kitty 图像或所有用户项目；用户安装树、授权、历史、会话、草稿与缓存均未迁移或删除。
 
+## 批次 5：交互会话与固定视觉
+
+Mango、Noctalia、greeter、portal/音频/认证、IME、剪贴板桥、截图及壁纸资源由完整 `interactive-session` 功能拥有；greeter 由 host 单独选择。显示器与键盘设备来自 host facts，外观来自同一类型化 One Dark Darker 输入。Mango tab/group/jump、Noctalia 分组面板/通知/锁屏、Kitty、原生 Lua 和 Fcitx5 分别由其唯一 renderer 消费；没有调用新的视觉设计，沿用已有 Astra 规格。Super+F1 的帮助从真实按键数据生成，保留全部旧键位与手势。
+
+Noctalia、Fcitx5、clipboard bridge、xrdb 定向绑定 Mango session；Noctalia 不再经 autostart 直接启动，安全静态环境由白名单投影，故障恢复有界。Noctalia 启动前的逐路径工具只清除公开声明键的 sidecar override 和旧 Mango template，并将这些字段单独备份到私有状态目录；未知字段、凭据、历史及应用 state 不动。有旧 Noctalia writer 时拒绝写入，需要完整注销后重试。工具本次仅在临时目录测试，未操作真实 state。
+
+配置纯解析检查通过：锁定 Noctalia CLI 零 warning、Mango parser 无冲突，项目严格检查 custom palette JSON 结构/颜色（上游没有独立严格 JSON validator），并验证生成的 unit 依赖/环境和 greeter 数据。逐键交接的 7 项临时目录测试通过，覆盖不同值 override、未知凭据保留、幂等、权限、损坏/symlink 和并发修改。完整 host 与 treefmt 构建通过；两主机两账号实际桌面组合、共享支持和移除最终 consumer 检查通过；音频共享能力由 host 提供，但全局 socket wants 已关闭，仅选中的会话请求启动。Keyring/PAM、portal 等系统能力仍是同宿主共享支持，不是账号访问控制。
+
+独立复核发现并修复面板顺序、F1 的 XDG 路径和 shell quoting、Fcitx5 默认菜单/翻页图像漏项。GUI 缩放/动画/对比、插件交互、真实 IME/剪贴板/截图、冷登录及退出顺序、GTK/Qt/Firefox apply/undo、greeter 和低电量休眠均留待应用后验证。
+
 ## 应用后验收
 
 未执行系统应用。文件归属交接、旧持久用户 unit 停用、重登录环境、GUI/设备、休眠与游戏验证仍按专项设计执行，不能由构建结果替代。

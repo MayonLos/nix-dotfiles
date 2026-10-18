@@ -15,7 +15,7 @@ in
   xdg.configFile."kitty/kitty.conf".text = ''
     # Managed by Den's command-line Kitty aspect.
 
-    font_family JetBrainsMono Nerd Font
+    font_family ${palette.fonts.mono}
     font_size 11.0
     disable_ligatures cursor
 

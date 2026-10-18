@@ -1,7 +1,9 @@
-{ pkgs, ... }:
+{ pkgs, hostFacts, ... }:
 
 let
-  desktop = import ../../../lib/desktop.nix;
+  desktop = {
+    primaryOutput = hostFacts.display.name;
+  };
 in
 
 {

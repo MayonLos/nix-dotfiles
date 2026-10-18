@@ -17,9 +17,11 @@ in
     ../../../aspects/appearance
     ../../../aspects/languages
     ../../../aspects/editing
+    ../../../aspects/interactive-session
     ../../users/mayon.nix
   ];
   den.hosts.${facts.system}.nixos-btw = {
+    appearance = import ../../../aspects/appearance/onedark-darker.nix;
     users.mayon = {
       appearance = import ../../../aspects/appearance/onedark-darker.nix;
       defaultTools = {
@@ -60,6 +62,7 @@ in
       legion-laptop
       laptop-network
       closed-ssh-socket
+      login-screen
     ];
     nixos = {
       networking.hostName = "nixos-btw";
@@ -69,19 +72,13 @@ in
         ./discovered.nix
         ./credentials.nix
         ../../../modules/system/desktop/gamemode.nix
-        ../../../modules/system/desktop/greetd.nix
-        ../../../modules/system/desktop/mango.nix
-        ../../../modules/system/desktop/xdg.nix
-        ../../../modules/system/hardware/audio.nix
         ../../../modules/system/hardware/debug-probes.nix
         ../../../modules/system/programs/gamescope.nix
         ../../../modules/system/programs/libreoffice.nix
         ../../../modules/system/programs/nh.nix
         ../../../modules/system/programs/steam.nix
         ../../../modules/system/programs/thunar.nix
-        ../../../modules/system/security/polkit.nix
         ../../../modules/system/services/docker.nix
-        ../../../modules/system/user/fonts.nix
         ../../../modules/system/virtualisation/libvirt.nix
         inputs.sops-nix.nixosModules.sops
       ];
@@ -101,6 +98,7 @@ in
     includes = with den.aspects; [
       command-line
       terminal
+      interactive-session
       default-tools
       neovim
       vscode
@@ -120,7 +118,5 @@ in
       yaml-support
     ];
     homeManager.imports = importDir ../../../modules/home;
-    # This binding selects the Noctalia template consumer; remote CLI keeps Default.
-    homeManager.programs.btop.settings.color_theme = "noctalia";
   };
 }

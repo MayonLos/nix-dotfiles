@@ -33,7 +33,7 @@ let
     paths = [ mark-shot-unpatched ];
     postBuild = ''
       rm -f "$out/bin/mark-shot-window-detection-mango"
-      install -Dm755 ${./_mark-shot/window-detection-mango} \
+      install -Dm755 ${./resources/window-detection-mango} \
         "$out/bin/mark-shot-window-detection-mango"
       substituteInPlace "$out/bin/mark-shot-window-detection-mango" \
         --replace-fail '#!/usr/bin/env python3' '#!${pkgs.python3}/bin/python3'
@@ -78,7 +78,7 @@ let
   # Same derivation packages.nix installs: pkgs/tesseract-ocr.nix adds chi_sim,
   # without which Chinese text comes back empty rather than wrong -- easy to
   # mistake for the script being broken.
-  tesseractOcr = pkgs.callPackage ../../../../pkgs/tesseract-ocr.nix { };
+  tesseractOcr = pkgs.callPackage ./tesseract-ocr.nix { };
 
   mkOcr =
     name: screen:

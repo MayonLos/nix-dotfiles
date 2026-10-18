@@ -4,16 +4,18 @@
 {
   description,
   service,
-  wantedBy ? [ "graphical-session.target" ],
+  target,
+  unit ? { },
 }:
 {
   Unit = {
     Description = description;
-    PartOf = [ "graphical-session.target" ];
-    After = [ "graphical-session.target" ];
-  };
+    PartOf = [ target ];
+    After = [ target ];
+  }
+  // unit;
 
   Service = service;
 
-  Install.WantedBy = wantedBy;
+  Install.WantedBy = [ target ];
 }

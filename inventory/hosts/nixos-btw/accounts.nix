@@ -7,7 +7,6 @@
         "wheel"
         "networkmanager"
         "gamemode"
-        "input"
         "dialout"
       ];
       packages = [ pkgs.tree ];

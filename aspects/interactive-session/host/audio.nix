@@ -1,4 +1,4 @@
-_:
+{ lib, ... }:
 
 {
   services.pipewire = {
@@ -49,6 +49,11 @@ _:
       };
     };
   };
+
+  # Install shared audio support once, but do not activate sockets in every
+  # account's manager. The selected session requests these units explicitly.
+  systemd.user.sockets.pipewire.wantedBy = lib.mkForce [ ];
+  systemd.user.sockets.pipewire-pulse.wantedBy = lib.mkForce [ ];
 
   security.rtkit.enable = true;
 }

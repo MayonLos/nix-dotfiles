@@ -33,7 +33,6 @@ let
 in
 {
   home.packages = with pkgs; [
-    qt6Packages.qt6ct
     # codex, dsh, grok, opencode and the agent-side tooling come from
     # programs/dev/ai-agents.nix — packaged by the llm-agents.nix input.
     # nvim comes from programs/dev/nvim.nix — built from pkgs/neovim with the config/nvim Lua tree.
@@ -47,24 +46,15 @@ in
     # tldr client. Complements nix-index + comma, which answer "which package
     # has this binary" rather than "how do I use it".
     # Editing secrets/secrets.yaml is routine enough to want outside `nix develop`.
-    wl-clipboard
-    xclip
-    grim
-    slurp
     # OCR engine behind noctalia's fel/ocr plugin (see wm/mango/noctalia.nix),
     # which shells out to `tesseract` on a grim+slurp region. The override in
     # pkgs/tesseract-ocr.nix adds chi_sim, and screenshot.nix uses the same
     # derivation so its `-l eng+chi_sim` pass has the data.
-    (callPackage ../../pkgs/tesseract-ocr.nix { })
     swayimg
     libheif
-    brightnessctl
     # Noctalia external-monitor brightness. eDP-1 stays on the backlight backend.
-    ddcutil
     # Noctalia owns volume keys and the audio panel. WirePlumber's wpctl
     # remains available for device/profile diagnostics without another mixer.
-    playerctl
-    libdecor
     lenovo-legion
     # No nvtop. Every variant with the NVIDIA backend pulls cuda-merged, i.e.
     # nvcc + cublas + cufft + cusolver + cusparse + npp -- 2.9 GiB of CUDA for a

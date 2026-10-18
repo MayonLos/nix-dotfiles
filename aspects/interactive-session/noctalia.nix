@@ -1,13 +1,31 @@
+{ palette }:
 {
+  config,
+  lib,
   pkgs,
   inputs,
+  hostFacts,
   ...
 }:
 
 let
-  wallpaperDir = "${../../_assets/wallpaper}";
-  desktop = import ../../../../lib/desktop.nix;
-  defaultWallpaperPath = "${../../_assets/wallpaper/wallpaper-001.png}";
+  wallpaperDir = "${./resources/wallpaper}";
+  desktop = {
+    primaryOutput = hostFacts.display.name;
+  };
+  reconcilePython = pkgs.python3.withPackages (p: [ p.tomlkit ]);
+  managedSettings = pkgs.writeText "noctalia-managed-settings.json" (
+    builtins.toJSON config.programs.noctalia.settings
+  );
+  reconcileOverrides = pkgs.writeShellScript "reconcile-noctalia-overrides" ''
+    exec ${reconcilePython}/bin/python3 ${./resources/reconcile-overrides.py} \
+      --state ${lib.escapeShellArg "${config.xdg.stateHome}/noctalia/settings.toml"} \
+      --managed ${managedSettings} \
+      --backup-dir ${lib.escapeShellArg "${config.xdg.stateHome}/nix-dotfiles/ownership-backups"} \
+      --require-no-noctalia
+  '';
+
+  defaultWallpaperPath = "${./resources/wallpaper/wallpaper-001.png}";
 
   distroLogo = "${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg";
 
@@ -34,6 +52,12 @@ let
     fi
   '';
 
+  # Use only the static variables explicitly exported to the user manager.
+  # Never import the full Home Manager environment or interpolate secrets.
+  safeSessionVariables =
+    (import ../../lib/session-environment.nix { inherit lib; })
+      config.systemd.user.sessionVariables;
+
 in
 {
   imports = [
@@ -55,12 +79,60 @@ in
       enable = true;
       package = inputs.noctalia.packages.${pkgs.stdenv.hostPlatform.system}.default;
 
-      systemd.enable = false;
+      systemd.enable = true;
+      customPalettes.One-Dark-Darker = {
+        dark = {
+          mPrimary = palette.blue;
+          mOnPrimary = palette.black;
+          mSecondary = palette.cyan;
+          mOnSecondary = palette.black;
+          mTertiary = palette.purple;
+          mOnTertiary = palette.black;
+          mError = palette.red;
+          mOnError = palette.black;
+          mSurface = palette.bg;
+          mOnSurface = palette.brightFg;
+          mSurfaceVariant = palette.surface;
+          mOnSurfaceVariant = palette.fg;
+          mOutline = palette.border;
+          mShadow = palette.black;
+          mHover = palette.selection;
+          mOnHover = palette.brightFg;
+          terminal = {
+            background = palette.bg;
+            foreground = palette.fg;
+            cursor = palette.brightFg;
+            cursorText = palette.bg;
+            selectionBg = palette.selection;
+            selectionFg = palette.brightFg;
+            normal = {
+              inherit (palette) black;
+              inherit (palette) red;
+              inherit (palette) green;
+              inherit (palette) yellow;
+              inherit (palette) blue;
+              magenta = palette.purple;
+              inherit (palette) cyan;
+              white = palette.fg;
+            };
+            bright = {
+              black = palette.border;
+              inherit (palette) red;
+              inherit (palette) green;
+              inherit (palette) yellow;
+              inherit (palette) blue;
+              magenta = palette.purple;
+              inherit (palette) cyan;
+              white = palette.brightFg;
+            };
+          };
+        };
+      };
 
       settings = {
         shell = {
           lang = "zh-CN";
-          font_family = "Noto Sans CJK SC";
+          font_family = palette.fonts.sans;
           corner_radius_scale = 1.0;
           # Native history owns collection and persistence; no parallel
           # cliphist watchers. The X11/Wayland bridge is a separate service.
@@ -72,8 +144,9 @@ in
 
           animation = {
             enabled = true;
-            speed = 0.95;
+            speed = 1.0;
           };
+          launch_apps_as_systemd_services = true;
 
           shadow = {
             direction = "down";
@@ -83,6 +156,8 @@ in
           panel = {
             transparency_mode = "glass";
             borders = true;
+            border_color = "outline";
+            border_width = 1;
             shadow = true;
             launcher_placement = "floating";
             clipboard_placement = "floating";
@@ -92,11 +167,21 @@ in
           };
 
           launcher = {
+            layout = "full";
+            width = 720;
+            search_position = "top";
+            default_view = "recent";
             categories = true;
             show_icons = true;
-            compact = true;
+            compact = false;
             app_grid = true;
             sort_by_usage = true;
+            pinned = [
+              "kitty.desktop"
+              "firefox.desktop"
+              "thunar.desktop"
+              "code.desktop"
+            ];
             # calculator-plus is removed. The built-in provider has no enable
             # switch; exclude it from ordinary search. Its explicit /calc
             # prefix remains available (an empty prefix restores that default).
@@ -110,7 +195,7 @@ in
 
           screen_corners = {
             enabled = true;
-            size = 32;
+            size = 12;
           };
 
           # Noctalia's built-in polkit authentication agent (the password
@@ -121,31 +206,20 @@ in
         };
 
         theme = {
-          mode = "auto";
-          source = "builtin";
-          builtin = "Tokyo-Night";
+          mode = "dark";
+          shell_mode = "follow";
+          source = "custom";
+          custom_palette = "One-Dark-Darker";
+          pure_black_dark = false;
 
           templates = {
             enable_builtin_templates = true;
             enable_community_templates = true;
-            # The builtin hook misses source_optional and tries to append to
-            # our read-only config. Keep its template, but only reload Mango.
-            # A fresh output path also leaves old, incompatible palettes out
-            # of the new compositor's configuration.
-            user.noctalia-mango = {
-              input_path = "${inputs.noctalia}/assets/templates/mango/mango.conf";
-              output_path = "$XDG_CONFIG_HOME/mango/noctalia-colors.conf";
-              post_hook = "${pkgs.writeShellScript "noctalia-mango-theme-apply" ''
-                ${
-                  inputs.mango.packages.${pkgs.stdenv.hostPlatform.system}.mango
-                }/bin/mmsg dispatch reload_config 2>/dev/null || true
-              ''}";
-            };
             user.noctalia-firefox = {
-              input_path = "${../../programs/apps/_firefox/noctalia-userChrome.css}";
+              input_path = "${../../modules/home/programs/apps/_firefox/noctalia-userChrome.css}";
               output_path = "$XDG_CACHE_HOME/noctalia/firefox/userChrome.css";
               post_hook = "${pkgs.writeShellScript "noctalia-firefox-theme-apply" ''
-                exec ${pkgs.python3}/bin/python3 ${../../programs/apps/_firefox}/apply-noctalia-userChrome.py "''${XDG_CACHE_HOME:-$HOME/.cache}/noctalia/firefox/userChrome.css"
+                exec ${pkgs.python3}/bin/python3 ${../../modules/home/programs/apps/_firefox}/apply-noctalia-userChrome.py "''${XDG_CACHE_HOME:-$HOME/.cache}/noctalia/firefox/userChrome.css"
               ''}";
               hook_async = false;
             };
@@ -189,9 +263,8 @@ in
             }
           ];
 
-          # GUI plugin toggles override this array in
-          # ~/.local/state/noctalia/settings.toml. Remove its [plugins] table
-          # and run `noctalia msg config-reload` to restore declarative control.
+          # The pre-start ownership handoff removes only declared public
+          # override paths, backing up those values before starting the writer.
           # Avoid compositor editor plugins that write the read-only HM config
           # and plugins whose external tools only support Hyprland.
           enabled = [
@@ -218,6 +291,12 @@ in
         # values belong in widget."<plugin-id>:<entry-id>". Keep secrets in
         # runtime state or supported runtime files, never in Nix strings.
         plugin_settings = {
+          # Noctalia injects generic panel settings for non-persistent entries.
+          "ezequiel/mango_layouts" = {
+            panel_placement = "attached";
+            panel_position = "auto";
+            panel_open_near_click = true;
+          };
           # The CLI backend uses the installed OpenCode. Use a qualified model
           # ID so Quill does not prefix it with opencode-go/.
           "fel/quill" = {
@@ -225,36 +304,42 @@ in
             ai_model = "deepseek/deepseek-flash";
           };
 
-          # Override the plugin's floating bottom-right panel with a bar panel.
-          "ezequiel/mango_layouts" = {
-            panel_placement = "attached";
-            panel_position = "auto";
-            panel_open_near_click = true;
-          };
         };
 
         bar.main = {
           position = "top";
-          thickness = 32;
-          background_opacity = 0.92;
+          thickness = 36;
+          reserve_space = true;
+          auto_hide = false;
+          layer = "top";
+          panel_overlap = 1;
+          background_opacity = 0.96;
+          border = "outline";
+          border_width = 1;
           radius = 12;
           margin_ends = 14;
           margin_edge = 8;
-          padding = 6;
+          padding = 8;
           widget_spacing = 8;
           shadow = true;
           contact_shadow = true;
           capsule = true;
           capsule_opacity = 0.96;
+          capsule_fill = "surface_variant";
+          capsule_radius = 8;
+          capsule_thickness = 0.78;
+          font_family = palette.fonts.sans;
+          font_weight = 500;
+          font_scale = 1.0;
 
           # Plugin widgets use manifest-id:entry-id. Everyday tools sit on the
           # left, the clock and cat in the center, system status on the right.
           start = [
             "launcher"
             "workspaces"
-            "group:media"
-            "group:panels"
             "group:dev"
+            "group:panels"
+            "group:media"
           ];
           center = [ "group:time" ];
           end = [
@@ -273,7 +358,7 @@ in
               ];
               accordion = false;
               padding = 6.0;
-              widget_spacing = 6;
+              widget_spacing = 4;
             }
             {
               id = "time";
@@ -345,10 +430,13 @@ in
 
         # Super+R enters resize mode; hide the badge in default mode.
         widget."gambled23/mangowm-keymode:mangowm-keymode".hide_on_default = true;
+        widget."ezequiel/mango_layouts:btn".show_text = false;
+
+        widget.battery.warning_color = palette.yellow;
 
         widget.media = {
           hide_when_no_media = true;
-          max_length = 180;
+          max_length = 160;
           title_scroll = "on_hover";
         };
 
@@ -366,10 +454,7 @@ in
 
         widget."noctalia/bongocat:cat" = {
           executable_path = "${pkgs.evtest}/bin/evtest";
-          input_devices = [
-            "/dev/input/by-path/platform-i8042-serio-0-event-kbd"
-            "/dev/input/by-id/usb-ITE_Tech._Inc._ITE_Device_8176_-event-kbd"
-          ];
+          input_devices = hostFacts.keyboardDevices;
           audio_spectrum = true;
           tappy_mode = true;
           rave_mode = false;
@@ -398,13 +483,23 @@ in
         widget.clock = {
           format = "{:%m-%d  %H:%M}";
           vertical_format = "{:%H\n%M}";
+          font_family = palette.fonts.mono;
         };
 
         widget.workspaces = {
-          # mango always defines all `tag_num` tags, so the bar would otherwise
-          # show 1-9 permanently. This collapses a tag out of the row once it
-          # holds no windows; the active tag stays visible even when empty.
-          hide_when_empty = true;
+          style = "regular";
+          label_source = "id";
+          show_labels = true;
+          hide_when_empty = false;
+          show_all_outputs = false;
+          focused_output_only = true;
+          active_pill_size = 1.35;
+          inactive_pill_size = 1.0;
+          focused_color = "primary";
+          occupied_color = "surface_variant";
+          empty_color = palette.deep;
+          urgent_color = "error";
+          font_scale = 1.18;
         };
 
         desktop_widgets.enabled = false;
@@ -415,15 +510,8 @@ in
           fill_mode = "crop";
           fill_color = "surface";
           transition_on_startup = true;
-          transition = [
-            "fade"
-            "wipe"
-            "disc"
-            "stripes"
-            "zoom"
-            "honeycomb"
-          ];
-          transition_duration = 1200;
+          transition = [ "fade" ];
+          transition_duration = 450;
           default.path = defaultWallpaperPath;
           automation = {
             enabled = false;
@@ -496,8 +584,15 @@ in
 
         notification = {
           enable_daemon = true;
+          position = "top_right";
           layer = "overlay";
-          background_opacity = 0.95;
+          width = 360;
+          offset_x = 14;
+          offset_y = 56;
+          max_visible = 3;
+          border = true;
+          border_width = 1;
+          background_opacity = 0.97;
           # New in 5.2.1. No-op on the single panel, correct once a second
           # output is attached.
           follow_focused_output = true;
@@ -505,7 +600,7 @@ in
 
         osd = {
           position = "top_right";
-          background_opacity = 0.95;
+          background_opacity = 0.97;
           follow_focused_output = true;
         };
 
@@ -542,13 +637,78 @@ in
         # meaningless, hence the single line.
         dock.enabled = false;
 
+        control_center = {
+          sidebar = "full";
+          sidebar_section = "full";
+          width = 700;
+          show_shortcut_labels = true;
+        };
+
         lockscreen = {
           enabled = true;
           blur_intensity = 0.5;
-          tint_intensity = 0.3;
-          blurred_desktop = true;
+          tint_intensity = 0.45;
+          blurred_desktop = false;
+        };
+
+        lockscreen_widgets = {
+          enabled = true;
+          widget_order = [
+            "lockscreen-widget-clock"
+            "lockscreen-login-box@${desktop.primaryOutput}"
+          ];
+          widget."lockscreen-login-box@${desktop.primaryOutput}" = {
+            type = "login_box";
+            output = desktop.primaryOutput;
+            cx = hostFacts.display.width / (hostFacts.display.scale * 2);
+            cy = hostFacts.display.height / (hostFacts.display.scale * 2);
+            settings = {
+              layout = "regular";
+              show_media = false;
+              show_weather = true;
+              show_session_buttons = true;
+              show_unlock_hint = true;
+              show_caps_lock = true;
+              show_keyboard_layout = true;
+              background_color = "surface_variant";
+              background_opacity = 0.96;
+              background_radius = 12.0;
+              input_radius = 6.0;
+              input_opacity = 1.0;
+            };
+          };
+          widget.lockscreen-widget-clock = {
+            type = "clock";
+            output = desktop.primaryOutput;
+            cx = 853.0;
+            cy = 240.0;
+            box_width = 360.0;
+            box_height = 100.0;
+            settings = {
+              format = "{:%H:%M}";
+              font_family = palette.fonts.mono;
+            };
+          };
         };
       };
+    };
+
+    # Keep Noctalia bound to the Mango session and enforce a bounded recovery
+    # budget. The HM module owns the unit; these are field-level overrides.
+    systemd.user.services.noctalia = {
+      Unit = {
+        PartOf = lib.mkForce [ "mango-session.target" ];
+        After = lib.mkForce [ "mango-session.target" ];
+        StartLimitIntervalSec = 60;
+        StartLimitBurst = 3;
+      };
+      Service = {
+        ExecStartPre = "${reconcileOverrides}";
+        Restart = "on-failure";
+        RestartSec = 2;
+        Environment = lib.mapAttrsToList (name: value: "${name}=${value}") safeSessionVariables;
+      };
+      Install.WantedBy = lib.mkForce [ "mango-session.target" ];
     };
   };
 }

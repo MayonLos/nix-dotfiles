@@ -1,3 +1,4 @@
+{ palette }:
 {
   pkgs,
   config,
@@ -19,8 +20,8 @@
   # so whatever you later tweak inside qt6ct is never overwritten.
   home.activation =
     let
-      seedFile = import ../../../lib/seed-file.nix { inherit lib pkgs; };
-      desktop = import ../../../lib/desktop.nix;
+      seedFile = import ../../lib/seed-file.nix { inherit lib pkgs; };
+      desktop = palette;
       colorScheme = "${config.xdg.configHome}/qt6ct/colors/noctalia.conf";
       mkConf =
         name:
@@ -31,6 +32,10 @@
           icon_theme=${desktop.iconTheme}
           standard_dialogs=default
           style=Fusion
+
+          [Fonts]
+          general=${palette.fonts.sans},11,-1,5,400,0,0,0,0,0
+          fixed=${palette.fonts.mono},11,-1,5,400,0,0,0,0,0
         '';
       seed =
         name:

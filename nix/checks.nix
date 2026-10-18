@@ -1,5 +1,12 @@
 { inputs, config, ... }: {
   perSystem = { pkgs, ... }: {
+    checks.desktop-composition = import ../tests/composition/desktop.nix { inherit inputs pkgs; };
+    checks.interactive-session-config = import ../aspects/interactive-session/checks.nix {
+      inherit pkgs;
+      host = config.flake.nixosConfigurations.nixos-btw.config;
+      home = config.flake.nixosConfigurations.nixos-btw.config.home-manager.users.mayon;
+      palette = import ../aspects/appearance/onedark-darker.nix;
+    };
     checks.editing-composition = import ../tests/composition/editing.nix { inherit inputs pkgs; };
     checks.workspace-composition = import ../tests/composition/workspace.nix { inherit inputs pkgs; };
     checks.command-line-runtime = import ../aspects/command-line/checks.nix {

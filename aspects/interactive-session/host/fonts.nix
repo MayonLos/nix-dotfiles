@@ -1,3 +1,4 @@
+{ palette }:
 { pkgs, ... }:
 {
   fonts = {
@@ -15,9 +16,9 @@
       hinting.enable = true;
       defaultFonts = {
         emoji = [ "Noto Color Emoji" ];
-        monospace = [ "JetBrainsMono Nerd Font" ];
-        sansSerif = [ "Noto Sans CJK SC" ];
-        serif = [ "Noto Serif CJK SC" ];
+        monospace = [ palette.fonts.mono ];
+        sansSerif = [ palette.fonts.sans ];
+        serif = [ palette.fonts.serif ];
       };
     };
   };
