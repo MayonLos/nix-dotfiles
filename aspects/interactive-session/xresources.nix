@@ -61,8 +61,8 @@ in
   xresources.properties."Xft.dpi" = hostFacts.display.x11Dpi;
 
   systemd.user.services.xrdb-merge = mkGraphicalService {
-    target = config.nixDotfiles.desktopSessionTargets;
-    description = "Merge ~/.Xresources into the active session's Xwayland server";
+    target = "mango-session.target";
+    description = "Merge ~/.Xresources into mango's built-in Xwayland server";
     service = {
       Type = "oneshot";
       RemainAfterExit = true;

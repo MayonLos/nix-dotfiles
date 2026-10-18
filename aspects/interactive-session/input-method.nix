@@ -1,10 +1,5 @@
 { palette }:
-{
-  config,
-  pkgs,
-  lib,
-  ...
-}:
+{ pkgs, lib, ... }:
 {
   i18n.inputMethod = {
     enable = true;
@@ -48,9 +43,9 @@
   };
 
   systemd.user.services.fcitx5-daemon = {
-    Unit.PartOf = lib.mkForce config.nixDotfiles.desktopSessionTargets;
-    Unit.After = lib.mkForce config.nixDotfiles.desktopSessionTargets;
-    Install.WantedBy = lib.mkForce config.nixDotfiles.desktopSessionTargets;
+    Unit.PartOf = lib.mkForce [ "mango-session.target" ];
+    Unit.After = lib.mkForce [ "mango-session.target" ];
+    Install.WantedBy = lib.mkForce [ "mango-session.target" ];
   };
   xdg = {
     dataFile."fcitx5/themes/One-Dark-Darker/theme.conf".text = ''

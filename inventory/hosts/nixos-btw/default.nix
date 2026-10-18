@@ -100,7 +100,6 @@ in
     };
     includes = with den.aspects; [
       personal-desktop
-      hyprland-session
       engineering-workbench
       project-workbench
       embedded-workbench

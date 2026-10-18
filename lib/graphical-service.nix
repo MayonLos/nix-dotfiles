@@ -7,18 +7,15 @@
   target,
   unit ? { },
 }:
-let
-  targets = if builtins.isList target then target else [ target ];
-in
 {
   Unit = {
     Description = description;
-    PartOf = targets;
-    After = targets;
+    PartOf = [ target ];
+    After = [ target ];
   }
   // unit;
 
   Service = service;
 
-  Install.WantedBy = targets;
+  Install.WantedBy = [ target ];
 }

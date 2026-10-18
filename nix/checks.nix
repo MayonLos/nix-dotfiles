@@ -28,11 +28,6 @@
         inherit pkgs;
         home = config.flake.nixosConfigurations.nixos-btw.config.home-manager.users.mayon;
       };
-      checks.hyprland-session = import ../aspects/interactive-session/hyprland-checks.nix {
-        inherit pkgs;
-        host = config.flake.nixosConfigurations.nixos-btw.config;
-        home = config.flake.nixosConfigurations.nixos-btw.config.home-manager.users.mayon;
-      };
       checks.editing-composition = import ../tests/composition/editing.nix { inherit inputs pkgs; };
       checks.workspace-composition = import ../tests/composition/workspace.nix { inherit inputs pkgs; };
       checks.command-line-runtime = import ../aspects/command-line/checks.nix {

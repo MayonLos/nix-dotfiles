@@ -18,7 +18,6 @@ let
       environment = home.systemd.user.sessionVariables;
       greeter = host.services.displayManager.noctalia-greeter.settings;
       inherit palette;
-      sessionTargets = home.nixDotfiles.desktopSessionTargets;
     }
   );
 in
@@ -60,10 +59,9 @@ pkgs.runCommand "interactive-session-config" { nativeBuildInputs = [ python ]; }
   assert "noctalia-mango" not in settings["theme"]["templates"]["user"]
   assert settings["shell"]["launch_apps_as_systemd_services"]
   for name, unit in m["units"].items():
-      targets = ["mango-session.target"] if name == "clipboard-bridge" else m["sessionTargets"]
-      assert unit["Unit"]["PartOf"] == targets, name
-      assert unit["Unit"]["After"] == targets, name
-      assert unit["Install"]["WantedBy"] == targets, name
+      assert unit["Unit"]["PartOf"] == ["mango-session.target"], name
+      assert unit["Unit"]["After"] == ["mango-session.target"], name
+      assert unit["Install"]["WantedBy"] == ["mango-session.target"], name
   noctalia = m["units"]["noctalia"]
   assert noctalia["Service"]["Restart"] == "on-failure"
   assert noctalia["Unit"]["StartLimitBurst"] == 3

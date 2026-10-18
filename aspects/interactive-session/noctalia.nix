@@ -64,51 +64,6 @@ let
     (import ../../lib/session-environment.nix { inherit lib; })
       config.systemd.user.sessionVariables;
 
-  hyprlandEnabled = builtins.elem "hyprland-session.target" config.nixDotfiles.desktopSessionTargets;
-  mangoPlugins = [
-    "ezequiel/mango_layouts"
-    "gambled23/mangowm-keymode"
-  ];
-  isMangoEntry = entry: builtins.any (id: entry == id || lib.hasPrefix "${id}:" entry) mangoPlugins;
-  baseSettings = config.programs.noctalia.settings;
-  # Share all public visual/application settings, but do not execute mmsg
-  # plugins inside Hyprland. History, wallpaper and other state stay shared.
-  hyprlandSettings = baseSettings // {
-    plugins = baseSettings.plugins // {
-      enabled = builtins.filter (entry: !isMangoEntry entry) baseSettings.plugins.enabled;
-    };
-    plugin_settings = builtins.removeAttrs baseSettings.plugin_settings mangoPlugins;
-    widget = lib.filterAttrs (name: _: !isMangoEntry name) baseSettings.widget;
-    bar = baseSettings.bar // {
-      main = baseSettings.bar.main // {
-        start = builtins.filter (entry: !isMangoEntry entry) baseSettings.bar.main.start;
-        capsule_group = map (
-          group:
-          group
-          // {
-            members = builtins.filter (entry: !isMangoEntry entry) group.members;
-          }
-        ) baseSettings.bar.main.capsule_group;
-      };
-    };
-  };
-  hyprlandConfig = (pkgs.formats.toml { }).generate "noctalia-hyprland.toml" hyprlandSettings;
-  # Noctalia's official CONFIG_HOME override appends /noctalia. Preserve every
-  # HM-owned palette/template file beside the alternate config, without moving
-  # the real XDG directories or splitting mutable application data.
-  hyprlandConfigHome = pkgs.linkFarm "noctalia-hyprland-config-home" (
-    lib.mapAttrsToList (name: file: {
-      inherit name;
-      path = if name == "noctalia/config.toml" then hyprlandConfig else file.source;
-    }) (lib.filterAttrs (name: _: lib.hasPrefix "noctalia/" name) config.xdg.configFile)
-  );
-  sessionLauncher = pkgs.writeShellScript "noctalia-selected-session" ''
-    case "''${XDG_CURRENT_DESKTOP:-}" in
-      *Hyprland*|*hyprland*) export NOCTALIA_CONFIG_HOME=${hyprlandConfigHome} ;;
-    esac
-    exec ${lib.getExe config.programs.noctalia.package}
-  '';
-
 in
 {
   imports = [
@@ -116,11 +71,6 @@ in
   ];
 
   config = {
-    # The normal config directory autoloads every root-level TOML file.
-    # Keep this variant outside it so Mango cannot accidentally merge it.
-    xdg.configFile."noctalia-sessions/hyprland.toml" = lib.mkIf hyprlandEnabled {
-      source = hyprlandConfig;
-    };
     # External dependencies declared by the enabled plugins that this machine
     # would otherwise be missing. Plugins never install their own dependencies
     # and just silently do nothing when one is absent -- no error, no hint.
@@ -816,23 +766,22 @@ in
       };
     };
 
-    # Keep Noctalia bound to selected compositor sessions and bound recovery
+    # Keep Noctalia bound to the Mango session and enforce a bounded recovery
     # budget. The HM module owns the unit; these are field-level overrides.
     systemd.user.services.noctalia = {
       Unit = {
-        PartOf = lib.mkForce config.nixDotfiles.desktopSessionTargets;
-        After = lib.mkForce config.nixDotfiles.desktopSessionTargets;
+        PartOf = lib.mkForce [ "mango-session.target" ];
+        After = lib.mkForce [ "mango-session.target" ];
         StartLimitIntervalSec = 60;
         StartLimitBurst = 3;
       };
       Service = {
-        ExecStart = lib.mkIf hyprlandEnabled (lib.mkForce "${sessionLauncher}");
         ExecStartPre = "${reconcileOverrides}";
         Restart = "on-failure";
         RestartSec = 2;
         Environment = lib.mapAttrsToList (name: value: "${name}=${value}") safeSessionVariables;
       };
-      Install.WantedBy = lib.mkForce config.nixDotfiles.desktopSessionTargets;
+      Install.WantedBy = lib.mkForce [ "mango-session.target" ];
     };
   };
 }
