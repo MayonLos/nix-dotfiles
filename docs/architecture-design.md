@@ -1,6 +1,7 @@
 # Den 架构设计：实体、选择与完整功能
 
-状态：Den v0.19.0 已锁入根 flake，真实 `nixos-btw`/`mayon` 已完成逐功能迁移。本文规定架构边界；当前接线见 `nix/`、`aspects/default.nix`、`bundles/default.nix` 和 inventory。各批实现与重新执行的检查见 [实施记录](den-execution.md)。未执行 activation、switch/test 或实机 GUI 验收。
+状态：Den v0.19.0 已锁入根 flake，真实 `nixos-btw`/`mayon` 已完成逐功能迁移。本文规定架构边界；当前接线见 `nix/`、`aspects/default.nix`、`bundles/default.nix` 和 inventory。各批实现与重新执行的检查见 [实施记录](den-execution.md)。Den 初轮没有应用；其后应用与运行证据按 [交接记录](execution-handoff.md) 链接的各轮状态，不能把初轮限制当作当前运行状态。
+最近的目录/依赖整理见 [整理记录](repository-organization.md)。
 
 ## 设计结论
 
@@ -30,7 +31,7 @@ PCI 地址是事实，选择省电策略是意图，驱动与 PRIME 配置是实
   └── 主机共享支持    → 该主机，按真实资源合并
 ```
 
-例如 `embedded-workbench` 拥有工具、探针规则、当前账号权限的完整配套；`interactive-session` 拥有 Mango 会话、shell、portal、输入/音频等必需集成。另一个账号不会仅因存在于该主机上就得到相同的个人环境。
+例如 `embedded-workbench` 拥有工具、探针规则、当前账号权限的完整配套；`interactive-session` 组合 Mango/Noctalia 与 `graphical-session-support`，`xorg-session` 组合同一公共支持与 dwm/Xorg。公共支持只包含实际共用的输入、GTK/Qt、音频、字体和基础 portal；Xorg 不再隐式选择 Mango。另一个账号不会仅因存在于该主机上就得到相同的个人环境。
 
 “一次选择”不等于多个 class 会自动投递到正确位置。功能内部必须使用所锁版本的 `user` class、Home Manager 和定向宿主提供机制。用户作用域的裸 `nixos` 不能作为路由保证。原生机制与落点依据：[机制选择](https://den.denful.dev/explanation/choosing-a-mechanism/)、[配置落点](https://den.denful.dev/explanation/where-config-lands/)。
 
@@ -66,10 +67,12 @@ PCI 地址是事实，选择省电策略是意图，驱动与 PRIME 配置是实
 │   ├── default.nix                    # 显式 registry；登记不代表启用
 │   ├── system/                        # 维护、实际笔记本设备策略与本地网络策略
 │   ├── command-line/                  # 完整 CLI 与独立 terminal
+│   ├── workspace-task/                # CLI 与桌面共用的显式长任务命令
 │   ├── editing/neovim/                # 丰富 Lua、包/插件/parser 与专项测试
 │   ├── languages/                     # 工具与有序编辑器贡献
 │   ├── appearance/ / default-tools/   # 公开数据协议
-│   ├── interactive-session/           # Mango/Noctalia/IME 及 host 支持
+│   ├── interactive-session/           # Mango/Noctalia 与实际共用的会话支持
+│   │   └── xorg/                     # dwm/Xorg 模块、配方、脚本和 tests
 │   ├── embedded-workbench/            # 工具、共享规则及 binding 授权
 │   ├── local-containers/ / local-virtual-machines/
 │   └── firefox/ / communication/ / documents/ / media/ / file-manager/ / ai-workbench/ / gaming/ / remote-access/
@@ -166,4 +169,4 @@ One Dark Darker、具体终端和编辑器属于这些接口的实际选择，�
 
 同宿主的 portal、PAM/keyring、polkit、udev 等是共享系统能力，不是账号级访问控制。串口组、input/libvirtd/kvm/gamemode 授权按绑定；USB uaccess 仍按活动 seat。PipeWire 自动 socket wants 与本地 Docker daemon 自动启动均不再套到所有用户。
 
-当前只有真实笔记本部署输出。ARM 无头 fixture 验证到求值，未做 ARM closure 构建、跨架构运行或服务器部署。没有切换系统、执行真实数据迁移、停止旧服务或清理用户状态。冷登录/退出、GUI/设备、休眠、VM/游戏及性能对比均待应用后验收。
+当前只有真实笔记本部署输出。ARM 无头 fixture 验证到求值，未做 ARM closure 构建、跨架构运行或服务器部署。本次目录与依赖整理没有切换系统、执行真实数据迁移、停止旧服务或清理用户状态。历轮 GUI/设备运行证据见对应执行记录；新整理的构建证据不替代实机行为。

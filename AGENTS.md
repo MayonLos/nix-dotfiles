@@ -19,13 +19,17 @@ Mango 仍是登录默认项。两者不同时运行；入口、服务归属与�
 | `bundles/` | 仅用 Den `includes` 组成的常用功能组合 |
 | `inventory/hosts/`、`inventory/users/` | 真实主机硬件与账号事实、绑定参数、秘密接线和个人身份 |
 | `lib/` | 少量跨功能 helper；不是模块发现器 |
-| `tests/composition/`、`aspects/*/checks.nix` | 跨功能组合与功能内构建/行为检查 |
+| `tests/composition/`、`aspects/**/checks.nix` | 跨功能组合与功能内构建/行为检查 |
 | `secrets/` | sops 加密数据 |
 | `docs/` | 架构、操作、写入归属、服务和执行记录 |
 
 `aspects/default.nix` 显式登记 aspect 模块；资源和 Nix 配方可就近放在功能目录，
 不会通过递归扫描自动变成模块。`bundles/default.nix` 只通过 `includes` 组合已登记
 aspect。真实实例只在 `inventory/` 声明；测试 fixture 不属于可部署主机清单。
+
+Xorg 专属模块、dwm 配方、启动脚本与测试集中在 `aspects/interactive-session/xorg/`。
+Mango 与 Xorg 只复用 `graphical-session-support`；`workspace-task` 是命令行与桌面共用的独立功能，
+消费者通过 Den `includes` 选择，不能直接导入其他功能的私有配方。
 
 Neovim 原生 Lua、插件/parser 与包定义在
 `aspects/editing/neovim/config/` 与同目录 `package.nix`、`plugins.nix`、`parsers.nix`；薄 flake 包输出位于

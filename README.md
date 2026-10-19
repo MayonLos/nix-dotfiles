@@ -13,6 +13,8 @@ NixOS + Home Manager 配置，当前只有一个真实主机实例 `nixos-btw`�
 Hyprland 移除的当前状态见[移除记录](docs/hyprland-removal-execution.md)。历史记录区分构建、应用与用户验收。
 可选 dwm + Picom / Xorg 兼容桌面见 [Xorg 记录](docs/xorg-desktop-execution.md)，主要用于 QQ、腾讯会议原生屏幕共享；采用原生栏、dmenu 和轻量合成的 B 方案。
 
+目录归属、公共会话支持与依赖整理见[整理记录](docs/repository-organization.md)。
+
 ## 目录
 
 ```text
@@ -29,7 +31,7 @@ tests/composition/        跨 aspect 组合、隔离及边界 fixture
 docs/                     架构、视觉、操作、归属、服务策略和迁移记录
 ```
 
-常用代码入口：桌面与外观在 `aspects/interactive-session/`、`aspects/appearance/`；命令行、
+常用代码入口：桌面与外观在 `aspects/interactive-session/`、`aspects/appearance/`，DWM 专属实现在 `aspects/interactive-session/xorg/`；命令行、
 Kitty 与 tmux 在 `aspects/command-line/`；丰富 Neovim Lua、插件和 parser 位于
 `aspects/editing/neovim/`，薄包输出在 `nix/neovim.nix`。语言数据与工具在
 `aspects/languages/`。容器、虚拟机、Firefox、媒体、游戏、AI、嵌入式等各自位于
