@@ -109,8 +109,14 @@ fi
 # .xprofile/.xsession protocol and must not make this independent entry skip
 # its own environment initialization.
 unset __HM_SESS_VARS_SOURCED HM_XPROFILE_SOURCED
+# HM generates POSIX login-shell exports, including optional path variables
+# such as ${QT_PLUGIN_PATH:+:}$QT_PLUGIN_PATH. They do not assume nounset.
+set +u
 # shellcheck disable=SC1091
-. '@hmSessionVars@'
+if ! . '@hmSessionVars@'; then
+  die 'could not load Home Manager session variables.'
+fi
+set -u
 
 # Remove stale compositor-only names from the shared manager without reading
 # or importing their values. This runs only after preflight has established

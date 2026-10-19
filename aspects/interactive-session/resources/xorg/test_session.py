@@ -36,6 +36,10 @@ class XorgSessionSupervisorTest(unittest.TestCase):
             'export __HM_SESS_VARS_SOURCED=1\n'
             'export HM_PUBLIC_TEST=value-from-hm\n'
             'export NIXOS_OZONE_WL=1\n'
+            # Match HM's generated optional-path exports. A fresh login need
+            # not define either variable; sourcing under nounset aborts it.
+            'export QT_PLUGIN_PATH="/hm/qt/plugins${QT_PLUGIN_PATH:+:}$QT_PLUGIN_PATH"\n'
+            'export XCURSOR_PATH="/hm/icons${XCURSOR_PATH:+:}$XCURSOR_PATH"\n'
         )
         self.manager_env = self.root / "manager-environment"
         self.manager_env.write_text(

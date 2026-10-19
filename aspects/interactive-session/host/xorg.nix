@@ -3,7 +3,8 @@ let
   # Greeter resolves this absolute, argument-free client before calling startx.
   # The user's HM profile owns the supervisor, never an arbitrary .xinitrc.
   client = pkgs.writeShellScript "xorg-dwm-session" ''
-    exec "''${XDG_DATA_HOME:-$HOME/.local/share}/nix-dotfiles/xorg-session"
+    exec ${pkgs.systemd}/bin/systemd-cat --identifier=xorg-session --level-prefix=false \
+      "''${XDG_DATA_HOME:-$HOME/.local/share}/nix-dotfiles/xorg-session"
   '';
   session =
     pkgs.runCommand "xorg-dwm-session-entry"
@@ -15,7 +16,7 @@ let
         cat > "$out/share/xsessions/xorg-dwm.desktop" <<EOF
         [Desktop Entry]
         Type=Application
-        Name=One Dark Xorg (dwm)
+        Name=DWM
         Comment=Compatibility desktop with dwm and Picom
         Exec=${client}
         DesktopNames=dwm

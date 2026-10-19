@@ -4,6 +4,68 @@
 Mango + Noctalia 继续作为默认会话；Xorg 是登录界面的另一个明确选择，不自动叠加运行。
 基线为 `62cb424`，开始时工作树干净，保留本地分支 `codex/xorg-baseline-20261019`。保留用户数据、登录状态、剪贴板历史及正在运行的任务。
 
+## 首次实机启动与本轮修复
+
+2026-10-19 11:48:12，用户选择原显示名 `One Dark Xorg (dwm)`，认证成功；
+11:48:13 返回登录器。当前 `/run/current-system` 已是下文 generation 394，不能继续按
+“尚未重启”的历史状态判断。`~/.local/share/xorg/Xorg.0.log` 记录 Intel modesetting / NVIDIA
+初始化，最后为 `Server terminated successfully (0)`，未出现致命初始化错误。
+同目录 `.old` 是 2026-05-03 的旧记录，其中的显卡错误不属于此次启动。
+
+原入口没有把 client stderr 接入 journal，现有日志不能直接证明 supervisor 的具体退出行。
+只读隔离复现发现：在最小公开登录环境下，以生产 Bash 的 `-u` 模式加载当前真实
+`/etc/profiles/per-user/mayon/etc/profile.d/hm-session-vars.sh`，第 34 行报
+`QT_PLUGIN_PATH: unbound variable`，退出 127；同一环境不启用 nounset 则返回 0。
+HM 生成的 `QT_PLUGIN_PATH`、`XCURSOR_PATH` 导出语句允许变量此前未定义，supervisor
+不应要求这段 POSIX 登录脚本兼容 nounset。这是已复现的启动缺陷，与本次立即退出相符；
+原始 client stderr 缺失，仍不能据此宣称已实机确认唯一故障点。
+
+修复只在加载 HM 环境期间关闭 nounset，成功后恢复；加载失败明确报错。回归 fixture
+加入这两条真实形式的导出：旧 supervisor 必然失败，修复后十项生命周期检查通过。
+登录入口将 client 输出接入 `journalctl -b -t xorg-session`，以便保留后续失败证据；
+显示名称改为 **DWM**，内部 desktop ID `xorg-dwm` 保持稳定。
+本轮只修改、构建，不 switch、不更新启动默认 generation、不启动或停止现有会话。
+组件重设计先形成方案，不把选型讨论当成已经部署。
+
+本轮独立 reviewer 复核 source 边界、日志入口与信号/PID 语义；十项 supervisor 测试、
+`xorg-session-runtime`、`desktop-composition`、treefmt 与完整主机系统构建通过。
+最终修复系统为 `/nix/store/mqv17pkf0wrx9ng62prvrflvcjgp2zkc-nixos-system-nixos-btw-26.05.20261012.7993f34`，
+隔离检查为 `/nix/store/n1mzdhamc10mclhpydhnw081b6v4fw34-xorg-session-runtime`，
+构建日志 `/tmp/codex-xorg-login-fix-final.log`。它们尚未应用，不证明真实登录已恢复。
+
+## 下一轮组件设计（提案，未替换配置）
+
+用户要求先比较选择，再决定后续实现。实际 Astra 阅读当前配置并查询上游/社区；主代理
+复核来源。OneDark 与 Nix 声明式构建继续，以下均不是已部署效果。
+
+| 方向 | 组合 | 取舍 |
+| --- | --- | --- |
+| 极简 | 原生栏 + slstatus + dmenu + slock，Picom 可关闭 | 纯文本、少装饰；GUI desktop 入口仍需 helper，锁屏需单独迁移现有认证接线 |
+| 精致简洁（建议） | 增强原生栏 + 小状态脚本 + dmenu/j4-dmenu-desktop + 轻 Picom + Dunst + i3lock-color | 保留托盘、浮窗层次与中文应用入口，启动器按需；较少组件又可统一美化 |
+| 搜索与视觉完整 | 上一组启动器改 Rofi，保留应用图标与跨标签窗口搜索 | 沿用当前已安装组件较多；Rofi 同样按需，不能说换 dmenu 就减少了常驻进程 |
+
+社区参考及边界：
+
+- [siduck/chadwm](https://github.com/siduck/chadwm)：原生栏 + status2d、Rofi、Picom，Eww 是另一可选部件；
+  借鉴标签状态、分组与间距。它的栏不是 Polybar，也不是 dwmblocks。仓库安装脚本、
+  硬件名和轮询策略不直接复制到本机。
+- [LukeSmithxyz/dwm](https://github.com/LukeSmithxyz/dwm) 与
+  [dwmblocks](https://github.com/LukeSmithxyz/dwmblocks)：借鉴可点击状态、scratchpad 和键盘操作。
+  dwmblocks 是给原生栏提供状态的进程，不是另一套绘制面板；具体工具和 LARBS 键位不照搬。
+- [dwm-flexipatch](https://github.com/bakkeby/dwm-flexipatch)：延续当前固定 revision 作为补丁组合基础；
+  不为了社区新提交升级本机输入，也不默认启用全部补丁。
+- [Polybar xworkspaces](https://github.com/polybar/polybar/wiki/Module:-xworkspaces)：模块丰富，
+  但要求对应 EWMH atoms；dwm 多标签语义需额外接线。当前需求优先使用原生栏。
+- [j4-dmenu-desktop](https://github.com/enkore/j4-dmenu-desktop)：使用已有 desktop 解析器，
+  不自己解析 Exec；[Rofi](https://github.com/davatorium/rofi) 是有图标和窗口搜索的替代选项。
+
+建议视觉方向：`#1f2329` 正文背景、`#181b20` 栏底、`#4fa6ed` 焦点；正文不透明，
+顶部窄栏用标签下划线/小色块区分活动状态，音量/电池/时间分组。只给浮窗轻阴影，
+不默认全屏模糊或持续动效；Picom 可以随时关闭。启动器和通知采用同一字号、边框与
+选中色，保留中文显示。锁屏先精简当前 i3lock-color，而非为了换名重接认证。
+窗口规则优先正确区分会话对话框、文件选择、音量设置与普通主窗口；保留可调间距、
+逐标签布局、浮动尺寸恢复、全屏恢复与暂存终端。详细参数随选定组合再由 Astra 收敛。
+
 ## 架构与来源
 
 `xorg-session` 是按用户绑定的 Den aspect，复用 `interactive-session` 的字体、GTK/Qt、输入法、
@@ -86,7 +148,7 @@ F 全屏，Shift+Space 浮动，Q 关闭。Ctrl+Return 提升到主区，I/U 增
 
 Xorg 截图采用 maim/slop/xclip：Print 选择区域，Ctrl+Print 截取整个 X 桌面；取消选区不报错。
 不在 Xorg 使用 Wayland 的滚动截图/区域选择工具。空闲十分钟触发锁屏，十五分钟 DPMS 关屏；
-锁屏和休眠需实机确认 PAM、屏幕覆盖与唤醒行为。没有在当前工作会话运行锁屏测试。
+锁屏沿用现有 PAM / xss-lock 接线；这不是另立的休眠功能开发任务。
 
 ## QQ / 腾讯会议
 
@@ -99,9 +161,8 @@ PipeWire 动态库补充继续保留。旧注释中的 QQ 3.2.32 Mango 共享失
 进入 Xorg 前先正常退出旧会话中的 QQ / 腾讯会议，再从新桌面启动；单实例机制可能复用
 旧后端进程，仅新开一个启动命令不等于已切换后端。本次不主动终止正在运行的应用。
 
-实际登录 Xorg 后，分别验证 QQ、腾讯会议：整屏/指定窗口、窗口最小化与恢复、音视频同步、
-切换标签时的共享范围、托盘恢复、麦克风/扬声器和结束共享后的恢复。必须以另一端看到的
-画面为证据；出现选择器或本地预览不等于共享成功。
+QQ / 腾讯会议共享采用 X11 原生捕获，不新增共享 hook、portal 适配或专项开发任务。
+本轮没有实际通话证据，因此不声称已经共享成功；这一区别不构成额外配置要求。
 
 ## 验证与应用状态
 
@@ -120,17 +181,17 @@ Rofi 2.0.0 在测试专用的带图标 `-auto-select` 快速退出路径出现 S
 Astra 在独立 Xvfb 实际运行 i3lock-color 并目检截图，同时用继承的 pipe 确认映射窗口后释放
 睡眠延迟 FD。没有输入真实密码，不把该证据写成实机 PAM 解锁成功。
 
-源码提交 `0234407`。已执行 `nixos-rebuild boot`，返回 0，系统 profile 指向上述新系统，
+以下是首次交付时的历史应用记录，当前故障状态以上文为准。源码提交 `0234407`。已执行 `nixos-rebuild boot`，返回 0，系统 profile 指向上述新系统，
 作为下次启动配置（generation 394）；日志 `/tmp/codex-xorg-boot.log`。没有执行 switch、注销或重启，Home Manager
 和新的 Xorg 服务尚未在运行系统激活。
 
-当前 `/run/current-system` 仍为基线 `h2m1d2llqhvr4c6xmiw9vkdca4awwx21` 系统，Mango target active；
+首次交付时 `/run/current-system` 仍为基线 `h2m1d2llqhvr4c6xmiw9vkdca4awwx21` 系统，Mango target active；
 前后六个受保护 PID/启动时间全部保持，包括 greetd、Mango、两个 Codex 和 Java 任务。
 登录包实际包含 Mango、Steam 和唯一的 `xorg-dwm.desktop` X11 条目。
 
-准备验收时正常保存工作并自行重启，在登录界面选择 **One Dark Xorg (dwm)**；Mango 仍为默认。
-无需为了本轮再手动 switch。Super+F1 查看帮助；若不合适可继续选择 Mango，基线 generation
-与本地代码分支均保留，没有执行 GC 或 push。
+用户随后已重启并报告 Xorg 登录失败，目前回到 Mango。首次构建与 Xvfb 检查未覆盖真实
+HM 登录环境中的 nounset 冲突，不能作为实机登录成功的证据。修复尚未应用；应用后登录项
+将显示 **DWM**。基线 generation 与本地代码分支均保留，没有执行 GC 或 push。
 
-真实 Xorg 登录、GLX 显卡路径、共享通话、真实托盘、触控板、多屏热插拔、锁屏/休眠及与
-Mango 的能耗比较尚未验证。不把 Xvfb / 求值 / 构建写成实机验收。
+共享采用 X11 原生能力，休眠沿用系统机制与现有锁屏接线，功耗由组件选择与实际工作负载决定；
+这些不另列为本轮额外配置任务。仍不把未做的实机行为写成已通过。
