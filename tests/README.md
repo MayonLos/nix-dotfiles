@@ -14,13 +14,26 @@
 | `checks.protocols-composition` | `composition/protocols.nix` | 外观/默认工具的数据边界、类型与冲突负例、两绑定 palette/Kitty 动效偏好和固定参数 argv |
 | `checks.workspace-composition` | `composition/workspace.nix` | 多 host/user 的命令行选择、共享/移除、CLI/桌面隔离和账号权限 |
 | `checks.editing-composition` | `composition/editing.nix` | 编辑器与所选语言组合、数据冲突、未选择工具隔离、实际 clangd 工作负载 |
-| `checks.desktop-composition` | `composition/desktop.nix` | 两 host/two user 的交互会话、palette、动效偏好隔离、共享 host provider 与移除行为；减少动画分支的锁定 Mango/Noctalia 解析检查 |
+| `checks.desktop-composition` | `composition/desktop.nix` | 两 host/two user 的 Mango 与独立 Xorg 选择、共享支持、未选绑定隔离与移除行为；palette/动效偏好及减少动画分支的锁定 Mango/Noctalia 解析检查 |
 | `checks.local-services-composition` | `composition/local-services.nix` | 本地容器/VM daemon 与远程 client 的隔离、宿主资源去重和撤销行为 |
 | `checks.embedded-composition` | `composition/embedded.nix` | 嵌入式工具、权限组、udev host provider 的选择/共享/移除边界 |
 
-根 feature checks 另有 `interactive-session-config`、`command-line-runtime`、`neovim`、
-`embedded-home`、`embedded-udev`、`embedded-tools` 和 `treefmt`。这些检查验证当前锁定输入
-下的生成配置、解析器、工具产物或隔离工作负载；名称以 `nix/checks.nix` 实际接线为准。
+根 flake 还导出以下功能与运行 checks；实现分布在 `nix/` 的 flake-parts 模块、对应
+aspect 和嵌入式组合 fixture 中：
+
+| 根 check | 实现入口 | 覆盖范围 |
+|---|---|---|
+| `checks.project-workbench` | `aspects/project-workbench/checks.nix` | 临时项目目录中的 cwd、argv、缺目录与 direnv 拒绝 |
+| `checks.interactive-session-config` | `aspects/interactive-session/checks.nix` | 主机与 Home Manager 交互会话生成配置检查 |
+| `checks.rime-technical-runtime` | `aspects/interactive-session/rime-checks.nix` | 见下方 Rime 运行检查说明 |
+| `checks.xorg-session-runtime` | `aspects/interactive-session/xorg/checks.nix` | 见下方 Xorg/dmenu 隔离运行检查说明 |
+| `checks.command-line-runtime` | `aspects/command-line/checks.nix` | 生成的命令行配置、解析器及工具运行检查 |
+| `checks.neovim` | `nix/neovim.nix` | 见下方 Neovim headless 检查说明 |
+| `checks.embedded-home`, `checks.embedded-udev`, `checks.embedded-tools` | `tests/composition/embedded.nix` 与 `aspects/embedded-workbench/checks.nix` | 嵌入式 Home Manager、udev 规则和工具产物检查 |
+| `checks.treefmt` | `nix/default.nix` 导入 `treefmt-nix.flakeModule`；工具配置在 `nix/dev.nix` | nixfmt、deadnix、statix 与 stylua |
+
+根检查键由 `nix/checks.nix`、`nix/neovim.nix` 和 `treefmt-nix.flakeModule` 在
+`nix/default.nix` 中共同导出；上表列出对应实现入口，不把所有输出归到单个文件。
 
 `checks.neovim` 使用固定插件和临时 XDG 目录运行配置内的 headless Lua 检查：
 
@@ -47,6 +60,11 @@
 专业词、错拼和英文候选可达，以及现有学习库名称仍为 `rime_ice`。它不打开个人词库，不验证
 个人排名或学习持久化；曾实际拒绝错误的非递归词表组合。词表维护见
 [Rime 说明](../aspects/interactive-session/rime/README.md)。
+
+`xorg-session-runtime` 在 Xvfb 中运行实际 dwm 与生产 launcher/menu：它用隔离的 `.desktop`
+条目检查 j4+dmenu 的选择与 `Exec` 参数，用 Escape 检查生产桌面菜单可取消，并提交任意输入
+确认其不会被当作命令执行。该检查覆盖隔离 X11/XRender 冒烟行为，不代表真实 Xorg、GLX、PAM
+或原生窗口捕获验收。
 
 ## 证据范围
 

@@ -13,7 +13,7 @@ let
     profileDirectory = config.home.profileDirectory;
     x11Dpi = hostFacts.display.x11Dpi;
   };
-  mkService = import ../../lib/graphical-service.nix;
+  mkService = import ../service.nix;
   guardedUnit = {
     PartOf = lib.mkForce [ target ];
     After = lib.mkForce [ target ];
@@ -39,11 +39,11 @@ in
     description = "The configured dwm executable used by the Xorg supervisor.";
   };
   imports = [
-    (import ./xorg-runtime.nix { inherit dwmPackage; })
-    ./xorg-tools.nix
-    (import ./xorg-lock.nix { inherit palette; })
-    (import ./xorg-ui.nix { inherit palette; })
-    (import ./xorg-appearance.nix { inherit palette; })
+    (import ./runtime.nix { inherit dwmPackage; })
+    ./tools.nix
+    (import ./lock.nix { inherit palette; })
+    (import ./ui.nix { inherit palette; })
+    (import ./appearance.nix { inherit palette; })
   ];
   config = {
     nixDotfiles.graphicalSessionTargets = [ target ];
@@ -87,7 +87,7 @@ in
         Type = "oneshot";
         RemainAfterExit = true;
         ExecStart = pkgs.writeShellScript "xorg-background" ''
-          ${pkgs.feh}/bin/feh --no-fehbg --bg-fill ${./resources/wallpaper/wallpaper-009.png}
+          ${pkgs.feh}/bin/feh --no-fehbg --bg-fill ${../resources/wallpaper/wallpaper-009.png}
           ${pkgs.xset}/bin/xset s 600 600
           ${pkgs.xset}/bin/xset dpms 0 0 900
         '';

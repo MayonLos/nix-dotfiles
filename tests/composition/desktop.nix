@@ -97,18 +97,19 @@ let
               home.username = user;
               home.homeDirectory = "/home/${user}";
             };
-            includes = lib.optionals (lib.elem binding selected) [ den.aspects.interactive-session ];
+            includes = map (name: den.aspects.${name}) (selected.${binding} or [ ]);
           }
         );
       }
     )).nixosConfigurations;
 
-  aliceOnly = evaluate [ "alice@hostA" ];
-  sharedHost = evaluate [
-    "alice@hostA"
-    "bob@hostA"
-  ];
-  afterLastConsumerRemoved = evaluate [ ];
+  aliceOnly = evaluate { "alice@hostA" = [ "interactive-session" ]; };
+  sharedHost = evaluate {
+    "alice@hostA" = [ "interactive-session" ];
+    "bob@hostA" = [ "interactive-session" ];
+  };
+  afterLastConsumerRemoved = evaluate { };
+  xorgOnly = evaluate { "alice@hostA" = [ "xorg-session" ]; };
 
   host = configs: name: configs.${name}.config;
   home =
@@ -124,6 +125,34 @@ let
   hasAllDesktopUnits = hm: builtins.all (hasHomeUnit hm) desktopUnits;
   hasNoDesktopUnits = hm: builtins.all (name: !(hasHomeUnit hm name)) desktopUnits;
   hasInputGroup = config: user: builtins.elem "input" config.users.users.${user}.extraGroups;
+  hasUserTarget = hm: name: builtins.hasAttr name hm.systemd.user.targets;
+  hasXorgServices =
+    hm:
+    builtins.all (hasHomeUnit hm) [
+      "picom"
+      "dunst"
+      "fcitx5-daemon"
+    ];
+  hasNoXorgServices =
+    hm:
+    builtins.all (name: !(hasHomeUnit hm name)) [
+      "picom"
+      "dunst"
+      "fcitx5-daemon"
+      "xorg-copyq"
+      "xorg-polkit"
+      "xorg-lock"
+    ];
+  hasXorgHostConfig =
+    config:
+    config.services.xserver.enable
+    && config.services.xserver.displayManager.startx.enable
+    && builtins.hasAttr "i3lock" config.security.pam.services
+    && config.services.pipewire.enable
+    && config.security.polkit.enable
+    && config.xdg.portal.enable
+    && config.xdg.portal.config ? dwm
+    && config.fonts.fontconfig.defaultFonts.sansSerif == [ palette.fonts.sans ];
 
   selectedHost = host aliceOnly "hostA";
   unselectedHost = host aliceOnly "hostB";
@@ -134,6 +163,12 @@ let
   sharedBobHome = home sharedHost "hostA" "bob";
   hostBHome = home aliceOnly "hostB" "alice";
   hostBBobHome = home aliceOnly "hostB" "bob";
+  xorgHost = host xorgOnly "hostA";
+  unselectedXorgHost = host xorgOnly "hostB";
+  xorgAliceHome = home xorgOnly "hostA" "alice";
+  unselectedXorgBobHome = home xorgOnly "hostA" "bob";
+  unselectedXorgHostAliceHome = home xorgOnly "hostB" "alice";
+  unselectedXorgHostBobHome = home xorgOnly "hostB" "bob";
 
   results = {
     audioActivationIsBindingScoped =
@@ -212,8 +247,50 @@ let
       && !(host afterLastConsumerRemoved "hostA").xdg.portal.enable
       && hasNoDesktopUnits (home afterLastConsumerRemoved "hostA" "alice")
       && hasNoDesktopUnits (home afterLastConsumerRemoved "hostA" "bob");
+
+    xorgSessionSelectsXorgAndSharedSupportOnly =
+      hasXorgHostConfig xorgHost
+      && !(xorgHost.programs.mango.enable or false)
+      && !(xorgHost.xdg.portal.wlr.enable or false)
+      && !(xorgHost.xdg.portal.config ? mango)
+      && xorgAliceHome.i18n.inputMethod.enable
+      && xorgAliceHome.gtk.enable
+      && xorgAliceHome.home.sessionVariables.QT_QPA_PLATFORMTHEME == "qt6ct"
+      && xorgAliceHome.systemd.user.sessionVariables.XMODIFIERS == "@im=fcitx"
+      && !(xorgAliceHome.home.sessionVariables ? NIXOS_OZONE_WL)
+      && !(xorgAliceHome.systemd.user.sessionVariables ? NIXOS_OZONE_WL)
+      && xorgAliceHome.xresources.properties."Xft.dpi" == hostFacts.display.x11Dpi
+      && builtins.hasAttr "seedQt6ctConfig" xorgAliceHome.home.activation
+      && builtins.hasAttr "seedQt6ctPalette" xorgAliceHome.home.activation
+      && hasXorgServices xorgAliceHome
+      && hasUserTarget xorgAliceHome "xorg-session"
+      && builtins.elem "pipewire.socket" xorgAliceHome.systemd.user.targets.xorg-session.Unit.Wants
+      && hasHomeUnit xorgAliceHome "xrdb-merge"
+      && !(xorgAliceHome.programs.mango.enable or false)
+      && !(xorgAliceHome.wayland.windowManager.mango.enable or false)
+      && !(xorgAliceHome.programs.noctalia.enable or false)
+      && !(xorgAliceHome.systemd.user.targets ? mango-session)
+      && !(hasHomeUnit xorgAliceHome "noctalia")
+      && !(hasHomeUnit xorgAliceHome "clipboard-bridge");
+
+    xorgSelectionDoesNotCrossAccountsOrHosts =
+      hasNoXorgServices unselectedXorgBobHome
+      && !(hasUserTarget unselectedXorgBobHome "xorg-session")
+      && !unselectedXorgBobHome.i18n.inputMethod.enable
+      && !(hasXorgHostConfig unselectedXorgHost)
+      && !(unselectedXorgHost.programs.mango.enable or false)
+      && hasNoXorgServices unselectedXorgHostAliceHome
+      && !(hasUserTarget unselectedXorgHostAliceHome "xorg-session")
+      && hasNoXorgServices unselectedXorgHostBobHome
+      && !(hasUserTarget unselectedXorgHostBobHome "xorg-session");
   };
 
+  # Execute the real Xorg-only palette seed against a temporary XDG home,
+  # never the fixture account's /home path.
+  qtSeed = pkgs.writeText "xorg-qt-palette-seed.sh" (
+    lib.replaceStrings [ xorgAliceHome.xdg.configHome ] [ "$XDG_CONFIG_HOME" ]
+      xorgAliceHome.home.activation.seedQt6ctPalette.data
+  );
   passed = lib.all (value: value) (builtins.attrValues results);
   report = pkgs.writeText "den-interactive-session-composition.json" (builtins.toJSON results);
 in
@@ -221,11 +298,27 @@ assert lib.assertMsg passed
   "Interactive-session composition failures: ${
     builtins.toJSON (lib.filterAttrs (_: value: !value) results)
   }";
-pkgs.runCommand "den-interactive-session-composition" { } ''
+pkgs.runCommand "den-interactive-session-composition" { nativeBuildInputs = [ pkgs.python3 ]; } ''
   export HOME="$TMPDIR/home" XDG_CONFIG_HOME="$TMPDIR/config" XDG_CACHE_HOME="$TMPDIR/cache" XDG_STATE_HOME="$TMPDIR/state" XDG_DATA_HOME="$TMPDIR/data"
   mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" "$XDG_STATE_HOME" "$XDG_DATA_HOME"
   mkdir -p "$out"
   cp ${report} "$out/results.json"
+  run() { "$@"; }
+  source ${qtSeed}
+  python3 - "$XDG_CONFIG_HOME/qt6ct/colors/noctalia.conf" <<'PY_QT'
+  import configparser, re, sys
+  from pathlib import Path
+  path = Path(sys.argv[1])
+  palette = configparser.ConfigParser()
+  palette.read(path)
+  for group in ("active_colors", "disabled_colors", "inactive_colors"):
+      colors = [value.strip() for value in palette["ColorScheme"][group].split(",")]
+      assert len(colors) == 22 and all(re.fullmatch(r"#[0-9a-fA-F]{6}", value) for value in colors)
+  assert "#1f2329" in palette["ColorScheme"]["active_colors"]
+  path.write_text("existing GUI-owned palette\n")
+  PY_QT
+  source ${qtSeed}
+  grep -Fx 'existing GUI-owned palette' "$XDG_CONFIG_HOME/qt6ct/colors/noctalia.conf" > "$out/qt-seed-preserves-existing.txt"
   # Validate the reduced-motion branch with the actual pinned parsers as well
   # as checking its composition. The real host check covers the rich default.
   ${lib.getExe sharedAliceHome.programs.noctalia.package} config validate ${

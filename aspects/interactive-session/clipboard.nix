@@ -182,7 +182,7 @@ let
     '';
   };
 
-  mkGraphicalService = import ../../lib/graphical-service.nix;
+  mkGraphicalService = import ./service.nix;
 in
 {
   home.packages = [ clipboardBridge ];

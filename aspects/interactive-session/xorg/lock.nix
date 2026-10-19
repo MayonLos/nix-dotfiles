@@ -10,7 +10,7 @@ let
         nativeBuildInputs = [ pkgs.imagemagick ];
       }
       ''
-        magick ${./resources/wallpaper/wallpaper-009.png} \
+        magick ${../resources/wallpaper/wallpaper-009.png} \
           -fill '${palette.bg}' -colorize 58% -strip PNG24:"$out"
       '';
   lock = pkgs.writeShellApplication {

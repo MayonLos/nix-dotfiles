@@ -53,7 +53,7 @@ let
       xlib = "${pkgs.libx11}/lib/libX11.so.6";
       maim = "${pkgs.maim}/bin/maim";
       feh = "${pkgs.feh}/bin/feh";
-      wallpaper = ./resources/wallpaper/wallpaper-009.png;
+      wallpaper = ../resources/wallpaper/wallpaper-009.png;
       xsetroot = "${pkgs.xsetroot}/bin/xsetroot";
       notifySend = "${pkgs.libnotify}/bin/notify-send";
       menu = "${menu}/bin/xorg-session-menu";
@@ -85,8 +85,8 @@ pkgs.runCommand "xorg-session-runtime"
         ];
       }
     }
-    python3 ${./resources/xorg}/test_session.py -v > "$out/supervisor.log" 2>&1 || { cat "$out/supervisor.log"; exit 1; }
-    python3 ${./resources/xorg/test_qq.py} ${qq}/bin/qq > "$out/qq-wrapper.log" 2>&1 || { cat "$out/qq-wrapper.log"; exit 1; }
+    python3 ${./.}/tests/test_session.py -v > "$out/supervisor.log" 2>&1 || { cat "$out/supervisor.log"; exit 1; }
+    python3 ${./tests/test_qq.py} ${qq}/bin/qq > "$out/qq-wrapper.log" 2>&1 || { cat "$out/qq-wrapper.log"; exit 1; }
     dbus-run-session --config-file=${pkgs.dbus}/share/dbus-1/session.conf -- xvfb-run -a -s '-screen 0 1600x1000x24 -dpi ${toString host.services.xserver.dpi} -nolisten tcp +extension Composite' \
-      python3 ${./resources/xorg/test_desktop.py} ${desktop} "$out" ${metadata} || { cat "$out"/*.log; exit 1; }
+      python3 ${./tests/test_desktop.py} ${desktop} "$out" ${metadata} || { cat "$out"/*.log; exit 1; }
   ''

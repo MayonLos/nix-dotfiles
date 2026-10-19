@@ -13,7 +13,7 @@ import time
 import unittest
 
 
-SOURCE = Path(__file__).with_name("session")
+SOURCE = Path(__file__).parents[1] / "session"
 
 
 class XorgSessionSupervisorTest(unittest.TestCase):

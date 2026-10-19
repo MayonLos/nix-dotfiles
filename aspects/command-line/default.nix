@@ -1,10 +1,13 @@
 { den, ... }: {
-  imports = [ ../appearance ];
+  imports = [
+    ../appearance
+    ../workspace-task
+  ];
   den.aspects = {
     command-line = { host, user, ... }: {
       noctaliaIntegrations = [ "btop" ];
+      includes = [ den.aspects.workspace-task ];
       homeManager.imports = [
-        ({ pkgs, ... }: { home.packages = [ (import ./task-package.nix { inherit pkgs; }) ]; })
         ./zsh.nix
         (import ./git.nix { palette = user.appearance; })
         ./direnv.nix

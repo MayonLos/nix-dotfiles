@@ -52,7 +52,7 @@ let
     exit 1
   '';
 
-  mkGraphicalService = import ../../lib/graphical-service.nix;
+  mkGraphicalService = import ./service.nix;
 in
 {
   # 2560x1600 at mango scale 1.5. Consumed by fcitx5's X11 candidate window

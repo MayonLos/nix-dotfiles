@@ -3,6 +3,7 @@ _: {
   imports = [
     ./appearance
     ./default-tools
+    ./workspace-task
     ./project-workbench
     ./languages
     ./system

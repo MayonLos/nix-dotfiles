@@ -28,7 +28,7 @@
         inherit pkgs;
         home = config.flake.nixosConfigurations.nixos-btw.config.home-manager.users.mayon;
       };
-      checks.xorg-session-runtime = import ../aspects/interactive-session/xorg-checks.nix {
+      checks.xorg-session-runtime = import ../aspects/interactive-session/xorg/checks.nix {
         inherit pkgs;
         host = config.flake.nixosConfigurations.nixos-btw.config;
         home = config.flake.nixosConfigurations.nixos-btw.config.home-manager.users.mayon;

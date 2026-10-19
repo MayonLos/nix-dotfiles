@@ -7,7 +7,7 @@
 }:
 
 let
-  supervisor = pkgs.replaceVars ./resources/xorg/session {
+  supervisor = pkgs.replaceVars ./session {
     runtimeShell = "${pkgs.bash}/bin/bash";
     dbusUpdateActivationEnvironment = "${pkgs.dbus}/bin/dbus-update-activation-environment";
     hmSessionVars = "${config.home.profileDirectory}/etc/profile.d/hm-session-vars.sh";

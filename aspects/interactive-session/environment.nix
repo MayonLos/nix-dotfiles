@@ -5,7 +5,6 @@ let
   # Needed both by systemd user services (which do not source the shell profile)
   # and by interactive shells, so the same set is exported through both paths.
   shared = {
-    NIXOS_OZONE_WL = "1";
     _JAVA_AWT_WM_NONREPARENTING = "1";
     # Qt apps started outside the compositor (systemd user units, desktop launchers)
     # need this too; qt.nix seeds the qt6ct palette.
