@@ -23,7 +23,7 @@ let
         --nofork --ignore-empty-password --show-failed-attempts \
         --color=${rgba palette.bg "ff"} --image=${background} --fill \
         --clock --force-clock --indicator --refresh-rate=5 \
-        --radius=44 --ring-width=3 \
+        --radius=36 --ring-width=3 \
         --inside-color=${rgba palette.bg "b8"} \
         --ring-color=${rgba palette.border "cc"} \
         --line-color=00000000 --separator-color=00000000 \
@@ -46,14 +46,14 @@ let
         --wrong-font=${lib.escapeShellArg palette.fonts.sans} \
         --layout-font=${lib.escapeShellArg palette.fonts.mono} \
         --greeter-font=${lib.escapeShellArg palette.fonts.sans} \
-        --time-size=56 --date-size=14 --verif-size=12 --wrong-size=12 \
-        --layout-size=12 --modif-size=12 --greeter-size=13 \
+        --time-size=52 --date-size=13 --verif-size=12 --wrong-size=12 \
+        --layout-size=12 --modif-size=12 --greeter-size=12 \
         --time-str='%H:%M' --date-str='%Y-%m-%d · %A' \
-        --ind-pos='x+w/2:y+h/2+32' \
-        --time-pos='ix:iy-132' --date-pos='tx:ty+34' \
+        --ind-pos='x+w/2:y+h/2+24' \
+        --time-pos='ix:iy-112' --date-pos='tx:ty+30' \
         --verif-pos='ix:iy+5' --wrong-pos='ix:iy+5' \
-        --layout-pos='ix:iy+82' --modif-pos='ix:iy+106' \
-        --greeter-pos='ix:iy+136' --greeter-text='输入密码解锁' \
+        --layout-pos='ix:iy+66' --modif-pos='ix:iy+90' \
+        --greeter-pos='ix:iy+120' --greeter-text='输入密码解锁' \
         --keylayout=1 --verif-text='验证中' --wrong-text='请重试' \
         --noinput-text='请输入' --lock-text='已锁定' --lockfailed-text='锁定失败'
     '';

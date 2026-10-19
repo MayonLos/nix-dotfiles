@@ -7,6 +7,7 @@ The XRender override tests Picom configuration, not the production GLX driver.
 
 import ctypes as C
 import json
+import os
 import re
 from pathlib import Path
 import subprocess
@@ -19,6 +20,7 @@ output = Path(sys.argv[2])
 m = json.loads(Path(sys.argv[3]).read_text())
 assert m['defaultSession'] == 'Mango'
 assert m['xserver'] and m['startx'] and not m['generatedXinitrc'] and m['pam']
+assert not m['rofiEnabled'], 'B uses dmenu; the old Rofi renderer must be absent'
 assert set(m['sharedTargets']) == {'mango-session.target', 'xorg-session.target'}
 for name, unit in m['units'].items():
     for key in ('PartOf', 'After', 'Requisite'):
@@ -33,10 +35,10 @@ children = []
 streams = []
 
 
-def start(name, args):
+def start(name, args, **kwargs):
     stream = (output / (name + ".log")).open("w")
     streams.append(stream)
-    child = subprocess.Popen(args, stdout=stream, stderr=subprocess.STDOUT)
+    child = subprocess.Popen(args, stdout=stream, stderr=subprocess.STDOUT, **kwargs)
     children.append(child)
     return child
 
@@ -105,6 +107,7 @@ def window(name, klass, dialog=False):
 
 
 try:
+    subprocess.run([programs["xrdb"], "-merge"], input=f"Xft.dpi: {m['x11Dpi']}\n", text=True, check=True)
     wm = start("dwm", [programs["dwm"]])
     eventually(lambda: wm.poll() is None and "window id" in prop(root, "_NET_SUPPORTING_WM_CHECK"), "dwm did not become EWMH-ready")
     first = window("Xorg fixture one", "XorgFixture")
@@ -132,14 +135,27 @@ try:
     subprocess.run([programs["xdotool"], "key", "super+2"], check=True)
     subprocess.run([programs["xdotool"], "windowactivate", "--sync", str(first)], check=True, timeout=5)
     eventually(lambda: hex(first) in prop(root, "_NET_ACTIVE_WINDOW"), "pager could not activate a client on another tag")
-    subprocess.run([programs["xdotool"], "key", "super+2"], check=True)
-    picker = start("rofi-window", [programs["rofi"], "-config", programs["rofiConfig"], "-show", "window", "-filter", "Xorg fixture one"])
-    eventually(lambda: subprocess.run([programs["xdotool"], "search", "--onlyvisible", "--class", "rofi"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0, "Rofi window picker did not map")
-    time.sleep(0.3)
+    # Exercise the actual j4 + dmenu launcher against one safe desktop entry.
+    # This checks app selection and desktop Exec argv without launching user apps.
+    fixture_data = output / "launcher-data"
+    applications = fixture_data / "applications"
+    applications.mkdir(parents=True)
+    probe = output / "launcher-probe.py"
+    marker = output / "launcher-argv.json"
+    probe.write_text("import json,sys\nfrom pathlib import Path\nPath(sys.argv[1]).write_text(json.dumps(sys.argv[2:]))\n")
+    (applications / "fixture.desktop").write_text(
+        '[Desktop Entry]\nType=Application\nName=配置检查\nTerminal=false\n'
+        f'Exec={sys.executable} {probe} {marker} "中文 文件" "a;b"\n'
+    )
+    launcher_env = dict(os.environ, XDG_DATA_HOME=str(fixture_data), XDG_DATA_DIRS=str(fixture_data / "secondary"), XDG_CURRENT_DESKTOP="dwm")
+    (fixture_data / "secondary").mkdir()
+    launcher = start("launcher", [programs["launcher"]], env=launcher_env)
+    eventually(lambda: subprocess.run([programs["xdotool"], "search", "--onlyvisible", "--class", "dmenu"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0, "dmenu launcher did not map")
+    subprocess.run([programs["maim"], str(output / "launcher-preview.png")], check=True)
     subprocess.run([programs["xdotool"], "key", "--clearmodifiers", "Return"], check=True)
-    assert picker.wait(timeout=5) == 0, "Rofi window picker failed"
-    eventually(lambda: hex(first) in prop(root, "_NET_ACTIVE_WINDOW"), "Rofi could not select a client on another tag")
-    subprocess.run([programs["rofi"], "-config", programs["rofiConfig"], "-dump-theme"], check=True, stdout=(output / "rofi-theme.rasi").open("w"), stderr=(output / "rofi.log").open("w"), timeout=15)
+    assert launcher.wait(timeout=5) == 0, "j4 launcher failed"
+    eventually(marker.exists, "desktop Exec was not launched")
+    assert json.loads(marker.read_text()) == ["中文 文件", "a;b"], marker.read_text()
     picom = start("picom", [programs["picom"], "--config", programs["picomConfig"], "--backend", "xrender"])
     dunst = start("dunst", [programs["dunst"], "-config", programs["dunstConfig"]])
     time.sleep(1)
@@ -149,14 +165,24 @@ try:
     subprocess.run([programs["feh"], "--no-fehbg", "--bg-fill", programs["wallpaper"]], check=True)
     subprocess.run([programs["xsetroot"], "-name", "^c#4fa6ed^^d^ 45%  │  BAT 80%  │  10-19 12:00"], check=True)
     # Render the production menu but cancel it: none of its actions run.
-    rofi = start("rofi-preview", [programs["menu"]])
-    eventually(lambda: subprocess.run([programs["xdotool"], "search", "--onlyvisible", "--class", "rofi"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0, "production menu did not map")
+    menu = start("menu-preview", [programs["menu"]])
+    eventually(lambda: subprocess.run([programs["xdotool"], "search", "--onlyvisible", "--class", "dmenu"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0, "production menu did not map")
     subprocess.run([programs["notifySend"], "Xorg · One Dark", "隔离显示检查：浮窗、启动器与通知。"], check=True)
     time.sleep(0.6)
-    assert rofi.poll() is None, "Rofi preview could not render"
+    assert menu.poll() is None, "dmenu preview could not render"
     subprocess.run([programs["maim"], str(output / "desktop-preview.png")], check=True)
     subprocess.run([programs["xdotool"], "key", "--clearmodifiers", "Escape"], check=True)
-    assert rofi.wait(timeout=5) == 0, "menu cancellation failed"
+    assert menu.wait(timeout=5) == 0, "menu cancellation failed"
+    eventually(lambda: subprocess.run([programs["xdotool"], "search", "--onlyvisible", "--class", "dmenu"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode != 0, "cancelled menu remained mapped")
+    time.sleep(0.3)  # Give the isolated compositor time to repaint the damage.
+    subprocess.run([programs["maim"], str(output / "desktop-clean-preview.png")], check=True)
+    # Arbitrary dmenu text must not become a shell command in the control menu.
+    menu = start("menu-unknown", [programs["menu"]])
+    eventually(lambda: subprocess.run([programs["xdotool"], "search", "--onlyvisible", "--class", "dmenu"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0, "second control menu did not map")
+    canary = output / "must-not-exist"
+    subprocess.run([programs["xdotool"], "type", "--clearmodifiers", f"touch {canary}"], check=True)
+    subprocess.run([programs["xdotool"], "key", "--clearmodifiers", "Return"], check=True)
+    assert menu.wait(timeout=5) == 0 and not canary.exists(), "unknown control-menu text was executed"
     (output / "geometry.json").write_text(json.dumps({"tiled": tiled, "dialog": geometry(dialog)}, indent=2))
     (output / "scope.txt").write_text("Real dwm + parser/XRender smoke under Xvfb. No real Xorg/GLX/PAM/capture acceptance.\n")
 finally:

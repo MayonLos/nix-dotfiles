@@ -7,7 +7,7 @@
 
 当前桌面细节由实际 Astra 结合社区再次调整，实施、应用及验收见[系统界面记录](system-experience-execution.md)。
 用户另行选择的 dwm + Picom / Xorg 兼容桌面仍消费本 OneDark palette；使用原生栏、
-实底 Rofi/Dunst、短动画及浮窗阴影，详见 [Xorg 记录](xorg-desktop-execution.md)。
+实底 dmenu/Dunst 和浮窗轻阴影，B 不启用动画，详见 [Xorg 记录](xorg-desktop-execution.md)。
 
 ## 视觉方向与责任
 

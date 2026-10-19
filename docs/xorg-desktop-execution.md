@@ -4,7 +4,7 @@
 Mango + Noctalia 继续作为默认会话；Xorg 是登录界面的另一个明确选择，不自动叠加运行。
 基线为 `62cb424`，开始时工作树干净，保留本地分支 `codex/xorg-baseline-20261019`。保留用户数据、登录状态、剪贴板历史及正在运行的任务。
 
-## 首次实机启动与本轮修复
+## 首次实机启动与登录修复（上一轮）
 
 2026-10-19 11:48:12，用户选择原显示名 `One Dark Xorg (dwm)`，认证成功；
 11:48:13 返回登录器。当前 `/run/current-system` 已是下文 generation 394，不能继续按
@@ -33,15 +33,16 @@ HM 生成的 `QT_PLUGIN_PATH`、`XCURSOR_PATH` 导出语句允许变量此前未
 隔离检查为 `/nix/store/n1mzdhamc10mclhpydhnw081b6v4fw34-xorg-session-runtime`，
 构建日志 `/tmp/codex-xorg-login-fix-final.log`。它们尚未应用，不证明真实登录已恢复。
 
-## 下一轮组件设计（提案，未替换配置）
+## 组件选择与 B 实现
 
-用户要求先比较选择，再决定后续实现。实际 Astra 阅读当前配置并查询上游/社区；主代理
-复核来源。OneDark 与 Nix 声明式构建继续，以下均不是已部署效果。
+用户先要求比较，随后明确选择 **B**。实际 Astra 负责 Picom/Dunst/锁屏视觉，Luna 负责
+dwm 配置，主代理实现 dmenu 启动器/控制菜单、集成和检查。OneDark 与 Nix 声明式构建继续。
+下表保留选型比较；B 已实现，尚未应用到运行系统。
 
 | 方向 | 组合 | 取舍 |
 | --- | --- | --- |
 | 极简 | 原生栏 + slstatus + dmenu + slock，Picom 可关闭 | 纯文本、少装饰；GUI desktop 入口仍需 helper，锁屏需单独迁移现有认证接线 |
-| 精致简洁（建议） | 增强原生栏 + 小状态脚本 + dmenu/j4-dmenu-desktop + 轻 Picom + Dunst + i3lock-color | 保留托盘、浮窗层次与中文应用入口，启动器按需；较少组件又可统一美化 |
+| B 精致简洁（已选择） | 增强原生栏 + 小状态脚本 + dmenu/j4-dmenu-desktop + 轻 Picom + Dunst + i3lock-color | 保留托盘、浮窗层次与中文应用入口，启动器按需；较少组件又可统一美化 |
 | 搜索与视觉完整 | 上一组启动器改 Rofi，保留应用图标与跨标签窗口搜索 | 沿用当前已安装组件较多；Rofi 同样按需，不能说换 dmenu 就减少了常驻进程 |
 
 社区参考及边界：
@@ -59,12 +60,28 @@ HM 生成的 `QT_PLUGIN_PATH`、`XCURSOR_PATH` 导出语句允许变量此前未
 - [j4-dmenu-desktop](https://github.com/enkore/j4-dmenu-desktop)：使用已有 desktop 解析器，
   不自己解析 Exec；[Rofi](https://github.com/davatorium/rofi) 是有图标和窗口搜索的替代选项。
 
-建议视觉方向：`#1f2329` 正文背景、`#181b20` 栏底、`#4fa6ed` 焦点；正文不透明，
-顶部窄栏用标签下划线/小色块区分活动状态，音量/电池/时间分组。只给浮窗轻阴影，
+B 视觉方向：`#1f2329` 正文背景、`#181b20` 栏底、`#4fa6ed` 焦点；正文不透明，
+顶部窄栏用小色块区分活动标签，音量/电池/时间分组。只给浮窗轻阴影，
 不默认全屏模糊或持续动效；Picom 可以随时关闭。启动器和通知采用同一字号、边框与
 选中色，保留中文显示。锁屏先精简当前 i3lock-color，而非为了换名重接认证。
 窗口规则优先正确区分会话对话框、文件选择、音量设置与普通主窗口；保留可调间距、
-逐标签布局、浮动尺寸恢复、全屏恢复与暂存终端。详细参数随选定组合再由 Astra 收敛。
+逐标签布局、浮动尺寸恢复、全屏恢复与暂存终端。
+
+B 的具体实现：
+
+- 使用 stable dmenu 5.4 与 j4-dmenu-desktop 3.2，不加新补丁或 daemon。`xorg-dmenu` 为统一
+  字体/配色入口，`xorg-launcher` 将 desktop Exec/Terminal 解析交给 j4，频次记录保留在
+  `$XDG_STATE_HOME/nix-dotfiles/dmenu-usage`（未设置时为 `~/.local/state/...`）。
+- 原生栏高度 30、上/侧间距 6/8、窗口内/外间距 6/8、边框 2，均以 96 DPI 为逻辑基准；
+  本机 144 DPI 统一转换为 45、9/12、9/12、3 物理像素。主区比例 0.60。
+- Picom 无模糊、无变暗、无动画；平铺直角无阴影，仅浮窗使用逻辑 8 圆角和 0.22 阴影。
+  全屏、dock 和 Dunst 有明确排除，合成开关继续可用。
+- Dunst 中文字体 10.5、逻辑宽度 340、最多三条；圆角 8，正文实底。
+- i3lock-color 使用构建时暗化的公开壁纸、时钟 52 和认证环 36，保留 PAM、nofork 和
+  xss-lock FD 协议。没有新增屏幕捕获或第三方锁屏管理器。
+- Alt+Space 打开应用入口，Super+P 打开九项桌面菜单。控制菜单仅匹配已知文字，
+  未知输入不执行；退出仍二次确认。Rofi 的主题、包声明及窗口搜索入口已从 Xorg 方案移除。
+  Super+J/K 与标签切窗继续保留，不能将 dmenu 描述为具有 Rofi 的窗口搜索功能。
 
 ## 架构与来源
 
@@ -86,8 +103,8 @@ hash 为 `sha256-xYspDyPPBqTkO4SrB2+u1mUPTbWI52asXWjU0NFd2AU=`。只开启所需
 - [suckless barpadding](https://dwm.suckless.org/patches/barpadding/)、[systray](https://dwm.suckless.org/patches/systray/)：原生栏的间距、托盘与多屏。
 - [vanitygaps](https://dwm.suckless.org/patches/vanitygaps/)、[pertag](https://dwm.suckless.org/patches/pertag/)、[scratchpads](https://dwm.suckless.org/patches/scratchpads/)：可调间距、逐标签布局和暂存窗口。
 - [dwm-flexipatch](https://github.com/bakkeby/dwm-flexipatch)：选择性组合补丁的兼容实现，不执行社区安装脚本。
-- [Picom v13](https://github.com/yshui/picom/blob/v13/man/picom.1.adoc)：现代 rules 与原生短动画，不引入旧动画 fork。
-- [Rofi 2.0 主题](https://github.com/davatorium/rofi/blob/2.0.0/doc/rofi-theme.5.markdown)及[社区设计](https://github.com/adi1090x/rofi)：搜索、结果和模式区的层次。
+- [Picom v13](https://github.com/yshui/picom/blob/v13/man/picom.1.adoc)：现代 rules，B 不启用动画或旧动画 fork。
+- [dmenu](https://tools.suckless.org/dmenu/) 与 [j4](https://github.com/enkore/j4-dmenu-desktop/tree/r3.2)：菜单与 desktop 应用入口。
 - [i3lock](https://github.com/i3/i3lock)：配合 xss-lock 的 suspend-delay FD；不是直接从 systemd 睡眠钩子异步启动锁屏。
 
 ## 会话与服务
@@ -119,19 +136,19 @@ Xorg portal 使用 GTK 文件选择、GNOME Settings 和 keyring；不把 Screen
 
 ## 外观与操作
 
-实际 Astra 负责 OneDark 的 Picom/Rofi/Dunst 及原生栏设计；dwm 功能实现由 Luna 完成，
+实际 Astra 负责 OneDark 的 Picom/Dunst/锁屏及原生栏设计；dwm 功能实现由 Luna 完成，
 主代理接线与构建，独立 reviewer 检查跨会话边界。配色继续 `#1f2329`、蓝色焦点、清楚的
-正文和实底通知。只给浮窗层次阴影，短开关动画，不给平铺移动或共享画面持续模糊。
+正文和实底通知。只给浮窗层次阴影，不启用动画或持续模糊。
 144 DPI 来自主机 facts；X11 没有 Wayland 那样的逐输出分数缩放，混合 DPI 外屏需单独验收。
 
 原生栏默认音量、电池、时钟，每八秒检查、内容变化才重绘；不常驻轮询 CPU、内存、SSID/IP。
 `status2d` 提供图标、分隔线及有限颜色：低电量红、充电绿；选中标签蓝底，标题保持深色。
-点击状态区或快捷键打开 Rofi 控制菜单，包含音量、网络、蓝牙、剪贴板、帮助、锁屏和退出。
+点击状态区或快捷键打开 dmenu 控制菜单，包含音量、网络、蓝牙、剪贴板、帮助、锁屏和退出。
 菜单另有受会话约束的 Picom 开关，退出有二次确认。壁纸与 greeter 共用仓库内 wallpaper-009。
 
 选型比较后采用增强原生栏：它直接掌握 dwm 的 tags、布局和焦点；Polybar 丰富模块需要
-另接 EWMH/IPC，Eww 适合更复杂的自制面板。Rofi 按需启动，覆盖应用、窗口和菜单；
-dmenu 更简洁，但同等图标/应用入口需要额外接线。没有为此常驻启动器 daemon。
+另接 EWMH/IPC，Eww 适合更复杂的自制面板。dmenu/j4 按需启动，覆盖应用和菜单；
+不提供图标式窗口搜索，没有为此常驻启动器 daemon。
 锁屏选 i3lock-color 2.13.c.5，Nix 预先暗化公开壁纸；时钟、日期、键盘布局与认证环统一
 配色。蓝色表示验证中，红色失败，绿色按键反馈；认证成功直接解锁，没有虚构成功闪绿。
 betterlockscreen 的主要图片缓存功能已由此构建步骤覆盖。
@@ -166,14 +183,14 @@ QQ / 腾讯会议共享采用 X11 原生捕获，不新增共享 hook、portal �
 
 ## 验证与应用状态
 
-实现、文档与最终构建已完成，主代理实际执行并通过：
+以下是初版构建历史，B 当前构建记录另列于末尾。主代理当时实际执行并通过：
 
 - `xorg-session-runtime`：生产 noninteractive Bash 下十项 supervisor 测试、QQ 后端/argv 检查，真实 dwm 的平铺、居中、浮动状态/尺寸恢复、全屏几何恢复、pager 与 Rofi 跨标签切窗；真实十项控制菜单的图标/主题渲染与 Escape 取消，Dunst 通知及 Picom XRender smoke。
 - Mango/Noctalia parser、desktop-composition、system-boundaries、treefmt、完整 `nixos-btw` toplevel 构建。
 - 最终系统：`/nix/store/2qjcsga4cmm558bxzlclh50ihkrjgqrz-nixos-system-nixos-btw-26.05.20261012.7993f34`。
 - 隔离检查：`/nix/store/s9hy07lrawgfpqd2rq09ipihg53mxikf-xorg-session-runtime`；截图、日志与几何结果保存在该输出。日志 `/tmp/codex-xorg-verified-build.log`。未修改输入锁。
 
-Rofi 2.0.0 在测试专用的带图标 `-auto-select` 快速退出路径出现 SIGSEGV；关闭图标的 A/B
+初版使用的 Rofi 2.0.0 在测试专用的带图标 `-auto-select` 快速退出路径出现 SIGSEGV；关闭图标的 A/B
 通过。源码支持异步图标与退出清理竞态的推测，但没有 backtrace，不能宣称确认具体根因。
 生产配置不启用 auto-select；检查改为真实显示窗口选择器后按 Return，保留图标，已通过。
 这不是升级无关输入或隐藏生产失败。菜单动作本身、真实系统声音/亮度与退出未在隔离测试中执行。
@@ -195,3 +212,14 @@ HM 登录环境中的 nounset 冲突，不能作为实机登录成功的证据�
 
 共享采用 X11 原生能力，休眠沿用系统机制与现有锁屏接线，功耗由组件选择与实际工作负载决定；
 这些不另列为本轮额外配置任务。仍不把未做的实机行为写成已通过。
+
+
+## B 构建检查
+
+B 的 `xorg-session-runtime`、`desktop-composition`、treefmt 与完整主机系统构建已通过。
+隔离显示使用主机 144 DPI 与 Xft 设置，实际执行中文 desktop 应用选择/Exec 参数、菜单取消、
+未知输入不执行，以及既有浮动/全屏恢复检查。j4 显式使用 Kitty 模式，避免通用临时脚本，
+日志限制为 WARNING；未启动真实终端应用。Astra 已查看菜单、浮窗和通知截图。
+构建日志 `/tmp/codex-dwm-b-final.log`，系统输出
+`/nix/store/pfmkvkqdx40n3yf887mskvbhjnm0dyk0-nixos-system-nixos-btw-26.05.20261012.7993f34`。
+本轮不 switch、不更新启动默认项；尚未实机确认 DWM 登录恢复，也没有清除用户状态。

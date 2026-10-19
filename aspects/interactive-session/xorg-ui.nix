@@ -9,6 +9,33 @@ let
   profile = config.home.profileDirectory;
   target = "xorg-session.target";
 
+  # One menu renderer for launcher, desktop controls and Dunst actions.
+  # Font sizes are points; Xft supplies the host DPI without scaling twice.
+  dmenu = pkgs.writeShellApplication {
+    name = "xorg-dmenu";
+    text = ''
+      exec ${pkgs.dmenu}/bin/dmenu -i -l 8 \
+        -fn ${lib.escapeShellArg "${palette.fonts.sans}:size=10.5"} \
+        -nb ${lib.escapeShellArg palette.deep} -nf ${lib.escapeShellArg palette.brightFg} \
+        -sb ${lib.escapeShellArg palette.blue} -sf ${lib.escapeShellArg palette.black} \
+        "$@"
+    '';
+  };
+  launcher = pkgs.writeShellApplication {
+    name = "xorg-launcher";
+    text = ''
+      state_dir="''${XDG_STATE_HOME:-$HOME/.local/state}/nix-dotfiles"
+      mkdir -p -- "$state_dir"
+      # Delegate desktop Exec/Terminal parsing and usage ordering to j4.
+      # No --wait-on daemon; this process exists only while choosing an app.
+      exec ${pkgs.j4-dmenu-desktop}/bin/j4-dmenu-desktop \
+        --dmenu=${lib.escapeShellArg "${dmenu}/bin/xorg-dmenu -p 应用"} \
+        --term-mode=kitty --term=${pkgs.kitty}/bin/kitty --no-generic \
+        --log-level=WARNING --use-xdg-de \
+        --usage-log="$state_dir/dmenu-usage"
+    '';
+  };
+
   # dwm's BAR_STATUS2D_PATCH interprets only our fixed ^c#RRGGBB^ / ^d^ codes.
   # Values come from numeric/local state, never arbitrary external labels.
   # Keep the bar quiet: no machine identifiers, network names, or CPU polling.
@@ -78,8 +105,9 @@ let
       多电池分别显示；无电池设备省略电池区域。
 
     桌面控制菜单
-      应用启动器、窗口切换、音量、网络、蓝牙和剪贴板。
-      桌面特效可随时开关，控制 Picom 的动画、阴影和圆角。
+      应用启动器、音量、网络、蓝牙和剪贴板。
+      桌面合成可随时开关，控制 Picom 的浮窗阴影、圆角与防撕裂。
+      dmenu 输入筛选，方向键选择，Enter 确认，Escape 取消。
       锁屏立即锁定；退出需要再次确认。
 
     窗口操作
@@ -133,41 +161,29 @@ let
   menu = pkgs.writeShellApplication {
     name = "xorg-session-menu";
     text = ''
-      effects_label='开启桌面特效'
+      effects_label='开启桌面合成'
       if ${pkgs.systemd}/bin/systemctl --user is-active --quiet picom.service; then
-        effects_label='关闭桌面特效'
+        effects_label='关闭桌面合成'
       fi
-      item() { printf '%s\0icon\x1f%s\n' "$1" "$2"; }
-      choice="$({
-        item '应用启动器' 'system-run'
-        item '窗口切换' 'preferences-system-windows'
-        item '音量设置' 'audio-volume-high'
-        item '网络设置' 'preferences-system-network'
-        item '蓝牙设备' 'bluetooth'
-        item '剪贴板历史' 'edit-paste'
-        item "$effects_label" 'preferences-desktop-effects'
-        item '快捷键与帮助' 'help-browser'
-        item '锁屏' 'system-lock-screen'
-        item '退出 dwm 会话' 'system-log-out'
-      } | \
-        ${pkgs.rofi}/bin/rofi -dmenu -i -no-custom -format i -p '桌面' \
-          -mesg ${lib.escapeShellArg "dwm · ${palette.name}"} -theme-str 'listview { lines: 10; }')" || exit 0
+      # dmenu returns text, including arbitrary typed input. Dispatch only
+      # exact entries from this menu; never evaluate its output as a command.
+      choice="$(printf '%s\n' \
+        '应用启动器' '音量设置' '网络设置' '蓝牙设备' '剪贴板历史' \
+        "$effects_label" '快捷键与帮助' '锁屏' '退出 dwm 会话' | \
+        ${dmenu}/bin/xorg-dmenu -p '桌面')" || exit 0
       case "$choice" in
-        0) exec ${pkgs.rofi}/bin/rofi -show drun ;;
-        1) exec ${pkgs.rofi}/bin/rofi -show window ;;
-        2) exec ${pkgs.pavucontrol}/bin/pavucontrol ;;
-        3) exec ${pkgs.networkmanagerapplet}/bin/nm-connection-editor ;;
-        4) exec ${pkgs.blueman}/bin/blueman-manager ;;
-        5) exec ${pkgs.copyq}/bin/copyq toggle ;;
-        6) exec ${effects}/bin/xorg-effects ;;
-        7) exec ${help}/bin/xorg-session-help ;;
-        8) exec ${lib.escapeShellArg "${profile}/bin/xorg-lock"} ;;
-        9)
+        '应用启动器') exec ${launcher}/bin/xorg-launcher ;;
+        '音量设置') exec ${pkgs.pavucontrol}/bin/pavucontrol ;;
+        '网络设置') exec ${pkgs.networkmanagerapplet}/bin/nm-connection-editor ;;
+        '蓝牙设备') exec ${pkgs.blueman}/bin/blueman-manager ;;
+        '剪贴板历史') exec ${pkgs.copyq}/bin/copyq toggle ;;
+        "$effects_label") exec ${effects}/bin/xorg-effects ;;
+        '快捷键与帮助') exec ${help}/bin/xorg-session-help ;;
+        '锁屏') exec ${lib.escapeShellArg "${profile}/bin/xorg-lock"} ;;
+        '退出 dwm 会话')
           confirm="$(printf '%s\n' '返回桌面' '退出当前 dwm 会话' | \
-            ${pkgs.rofi}/bin/rofi -dmenu -i -no-custom -format i \
-              -p '确认退出' -mesg '请先保存当前会话中的工作。' \
-              -theme-str 'listview { lines: 2; }')" || exit 0
-          if [[ "$confirm" == 1 ]]; then
+            ${dmenu}/bin/xorg-dmenu -l 2 -p '请先保存工作 · 确认退出')" || exit 0
+          if [[ "$confirm" == '退出当前 dwm 会话' ]]; then
             exec ${lib.escapeShellArg "${profile}/bin/xorg-session-exit"}
           fi
           ;;
@@ -177,6 +193,8 @@ let
 in
 {
   home.packages = [
+    dmenu
+    launcher
     status
     menu
     help

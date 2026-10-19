@@ -11,6 +11,9 @@ p.add_argument("--dpi", required=True, type=int)
 a = p.parse_args()
 root = Path.cwd()
 
+def scale(logical):
+    return round(logical * a.dpi / 96)
+
 flags = root / "patches.def.h"
 s = flags.read_text()
 enabled = {"BAR_SYSTRAY_PATCH", "BAR_HEIGHT_PATCH", "BAR_PADDING_PATCH", "CENTER_PATCH",
@@ -32,12 +35,14 @@ def once(pattern, repl):
     if n != 1:
         raise SystemExit(f"configuration anchor missing: {pattern[:70]}")
 
-for name, value in (("gappih", 8), ("gappiv", 8), ("gappoh", 8), ("gappov", 8)):
-    once(rf"(static const unsigned int {name}\s*=\s*)\d+", rf"\g<1>{value}")
+for name, value in (("gappih", 6), ("gappiv", 6), ("gappoh", 8), ("gappov", 8)):
+    once(rf"(static const unsigned int {name}\s*=\s*)\d+", rf"\g<1>{scale(value)}")
 once(r"(static const int smartgaps_fact\s*=\s*)\d+", r"\g<1>0")
-once(r"(static const int bar_height\s*=\s*)\d+", rf"\g<1>{round(34 * a.dpi / 96)}")
-once(r"(static const int vertpad\s*=\s*)\d+", r"\g<1>6")
-once(r"(static const int sidepad\s*=\s*)\d+", r"\g<1>8")
+once(r"(static const int bar_height\s*=\s*)\d+", rf"\g<1>{scale(30)}")
+once(r"(static const int vertpad\s*=\s*)\d+", rf"\g<1>{scale(6)}")
+once(r"(static const int sidepad\s*=\s*)\d+", rf"\g<1>{scale(8)}")
+once(r"(#else\s*\nstatic const unsigned int borderpx\s*=\s*)\d+", rf"\g<1>{scale(2)}")
+once(r"(static const float mfact\s*=\s*)[0-9.]+", r"\g<1>0.60")
 once(r"#define MODKEY Mod1Mask", "#define MODKEY Mod4Mask")
 once(r'static const char \*termcmd\[\]\s*=\s*\{ "st", NULL \};', "")
 
@@ -92,7 +97,7 @@ keyblock = '''static const Key keys[] = {
 \t{ MODKEY, XK_Return, spawn, CMD("PROFILE/bin/workspace-terminal") },
 \t{ MODKEY, XK_b, spawn, CMD("PROFILE/bin/workspace-browser") },
 \t{ MODKEY, XK_e, spawn, CMD("PROFILE/bin/workspace-files") },
-\t{ Mod1Mask, XK_space, spawn, CMD("PROFILE/bin/rofi", "-show", "drun") },
+\t{ Mod1Mask, XK_space, spawn, CMD("PROFILE/bin/xorg-launcher") },
 \t{ MODKEY, XK_v, spawn, CMD("PROFILE/bin/copyq", "toggle") },
 \t{ MODKEY|Mod1Mask, XK_l, spawn, CMD("PROFILE/bin/xorg-lock") },
 \t{ MODKEY, XK_p, spawn, CMD("PROFILE/bin/xorg-session-menu") },
