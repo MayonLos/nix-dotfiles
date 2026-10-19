@@ -3,21 +3,27 @@
   config,
   lib,
   pkgs,
+  hostFacts,
   ...
 }:
 let
   profile = config.home.profileDirectory;
   target = "xorg-session.target";
+  px = n: builtins.floor (n * hostFacts.display.x11Dpi / 96.0 + 0.5);
+  dmenuPackage = import ./dmenu/package.nix { inherit pkgs; };
 
   # One menu renderer for launcher, desktop controls and Dunst actions.
   # Font sizes are points; Xft supplies the host DPI without scaling twice.
   dmenu = pkgs.writeShellApplication {
     name = "xorg-dmenu";
     text = ''
-      exec ${pkgs.dmenu}/bin/dmenu -i -l 8 \
+      exec ${dmenuPackage}/bin/dmenu -i -l 8 -c \
+        -z ${toString (px 460)} -h ${toString (px 32)} \
+        -bw ${toString (px 1)} -ip ${toString (px 12)} \
+        -bc ${lib.escapeShellArg palette.selection} \
         -fn ${lib.escapeShellArg "${palette.fonts.sans}:size=10.5"} \
-        -nb ${lib.escapeShellArg palette.deep} -nf ${lib.escapeShellArg palette.brightFg} \
-        -sb ${lib.escapeShellArg palette.blue} -sf ${lib.escapeShellArg palette.black} \
+        -nb ${lib.escapeShellArg palette.bg} -nf ${lib.escapeShellArg palette.brightFg} \
+        -sb ${lib.escapeShellArg palette.selection} -sf ${lib.escapeShellArg palette.blue} \
         "$@"
     '';
   };
@@ -51,7 +57,7 @@ let
           volume="^c${palette.muted}^ muted^d^"
         elif [[ "$raw_volume" =~ ^Volume:\ ([0-9]+)[.]([0-9][0-9]) ]]; then
           percent=$((10#''${BASH_REMATCH[1]} * 100 + 10#''${BASH_REMATCH[2]}))
-          volume="^c${palette.blue}^^d^ $percent%"
+          volume="^c${palette.muted}^^d^ $percent%"
         fi
 
         batteries=""
@@ -79,11 +85,11 @@ let
               Discharging) state="-" ;;
             esac
           fi
-          batteries+=" ^c${palette.border}^│^d^ ^c$battery_color^$battery_icon $capacity%$state^d^"
+          batteries+=" ^c${palette.selection}^·^d^ ^c$battery_color^$battery_icon $capacity%$state^d^"
         done
 
-        clock="$(LC_TIME=C ${pkgs.coreutils}/bin/date '+%a %m-%d %H:%M')"
-        current=" $volume$batteries ^c${palette.border}^│^d^ ^c${palette.blue}^^d^ ^c${palette.brightFg}^$clock^d^ "
+        clock="$(LC_TIME=C ${pkgs.coreutils}/bin/date '+%m-%d  %H:%M')"
+        current=" $volume$batteries ^c${palette.selection}^·^d^ ^c${palette.blue}^^d^ ^c${palette.brightFg}^$clock^d^ "
         if [[ "$current" != "$previous" ]]; then
           ${pkgs.xsetroot}/bin/xsetroot -name "$current"
           previous="$current"

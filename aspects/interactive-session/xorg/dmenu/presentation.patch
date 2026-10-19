@@ -1,0 +1,141 @@
+--- a/dmenu.c
++++ b/dmenu.c
+@@ -38,0 +39,2 @@
++static int centered, requestedwidth, minrowheight, borderwidth, innerpad;
++static const char *bordercolor;
+@@ -87,2 +89,5 @@
+-	else
+-		n = mw - (promptw + inputw + TEXTW("<") + TEXTW(">"));
++	else {
++		n = mw - (centered ? 2 * innerpad : 0) - (promptw + inputw + TEXTW("<") + TEXTW(">"));
++		if (centered)
++			n = MAX(1, n);
++	}
+@@ -150 +155,2 @@
+-	int x = 0, y = 0, w;
++	int x = centered ? innerpad : 0, y = 0, w;
++	int right = mw - (centered ? innerpad : 0);
+@@ -157 +163 @@
+-		x = drw_text(drw, x, 0, promptw, bh, lrpad / 2, prompt, 0);
++		x = drw_text(drw, x, innerpad, promptw, bh, lrpad / 2, prompt, 0);
+@@ -160 +166 @@
+-	w = (lines > 0 || !matches) ? mw - x : inputw;
++	w = (lines > 0 || !matches) ? right - x : inputw;
+@@ -162 +168 @@
+-	drw_text(drw, x, 0, w, bh, lrpad / 2, text, 0);
++	drw_text(drw, x, innerpad, w, bh, lrpad / 2, text, 0);
+@@ -167 +173 @@
+-		drw_rect(drw, x + curpos, 2, 2, bh - 4, 1, 0);
++		drw_rect(drw, x + curpos, innerpad + 2, 2, MAX(1, bh - 4), 1, 0);
+@@ -171,0 +178 @@
++		y = innerpad;
+@@ -173 +180,2 @@
+-			drawitem(item, x, y += bh, mw - x);
++			drawitem(item, centered ? innerpad : x, y += bh,
++			         centered ? right - innerpad : mw - x);
+@@ -180 +188 @@
+-			drw_text(drw, x, 0, w, bh, lrpad / 2, "<", 0);
++			drw_text(drw, x, innerpad, w, bh, lrpad / 2, "<", 0);
+@@ -184 +192 @@
+-			x = drawitem(item, x, 0, textw_clamp(item->text, mw - x - TEXTW(">")));
++			x = drawitem(item, x, innerpad, textw_clamp(item->text, MAX(1, right - x - TEXTW(">"))));
+@@ -188 +196 @@
+-			drw_text(drw, mw - w, 0, w, bh, lrpad / 2, ">", 0);
++			drw_text(drw, right - w, innerpad, w, bh, lrpad / 2, ">", 0);
+@@ -616,0 +625 @@
++	int area_x, area_y, area_w, area_h;
+@@ -635,2 +644,5 @@
+-	/* calculate menu geometry */
+-	bh = drw->fonts->h + 2;
++	/*
++	 * Adapt the geometry ideas from the official center, border, line-height,
++	 * and padding patches to dmenu 5.4, keeping the stock path unchanged.
++	 */
++	bh = MAX(drw->fonts->h + 2, minrowheight);
+@@ -638 +649,0 @@
+-	mh = (lines + 1) * bh;
+@@ -665,3 +676,5 @@
+-		x = info[i].x_org;
+-		y = info[i].y_org + (topbar ? 0 : info[i].height - mh);
+-		mw = info[i].width;
++		area_x = x = info[i].x_org;
++		area_y = y = info[i].y_org;
++		area_w = mw = info[i].width;
++		area_h = info[i].height;
++		y += topbar ? 0 : area_h - (lines + 1) * bh;
+@@ -675,3 +688,26 @@
+-		x = 0;
+-		y = topbar ? 0 : wa.height - mh;
+-		mw = wa.width;
++		area_x = x = 0;
++		area_y = y = 0;
++		area_w = mw = wa.width;
++		area_h = wa.height;
++		y = topbar ? 0 : area_h - (lines + 1) * bh;
++	}
++	if (centered) {
++		int framew, maxframew, maxbh, maxrows;
++
++		borderwidth = MIN(borderwidth, MAX(0, (MIN(area_w, area_h) - 1) / 2));
++		innerpad = MIN(innerpad, MAX(0, (area_h - 2 * borderwidth - 1) / 2));
++		maxframew = MAX(1, area_w * 4 / 5);
++		framew = requestedwidth > 0 ? requestedwidth : maxframew;
++		framew = MIN(framew, maxframew);
++		borderwidth = MIN(borderwidth, MAX(0, (framew - 1) / 2));
++		mw = MAX(1, framew - 2 * borderwidth);
++		innerpad = MIN(innerpad, MAX(0, (mw - 1) / 2));
++		maxbh = MAX(1, area_h - 2 * borderwidth - 2 * innerpad);
++		bh = MIN(bh, maxbh);
++		maxrows = MAX(0, (maxbh - bh) / bh);
++		lines = MIN(lines, maxrows);
++		mh = (lines + 1) * bh + 2 * innerpad;
++		x = area_x + (area_w - (mw + 2 * borderwidth)) / 2;
++		y = area_y + (area_h - (mh + 2 * borderwidth)) / 2;
++	} else {
++		mh = (lines + 1) * bh;
+@@ -680 +716,3 @@
+-	inputw = mw / 3; /* input width: ~33% of monitor width */
++	if (centered)
++		promptw = MIN(promptw, MAX(1, mw - 2 * innerpad));
++	inputw = (mw - (centered ? 2 * innerpad : 0)) / 3;
+@@ -685,0 +724,6 @@
++	swa.border_pixel = scheme[SchemeNorm][ColBg].pixel;
++	if (bordercolor) {
++		XColor color, exact;
++		if (XAllocNamedColor(dpy, DefaultColormap(dpy, screen), bordercolor, &color, &exact))
++			swa.border_pixel = color.pixel;
++	}
+@@ -687 +731 @@
+-	win = XCreateWindow(dpy, root, x, y, mw, mh, 0,
++	win = XCreateWindow(dpy, root, x, y, mw, mh, borderwidth,
+@@ -689 +733 @@
+-	                    CWOverrideRedirect | CWBackPixel | CWEventMask, &swa);
++	                    CWOverrideRedirect | CWBackPixel | CWBorderPixel | CWEventMask, &swa);
+@@ -717,2 +761,3 @@
+-	die("usage: dmenu [-bfiv] [-l lines] [-p prompt] [-fn font] [-m monitor]\n"
+-	    "             [-nb color] [-nf color] [-sb color] [-sf color] [-w windowid]");
++	die("usage: dmenu [-bfivc] [-l lines] [-p prompt] [-fn font] [-m monitor]\n"
++	    "             [-z width] [-h minrowheight] [-bw borderwidth] [-ip padding]\n"
++	    "             [-nb color] [-nf color] [-sb color] [-sf color] [-bc color] [-w windowid]");
+@@ -738,0 +784,2 @@
++		} else if (!strcmp(argv[i], "-c")) { /* centered geometry */
++			centered = 1;
+@@ -745,0 +793,18 @@
++		else if (!strcmp(argv[i], "-z")) {
++			requestedwidth = atoi(argv[++i]);
++			if (requestedwidth < 0)
++				requestedwidth = 0;
++		} else if (!strcmp(argv[i], "-h")) {
++			minrowheight = atoi(argv[++i]);
++			if (minrowheight < 0)
++				minrowheight = 0;
++		} else if (!strcmp(argv[i], "-bw")) {
++			borderwidth = atoi(argv[++i]);
++			if (borderwidth < 0)
++				borderwidth = 0;
++		} else if (!strcmp(argv[i], "-ip")) {
++			innerpad = atoi(argv[++i]);
++			if (innerpad < 0)
++				innerpad = 0;
++		} else if (!strcmp(argv[i], "-bc"))
++			bordercolor = argv[++i];

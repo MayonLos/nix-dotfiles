@@ -13,6 +13,7 @@ let
       package: (package.name or "") == name
     ) (throw "Missing production Xorg package: ${name}") home.home.packages;
   launcher = packageNamed "xorg-launcher";
+  dmenu = packageNamed "xorg-dmenu";
   menu = pkgs.lib.findFirst (
     package: (package.name or "") == "xorg-session-menu"
   ) (throw "Missing production Xorg menu") home.home.packages;
@@ -44,6 +45,7 @@ let
       picom = "${pkgs.picom}/bin/picom";
       picomConfig = home.xdg.configFile."picom/picom.conf".source;
       launcher = "${launcher}/bin/xorg-launcher";
+      dmenu = "${dmenu}/bin/xorg-dmenu";
       dunst = "${pkgs.dunst}/bin/dunst";
       dunstConfig = home.xdg.configFile."dunst/dunstrc".source;
       xprop = "${pkgs.xprop}/bin/xprop";
@@ -53,7 +55,7 @@ let
       xlib = "${pkgs.libx11}/lib/libX11.so.6";
       maim = "${pkgs.maim}/bin/maim";
       feh = "${pkgs.feh}/bin/feh";
-      wallpaper = ../resources/wallpaper/wallpaper-009.png;
+      wallpaper = ../resources/wallpaper/wallpaper-002.png;
       xsetroot = "${pkgs.xsetroot}/bin/xsetroot";
       notifySend = "${pkgs.libnotify}/bin/notify-send";
       menu = "${menu}/bin/xorg-session-menu";
@@ -89,4 +91,6 @@ pkgs.runCommand "xorg-session-runtime"
     python3 ${./tests/test_qq.py} ${qq}/bin/qq > "$out/qq-wrapper.log" 2>&1 || { cat "$out/qq-wrapper.log"; exit 1; }
     dbus-run-session --config-file=${pkgs.dbus}/share/dbus-1/session.conf -- xvfb-run -a -s '-screen 0 1600x1000x24 -dpi ${toString host.services.xserver.dpi} -nolisten tcp +extension Composite' \
       python3 ${./tests/test_desktop.py} ${desktop} "$out" ${metadata} || { cat "$out"/*.log; exit 1; }
+    xvfb-run -a -s '-screen 0 420x260x24 -dpi 144 -nolisten tcp' \
+      python3 ${./tests/test_menu.py} ${desktop} "$out"
   ''
