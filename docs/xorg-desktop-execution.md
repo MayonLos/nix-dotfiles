@@ -2,7 +2,7 @@
 
 2026-10-19。用户主要需要 QQ、腾讯会议的屏幕共享，明确选择 dwm + Picom，要求参考社区重新配置。
 Mango + Noctalia 继续作为默认会话；Xorg 是登录界面的另一个明确选择，不自动叠加运行。
-基线为 `62cb424`，开始时工作树干净。保留用户数据、登录状态、剪贴板历史及正在运行的任务。
+基线为 `62cb424`，开始时工作树干净，保留本地分支 `codex/xorg-baseline-20261019`。保留用户数据、登录状态、剪贴板历史及正在运行的任务。
 
 ## 架构与来源
 
@@ -120,6 +120,17 @@ Rofi 2.0.0 在测试专用的带图标 `-auto-select` 快速退出路径出现 S
 Astra 在独立 Xvfb 实际运行 i3lock-color 并目检截图，同时用继承的 pipe 确认映射窗口后释放
 睡眠延迟 FD。没有输入真实密码，不把该证据写成实机 PAM 解锁成功。
 
-当前仍运行基线 Mango；尚未执行 switch、注销或重启。后续应用范围在本节补记。
+源码提交 `0234407`。已执行 `nixos-rebuild boot`，返回 0，系统 profile 指向上述新系统，
+作为下次启动配置（generation 394）；日志 `/tmp/codex-xorg-boot.log`。没有执行 switch、注销或重启，Home Manager
+和新的 Xorg 服务尚未在运行系统激活。
+
+当前 `/run/current-system` 仍为基线 `h2m1d2llqhvr4c6xmiw9vkdca4awwx21` 系统，Mango target active；
+前后六个受保护 PID/启动时间全部保持，包括 greetd、Mango、两个 Codex 和 Java 任务。
+登录包实际包含 Mango、Steam 和唯一的 `xorg-dwm.desktop` X11 条目。
+
+准备验收时正常保存工作并自行重启，在登录界面选择 **One Dark Xorg (dwm)**；Mango 仍为默认。
+无需为了本轮再手动 switch。Super+F1 查看帮助；若不合适可继续选择 Mango，基线 generation
+与本地代码分支均保留，没有执行 GC 或 push。
+
 真实 Xorg 登录、GLX 显卡路径、共享通话、真实托盘、触控板、多屏热插拔、锁屏/休眠及与
 Mango 的能耗比较尚未验证。不把 Xvfb / 求值 / 构建写成实机验收。

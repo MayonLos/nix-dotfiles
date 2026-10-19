@@ -56,7 +56,7 @@ let
 in
 {
   # 2560x1600 at mango scale 1.5. Consumed by fcitx5's X11 candidate window
-  # (which needs PerScreenDPI=False in base/input-method.nix to look at it at
+  # (which needs PerScreenDPI=False in input-method.nix to look at it at
   # all) and by any other X client that reads Xft.dpi.
   xresources.properties."Xft.dpi" = hostFacts.display.x11Dpi;
 
