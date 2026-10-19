@@ -4,6 +4,10 @@
 Mango + Noctalia 继续作为默认会话；Xorg 是登录界面的另一个明确选择，不自动叠加运行。
 基线为 `62cb424`，开始时工作树干净，保留本地分支 `codex/xorg-baseline-20261019`。保留用户数据、登录状态、剪贴板历史及正在运行的任务。
 
+最新状态：用户已自行应用整理后的 generation 395，本轮只读观察到真实 DWM / X11 会话，
+`xorg-session.target` active、Mango target inactive。下文首次登录失败及“尚未应用”均为当时记录。
+本轮重新设计及窗口规则修正见 [DWM 视觉与窗口规则](dwm-visual-design.md)；新实现尚未应用。
+
 ## 首次实机启动与登录修复（上一轮）
 
 2026-10-19 11:48:12，用户选择原显示名 `One Dark Xorg (dwm)`，认证成功；
@@ -37,7 +41,7 @@ HM 生成的 `QT_PLUGIN_PATH`、`XCURSOR_PATH` 导出语句允许变量此前未
 
 用户先要求比较，随后明确选择 **B**。实际 Astra 负责 Picom/Dunst/锁屏视觉，Luna 负责
 dwm 配置，主代理实现 dmenu 启动器/控制菜单、集成和检查。OneDark 与 Nix 声明式构建继续。
-下表保留选型比较；B 已实现，尚未应用到运行系统。
+下表保留选型比较；B 已实现，用户其后已应用。以下尺寸为 B 初版历史，新值见最新设计记录。
 
 | 方向 | 组合 | 取舍 |
 | --- | --- | --- |
@@ -60,16 +64,16 @@ dwm 配置，主代理实现 dmenu 启动器/控制菜单、集成和检查。On
 - [j4-dmenu-desktop](https://github.com/enkore/j4-dmenu-desktop)：使用已有 desktop 解析器，
   不自己解析 Exec；[Rofi](https://github.com/davatorium/rofi) 是有图标和窗口搜索的替代选项。
 
-B 视觉方向：`#1f2329` 正文背景、`#181b20` 栏底、`#4fa6ed` 焦点；正文不透明，
+B 初版视觉方向：`#1f2329` 正文背景、`#181b20` 栏底、`#4fa6ed` 焦点；正文不透明，
 顶部窄栏用小色块区分活动标签，音量/电池/时间分组。只给浮窗轻阴影，
 不默认全屏模糊或持续动效；Picom 可以随时关闭。启动器和通知采用同一字号、边框与
 选中色，保留中文显示。锁屏先精简当前 i3lock-color，而非为了换名重接认证。
 窗口规则优先正确区分会话对话框、文件选择、音量设置与普通主窗口；保留可调间距、
 逐标签布局、浮动尺寸恢复、全屏恢复与暂存终端。
 
-B 的具体实现：
+B 初版的具体实现（重设计前）：
 
-- 使用 stable dmenu 5.4 与 j4-dmenu-desktop 3.2，不加新补丁或 daemon。`xorg-dmenu` 为统一
+- 使用 stable dmenu 5.4 与 j4-dmenu-desktop 3.2，当时没有添加 dmenu 补丁或 daemon。`xorg-dmenu` 为统一
   字体/配色入口，`xorg-launcher` 将 desktop Exec/Terminal 解析交给 j4，频次记录保留在
   `$XDG_STATE_HOME/nix-dotfiles/dmenu-usage`（未设置时为 `~/.local/state/...`）。
 - 原生栏高度 30、上/侧间距 6/8、窗口内/外间距 6/8、边框 2，均以 96 DPI 为逻辑基准；
@@ -143,15 +147,16 @@ Xorg portal 使用 GTK 文件选择、GNOME Settings 和 keyring；不把 Screen
 144 DPI 来自主机 facts；X11 没有 Wayland 那样的逐输出分数缩放，混合 DPI 外屏需单独验收。
 
 原生栏默认音量、电池、时钟，每八秒检查、内容变化才重绘；不常驻轮询 CPU、内存、SSID/IP。
-`status2d` 提供图标、分隔线及有限颜色：低电量红、充电绿；选中标签蓝底，标题保持深色。
+`status2d` 提供图标、分隔线及有限颜色：低电量红、充电绿；当前选中标签蓝字加下划线，标题保持深色。
 点击状态区或快捷键打开 dmenu 控制菜单，包含音量、网络、蓝牙、剪贴板、帮助、锁屏和退出。
-菜单另有受会话约束的 Picom 开关，退出有二次确认。壁纸与 greeter 共用仓库内 wallpaper-009。
+菜单另有受会话约束的 Picom 开关，退出有二次确认。当前 Xorg 壁纸与锁屏使用 wallpaper-002；
+greeter 的 wallpaper-009 不由该可选会话覆盖。
 
 选型比较后采用增强原生栏：它直接掌握 dwm 的 tags、布局和焦点；Polybar 丰富模块需要
 另接 EWMH/IPC，Eww 适合更复杂的自制面板。dmenu/j4 按需启动，覆盖应用和菜单；
 不提供图标式窗口搜索，没有为此常驻启动器 daemon。
 锁屏选 i3lock-color 2.13.c.5，Nix 预先暗化公开壁纸；时钟、日期、键盘布局与认证环统一
-配色。蓝色表示验证中，红色失败，绿色按键反馈；认证成功直接解锁，没有虚构成功闪绿。
+配色。当前蓝色表示按键与验证中，红色失败；认证成功直接解锁，没有额外成功动画。
 betterlockscreen 的主要图片缓存功能已由此构建步骤覆盖。
 
 常用键位：Super+Return/B/E 为终端/浏览器/文件管理；Alt+Space 启动器，Super+P 菜单，
@@ -226,4 +231,4 @@ B 的 `xorg-session-runtime`、`desktop-composition`、treefmt 与完整主机�
 本轮不 switch、不更新启动默认项；尚未实机确认 DWM 登录恢复，也没有清除用户状态。
 
 最终目录整理、独立 Xorg 共享边界与更新后的完整构建证据见[整理记录](repository-organization.md)；
-上方 B 首次构建输出作为历史保留，最新系统仍未应用。
+上方 B 首次构建输出作为历史保留；用户其后已应用整理结果，当前轮次状态见文首最新记录。

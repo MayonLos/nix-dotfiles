@@ -5,6 +5,8 @@
 最新 CLI、媒体与桌面见[系统界面记录](system-experience-execution.md)；Hyprland 当前移除状态见[移除记录](hyprland-removal-execution.md)。
 可选 dwm / Xorg 桌面的当前实现、应用及待验项见 [Xorg 记录](xorg-desktop-execution.md)。
 用户随后选择 dmenu 的 B 方案并要求全仓整理；最新目录归属、共享会话边界、清理和构建状态见 [整理记录](repository-organization.md)。
+用户已自行应用上述整理结果并进入真实 DWM；随后要求实际 Astra 重新设计并完善窗口规则，
+当前轮次见 [DWM 视觉与窗口规则](dwm-visual-design.md)。本轮不切换正在运行的会话。
 下文起点、旧提交清单和批次执行顺序保留为历史设计依据，不重做已完成迁移或软件选择；
 继续工作应先读最新记录中的真实 generation、写入交接和未验证项目。没有部署真实服务器。
 
