@@ -6,7 +6,8 @@ Mango + Noctalia 继续作为默认会话；Xorg 是登录界面的另一个明�
 
 最新状态：用户已自行应用整理后的 generation 395，本轮只读观察到真实 DWM / X11 会话，
 `xorg-session.target` active、Mango target inactive。下文首次登录失败及“尚未应用”均为当时记录。
-本轮重新设计及窗口规则修正见 [DWM 视觉与窗口规则](dwm-visual-design.md)；新实现尚未应用。
+本轮重新设计及窗口规则修正见 [DWM 视觉与窗口规则](dwm-visual-design.md)。用户随后授权 switch，
+已应用为 generation 396；当前 DWM 进程保留，新栏与窗口规则需重新登录后生效。
 
 ## 首次实机启动与登录修复（上一轮）
 

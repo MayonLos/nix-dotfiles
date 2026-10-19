@@ -64,7 +64,7 @@ QQ、会议与 IDE 的规则检查使用合成 X11 客户端，不冒充真实�
 它们后续出现特殊工具窗口时，应读取实际 class/type/transient，再补精确规则。
 不通过猜中文标题把整类程序改成浮动。
 
-本轮仅在自有 Xvfb 中运行构建与界面检查，不执行 switch、boot、注销、重启或真实锁屏，
+设计与构建阶段仅在自有 Xvfb 中运行检查，当时不执行 switch、boot、注销、重启或真实锁屏，
 不终止现有任务；用户数据、凭据、历史和模型不变。
 
 ## 本轮验证结果
@@ -98,3 +98,21 @@ Pavucontrol class fixture x=280、y=198、客户区 1036×656；边框计入后�
 
 实现本地提交 `e456740`（视觉与窗口规则）、`0a044d4`（菜单与行为检查）；本轮不 push。
 应用新结果后需要重新进入 DWM 才会启动新的 dwm 二进制；本轮没有更换当前运行的 WM。
+
+## 用户授权后的系统应用
+
+2026-10-19 12:41:46，用户明确要求“切换好”。先执行已构建结果的 `dry-activate`，
+计划只重启 `home-manager-mayon.service`，不会重启 greetd 或结束桌面；随后执行
+`sudo nixos-rebuild switch --flake .#nixos-btw --no-write-lock-file --max-jobs 1 --cores 2`，返回 0。
+系统 profile 为 generation 396，`/run/current-system` 指向上述最终系统；
+上一代 generation 395 保留。应用日志 `/tmp/codex-dwm-v2-switch.log`。
+
+实际检查：Xorg target、Picom、Dunst、状态、壁纸与空闲锁屏服务 active，Mango target inactive；
+用户管理器没有 failed units。Picom 在生产 GLX 配置下启动且没有新增错误日志，
+不把短时服务启动扩大为完整 GPU/性能验收。Dunst 重载时尝试 Wayland 后出现警告并回退 X11，
+服务仍 active/running、Result=success，`dunstctl` 查询正常；此记录不宣称生产日志完全无警告。
+
+切换前后 greetd 的两个进程、DWM 与两个 Codex 的 PID/启动时间均未改变，没有注销或重启。
+现有 DWM PID 2373 仍运行旧包 `ccdpq46w06gpwd46whkalsgjc8n9c42c`；已激活的会话脚本指向
+新包 `jb17b1bkgjrirz9jmc30927i0ql2cdba`。菜单、通知、合成与壁纸配置已加载，
+新 DWM 的栏、间距和窗口规则需要用户之后重新登录 **DWM** 才生效；不能标为已热加载。
