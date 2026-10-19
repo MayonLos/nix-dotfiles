@@ -18,7 +18,7 @@ let
   # `xwayland_ignore_scale = 0` the X server ran at the *logical* size
   # (`xdpyinfo`: 1707x1067 = 2560/1.5) and every X surface was stretched 1.5x
   # onto the panel, which is why X11 clients -- Steam most visibly -- rendered
-  # soft. wm/mango/config.nix now sets `xwayland_ignore_scale = 1`, so X windows
+  # soft. mango.nix now sets `xwayland_ignore_scale = 1`, so X windows
   # get physical-pixel buffers presented 1:1 (measured with an xclock:
   # 936x1010 logical vs 1392x1503 X-side, ratio 1.49).
   #
@@ -61,8 +61,8 @@ in
   xresources.properties."Xft.dpi" = hostFacts.display.x11Dpi;
 
   systemd.user.services.xrdb-merge = mkGraphicalService {
-    target = "mango-session.target";
-    description = "Merge ~/.Xresources into mango's built-in Xwayland server";
+    target = config.nixDotfiles.graphicalSessionTargets;
+    description = "Merge ~/.Xresources into the selected X server";
     service = {
       Type = "oneshot";
       RemainAfterExit = true;

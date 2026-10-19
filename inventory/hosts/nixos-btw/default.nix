@@ -100,6 +100,7 @@ in
     };
     includes = with den.aspects; [
       personal-desktop
+      xorg-session
       engineering-workbench
       project-workbench
       embedded-workbench

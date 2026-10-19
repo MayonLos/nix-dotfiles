@@ -10,6 +10,7 @@
         }:
         {
           imports = [
+            ./session-targets.nix
             (import ./mango.nix { palette = user.appearance; })
             (import ./noctalia.nix {
               palette = user.appearance;
@@ -24,15 +25,18 @@
             ./screenshot.nix
             ./tools.nix
           ];
-          systemd.user.targets.mango-session.Unit.Wants = [
-            "pipewire.socket"
-            "pipewire-pulse.socket"
-          ];
+          nixDotfiles.graphicalSessionTargets = [ "mango-session.target" ];
           programs.btop.settings.color_theme = lib.mkIf (builtins.elem "btop" noctaliaIntegrations) "noctalia";
         };
       user.extraGroups = [ "input" ];
       provides.${host.name}.includes = [ den.aspects.interactive-session-host ];
     };
+    xorg-session = { host, user, ... }: {
+      includes = [ den.aspects.interactive-session ];
+      homeManager = import ./xorg.nix { palette = user.appearance; };
+      provides.${host.name}.includes = [ den.aspects.xorg-session-host ];
+    };
+    xorg-session-host.nixos.imports = [ ./host/xorg.nix ];
     interactive-session-host = { host, ... }: {
       nixos.imports = [
         ./host/mango.nix

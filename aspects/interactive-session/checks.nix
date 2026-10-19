@@ -16,6 +16,7 @@ let
         "xrdb-merge"
       ] home.systemd.user.services;
       environment = home.systemd.user.sessionVariables;
+      sharedTargets = home.nixDotfiles.graphicalSessionTargets;
       greeter = host.services.displayManager.noctalia-greeter.settings;
       inherit palette;
     }
@@ -59,9 +60,10 @@ pkgs.runCommand "interactive-session-config" { nativeBuildInputs = [ python ]; }
   assert "noctalia-mango" not in settings["theme"]["templates"]["user"]
   assert settings["shell"]["launch_apps_as_systemd_services"]
   for name, unit in m["units"].items():
-      assert unit["Unit"]["PartOf"] == ["mango-session.target"], name
-      assert unit["Unit"]["After"] == ["mango-session.target"], name
-      assert unit["Install"]["WantedBy"] == ["mango-session.target"], name
+      targets = m["sharedTargets"] if name in ("fcitx5-daemon", "xrdb-merge") else ["mango-session.target"]
+      assert unit["Unit"]["PartOf"] == targets, name
+      assert unit["Unit"]["After"] == targets, name
+      assert unit["Install"]["WantedBy"] == targets, name
   noctalia = m["units"]["noctalia"]
   assert noctalia["Service"]["Restart"] == "on-failure"
   assert noctalia["Unit"]["StartLimitBurst"] == 3

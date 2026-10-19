@@ -3,6 +3,7 @@
 更新：2026-10-19。Den 批次 0–7 已完成实现、文档与构建，详见[实施记录](den-execution.md)。
 该初轮没有应用系统；其后用户已 nr 并授权后续自主应用，当前运行与待验项以各轮记录为准。
 最新 CLI、媒体与桌面见[系统界面记录](system-experience-execution.md)；Hyprland 当前移除状态见[移除记录](hyprland-removal-execution.md)。
+可选 dwm / Xorg 桌面的当前实现、应用及待验项见 [Xorg 记录](xorg-desktop-execution.md)。
 下文起点、旧提交清单和批次执行顺序保留为历史设计依据，不重做已完成迁移或软件选择；
 继续工作应先读最新记录中的真实 generation、写入交接和未验证项目。没有部署真实服务器。
 

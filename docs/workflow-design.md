@@ -153,3 +153,5 @@ Yazi 主题由 HM 消费共享 OneDark palette，不再由 Noctalia yazi 模板�
 声明一致。旧桌面含 HM 已加载标记，新终端也可能继承旧值，完整重登录后刷新；
 当前终端可用 `env BAT_THEME=base16 bat 文件` 临时采用新主题。
 桌面会话的移除过程和应用状态见[Hyprland 移除记录](hyprland-removal-execution.md)。
+另有用户明确选择的可选 dwm + Picom / 真 Xorg 会话，用于 QQ、腾讯会议原生共享；
+登录选择、原生栏、菜单和不同于 Mango 的操作见 [Xorg 记录](xorg-desktop-execution.md)。

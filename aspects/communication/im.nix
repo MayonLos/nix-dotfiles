@@ -28,7 +28,8 @@ let
   # the picker ends at "该应用已无法共享". Nothing in this file can change that,
   # and nothing else in the repo does either -- the v4l2loopback virtual-camera
   # workaround was built, tried and then removed on request. Screen sharing goes
-  # through a browser instead; see the `desktop-apps` skill.
+  # through a browser instead. The optional real Xorg session uses QQ's X11
+  # backend; its own picker still needs an actual call/capture acceptance test.
   #
   # Verified 2026-08-13: dlopen("libpipewire-0.3.so.0") fails with QQ's own
   # environment and succeeds (pw_init included) with pipewire on the path.
@@ -56,16 +57,24 @@ let
   # initialised. Its input now goes through text-input-v3, where classicui
   # already scales correctly from wp_fractional_scale_v1.
   #
-  # If the tray icon regresses, drop this one flag; nothing else here depends
-  # on it. Screen sharing is not a reason to touch it either way — see above.
+  # This historical Mango workaround remains Wayland-only. Forcing it in the
+  # optional real Xorg session would prevent QQ from starting at all.
+  qqLauncher = pkgs.writeShellScript "qq-session-launcher" ''
+    backend=wayland
+    if [[ "''${XDG_SESSION_TYPE:-}" == x11 || -z "''${WAYLAND_DISPLAY:-}" ]]; then
+      backend=x11
+    fi
+    export LD_LIBRARY_PATH="${
+      lib.makeLibraryPath [ pkgs.pipewire ]
+    }''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+    exec ${pkgs-unstable.qq}/bin/qq "--ozone-platform=$backend" "$@"
+  '';
   qq = pkgs.symlinkJoin {
     name = "qq-with-pipewire";
     paths = [ pkgs-unstable.qq ];
-    nativeBuildInputs = [ pkgs.makeWrapper ];
     postBuild = ''
-      wrapProgram $out/bin/qq \
-        --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [ pkgs.pipewire ]} \
-        --add-flags "--ozone-platform=wayland"
+      rm "$out/bin/qq"
+      cp ${qqLauncher} "$out/bin/qq"
 
       # qq.desktop hardcodes the unwrapped store path, so the launcher would
       # bypass the wrapper entirely without this.
@@ -81,9 +90,14 @@ in
   # qq 3.2.29 vs 3.2.32, wechat-uos 4.1.1.4 vs 4.1.1.7.
   home.packages = [
     # Passes --enable-wayland-ime --wayland-text-input-version=3 when
-    # NIXOS_OZONE_WL and WAYLAND_DISPLAY are both set (they are), so fcitx5's
+    # NIXOS_OZONE_WL and WAYLAND_DISPLAY are both set in Mango, so fcitx5's
     # wayland frontend drives it over text-input-v3 rather than XIM.
     qq
+
+    # Stable's launcher enables the Wayland sharing hook only in a Wayland
+    # session. In real Xorg use `wemeet`, not `wemeet-xwayland` (which forces
+    # that hook). Conference, camera/audio and capture still need a real call.
+    pkgs.wemeet
 
     # wechat-uos rather than `wechat`: the UOS build tracks upstream more
     # closely (4.1.1.7 vs 4.1.1.4) and its launcher maps XMODIFIERS onto

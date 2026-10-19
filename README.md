@@ -11,6 +11,7 @@ NixOS + Home Manager 配置，当前只有一个真实主机实例 `nixos-btw`�
 系统/编辑器应用见[应用记录](docs/system-polish-execution.md)，最后一轮面板、场景和输入法
 见[收尾记录](docs/panel-rime-execution.md)；最新 CLI、媒体与桌面见[系统界面记录](docs/system-experience-execution.md)。
 Hyprland 移除的当前状态见[移除记录](docs/hyprland-removal-execution.md)。历史记录区分构建、应用与用户验收。
+可选 dwm + Picom / Xorg 兼容桌面见 [Xorg 记录](docs/xorg-desktop-execution.md)，主要用于 QQ、腾讯会议原生屏幕共享；实际通话仍需验收。
 
 ## 目录
 

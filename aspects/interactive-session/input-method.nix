@@ -1,5 +1,10 @@
 { palette }:
-{ pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 {
   i18n.inputMethod = {
     enable = true;
@@ -34,7 +39,7 @@
 
           # Wayland already scales classicui through wp_fractional_scale_v1.
           # Do not force 144 DPI there: it would multiply the scale twice.
-          # QQ is pinned to Wayland, while wechat-uos uses X11 and therefore
+          # QQ uses Wayland in Mango and X11 in dwm; X11 clients therefore
           # reads the merged Xft.dpi value through PerScreenDPI.
           PerScreenDPI = "False";
         };
@@ -43,9 +48,9 @@
   };
 
   systemd.user.services.fcitx5-daemon = {
-    Unit.PartOf = lib.mkForce [ "mango-session.target" ];
-    Unit.After = lib.mkForce [ "mango-session.target" ];
-    Install.WantedBy = lib.mkForce [ "mango-session.target" ];
+    Unit.PartOf = lib.mkForce config.nixDotfiles.graphicalSessionTargets;
+    Unit.After = lib.mkForce config.nixDotfiles.graphicalSessionTargets;
+    Install.WantedBy = lib.mkForce config.nixDotfiles.graphicalSessionTargets;
   };
   xdg = {
     dataFile."fcitx5/themes/One-Dark-Darker/theme.conf".text = ''

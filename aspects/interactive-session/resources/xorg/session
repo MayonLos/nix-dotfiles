@@ -1,0 +1,336 @@
+#!@runtimeShell@
+
+set -uo pipefail
+umask 077
+
+SYSTEMCTL='@systemctl@'
+DBUS_UPDATE='@dbusUpdateActivationEnvironment@'
+DWM='@dwm@'
+XPROP='@xprop@'
+SLEEP='@sleep@'
+STAT='@stat@'
+DEFAULT_OZONE=@defaultOzone@
+DEFAULT_XMODIFIERS=@defaultXModifiers@
+
+die() {
+  printf 'xorg-session: %s\n' "$*" >&2
+  exit 1
+}
+
+process_starttime() {
+  local line rest
+  local -a fields
+  IFS= read -r line < "/proc/$1/stat" || return 1
+  rest=${line##*) }
+  read -r -a fields <<< "$rest"
+  [[ ${#fields[@]} -ge 20 ]] || return 1
+  printf '%s\n' "${fields[19]}"
+}
+
+process_effective_uid() {
+  local key real effective rest
+  while read -r key real effective rest; do
+    if [[ "$key" == Uid: ]]; then
+      printf '%s\n' "$effective"
+      return 0
+    fi
+  done < "/proc/$1/status"
+  return 1
+}
+
+validate_session_runtime_dir() {
+  local mode owner runtime_dir session_dir
+  runtime_dir="${XDG_RUNTIME_DIR:-}"
+  [[ "$runtime_dir" == /* && -d "$runtime_dir" && ! -L "$runtime_dir" ]] || return 1
+  owner=$("$STAT" -c %u -- "$runtime_dir") || return 1
+  mode=$("$STAT" -c %a -- "$runtime_dir") || return 1
+  [[ "$owner" == "$EUID" && "$mode" =~ ^[0-7]+$ ]] || return 1
+  (( (8#$mode & 077) == 0 )) || return 1
+
+  session_dir="$runtime_dir/nix-dotfiles-xorg"
+  if [[ ! -e "$session_dir" && ! -L "$session_dir" ]]; then
+    mkdir -m 700 -- "$session_dir" || return 1
+  fi
+  [[ -d "$session_dir" && ! -L "$session_dir" ]] || return 1
+  owner=$("$STAT" -c %u -- "$session_dir") || return 1
+  mode=$("$STAT" -c %a -- "$session_dir") || return 1
+  [[ "$owner" == "$EUID" && "$mode" =~ ^[0-7]+$ ]] || return 1
+  (( (8#$mode & 077) == 0 )) || return 1
+  printf '%s\n' "$session_dir"
+}
+
+exit_session() {
+  local session_dir pidfile pid expected_start actual_start actual_uid
+  session_dir=$(validate_session_runtime_dir) || die 'XDG_RUNTIME_DIR session directory is unsafe or unavailable.'
+  pidfile="$session_dir/session.pid"
+  [[ -f "$pidfile" && ! -L "$pidfile" ]] || die 'no Xorg session supervisor is recorded.'
+  read -r pid expected_start < "$pidfile" || die 'invalid Xorg session PID file.'
+  [[ "$pid" =~ ^[1-9][0-9]*$ && "$expected_start" =~ ^[0-9]+$ ]] || die 'invalid Xorg session PID record.'
+  [[ -d "/proc/$pid" ]] || die 'recorded Xorg session process no longer exists.'
+  actual_uid=$(process_effective_uid "$pid") || die 'cannot verify recorded Xorg session owner.'
+  [[ "$actual_uid" == "$EUID" ]] || die 'recorded Xorg session belongs to another user.'
+  actual_start=$(process_starttime "$pid") || die 'cannot verify recorded Xorg session start time.'
+  [[ "$actual_start" == "$expected_start" ]] || die 'recorded Xorg session PID has been reused.'
+  kill -TERM "$pid" || die 'could not signal the recorded Xorg session supervisor.'
+}
+
+if [[ "${1:-}" == --exit ]]; then
+  [[ "$#" == 1 ]] || die 'unexpected arguments to xorg-session-exit.'
+  exit_session
+  exit 0
+fi
+[[ "$#" == 0 ]] || die 'unexpected arguments.'
+
+unit_active() {
+  "$SYSTEMCTL" --user is-active --quiet "$1" >/dev/null 2>&1
+}
+
+if [[ -z "${DISPLAY:-}" ]]; then
+  die 'DISPLAY is unset; start this entry through the X11 session launcher.'
+fi
+if [[ "${XDG_SESSION_TYPE:-}" != x11 ]]; then
+  die 'XDG_SESSION_TYPE must be x11.'
+fi
+
+session_dir=$(validate_session_runtime_dir) || die 'XDG_RUNTIME_DIR session directory is unsafe or unavailable.'
+pidfile="$session_dir/session.pid"
+
+for target in mango-session.target xorg-session.target graphical-session.target; do
+  if unit_active "$target"; then
+    die "refusing to start while $target is active."
+  fi
+done
+
+if [[ ! -r '@hmSessionVars@' ]]; then
+  die 'Home Manager session variables are unavailable.'
+fi
+
+# Load the public Home Manager session environment. The flag is for HM's
+# .xprofile/.xsession protocol and must not make this independent entry skip
+# its own environment initialization.
+unset __HM_SESS_VARS_SOURCED HM_XPROFILE_SOURCED
+# shellcheck disable=SC1091
+. '@hmSessionVars@'
+
+# Remove stale compositor-only names from the shared manager without reading
+# or importing their values. This runs only after preflight has established
+# that no Mango/Xorg/graphical session is active.
+clear_stale_compositor_environment() {
+  local name
+  local -a stale_names=(WAYLAND_DISPLAY)
+  while IFS='=' read -r name _; do
+    case "$name" in
+      MANGO_* | HYPRLAND_*) stale_names+=("$name") ;;
+    esac
+  done < <("$SYSTEMCTL" --user show-environment 2>/dev/null)
+
+  "$SYSTEMCTL" --user unset-environment "${stale_names[@]}" >/dev/null 2>&1 || true
+  "$DBUS_UPDATE" \
+    WAYLAND_DISPLAY= MANGO_INSTANCE_SIGNATURE= MANGO_SOCKET= \
+    HYPRLAND_INSTANCE_SIGNATURE= \
+    >/dev/null 2>&1 || true
+}
+
+clear_stale_compositor_environment
+
+# A login greeter may pass variables from its own compositor. Normalize this
+# process to X11 before starting dwm and any of its children.
+export QT_QPA_PLATFORM=xcb
+export GDK_BACKEND=x11
+export GTK_IM_MODULE=fcitx
+export QT_IM_MODULE=fcitx
+export XMODIFIERS=@im=fcitx
+export XDG_CURRENT_DESKTOP=dwm
+export XDG_SESSION_TYPE=x11
+export XDG_SESSION_DESKTOP=dwm
+export DESKTOP_SESSION=xorg-dwm
+export MOZ_ENABLE_WAYLAND=0
+export ELECTRON_OZONE_PLATFORM_HINT=x11
+export NIXOS_OZONE_WL=''
+unset WAYLAND_DISPLAY
+
+# Nix's noninteractive bash deliberately has no compgen builtin. Prefix-name
+# expansion works in the actual runtime shell and never reads variable values.
+for session_var_name in "${!MANGO_@}" "${!HYPRLAND_@}"; do
+  if [[ -n "$session_var_name" ]]; then
+    unset "$session_var_name"
+  fi
+done
+
+# Only import the session contract into the shared user manager and D-Bus
+# activation environment. In particular, never import the whole shell env.
+session_variables=(
+  DISPLAY XAUTHORITY XDG_SESSION_ID
+  XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP DESKTOP_SESSION
+  QT_QPA_PLATFORM GDK_BACKEND GTK_IM_MODULE QT_IM_MODULE XMODIFIERS
+  MOZ_ENABLE_WAYLAND ELECTRON_OZONE_PLATFORM_HINT NIXOS_OZONE_WL
+)
+manager_variables=()
+activation_assignments=()
+for name in "${session_variables[@]}"; do
+  if [[ -v "$name" ]]; then
+    manager_variables+=("$name")
+    activation_assignments+=("$name=${!name}")
+  fi
+done
+
+restore_session_environment() {
+  "$SYSTEMCTL" --user unset-environment "${session_variables[@]}" >/dev/null 2>&1 || true
+  # Restore public static HM defaults; Mango imports dynamic display variables
+  # only. XDG_RUNTIME_DIR belongs to the user manager, never to this session.
+  "$SYSTEMCTL" --user set-environment \
+    "NIXOS_OZONE_WL=$DEFAULT_OZONE" "XMODIFIERS=$DEFAULT_XMODIFIERS" >/dev/null 2>&1 || true
+  clear_stale_compositor_environment
+  "$DBUS_UPDATE" \
+    DISPLAY= XAUTHORITY= XDG_SESSION_ID= WAYLAND_DISPLAY= \
+    "NIXOS_OZONE_WL=$DEFAULT_OZONE" "XMODIFIERS=$DEFAULT_XMODIFIERS" \
+    XDG_CURRENT_DESKTOP= XDG_SESSION_TYPE= XDG_SESSION_DESKTOP= DESKTOP_SESSION= \
+    QT_QPA_PLATFORM= GDK_BACKEND='*' GTK_IM_MODULE= QT_IM_MODULE= \
+    MOZ_ENABLE_WAYLAND= ELECTRON_OZONE_PLATFORM_HINT= \
+    >/dev/null 2>&1 || true
+}
+
+if ! "$SYSTEMCTL" --user import-environment "${manager_variables[@]}"; then
+  restore_session_environment
+  die 'could not import the X11 session environment into systemd --user.'
+fi
+if ! "$DBUS_UPDATE" --systemd "${activation_assignments[@]}"; then
+  restore_session_environment
+  die 'could not import the X11 session environment into D-Bus activation.'
+fi
+
+cleanup() {
+  local status=$?
+  trap - EXIT
+  trap '' INT TERM
+
+  if (( owns_pidfile )); then
+    # The private target belongs to this session. The shared graphical targets
+    # and manager environment are only ours when Mango has not taken over.
+    "$SYSTEMCTL" --user stop xorg-session.target >/dev/null 2>&1 || true
+    if ! unit_active mango-session.target; then
+      "$SYSTEMCTL" --user stop graphical-session.target graphical-session-pre.target >/dev/null 2>&1 || true
+      restore_session_environment
+    fi
+    remove_session_pidfile
+  fi
+  return "$status"
+}
+
+remove_session_pidfile() {
+  local pid expected_start
+  [[ -n "${pidfile:-}" && -f "$pidfile" && ! -L "$pidfile" ]] || return 0
+  read -r pid expected_start < "$pidfile" || return 0
+  [[ "$pid" == "${self_pid:-}" && "$expected_start" == "${self_starttime:-}" ]] || return 0
+  rm -f -- "$pidfile"
+}
+
+child=
+signal_status=0
+child_status=0
+child_exited=0
+owns_pidfile=0
+forward_signal() {
+  local signal="$1"
+  signal_status="$2"
+  if [[ -n "$child" ]]; then
+    kill -s "$signal" "$child" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT
+trap 'forward_signal TERM 143' TERM
+trap 'forward_signal INT 130' INT
+
+self_pid=$BASHPID
+self_starttime=$(process_starttime "$self_pid") || die 'cannot record supervisor start time.'
+if [[ -e "$pidfile" || -L "$pidfile" ]]; then
+  if [[ -f "$pidfile" && ! -L "$pidfile" ]] && read -r existing_pid existing_start < "$pidfile"; then
+    if [[ "$existing_pid" =~ ^[1-9][0-9]*$ && "$existing_start" =~ ^[0-9]+$ \
+      && -d "/proc/$existing_pid" ]] \
+      && [[ "$(process_effective_uid "$existing_pid" 2>/dev/null || true)" == "$EUID" ]] \
+      && [[ "$(process_starttime "$existing_pid" 2>/dev/null || true)" == "$existing_start" ]]; then
+      die 'an Xorg session supervisor is already running.'
+    fi
+    rm -f -- "$pidfile" || die 'cannot remove stale Xorg session PID file.'
+  else
+    die 'Xorg session PID path is not a regular file.'
+  fi
+fi
+if ! ( set -o noclobber; printf '%s %s\n' "$self_pid" "$self_starttime" > "$pidfile" ); then
+  die 'could not reserve the Xorg session PID file.'
+fi
+owns_pidfile=1
+
+"$DWM" &
+child=$!
+
+wait_for_dwm() {
+  local attempt supporting_window window_name
+  for (( attempt = 0; attempt < 50; attempt++ )); do
+    if ! kill -0 "$child" 2>/dev/null; then
+      wait "$child"
+      child_status=$?
+      child=
+      child_exited=1
+      return 2
+    fi
+
+    supporting_window=$("$XPROP" -root -notype _NET_SUPPORTING_WM_CHECK 2>/dev/null || true)
+    if [[ "$supporting_window" =~ (0x[[:xdigit:]]+) ]]; then
+      window_name=$("$XPROP" -id "${BASH_REMATCH[1]}" -notype _NET_WM_NAME 2>/dev/null || true)
+      if [[ "$window_name" =~ =[[:space:]]*\"dwm\"[[:space:]]*$ ]]; then
+        return 0
+      fi
+    fi
+
+    if (( signal_status != 0 )); then
+      return 3
+    fi
+    "$SLEEP" 0.1
+  done
+  return 1
+}
+
+stop_and_wait_for_dwm() {
+  if [[ -n "$child" ]]; then
+    if (( signal_status == 0 )); then
+      kill -TERM "$child" 2>/dev/null || true
+    fi
+    wait "$child"
+    child_status=$?
+    child=
+    child_exited=1
+  fi
+}
+
+if wait_for_dwm; then
+  if ! "$SYSTEMCTL" --user start xorg-session.target; then
+    printf 'xorg-session: could not start xorg-session.target.\n' >&2
+    stop_and_wait_for_dwm
+    exit 1
+  fi
+else
+  readiness_status=$?
+  if (( child_exited == 0 )); then
+    stop_and_wait_for_dwm
+  fi
+  if (( signal_status != 0 )); then
+    exit "$signal_status"
+  fi
+  if (( readiness_status == 2 )); then
+    exit "$child_status"
+  fi
+  die 'dwm did not publish the EWMH window-manager identity within 5 seconds.'
+fi
+
+while :; do
+  wait "$child"
+  child_status=$?
+  if (( signal_status != 0 )); then
+    if kill -0 "$child" 2>/dev/null; then
+      continue
+    fi
+    exit "$signal_status"
+  fi
+  exit "$child_status"
+done

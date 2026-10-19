@@ -1,4 +1,4 @@
-# systemd user unit for a process that lives with the Wayland session.
+# systemd user unit for a process that lives with selected graphical sessions.
 # Consumers pass only the description and the Service section; Unit/Install
 # stay identical. Pure data -- no module arguments needed.
 {
@@ -7,15 +7,18 @@
   target,
   unit ? { },
 }:
+let
+  targets = if builtins.isList target then target else [ target ];
+in
 {
   Unit = {
     Description = description;
-    PartOf = [ target ];
-    After = [ target ];
+    PartOf = targets;
+    After = targets;
   }
   // unit;
 
   Service = service;
 
-  Install.WantedBy = [ target ];
+  Install.WantedBy = targets;
 }

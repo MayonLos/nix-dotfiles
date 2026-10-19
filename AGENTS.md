@@ -9,6 +9,9 @@ NixOS + Home Manager，Den + flake-parts。当前真实实例为单主机 `nixos
 `mayon`：Intel + NVIDIA 笔记本，使用 Mango 桌面。Home Manager 随 NixOS 重建，没有独立
 switch。
 
+`xorg-session` 另提供可选 dwm + Picom 真 Xorg 会话，用于 QQ/腾讯会议等原生捕获；
+Mango 仍是登录默认项。两者不同时运行；入口、服务归属与待验项见 `docs/xorg-desktop-execution.md`。
+
 | 路径 | 职责 |
 |---|---|
 | `flake.nix`、`nix/` | 输入、Den/flake-parts 接线、nixpkgs、开发 shell、Neovim 输出、检查 |
