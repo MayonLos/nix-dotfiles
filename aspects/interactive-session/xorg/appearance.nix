@@ -11,7 +11,7 @@ let
   px = n: builtins.floor (n * hostFacts.display.x11Dpi / 96.0 + 0.5);
 in
 {
-  # Lifecycle and D-Bus activation are owned by xorg.nix's session target.
+  # Lifecycle and D-Bus activation are owned by this feature's session target.
   services.picom = {
     enable = true;
     package = pkgs.picom;
@@ -23,10 +23,10 @@ in
       use-damage = true;
       fading = false;
       shadow = false;
-      shadow-radius = px 12;
-      shadow-opacity = 0.22;
-      shadow-offset-x = -(px 8);
-      shadow-offset-y = -(px 5);
+      shadow-radius = px 14;
+      shadow-opacity = 0.18;
+      shadow-offset-x = -(px 10);
+      shadow-offset-y = -(px 6);
       shadow-color = palette.black;
       crop-shadow-to-monitor = true;
       # Solid reading surfaces do not need continuous background blur.
@@ -42,9 +42,12 @@ in
         { corner-radius = 0; shadow = false; dim = 0.0; },
         {
           match = "_MAYON_DWM_FLOATING@ = 1";
-          corner-radius = ${toString (px 8)};
+          corner-radius = ${toString (px 6)};
           shadow = true;
         },
+        # dmenu is an override-redirect window, not a dwm floating client.
+        # Give this centered menu depth without changing other popup windows.
+        { match = "class_g = 'dmenu'"; corner-radius = 0; shadow = true; },
         # Dunst draws its own rounded, opaque surface.
         { match = "class_g = 'Dunst'"; corner-radius = 0; shadow = false; },
         {
@@ -73,18 +76,20 @@ in
         scale = 0;
         follow = "keyboard";
         origin = "top-right";
-        offset = "(14, 58)";
-        width = 340;
+        offset = "(14, 52)";
+        width = 320;
         height = "(0, 220)";
         notification_limit = 3;
         transparency = 0;
-        padding = 10;
-        horizontal_padding = 12;
-        text_icon_padding = 10;
+        padding = 14;
+        horizontal_padding = 16;
+        text_icon_padding = 12;
         gap_size = 8;
         frame_width = 1;
-        frame_color = palette.border;
-        corner_radius = 8;
+        # Ordinary notifications share the menu's quiet outline. Only critical
+        # notifications need an accent frame; focus blue belongs to navigation.
+        frame_color = palette.selection;
+        corner_radius = 6;
         separator_color = "frame";
         format = "<b>%s</b>\\n%b";
         word_wrap = true;
@@ -94,9 +99,9 @@ in
         icon_theme = palette.iconTheme;
         enable_recursive_icon_lookup = true;
         progress_bar = true;
-        progress_bar_height = 6;
+        progress_bar_height = 4;
         progress_bar_frame_width = 0;
-        progress_bar_corner_radius = 3;
+        progress_bar_corner_radius = 2;
         progress_bar_min_width = 150;
         progress_bar_max_width = 280;
         highlight = palette.blue;
@@ -111,13 +116,13 @@ in
       urgency_low = {
         background = palette.bg;
         foreground = palette.brightFg;
-        frame_color = palette.border;
+        frame_color = palette.selection;
         timeout = 4;
       };
       urgency_normal = {
         background = palette.bg;
         foreground = palette.brightFg;
-        frame_color = palette.blue;
+        frame_color = palette.selection;
         timeout = 7;
       };
       urgency_critical = {

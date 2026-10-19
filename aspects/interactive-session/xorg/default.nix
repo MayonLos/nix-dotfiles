@@ -87,7 +87,7 @@ in
         Type = "oneshot";
         RemainAfterExit = true;
         ExecStart = pkgs.writeShellScript "xorg-background" ''
-          ${pkgs.feh}/bin/feh --no-fehbg --bg-fill ${../resources/wallpaper/wallpaper-009.png}
+          ${pkgs.feh}/bin/feh --no-fehbg --bg-fill ${../resources/wallpaper/wallpaper-002.png}
           ${pkgs.xset}/bin/xset s 600 600
           ${pkgs.xset}/bin/xset dpms 0 0 900
         '';

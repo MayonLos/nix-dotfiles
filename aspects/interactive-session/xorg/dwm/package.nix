@@ -16,6 +16,7 @@ let
     inherit (palette) muted;
     inherit (palette) red;
     inherit (palette) deep;
+    inherit (palette) surface;
   };
   src = fetchFromGitHub {
     owner = "bakkeby";
@@ -49,7 +50,8 @@ stdenv.mkDerivation {
       --blue ${lib.escapeShellArg colors.blue} \
       --muted ${lib.escapeShellArg colors.muted} \
       --red ${lib.escapeShellArg colors.red} \
-      --deep ${lib.escapeShellArg colors.deep}
+      --deep ${lib.escapeShellArg colors.deep} \
+      --surface ${lib.escapeShellArg colors.surface}
   '';
   preBuild = ''
     makeFlagsArray+=("PREFIX=$out" "CC=$CC")

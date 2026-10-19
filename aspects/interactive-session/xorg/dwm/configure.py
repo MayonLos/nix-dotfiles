@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 
 p = argparse.ArgumentParser()
-for name in ("profile", "bg", "fg", "blue", "muted", "red", "deep"):
+for name in ("profile", "bg", "fg", "blue", "muted", "red", "deep", "surface"):
     p.add_argument("--" + name, required=True)
 p.add_argument("--dpi", required=True, type=int)
 a = p.parse_args()
@@ -19,7 +19,8 @@ s = flags.read_text()
 enabled = {"BAR_SYSTRAY_PATCH", "BAR_HEIGHT_PATCH", "BAR_PADDING_PATCH", "CENTER_PATCH",
            "PERTAG_PATCH", "SCRATCHPADS_PATCH", "VANITYGAPS_PATCH",
            "FULLSCREEN_PATCH", "TOGGLEFULLSCREEN_PATCH", "BAR_STATUS2D_PATCH",
-           "FOCUSONNETACTIVE_PATCH", "SAVEFLOATS_PATCH"}
+           "FOCUSONNETACTIVE_PATCH", "SAVEFLOATS_PATCH", "FLOATPOS_PATCH",
+           "BAR_UNDERLINETAGS_PATCH"}
 enabled.add("CENTER_TRANSIENT_WINDOWS_BY_PARENT_PATCH")
 for name in enabled:
     s, n = re.subn(rf"(#define\s+{name}\s+)0\b", r"\g<1>1", s)
@@ -35,31 +36,37 @@ def once(pattern, repl):
     if n != 1:
         raise SystemExit(f"configuration anchor missing: {pattern[:70]}")
 
-for name, value in (("gappih", 6), ("gappiv", 6), ("gappoh", 8), ("gappov", 8)):
+for name, value in (("gappih", 10), ("gappiv", 10), ("gappoh", 14), ("gappov", 14)):
     once(rf"(static const unsigned int {name}\s*=\s*)\d+", rf"\g<1>{scale(value)}")
-once(r"(static const int smartgaps_fact\s*=\s*)\d+", r"\g<1>0")
-once(r"(static const int bar_height\s*=\s*)\d+", rf"\g<1>{scale(30)}")
-once(r"(static const int vertpad\s*=\s*)\d+", rf"\g<1>{scale(6)}")
-once(r"(static const int sidepad\s*=\s*)\d+", rf"\g<1>{scale(8)}")
-once(r"(#else\s*\nstatic const unsigned int borderpx\s*=\s*)\d+", rf"\g<1>{scale(2)}")
+once(r"(static const int smartgaps_fact\s*=\s*)\d+", r"\g<1>1")
+once(r"(static const int bar_height\s*=\s*)\d+", rf"\g<1>{scale(28)}")
+once(r"(static const int vertpad\s*=\s*)\d+", rf"\g<1>{scale(10)}")
+once(r"(static const int sidepad\s*=\s*)\d+", rf"\g<1>{scale(14)}")
+once(r"(#else\s*\nstatic const unsigned int borderpx\s*=\s*)\d+", rf"\g<1>{scale(1)}")
 once(r"(static const float mfact\s*=\s*)[0-9.]+", r"\g<1>0.60")
 once(r"#define MODKEY Mod1Mask", "#define MODKEY Mod4Mask")
 once(r'static const char \*termcmd\[\]\s*=\s*\{ "st", NULL \};', "")
 
 # Use a mono face with fontconfig CJK fallback; the Xft DPI is provided by the host.
 once(r"static const char \*fonts\[\]\s*=\s*\{[^}]*\};",
-     'static const char *fonts[] = { "JetBrainsMono Nerd Font:size=10", "Noto Sans CJK SC:size=10" };')
+     'static const char *fonts[] = { "JetBrainsMono Nerd Font:size=9.5", "Noto Sans CJK SC:size=9.5" };')
 
-colors = {"normfgcolor": a.fg, "normbgcolor": a.bg, "normbordercolor": a.muted,
-          "normfloatcolor": a.muted, "selfgcolor": a.bg, "selbgcolor": a.blue,
+# Underline only the active tag, keeping its label legible against the shared deep bar.
+once(r"(static const unsigned int ulinepad\s*=\s*)\d+", rf"\g<1>{scale(5)}")
+once(r"(static const unsigned int ulinestroke\s*=\s*)\d+", rf"\g<1>{scale(2)}")
+once(r"(static const int ulineall\s*=\s*)\d+", r"\g<1>0")
+once(r"(static const int ulinetop\s*=\s*)\d+", r"\g<1>0")
+
+colors = {"normfgcolor": a.fg, "normbgcolor": a.deep, "normbordercolor": a.surface,
+          "normfloatcolor": a.surface, "selfgcolor": a.blue, "selbgcolor": a.deep,
           "selbordercolor": a.blue, "selfloatcolor": a.blue,
-          "titlenormfgcolor": a.fg, "titlenormbgcolor": a.bg,
-          "titlenormbordercolor": a.muted, "titlenormfloatcolor": a.muted,
+          "titlenormfgcolor": a.fg, "titlenormbgcolor": a.deep,
+          "titlenormbordercolor": a.surface, "titlenormfloatcolor": a.surface,
           "titleselfgcolor": a.fg, "titleselbgcolor": a.deep,
           "titleselbordercolor": a.blue, "titleselfloatcolor": a.blue,
-          "tagsnormfgcolor": a.fg, "tagsnormbgcolor": a.bg,
-          "tagsnormbordercolor": a.muted, "tagsnormfloatcolor": a.muted,
-          "tagsselfgcolor": a.bg, "tagsselbgcolor": a.blue,
+          "tagsnormfgcolor": a.muted, "tagsnormbgcolor": a.deep,
+          "tagsnormbordercolor": a.surface, "tagsnormfloatcolor": a.surface,
+          "tagsselfgcolor": a.blue, "tagsselbgcolor": a.deep,
           "tagsselbordercolor": a.blue, "tagsselfloatcolor": a.blue,
           "hidnormfgcolor": a.muted, "hidselfgcolor": a.blue,
           "urgfgcolor": a.deep, "urgbgcolor": a.red, "urgbordercolor": a.red}
@@ -84,12 +91,14 @@ once(r"static const Rule rules\[\] = \{.*?\n\};",
      '\tRULE(.wintype = WTYPE "DIALOG", .isfloating = 1, .iscentered = 1)\n'
      '\tRULE(.wintype = WTYPE "UTILITY", .isfloating = 1, .iscentered = 1)\n'
      '\tRULE(.wintype = WTYPE "SPLASH", .isfloating = 1, .iscentered = 1)\n'
-     '\tRULE(.class = "Pavucontrol", .isfloating = 1, .iscentered = 1)\n'
-     '\tRULE(.class = "Nm-connection-editor", .isfloating = 1, .iscentered = 1)\n'
-     '\tRULE(.class = "Blueman-manager", .isfloating = 1, .iscentered = 1)\n'
-     '\tRULE(.class = "Fcitx5-config-qt", .isfloating = 1, .iscentered = 1)\n'
-     '\tRULE(.instance = "mayon-scratch-term", .tags = SPTAG(0), .isfloating = 1, .iscentered = 1)\n'
-     '\tRULE(.instance = "mayon-scratch-yazi", .tags = SPTAG(1), .isfloating = 1, .iscentered = 1)\n'
+     '\tRULE(.class = "Pavucontrol", .isfloating = 1, .iscentered = 1, .floatpos = "50% 50% 65% 70%")\n'
+     '\tRULE(.class = "Nm-connection-editor", .isfloating = 1, .iscentered = 1, .floatpos = "50% 50% 60% 65%")\n'
+     '\tRULE(.class = "Blueman-manager", .isfloating = 1, .iscentered = 1, .floatpos = "50% 50% 60% 65%")\n'
+     '\tRULE(.class = "Fcitx5-config-qt", .isfloating = 1, .iscentered = 1, .floatpos = "50% 50% 65% 70%")\n'
+     '\tRULE(.class = "qt6ct", .isfloating = 1, .iscentered = 1, .floatpos = "50% 50% 65% 70%")\n'
+     '\tRULE(.class = "xorg-help", .isfloating = 1, .iscentered = 1, .floatpos = "50% 50% 65% 70%")\n'
+     '\tRULE(.instance = "mayon-scratch-term", .tags = SPTAG(0), .isfloating = 1, .iscentered = 1, .floatpos = "50% 50% 65% 70%")\n'
+     '\tRULE(.instance = "mayon-scratch-yazi", .tags = SPTAG(1), .isfloating = 1, .iscentered = 1, .floatpos = "50% 50% 65% 70%")\n'
      '};')
 
 # Replace the key table without enabling unrelated flexipatch key modes.
