@@ -35,4 +35,4 @@ OpenOCD mode 覆盖。`rules.nix` 将四份规则改成 `MODE:="0660", TAG+="uac
 `tests/composition/embedded.nix` 与本目录 `checks.nix`。
 
 移除 aspect 只撤销声明，不清理生成项目、固件、应用偏好或设备状态。没有切换系统或执行
-activation；硬件 ACL/设备使用需要应用配置后实测。每批记录见[执行记录](../../docs/den-execution.md)。
+activation；硬件 ACL/设备使用需要应用配置后实测。每批记录见[执行记录](../../docs/history/den-execution.md)。

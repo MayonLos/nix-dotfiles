@@ -1,6 +1,6 @@
 # 操作方式设计
 
-状态：2026-10-18，Den 操作设计及后续窗口体验已由用户 nr 应用，本轮进一步优化获授权继续应用。按键/argv/cwd、tmux 键表及编辑器的隔离检查见 [实施记录](den-execution.md)；实际 GUI、文件管理器和项目交互仍待验收。
+状态：2026-10-18，Den 操作设计及后续窗口体验已由用户 nr 应用，本轮进一步优化获授权继续应用。按键/argv/cwd、tmux 键表及编辑器的隔离检查见 [实施记录](history/den-execution.md)；实际 GUI、文件管理器和项目交互仍待验收。
 
 ## 操作层次
 
@@ -125,7 +125,7 @@ tmux 会话恢复继续保留布局与编辑会话，禁止保存 pane 滚屏文
 
 此前实现阶段只改声明和文档；用户随后 nr，本轮应用和实际验证按后续记录区分，不代表键盘、触控板、游戏或远程会话已全部验收。
 mod 任务继续受保护，不注销 Mango 或终止业务。本轮明确获授权的 shell 交接、配置应用与
-检查见[系统与编辑器记录](system-polish-execution.md)，不把早期未应用记录当作当前状态。
+检查见[系统与编辑器记录](history/system-polish-execution.md)，不把早期未应用记录当作当前状态。
 
 ## 项目与长任务入口
 
@@ -147,12 +147,12 @@ mod 任务继续受保护，不注销 Mango 或终止业务。本轮明确获授
 
 mpv 使用 uosc 时间线/播放列表/菜单与 thumbfast 缩略图。空格暂停、左方向键后退；右方向键由 evafast 保留轻按跳转、长按临时加速。`Ctrl+1` 开启原 Anime4K HQ 链、`Ctrl+0` 关闭，默认不对所有视频套用 CNN。菜单删除使用垃圾桶，media 自行提供 trash-cli。
 
-Yazi 主题由 HM 消费共享 OneDark palette，不再由 Noctalia yazi 模板写入。原公开主题在交接前备份，数据与历史保持原样；tmux/Kitty/Yazi 的已运行实例不会被强制重启，重新打开时读取新配置。具体运行证据见[系统界面记录](system-experience-execution.md)。
+Yazi 主题由 HM 消费共享 OneDark palette，不再由 Noctalia yazi 模板写入。原公开主题在交接前备份，数据与历史保持原样；tmux/Kitty/Yazi 的已运行实例不会被强制重启，重新打开时读取新配置。具体运行证据见[系统界面记录](history/system-experience-execution.md)。
 
 右下角鼠标热区已关闭；左下启动器热区保留。新登录环境的 `BAT_THEME=base16` 与 Bat/Delta
 声明一致。旧桌面含 HM 已加载标记，新终端也可能继承旧值，完整重登录后刷新；
 当前终端可用 `env BAT_THEME=base16 bat 文件` 临时采用新主题。
-桌面会话的移除过程和应用状态见[Hyprland 移除记录](hyprland-removal-execution.md)。
+桌面会话的移除过程和应用状态见[Hyprland 移除记录](history/hyprland-removal-execution.md)。
 另有用户明确选择的可选 dwm + Picom / 真 Xorg 会话，用于 QQ、腾讯会议原生共享；
 登录选择、原生栏、菜单和不同于 Mango 的操作见 [Xorg 记录](xorg-desktop-execution.md)。
 
@@ -162,4 +162,4 @@ Yazi 主题由 HM 消费共享 OneDark palette，不再由 Noctalia yazi 模板�
 项目入口的编辑器和目录可从 desktop actions 选择；明确启用 workspace 的项目还可用
 `workspace-project dotfiles workspace` 或 `workspace-project newnuclear workspace`
 建立/复用编辑器与两个 shell 的 tmux 布局，不自动构建、执行测试或信任 `.envrc`。
-实现、验证和应用状态见[本轮记录](optimization-2026-10-20.md)。
+实现、验证和应用状态见[本轮记录](history/optimization-2026-10-20.md)。

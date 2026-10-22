@@ -1,6 +1,6 @@
 # 系统界面与日常应用优化
 
-日期：2026-10-18–19。起点 `da1f9ef`，工作树干净；承接用户“系统其他部分也优化美化”和继续查阅社区的要求。沿用 One Dark Darker、默认 Mango + Noctalia 及自主 nr 授权，后按用户要求加入 Hyprland 可选会话，不重复更换软件选择。Neovim 已有独立[重建记录](neovim-rebuild-execution.md)，本轮只处理其余系统界面。实际 Astra 负责桌面设计与四个视觉模块，Luna 负责 Yazi/tmux 和 mpv，主代理集成写入归属、CLI、构建、应用与文档；跨模块由独立 reviewer 复核。
+日期：2026-10-18–19。起点 `da1f9ef`，工作树干净；承接用户“系统其他部分也优化美化”和继续查阅社区的要求。沿用 One Dark Darker、默认 Mango + Noctalia 及自主 nr 授权，后按用户要求加入 Hyprland 可选会话，不重复更换软件选择。Neovim 已有独立[重建记录](../neovim-rebuild-execution.md)，本轮只处理其余系统界面。实际 Astra 负责桌面设计与四个视觉模块，Luna 负责 Yazi/tmux 和 mpv，主代理集成写入归属、CLI、构建、应用与文档；跨模块由独立 reviewer 复核。
 
 ## 设计与社区参考
 

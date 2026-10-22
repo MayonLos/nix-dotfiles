@@ -78,6 +78,6 @@ aspect 和嵌入式组合 fixture 中：
 Noctalia、输入法、显示器、NVIDIA、音频、USB、休眠或游戏的实机行为。需要图形/设备的验收项
 按应用后记录；未运行的项目保持未验证状态，不因静态检查通过标记完成。
 
-检查实际运行结果和限制见[Den 执行记录](../docs/den-execution.md)及
-[后续桌面优化记录](../docs/desktop-polish-execution.md)。本文件描述检查职责，不替代当次
+检查实际运行结果和限制见[Den 执行记录](../docs/history/den-execution.md)及
+[后续桌面优化记录](../docs/history/desktop-polish-execution.md)。本文件描述检查职责，不替代当次
 构建日志或应用后证据。

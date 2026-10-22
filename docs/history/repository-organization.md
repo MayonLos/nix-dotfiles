@@ -58,7 +58,7 @@ Xorg 与 Mango 的运行逻辑仍各自拥有，不把它们改成字符串选�
 Wayland 工具与 `NIXOS_OZONE_WL=1` 只由 Mango 选择。输入法、xrdb、GTK/Qt、音频、字体和
 基础 portal 由公共支持拥有，具体 capture 路由归会话。独立 Xorg 不依赖 Noctalia 首次运行
 生成 Qt 配色；缺失时 seed 公共 OneDark 初始值，保留原路径、既有 GUI 设置和 runtime writer。
-配置 seed 不持续覆盖用户文件，详见[写入归属](config-ownership.md)。
+配置 seed 不持续覆盖用户文件，详见[写入归属](../config-ownership.md)。
 
 新增组合负例覆盖“仅 Xorg”的账号/主机：应具有 Xserver/startx/PAM、输入法、Qt/GTK、
 Picom/Dunst 与 Xorg target；不应具有 Mango、Noctalia、Wayland clipboard、Mango target、

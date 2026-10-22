@@ -11,7 +11,7 @@
 | QQ 版本对比注释过时 | `aspects/communication/im.nix` 对 QQ unstable 的描述为 3.2.32，锁定源实际求值为 3.2.34。包选择本身正确。 | 删除易过期的版本号对比，保留 stable/unstable 取舍原因；没有变更安装包。 |
 | tmuxp 软件用途说明过时 | `docs/application-review.md` 原来只记 Noctalia 消费者；`aspects/project-workbench/default.nix:15` 生成布局，`runner.py:105` 已通过 tmuxp 创建或复用 workspace。 | 更新消费者、布局及持久会话的责任说明。 |
 
-DSH 的 profile 是另一项必须解释的边界：共用 home 不意味着模型设置自动同步。只读核验本机现有 Web/headless profile 均选中 Go 的 `deepseek-v4.1-flash`，provider 凭据引用相同；此次未手工改写模型 patch、凭据、登录或会话历史。用法见[DSH 说明](dsh.md)。
+DSH 的 profile 是另一项必须解释的边界：共用 home 不意味着模型设置自动同步。只读核验本机现有 Web/headless profile 均选中 Go 的 `deepseek-v4.1-flash`，provider 凭据引用相同；此次未手工改写模型 patch、凭据、登录或会话历史。用法见[DSH 说明](../dsh.md)。
 
 本次覆盖内未确认其他需要立即修改的运行缺陷。没有据此保证全部硬件、GUI 或未来输入升级都无问题。
 

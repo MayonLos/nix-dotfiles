@@ -1,6 +1,6 @@
 # 保留应用逐项评估与补充候选
 
-核对日期：2026-10-18。当前功能已迁入 Den，本文保留软件决定，新的构建及未应用边界见[实施记录](den-execution.md)。本文先记录选型提案；随后用户确认的 pamixer、cliphist、pavucontrol 精简，以及 Xarchiver、Okular 新增已修改配置，验证状态见[重构执行计划](refactor-plan.md)。软件选型阶段已结束；其余条件推荐未纳入本轮，也未切换系统。
+核对日期：2026-10-18。当前功能已迁入 Den，本文保留软件决定，新的构建及未应用边界见[实施记录](history/den-execution.md)。本文先记录选型提案；随后用户确认的 pamixer、cliphist、pavucontrol 精简，以及 Xarchiver、Okular 新增已修改配置，验证状态见[重构执行计划](history/refactor-plan.md)。软件选型阶段已结束；其余条件推荐未纳入本轮，也未切换系统。
 
 依据包括当前工作树、`flake.lock`、已取得的锁定源码、官方文档，以及项目 issue 中的具体兼容案例。范围是用户直接使用的应用、桌面插件和工具组，不逐个罗列传递依赖。仓库没有声明某项，不代表用户在运行时没有手动安装或使用其他方案。没有做应用间的内存、功耗、速度基准测试；不据语言或界面技术推断谁一定更轻。
 
@@ -92,7 +92,7 @@
 | PyCharm | 保留；可选合并入口 | IDEA 官方有 Python 插件。只有现有许可、插件和 Python 工作流都满足时，才值得试把 PyCharm 项目放入 IDEA；会改变独立设置与窗口习惯。用户已确认常用，本轮不删。 |
 | CLion | 保留 | C/C++ 项目模型、调试与嵌入式支持不是 clangd 的等价功能；无需额外安装 DataGrip 才能获得全部基础数据库入口，具体能力看 IDE 功能和许可。 |
 | VSCode FHS | 保留 | 为扩展附带的二进制和 USB/调试库提供兼容环境。改普通包会重新承担逐个扩展追依赖的工作。Remote-SSH 是否已手动安装需核对。 |
-| Neovim | 已迁移到原生 Lua + Nix 包 | `aspects/editing/neovim/config/` 承载配置，`aspects/editing/neovim/` 固定插件/parser 和 wrapper；保留插件由 Nix 提供，不使用在线插件管理器。专项包检查已通过；见[迁移计划](neovim-migration-plan.md)了解尚待核验项目。没有性能比较结论。 |
+| Neovim | 已迁移到原生 Lua + Nix 包 | `aspects/editing/neovim/config/` 承载配置，`aspects/editing/neovim/` 固定插件/parser 和 wrapper；保留插件由 Nix 提供，不使用在线插件管理器。专项包检查已通过；见[迁移计划](history/neovim-migration-plan.md)了解尚待核验项目。没有性能比较结论。 |
 | colorizer | 已改原生 | 移除外部插件，使用内建 LSP documentColor 和 `<leader>uc` 当前 buffer 开关；不再独立扫描无相关 LSP 的文件/Tailwind 类名，没有新写 CSS 解析器。 |
 | vim-matchup | 已改原生 | 移除外部插件，使用内建 matchit/matchparen；不保留 matchup 离屏 popup、专有 surround/transmute，独立 nvim-surround 保留。 |
 | Heirline | 已恢复固定插件 | 按旧 Nixvim 效果参考重建状态栏、标签和宽度收缩，保留同名消歧、未保存保护和 LSP/Git/AI 状态，主题保持 OneDark。 |

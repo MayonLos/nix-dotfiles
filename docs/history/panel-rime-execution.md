@@ -17,7 +17,7 @@
 - Rime：补充 21 个锁定上游缺失的编程/Nix、嵌入式、核工程和 Minecraft 术语，权重 100。
   保留用户学习、组句、五候选、英文/混输、现有短词冲突排序和正确读音提示。
   未广泛开启模糊音；上游已有错拼派生，本轮用真实引擎验证 `zhognzi` →“中子”。
-  具体维护和数据边界见[词库说明](../aspects/interactive-session/rime/README.md)。
+  具体维护和数据边界见[词库说明](../../aspects/interactive-session/rime/README.md)。
 
 输入方式仍是雾凇全拼，无需更换 schema。例如 `shengmingshipeizhi` →“声明式配置”、
 `kefuxiangoujian` →“可复现构建”、`zhongzishuyun` →“中子输运”、

@@ -19,7 +19,7 @@ aspect 向生成数据贡献 LSP、formatter 和 linter。唯一的数据协议�
 相关生产检查见根 `checks.interactive-session-config`、`checks.command-line-runtime` 和
 `checks.editing-composition`；它们覆盖最终配置/解析器、组合隔离与编辑器数据。实际图形外观、
 显示器行为、输入法和桌面启动仍需配置应用后在真实会话验收；构建检查不代表已应用。每批记录
-见[执行记录](../../docs/den-execution.md)。
+见[执行记录](../../docs/history/den-execution.md)。
 
 `reducedMotion` 默认 `false`，保留日常完整动效。设为 `true` 时，已选择的 Mango、Noctalia
 与 Kitty 分别关闭窗口动画、shell/壁纸/锁屏转场及光标闪烁；Noctalia 还从面板移除频谱与猫，

@@ -21,7 +21,7 @@ Mango 仍是登录默认项。两者不同时运行；入口、服务归属与�
 | `lib/` | 少量跨功能 helper；不是模块发现器 |
 | `tests/composition/`、`aspects/**/checks.nix` | 跨功能组合与功能内构建/行为检查 |
 | `secrets/` | sops 加密数据 |
-| `docs/` | 架构、操作、写入归属、服务和执行记录 |
+| `docs/` | 当前架构、操作、写入归属与服务策略；`docs/history/` 为各轮执行记录，索引见 `docs/README.md` |
 
 `aspects/default.nix` 显式登记 aspect 模块；资源和 Nix 配方可就近放在功能目录，
 不会通过递归扫描自动变成模块。`bundles/default.nix` 只通过 `includes` 组合已登记

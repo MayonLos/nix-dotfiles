@@ -16,4 +16,4 @@ markers，以及 formatter/linter 数据。`contract.nix` 使用原生 Nix 模�
 
 生产检查 `checks.editing-composition` 验证语言与编辑器组合、冲突拒绝、未选数据隔离和真实
 clangd 小工作负载；`checks.neovim` 覆盖实际生成配置及编辑器行为。该验证不覆盖所有项目、交叉
-编译工程或已应用桌面。每批记录见[执行记录](../../docs/den-execution.md)。
+编译工程或已应用桌面。每批记录见[执行记录](../../docs/history/den-execution.md)。

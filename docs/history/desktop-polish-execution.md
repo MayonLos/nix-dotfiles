@@ -85,6 +85,6 @@ Astra 视觉/窗口实现、协议与组合验证。最后的记录提交补齐�
 没有实机测量，不声称更快、更省电或视觉验收通过。系统应用会涉及配置归属交接和会话边界，
 本轮不为获得截图而中断任务；仍需后续明确的应用执行安排。
 
-本轮设计依据与操作入口分别见 [桌面设计](desktop-design.md) 和
-[操作方式](workflow-design.md)。文件接管、会话退出与应用边界仍遵循
-[写入归属](config-ownership.md) 和 [服务策略](service-policy.md)。
+本轮设计依据与操作入口分别见 [桌面设计](../desktop-design.md) 和
+[操作方式](../workflow-design.md)。文件接管、会话退出与应用边界仍遵循
+[写入归属](../config-ownership.md) 和 [服务策略](../service-policy.md)。

@@ -92,7 +92,7 @@ B 初版的具体实现（重设计前）：
 
 `xorg-session` 是按用户绑定的 Den aspect，复用 `graphical-session-support` 的字体、GTK/Qt、输入法、
 音频与基础 portal 宿主支持，不隐式选择 Mango/Noctalia；只有选择该功能的主机才安装 Xorg/startx/PAM 和登录项。
-实现、包配方与专项测试统一归于 `aspects/interactive-session/xorg/`；目录整理见 [整理记录](repository-organization.md)。
+实现、包配方与专项测试统一归于 `aspects/interactive-session/xorg/`；目录整理见 [整理记录](history/repository-organization.md)。
 真实选择位于 `inventory/hosts/nixos-btw/default.nix`，不添加虚构主机。
 
 dwm 通过 Nix 包配方固定源码、补丁开关和生成的 C 配置，构建发生在 Nix store，不在家目录
@@ -231,5 +231,5 @@ B 的 `xorg-session-runtime`、`desktop-composition`、treefmt 与完整主机�
 `/nix/store/pfmkvkqdx40n3yf887mskvbhjnm0dyk0-nixos-system-nixos-btw-26.05.20261012.7993f34`。
 本轮不 switch、不更新启动默认项；尚未实机确认 DWM 登录恢复，也没有清除用户状态。
 
-最终目录整理、独立 Xorg 共享边界与更新后的完整构建证据见[整理记录](repository-organization.md)；
+最终目录整理、独立 Xorg 共享边界与更新后的完整构建证据见[整理记录](history/repository-organization.md)；
 上方 B 首次构建输出作为历史保留；用户其后已应用整理结果，当前轮次状态见文首最新记录。

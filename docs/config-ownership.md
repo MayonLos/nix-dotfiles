@@ -1,6 +1,6 @@
 # 配置、运行时状态与秘密的写入归属
 
-本文记录当前 Den 源码声明的 writer，以及应用配置、可变状态和秘密之间的边界。用户已应用 Den 配置；本轮又授权进一步优化及 nr，实际运行交接见[当前应用记录](system-polish-execution.md)。构建或求值不能证明全部文件、服务和权限都已生效；仍按目标路径核对真实文件、symlink、权限、进程和应用状态。
+本文记录当前 Den 源码声明的 writer，以及应用配置、可变状态和秘密之间的边界。用户已应用 Den 配置；本轮又授权进一步优化及 nr，实际运行交接见[当前应用记录](history/system-polish-execution.md)。构建或求值不能证明全部文件、服务和权限都已生效；仍按目标路径核对真实文件、symlink、权限、进程和应用状态。
 
 归属依据是当前 aspect、inventory、`flake.lock` 锁定模块和可观察到的运行行为。Den 负责组合功能，不改变证据优先级。每个生成目标只保留一个 renderer；应用可变文件只由 feature 修改明确拥有的字段或标记块。配置迁移不删除项目、认证状态、历史、模型、容器卷或 VM 镜像。
 
@@ -15,7 +15,7 @@
 | `~/.config/kitty/kitty.conf` | `aspects/command-line/kitty.nix` 是唯一 HM renderer，生成完整 One Dark Darker 配置和 ANSI 色。 | Noctalia Kitty builtin/template 不再启用。不存在由 Nix stub 与 Noctalia 主题文件拼装的当前声明。真实 Kitty parser / 主题应用情况需在新 generation 中复核。 |
 | `~/.config/noctalia/config.toml` 与 custom palette | `aspects/interactive-session/noctalia.nix` 通过锁定 HM module 生成配置和 `One-Dark-Darker` palette；同一 aspect 生成 bar、launcher、widget、plugin、wallpaper、lockscreen 等声明。 | GUI 自建 palette 的写入不受支持，应在共享 palette 声明修改。GUI sidecar `~/.local/state/noctalia/settings.toml` 仍是 Noctalia 可变状态，不由 HM 整文件接管。插件运行数据、历史和其他 state 保留给应用。 |
 | 登录 greeter | `login-screen` feature 由 `aspects/interactive-session/greeter.nix` 生成 NixOS greeter 配置，消费 host appearance 与 display facts。 | 声明已随系统应用；登录屏幕布局、缩放和认证流程仍待目标主机冷登录实测。 |
-| Fcitx5 / Rime | `aspects/interactive-session/input-method.nix` 渲染主题、两个 `.custom.yaml` 与两张公开专业词表。复合字典显式保留锁定上游五张中文表及主表正文，再补小型专业词表；`translator/user_dict = rime_ice`。 | 仅声明配置与公开词表，不拥有 `rime_ice.userdb`、同步数据、个人 `custom_phrase`、`user.yaml`、`installation.yaml` 或旧备份。部署交给 Fcitx5 内的 Rime，不并发用外部 deployer 打开真实学习库。词表维护见[说明](../aspects/interactive-session/rime/README.md)，本轮部署/验收见[收尾记录](panel-rime-execution.md)。 |
+| Fcitx5 / Rime | `aspects/interactive-session/input-method.nix` 渲染主题、两个 `.custom.yaml` 与两张公开专业词表。复合字典显式保留锁定上游五张中文表及主表正文，再补小型专业词表；`translator/user_dict = rime_ice`。 | 仅声明配置与公开词表，不拥有 `rime_ice.userdb`、同步数据、个人 `custom_phrase`、`user.yaml`、`installation.yaml` 或旧备份。部署交给 Fcitx5 内的 Rime，不并发用外部 deployer 打开真实学习库。词表维护见[说明](../aspects/interactive-session/rime/README.md)，本轮部署/验收见[收尾记录](history/panel-rime-execution.md)。 |
 | Noctalia sidecar 中与 Nix 冲突的公开设置 | Noctalia user service 的 `ExecStartPre` 调用 `aspects/interactive-session/resources/reconcile-overrides.py`。它按生成的公开设置树找出对应叶路径，并处理旧 `theme.templates.user.noctalia-mango` 路径。 | 只移除这些公开键，不重写整份用户 state；数组/非表叶按完整叶值处理，未知键与旁边设置保留。只备份被移除的 path/value JSON patch，备份目录 `0700`、文件 `0600`，不复制整份 sidecar。拒绝 symlink、坏 TOML、同 UID 的活动 `noctalia` writer 和检测到的并发变更。首次成功交接已发生：核实唯一旧 shell 的 executable/UID/start-time 并绑定 pidfd，仅对它发 SIGTERM、等退出和 writer scan 为空，再清失败状态并启动 managed unit；无需退出 Mango。不得对会话或进程组发信号，guard 继续拒绝活 writer。 |
 | GTK 主题、字体、图标、光标与 GTK CSS | `aspects/interactive-session/gtk.nix` 由 HM 声明 GTK theme、字体、Papirus、Bibata cursor 和 dconf 暗色偏好；Noctalia GTK3/GTK4 templates 在运行时拥有其生成 CSS 与 import hook。 | HM 不声明第二套 GTK CSS。apply/undo、当前 profile 和 CSS 中既有手工内容尚未在新 generation 实机检查。 |
 | `~/.config/qt6ct/qt6ct.conf`、`qt6ct/colors/noctalia.conf` | `aspects/interactive-session/qt.nix` 仅在 `qt6ct.conf` 不存在时 seed 字体、图标、Fusion 和 palette 路径；palette 缺失时另 seed 公共 OneDark 初始值，使独立 Xorg 不依赖 Noctalia 首次运行。之后设置归 qt6ct GUI；选择 Mango 时 Noctalia Qt template 仍拥有运行时 palette。 | seed 不覆盖已存在 GUI 设置。首次 seed、GUI 保存与重启读回尚未在新 generation 核验。 |
@@ -47,4 +47,4 @@
 
 在实际应用后，逐路径检查 Home Manager generation、symlink/普通文件、mode、owner、Noctalia unit 前后关系、环境变量、MIME/desktop IDs、最终组与 udev/ACL。再冷启动相关应用验证 Kitty parser、Mango config、Noctalia theme apply/undo、GTK/Qt palette、Firefox managed block、Thunar 保存行为、Docker daemon/timer 和 libvirt socket/存储池。完成前保留回退副本；没有实机证据的项持续标为“待现场验证”。
 
-相关约束与流程见 [架构设计](architecture-design.md)、[桌面视觉设计](desktop-design.md)、[操作方式](workflow-design.md)、[服务策略](service-policy.md)、[服务器规划](server-plan.md)、[执行交接](execution-handoff.md) 和 [Den 执行记录](den-execution.md)。
+相关约束与流程见 [架构设计](architecture-design.md)、[桌面视觉设计](desktop-design.md)、[操作方式](workflow-design.md)、[服务策略](service-policy.md)、[服务器规划](server-plan.md)、[执行交接](history/execution-handoff.md) 和 [Den 执行记录](history/den-execution.md)。

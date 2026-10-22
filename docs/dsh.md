@@ -30,4 +30,4 @@ DSH_HOME=/absolute/path/to/isolated-harness dsh headless --help
 
 本机审核时两个 profile 均已存在，分别声明 `opencode-go` / `deepseek-v4.1-flash`，provider 的凭据引用一致。此次未手工改写模型 patch 或复制密钥。已安装命令的 `headless --dump-config` 也确认最终组合选择为该 Go 模型；此结论属于配置核验，不等同于真实模型请求成功。Go 订阅能否完成当前任务仍取决于额度、端点及服务可用性。
 
-源码与用法依据是已安装包的 `--help`、headless `startup.js`、`profile-boot` 与 credentials/default-model 文档；上游参考：[CLI](https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/cli/README.md)、[官方使用指南](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/guide/index.md)。验证与系统应用见[本次审核](repository-audit-2026-10-20.md)。
+源码与用法依据是已安装包的 `--help`、headless `startup.js`、`profile-boot` 与 credentials/default-model 文档；上游参考：[CLI](https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/cli/README.md)、[官方使用指南](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/guide/index.md)。验证与系统应用见[本次审核](history/repository-audit-2026-10-20.md)。

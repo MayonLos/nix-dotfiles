@@ -1,17 +1,17 @@
 # One Dark Darker 桌面视觉设计
 
 状态：**此前桌面配置已由用户 nr 应用；本轮系统与编辑器优化获授权继续应用**。
-此前 Den 迁移的构建证据见[实施记录](den-execution.md)，本轮检查与交付状态另见
-[视觉优化执行记录](desktop-polish-execution.md)。尺寸、动画、混合缩放与功耗仍需本机验收，
+此前 Den 迁移的构建证据见[实施记录](history/den-execution.md)，本轮检查与交付状态另见
+[视觉优化执行记录](history/desktop-polish-execution.md)。尺寸、动画、混合缩放与功耗仍需本机验收，
 构建不证明视觉效果；用户正在运行的 mod 任务不受本轮配置编辑影响。
 
-当前桌面细节由实际 Astra 结合社区再次调整，实施、应用及验收见[系统界面记录](system-experience-execution.md)。
+当前桌面细节由实际 Astra 结合社区再次调整，实施、应用及验收见[系统界面记录](history/system-experience-execution.md)。
 用户另行选择的 dwm + Picom / Xorg 兼容桌面仍消费本 OneDark palette；使用原生栏、
 实底 dmenu/Dunst 和浮窗轻阴影，B 不启用动画，详见 [Xorg 记录](xorg-desktop-execution.md)。
 
 ## 视觉方向与责任
 
-桌面采用 Mango + Noctalia、One Dark Darker、Kitty + tmux 和 Lua + Nix Neovim。桌面呈现深石墨底色、蓝色焦点、青紫辅助色、清楚的表面层次；通过胶囊分组、媒体封面与频谱、BongoCat、细描边和短动画获得丰富感。基础背景固定为 `#1f2329`，壁纸不参与自动取色，白天也不切换浅色主题。Hyprland 移除后的应用状态见[执行记录](hyprland-removal-execution.md)。
+桌面采用 Mango + Noctalia、One Dark Darker、Kitty + tmux 和 Lua + Nix Neovim。桌面呈现深石墨底色、蓝色焦点、青紫辅助色、清楚的表面层次；通过胶囊分组、媒体封面与频谱、BongoCat、细描边和短动画获得丰富感。基础背景固定为 `#1f2329`，壁纸不参与自动取色，白天也不切换浅色主题。Hyprland 移除后的应用状态见[执行记录](history/hyprland-removal-execution.md)。
 
 外观数据与各软件适配遵守 [架构设计](architecture-design.md)：外观拥有语义色、字体等公共数据，Noctalia、Mango、Kitty、Neovim 等各自消费；greeter 是主机的明确选择。最终文件只有一个写入者。本文中的尺寸、布局和时长是设计目标；硬件相关参数以验收结果决定是否保留。
 

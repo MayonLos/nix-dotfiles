@@ -1,7 +1,7 @@
 # Den 架构设计：实体、选择与完整功能
 
-状态：Den v0.19.0 已锁入根 flake，真实 `nixos-btw`/`mayon` 已完成逐功能迁移。本文规定架构边界；当前接线见 `nix/`、`aspects/default.nix`、`bundles/default.nix` 和 inventory。各批实现与重新执行的检查见 [实施记录](den-execution.md)。Den 初轮没有应用；其后应用与运行证据按 [交接记录](execution-handoff.md) 链接的各轮状态，不能把初轮限制当作当前运行状态。
-最近的目录/依赖整理见 [整理记录](repository-organization.md)。
+状态：Den v0.19.0 已锁入根 flake，真实 `nixos-btw`/`mayon` 已完成逐功能迁移。本文规定架构边界；当前接线见 `nix/`、`aspects/default.nix`、`bundles/default.nix` 和 inventory。各批实现与重新执行的检查见 [实施记录](history/den-execution.md)。Den 初轮没有应用；其后应用与运行证据按 [交接记录](history/execution-handoff.md) 链接的各轮状态，不能把初轮限制当作当前运行状态。
+最近的目录/依赖整理见 [整理记录](history/repository-organization.md)。
 
 ## 设计结论
 
@@ -165,7 +165,7 @@ One Dark Darker、具体终端和编辑器属于这些接口的实际选择，�
 
 ## 实现证据与限制
 
-架构与桌面规格来自先前主代理和实际 Astra 设计；本轮实现没有重新设计视觉。Den 的共享 host 支持使用具名 aspect，账号授权仍在 binding，避免多个账号重复输出同一文本。根组合检查覆盖命令行、丰富编辑器/语言、桌面、容器/VM、嵌入式及无头工作台；负例检查有序数据冲突与系统边界。实际包和程序检查见 [tests/README](../tests/README.md) 与 [实施记录](den-execution.md)。
+架构与桌面规格来自先前主代理和实际 Astra 设计；本轮实现没有重新设计视觉。Den 的共享 host 支持使用具名 aspect，账号授权仍在 binding，避免多个账号重复输出同一文本。根组合检查覆盖命令行、丰富编辑器/语言、桌面、容器/VM、嵌入式及无头工作台；负例检查有序数据冲突与系统边界。实际包和程序检查见 [tests/README](../tests/README.md) 与 [实施记录](history/den-execution.md)。
 
 同宿主的 portal、PAM/keyring、polkit、udev 等是共享系统能力，不是账号级访问控制。串口组、input/libvirtd/kvm/gamemode 授权按绑定；USB uaccess 仍按活动 seat。PipeWire 自动 socket wants 与本地 Docker daemon 自动启动均不再套到所有用户。
 

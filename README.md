@@ -5,17 +5,10 @@ NixOS + Home Manager 配置，当前只有一个真实主机实例 `nixos-btw`�
 
 仓库使用 Den 与 flake-parts。`aspects/default.nix` 显式登记完整功能，`bundles/default.nix`
 组合常用 `includes`，`inventory/` 描述真实主机、账号、事实和绑定参数。资源、模块 helper 与
-软件配方都可放在所属 aspect 内；不会递归扫描目录。架构/操作约定见 [AGENTS.md](AGENTS.md)，
-重构逐批实施、构建证据与运行态限制见[执行记录](docs/den-execution.md)。
-后续窗口、临时工具层与视觉动效的实现和验收见[桌面优化记录](docs/desktop-polish-execution.md)。
-系统/编辑器应用见[应用记录](docs/system-polish-execution.md)，最后一轮面板、场景和输入法
-见[收尾记录](docs/panel-rime-execution.md)；最新 CLI、媒体与桌面见[系统界面记录](docs/system-experience-execution.md)。
-Hyprland 移除的当前状态见[移除记录](docs/hyprland-removal-execution.md)。历史记录区分构建、应用与用户验收。
-可选 dwm + Picom / Xorg 兼容桌面见 [Xorg 记录](docs/xorg-desktop-execution.md)，主要用于 QQ、腾讯会议原生屏幕共享；采用原生栏、dmenu 和轻量合成的 B 方案。
+软件配方都可放在所属 aspect 内；不会递归扫描目录。架构/操作约定见 [AGENTS.md](AGENTS.md)。
 
-2026-10-20 的可读性、面板分组、翻译与项目布局优化见[本轮记录](docs/optimization-2026-10-20.md)。
-
-目录归属、公共会话支持与依赖整理见[整理记录](docs/repository-organization.md)。
+可选 dwm + Picom / Xorg 兼容桌面见 [Xorg 记录](docs/xorg-desktop-execution.md)，主要用于 QQ、腾讯会议原生屏幕共享。
+当前设计文档和各轮实施、应用记录见[文档索引](docs/README.md)；历史记录区分构建、应用与用户验收。
 
 ## 目录
 
@@ -30,7 +23,7 @@ inventory/users/          用户级身份
 lib/                      跨功能 helper
 secrets/                  sops 加密数据
 tests/composition/        跨 aspect 组合、隔离及边界 fixture
-docs/                     架构、视觉、操作、归属、服务策略和迁移记录
+docs/                     当前设计与边界；docs/history/ 为各轮实施记录
 ```
 
 常用代码入口：桌面与外观在 `aspects/interactive-session/`、`aspects/appearance/`，DWM 专属实现在 `aspects/interactive-session/xorg/`；命令行、
@@ -107,8 +100,8 @@ Markdown 渲染，替换此前自写组件。功能与最新验证见[重建记�
 
 声明式服务的 session 边界和所有权见 [服务策略](docs/service-policy.md)。删去旧模块不代表旧
 Home Manager generation 中的 unit 或进程已经停止；切换前后都需按执行记录区分构建结果与当前
-运行状态。用户已应用 Den 配置，后续系统/编辑器优化也获授权应用；实际交接、验证和未完成的
-GUI 项目见[当前应用记录](docs/system-polish-execution.md)，不能把 nr 成功视作全部实机验收。
+运行状态。各轮应用、验证和未完成的 GUI 项目见[文档索引](docs/README.md)中的历史记录，
+不能把 nr 成功视作全部实机验收。
 
 ## 配置、状态和秘密
 

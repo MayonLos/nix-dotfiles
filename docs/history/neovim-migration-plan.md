@@ -1,11 +1,11 @@
 # Neovim 重构设计与验收边界
 
-本文件记录当前重构方案。用户要求整体推翻有问题的原生配置，以旧 Nixvim 的界面和操作效果作为参考；旧 Nixvim 的配色不作为目标，One Dark Darker（主背景 `#1f2329`）仍是明确约束。主代理保留 Den 功能入口、native Lua 配置、固定 Nix wrapper 和语言参数贡献；桌面视觉由 Astra 设计。当前实现和验证进度以[本轮执行记录](neovim-rebuild-execution.md)及工作树为准。
+本文件记录当前重构方案。用户要求整体推翻有问题的原生配置，以旧 Nixvim 的界面和操作效果作为参考；旧 Nixvim 的配色不作为目标，One Dark Darker（主背景 `#1f2329`）仍是明确约束。主代理保留 Den 功能入口、native Lua 配置、固定 Nix wrapper 和语言参数贡献；桌面视觉由 Astra 设计。当前实现和验证进度以[本轮执行记录](../neovim-rebuild-execution.md)及工作树为准。
 
 ## 当前结构
 
-- [Neovim aspect](../aspects/editing/neovim/)通过 Den 接入真实主机。Home Manager 使用同一固定 Neovim 包；没有单独的 Home Manager switch。
-- [Lua 配置](../aspects/editing/neovim/config/)负责界面和编辑行为；[package.nix](../aspects/editing/neovim/package.nix)固定 wrapper、配置树和工具路径，[plugins.nix](../aspects/editing/neovim/plugins.nix)固定插件闭包，[nix/neovim.nix](../nix/neovim.nix)提供普通包、开发包和检查输出。
+- [Neovim aspect](../../aspects/editing/neovim)通过 Den 接入真实主机。Home Manager 使用同一固定 Neovim 包；没有单独的 Home Manager switch。
+- [Lua 配置](../../aspects/editing/neovim/config)负责界面和编辑行为；[package.nix](../../aspects/editing/neovim/package.nix)固定 wrapper、配置树和工具路径，[plugins.nix](../../aspects/editing/neovim/plugins.nix)固定插件闭包，[nix/neovim.nix](../../nix/neovim.nix)提供普通包、开发包和检查输出。
 - 语言服务、formatter 与 linter 仍通过 Den 语言贡献生成配置，不在本次界面重构中改写其主机选择和参数。
 - One Dark Darker 由固定的 `onedark.nvim` 提供完整语法和插件高亮，再由仓库配置叠加 palette 对齐与浮窗关系。主背景来自 palette 的 `#1f2329`。
 
@@ -35,7 +35,7 @@ Screenshots 曾显示长 Markdown 行被截断，并指出空 `[No Name]` 标签
 
 `nix flake check --no-build` 是求值检查；构建普通包或 `checks.neovim` 只证明相应 derivation 成功。真实启动、快捷键/弹窗、字体和配色观感、终端图片、桌面菜单入口及当前会话中的用户操作需要分别验证。没有运行的项目须保持待验收，构建不能代替图形界面验收。
 
-本轮相关输出：`nix build --no-link --no-write-lock-file .#checks.x86_64-linux.neovim`、普通/开发 Neovim 包和主机 toplevel；实际执行状态由主代理在[执行记录](neovim-rebuild-execution.md)填写。系统应用沿用会话中既有自主 nr 授权，构建与应用分别记录，不强制重启已有编辑器。
+本轮相关输出：`nix build --no-link --no-write-lock-file .#checks.x86_64-linux.neovim`、普通/开发 Neovim 包和主机 toplevel；实际执行状态由主代理在[执行记录](../neovim-rebuild-execution.md)填写。系统应用沿用会话中既有自主 nr 授权，构建与应用分别记录，不强制重启已有编辑器。
 
 ## 入口
 

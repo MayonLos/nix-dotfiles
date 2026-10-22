@@ -1,12 +1,12 @@
 # 后台服务策略
 
-状态：2026-10-19，Den 声明已由用户 nr 应用，后续优化也获得应用授权；实现阶段历史证据见[Den 记录](den-execution.md)，当前运行交接见[应用记录](system-polish-execution.md)与[系统界面记录](system-experience-execution.md)。服务可安装、可激活与实际正常运行仍须分别核实。
+状态：2026-10-19，Den 声明已由用户 nr 应用，后续优化也获得应用授权；实现阶段历史证据见[Den 记录](history/den-execution.md)，当前运行交接见[应用记录](history/system-polish-execution.md)与[系统界面记录](history/system-experience-execution.md)。服务可安装、可激活与实际正常运行仍须分别核实。
 
 ## 当前声明与生命周期
 
 | 功能 | 声明和启动方 | 停止、恢复与数据边界 |
 |---|---|---|
-| 登录与会话 | host 明选 [login-screen](../aspects/interactive-session/greeter.nix)，greetd 默认启动 Mango，另可明确选择 dwm / Xorg。锁定 Mango C 实现先导入动态 DISPLAY/WAYLAND/cursor 环境并请求 `mango-session.target`；HM 非空 `autostart_sh = ":"` 是补充同步钩子，不是唯一启动路径。 | Mango 退出由其会话 target 路径结束。冷登录/退出时序仍需实机核验，不依赖 autostart 比 C 路径先运行。当前移除状态见[执行记录](hyprland-removal-execution.md)。 |
+| 登录与会话 | host 明选 [login-screen](../aspects/interactive-session/greeter.nix)，greetd 默认启动 Mango，另可明确选择 dwm / Xorg。锁定 Mango C 实现先导入动态 DISPLAY/WAYLAND/cursor 环境并请求 `mango-session.target`；HM 非空 `autostart_sh = ":"` 是补充同步钩子，不是唯一启动路径。 | Mango 退出由其会话 target 路径结束。冷登录/退出时序仍需实机核验，不依赖 autostart 比 C 路径先运行。当前移除状态见[执行记录](history/hyprland-removal-execution.md)。 |
 | Noctalia | [HM renderer](../aspects/interactive-session/noctalia.nix) 启用官方 systemd unit，`PartOf`/`After`/`WantedBy` 均指向 Mango target；无直接 `noctalia &`。安全静态环境由同源白名单提供，`launch_apps_as_systemd_services = true`。 | `Restart=on-failure`、2 秒、60 秒内最多 3 次。应用独立 systemd 启动；本轮正常 shell 交接中受保护业务存活已核验，故障注入与会话退出仍未验证。启动前先做有限字段归属交接，旧 writer 活跃时拒绝修改。 |
 | 输入法 | [Fcitx5/Rime](../aspects/interactive-session/input-method.nix) 的官方 HM daemon 绑定已选 Mango / Xorg targets。输入法环境仅共享明确的键，不复制全部 home vars。 | 用户词库、学习数据和应用状态保留。候选框缩放、QQ/微信、实际退出与恢复未验证。 |
 | 剪贴板 | Mango 中 Noctalia 原生历史是唯一日用历史生产者，不声明 cliphist watcher；[clipboard bridge](../aspects/interactive-session/clipboard.nix) 只做 Wayland/X11 selection 桥接，随 Mango target 拉起。 | 桥接 `Restart=always`、2 秒、3 次/60 秒；一侧 watcher 退出则结束两侧并重启，读操作有超时。历史、旧数据库与 Secret Service 状态不清理。真实图片/文字双向复制及 Secret Service 解锁待验收。 |

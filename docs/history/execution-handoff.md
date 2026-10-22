@@ -5,10 +5,10 @@
 更新：2026-10-19。Den 批次 0–7 已完成实现、文档与构建，详见[实施记录](den-execution.md)。
 该初轮没有应用系统；其后用户已 nr 并授权后续自主应用，当前运行与待验项以各轮记录为准。
 最新 CLI、媒体与桌面见[系统界面记录](system-experience-execution.md)；Hyprland 当前移除状态见[移除记录](hyprland-removal-execution.md)。
-可选 dwm / Xorg 桌面的当前实现、应用及待验项见 [Xorg 记录](xorg-desktop-execution.md)。
+可选 dwm / Xorg 桌面的当前实现、应用及待验项见 [Xorg 记录](../xorg-desktop-execution.md)。
 用户随后选择 dmenu 的 B 方案并要求全仓整理；最新目录归属、共享会话边界、清理和构建状态见 [整理记录](repository-organization.md)。
 用户已自行应用上述整理结果并进入真实 DWM；随后要求实际 Astra 重新设计并完善窗口规则，
-当前轮次见 [DWM 视觉与窗口规则](dwm-visual-design.md)。本轮不切换正在运行的会话。
+当前轮次见 [DWM 视觉与窗口规则](../dwm-visual-design.md)。本轮不切换正在运行的会话。
 用户随后明确要求切换，系统已 switch 至 generation 396；没有结束当前 DWM，
 新 WM 二进制与窗口规则仍待重新登录生效，详细运行证据见同一记录末尾。
 下文起点、旧提交清单和批次执行顺序保留为历史设计依据，不重做已完成迁移或软件选择；
@@ -25,7 +25,7 @@
 要求收尾并 push，覆盖此前“仅本地提交”的限制；后续任务仍须以当时授权为准。
 
 用户随后指出 Neovim 的实机回归，要求多代理破坏性重构并由实际 Astra 重新设计，旧 Nixvim
-仅作效果参考，OneDark 约束继续。该轮当前状态见[Neovim 重建记录](neovim-rebuild-execution.md)，
+仅作效果参考，OneDark 约束继续。该轮当前状态见[Neovim 重建记录](../neovim-rebuild-execution.md)，
 此前自写 UI 的设计和验证不能代替新实现的证据。
 
 其后用户要求其余系统界面同样参考社区优化，由实际 Astra 继续设计。最新状态见
@@ -33,14 +33,14 @@
 
 ## 阅读顺序与设计依据
 
-1. 仓库 [AGENTS.md](../AGENTS.md)：操作约束、验证与分工；新对话先读当时版本。
-2. [架构设计](architecture-design.md)：Den 的实体、绑定、完整功能、用途组合与协议。
-3. [桌面视觉](desktop-design.md)：Astra 负责的固定 One Dark Darker 设计。
-4. [操作方式](workflow-design.md)：Mango/tmux/Neovim 分层、项目环境、截图与文件工作流。
-5. [写入归属](config-ownership.md)：只读配置、可变状态、秘密和逐路径交接。
-6. [后台服务](service-policy.md)：声明与运行态差异、启动方、会话边界、测量及生命周期。
-7. [未来服务器](server-plan.md)：当前可复用边界与真实机器出现后的实例要求。
-8. [重构计划](refactor-plan.md)、[应用评估](application-review.md)、[Neovim 记录](neovim-migration-plan.md)：软件决定及既有迁移证据；其中旧路径、store 路径和旧验证结果均有时间范围。
+1. 仓库 [AGENTS.md](../../AGENTS.md)：操作约束、验证与分工；新对话先读当时版本。
+2. [架构设计](../architecture-design.md)：Den 的实体、绑定、完整功能、用途组合与协议。
+3. [桌面视觉](../desktop-design.md)：Astra 负责的固定 One Dark Darker 设计。
+4. [操作方式](../workflow-design.md)：Mango/tmux/Neovim 分层、项目环境、截图与文件工作流。
+5. [写入归属](../config-ownership.md)：只读配置、可变状态、秘密和逐路径交接。
+6. [后台服务](../service-policy.md)：声明与运行态差异、启动方、会话边界、测量及生命周期。
+7. [未来服务器](../server-plan.md)：当前可复用边界与真实机器出现后的实例要求。
+8. [重构计划](refactor-plan.md)、[应用评估](../application-review.md)、[Neovim 记录](neovim-migration-plan.md)：软件决定及既有迁移证据；其中旧路径、store 路径和旧验证结果均有时间范围。
 
 架构和上述专项设计规定后续目标；历史记录用于说明来由，不覆盖当前源码、锁文件或用户更新的选择。发现矛盾先核实并修正文档，不用 `mkForce` 把边界冲突盖过去。
 
@@ -70,7 +70,7 @@
 
 服务文档记录的运行快照与工作树声明不同：遗留 llama-cpp 和 cliphist 用户 unit 可能还在运行。新对话重新只读检查，不能把旧进程当成当前配置应保留的功能，也不能把删模块当成服务已退出的证据。
 
-独立复核还发现当前 Mango 模块注释中的旧结论已不适用于锁定源码：C 实现会在 HM autostart 执行前自行请求启动 session target，HM 非空 autostart 不是唯一启动路径。批次 5 迁移时一并修正这些注释；Noctalia 所需安全环境在用户管理器/显式服务环境中预先提供，不能只靠 autostart 导入顺序。具体证据和验收见 [后台服务策略](service-policy.md)。
+独立复核还发现当前 Mango 模块注释中的旧结论已不适用于锁定源码：C 实现会在 HM autostart 执行前自行请求启动 session target，HM 非空 autostart 不是唯一启动路径。批次 5 迁移时一并修正这些注释；Noctalia 所需安全环境在用户管理器/显式服务环境中预先提供，不能只靠 autostart 导入顺序。具体证据和验收见 [后台服务策略](../service-policy.md)。
 
 ## 执行批次与完成条件
 
@@ -104,7 +104,7 @@
 | 少量 VM 集成（需要时新增） | 真正依赖 systemd/网络/账号启动的关键路径 | 不模拟真实 NVIDIA、显示器/音频/USB、游戏帧时间 |
 | 实机验收记录 | 登录/退出、输入法、屏幕共享、剪贴板、权限、休眠、MC 等 | 只对所记录版本、设备、场景有效 |
 
-专项检查优先跟功能放，跨功能不变量放顶层 tests；不为每个可逆小修改写镜像实现的测试。新增负例应能故意破坏关键保障并触发失败；大而慢的 VM 测试只用于轻量检查覆盖不了的边界。真实秘密不用作 fixture，测试账号不授予真实设备或公网权限。官方测试机制见 [NixOS Tests](https://nixos.org/manual/nixos/stable/#sec-nixos-tests)，当前样本的实测范围见 [tests/composition](../tests/README.md)。
+专项检查优先跟功能放，跨功能不变量放顶层 tests；不为每个可逆小修改写镜像实现的测试。新增负例应能故意破坏关键保障并触发失败；大而慢的 VM 测试只用于轻量检查覆盖不了的边界。真实秘密不用作 fixture，测试账号不授予真实设备或公网权限。官方测试机制见 [NixOS Tests](https://nixos.org/manual/nixos/stable/#sec-nixos-tests)，当前样本的实测范围见 [tests/composition](../../tests/README.md)。
 
 ## 多代理分工与集成
 

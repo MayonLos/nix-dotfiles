@@ -1,10 +1,10 @@
 # 仓库全面重构执行计划
 
-本文件保留已确认的软件取舍及各历史批次证据；不是当前代码入口说明。Den 整仓迁移已实现，当前结构见 [架构](architecture-design.md)，本轮重新执行的验证与回退点见 [实施记录](den-execution.md)。旧 Nixvim 名称、store 路径和早期样本结果只对应当时提交，不能代替当前源码或检查。
+本文件保留已确认的软件取舍及各历史批次证据；不是当前代码入口说明。Den 整仓迁移已实现，当前结构见 [架构](../architecture-design.md)，本轮重新执行的验证与回退点见 [实施记录](den-execution.md)。旧 Nixvim 名称、store 路径和早期样本结果只对应当时提交，不能代替当前源码或检查。
 
 Neovim 后续已按用户新要求再次重建：旧 Nixvim 只作效果参考，主题继续 OneDark，Snacks、
 Heirline/Navic、Markdown 等成熟组件重新接入。下文“20 插件”“手写主题”“原生替代”和
-对应测试文件均是先前阶段快照；当前设计与验收以[重建记录](neovim-rebuild-execution.md)为准。
+对应测试文件均是先前阶段快照；当前设计与验收以[重建记录](../neovim-rebuild-execution.md)为准。
 
 软件选型已结束：保留 VS Code、IDEA/PyCharm/CLion、原生 Lua Neovim、Mango/Noctalia、Kitty/tmux 及下文确定的全部软件。新增 Xarchiver/Okular，未选择的条件推荐不纳入本轮。完整功能已迁入 `aspects/`，inventory 只接真实笔记本，旧兼容入口与测试子 flake 已移除。没有 switch/test、部署服务器或删除用户数据；运行态仍可能来自旧 generation。
 
@@ -207,7 +207,7 @@ Kdenlive 用户仍在考虑，暂时保留。此次不清理应用数据，也�
 
 验证状态：**已于 2026-10-20 构建、应用并验证**。已通过 flake 求值、treefmt 检查构建、主机 toplevel 构建和独立 Neovim 包构建；隔离 XDG 目录后启动新 Neovim 包，确认 CodeCompanion CLI 清单只有 Codex/Grok、默认 CLI 为 Codex、聊天仍使用 DeepSeek。独立只读复核确认 Quill 的 `dependencies` 仅用于展示，`off` 后端不会调用 OpenCode，笔记功能不会因卸载而被加载器禁用。本段卸载验证未发真实模型请求；后续 Quill Go 连通测试见下文。
 
-随后用户提供系统应用授权，已成功执行 `sudo nixos-rebuild switch --flake .#nixos-btw`；Home Manager 返回 success，新的 shell 中 `opencode` 和 `opencode2` 均不可用。Noctalia 已重启并清除受管理的 Go 三项旧覆盖，运行时 API Key 保留。未删除旧 NixOS generations。Neovim 同次应用及最终证据见[重建记录](neovim-rebuild-execution.md)。
+随后用户提供系统应用授权，已成功执行 `sudo nixos-rebuild switch --flake .#nixos-btw`；Home Manager 返回 success，新的 shell 中 `opencode` 和 `opencode2` 均不可用。Noctalia 已重启并清除受管理的 Go 三项旧覆盖，运行时 API Key 保留。未删除旧 NixOS generations。Neovim 同次应用及最终证据见[重建记录](../neovim-rebuild-execution.md)。
 
 ### Quill 直接接入 Go（2026-10-20）
 
@@ -271,7 +271,7 @@ Obsidian、Typora、Zathura、Quill 已全部确认保留，不再重复询问�
 |---|---|
 | 视频剪辑 | Kdenlive 暂留待考虑。 |
 
-开发工具声明集中在 [dev 模块目录](../aspects/)，日用包见 [packages.nix](../aspects/default.nix) 和 [apps 模块目录](../aspects/)，容器与虚拟机分别见 [docker.nix](../aspects/local-containers/host.nix)、[libvirt.nix](../aspects/local-virtual-machines/host.nix)。本次是声明和引用盘点，未据此推断实际使用频率。
+开发工具声明集中在 [dev 模块目录](../../aspects)，日用包见 [packages.nix](../../aspects/default.nix) 和 [apps 模块目录](../../aspects)，容器与虚拟机分别见 [docker.nix](../../aspects/local-containers/host.nix)、[libvirt.nix](../../aspects/local-virtual-machines/host.nix)。本次是声明和引用盘点，未据此推断实际使用频率。
 
 JDK 同时供 Prism 使用；TeX 用于完整文档编译，Ghostscript 保留供普通 PDF/文档转换，编辑器自动公式图像流程已移除；ImageMagick 还供 Thunar 图片动作使用；编辑器工具按消费者保留。
 
@@ -312,10 +312,10 @@ nix shell --no-write-lock-file --inputs-from . nixpkgs#lua5_4 nixpkgs#lua54Packa
 
 | 组 | 当前配置 | 选择边界 |
 |---|---|---|
-| Docker | [rootless Docker 与每周 prune](../aspects/local-containers/host.nix)，以及 Noctalia mini-docker 入口。 | 本机运行容器时保留引擎；仅管理远程服务器可另设计 CLI/远程连接，笔记本不必同时运行本地引擎。项目 devShell 提供编译环境，不直接提供系统 Docker 服务。 |
-| 虚拟机 | [libvirt/QEMU/KVM、virt-manager、TPM、USB 重定向](../aspects/local-virtual-machines/host.nix)，并启用嵌套 KVM；`libvirt-guests` 被关闭，未检查现有 VM 自启动状态。 | 本机运行完整客体系统时保留；以后只管理远端虚拟机时，可将客户端与本地虚拟化服务分开。未来服务器需要虚拟化，不要求当前笔记本也启用。 |
-| MATLAB | [FHS 启动集成](../aspects/languages/matlab/home.nix) 和编辑器语言支持；MATLAB 本体由用户手工安装。 | 课程/项目依赖 MATLAB、Simulink 或工具箱时保留；移除 Nix 集成不等于卸载手工安装树，也不自动删除 `.m` 文件。未检查授权和安装状态。 |
-| STM32/Cortex-M | [ARM GCC、OpenOCD/ST-Link/probe-rs、DFU/UART、CubeMX、CubeProgrammer、tio](../aspects/embedded-workbench/home.nix)，另有 [USB 探针权限](../aspects/embedded-workbench/host.nix)。 | 编写、烧录、调试开发板固件时使用，独立于已经删除的 KiCad。可保留设备权限和常用 GUI，将版本敏感的编译/调试命令放进项目 flake；普通 devShell 不能代替系统 udev 权限配置。 |
+| Docker | [rootless Docker 与每周 prune](../../aspects/local-containers/host.nix)，以及 Noctalia mini-docker 入口。 | 本机运行容器时保留引擎；仅管理远程服务器可另设计 CLI/远程连接，笔记本不必同时运行本地引擎。项目 devShell 提供编译环境，不直接提供系统 Docker 服务。 |
+| 虚拟机 | [libvirt/QEMU/KVM、virt-manager、TPM、USB 重定向](../../aspects/local-virtual-machines/host.nix)，并启用嵌套 KVM；`libvirt-guests` 被关闭，未检查现有 VM 自启动状态。 | 本机运行完整客体系统时保留；以后只管理远端虚拟机时，可将客户端与本地虚拟化服务分开。未来服务器需要虚拟化，不要求当前笔记本也启用。 |
+| MATLAB | [FHS 启动集成](../../aspects/languages/matlab/home.nix) 和编辑器语言支持；MATLAB 本体由用户手工安装。 | 课程/项目依赖 MATLAB、Simulink 或工具箱时保留；移除 Nix 集成不等于卸载手工安装树，也不自动删除 `.m` 文件。未检查授权和安装状态。 |
+| STM32/Cortex-M | [ARM GCC、OpenOCD/ST-Link/probe-rs、DFU/UART、CubeMX、CubeProgrammer、tio](../../aspects/embedded-workbench/home.nix)，另有 [USB 探针权限](../../aspects/embedded-workbench/host.nix)。 | 编写、烧录、调试开发板固件时使用，独立于已经删除的 KiCad。可保留设备权限和常用 GUI，将版本敏感的编译/调试命令放进项目 flake；普通 devShell 不能代替系统 udev 权限配置。 |
 
 功能依据：[Docker 概览](https://docs.docker.com/get-started/docker-overview/) 与 [rootless 模式](https://docs.docker.com/engine/security/rootless/)、[virt-manager](https://virt-manager.org/)、[MATLAB](https://www.mathworks.com/products/matlab.html)、[STM32CubeMX](https://www.st.com/en/development-tools/stm32cubemx.html)。本轮只核对配置和资料，未更改四组模块或运行服务。
 
@@ -377,7 +377,7 @@ Mango + Noctalia 已选定，以下是删除 ShareDND、Kaomoji、DeepSeek Peak 
 
 ## 实体、选择与完整功能的新架构
 
-最新方案见 [架构设计](architecture-design.md)。本节替代前版按现有软件分类或官方模板目录扩展的目标树；当前配置稍后逐一适配，不以原路径和文件名限制架构。
+最新方案见 [架构设计](../architecture-design.md)。本节替代前版按现有软件分类或官方模板目录扩展的目标树；当前配置稍后逐一适配，不以原路径和文件名限制架构。
 
 - 实体与绑定描述事实、账号和明确选择；用途组合是普通 includes；完整功能拥有系统/HM/账号配置与依赖。
 - 一次选择配齐功能内部两侧，并用所锁 Den 的原生机制定向投递。取消公开调用界面上 workstation/desktop 等人工配对。
@@ -466,7 +466,7 @@ nix/neovim.nix             # neovim / neovim-dev outputs
 
 ### 4. 接入 Den 主机与职责边界
 
-新方案见 [架构设计](architecture-design.md)，已由主代理与 Astra 交叉设计。[Den 样本](../tests/README.md) 已固定 v0.19.0，通过 shell 与嵌入式两条路径的两主机/两账号选择、共享资源去重及 shell 单值冲突检查。嵌入式工具、规则、包配方已收拢到 [功能目录](../aspects/embedded-workbench/README.md)；旧入口兼容引用仅用于当时的迁移过渡，批次 7 完成后旧适配器与兼容入口已退出。最终规则检查发现并修正 ST-Link 0666 权限，改为 0660/uaccess 且保留别名。真实笔记本构建、样本 HM/udev 与 ARM 编译/GDB/CLI 检查通过，尚未切换或验证设备。
+新方案见 [架构设计](../architecture-design.md)，已由主代理与 Astra 交叉设计。[Den 样本](../../tests/README.md) 已固定 v0.19.0，通过 shell 与嵌入式两条路径的两主机/两账号选择、共享资源去重及 shell 单值冲突检查。嵌入式工具、规则、包配方已收拢到 [功能目录](../../aspects/embedded-workbench/README.md)；旧入口兼容引用仅用于当时的迁移过渡，批次 7 完成后旧适配器与兼容入口已退出。最终规则检查发现并修正 ST-Link 0666 权限，改为 0660/uaccess 且保留别名。真实笔记本构建、样本 HM/udev 与 ARM 编译/GDB/CLI 检查通过，尚未切换或验证设备。
 
 外观、默认工具和语言协议已各自进入功能目录并由同一样本消费。数据/启用/安装的边界、用户与主机隔离、命令整体合并及同 ID/跨 ID 冲突已验证；Kitty parser、Neovim 高亮、wrapper 参数与 MIME、C++ 编译和 clangd hover 的运行检查通过，相关负例也被拒绝。以上为接入前样本阶段的历史结果。真实主机现已迁入 Den，旧适配器与兼容入口已退出；当前检查见实施记录。
 
