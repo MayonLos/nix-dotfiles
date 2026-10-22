@@ -88,8 +88,30 @@ function M.select(buf)
 	vim.api.nvim_set_current_win(win)
 end
 
-function M.build(text)
+function M.build()
 	local utils = require("heirline.utils")
+	local text = require("mayon.ui.text")
+	local tabline_names, tabline_names_dirty = {}, true
+	local buffer_group = vim.api.nvim_create_augroup("HeirlineBufferNames", { clear = true })
+	local function invalidate_buffers()
+		tabline_names_dirty = true
+	end
+	vim.api.nvim_create_autocmd({
+		"BufAdd",
+		"BufDelete",
+		"BufEnter",
+		"BufFilePost",
+		"BufModifiedSet",
+		"BufUnload",
+		"DirChanged",
+		"TextChanged",
+		"TextChangedI",
+	}, { group = buffer_group, callback = invalidate_buffers })
+	vim.api.nvim_create_autocmd("OptionSet", {
+		group = buffer_group,
+		pattern = "buflisted",
+		callback = invalidate_buffers,
+	})
 	local focus_group = vim.api.nvim_create_augroup("MayonDocumentFocus", { clear = true })
 	vim.api.nvim_create_autocmd({ "BufEnter", "WinEnter" }, {
 		group = focus_group,
@@ -110,35 +132,38 @@ function M.build(text)
 	M.active_buffer()
 	local Space = { provider = " " }
 	local function tab_highlight(self)
-		return self.is_active and "TabLineSel" or (self.is_visible and "MayonTabVisible" or "TabLine")
+		return self.is_active and "TabLineSel" or "TabLine"
 	end
 	local TablineFileIcon = {
 		init = function(self)
 			local ext = vim.fn.fnamemodify(self.filename, ":e")
-			self.icon, self.icon_color =
-				require("nvim-web-devicons").get_icon_color(self.filename, ext, { default = true })
+			self.icon = select(1, require("nvim-web-devicons").get_icon_color(self.filename, ext, { default = true }))
 		end,
 		provider = function(self)
 			return self.icon and (self.icon .. " ")
 		end,
-		hl = function(self)
-			return { fg = self.icon_color }
-		end,
+		hl = "MayonMuted",
 	}
 
-	local tabline_names, tabline_names_dirty = {}, true
 	-- Resolve duplicate basenames only when the listed buffers or their paths change.
 	local function buffer_path_parts(filename)
 		return vim.split(vim.fn.fnamemodify(filename, ":~:."), "/", { trimempty = true })
 	end
-	local function refresh_tabline_names()
-		if not tabline_names_dirty then
+	local tabline_names_signature
+	local function refresh_tabline_names(buflist)
+		local signature, filenames = {}, {}
+		for _, bufnr in ipairs(buflist) do
+			local filename = vim.api.nvim_buf_get_name(bufnr)
+			signature[#signature + 1] = bufnr .. "\0" .. filename
+			filenames[bufnr] = filename
+		end
+		local current_signature = table.concat(signature, "\1")
+		if not tabline_names_dirty and current_signature == tabline_names_signature then
 			return
 		end
-
 		local buffers, basename_counts = {}, {}
-		for _, bufnr in ipairs(M.buffers()) do
-			local filename = vim.api.nvim_buf_get_name(bufnr)
+		for _, bufnr in ipairs(buflist) do
+			local filename = filenames[bufnr]
 			local parts = filename == "" and {} or buffer_path_parts(filename)
 			local basename = parts[#parts] or "[No Name]"
 			buffers[#buffers + 1] = { bufnr = bufnr, parts = parts, basename = basename }
@@ -180,32 +205,19 @@ function M.build(text)
 			}
 		end
 		tabline_names_dirty = false
+		tabline_names_signature = current_signature
 	end
-	vim.api.nvim_create_autocmd({ "BufAdd", "BufDelete", "BufFilePost", "DirChanged", "BufModifiedSet" }, {
-		group = vim.api.nvim_create_augroup("HeirlineBufferNames", { clear = true }),
-		callback = function()
-			tabline_names_dirty = true
-		end,
-	})
-	vim.api.nvim_create_autocmd("OptionSet", {
-		group = "HeirlineBufferNames",
-		pattern = "buflisted",
-		callback = function()
-			tabline_names_dirty = true
-		end,
-	})
-
 	local TablineFileName = {
 		provider = function(self)
 			local name = vim.fn.fnamemodify(self.filename, ":t")
 			local buffer_name = tabline_names[self.bufnr]
-			local width = math.max(1, math.min(28, vim.o.columns - 14))
+			local width = math.max(8, math.min(28, math.floor((vim.o.columns - M.sidebar_width() - 16) / 3)))
 			local label = buffer_name and buffer_name.label or (name == "" and "[No Name]" or name)
 			if buffer_name and buffer_name.duplicate and vim.fn.strwidth(label) > width then
 				local suffix = " #" .. self.bufnr
-				return text(label, math.max(1, width - #suffix)) .. suffix
+				return text.fit(label, math.max(1, width - vim.fn.strwidth(suffix))) .. suffix
 			end
-			return text(label, width)
+			return text.fit(label, width)
 		end,
 		hl = function(self)
 			return { bold = self.is_active or self.is_visible }
@@ -313,8 +325,8 @@ function M.build(text)
 	)
 	local make_buflist_init = BufferList.init
 	BufferList.init = function(self)
-		refresh_tabline_names()
 		make_buflist_init(self)
+		refresh_tabline_names(self.buffers)
 		local active = M.active_buffer()
 		self.active_child = false
 		for index, bufnr in ipairs(self.buffers) do
@@ -351,12 +363,12 @@ function M.build(text)
 			local name = vim.fn.fnamemodify(vim.fn.getcwd(), ":t")
 			local offset = M.sidebar_width()
 			if offset > 0 then
-				local label = " 󰉋 " .. text(name, math.max(1, offset - 6)) .. " "
-				local width = vim.fn.strwidth((label:gsub("%%%%", "%%")))
+				local raw_label = " 󰉋 " .. text.truncate(name, math.max(1, offset - 6)) .. " "
+				local width = vim.fn.strwidth(raw_label)
 				-- The following Space component occupies the split separator.
-				return label .. string.rep(" ", math.max(0, offset - 1 - width))
+				return text.escape(raw_label) .. string.rep(" ", math.max(0, offset - 1 - width))
 			end
-			return "  󰉋 " .. text(name, math.min(20, math.floor(vim.o.columns * 0.14))) .. "  "
+			return "  󰉋 " .. text.fit(name, math.min(20, math.floor(vim.o.columns * 0.14))) .. "  "
 		end,
 		hl = "MayonProject",
 	}

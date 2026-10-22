@@ -64,19 +64,49 @@ function M.setup(overrides)
 			enabled = true,
 			ui_select = true,
 			db = { sqlite3_path = sqlite3_path() },
-			layout = {
-				preset = "default",
-				layout = { width = 0.86, height = 0.78, min_width = 80 },
-			},
+			layout = function()
+				if vim.o.columns >= 100 then
+					return { preset = "default", layout = { width = 0.88, height = 0.82, min_width = 40 } }
+				end
+				return {
+					preset = "select",
+					layout = {
+						width = 0.88,
+						height = 0.55,
+						min_width = math.min(30, vim.o.columns - 4),
+						max_width = vim.o.columns - 4,
+					},
+				}
+			end,
 			sources = {
 				explorer = {
-					layout = {
-						preset = "sidebar",
-						preview = false,
-						layout = { width = 38, min_width = 30, height = 0 },
-					},
+					layout = function()
+						if vim.o.columns < 52 then
+							return {
+								preset = "select",
+								layout = {
+									width = 0.82,
+									min_width = vim.o.columns - 4,
+									max_width = vim.o.columns - 4,
+									height = 0.55,
+								},
+							}
+						end
+						local width = math.max(24, math.min(34, math.floor(vim.o.columns * 0.30)))
+						return {
+							preset = "sidebar",
+							preview = false,
+							layout = { width = width, min_width = width, max_width = width, height = 0 },
+						}
+					end,
 					formatters = { file = { truncate = "center", min_width = 12 } },
-					win = { list = { wo = { wrap = false } } },
+					win = {
+						list = {
+							wo = {
+								wrap = false,
+							},
+						},
+					},
 				},
 			},
 		},

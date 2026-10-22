@@ -10,12 +10,13 @@ function M.setup()
 	local heirline = require("heirline")
 	local conditions = require("heirline.conditions")
 	local utils = require("heirline.utils")
+	local text = require("mayon.ui.text")
 
 	local function setup_colors()
 		return {
 			bg = utils.get_highlight("StatusLine").bg,
 			fg = utils.get_highlight("StatusLine").fg,
-			gray = utils.get_highlight("NonText").fg,
+			gray = utils.get_highlight("MayonMuted").fg or utils.get_highlight("NonText").fg,
 			blue = utils.get_highlight("Function").fg,
 			green = utils.get_highlight("String").fg,
 			purple = utils.get_highlight("Statement").fg,
@@ -37,29 +38,6 @@ function M.setup()
 	end
 
 	-- Statusline providers parse %, and byte counts mismeasure Chinese names.
-	local function text(value, width)
-		value = tostring(value):gsub("[\r\n\t]", " ")
-		if width and vim.fn.strwidth(value) > width then
-			local result = ""
-			for index = 0, vim.fn.strchars(value) - 1 do
-				local char = vim.fn.strcharpart(value, index, 1)
-				if vim.fn.strwidth(result .. char .. "…") > width then
-					break
-				end
-				result = result .. char
-			end
-			value = result .. "…"
-		end
-		return (value:gsub("%%", "%%%%"))
-	end
-
-	local function badge(color, inner)
-		inner.hl = function(self)
-			return { fg = type(color) == "function" and color(self) or color, bg = "bg", bold = true }
-		end
-		return inner
-	end
-
 	local mode_colors = {
 		n = "blue",
 		i = "green",
@@ -102,14 +80,29 @@ function M.setup()
 		["!"] = "SHELL",
 		t = "TERMINAL",
 	}
-	local ViMode = badge(function(self)
-		return mode_colors[self.mode:sub(1, 1)] or "blue"
-	end, {
+	local short_modes = {
+		n = "N",
+		i = "I",
+		v = "V",
+		V = "V",
+		["\22"] = "V",
+		c = "C",
+		s = "S",
+		S = "S",
+		R = "R",
+		r = "P",
+		["!"] = "!",
+		t = "T",
+	}
+	local ViMode = {
 		provider = function(self)
 			local name = mode_names[self.mode] or self.mode:upper()
-			return " ▎" .. (vim.o.columns < 80 and name:sub(1, 1) or name) .. " "
+			return (vim.o.columns < 80 and (short_modes[self.mode:sub(1, 1)] or name:sub(1, 1)) or name) .. " "
 		end,
-	})
+		hl = function(self)
+			return { fg = mode_colors[self.mode:sub(1, 1)] or "blue", bold = true }
+		end,
+	}
 	ViMode.init = function(self)
 		self.mode = vim.fn.mode(1)
 	end
@@ -120,17 +113,24 @@ function M.setup()
 	}
 
 	local Git = {
-		condition = conditions.is_git_repo,
+		condition = function()
+			return vim.o.columns >= 80 and conditions.is_git_repo()
+		end,
 		init = function(self)
-			self.status = vim.b.gitsigns_status_dict
+			self.status = vim.b.gitsigns_status_dict or {}
 		end,
 		hl = { fg = "gray" },
 		{
 			provider = function(self)
-				return " " .. text(self.status.head, math.max(8, math.floor(vim.o.columns * 0.12))) .. " "
+				return " "
+					.. text.fit(self.status.head or "git", math.max(6, math.floor(vim.o.columns * 0.12)))
+					.. " "
 			end,
 		},
 		{
+			condition = function()
+				return vim.o.columns >= 120
+			end,
 			provider = function(self)
 				local c = self.status.added or 0
 				return c > 0 and ("+" .. c .. " ") or ""
@@ -138,6 +138,9 @@ function M.setup()
 			hl = { fg = "git_add" },
 		},
 		{
+			condition = function()
+				return vim.o.columns >= 120
+			end,
 			provider = function(self)
 				local c = self.status.changed or 0
 				return c > 0 and ("~" .. c .. " ") or ""
@@ -145,6 +148,9 @@ function M.setup()
 			hl = { fg = "git_change" },
 		},
 		{
+			condition = function()
+				return vim.o.columns >= 120
+			end,
 			provider = function(self)
 				local c = self.status.removed or 0
 				return c > 0 and ("-" .. c .. " ") or ""
@@ -160,11 +166,24 @@ function M.setup()
 	}
 	local FileName = {
 		provider = function(self)
-			local path = vim.fn.fnamemodify(self.filename, ":~:.:h")
 			if self.filename == "" then
-				return "scratch"
+				return "[No Name]"
 			end
-			return text(path == "." and "workspace" or path, math.max(10, math.floor(vim.o.columns * 0.16)))
+			if vim.o.columns < 120 then
+				return text.fit(vim.fn.fnamemodify(self.filename, ":t"), math.max(5, math.floor(vim.o.columns * 0.30)))
+			end
+			local path = vim.fn.fnamemodify(self.filename, ":~:.:h")
+			return text.fit(path == "." and "workspace" or path, math.max(5, math.floor(vim.o.columns * 0.20)))
+		end,
+		hl = { fg = "fg" },
+	}
+	local CompactFileName = {
+		provider = function()
+			local filename = vim.api.nvim_buf_get_name(0)
+			if filename == "" then
+				return "[No Name]"
+			end
+			return text.fit(vim.fn.fnamemodify(filename, ":t"), vim.o.columns < 50 and 4 or 6)
 		end,
 		hl = { fg = "fg" },
 	}
@@ -188,7 +207,6 @@ function M.setup()
 		FileNameBlock,
 		{ provider = "󰉋 ", hl = { fg = "gray" } },
 		FileName,
-		FileFlags,
 		{ provider = "%<" }
 	)
 
@@ -208,7 +226,7 @@ function M.setup()
 			if #parts == 0 then
 				return ""
 			end
-			return " › " .. text(table.concat(parts, " › "), math.floor(vim.o.columns * 0.18))
+			return " › " .. text.fit(table.concat(parts, " › "), math.floor(vim.o.columns * 0.18))
 		end,
 		hl = { fg = "gray" },
 	}
@@ -240,12 +258,18 @@ function M.setup()
 			hl = { fg = "diag_warn" },
 		},
 		{
+			condition = function()
+				return vim.o.columns >= 80
+			end,
 			provider = function(self)
 				return self.infos > 0 and (diag_icon(vim.diagnostic.severity.INFO) .. self.infos .. " ")
 			end,
 			hl = { fg = "diag_info" },
 		},
 		{
+			condition = function()
+				return vim.o.columns >= 80
+			end,
 			provider = function(self)
 				return self.hints > 0 and (diag_icon(vim.diagnostic.severity.HINT) .. self.hints .. " ")
 			end,
@@ -253,7 +277,24 @@ function M.setup()
 		},
 	}
 	local LSPActive = {
-		condition = conditions.lsp_attached,
+		condition = function()
+			if not conditions.lsp_attached() then
+				return false
+			end
+			if vim.o.columns >= 120 then
+				return true
+			end
+			local clients = vim.lsp.get_clients({ bufnr = 0 })
+			local lsp = package.loaded["mayon.lsp"]
+			for _, task in ipairs(lsp and lsp.progress_status and lsp.progress_status() or {}) do
+				for _, client in ipairs(clients) do
+					if client.id == task.id then
+						return true
+					end
+				end
+			end
+			return false
+		end,
 		init = function(self)
 			local attached = {}
 			for _, client in ipairs(vim.lsp.get_clients({ bufnr = 0 })) do
@@ -272,11 +313,11 @@ function M.setup()
 			-- Raw progress messages can contain several rapidly changing file
 			-- counters. Keep the status rail stable; the LSP owns those details.
 			self.label = self.busy
-					and ("⋯ " .. (#names == 1 and names[1] or "LSP") .. (count > 1 and (" · " .. count .. " tasks") or ""))
+					and ("⋯ " .. (#names == 1 and names[1] or "LSP") .. (count > 1 and (" · " .. count) or ""))
 				or "● LSP"
 		end,
 		provider = function(self)
-			return text(self.label, math.max(8, math.min(26, math.floor(vim.o.columns * 0.20)))) .. "  "
+			return text.fit(self.label, math.max(5, math.min(26, math.floor(vim.o.columns * 0.20)))) .. " "
 		end,
 		hl = function(self)
 			return { fg = self.busy and "blue" or "gray" }
@@ -294,7 +335,7 @@ function M.setup()
 	}
 	local SearchCount = {
 		condition = function()
-			return vim.v.hlsearch == 1
+			return vim.o.columns >= 80 and vim.v.hlsearch == 1
 		end,
 		provider = function()
 			local ok, count = pcall(vim.fn.searchcount, { maxcount = 999, timeout = 20 })
@@ -317,10 +358,16 @@ function M.setup()
 		pattern = { "GitSignsUpdate", "MayonLspProgressChanged" },
 		callback = vim.schedule_wrap(redraw_status),
 	})
-	local FilePercent = { provider = "%p%% ", hl = { fg = "gray" } }
+	local FilePercent = {
+		condition = function()
+			return vim.o.columns >= 120
+		end,
+		provider = "%p%% ",
+		hl = { fg = "gray" },
+	}
 	local Ruler = {
 		provider = function()
-			return vim.o.columns < 80 and " %l:%v " or " LN %l : %v "
+			return vim.o.columns < 80 and "%l:%v " or "LN %l:%v "
 		end,
 		hl = "MayonPosition",
 	}
@@ -329,7 +376,7 @@ function M.setup()
 			return vim.o.columns >= 80 and vim.bo.filetype ~= ""
 		end,
 		provider = function()
-			return text(vim.bo.filetype, 14) .. "  "
+			return text.fit(vim.bo.filetype, 14) .. " "
 		end,
 		hl = { fg = "gray" },
 	}
@@ -364,7 +411,14 @@ function M.setup()
 			return cc.count > 0
 		end,
 		provider = function()
-			return "⋯ " .. text(cc.name, 18) .. (cc.count > 1 and (" ×" .. cc.count) or "") .. " "
+			if vim.o.columns < 50 then
+				return "⋯" .. (cc.count > 1 and ("×" .. cc.count) or "") .. " "
+			end
+			local width = math.max(5, math.min(18, math.floor(vim.o.columns * 0.18)))
+			return "⋯ "
+				.. text.fit(cc.name or "CodeCompanion", width)
+				.. (cc.count > 1 and (" ×" .. cc.count) or "")
+				.. " "
 		end,
 		hl = { fg = "purple", bold = true },
 	}
@@ -373,7 +427,9 @@ function M.setup()
 		ViMode,
 		Space,
 		-- Drop optional context before Neovim truncates diagnostics on narrow UIs.
-		{ flexible = 3, FileNameBlock, {} },
+		{ flexible = 3, FileNameBlock, CompactFileName, {} },
+		-- Buffer state stays visible when the flexible filename contracts.
+		FileFlags,
 		{ flexible = 4, Navic, {} },
 		Space,
 		{ flexible = 2, Git, {} },
@@ -407,7 +463,7 @@ function M.setup()
 							local pane = picker[part]
 							if pane and pane.win and pane.win.win == vim.api.nvim_get_current_win() then
 								local title = picker.opts.title or picker.opts.source or "Search"
-								return " " .. text(title:gsub("_", " "):gsub("^%l", string.upper), 28) .. " "
+								return " " .. text.fit(title:gsub("_", " "):gsub("^%l", string.upper), 28) .. " "
 							end
 						end
 					end
@@ -415,7 +471,7 @@ function M.setup()
 				end
 				local names = { help = "Help", qf = "Quickfix", terminal = "Terminal", grug_far = "Search & replace" }
 				local name = names[ft] or names[vim.bo.buftype] or (ft ~= "" and ft:gsub("_", " ") or "Tools")
-				return " " .. text(name, 28) .. " "
+				return " " .. text.fit(name, 28) .. " "
 			end,
 			hl = { fg = "fg", bold = true },
 		},
@@ -452,7 +508,7 @@ function M.setup()
 		{
 			provider = function(self)
 				local a = self.meta.adapter
-				return "󰚩 " .. text((a and a.name) or "CodeCompanion", 24) .. " "
+				return "󰚩 " .. text.fit((a and a.name) or "CodeCompanion", 24) .. " "
 			end,
 			hl = { fg = "purple", bold = true },
 		},
@@ -474,7 +530,7 @@ function M.setup()
 		DefaultStatusline,
 	}
 
-	heirline.setup({ statusline = StatusLines, tabline = require("mayon.tabline").build(text) })
+	heirline.setup({ statusline = StatusLines, tabline = require("mayon.tabline").build() })
 	heirline.load_colors(setup_colors())
 
 	vim.api.nvim_create_autocmd("ColorScheme", {

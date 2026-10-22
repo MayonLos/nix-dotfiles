@@ -12,27 +12,17 @@ local function overrides()
 	local function set(name, values)
 		vim.api.nvim_set_hl(0, name, values)
 	end
-	local function tint(base, accent, amount)
-		local out = "#"
-		for i = 2, 6, 2 do
-			local a, b = tonumber(base:sub(i, i + 1), 16), tonumber(accent:sub(i, i + 1), 16)
-			out = out .. string.format("%02x", math.floor(a + (b - a) * amount + 0.5))
-		end
-		return out
-	end
-	set("StatusLine", { fg = c.fg, bg = c.deep })
-	set("StatusLineNC", { fg = c.muted, bg = c.deep })
-	set("MayonProject", { fg = c.blue, bg = c.deep, bold = true })
-	set("MayonPosition", { fg = c.blue, bg = c.surface, bold = true })
+	set("StatusLine", { fg = c.fg, bg = c.bg })
+	set("StatusLineNC", { fg = c.muted, bg = c.bg })
+	set("MayonProject", { fg = c.blue, bg = c.surface, bold = true })
+	set("MayonPosition", { fg = c.blue, bg = c.bg, bold = true })
 	set("MayonTabAccent", { fg = c.blue, bg = c.surface })
 	set("MayonTabVisible", { fg = c.fg, bg = c.bg, bold = true })
-	set("MayonSidebar", { fg = c.fg, bg = c.deep })
-	set("MayonSidebarLine", { fg = c.brightFg, bg = c.selection, bold = true })
 	set("MayonMuted", { fg = c.muted })
 	local accent = get("Function")
-	vim.api.nvim_set_hl(0, "NormalFloat", { fg = normal.fg, bg = c.deep })
-	vim.api.nvim_set_hl(0, "FloatBorder", { fg = c.border, bg = c.deep })
-	vim.api.nvim_set_hl(0, "FloatTitle", { fg = c.blue, bg = c.deep, bold = true })
+	vim.api.nvim_set_hl(0, "NormalFloat", { fg = normal.fg, bg = c.bg })
+	vim.api.nvim_set_hl(0, "FloatBorder", { fg = c.border, bg = c.bg })
+	vim.api.nvim_set_hl(0, "FloatTitle", { fg = c.blue, bg = c.bg, bold = true })
 	vim.api.nvim_set_hl(0, "MultiCursorCursor", { fg = normal.bg, bg = accent.fg, bold = true })
 	vim.api.nvim_set_hl(0, "MultiCursorDisabledCursor", { fg = normal.bg, bg = comment.fg })
 	local match = get("MatchParen")
@@ -44,25 +34,31 @@ local function overrides()
 	set("TreesitterContext", { bg = c.surface })
 	set("TreesitterContextLineNumber", { bg = c.surface, fg = c.muted })
 	set("TreesitterContextSeparator", { fg = c.border, bg = c.surface })
-	set("Pmenu", { fg = c.fg, bg = c.deep })
-	set("PmenuSel", { fg = c.brightFg, bg = tint(c.surface, c.blue, 0.14), bold = true })
+	set("Pmenu", { fg = c.fg, bg = c.bg })
+	set("PmenuSel", { fg = c.brightFg, bg = c.selection, bold = true })
+	set("BlinkCmpMenuSelection", { fg = c.brightFg, bg = c.selection, bold = true })
+	set("BlinkCmpDocSeparator", { fg = c.border, bg = c.bg })
+	set("BlinkCmpSignatureActiveParameter", { fg = c.cyan, bg = c.bg, underline = true })
+	set("BlinkCmpSignatureHelpActiveParameter", { fg = c.cyan, bg = c.bg, underline = true })
 	set("BlinkCmpLabel", { fg = c.brightFg })
 	set("BlinkCmpLabelMatch", { fg = c.cyan, bold = true })
-	set("BlinkCmpLabelDetail", { fg = c.muted })
-	set("BlinkCmpLabelDescription", { fg = c.muted })
-	set("BlinkCmpSource", { fg = c.muted, italic = true })
+	-- Completion details and sources carry useful reading context; reserve muted
+	-- text for inactive chrome and decoration.
+	set("BlinkCmpLabelDetail", { fg = c.fg })
+	set("BlinkCmpLabelDescription", { fg = c.fg })
+	set("BlinkCmpSource", { fg = c.fg, italic = true })
 	set("BlinkCmpGhostText", { fg = c.border, italic = true })
-	for level, color in ipairs({ c.blue, c.cyan, c.fg, c.fg, c.muted, c.muted }) do
+	for level, color in ipairs({ c.blue, c.cyan, c.fg, c.fg, c.fg, c.fg }) do
 		set("RenderMarkdownH" .. level, { fg = color, bold = true })
 		-- Render-markdown owns the icon/background; Tree-sitter owns heading text.
 		set("@markup.heading." .. level .. ".markdown", { link = "RenderMarkdownH" .. level })
 		set("markdownH" .. level, { link = "RenderMarkdownH" .. level })
-		set("RenderMarkdownH" .. level .. "Bg", { bg = level == 1 and tint(c.bg, c.blue, 0.10) or c.bg })
+		set("RenderMarkdownH" .. level .. "Bg", { bg = c.bg })
 	end
-	set("RenderMarkdownCode", { bg = c.deep })
+	set("RenderMarkdownCode", { fg = c.fg, bg = c.surface })
 	set("RenderMarkdownCodeInline", { fg = c.cyan, bg = c.surface })
 	set("SnacksImageMath", { fg = c.brightFg })
-	set("RenderMarkdownCodeBorder", { fg = c.deep, bg = c.bg })
+	set("RenderMarkdownCodeBorder", { fg = c.border, bg = c.bg })
 	set("RenderMarkdownTableHead", { fg = c.cyan, bold = true })
 	set("@markup.heading.markdown", { link = "RenderMarkdownTableHead" })
 	set("RenderMarkdownTableRow", { fg = c.border })
@@ -92,13 +88,13 @@ local function overrides()
 		SnacksInputBorder = "FloatBorder",
 		SnacksPickerNormal = "NormalFloat",
 		SnacksPicker = "NormalFloat",
-		SnacksPickerList = "MayonSidebar",
+		SnacksPickerList = "NormalFloat",
 		SnacksPickerBorder = "FloatBorder",
 		SnacksPickerTitle = "FloatTitle",
 		SnacksPickerInput = "NormalFloat",
 		SnacksPickerInputBorder = "FloatBorder",
 		SnacksPickerBoxBorder = "FloatBorder",
-		SnacksPickerListCursorLine = "MayonSidebarLine",
+		SnacksPickerListCursorLine = "PmenuSel",
 		SnacksPickerPreviewCursorLine = "CursorLine",
 		SnacksPickerDirectory = "Directory",
 		SnacksPickerTree = "Comment",
@@ -113,9 +109,12 @@ local function overrides()
 		TroubleNormalNC = "Normal",
 	}
 	for _, level in ipairs({ "Error", "Warn", "Info", "Debug", "Trace" }) do
-		-- The same opaque surface backs menus, notifications and input prompts.
 		links["SnacksNotifier" .. level] = "NormalFloat"
 		links["SnacksNotifierBorder" .. level] = "FloatBorder"
+		local diagnostic = get("DiagnosticSign" .. level)
+		local severity = diagnostic.fg or c.muted
+		vim.api.nvim_set_hl(0, "SnacksNotifierTitle" .. level, { fg = severity })
+		vim.api.nvim_set_hl(0, "SnacksNotifierIcon" .. level, { fg = severity })
 	end
 	for name in pairs(vim.api.nvim_get_hl(0, {})) do
 		if name:match("^NoiceCmdlinePopupBorder") then
@@ -125,9 +124,20 @@ local function overrides()
 	for name, target in pairs(links) do
 		vim.api.nvim_set_hl(0, name, { link = target })
 	end
-	vim.api.nvim_set_hl(0, "FzfLuaSurface", { fg = normal.fg, bg = normal.bg })
-	vim.api.nvim_set_hl(0, "FzfLuaSurfaceBorder", { fg = comment.fg, bg = normal.bg })
-	vim.api.nvim_set_hl(0, "FzfLuaSurfaceTitle", { fg = accent.fg, bg = normal.bg, bold = true })
+	for _, name in ipairs({ "FzfLuaCursorLine", "FzfLuaFzfCursorLine" }) do
+		vim.api.nvim_set_hl(0, name, { link = "PmenuSel" })
+	end
+	vim.api.nvim_set_hl(0, "FzfLuaCursorLineNr", { fg = c.muted })
+	for name in pairs(vim.api.nvim_get_hl(0, {})) do
+		if name:match("^FzfLua.*Kind") or name:match("^FzfLua.*Match") or name:match("^FzfLua.*Header") then
+			local hl = vim.api.nvim_get_hl(0, { name = name, link = false })
+			hl.bg = nil
+			vim.api.nvim_set_hl(0, name, hl)
+		end
+	end
+	vim.api.nvim_set_hl(0, "FzfLuaSurface", { fg = normal.fg, bg = c.bg })
+	vim.api.nvim_set_hl(0, "FzfLuaSurfaceBorder", { fg = comment.fg, bg = c.bg })
+	vim.api.nvim_set_hl(0, "FzfLuaSurfaceTitle", { fg = accent.fg, bg = c.bg, bold = true })
 	for _, name in ipairs({
 		"FzfLuaBorder",
 		"FzfLuaPreviewBorder",
@@ -163,7 +173,7 @@ local function configure()
 			bg0 = c.bg,
 			bg1 = c.surface,
 			bg2 = c.selection,
-			bg_d = c.deep,
+			bg_d = c.bg,
 			fg = c.fg,
 			grey = c.border,
 			light_grey = c.muted,

@@ -25,7 +25,7 @@ end
 
 function M.setup()
 	-- DeepSeek uses CodeCompanion's built-in adapter. The CLI agent names map
-	-- directly to the installed codex, grok, and opencode executables.
+	-- directly to the installed codex and grok executables.
 	require("codecompanion").setup({
 		interactions = {
 			chat = {
@@ -43,7 +43,6 @@ function M.setup()
 				agents = {
 					codex = { cmd = "codex" },
 					grok = { cmd = "grok" },
-					opencode = { cmd = "opencode" },
 				},
 			},
 		},

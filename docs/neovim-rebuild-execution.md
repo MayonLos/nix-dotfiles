@@ -1,5 +1,41 @@
 # Neovim 重建与 Astra 工作台重设计
 
+## 当前重构（2026-10-20）
+
+用户再次要求完整重构、优化和美化，明确由 Astra 设计，参考社区配置，保留 One Dark Darker，并允许重做配置结构与交互。实际 Astra 查阅 LazyVim UI、AstroUI、NvChad base46 与 Noice 原始源码，给出完整方案；主代理组织实现与集成，Luna 负责组件，独立 reviewer 复核跨组件行为。下方 2026-10-18 的实现和应用记录作为历史保留，新状态以本节为准。
+
+本次保持 Nix 固定插件和 parser，继续使用原生 Lua，不引入发行版或另一层插件下载器。功能边界保留：文件重命名/覆盖保护与回收站、会话与草稿、URL、公式唯一渲染器、LSP 按需库和项目 PATH、格式化/lint、Git/Diffview、Flash/多光标/文本对象、CodeCompanion DeepSeek 与 Codex/Grok CLI。OpenCode CLI 移除及 Quill Go 直连的在途改动保留，用户数据不随重构迁移或清理。
+
+### 设计与实现
+
+- 普通浮窗、补全、Noice、Snacks/Fzf 选择器、通知共用正文底色 `#1f2329`，边框与内容同底色；选择行统一中性 `#30363f`。蓝青用于前景与细指示，补全类别/来源不再带独立背景块。严重度仍以通知标题/图标颜色区分。
+- 命令框移至底部居中，宽度随屏幕变化，上限 76 列；清除各格式默认标题，底栏搜索保留。针对锁定 Noice/NUI 的缓存视图同步几何，配置尚未初始化时的 resize 回调也有保护。
+- Blink 关闭预选和自动插入：菜单出现不改正文，明确选择候选后再确认。原有 Tab/snippet、Ctrl-Space、文档与签名键保持；文档延迟 300ms。窄屏先去描述和来源，保留候选本身。
+- Markdown 保留插入时整篇渲染，但光标行显露真实标记；Visual 使用源字符。标题不再铺整行彩色底，代码区用统一 surface，短代码块最小宽降为 20 列，公式仍由 Snacks/math-preview 单独负责。
+- Picker 与 Explorer 均使用正文底色，以项目标题、树形、边界和中性选中行区分区域；使用 Snacks 原生窗口高亮，不增加窗口生命周期适配。普通选择器窄屏去预览，Explorer 极窄时使用浮层；Fzf 的预览也按窗口宽度降级。
+- Heirline 状态栏和标签栏按 120/80/40 列分级，去掉行列胶囊；CJK 截断和 `%` 转义抽到 `ui/text.lua`。保留重名消歧、侧栏焦点下的活动文档、未保存/只读标记、录制和并发 AI 状态。路径消歧按缓冲区签名缓存，真实 buffer 列表保持即时查询。
+
+社区参考只用于设计，字段与运行行为核对本仓库锁定版本：
+
+- [LazyVim UI](https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/plugins/ui.lua)：按用途排列的状态信息与 Snacks 交互。
+- [AstroUI](https://github.com/AstroNvim/astroui/blob/main/lua/astroui/config.lua)：主题覆盖集中管理与活动文件层级。
+- [NvChad base46 Blink](https://github.com/NvChad/base46/blob/v3.0/lua/base46/integrations/blink.lua)：补全、文档、签名及类别前景的完整适配。
+- [Noice views](https://github.com/folke/noice.nvim/blob/main/lua/noice/config/views.lua)：命令与搜索的视图边界；未直接照抄 main 的新 API。
+
+### 本次验证与应用状态
+
+重构前安装包在隔离 XDG 目录中 headless 启动三次为 76.339、74.092、74.955ms。这是 warm 文件缓存下的有限样本，不代表大型工程启动时间。重构后相同方式三次为 78.141、75.523、75.179ms；与原样本接近，不能宣称启动加速。
+
+已通过 Neovim 专项、treefmt 与编辑器组合检查。新增检查覆盖 colorscheme 重载后的表面一致性、补全分段不遮住整行选中底色、CJK/字面 `%` 的宽度预算；40/60/80/100/160 列并发 AI、49 个错误和 50 个警告与未保存/只读标记同时出现的回归也通过。独立复核通过，无剩余阻断发现。
+
+真实嵌入 UI 已检查 160/100/80/60/40 列命令框：旧配置在 60/40 列边框越界，新框均在窗口内，标题为空，底部位置稳定。真实 Kitty 临时文档已查看 Markdown、命令框、补全和 Explorer，Astra 实际查看四张最终截图并通过视觉验收。真实补全交互确认未选择时 Enter 换行，Tab 选择后 Enter 接受候选；Explorer 60→40→60 列切换、底色与选择行一致性和关闭清理检查通过。测试只使用临时中文文档，未打开个人工程或真实历史。
+
+已执行 `sudo nixos-rebuild switch --flake .#nixos-btw`，成功应用 `/nix/store/j2ssn58y789ikkqc8y9qc4cydpljqqxr-nixos-system-nixos-btw-26.05.20261012.7993f34`。最终 flake 求值、Neovim/treefmt/编辑器组合检查构建与主机 toplevel 构建均通过。Home Manager 的 Result 为 success；安装后的 Lua 与工作树源码一致，隔离启动的正文/浮窗底色、选择行、CodeCompanion DeepSeek 与 Codex/Grok 入口及实际补全交互验证通过。
+
+OpenCode 两个命令已从新环境移除；Quill 持久声明为 Go 直连，旧三项运行时覆盖已对账清除，运行时 API Key 保留。Noctalia 随 Home Manager 正常重启；Mango 与原有终端继续运行。未清除历史、项目或模型，未关闭用户编辑器；已打开的旧编辑器需用户保存后重新启动才加载新包。未声称已验证个人大型工程性能或 Quill 的完整 GUI 模型交互。
+
+## 2026-10-18 基线与历史
+
 日期：2026-10-18。用户提供 Markdown 实机截图，指出当前实现相较最初 Nixvim 有多处问题，
 明确要求推翻重做并按原效果配置。该要求覆盖之前“仅手写替代、不要恢复插件”的历史取舍。
 本轮以 Git 中实际 `a9d5614:nixvim/` 为布局、组件和交互参考，不把迁移文档的功能对等描述

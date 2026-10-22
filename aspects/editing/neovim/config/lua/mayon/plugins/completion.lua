@@ -22,21 +22,36 @@ function M.setup()
 			["<C-k>"] = { "show_signature", "hide_signature", "fallback" },
 		},
 		completion = {
+			list = { selection = { preselect = false, auto_insert = false } },
 			menu = {
 				min_width = 28,
-				max_height = 9,
+				max_height = 8,
 				border = "rounded",
 				draw = {
 					padding = 1,
 					gap = 1,
 					treesitter = { "lsp" },
-					columns = {
-						{ "kind_icon" },
-						{ "label", "label_description", gap = 1 },
-						{ "source_name" },
-					},
+					columns = function()
+						if vim.o.columns < 100 then
+							return { { "kind_icon" }, { "label" } }
+						elseif vim.o.columns < 140 then
+							return { { "kind_icon" }, { "label" }, { "source_name" } }
+						end
+						return {
+							{ "kind_icon" },
+							{ "label", "label_description", gap = 1 },
+							{ "source_name" },
+						}
+					end,
 					components = {
-						label = { width = { fill = true, max = 48 } },
+						label = {
+							width = {
+								fill = true,
+								max = function()
+									return math.min(48, math.max(18, vim.o.columns - 32))
+								end,
+							},
+						},
 						label_description = { width = { max = 22 }, ellipsis = true },
 						source_name = {
 							width = { max = 14 },
@@ -57,7 +72,12 @@ function M.setup()
 			trigger = { show_in_snippet = false },
 			documentation = {
 				auto_show = true,
-				window = { max_width = 60, max_height = 18, border = "rounded" },
+				auto_show_delay_ms = 300,
+				window = {
+					max_width = math.min(60, math.max(40, vim.o.columns - 8)),
+					max_height = 14,
+					border = "rounded",
+				},
 			},
 			accept = { auto_brackets = { enabled = false } },
 		},
@@ -99,6 +119,15 @@ function M.setup()
 		snippets = { preset = "default" },
 		signature = { enabled = true, window = { border = "rounded" } },
 	})
+	-- Blink creates kind-specific groups during setup; strip any inherited background
+	-- so the selected row's single PmenuSel surface remains continuous.
+	for name in pairs(vim.api.nvim_get_hl(0, {})) do
+		if name:match("^BlinkCmpKind") or name:match("^BlinkCmpLabel") or name:match("^BlinkCmpSource") then
+			local hl = vim.api.nvim_get_hl(0, { name = name, link = false })
+			hl.bg = nil
+			vim.api.nvim_set_hl(0, name, hl)
+		end
+	end
 end
 
 return M

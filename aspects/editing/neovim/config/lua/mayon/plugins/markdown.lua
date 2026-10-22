@@ -16,7 +16,7 @@ local function codecompanion_overrides()
 			width = "block",
 			left_pad = 2,
 			right_pad = 2,
-			min_width = 36,
+			min_width = 20,
 			border = "thin",
 			language_pad = 1,
 		},
@@ -30,8 +30,8 @@ function M.setup()
 		-- Keep the formatted document visible while writing; visual selections
 		-- retain the source text and its true extents.
 		render_modes = { "n", "c", "t", "i" },
-		win_options = { concealcursor = { rendered = "nvic" } },
-		anti_conceal = { enabled = false },
+		win_options = { concealcursor = { default = "nc", rendered = "nc" } },
+		anti_conceal = { enabled = true, above = 0, below = 0 },
 		-- Snacks image.math_preview is the sole LaTeX renderer.
 		latex = { enabled = false },
 		bullet = { icons = { "•", "◦", "▪" }, right_pad = 1 },
@@ -44,7 +44,7 @@ function M.setup()
 						sign = false,
 						icons = { "▎ ", "▎ ", "◆ ", "◇ ", "· ", "· " },
 						position = "inline",
-						width = { "full", "block" },
+						width = "block",
 						left_pad = 1,
 						right_pad = 2,
 					},
@@ -53,7 +53,7 @@ function M.setup()
 						width = "block",
 						left_pad = 2,
 						right_pad = 2,
-						min_width = 36,
+						min_width = 20,
 						border = "thin",
 						language_pad = 1,
 					},

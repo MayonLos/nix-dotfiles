@@ -2,16 +2,24 @@ local M = {}
 
 function M.setup()
 	require("fzf-lua").setup({
-		winopts = {
-			-- A full backdrop avoids a dark rectangle around the picker surface.
-			backdrop = 100,
-			border = "rounded",
-			width = 0.86,
-			height = 0.80,
-			row = 0.5,
-			col = 0.5,
-			preview = { layout = "flex", horizontal = "right:55%", vertical = "down:45%", scrollbar = false },
-		},
+		winopts = function()
+			return {
+				backdrop = false,
+				border = "rounded",
+				width = vim.o.columns < 100 and 0.94 or 0.86,
+				height = 0.80,
+				row = 0.5,
+				col = 0.5,
+				preview = {
+					layout = "flex",
+					flip_columns = 120,
+					horizontal = "right:55%",
+					vertical = "down:45%",
+					hidden = vim.o.columns < 100,
+					scrollbar = false,
+				},
+			}
+		end,
 		hls = {
 			normal = "FzfLuaSurface",
 			border = "FzfLuaSurfaceBorder",
@@ -19,8 +27,10 @@ function M.setup()
 			preview_normal = "FzfLuaSurface",
 			preview_border = "FzfLuaSurfaceBorder",
 			preview_title = "FzfLuaSurfaceTitle",
+			cursorline = "PmenuSel",
 			fzf = {
 				normal = "FzfLuaSurface",
+				cursorline = "PmenuSel",
 				border = "FzfLuaSurfaceBorder",
 				separator = "FzfLuaSurfaceBorder",
 				gutter = "FzfLuaSurface",

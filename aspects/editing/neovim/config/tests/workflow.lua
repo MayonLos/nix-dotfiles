@@ -21,13 +21,45 @@ vim.lsp.enable("marksman", false)
 vim.cmd.edit(vim.fn.fnameescape(path))
 assert(vim.bo.filetype == "markdown" and vim.wo.wrap, "long Markdown is clipped")
 local doc, docwin = vim.api.nvim_get_current_buf(), vim.api.nvim_get_current_win()
-for _, width in ipairs({ 40, 80, 120, 180 }) do
+for _, width in ipairs({ 40, 60, 80, 100, 120, 180 }) do
 	vim.o.columns = width
 	local status = vim.api.nvim_eval_statusline(vim.o.statusline, { maxwidth = width })
 	local tabs = vim.api.nvim_eval_statusline(vim.o.tabline, { use_tabline = true, maxwidth = width })
 	assert(status.str ~= "" and status.width <= width, "status line overflow")
 	assert(tabs.width <= width, "tab line overflow")
 end
+-- Busy tool state must not displace unsaved/readonly information on a narrow
+-- screen. Checking only final width would miss whole components folding away.
+local attention = vim.api.nvim_create_namespace("workflow-attention")
+local diagnostics = {}
+for index = 1, 99 do
+	diagnostics[#diagnostics + 1] = {
+		lnum = 0,
+		col = 0,
+		message = "workflow fixture",
+		severity = index <= 49 and vim.diagnostic.severity.ERROR or vim.diagnostic.severity.WARN,
+	}
+end
+vim.diagnostic.set(attention, doc, diagnostics)
+vim.bo[doc].modified, vim.bo[doc].readonly = true, true
+vim.api.nvim_exec_autocmds("User", {
+	pattern = "CodeCompanionRequestStarted",
+	data = { id = "workflow-attention", adapter = { name = "DeepSeek" } },
+})
+for _, width in ipairs({ 40, 60, 80, 100, 160 }) do
+	vim.o.columns = width
+	vim.cmd.redrawstatus()
+	local rail = vim.api.nvim_eval_statusline(vim.o.statusline, { maxwidth = width })
+	assert(rail.str:find("●", 1, true), "unsaved marker disappeared at " .. width .. " columns")
+	assert(rail.str:find("󰌾", 1, true), "readonly marker disappeared at " .. width .. " columns")
+	assert(rail.str:find("49", 1, true) and rail.str:find("50", 1, true), "diagnostic counts disappeared")
+end
+vim.api.nvim_exec_autocmds("User", {
+	pattern = "CodeCompanionRequestFinished",
+	data = { id = "workflow-attention" },
+})
+vim.diagnostic.reset(attention, doc)
+vim.bo[doc].modified, vim.bo[doc].readonly = false, false
 vim.cmd.vnew()
 local toolwin, toolbuf = vim.api.nvim_get_current_win(), vim.api.nvim_get_current_buf()
 vim.bo.buftype = "nofile"
@@ -68,5 +100,47 @@ assert(vim.wo.foldmethod == "manual", "Tree-sitter overrode the large-file fold 
 assert(not vim.treesitter.highlighter.active[vim.api.nvim_get_current_buf()], "large file started highlighting")
 vim.cmd.colorscheme("onedark-darker")
 assert(vim.api.nvim_get_hl(0, { name = "Normal", link = false }).bg == 0x1f2329)
+-- Surface colours must survive a theme reload after plugins have registered
+-- their highlight groups. Text overlays must not punch holes in selected rows.
+local function hl(name)
+	return vim.api.nvim_get_hl(0, { name = name, link = false })
+end
+for _, name in ipairs({
+	"NormalFloat",
+	"FloatBorder",
+	"FloatTitle",
+	"BlinkCmpMenu",
+	"BlinkCmpMenuBorder",
+	"BlinkCmpDoc",
+	"NoiceCmdlinePopup",
+	"NoiceCmdlinePopupBorder",
+	"SnacksPickerList",
+	"FzfLuaSurface",
+}) do
+	assert(hl(name).bg == hl("Normal").bg, name .. " has a disconnected background")
+end
+assert(hl("BlinkCmpMenuSelection").bg == hl("PmenuSel").bg, "completion selection has two surfaces")
+for _, name in ipairs({ "BlinkCmpKindValue", "BlinkCmpLabel", "BlinkCmpLabelDetail", "BlinkCmpSource" }) do
+	assert(hl(name).bg == nil, name .. " masks the selected row")
+end
+for _, name in ipairs({
+	"BlinkCmpLabelDetail",
+	"BlinkCmpLabelDescription",
+	"BlinkCmpSource",
+	"RenderMarkdownH5",
+	"RenderMarkdownH6",
+}) do
+	assert(hl(name).fg == hl("Normal").fg, name .. " uses low-contrast muted text for reading content")
+end
+-- A literal percent and multibyte names must render as text, never statusline
+-- directives, at narrow widths as well as in the full workspace rail.
+local display = require("mayon.ui.text")
+for _, width in ipairs({ 1, 2, 5, 12, 24 }) do
+	local fitted = display.fit("中文 50% notes", width)
+	local rendered = vim.api.nvim_eval_statusline(fitted, { maxwidth = width })
+	assert(rendered.width <= width, "display text exceeds its cell budget")
+end
+local literal = vim.api.nvim_eval_statusline(display.fit("中文 50% notes"), { maxwidth = 40 })
+assert(literal.str == "中文 50% notes", "literal percent was interpreted as statusline syntax")
 assert(vim.v.errmsg == "", vim.v.errmsg)
 print("Long documents, Unicode tabs, sidebar preservation, close cancellation and scratch passed")
