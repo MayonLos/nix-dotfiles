@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -19,6 +20,8 @@ class ProjectWorkbenchTests(unittest.TestCase):
         self.bin = self.root / "bin"
         self.bin.mkdir()
         self.capture = self.root / "capture.json"
+        self.tmux_config = self.root / "tmuxp.json"
+        self.tmux_config.write_text("{}", encoding="utf-8")
         self.registry = self.root / "projects.json"
         self.registry.write_text(
             json.dumps(
@@ -30,6 +33,7 @@ class ProjectWorkbenchTests(unittest.TestCase):
         self._spy("kitty")
         self._spy("workspace-editor")
         self._spy("workspace-files")
+        self._spy("tmuxp")
         self.env = os.environ.copy()
         self.env["PATH"] = f"{self.bin}:{self.env['PATH']}"
         self.env["CAPTURE"] = str(self.capture)
@@ -59,6 +63,8 @@ class ProjectWorkbenchTests(unittest.TestCase):
                 str(self.registry),
                 "--kitty",
                 str(self.bin / "kitty"),
+                "--tmuxp",
+                str(self.bin / "tmuxp"),
                 *args,
             ],
             env=self.env,
@@ -115,6 +121,8 @@ class ProjectWorkbenchTests(unittest.TestCase):
                 str(self.registry),
                 "--kitty",
                 str(self.bin / "kitty"),
+                "--tmuxp",
+                str(self.bin / "tmuxp"),
                 "demo",
                 "editor",
             ],
@@ -142,10 +150,168 @@ class ProjectWorkbenchTests(unittest.TestCase):
             "print('direnv: error .envrc is blocked; run direnv allow to approve its content', file=sys.stderr)\n"
             "raise SystemExit(1)\n",
         )
-        result = self._run("demo", "editor", "--", "file.java")
+        self._enable_workspace()
+        result = self._run("demo", "workspace")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("blocked", result.stderr)
         self.assertFalse(self.capture.exists())
+
+    def _enable_workspace(self):
+        self.registry.write_text(
+            json.dumps(
+                {
+                    "demo": {
+                        "directory": str(self.project),
+                        "label": "A $project 'name'",
+                        "workspace": True,
+                        "tmuxp_config": str(self.tmux_config),
+                    }
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+
+    def test_workspace_starts_tmuxp_with_the_fixed_config_in_project_directory(self):
+        self._enable_workspace()
+        result = self._run("demo", "workspace")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        kitty = json.loads(self.capture.read_text())
+        self.assertEqual(kitty["cwd"], str(self.project))
+        self.assertEqual(
+            kitty["argv"],
+            ["--directory", str(self.project), str(self.bin / "tmuxp"), "load", "-y", str(self.tmux_config)],
+        )
+
+    def test_workspace_is_opt_in(self):
+        result = self._run("demo", "workspace")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("no workspace enabled", result.stderr)
+
+
+@unittest.skipUnless(os.environ.get("WORKSPACE_TMUX_INTEGRATION") == "1", "requires tmux/tmuxp")
+class TmuxpIntegrationTests(unittest.TestCase):
+    def test_workspace_config_creates_and_reuses_one_fixed_session(self):
+        tmux = os.environ["WORKSPACE_TMUX"]
+        tmuxp = os.environ["WORKSPACE_TMUXP"]
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            project = root / "project"
+            project.mkdir()
+            home = root / "home"
+            xdg = root / "xdg"
+            socket_dir = root / "sockets"
+            bin_dir = root / "bin"
+            for directory in (home, xdg, socket_dir, bin_dir):
+                directory.mkdir()
+
+            marker = root / "editor-invocations.jsonl"
+            editor = bin_dir / "workspace-editor"
+            editor.write_text(
+                f"#!{sys.executable}\n"
+                "import json, os, sys, time\n"
+                "with open(os.environ['WORKSPACE_EDITOR_MARKER'], 'a') as marker:\n"
+                " marker.write(json.dumps({'cwd': os.getcwd(), 'argv': sys.argv[1:]}) + '\\n')\n"
+                "time.sleep(120)\n",
+                encoding="utf-8",
+            )
+            editor.chmod(0o755)
+
+            config = root / "workspace.json"
+            session = f"workspace-check-{os.getpid()}"
+            config.write_text(
+                json.dumps(
+                    {
+                        "session_name": session,
+                        "start_directory": str(project),
+                        "windows": [
+                            {
+                                "window_name": "workspace",
+                                "layout": "tiled",
+                                "panes": [
+                                    {"shell_command": "workspace-editor ."},
+                                    {},
+                                    {},
+                                ],
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            socket = socket_dir / "test.sock"
+            env = os.environ.copy()
+            env.update(
+                {
+                    "HOME": str(home),
+                    "XDG_CONFIG_HOME": str(xdg / "config"),
+                    "XDG_DATA_HOME": str(xdg / "data"),
+                    "XDG_CACHE_HOME": str(xdg / "cache"),
+                    "XDG_STATE_HOME": str(xdg / "state"),
+                    "TMUX_TMPDIR": str(socket_dir),
+                    "WORKSPACE_EDITOR_MARKER": str(marker),
+                    "PATH": os.pathsep.join(
+                        [str(bin_dir), str(Path(tmux).parent), str(Path(tmuxp).parent), env.get("PATH", "")]
+                    ),
+                }
+            )
+            env.pop("TMUX", None)
+
+            def tmux_command(*args):
+                return subprocess.run(
+                    [tmux, "-S", str(socket), "-f", "/dev/null", *args],
+                    env=env,
+                    text=True,
+                    capture_output=True,
+                    check=True,
+                    timeout=10,
+                )
+
+            def load_workspace():
+                return subprocess.run(
+                    [tmuxp, "load", "-S", str(socket), "-f", "/dev/null", "-y", "-d", str(config)],
+                    cwd=project,
+                    env=env,
+                    text=True,
+                    capture_output=True,
+                    check=True,
+                    timeout=20,
+                )
+
+            try:
+                load_workspace()
+                panes = tmux_command(
+                    "list-panes", "-t", f"={session}", "-F", "#{pane_index}|#{pane_current_path}"
+                ).stdout.splitlines()
+                self.assertEqual(len(panes), 3)
+                self.assertTrue(all(line.endswith(f"|{project}") for line in panes), panes)
+                # Detached tmux creation may return before the pane has
+                # scheduled the editor process on a busy build machine.
+                deadline = time.monotonic() + 5
+                while not marker.exists() and time.monotonic() < deadline:
+                    time.sleep(0.05)
+                invocations = [json.loads(line) for line in marker.read_text(encoding="utf-8").splitlines()]
+                self.assertEqual(invocations, [{"cwd": str(project), "argv": ["."]}])
+
+                load_workspace()
+                windows = tmux_command("list-windows", "-t", f"={session}", "-F", "#{window_name}").stdout
+                panes_after_reuse = tmux_command(
+                    "list-panes", "-t", f"={session}", "-F", "#{pane_index}|#{pane_current_path}"
+                ).stdout.splitlines()
+                self.assertEqual(windows.splitlines(), ["workspace"])
+                self.assertEqual(len(panes_after_reuse), 3)
+                self.assertTrue(all(line.endswith(f"|{project}") for line in panes_after_reuse))
+                self.assertEqual(marker.read_text(encoding="utf-8").count("\n"), 1)
+            finally:
+                subprocess.run(
+                    [tmux, "-S", str(socket), "-f", "/dev/null", "kill-server"],
+                    env=env,
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                    timeout=10,
+                )
 
 
 if __name__ == "__main__":

@@ -20,10 +20,12 @@ in
         dotfiles = {
           directory = "/home/mayon/nix-dotfiles";
           label = "Nix 配置工作台";
+          workspace = true;
         };
         newnuclear = {
           directory = "/home/mayon/Documents/NewNuclear";
           label = "NewNuclear 工作台";
+          workspace = true;
         };
       };
       defaultTools = {

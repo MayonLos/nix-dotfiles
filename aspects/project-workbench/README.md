@@ -7,7 +7,7 @@ history.
 
 ```sh
 workspace-project list
-workspace-project <project-id> [terminal|editor|files] [-- ARG ...]
+workspace-project <project-id> [terminal|editor|files|workspace] [-- ARG ...]
 ```
 
 The default view is an interactive Kitty shell in the configured directory.
@@ -28,9 +28,27 @@ direnv hook.
 The aspect requires Kitty. The editor and file-manager views require the
 existing `workspace-editor` and `workspace-files` commands, provided by
 `defaultTools` when those roles are configured. It does not select a new editor
-or install an additional GUI file manager. Desktop entries open the terminal
-view for their project.
+or install an additional GUI file manager. Every project receives separate
+Editor and Files actions inside its existing desktop entry; the default
+desktop action remains the terminal view.
 
-`checks.nix` contains isolated tests using temporary project directories and
-spy executables. It does not start Kitty, open a real project, or read user
-project data.
+Projects may opt into `workspace = true`. This adds the `workspace` CLI view
+and a Workspace desktop action. The aspect writes a public tmuxp JSON config
+for one session named `workspace-<project-id>`, with one window containing an
+editor pane and two ordinary interactive shells. It runs no build, test, or log
+commands. Kitty starts `tmuxp load -y`; tmuxp creates a missing session or
+attaches to the configured session when it already exists. Repeated loads keep
+the declared window and panes without duplicating them. The launcher never
+kills or replaces a session. `tmux` and `tmuxp` are installed when at least one
+project opts in. The workspace view rejects extra command arguments.
+
+When `.envrc` exists, workspace launch also uses `direnv exec`; an untrusted
+file is rejected without automatic approval. The generated tmuxp config only
+contains the configured project directory and fixed layout; it does not read
+project files or write into the project.
+
+`checks.nix` contains tests using temporary project directories and spy
+executables. Its tmuxp integration test starts a real server on a private
+temporary socket, uses an isolated home and XDG directories, and launches an
+editor spy. It does not start Kitty, open a real project, or read user project
+data; the running system configuration is not applied.

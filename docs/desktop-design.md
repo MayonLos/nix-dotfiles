@@ -81,12 +81,12 @@ Noctalia 的正文基准为 14，图标基准为 16，regular 工作区文字基
 内容规则如下，保持插件功能而约束它们对版面的影响：
 
 - 时钟使用 `{:%m-%d  %H:%M}`，不显示秒；猫保留键盘响应与音频响应，`rave_mode = false`。频谱保留 64 宽、16 bands、蓝青双色、无音频时隐藏。媒体最大宽度 160、`title_scroll = "on_hover"`、无媒体时隐藏，完整曲名在媒体面板查看。
-- 布局插件显示图标，`show_text = false`；resize/keymode 移到工作区右侧的独立位置，仅非默认模式出现，避免被折叠隐藏。`dev` 以布局为首项、Portctl 为第二项；`panels` 以 Quill 为首项、Docker 为第二项。两组使用 `accordion = true`、`accordion_direction = "end"`。Docker 继续使用 `running_only`，空闲状态以 `on_surface_variant` 表示。
+- 布局插件显示图标，`show_text = false`；resize/keymode 移到工作区右侧的独立位置，仅非默认模式出现，避免被折叠隐藏。`dev` 以布局为首项，后接 Portctl 和 CPU 监视；`panels` 以 Quill 为首项、Docker 为第二项。两组使用 `accordion = true`、`accordion_direction = "end"`。Docker 继续使用 `running_only`，空闲状态以 `on_surface_variant` 表示。
 - 网络沿用 `show_label = false`，SSID 在 tooltip 与网络页；IP 插件保留当前功能，实测其最长地址与托盘展开宽度，不能假定插件支持不存在的截断开关。
 - CPU 平常为 primary，数值最小宽度 34；1% 与 100% 不推动邻居。红色只用于异常，电量 ≤20% 使用警告语义，低电量的既有行为不由视觉改动重写。
 - tooltip、点击/右键入口保留。日期、百分比、模式名提供文字；不能只凭颜色识别当前工作区、静音或错误。
 
-内屏约 1707 逻辑像素宽，扣两端 margin 后约 1679。验收预算为左段 ≤640、中段 ≤200、右段 ≤570，段间至少 16；这是布局预算，尚未实测。需以九工作区、长媒体标题、IP、五个托盘图标、100% CPU 和 resize mode 同时出现作压力场景。低频 `dev` / `panels` 已声明为 accordion，其他状态组不折叠；不缩小正文或隐藏关键电量/网络状态。锁定实现初始只显示首项，**悬停展开，离开收起**，首项点击仍执行原功能，没有独立展开按钮或持久 collapsed 设置。没有承诺 Tab 能展开胶囊；纯键盘通过 `Alt+Space` → `/pan` 搜索 Mango Layouts、Portctl、Quill、Mini Docker 面板。面板提供器枚举已注册插件面板，未禁用任何插件或删除状态。展开后的宽度、鼠标移动与面板打开行为仍待 GUI 验收。窄外屏采用明确的 per-monitor 区段覆盖，不声称存在自动响应断点。
+内屏约 1707 逻辑像素宽，扣两端 margin 后约 1679。验收预算为左段 ≤640、中段 ≤200、右段 ≤570，段间至少 16；这是布局预算，尚未实测。需以九工作区、长媒体标题、IP、五个托盘图标、100% CPU 和 resize mode 同时出现作压力场景。低频 `dev` / `panels` / `devices` 已声明为 accordion；`devices` 以蓝牙为首项，亮度与 IP 在悬停时展开，网络、音量、勿扰、防空闲与电量继续常显；不缩小正文或隐藏关键电量/网络状态。锁定实现初始只显示首项，**悬停展开，离开收起**，首项点击仍执行原功能，没有独立展开按钮或持久 collapsed 设置。没有承诺 Tab 能展开胶囊；纯键盘通过 `Alt+Space` → `/pan` 搜索 Mango Layouts、Portctl、Quill、Mini Docker 面板。面板提供器枚举已注册插件面板，未禁用任何插件或删除状态。展开后的宽度、鼠标移动与面板打开行为仍待 GUI 验收。窄外屏采用明确的 per-monitor 区段覆盖，不声称存在自动响应断点。
 
 ## Mango 工作区、窗口与层次
 
@@ -176,20 +176,20 @@ One Dark Darker；TokyoNight 只作历史画面参考。实际 Astra 负责本�
 推导性能结论。具体实施和构建/应用证据见[重建记录](neovim-rebuild-execution.md)。
 
 - 主题由锁定的 `onedark.nvim` darker 完整实现负责，共享 `#1f2329`、palette 和终端 ANSI
-  保留。薄适配管理表面关系，不再手写整套语法高亮。正文不透明，Context 融入正文；
-  通知和搜索正文使用实底，避免文字叠读。浮窗、输入框和补全保留圆角与清楚边界。
-- Snacks explorer 左侧默认 38 列，一项一行；文档保持自动折行和按词断行，保留续行缩进，
+  保留。薄适配管理表面关系，不再手写整套语法高亮。2026-10-20 Astra 重构将浮窗、
+  输入框、补全、通知、Explorer 和普通选择器统一为正文底色，以中性选中行和细边框区分层级。
+- Snacks explorer 左侧上限 34 列，窄屏按可用宽度缩小，极窄屏改浮层；文档保持自动折行和按词断行，保留续行缩进，
   不再用全局 nowrap 裁掉 Markdown 段落。代码 Context 最多三行、不另占分隔线，
   Markdown/AI 文档不重复固定标题。
-- Heirline 使用深底状态栏、小面积模式强调与右侧位置胶囊，按可用宽度组合 Git、文件、诊断、LSP、AI 和位置；Navic 最多三级。
+- Heirline 使用统一底色、模式前景强调和普通行列文本，按可用宽度组合 Git、文件、诊断、LSP、AI 和位置；Navic 最多三级。
   顶部项目区随 Explorer 实际宽度对齐正文，当前、可见、后台文件有三级区分。
   未修改的空白占位从标签展示过滤，未保存内容继续可见；标签点击选择正文窗口，保留侧栏。
-- Markdown/CodeCompanion 恢复原插件的标题、代码、表格等渲染；插入模式仍渲染，Visual
+- Markdown/CodeCompanion 保留标题、代码、表格等渲染；插入模式保留整篇呈现并显露光标行源标记，Visual
   使用源字符以准确选择。公式使用 Snacks 图像与专门触发器，PDF 外开保留单一 owner。
 - Snacks 通知采用 compact、2500 ms、从底部出现；普通 LSP 进度只更新状态栏，不刷 toast。
   状态栏只显示当前缓冲的紧凑进度，不放滚动的扫描计数。滚动短动效尊重 `reducedMotion`，
   dim 同步关闭范围动画，缩进线为静态作用域提示。
-- Blink 菜单按图标、名称/描述、来源分列，最多九项，省去重复类型名称；文档窗上限 60×18。
+- Blink 菜单按图标、名称/描述、来源分列，窄屏依次去掉描述与来源，最多八项；文档窗宽至多 60 列，明确选中后才接受候选。
   Lua 补全接入 lazydev，LuaLS 只按需补充依赖库，不再预加载全部 runtimepath；项目自有
   `.luarc.json` / `.luarc.jsonc` 时退出库注入，保持原生根目录探测。
 

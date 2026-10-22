@@ -186,7 +186,7 @@ let
       && selectedAlice.systemd.user.services.docker.Install.WantedBy == [ "default.target" ]
       &&
         selectedAlice.systemd.user.services.docker-prune.Service.ExecStart
-        == [ "${pkgs.docker}/bin/docker --host unix://%t/docker.sock system prune -f" ]
+        == [ "${pkgs.docker}/bin/docker --host unix://%t/docker.sock builder prune -f --filter until=168h" ]
       && selectedAlice.systemd.user.services.docker-prune.Service.Type == "oneshot"
       && selectedAlice.systemd.user.timers.docker-prune.Timer.Persistent
       && selectedAlice.systemd.user.timers.docker-prune.Install.WantedBy == [ "timers.target" ];

@@ -155,3 +155,11 @@ Yazi 主题由 HM 消费共享 OneDark palette，不再由 Noctalia yazi 模板�
 桌面会话的移除过程和应用状态见[Hyprland 移除记录](hyprland-removal-execution.md)。
 另有用户明确选择的可选 dwm + Picom / 真 Xorg 会话，用于 QQ、腾讯会议原生共享；
 登录选择、原生栏、菜单和不同于 Mango 的操作见 [Xorg 记录](xorg-desktop-execution.md)。
+
+## 2026-10-20 增强
+
+启动器输入 `/tr 文本` 翻译为中文，`/tr en 文本` 指定英文；查询使用 Google 在线服务。
+项目入口的编辑器和目录可从 desktop actions 选择；明确启用 workspace 的项目还可用
+`workspace-project dotfiles workspace` 或 `workspace-project newnuclear workspace`
+建立/复用编辑器与两个 shell 的 tmux 布局，不自动构建、执行测试或信任 `.envrc`。
+实现、验证和应用状态见[本轮记录](optimization-2026-10-20.md)。

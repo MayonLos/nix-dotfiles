@@ -22,6 +22,11 @@ let
         );
         description = "Human-readable launcher label; treated as plain text.";
       };
+      workspace = lib.mkOption {
+        type = types.bool;
+        default = false;
+        description = "Enable a fixed tmuxp editor-and-shell workspace view for this project.";
+      };
     };
   };
 in

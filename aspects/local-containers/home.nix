@@ -24,15 +24,17 @@ in
   };
 
   systemd.user.services.docker-prune = {
-    Unit.Description = "Prune unused rootless Docker data";
+    Unit.Description = "Prune old rootless Docker build cache";
     Service = {
       Type = "oneshot";
-      ExecStart = "${pkgs.docker}/bin/docker --host unix://%t/docker.sock system prune -f";
+      # Automatic maintenance only removes build cache. Stopped containers
+      # may hold unfinished experiments in their writable layer.
+      ExecStart = "${pkgs.docker}/bin/docker --host unix://%t/docker.sock builder prune -f --filter until=168h";
     };
   };
 
   systemd.user.timers.docker-prune = {
-    Unit.Description = "Weekly rootless Docker prune";
+    Unit.Description = "Weekly rootless Docker build cache cleanup";
     Timer = {
       OnCalendar = "weekly";
       Persistent = true;

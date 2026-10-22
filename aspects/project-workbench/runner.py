@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import NoReturn
 
 
-VIEWS = ("terminal", "editor", "files")
+VIEWS = ("terminal", "editor", "files", "workspace")
 
 
 def fail(message: str, status: int = 2) -> NoReturn:
@@ -24,6 +24,7 @@ def parse_args(argv: list[str]) -> tuple[argparse.Namespace, list[str]]:
     parser = argparse.ArgumentParser(prog="workspace-project")
     parser.add_argument("--projects-json", required=True)
     parser.add_argument("--kitty", required=True)
+    parser.add_argument("--tmuxp", required=True)
     options, command = parser.parse_known_args(argv)
     if command and command[0] == "--":
         command = command[1:]
@@ -62,10 +63,11 @@ def direnv_prefix(directory: str, command: list[str], required: bool) -> list[st
 def launch(
     projects: dict[str, dict[str, str]],
     kitty: str,
+    tmuxp: str,
     command: list[str],
 ) -> NoReturn:
     if not command:
-        fail("usage: workspace-project list | PROJECT [terminal|editor|files] [-- ARG ...]")
+        fail("usage: workspace-project list | PROJECT [terminal|editor|files|workspace] [-- ARG ...]")
     if command == ["list"]:
         for project_id, project in projects.items():
             print(f"{project_id}\t{project['label']}")
@@ -100,6 +102,21 @@ def launch(
         # existing direnv hook decides whether the project's .envrc is trusted.
         os.execvpe(kitty, [kitty, "--directory", directory], os.environ.copy())
 
+    if view == "workspace":
+        if extra:
+            fail("workspace view does not accept command arguments")
+        if project.get("workspace") is not True:
+            fail(f"project '{project_id}' has no workspace enabled")
+        config = project.get("tmuxp_config")
+        if not isinstance(config, str) or not os.path.isabs(config):
+            fail(f"project '{project_id}' has no valid tmuxp configuration")
+        tmuxp = executable(tmuxp)
+        # tmuxp load reuses an existing session with this configured session_name;
+        # it attaches without duplicating windows or panes.
+        child = [kitty, "--directory", directory, tmuxp, "load", "-y", config]
+        child = direnv_prefix(directory, child, required=True)
+        os.execvpe(child[0], child, os.environ.copy())
+
     if view == "editor":
         editor = executable("workspace-editor")
         child = [kitty, "--directory", directory, editor, *(extra or ["."])]
@@ -117,7 +134,7 @@ def main(argv: list[str] | None = None) -> NoReturn:
     options, command = parse_args(sys.argv[1:] if argv is None else argv)
     projects = load_projects(options.projects_json)
     try:
-        launch(projects, options.kitty, command)
+        launch(projects, options.kitty, options.tmuxp, command)
     except OSError as error:
         fail(f"cannot launch project: {error}")
 

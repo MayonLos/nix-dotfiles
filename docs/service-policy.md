@@ -17,8 +17,9 @@
 | 网络与设备 | NM/resolved、Clash、Bluetooth、Intel/NVIDIA、power profiles、thermald、upower、earlyoom 等由真实 laptop host 明确选择。Nix daemon 代理只在 laptop-network，不进入通用维护。 | 不按通用身份或平台隐式启用。休眠不主动关闭业务/VM/容器；无新增周期设备轮询或通用 sleep inhibitor。 |
 | SSH | [closed-ssh-socket](../aspects/remote-access/host.nix) 保留 socket 激活，防火墙不放行，未新增授权 key。 | 这是笔记本现有策略，不能作为已可远程登录的服务器配置。真实机器须另行明确网络、key 与恢复入口。 |
 | 本地容器 | [local-containers](../aspects/local-containers/default.nix) 与 container-client 分开。host 复用官方 rootless support，但关闭全局 daemon wants 和全局 socket 环境；所选 HM binding 提供完整 daemon unit 与 shell/environment.d 的 DOCKER_HOST。 | 仍为 user manager 的 `default.target` daemon，官方 `Restart=always`/2 秒和限制保留；不是 Docker socket 激活。未新增 linger，当前实机 Linger=no 的生命周期保持，最后注销后不能承诺容器继续。安装 CLI 不启 daemon。 |
-| Docker prune | 只由 local-containers binding 声明每周、Persistent timer，拉起 oneshot `docker --host unix://%t/docker.sock system prune -f`。 | 保留现有调度和语义，不添加 `--volumes`，不在本轮执行 prune。仍会移除 Docker 判定为 unused 的对象；后续观察 timer、日志与范围，不把 prune 当数据迁移或备份。 |
+| Docker prune | 只由 local-containers binding 声明每周、Persistent timer，拉起 oneshot `docker --host unix://%t/docker.sock builder prune -f --filter until=168h`。 | 2026-10-20 起自动清理限于一周未使用的构建缓存，停止容器、镜像与卷不属于该命令清理范围；保留原计时器名称和每周调度。没有手动执行 prune；清理不替代备份。 |
 | 本地虚拟机 | [local-virtual-machines](../aspects/local-virtual-machines/default.nix) 授予所选 binding 的 libvirtd/kvm，host 配置 QEMU KVM、runAsRoot=false、swtpm、SPICE USB。virt-manager 客户端可单选。 | `libvirtd.service` 的开机 wants 明确清空，保留 Unix sockets；旧实现同时有 multi-user wants，故本轮显式修正。`libvirt-guests` 保持关闭，不设置或改变 domain autostart。镜像、TPM 和 guest 生命周期属用户数据。 |
+| 翻译 | Noctalia 使用锁定的官方 translator 插件，仅响应 `/tr` 前缀。 | 显式查询使用 Google 在线服务，不将普通启动器查询发送给它。录屏继续使用 OBS，本轮不启用会接管外部 GSR 的插件。 |
 | AI / 应用 | [AI workbench](../aspects/ai-workbench/default.nix) 和其他应用 feature 安装 CLI/desktop entry；认证与可变设置留给应用。 | 不新增开机 daemon。工具启动后自身的按需子进程不等同 Nix 服务；模型、OAuth、Codex/OpenCode 配置与历史保留。 |
 | 维护 | system-maintenance 提供 Nix optimise 和既有 NH 清理调度；真实 repo path 属于当前 host。 | 保留既有 generation 保留规则；本轮不手动 GC，不在回退验收前清理备份或构建产物。 |
 
