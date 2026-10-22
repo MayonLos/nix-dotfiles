@@ -86,8 +86,7 @@ let
   };
 in
 {
-  # Both from unstable — these chase upstream closely and stable lags:
-  # qq 3.2.29 vs 3.2.32, wechat-uos 4.1.1.4 vs 4.1.1.7.
+  # Both from unstable — these chase upstream closely and stable lags.
   home.packages = [
     # Passes --enable-wayland-ime --wayland-text-input-version=3 when
     # NIXOS_OZONE_WL and WAYLAND_DISPLAY are both set in Mango, so fcitx5's

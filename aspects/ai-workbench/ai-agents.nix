@@ -41,23 +41,26 @@ let
 
   dshDesktop = pkgs.callPackage ./dsh-desktop.nix { dsh = dshCli; };
 
-  # llm-agents.nix ships OpenCode v2's binary as `opencode2` (upstream's real
-  # name is `opencode`; the suffix avoids colliding with the v1 package). The
-  # fel/quill noctalia plugin drives the literal name `opencode` and its backend
-  # is not configurable, and codecompanion hardcodes `opencode` too, so expose
-  # v2 under `opencode` with a thin wrapper. `opencode2` is still installed for
-  # calling the v2 entry point explicitly.
-  opencodeCli = pkgs.writeShellScriptBin "opencode" ''
-    exec ${agents.opencode2}/bin/opencode2 "$@"
+  # Use the desktop's Harness home by default instead of reactivating legacy
+  # ~/.dsh plugins. Explicit DSH_HOME still supports isolated scripts and CI.
+  dshCommand = pkgs.writeShellScriptBin "dsh" ''
+    dsh_home="''${DSH_HOME:-}"
+    if [[ "$dsh_home" =~ ^[[:space:]]*$ ]]; then
+      dsh_home="''${XDG_DATA_HOME:-$HOME/.local/share}/dsh-desktop/harness"
+    fi
+    export DSH_HOME="$dsh_home"
+    exec ${pkgs.lib.getExe dshCli} "$@"
   '';
+
 in
 {
   home.packages = [
     # Upstream has no Linux Electron release yet. Keep its official Web UI in
-    # a dedicated desktop window; the patched CLI is a private backend only.
+    # a dedicated desktop window; the command uses the same patched runtime.
     # Runtime state lives in $XDG_DATA_HOME/dsh-desktop/harness (defaulting to
     # ~/.local/share), isolated from the removed CLI's ~/.dsh plugins.
     dshDesktop
+    dshCommand
 
     # OpenAI's CLI agent, authenticated through the user's ChatGPT account.
     # Its ~/.codex/config.toml remains user-managed, outside Nix.
@@ -67,16 +70,13 @@ in
     # the former --no-daemon wrapper is no longer needed.
     agents.codex
 
+    # Claude Code's Nix-managed CLI; authentication and history stay user-owned.
+    agents.claude-code
+
     # xAI's official Grok Build coding agent. Provides both `grok` for
     # interactive sessions and `agent` for automation. Authentication is via
     # browser OAuth on first launch or XAI_API_KEY for non-browser use.
     agents.grok
-
-    # Terminal coding agent with provider support. The locked llm-agents input
-    # exposes v2 as `opencode2`; the wrapper above also provides `opencode`.
-    # Configuration and credentials remain mutable runtime state outside Nix.
-    agents.opencode2
-    opencodeCli
   ];
 
   # NOT here: `agents.zcode` (Z.ai's Electron IDE). Removed 2026-09-19 at the

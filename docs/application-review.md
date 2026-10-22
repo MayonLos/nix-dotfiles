@@ -98,7 +98,7 @@
 | Heirline | 已恢复固定插件 | 按旧 Nixvim 效果参考重建状态栏、标签和宽度收缩，保留同名消歧、未保存保护和 LSP/Git/AI 状态，主题保持 OneDark。 |
 | Kitty | 保留 | 图形协议、Yazi/Snacks Neovim 图片预览和主题已有接线；服务器终端可用 `kitten ssh` 处理 terminfo，不需换整个终端。 |
 | tmux | 保留 | 会话持久化和远程复用。passthrough 用于图像；后续按实际终端能力核对宽泛 overrides，而非直接关闭造成预览退化。 |
-| tmuxp | 保留 | Noctalia tmux provider 的依赖，不是额外启动的常驻会话管理服务。 |
+| tmuxp | 保留 | Noctalia tmux provider 与项目工作台共用的会话布局工具；`workspace-project PROJECT workspace` 用它创建或复用编辑器加两个 shell 的 tmux 会话。tmux server 负责会话持久化。 |
 | Git | 保留 | 基础版本控制和 diff3 冲突上下文；现有编辑器/IDE 已有差异工具，不再默认添加另一个 diff GUI。 |
 | GitHub CLI（gh） | 保留 | PR、仓库等 GitHub 操作；与本地 Git 分工。只有不使用这些命令时才有删的理由。 |
 | lazygit | 保留 | 交互暂存、提交和 rebase；`lg` 已接线，和 gh 分工不同。 |
@@ -116,21 +116,24 @@
 
 ## AI 应用与编辑器集成
 
-入口：[AI agents](../aspects/ai-workbench/ai-agents.nix)、[Grok Bot](../aspects/ai-workbench/grok-bot.nix)、[DSH 包装](../aspects/ai-workbench/dsh-desktop.nix)、[CodeCompanion](../aspects/editing/neovim/config/lua/mayon/plugins/ai.lua)。以下软件按用户此前决定继续保留，不以未经测量的模型排名替用户删项。
+入口：[AI agents](../aspects/ai-workbench/ai-agents.nix)、[Grok Bot](../aspects/ai-workbench/grok-bot.nix)、[DSH 包装](../aspects/ai-workbench/dsh-desktop.nix)、[CodeCompanion](../aspects/editing/neovim/config/lua/mayon/plugins/ai.lua)。2026-10-20 用户决定删除 OpenCode；Codex、Grok Build、DeepSeek Harness、Grok Bot 和 CodeCompanion 继续保留。配置更新已于 2026-10-20 应用，Home Manager 返回 success，OpenCode 命令已从新环境移除。
+
+2026-10-22：新增 Claude Code 2.1.299，主机 toplevel 与 treefmt 检查构建通过，系统 switch 成功；新 shell 的 `claude --version` 验证通过。程序由 Nix 管理，未修改既有登录、设置或会话，也未发起模型请求。
 
 | 项目 | 当前定位与建议 | 代价或边界 |
 |---|---|---|
 | Codex | 本地仓库编码主入口候选；原生 CLI、审查、会话和工具集成 | 使用现有原生子代理/MCP 客户端，避免另包一层 `codex exec` 委托脚本。选主力看实际项目体验，不凭模型宣传排名。 |
-| Grok Build | 本地 TUI/脚本式编码，作为另一引擎保留 | 和 Codex/OpenCode 的本地改代码能力重叠；可给它明确备用/交叉核验角色。不要和 Grok Bot 云端电脑混为一项。 |
-| OpenCode v2 | 保留，兼顾 CLI 与已有调用方 | `opencode2` 包和 `opencode` wrapper 是版本兼容接线，Quill/CodeCompanion 仍依赖后者；不是装了两套独立 agent。v2 配置不要照抄 v1 schema。 |
+| Claude Code | 用户于 2026-10-22 要求安装；通过锁定的 llm-agents 输入提供 `claude` | Nix 管理程序版本，登录、设置与会话历史归用户；在项目目录执行 `claude`，按提示完成账号登录。 |
+| Grok Build | 保留为本地 TUI/脚本式编码工具 | 可承担备用或交叉核验任务；不要和 Grok Bot 云端电脑混为一项。 |
+| OpenCode | 用户于 2026-10-20 决定删除 | 包、命令兼容 wrapper、CodeCompanion CLI 入口和 Quill 的 CLI 调用已从配置移除；Quill AI 改为直接调用 Go。已应用并核验运行时覆盖，保留其他应用及用户数据。 |
 | DeepSeek Harness 桌面入口 | 保留为实验性图形入口 | 当前是官方 Web UI + Chromium 应用窗口和私有后端，不是官方 Linux Electron 安装包。预览版变化与自维护包装有成本，不引入同名第三方桌面客户端。 |
 | Grok Bot | 保留，承担云端持续任务/流程 | 云端电脑可在本机关闭后继续工作；资格/账户和网络依赖不同于本地 CLI。不是本地终端复用器。当前 Electron workaround 另见使用文档，不能随意删除。 |
-| CodeCompanion | 保留 | Nvim 内联/聊天/选区上下文有独立价值；默认 DeepSeek 与可选 CLI agent 分工。原生 Lua 配置保留现有历史和快捷键；插件由 `aspects/editing/neovim/plugins.nix` 固定提供。 |
+| CodeCompanion | 保留 | Nvim 内联/聊天/选区上下文有独立价值；聊天默认 DeepSeek，CLI agent 清单保留 Codex 和 Grok。原生 Lua 配置保留现有历史和快捷键；插件由 `aspects/editing/neovim/plugins.nix` 固定提供。 |
 | MCPHub | 用户最新确认删除 | 编辑器面板、CodeCompanion 扩展、专用输入与二次 nixpkgs 接线移除；各 agent 的独立 MCP 设置保留。 |
 
-更优解先是**分配使用角色和共享项目指令**：日常固定一个本地入口，另一个用于具体任务比较，图形与云端入口按需打开。进程数、模型费用和实际速度取决于使用方式，单纯安装多个 CLI 不等于全部常驻。各工具的账号/密钥及运行时状态不强制合并进 Nix。
+当前保留的本地编码入口是 Codex、Claude Code、DSH headless 与 Grok Build，图形和云端入口按需打开。进程数、模型费用和实际速度取决于使用方式，单纯安装多个 CLI 不等于全部常驻。各工具的账号/密钥及运行时状态不强制合并进 Nix。
 
-资料：[Codex CLI](https://learn.chatgpt.com/docs/codex/cli)、[Codex MCP 客户端](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)、[Grok Build](https://docs.x.ai/build/overview)、[OpenCode v2](https://dev.opencode.ai/v2/docs/)、[DeepSeek Harness 官方仓库](https://github.com/deepseek-ai/deepseek-harness)、[Grok Bot 入门](https://docs.x.ai/grok-bot/get-started)、[Grok Bot FAQ](https://docs.x.ai/grok-bot/faq)。本仓库的 [Grok Bot 说明](grok-bot.md)记录当前包装限制。
+资料：[Codex CLI](https://learn.chatgpt.com/docs/codex/cli)、[Codex MCP 客户端](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)、[Grok Build](https://docs.x.ai/build/overview)、[DeepSeek Harness 官方仓库](https://github.com/deepseek-ai/deepseek-harness)、[Grok Bot 入门](https://docs.x.ai/grok-bot/get-started)、[Grok Bot FAQ](https://docs.x.ai/grok-bot/faq)。本仓库的 [Grok Bot 说明](grok-bot.md)记录当前包装限制。
 
 ## 语言工具链、工程与虚拟化
 
@@ -200,7 +203,7 @@
 | Prism Provider | 保留实例启动入口，与 Prism 本体互补。 |
 | Portctl | 保留端口检查与结束监听进程，不因有 btop 就视作完全重复。 |
 | Mango Layouts | 保留布局操作，仍依赖 mmsg/jq；不引入另一套并行布局脚本。 |
-| Quill | 保留快记/todo，AI 调用继续考虑 OpenCode 命令兼容。 |
+| Quill | 保留快记/todo；AI 直接调用 OpenCode Go，无需安装 OpenCode CLI。 |
 | Mango Keymode | 保留当前键位模式提示，有助于可发现性。 |
 | Fcitx5 / Rime / rime-ice | 保留，后续统一候选框配色；GTK/Qt addon 为应用接入，不能因有 Wayland frontend 一并删除。 |
 | qt6ct / GTK 设置 | 保留现有外观桥接；One Dark Darker 应集中提供语义颜色，再输出各应用格式，避免每个模块各写一份色值。 |

@@ -22,7 +22,7 @@
     # Noctalia plugin repositories, consumed as plain source trees rather than
     # through noctalia's own git fetcher. A `kind = "path"` plugin source points
     # straight at the store path, so nothing is cloned at startup — see the
-    # comment on settings.plugins in aspects/interactive-session/noctalia.nix.
+    # comment in aspects/interactive-session/noctalia/plugins.nix.
     noctalia-plugins-official = {
       url = "github:noctalia-dev/official-plugins";
       flake = false;
@@ -59,7 +59,7 @@
     mark-shot.url = "github:jswysnemc/mark-shot";
     wayscrollshot.url = "github:jswysnemc/wayscrollshot";
 
-    # Daily-updated packages for AI coding agents: codex, dsh, grok, opencode
+    # Daily-updated packages for AI coding agents: codex, claude-code, dsh, grok
     # and the review/usage tooling around them. zcode is deliberately NOT
     # installed -- see aspects/ai-workbench/ai-agents.nix. Deliberately NOT
     # `follows`-ed: upstream only builds and caches against its own pinned
