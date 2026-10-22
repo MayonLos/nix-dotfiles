@@ -1,5 +1,7 @@
 # 新对话执行交接
 
+2026-10-20 最新优化见[可读性与工作流记录](optimization-2026-10-20.md)，该记录单列当前轮次的验证与应用结果；下方 generation 与授权叙述保留为各轮历史。
+
 更新：2026-10-19。Den 批次 0–7 已完成实现、文档与构建，详见[实施记录](den-execution.md)。
 该初轮没有应用系统；其后用户已 nr 并授权后续自主应用，当前运行与待验项以各轮记录为准。
 最新 CLI、媒体与桌面见[系统界面记录](system-experience-execution.md)；Hyprland 当前移除状态见[移除记录](hyprland-removal-execution.md)。

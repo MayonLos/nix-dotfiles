@@ -190,6 +190,39 @@ Kdenlive 用户仍在考虑，暂时保留。此次不清理应用数据，也�
 
 验证状态：**已修改并验证，未应用**。本次 `nix flake check --no-build --no-write-lock-file`、treefmt 检查构建、主机 toplevel 构建均通过，目标文件格式和差异空白检查通过。Home Manager 求值断言确认四项声明已移除、启用插件为 10 项，Kdenlive、Blender、GIMP 与 Bongocat 仍保留。未进行桌面运行验证或系统切换。
 
+### OpenCode 删除与缓存清理（2026-10-20）
+
+用户要求删除 OpenCode，并清理系统中无用的文件和文件夹。当前配置已移除 `opencode2` 包、`opencode` 兼容 wrapper、CodeCompanion CLI 项和 Quill 的 CLI 后端；Quill 的笔记与待办功能继续保留；删除 CLI 时先关闭 AI，随后按用户的接入排查改成 Go 直连，见下文。Codex、Grok Build、DeepSeek Harness 桌面和 Grok Bot 继续保留。此前 2026-10-18 的计划与验证记录描述的是当时状态。
+
+已执行用户目录清理，不需要系统切换即可生效：
+
+| 路径 | 清理内容与统计 |
+|---|---|
+| `~/.cache/uv` | 使用 `uv --no-config --offline cache clean --cache-dir /home/mayon/.cache/uv`，未使用 `--force`；成功删除 165,687 个文件，工具报告 19.0 GiB。 |
+| `~/.cache/pip`、`~/.npm/_cacache`、`~/.npm/_logs` | 清除可重新下载的依赖缓存和 npm 日志；清理前目录分配空间合计约 1.22 GiB。 |
+| `~/.cache/opencode`、`~/.config/opencode/node_modules` | 清除 OpenCode 缓存和可重新安装的插件依赖，合计约 67 MiB。 |
+| `~/.cache/thumbnails` | 清除可重新生成的缩略图，约 43 MiB。 |
+
+这些统计来自缓存工具和目录占用，不能直接等同于文件系统净释放量；硬链接、并发写入和本轮 Nix 构建会影响实际可用空间。保留 `~/.opencode` 中的笔记、计划，`~/.local/share/opencode` 和 `~/.local/state/opencode` 中的历史、快照、认证及其他状态，以及剩余配置。项目、模型、登录数据、容器卷、虚拟机镜像、回收站与旧备份未删除。
+
+验证状态：**已于 2026-10-20 构建、应用并验证**。已通过 flake 求值、treefmt 检查构建、主机 toplevel 构建和独立 Neovim 包构建；隔离 XDG 目录后启动新 Neovim 包，确认 CodeCompanion CLI 清单只有 Codex/Grok、默认 CLI 为 Codex、聊天仍使用 DeepSeek。独立只读复核确认 Quill 的 `dependencies` 仅用于展示，`off` 后端不会调用 OpenCode，笔记功能不会因卸载而被加载器禁用。本段卸载验证未发真实模型请求；后续 Quill Go 连通测试见下文。
+
+随后用户提供系统应用授权，已成功执行 `sudo nixos-rebuild switch --flake .#nixos-btw`；Home Manager 返回 success，新的 shell 中 `opencode` 和 `opencode2` 均不可用。Noctalia 已重启并清除受管理的 Go 三项旧覆盖，运行时 API Key 保留。未删除旧 NixOS generations。Neovim 同次应用及最终证据见[重建记录](neovim-rebuild-execution.md)。
+
+### Quill 直接接入 Go（2026-10-20）
+
+用户在 GUI 选择 OpenCode Go 后仍无法使用，实际生效的 `ai_model` 还继承旧 CLI 值 `deepseek/deepseek-flash`。用 Quill 保存的同一把 key 发送最小连通请求，旧模型返回 HTTP 400 `Model is unavailable`；改成 `deepseek-v4.1-flash`、使用当前官方 Chat Completions 端点后返回 HTTP 200，含正常文本且 `finish_reason = stop`。测试未输出密钥，也未发送用户笔记。
+
+当前 Nix 声明与用户侧运行时覆盖已统一为：
+
+- `ai_backend = "opencode-go"`
+- `ai_model = "deepseek-v4.1-flash"`，使用 Go 的原始模型 ID。
+- `ai_base_url = "https://opencode.ai/inference/go/openai/v1"`；插件自行追加 `/chat/completions`。
+
+锁定插件的默认端点仍是旧 `/zen/go/v1`，故显式声明当前端点；旧端点本次能返回模型错误，不能据此认定它已经失效。Quill 的 Go 后端会发送稳定的 `x-opencode-session` 与自身 User-Agent。API Key 只保存在用户运行时设置里，未写入 Nix 或 store；更新运行时文件只修改上述三项，其余设置和密钥保持一致，并调用 `noctalia msg config-reload`。锁定 Noctalia 的配置差异比较包含插件设置，`config-reload` 会销毁旧 Quill panel/runtime，并在下次打开时创建新实例，因此此次设置变更也会清掉模块内缓存的可用性结果，无需额外 disable/enable。运行时设置先直接更新，随后持久声明已随本次系统 switch 应用。
+
+这组 Go 直连声明已通过 treefmt 检查构建和主机 toplevel 构建；运行系统已完成 switch，持久配置三项与运行时密钥保留均已核验。参考：[Go 官方端点与模型 ID](https://opencode.ai/v2/docs/console/go/#endpoints)。HTTP 连通性不等同于已经完成 Quill 的全部 GUI 交互回归。
+
 ### PDF、工程软件与看图（2026-10-18）
 
 用户确认删除 PDF Arranger、KiCad：已删除专用 PDF Arranger 模块和 KiCad 包声明。PDF 阅读继续使用已确认保留的 Zathura；嵌入式工具不因 KiCad 删除而移除。yt-dlp 最初只解释用途，后续因用户认为作用不大，从常驻安装清单移除，见下文记录。
@@ -221,7 +254,7 @@ IDEA/PyCharm/CLion 已确认保留。用途比较后，用户确认删除其余�
 | 类别 | 当前清单 | 状态 |
 |---|---|---|
 | IDE | IntelliJ IDEA、PyCharm、CLion，以及 VS Code | 均已明确保留；WebStorm、DataGrip、RustRover 已移除安装声明。 |
-| AI 与代理 | Codex、Grok Build、OpenCode2/兼容 `opencode`、DeepSeek Harness 桌面、Grok Bot；Neovim 的 CodeCompanion | 五个独立 AI 软件已决定先保留，后续明确不用时再删除；编辑器 AI 插件保持当前状态。 |
+| AI 与代理 | Codex、Grok Build、DeepSeek Harness 桌面、Grok Bot；Neovim 的 CodeCompanion | OpenCode 已于 2026-10-20 决定删除；其他 AI 应用和 CodeCompanion 保留。新配置已于 2026-10-20 应用。 |
 | 开发与语言 | Git、LLVM/Clang、Python、Lua、Java/JDK、MATLAB、嵌入式工具、Nix 工具、direnv、各类 LSP/格式化器 | 按已批准的下文方案精简；MATLAB、STM32、JDK、完整 TeX、Git/查包与编辑器工具继续保留。 |
 | 笔记、文献与办公 | Obsidian、Zotero、LibreOffice、Typora、Zathura | 均已明确保留；PDF Arranger 已移除安装声明。 |
 | 图像、视频与制作 | Blender、GIMP、Kdenlive、OBS Studio、mpv、Musicfox、ImageMagick、ffmpeg | Blender、GIMP、OBS Studio、Musicfox、mpv 明确保留；Kdenlive 用户仍在考虑，暂留；ImageMagick/ffmpeg 按消费者处理；yt-dlp 独立安装声明已移除。 |
@@ -295,7 +328,7 @@ Mango + Noctalia 已选定，以下是删除 ShareDND、Kaomoji、DeepSeek Peak 
 | 桌面操作 | Mango layouts、Mango keymode |
 | 应用/会话入口 | JetBrains provider、tmux provider、PrismLauncher instances |
 | 系统管理 | IP monitor、mini-docker（随 Docker 保留）、portctl |
-| 笔记待办 | Quill（已明确保留；AI 功能当前调用 OpenCode） |
+| 笔记待办 | Quill（保留笔记与待办；AI 直接调用 OpenCode Go，无需 CLI） |
 | 装饰/附加 | Bongocat |
 
 ### 删除决策优先，替换和新增随后
@@ -310,7 +343,8 @@ Mango + Noctalia 已选定，以下是删除 ShareDND、Kaomoji、DeepSeek Peak 
 | Docker / 本地虚拟机 / MATLAB / STM32 工具组 | 用户明确全部保留 | 维持现有安装、服务、设备权限及入口；本轮未更改相应模块，仅更新决策记录。 |
 | Steam / Prism Launcher / MangoHud / Gamescope / GameMode | 用户明确全部保留 | 保留当前游戏配置、Prism 辅助工具与多 JDK 集成；本轮仅更新文档，未改模块。 |
 | WebStorm / DataGrip / RustRover | 用户确认删除，安装声明已移除 | 保留用户项目与状态，不自动安装额外 IDE 插件。 |
-| Codex / Grok Build / OpenCode / DeepSeek Harness / Grok Bot | 用户决定先保留 | 从本轮删除候选移出；相关 Neovim、Quill、桌面和 URL 入口保持。 |
+| Codex / Grok Build / DeepSeek Harness / Grok Bot | 保留 | 保留相应桌面、命令及编辑器入口；系统已于 2026-10-20 应用本轮配置。 |
+| OpenCode | 用户于 2026-10-20 确认删除，配置已修改 | 移除包、兼容 wrapper、CodeCompanion CLI 项和 Quill 的 CLI 后端；Quill AI 改为 Go 直连，保留笔记待办及现有用户数据。已应用并核验运行时覆盖。 |
 | ProtonUp-Qt | 用户确认删除，已移除安装声明 | 不再提供该图形化额外 Proton 版本管理工具。 |
 | PDF Arranger / KiCad | 用户确认删除，已移除安装声明 | 保留 Zathura 阅读 PDF；保留独立的嵌入式开发工具。 |
 | yt-dlp | 用户认为用途有限，本轮移除独立安装声明 | mpv 仍携带其网络播放依赖；已有下载文件保留，需要独立下载时按需运行。 |
@@ -408,7 +442,7 @@ nix/neovim.nix             # neovim / neovim-dev outputs
 ### 1. 完成本批清理
 
 - 检查每项删除的 diff、引用、服务、快捷键、桌面入口、文档和持久化数据路径。
-- 保留前表指定的 AI 工具和兼容 wrapper；验证 CodeCompanion 默认聊天实际走现有 DeepSeek。
+- 保留当前决策指定的 AI 工具；验证 CodeCompanion 默认聊天实际走现有 DeepSeek。OpenCode 的删除是 2026-10-20 后续决定，待本轮构建与应用验证。
 - 验收：引用搜索无意外残留；Nix 求值/相关构建成功；针对编辑器和桌面入口做冷启动或运行验证。本轮实际检查结果见“本批验证记录”。
 - 回退：用阶段差异快照定位并回退造成故障的改动，保留此前用户改动；模型权重和用户目录不通过配置回滚覆盖。
 
