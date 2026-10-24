@@ -16,7 +16,7 @@ in
       name = "mayon";
       initial = "M";
     };
-    appearance = import ../../../aspects/appearance/appearance/onedark-darker.nix;
+    appearance = import ../../../aspects/appearance/appearance/onedark.nix;
     inherit facts;
   };
   den.aspects.nixos-btw = {

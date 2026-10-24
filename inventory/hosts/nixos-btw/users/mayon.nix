@@ -18,7 +18,7 @@ in
             variable = "DEEPSEEK_API_KEY";
           }
         ];
-        appearance = import ../../../../aspects/appearance/appearance/onedark-darker.nix;
+        appearance = import ../../../../aspects/appearance/appearance/onedark.nix;
         workspaceProjects = {
           dotfiles = {
             directory = flakePath;

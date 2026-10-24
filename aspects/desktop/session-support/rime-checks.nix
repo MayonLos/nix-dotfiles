@@ -9,12 +9,18 @@ let
     builtins.filter (p: pkgs.lib.getName p == "fcitx5-rime") home.i18n.inputMethod.fcitx5.addons
   );
   inherit (rime) engine;
-  theme = home.xdg.dataFile."fcitx5/themes/One-Dark-Darker".source;
+  theme = home.xdg.dataFile."fcitx5/themes/onedark".source;
   paletteMetadata = pkgs.writeText "rime-theme-palette.json" (
     builtins.toJSON {
-      inherit (palette) blue selection muted;
+      inherit (palette)
+        blue
+        selection
+        fg
+        brightFg
+        ;
     }
   );
+  classicUi = home.i18n.inputMethod.fcitx5.settings.addons.classicui.globalSection;
   files = [
     "default.custom.yaml"
     "rime_ice.custom.yaml"
@@ -56,7 +62,7 @@ pkgs.runCommand "rime-technical-runtime"
     grep -F 'loading gram db: ${rime}/share/rime-data/wanxiang-lts-zh-hans.gram' "$out/deploy.log"
     grep -F 'found double array image of size' "$out/deploy.log"
     if grep -Ei 'error|failed|cannot|could not' "$out/deploy.log"; then exit 1; fi
-    python3 - "$TMPDIR/rime" ${theme} ${paletteMetadata} <<'PY'
+    python3 - "$TMPDIR/rime" ${theme} ${paletteMetadata} '${builtins.toJSON classicUi}' <<'PY'
     import configparser, json, pathlib, sys, yaml
     user = pathlib.Path(sys.argv[1])
     schema = yaml.safe_load((user / "build/rime_ice.schema.yaml").read_text())
@@ -73,19 +79,24 @@ pkgs.runCommand "rime-technical-runtime"
     assert default["menu"]["page_size"] == 7
     theme = pathlib.Path(sys.argv[2])
     palette = json.loads(pathlib.Path(sys.argv[3]).read_text())
+    classic_ui = json.loads(sys.argv[4])
+    assert classic_ui["Vertical Candidate List"] == "False"
+    assert classic_ui["Font"].endswith(" 13")
     panel = configparser.ConfigParser()
     panel.read(theme / "theme.conf")
-    # These are the public roles in the One Dark Darker palette consumed here.
+    # These are the public roles in the One Dark palette consumed here.
     assert panel["InputPanel"]["highlightcandidatecolor"] == palette["blue"]
     assert panel["InputPanel"]["highlightbackgroundcolor"] == palette["selection"]
-    assert panel["InputPanel"]["candidatelabelcolor"] == palette["muted"]
-    assert panel["InputPanel"]["candidatecommentcolor"] == palette["muted"]
-    assert panel["InputPanel"]["fullwidthhighlight"] == "False"
+    assert panel["InputPanel"]["candidatelabelcolor"] == palette["fg"]
+    assert panel["InputPanel"]["candidatecommentcolor"] == palette["fg"]
+    assert panel["InputPanel"]["fullwidthhighlight"] == "True"
     assert panel["InputPanel/Background/Margin"]["left"] == "12"
-    assert panel["InputPanel/ContentMargin"]["left"] == "8"
-    assert panel["InputPanel/TextMargin"]["left"] == "12"
+    assert panel["InputPanel/ContentMargin"]["left"] == "6"
+    assert panel["InputPanel/TextMargin"]["left"] == "10"
     assert panel["InputPanel/PrevPage/ClickMargin"]["top"] == "6"
     assert panel["InputPanel/NextPage/ClickMargin"]["top"] == "6"
+    assert panel["Metadata"]["scalewithdpi"] == "True"
+    assert panel["InputPanel"]["normalcolor"] == palette["brightFg"]
     images = [s["image"] for s in panel.values() if "image" in s]
     assert len(images) == 8
     assert set(images) == {"panel.svg", "highlight.svg", "prev.svg", "next.svg", "radio.svg", "arrow.svg"}

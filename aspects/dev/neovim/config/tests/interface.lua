@@ -119,6 +119,16 @@ assert(
 )
 assert(#picker:items() > 0, "file picker found no config files")
 picker:close()
+local explorer = snacks.explorer({ cwd = vim.env.NVIM_CONFIG_DIR, show_delay = 0 })
+assert(
+	require("snacks.explorer.actions").trash == require("mayon.features.fileops").trash,
+	"first explorer must install the guarded trash action"
+)
+assert(
+	snacks.rename.rename_file == require("mayon.features.fileops").rename_file,
+	"first explorer must preserve guarded rename"
+)
+explorer:close()
 
 local file = vim.fn.tempname() .. ".lua"
 vim.fn.writefile({ "local function test()", "  local a = 1", "  return a", "end", "return test()" }, file)
@@ -134,7 +144,7 @@ assert(vim.fn.foldtextresult(1):find("lines", 1, true), "fold summary lacks line
 vim.cmd.normal({ "zR", bang = true })
 assert(vim.fn.foldclosed(1) == -1)
 vim.fn.delete(file)
-vim.cmd.colorscheme("onedark-darker")
+vim.cmd.colorscheme("onedark")
 for _, group in ipairs({
 	"MayonDashboardBlue",
 	"MayonDashboardCyan",
@@ -144,9 +154,34 @@ for _, group in ipairs({
 	"SatelliteBar",
 	"TinyInlineDiagnosticVirtualTextError",
 	"TodoFgTODO",
+	"LspInlineCompletion",
+	"MinuetVirtualText",
+	"PmenuKind",
+	"PmenuExtra",
+	"PmenuSbar",
+	"PmenuThumb",
+	"DiffAdd",
+	"DiffChange",
+	"DiffText",
+	"DiffDelete",
 }) do
 	local hl = vim.api.nvim_get_hl(0, { name = group, link = false })
 	assert(next(hl), "missing theme group: " .. group)
 end
+local palette = require("mayon.generated").palette
+for _, name in ipairs({
+	"TinyInlineDiagnosticVirtualTextError",
+	"TinyInlineDiagnosticVirtualTextErrorCursorLine",
+	"TinyInlineInvDiagnosticVirtualTextErrorNoBg",
+}) do
+	assert(
+		vim.api.nvim_get_hl(0, { name = name, link = false }).fg == tonumber(palette.brightFg:sub(2), 16),
+		"diagnostic body must remain brightFg after colorscheme reload: " .. name
+	)
+end
+local inline = vim.api.nvim_get_hl(0, { name = "LspInlineCompletion", link = false })
+assert(inline.fg == tonumber(palette.muted:sub(2), 16) and inline.italic, "AI ghost text must use muted italic")
+local normal = vim.api.nvim_get_hl(0, { name = "Normal", link = false })
+assert(normal.bg == tonumber(palette.deep:sub(2), 16), "editor surface must use generated deep")
 assert(vim.v.errmsg == "", vim.v.errmsg)
 print("Lazy setup, dashboard, unified pickers, folds and palette groups passed")

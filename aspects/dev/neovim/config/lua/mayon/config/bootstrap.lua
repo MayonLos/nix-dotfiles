@@ -4,11 +4,34 @@ function M.setup()
 	require("mayon.config.options").setup()
 	require("vim._core.ui2").enable()
 	require("mayon.ui.theme").setup()
-	require("mayon.ui.icons").setup()
 	require("mayon.config.loader").setup()
-	require("mayon.features.fileops").setup()
-	require("mayon.features.sessions").setup()
-	require("mayon.features.urls").setup()
+	-- Rename stays protected even before the explorer is opened. Explorer trash
+	-- is wired by its config callback, before any action can run.
+	require("snacks").rename.rename_file = function(...)
+		return require("mayon.features.fileops").rename_file(...)
+	end
+	local function sessions()
+		local feature = require("mayon.features.sessions")
+		feature.setup()
+		return feature
+	end
+	vim.api.nvim_create_autocmd({ "BufReadPre", "BufNewFile", "DirChanged" }, {
+		once = true,
+		callback = sessions,
+	})
+	for lhs, method in pairs({ ps = "load", pl = "last", pd = "disable" }) do
+		vim.keymap.set("n", "<leader>" .. lhs, function()
+			sessions()[method]()
+		end, {
+			desc = ({ ps = "恢复当前目录会话", pl = "恢复上次会话", pd = "禁用当前会话保存" })[lhs],
+		})
+	end
+	vim.api.nvim_create_user_command("Urls", function(cmd)
+		require("mayon.features.urls").pick_dir(cmd.args)
+	end, { nargs = "?", complete = "dir", desc = "Pick a URL from a directory" })
+	vim.api.nvim_create_user_command("UrlsBuffer", function()
+		require("mayon.features.urls").pick_buffer()
+	end, { desc = "Pick a URL from this buffer" })
 	require("mayon.features.scratch").setup()
 	-- Formula handling is only initialized in relevant documents.
 	vim.api.nvim_create_autocmd("FileType", {
@@ -20,8 +43,18 @@ function M.setup()
 	})
 	require("mayon.config.keymaps").setup()
 	require("mayon.config.autocmds").setup()
-	vim.cmd.packadd("matchit")
-	require("mayon.ui.statusline").setup()
+	vim.api.nvim_create_autocmd("FileType", {
+		once = true,
+		callback = function()
+			vim.cmd.packadd("matchit")
+		end,
+	})
+	vim.api.nvim_create_autocmd({ "UIEnter", "FileType" }, {
+		once = true,
+		callback = function()
+			require("mayon.ui.statusline").setup()
+		end,
+	})
 	vim.g.mayon_config_loaded = true
 	vim.g.mayon_startup_ms = (vim.uv.hrtime() - started) / 1e6
 end

@@ -4,7 +4,7 @@ Astra 设计稿，2026-10-24 用户确认。以下保留设计交付原文；实
 
 全系统视觉规范 · 2026 年 10 月 24 日 · 设计交付，不包含配置实现
 
-本目录的 BRIEF 是颜色与需求的唯一依据。仓库中原有 One Dark Darker 的旧色值只用于理解结构，不沿用。未修改 `/home/mayon/nix-dotfiles`，未启动、重载或切换桌面服务。
+本目录的 BRIEF 是颜色与需求的唯一依据。仓库中原有 One Dark 的旧色值只用于理解结构，不沿用。未修改 `/home/mayon/nix-dotfiles`，未启动、重载或切换桌面服务。
 
 ## 1. 方向与阅读方式
 
@@ -42,7 +42,7 @@ Astra 设计稿，2026-10-24 用户确认。以下保留设计交付原文；实
 | selection | `#323843` | 悬停、选中、按下填充 |
 | fg | `#abb2bf` | 次级信息；在 bg/deep 上也满足正文门槛 |
 | brightFg | `#d7dae0` | 全局正文、标题、输入、选区正文 |
-| muted | `#7d8590` | 非必要装饰；deep 上可作次级灰字 |
+| muted | `#828a95` | 辅助灰字与未接受的 AI 幽灵文本；bg/deep 上 ≥4.5 |
 | comment / border | `#5c6370` | 分隔、描边；不作需要阅读的注释 |
 | blue | `#61afef` | 焦点线、短选中标签、函数 |
 | cyan | `#56b6c2` | 类型、信息图标 |
@@ -52,6 +52,8 @@ Astra 设计稿，2026-10-24 用户确认。以下保留设计交付原文；实
 | yellow | `#e5c07b` | 警告标记、待处理状态 |
 | red | `#e06c75` | 错误图标、诊断下划线、删除标记 |
 | black | `#0e1013` | 阴影、遮罩、ANSI 0 |
+
+2026-10-25 收尾：muted 从原设计的 `#7d8590` 微调为 `#828a95`，使 bg 上幽灵文本达到 4.5；所有消费 muted 的辅助文字与装饰同步略微提亮，正文仍用 brightFg/fg。
 
 ### 交互与合成角色
 
@@ -84,7 +86,7 @@ Noctalia palette 的 A 类对应：`mPrimary/mOnPrimary=blue/black`、`mSecondar
 |---|---:|---:|---:|---:|
 | brightFg | 11.41 | 12.33 | 10.03 | 8.41 |
 | fg | 7.49 | 8.10 | 6.59 | 5.53 |
-| muted | 4.28 ✗ | 4.63 | 3.77 ✗ | 3.16 ✗ |
+| muted | 4.58 | 4.95 | 4.03 ✗ | 3.38 ✗ |
 | border | 2.64 ✗ | 2.86 ✗ | 2.32 ✗ | 1.95 ✗ |
 | blue | 6.76 | 7.31 | 5.95 | 4.99 |
 | cyan | 6.74 | 7.29 | 5.93 | 4.97 |
@@ -94,7 +96,7 @@ Noctalia palette 的 A 类对应：`mPrimary/mOnPrimary=blue/black`、`mSecondar
 | red | 5.00 | 5.40 | 4.40 ✗ | 3.69 ✗ |
 | purple | 5.42 | 5.86 | 4.77 | 4.00 ✗ |
 
-正文统一 brightFg；deep 上代码可用 blue/cyan/green/orange/yellow，均 ≥7。选择行里的代码转 brightFg，语义保留在字形/诊断图标，避免蓝字在 selection 上被误称为 ≥7。短选中标签、来源名、行号按次级 ≥4.5 验收；正文注释使用 fg，AI 未接受的虚拟灰字使用 fg + 斜体（8.10），不是 comment/border。红色错误句子、紫色关键词改成 brightFg，红/紫只留标记。
+正文统一 brightFg；deep 上代码可用 blue/cyan/green/orange/yellow，均 ≥7。选择行里的代码转 brightFg，语义保留在字形/诊断图标，避免蓝字在 selection 上被误称为 ≥7。短选中标签、来源名、行号按次级 ≥4.5 验收；正文注释使用 fg，AI 未接受的虚拟灰字使用 muted + 斜体（deep 上 4.95、bg 上 4.58），不是 comment/border。红色错误句子、紫色关键词改成 brightFg，红/紫只留标记。
 
 透明最差情况：bg 以 0.98 覆盖纯白后约 `#22262c`；brightFg 对比约 10.81，fg 约 7.10，仍满足本案门槛。`mockup.html` 顶栏胶囊实底，壁纸不会改变里面文字的比值。壁纸上的 Home 用户资料有原生 tint；需真实截图验证其最终底色；图稿用户资料区以深色罩层保证阅读。
 
@@ -258,11 +260,11 @@ Kitty 从 `font_size=11.0` pt 开始（约 14.67 CSS px），不是把 15 直接
 | 标签栏 | 一个字符行；deep 底；活动 selection/blue，后台 fg；改动圆点 brightFg；项目名独立区与 explorer 宽度对齐 | 已有 Heirline/`ui/tabline.lua`；圆角只能用字形 |
 | 状态栏 | 一个字符行；模式前景 blue/cyan/yellow，底 deep；文件、Git、诊断、LSP、AI、行列有优先级 | Heirline/`ui/statusline.lua`；不全行模式色底；长路径中间缩写 |
 | 浮窗 | NormalFloat=bg，正文 brightFg，FloatBorder=border；左右1 cell，`border="rounded"` | Neovim window border 为框线字符，视觉半径不可直接设 12；无独立阴影 |
-| 补全菜单 | ≥28列，最多8项；左右1 cell；候选 brightFg，选中 selection/brightFg + blue 类型符号；来源 fg | Blink `completion.menu.{min_width,max_height,border,draw}`，`BlinkCmpMenu/Border/Selection`；窄屏去说明与来源 |
-| 补全文档 | 最多60列×14行，bg/brightFg，border圆字符，延迟300ms | Blink `completion.documentation.window`；不与输入法候选互相遮挡 |
-| AI 虚拟建议 | fg + 斜体；无光晕、无低透明度；未接受标识在状态栏“建议” | 插件 ghost-text highlight/extmark；具体组名以实际 provider 为准，CodeCompanion 不被假定自带持续 inline ghost completion |
+| 补全菜单 | ≥28列，最多8项；左右1 cell；候选 brightFg，选中 selection/brightFg + blue 类型符号；来源 fg | 原生 `pumheight/pummaxwidth/pumborder`、`Pmenu*` 高亮；窄屏去说明与来源 |
+| 补全文档 | 最多60列×14行，bg/brightFg，border圆字符，延迟300ms | 原生 `completeopt=popup` 与 `Pmenu*` 高亮；不与输入法候选互相遮挡 |
+| AI 虚拟建议 | muted + 斜体；无光晕、无低透明度；未接受标识在状态栏“建议” | 插件 ghost-text highlight/extmark；具体组名以实际 provider 为准，CodeCompanion 不被假定自带持续 inline ghost completion |
 | AI 侧栏 | 正文约32–40列，bg/brightFg，标题“AI 对话”，内容 Markdown；分隔1字符 border；引用文件单独短行 | 当前 CodeCompanion split 布局与 highlight；宽不够时改独立 tab/浮窗，禁止压缩代码到小于约60列 |
-| diff 审阅 | deep 底；左右原文/修改；新增/删除各8% green/red底；局部12%；全文brightFg；gutter有 +/−；修改 blue 标记 | `DiffAdd/Change/Delete/Text`、Diffview highlight、现有 diffview-plus；blend 颜色在主题生成阶段计算为实色，TUI 不支持逐cell alpha |
+| diff 审阅 | deep 底；左右原文/修改；新增/删除各8% green/red底；局部12%；全文brightFg；gutter有 +/−；修改 blue 标记 | `DiffAdd/Change/Delete/Text`、CodeDiff、Claude 原生 diff、mini.diff；blend 颜色在主题生成阶段计算为实色，TUI 不支持逐cell alpha |
 | 启动页 | 项目名20视觉近似（终端仍同字号，可用两行布局）；最近项目5项、会话/新文件/查找3–4项；中性标题、小号蓝标记 | 已有 `ui/dashboard.lua`/Snacks dashboard；终端不混用任意字号，不渲染巨型彩色ASCII logo |
 
 选区中的所有源码以 brightFg/selection 呈现。错误正文中性，DiagnosticError 用 red 图标或 undercurl；虚拟诊断正文 brightFg，避免红字在 tinted surface 低对比。diff 彩底仅用于已有/待审变化；AI 产出未接受时不自动显示为已应用的绿色成功。

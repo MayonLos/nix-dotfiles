@@ -157,7 +157,7 @@ for relative, source in settings["configs"].items():
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(source, target)
     if relative == "btop/btop.conf":
-        target.write_text(re.sub(r'^color_theme = .*$', 'color_theme = "One Dark Darker"', target.read_text(), flags=re.M))
+        target.write_text(re.sub(r'^color_theme = .*$', 'color_theme = "One Dark"', target.read_text(), flags=re.M))
 
 
 def smoke(name, args, quit_key):

@@ -23,6 +23,11 @@ function M.pack(name)
 	vim.cmd.packadd(name)
 end
 function M.setup()
+	-- Nix already puts start/ payloads on runtimepath before VIMINIT. Their
+	-- plugin scripts will run in the normal startup pass; avoid packadd rescans.
+	for _, name in ipairs(require("mayon.generated").startup_plugins or {}) do
+		loaded[name] = true
+	end
 	vim.g.lz_n = { load = M.pack }
 	local specs = {}
 	for _, domain in ipairs({

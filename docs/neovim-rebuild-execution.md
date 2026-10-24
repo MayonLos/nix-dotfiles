@@ -72,7 +72,11 @@ Home Manager 与独立 flake 包均通过 `pkgs.unstable.codecompanion-nvim` 使
 改进，v20 有破坏性变更，待 nixpkgs 收录后另行迁移。其 Plenary runtime 依赖保持 stable，
 避免混入第二个 LuaJIT；锁定 history 扩展保持原版本，真实 setup 与存储兼容性由 checks 验证。
 
-保留 lz.n 按事件/命令/键位加载。五个启动插件仍为 lz.n、One Dark、Heirline、Snacks、devicons；
+保留 lz.n 按事件/命令/键位加载。启动路径保留 lz.n、One Dark、Snacks；
+Heirline 在首次 UIEnter/FileType 时初始化，devicons 在首次界面/文件图标需要时加载；
+LSP 在首个 FileType 初始化。Explorer actions/tree/git 由首次 explorer 配置触发，安全删除与重命名保护在动作可执行前安装。
+URL 入口延迟载入解析器，会话在首文件、目录切换或显式恢复时初始化。One Dark 高亮在构建期由锁定插件和 palette
+预编译为同版 LuaJIT bytecode，开发配置没有缓存时即时生成；颜色重载与插件刷新仍执行编辑器的语义覆盖。
 CodeCompanion/Claude 按命令或按键，Minuet 手动切换后加载；Copilot 配置随 LSP 初始化，
 服务器按普通文件 attach。Edgy/smart-splits 由 MayonVeryLazy 或方向键加载。
 空启动性能预算为三次独立 HOME/XDG 的 NVIM STARTED 中位数 ≤30ms，样本见历史。

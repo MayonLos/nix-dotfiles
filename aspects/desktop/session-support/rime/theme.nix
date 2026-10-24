@@ -22,30 +22,30 @@ let
   };
   conf = (pkgs.formats.ini { }).generate "theme.conf" {
     Metadata = {
-      Name = "One-Dark-Darker";
+      Name = "onedark";
       Version = 2;
       Author = "mayon";
-      Description = "One Dark Darker rounded palette theme";
+      Description = "One Dark rounded palette theme";
       ScaleWithDPI = "True";
     };
     InputPanel = {
       NormalColor = palette.brightFg;
-      HighlightColor = palette.blue;
+      HighlightColor = palette.brightFg;
       HighlightCandidateColor = palette.blue;
       HighlightBackgroundColor = palette.selection;
-      CandidateLabelColor = palette.muted;
-      HighlightCandidateLabelColor = palette.muted;
-      CandidateCommentColor = palette.muted;
-      HighlightCandidateCommentColor = palette.muted;
-      FullWidthHighlight = "False";
+      CandidateLabelColor = palette.fg;
+      HighlightCandidateLabelColor = palette.fg;
+      CandidateCommentColor = palette.fg;
+      HighlightCandidateCommentColor = palette.fg;
+      FullWidthHighlight = "True";
       PageButtonAlignment = "Bottom";
     };
     "InputPanel/Background" = background;
     "InputPanel/Background/Margin" = margin 12 12;
     "InputPanel/Highlight" = highlight;
     "InputPanel/Highlight/Margin" = margin 8 8;
-    "InputPanel/ContentMargin" = margin 8 8;
-    "InputPanel/TextMargin" = margin 12 8;
+    "InputPanel/ContentMargin" = margin 6 6;
+    "InputPanel/TextMargin" = margin 10 5;
     "InputPanel/PrevPage".Image = "prev.svg";
     "InputPanel/PrevPage/ClickMargin" = margin 7 6;
     "InputPanel/NextPage".Image = "next.svg";
@@ -53,7 +53,7 @@ let
     Menu = {
       NormalColor = palette.brightFg;
       HighlightCandidateColor = palette.blue;
-      Spacing = 5;
+      Spacing = 3;
     };
     "Menu/Background" = background;
     "Menu/Background/Margin" = margin 12 12;
@@ -80,7 +80,7 @@ let
       icon ''<circle cx="8" cy="8" r="5.5" fill="none" stroke="${palette.brightFg}"/><circle cx="8" cy="8" r="3" fill="${palette.blue}"/>'';
   };
 in
-pkgs.runCommand "fcitx5-onedark-darker-theme"
+pkgs.runCommand "fcitx5-onedark-theme"
   {
     nativeBuildInputs = [
       pkgs.python3

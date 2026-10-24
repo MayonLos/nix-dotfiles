@@ -251,11 +251,11 @@ in
         filter_mode_shell_up_key_binding = "session";
       }
       // lib.optionalAttrs (palette != null) {
-        theme.name = "onedark-darker";
+        theme.name = "onedark";
       };
       themes = lib.optionalAttrs (palette != null) {
-        onedark-darker = {
-          theme.name = "onedark-darker";
+        onedark = {
+          theme.name = "onedark";
           colors = {
             Base = palette.fg;
             AlertInfo = palette.green;

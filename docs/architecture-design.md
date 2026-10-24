@@ -50,7 +50,7 @@ docs/                     # 现行文档；history/ 只追加
 |---|---|
 | `system/` | nix 设置与维护、locale、sudo/安全策略、账号公共策略 |
 | `hardware/` | 机型驱动与策略（legion-laptop：NVIDIA PRIME、电源、启动、gamemode GPU、mpv 硬解等，由 facts 参数化） |
-| `appearance/` | 外观契约、主题数据（onedark-darker、ansi、壁纸、头像生成） |
+| `appearance/` | 外观契约、主题数据（onedark、ansi、壁纸、头像生成） |
 | `desktop/` | `session-support`（输入法、GTK/Qt、字体、portal、音频 socket、session targets）、`mango-session`（Mango+Noctalia+剪贴板+截图）、`xorg-session`、`greeter` |
 | `cli/` | shell、terminal、git、tmux、yazi、系统信息、CLI 工具 |
 | `dev/` | 编辑器（neovim、vscode、jetbrains）、languages（契约+各语言）、embedded、containers、virtual-machines、ai-agents |
@@ -141,7 +141,7 @@ Den 只对**函数值**注入上下文，路径字面量原样交给模块系统
 
 | 契约 | 归属 | 形态 | 提供者 → 消费者 |
 |---|---|---|---|
-| appearance | `appearance/appearance` | schema（host、user） | 绑定选择 onedark-darker → 所有外观适配 |
+| appearance | `appearance/appearance` | schema（host、user） | 绑定选择 onedark → 所有外观适配 |
 | default-tools | `system/default-tools` | schema（user） | 绑定 → 快捷键、MIME、启动器 |
 | workspace-projects | `workspace/project-workbench` | schema（user） | 绑定 → 项目工作台 |
 | facts | `hardware/` 下契约 | schema（host） | inventory facts → hardware、desktop、greeter |

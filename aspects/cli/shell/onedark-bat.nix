@@ -157,7 +157,7 @@ let
     <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
     <plist version="1.0">
     <dict>
-      <key>name</key>${plistString "One Dark Darker"}
+      <key>name</key>${plistString "One Dark"}
       <key>settings</key>
       <array>
         <dict><key>settings</key>${
@@ -174,23 +174,23 @@ let
     </dict>
     </plist>
   '';
-  themeSource = pkgs.runCommand "onedark-darker-bat-theme-source" { } ''
+  themeSource = pkgs.runCommand "onedark-bat-theme-source" { } ''
     mkdir -p "$out/themes"
-    cp ${pkgs.writeText "One Dark Darker.tmTheme" tmTheme} "$out/themes/One Dark Darker.tmTheme"
+    cp ${pkgs.writeText "One Dark.tmTheme" tmTheme} "$out/themes/One Dark.tmTheme"
   '';
-  cache = pkgs.runCommand "onedark-darker-bat-cache" { nativeBuildInputs = [ pkgs.bat ]; } ''
+  cache = pkgs.runCommand "onedark-bat-cache" { nativeBuildInputs = [ pkgs.bat ]; } ''
     export HOME="$TMPDIR/home"
     export XDG_CACHE_HOME="$TMPDIR/cache"
     mkdir -p "$HOME" "$XDG_CACHE_HOME"
     cd ${pkgs.emptyDirectory}
     ${pkgs.bat}/bin/bat cache --build --source ${themeSource} --target "$out"
   '';
-  deltaCacheRoot = pkgs.runCommand "onedark-darker-delta-cache-root" { } ''
+  deltaCacheRoot = pkgs.runCommand "onedark-delta-cache-root" { } ''
     mkdir -p "$out"
     ln -s ${cache} "$out/bat"
   '';
   delta = pkgs.symlinkJoin {
-    name = "delta-onedark-darker";
+    name = "delta-onedark";
     paths = [ pkgs.delta ];
     nativeBuildInputs = [ pkgs.makeWrapper ];
     postBuild = ''
@@ -200,7 +200,7 @@ let
   };
 in
 {
-  name = "One Dark Darker";
+  name = "One Dark";
   inherit
     tmTheme
     cache

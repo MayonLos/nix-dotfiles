@@ -98,10 +98,10 @@ assert(vim.bo.filetype == "bigfile", "large-file handler did not claim the buffe
 assert(vim.b.completion == false, "completion remained enabled for a large file")
 assert(vim.wo.foldmethod == "manual", "Tree-sitter overrode the large-file fold guard")
 assert(not vim.treesitter.highlighter.active[vim.api.nvim_get_current_buf()], "large file started highlighting")
-vim.cmd.colorscheme("onedark-darker")
+vim.cmd.colorscheme("onedark")
 assert(
 	vim.api.nvim_get_hl(0, { name = "Normal", link = false }).bg
-		== tonumber(require("mayon.generated").palette.bg:sub(2), 16)
+		== tonumber(require("mayon.generated").palette.deep:sub(2), 16)
 )
 -- Surface colours must survive a theme reload after plugins have registered
 -- their highlight groups. Text overlays must not punch holes in selected rows.
@@ -116,11 +116,14 @@ for _, name in ipairs({
 	"PmenuBorder",
 	"SnacksPickerList",
 }) do
-	assert(hl(name).bg == hl("Normal").bg, name .. " has a disconnected background")
+	assert(
+		hl(name).bg == tonumber(require("mayon.generated").palette.bg:sub(2), 16),
+		name .. " has a disconnected background"
+	)
 end
 assert(hl("PmenuSel").bg == tonumber(require("mayon.generated").palette.selection:sub(2), 16))
 for _, name in ipairs({ "RenderMarkdownH5", "RenderMarkdownH6" }) do
-	assert(hl(name).fg == hl("Normal").fg)
+	assert(hl(name).fg == tonumber(require("mayon.generated").palette.fg:sub(2), 16))
 end
 -- A literal percent and multibyte names must render as text, never statusline
 -- directives, at narrow widths as well as in the full workspace rail.

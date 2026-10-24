@@ -12,7 +12,8 @@ generation、store 路径和样本数据只对应当时提交，与当前源码�
 | [config-ownership.md](config-ownership.md) | 配置文件、可变状态与秘密的写入归属 |
 | [service-policy.md](service-policy.md) | 后台服务的 session 边界与所有权 |
 | [workflow-design.md](workflow-design.md) | 快捷键、tmux、项目工作台与长任务 |
-| [desktop-design.md](desktop-design.md) | Mango + Noctalia 的 One Dark Darker 视觉 |
+| [visual-design.md](visual-design.md) | Astra One Dark 视觉规范、令牌与对比度 |
+| [desktop-design.md](desktop-design.md) | Mango + Noctalia 的 One Dark 视觉 |
 | [xorg-desktop-execution.md](xorg-desktop-execution.md) | 可选 dwm/Xorg 会话的入口、服务与待验项 |
 | [dwm-visual-design.md](dwm-visual-design.md) | dwm 视觉与窗口规则 |
 | [neovim-rebuild-execution.md](neovim-rebuild-execution.md) | Neovim 当前设计与验证 |
@@ -46,3 +47,8 @@ generation、store 路径和样本数据只对应当时提交，与当前源码�
 | [software-swap-2026-10-24.md](history/software-swap-2026-10-24.md) | 2026-10-24 | 第十轮软件替换、Neovim 启动页与 Lua LSP 实测 |
 | [architecture-design-v1.md](history/architecture-design-v1.md) | 2026-10 | v2 架构规范取代的旧版全文 |
 | [architecture-v2-execution.md](history/architecture-v2-execution.md) | 2026-10-24 | 第八轮 v2.1 重构、B0 对照、逐文件清单与验证边界 |
+| [visual-cli-2026-10-24.md](history/visual-cli-2026-10-24.md) | 2026-10-24 | CLI 视觉与配色 |
+| [visual-desktop-2026-10-24.md](history/visual-desktop-2026-10-24.md) | 2026-10-24 | Mango/Noctalia 桌面视觉 |
+| [visual-apps-2026-10-24.md](history/visual-apps-2026-10-24.md) | 2026-10-24 | GTK/Qt、输入法与应用视觉 |
+| [nvim-ai-2026-10-24.md](history/nvim-ai-2026-10-24.md) | 2026-10-24 | Neovim AI 与原生能力集成 |
+| [finalize-2026-10-25.md](history/finalize-2026-10-25.md) | 2026-10-25 | 视觉与 Neovim 收尾集成、性能和完整验证 |

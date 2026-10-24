@@ -16,15 +16,16 @@ function M.setup()
 		-- 0.12.4: nearest has no effect with fuzzy; retain fuzzy sorting.
 		completeopt = "menuone,noselect,popup,fuzzy",
 		pumborder = "rounded",
+		pumwidth = 28,
 		pummaxwidth = 60,
-		pumheight = 10,
+		pumheight = 8,
 		wildoptions = "pum,fuzzy",
 		breakindent = true,
 		breakindentopt = "shift:2,min:20",
 		concealcursor = "nvic",
 		conceallevel = 2,
 		cursorline = true,
-		cursorlineopt = "number,line",
+		cursorlineopt = "number",
 		expandtab = true,
 		foldcolumn = "0",
 		foldenable = true,
@@ -68,7 +69,13 @@ function M.setup()
 	vim.opt.diffopt:remove("inline:char")
 	vim.opt.diffopt:append("inline:word")
 	vim.opt.fillchars:append({ vert = " ", vertleft = " ", vertright = " ", verthoriz = " " })
-	vim.filetype.add({ extension = { mdx = "markdown" } })
+	-- Register the extra extension before the first read/new-file detection.
+	vim.api.nvim_create_autocmd({ "BufReadPre", "BufNewFile" }, {
+		once = true,
+		callback = function()
+			vim.filetype.add({ extension = { mdx = "markdown" } })
+		end,
+	})
 end
 
 return M

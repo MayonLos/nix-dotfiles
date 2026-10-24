@@ -2,7 +2,7 @@
 let
   inherit (pkgs) lib;
   system = "x86_64-linux";
-  palette = import ../../aspects/appearance/appearance/onedark-darker.nix;
+  palette = import ../../aspects/appearance/appearance/onedark.nix;
 
   # Public fixture facts only. These values make the actual Mango/Noctalia
   # modules evaluable; the fixture does not represent another deployable host.
@@ -212,8 +212,8 @@ let
         == "False"
       && selectedHome.home.pointerCursor.name == palette.cursor.name
       && selectedHome.home.pointerCursor.size == palette.cursor.size
-      &&
-        xorgAliceHome.services.dunst.iconTheme.package.outPath == selectedHome.gtk.iconTheme.package.outPath
+      && xorgAliceHome.services.dunst.iconTheme.name == palette.iconTheme
+      && selectedHome.gtk.iconTheme.name == palette.iconTheme
       && xorgAliceHome.home.pointerCursor.name == palette.cursor.name;
 
     audioActivationIsBindingScoped =
@@ -236,7 +236,7 @@ let
           palette.fonts.cjk
         ]
       && selectedHome.programs.noctalia.enable
-      && selectedHome.programs.noctalia.customPalettes.One-Dark-Darker.dark.mSurface == palette.bg
+      && selectedHome.programs.noctalia.customPalettes.onedark.dark.mSurface == palette.bg
       && selectedHome.i18n.inputMethod.enable
       && hasAllDesktopUnits selectedHome
       && hasInputGroup selectedHost "alice";

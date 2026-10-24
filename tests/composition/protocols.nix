@@ -2,7 +2,7 @@
 let
   inherit (pkgs) lib;
   system = "x86_64-linux";
-  paletteA = import ../../aspects/appearance/appearance/onedark-darker.nix;
+  paletteA = import ../../aspects/appearance/appearance/onedark.nix;
   paletteB = paletteA // {
     bg = "#20242a";
     deep = "#161a20";

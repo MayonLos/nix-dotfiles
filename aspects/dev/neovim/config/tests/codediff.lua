@@ -21,8 +21,27 @@ local codediff = require("codediff.config").options
 assert(codediff.diff.layout == "side-by-side")
 assert(codediff.explorer.position == "left" and codediff.explorer.width == 30)
 assert(codediff.explorer.view_mode == "tree")
-assert(codediff.highlights.char_insert == "CodeDiffCharInsert")
-assert(codediff.highlights.char_delete == "CodeDiffCharDelete")
+local palette = require("mayon.generated").palette
+local blend = require("mayon.ui.theme").blend
+local expected_highlights = {
+	CodeDiffLineInsert = { fg = palette.brightFg, bg = blend(palette.green, palette.deep, 0.08) },
+	CodeDiffLineDelete = { fg = palette.brightFg, bg = blend(palette.red, palette.deep, 0.08) },
+	CodeDiffCharInsert = { fg = palette.brightFg, bg = blend(palette.green, palette.deep, 0.12) },
+	CodeDiffCharDelete = { fg = palette.brightFg, bg = blend(palette.red, palette.deep, 0.12) },
+}
+assert(codediff.highlights.line_insert == expected_highlights.CodeDiffLineInsert.bg)
+assert(codediff.highlights.line_delete == expected_highlights.CodeDiffLineDelete.bg)
+assert(codediff.highlights.char_insert == expected_highlights.CodeDiffCharInsert.bg)
+assert(codediff.highlights.char_delete == expected_highlights.CodeDiffCharDelete.bg)
+
+local function assert_diff_highlights()
+	for name, expected in pairs(expected_highlights) do
+		local actual = vim.api.nvim_get_hl(0, { name = name, link = false })
+		assert(actual.fg == tonumber(expected.fg:sub(2), 16), name .. " foreground differs from palette brightFg")
+		assert(actual.bg == tonumber(expected.bg:sub(2), 16), name .. " background differs from palette blend")
+	end
+end
+assert_diff_highlights()
 assert(vim.env.VSCODE_DIFF_NO_AUTO_INSTALL == "1", "Nix package auto-installer must be disabled")
 local package_root = require("codediff.core.path").get_plugin_root()
 assert(vim.fn.filereadable(package_root .. "/libvscode_diff.so") == 1, "Nix package lacks libvscode_diff.so")
@@ -62,6 +81,12 @@ assert(
 	"CodeDiff did not open the temporary repository review explorer"
 )
 assert(vim.api.nvim_tabpage_is_valid(opened.tabpage), "CodeDiff explorer tab is invalid")
+assert_diff_highlights()
+
+-- codediff's ColorScheme hook resets the foregrounds after the theme hook;
+-- the post-plugin listener must restore all four palette-backed groups.
+vim.cmd.colorscheme("onedark")
+assert_diff_highlights()
 
 vim.api.nvim_del_augroup_by_id(group)
 vim.cmd("tabonly!")

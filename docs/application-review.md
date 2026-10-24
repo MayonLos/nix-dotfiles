@@ -19,7 +19,7 @@
 | 已修改 | Discord → Vesktop | 用户确认替换；使用 stable 包及系统 Vencord，Wayland/PipeWire 接线已构建，实际分享待验。 |
 | 按需 | 跨设备同步、远程开发 | 有第二台设备/服务器后，再选 Syncthing、Remote-SSH、Tailscale；不提前把所有服务打开。 |
 
-固定方向继续沿用：Mango + Noctalia、Kitty + tmux、One Dark Darker、原生 Lua + Nix 管理 Neovim 插件、混合工具链、Den 实体与绑定。本文不重新打开这些选择。
+固定方向继续沿用：Mango + Noctalia、Kitty + tmux、One Dark、原生 Lua + Nix 管理 Neovim 插件、混合工具链、Den 实体与绑定。本文不重新打开这些选择。
 
 ## 日用桌面
 
@@ -27,7 +27,7 @@
 
 | 应用 | 判断 | 更优解、收益和代价 |
 |---|---|---|
-| Firefox | 保留 | 已有 Dark Reader、受管深色主题和界面接线。后续统一 One Dark Darker；没有证据支持为优化而换浏览器。迁移会重做扩展、登录和界面。 |
+| Firefox | 保留 | 已有 Dark Reader、受管深色主题和界面接线。后续统一 One Dark；没有证据支持为优化而换浏览器。迁移会重做扩展、登录和界面。 |
 | QQ | 保留当前包与 wrapper | PipeWire、Wayland、输入法及桌面入口已有处理。官方 Linux 包仍维护，但换包装不等于解决当前 Nix 兼容问题。 |
 | 微信 Linux | 已替换 UOS | 使用 unstable 官方版 4.1.13.26；按锁定 AppImage/FHS wrapper 保留官方后端探测，登录、中文输入及剪贴板待实机回归。旧数据保留。 |
 | Vesktop | 已替换 Discord | 用户确认使用系统 Vencord；锁定包包含 PipeWire/venmic，Wayland wrapper 跟随会话环境。实际音频与屏幕分享仍待验证，Discord 数据保留。 |
@@ -206,7 +206,7 @@
 | Quill | 保留快记/todo；AI 直接调用 OpenCode Go，无需安装 OpenCode CLI。 |
 | Mango Keymode | 保留当前键位模式提示，有助于可发现性。 |
 | Fcitx5 / Rime / rime-ice | 保留，后续统一候选框配色；GTK/Qt addon 为应用接入，不能因有 Wayland frontend 一并删除。 |
-| qt6ct / GTK 设置 | 保留现有外观桥接；One Dark Darker 应集中提供语义颜色，再输出各应用格式，避免每个模块各写一份色值。 |
+| qt6ct / GTK 设置 | 保留现有外观桥接；One Dark 应集中提供语义颜色，再输出各应用格式，避免每个模块各写一份色值。 |
 | GNOME keyring | 保留应用 Secret Service；不是网站密码库或 sops 的替代。 |
 | sops | 保留运行时秘密管理；不能把密码管理器主密钥或服务令牌直接写进 Nix 字符串。 |
 | Noctalia polkit / 锁屏 / idle / 通知 | 沿用当前统一入口，不再推荐重复的 agent、idle daemon 或通知 daemon。 |

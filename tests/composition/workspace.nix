@@ -63,7 +63,7 @@ let
   aliceOnly = evaluate { selected = [ "alice@hostA" ]; };
   withPalette = evaluate {
     selected = [ "alice@hostA" ];
-    appearance = import ../../aspects/appearance/appearance/onedark-darker.nix;
+    appearance = import ../../aspects/appearance/appearance/onedark.nix;
   };
   sharedHost = evaluate {
     selected = [
@@ -175,12 +175,12 @@ let
       let
         themed = hm withPalette "hostA" "alice";
       in
-      themed.programs.btop.settings.color_theme == "One Dark Darker"
-      && themed.programs.bat.config.theme == "One Dark Darker"
-      && themed.programs.delta.options.syntax-theme == "One Dark Darker"
+      themed.programs.btop.settings.color_theme == "One Dark"
+      && themed.programs.bat.config.theme == "One Dark"
+      && themed.programs.delta.options.syntax-theme == "One Dark"
       && themed.home.sessionVariables ? BAT_CACHE_PATH
       && themed.xdg.configFile ? "eza/theme.yml"
-      && themed.xdg.configFile ? "glow/onedark-darker.json";
+      && themed.xdg.configFile ? "glow/onedark.json";
 
     removingFinalConsumerRemovesHostDeclaration =
       !(host afterLastConsumerRemoved "hostA").programs.zsh.enable;

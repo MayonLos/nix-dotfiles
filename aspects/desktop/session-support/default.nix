@@ -1,4 +1,4 @@
-{ den, ... }: {
+{ den, inputs, ... }: {
   imports = [
     ../../appearance/appearance
     ../../workspace/workspace-task
@@ -7,6 +7,9 @@
     graphical-session-support = { host, user, ... }: {
       includes = [ den.aspects.workspace-task ];
       homeManager.imports = [
+        # Declare the public theming options also for Xorg-only selections;
+        # importing the module does not enable the shell.
+        inputs.noctalia.homeModules.default
         ./session-targets.nix
         (import ./input-method.nix { palette = user.appearance; })
         (import ./gtk.nix { palette = user.appearance; })

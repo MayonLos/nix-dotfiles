@@ -25,6 +25,7 @@ let
         codediff = pkgs.vimPlugins.codediff-nvim.version;
       };
       plugin_dependencies = pluginSet.dependencyMap;
+      startup_plugins = pluginSet.startupNames;
       languages = { inherit (languages) servers formatters linters; };
     }
   );
@@ -33,6 +34,32 @@ let
     cp -R ${sourceConfig}/. "$out/"
     chmod -R u+w "$out"
     cp ${dataRuntime}/lua/mayon/generated.lua "$out/lua/mayon/generated.lua"
+    # Resolve the pinned One Dark adapter once at build time, then ship LuaJIT
+    # bytecode with this exact palette and editor. Dev configs fall back to the
+    # live adapter; no user cache or runtime download is needed.
+    export HOME="$TMPDIR/home"
+    mkdir -p "$HOME"
+    cat > "$TMPDIR/compile.lua" <<'LUA'
+    vim.opt.runtimepath:prepend(vim.env.MAYON_THEME_PLUGIN)
+    vim.opt.runtimepath:prepend(vim.env.MAYON_THEME_CONFIG)
+    vim.g.mayon_compile_theme = true
+    local original = vim.api.nvim_get_hl(0, {})
+    require("mayon.ui.theme").setup()
+    local highlights = {}
+    for name, value in pairs(vim.api.nvim_get_hl(0, {})) do
+      if not vim.deep_equal(value, original[name]) then highlights[name] = value end
+    end
+    local source = "return " .. vim.inspect(highlights)
+    local chunk = assert(loadstring(source))
+    local file = assert(io.open(vim.env.MAYON_THEME_CONFIG .. "/lua/mayon/generated_highlights.lua", "wb"))
+    file:write(string.dump(chunk, true))
+    file:close()
+    LUA
+    MAYON_THEME_PLUGIN=${pkgs.vimPlugins.onedark-nvim} MAYON_THEME_CONFIG="$out" \
+      ${pkgs.neovim-unwrapped}/bin/nvim --headless -u NONE -i NONE -n \
+      -c "luafile $TMPDIR/compile.lua" -c 'qa!'
+    test -s "$out/lua/mayon/generated_highlights.lua"
+
   '';
   pluginSet = import ./plugins.nix { inherit pkgs; };
   editorTools = with pkgs; [

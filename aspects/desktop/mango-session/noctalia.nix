@@ -126,7 +126,7 @@ in
       package = noctaliaPackage;
 
       systemd.enable = true;
-      customPalettes.One-Dark-Darker = {
+      customPalettes.onedark = {
         dark = {
           mPrimary = palette.blue;
           mOnPrimary = palette.black;
@@ -289,7 +289,7 @@ in
             # Shell theme changes must not rewrite GNOME's color-scheme preference.
             sync_color_scheme = false;
             source = "custom";
-            custom_palette = "One-Dark-Darker";
+            custom_palette = "onedark";
             pure_black_dark = false;
 
             templates = {

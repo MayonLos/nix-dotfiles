@@ -30,8 +30,10 @@
         };
 
         addons.classicui.globalSection = {
-          Theme = "One-Dark-Darker";
-          DarkTheme = "One-Dark-Darker";
+          Theme = "onedark";
+          DarkTheme = "onedark";
+          # Fcitx5 Classic UI parses this with Pango's font-description syntax;
+          # the bare integer is a point size (13 pt), not a logical pixel size.
           Font = "${palette.fonts.cjk} 13";
           "Vertical Candidate List" = "False";
 
@@ -55,7 +57,7 @@
   };
   xdg = {
     dataFile = {
-      "fcitx5/themes/One-Dark-Darker".source = import ./rime/theme.nix {
+      "fcitx5/themes/onedark".source = import ./rime/theme.nix {
         inherit pkgs palette;
       };
 

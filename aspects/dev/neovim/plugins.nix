@@ -83,9 +83,7 @@ let
   startup = with vimPlugins; [
     lz-n
     onedark-nvim
-    heirline-nvim
     snacks-nvim
-    nvim-web-devicons
   ];
   # List the complete closure explicitly as optional too: nixpkgs otherwise
   # promotes dependencies of optional roots into start/. Parsers and queries
@@ -113,4 +111,5 @@ in
     runtimeDependencies
     dependencyMap
     ;
+  startupNames = map pkgs.lib.getName startup;
 }

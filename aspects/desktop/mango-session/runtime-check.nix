@@ -242,7 +242,7 @@ pkgs.runCommand "interactive-session-config"
     test ! -e "$fixture/real-users/mayon"
 
     python3 - ${metadata} ${
-      home.xdg.configFile."noctalia/palettes/One-Dark-Darker.json".source
+      home.xdg.configFile."noctalia/palettes/onedark.json".source
     } "$out/mango.conf" "$out/noctalia.toml" "$out" <<'PY'
     import json, os, re, shutil, subprocess, sys, tomllib
     from pathlib import Path
@@ -400,7 +400,7 @@ pkgs.runCommand "interactive-session-config"
     finally:
         shutil.rmtree(fixture_root, ignore_errors=True)
     assert settings["theme"]["source"] == "custom" and settings["theme"]["mode"] == "dark"
-    assert settings["theme"]["custom_palette"] == "One-Dark-Darker"
+    assert settings["theme"]["custom_palette"] == "onedark"
     assert "kitty" not in settings["theme"]["templates"]["builtin_ids"]
     assert "mango" not in settings["theme"]["templates"]["builtin_ids"]
     assert "noctalia-firefox" in settings["theme"]["templates"]["user"]

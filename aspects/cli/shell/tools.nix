@@ -10,12 +10,12 @@
 let
   colors = palette;
 
-  batTheme = import ./onedark-darker-bat.nix {
+  batTheme = import ./onedark-bat.nix {
     inherit pkgs;
     palette = colors;
   };
 
-  glowStyle = (pkgs.formats.json { }).generate "onedark-darker-glow.json" {
+  glowStyle = (pkgs.formats.json { }).generate "onedark-glow.json" {
     document = {
       block_prefix = "\n";
       block_suffix = "\n";
@@ -128,7 +128,7 @@ in
         style = "numbers,changes,header";
       };
       themes = lib.optionalAttrs (palette != null) {
-        ${batTheme.name}.src = pkgs.writeText "One Dark Darker.tmTheme" batTheme.tmTheme;
+        ${batTheme.name}.src = pkgs.writeText "One Dark.tmTheme" batTheme.tmTheme;
       };
     };
 
@@ -197,7 +197,7 @@ in
 
   };
   xdg.configFile = lib.optionalAttrs (palette != null) {
-    "glow/onedark-darker.json".source = glowStyle;
+    "glow/onedark.json".source = glowStyle;
     "glow/glow.yml".text = ''
       style: "${glowStyle}"
       pager: true

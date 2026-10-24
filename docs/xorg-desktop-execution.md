@@ -65,7 +65,7 @@ dwm 配置，主代理实现 dmenu 启动器/控制菜单、集成和检查。On
 - [j4-dmenu-desktop](https://github.com/enkore/j4-dmenu-desktop)：使用已有 desktop 解析器，
   不自己解析 Exec；[Rofi](https://github.com/davatorium/rofi) 是有图标和窗口搜索的替代选项。
 
-B 初版视觉方向：`#1f2329` 正文背景、`#181b20` 栏底、`#4fa6ed` 焦点；正文不透明，
+B 初版视觉方向：`#1e2228` 正文背景、`#181b20` 栏底、`#61afef` 焦点；正文不透明，
 顶部窄栏用小色块区分活动标签，音量/电池/时间分组。只给浮窗轻阴影，
 不默认全屏模糊或持续动效；Picom 可以随时关闭。启动器和通知采用同一字号、边框与
 选中色，保留中文显示。锁屏先精简当前 i3lock-color，而非为了换名重接认证。
@@ -143,7 +143,7 @@ Xorg portal 使用 GTK 文件选择、GNOME Settings 和 keyring；不把 Screen
 ## 外观与操作
 
 实际 Astra 负责 OneDark 的 Picom/Dunst/锁屏及原生栏设计；dwm 功能实现由 Luna 完成，
-主代理接线与构建，独立 reviewer 检查跨会话边界。配色继续 `#1f2329`、蓝色焦点、清楚的
+主代理接线与构建，独立 reviewer 检查跨会话边界。配色继续 `#1e2228`、蓝色焦点、清楚的
 正文和实底通知。只给浮窗层次阴影，不启用动画或持续模糊。
 144 DPI 来自主机 facts；X11 没有 Wayland 那样的逐输出分数缩放，混合 DPI 外屏需单独验收。
 

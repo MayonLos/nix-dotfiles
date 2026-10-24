@@ -123,7 +123,7 @@ in
       enableGitIntegration = true;
       options = {
         # tools.nix supplies Delta's wrapper for the same build-time Bat cache.
-        syntax-theme = if palette == null then "base16" else "One Dark Darker";
+        syntax-theme = if palette == null then "base16" else "One Dark";
         navigate = true;
         side-by-side = true;
         line-numbers = true;

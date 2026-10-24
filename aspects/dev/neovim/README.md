@@ -13,3 +13,9 @@ Claude Code uses claudecode.nvim for its IDE protocol and terminal. Sidekick man
 The feature checks run in isolated HOME/XDG directories. They cover file safety, LSP and UI behavior, AI loading, ACP executable paths, completion switching, MiniDiff review, Claude protocol accept/reject, codediff and native Neovim features, and key mappings. Model requests, real tmux navigation, narrow-screen appearance, GUI input, and actual IME behavior require runtime verification.
 
 Removing the aspect removes the package and managed `nvim/init.lua` link after activation. It preserves user projects, editor histories, plugin state, CodeCompanion history, and files outside the managed link; no project files or user data are rewritten.
+
+Theme data comes from `generated.palette`: editing uses deep/brightFg, floats and native menus use bg,
+selection uses selection, and pending AI text uses muted italic. The immutable package compiles the pinned
+One Dark adapter into a LuaJIT highlight cache at build time; development overrides use the live adapter.
+LSP starts on the first FileType; explorer safety hooks are installed by its source configuration before actions.
+Heirline starts on UIEnter/FileType, while URL parsing and sessions load at their first relevant entry point.

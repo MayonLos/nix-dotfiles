@@ -1,6 +1,12 @@
 local M = {}
 
-function M.setup()
+local ready = false
+function M.ensure()
+	if ready then
+		return
+	end
+	ready = true
+	require("mayon.config.loader").pack("nvim-web-devicons")
 	local matlab = {
 		icon = "󰘨",
 		color = require("mayon.generated").palette.orange,
@@ -27,4 +33,5 @@ function M.setup()
 	})
 end
 
+M.setup = M.ensure
 return M

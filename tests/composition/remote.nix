@@ -14,7 +14,7 @@ let
           systems = [ system ];
           schema.user.classes = [ "homeManager" ];
           hosts.${system}.fixture.users.alice.appearance =
-            import ../../aspects/appearance/appearance/onedark-darker.nix;
+            import ../../aspects/appearance/appearance/onedark.nix;
           aspects.fixture = {
             includes = [ den.aspects.system-maintenance ];
             nixos = {

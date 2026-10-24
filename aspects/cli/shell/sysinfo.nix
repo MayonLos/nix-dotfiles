@@ -134,16 +134,16 @@ in
       };
     };
 
-    # The CLI uses the shared One Dark Darker palette. HM remains the single
+    # The CLI uses the shared One Dark palette. HM remains the single
     # btop.conf renderer; Noctalia integration only supplies its own theme.
     btop = {
       enable = true;
       themes = lib.optionalAttrs (palette != null) {
-        "One Dark Darker" = import ./onedark-darker-btop.nix { inherit palette; };
+        "One Dark" = import ./onedark-btop.nix { inherit palette; };
       };
       settings = {
         # Noctalia may select its own theme for the desktop session.
-        color_theme = lib.mkDefault (if palette == null then "Default" else "One Dark Darker");
+        color_theme = lib.mkDefault (if palette == null then "Default" else "One Dark");
         # Keep the terminal background consistent with other CLI tools.
         theme_background = false;
         vim_keys = true;

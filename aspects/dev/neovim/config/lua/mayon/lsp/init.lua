@@ -183,6 +183,10 @@ local function diagnostics()
 end
 
 function M.setup()
+	vim.api.nvim_create_autocmd(
+		"LspAttach",
+		{ group = vim.api.nvim_create_augroup("NativeLspAttach", { clear = true }), callback = attach }
+	)
 	require("mayon.lsp.servers").setup()
 	require("mayon.features.ai_completion").copilot_setup()
 	vim.lsp.inlay_hint.enable(true)
@@ -192,10 +196,6 @@ function M.setup()
 		vim.lsp.codelens.enable(not vim.lsp.codelens.is_enabled({ bufnr = 0 }), { bufnr = 0 })
 	end, { desc = "切换代码透镜", silent = true })
 	vim.keymap.set("n", "<leader>lh", source_header, { desc = "切换源文件与头文件", silent = true })
-	vim.api.nvim_create_autocmd(
-		"LspAttach",
-		{ group = vim.api.nvim_create_augroup("NativeLspAttach", { clear = true }), callback = attach }
-	)
 end
 
 return M

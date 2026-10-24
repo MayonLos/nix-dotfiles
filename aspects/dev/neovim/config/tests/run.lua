@@ -10,6 +10,7 @@ local ok, err = xpcall(function()
 		or test:match("/native.lua$")
 	then
 		vim.api.nvim_exec_autocmds("BufReadPre", {})
+		vim.bo.filetype = "text"
 		if test:match("/lua_workspace.lua$") then
 			require("lz.n").trigger_load("lazydev.nvim")
 		end

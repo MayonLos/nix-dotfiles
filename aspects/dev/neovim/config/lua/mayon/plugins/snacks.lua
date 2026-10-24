@@ -80,6 +80,13 @@ local function setup(overrides)
 			end,
 			sources = {
 				explorer = {
+					config = function(opts)
+						-- Preserve Snacks' explorer config transform and install guards
+						-- before the picker exposes its actions (2.31 has no on_init).
+						opts = require("snacks.picker.source.explorer").setup(opts)
+						require("mayon.features.fileops").setup()
+						return opts
+					end,
 					layout = function()
 						if vim.o.columns < 52 then
 							return {
@@ -153,7 +160,15 @@ local function setup(overrides)
 				},
 			},
 		},
-		dashboard = require("mayon.ui.dashboard").config(),
+		dashboard = {
+			enabled = true,
+			config = function(opts)
+				local custom = require("mayon.ui.dashboard").config()
+				for key, value in pairs(custom) do
+					opts[key] = value
+				end
+			end,
+		},
 	}
 
 	if overrides then
@@ -162,9 +177,11 @@ local function setup(overrides)
 
 	local Snacks = require("snacks")
 	Snacks.setup(config)
-	-- `input.enabled` is consumed on UIEnter by Snacks' module loader. Enable it
-	-- here too, so vim.ui.input is already owned by Snacks for early prompts.
-	Snacks.input.enable()
+	-- Keep even prompts issued before UIEnter on Snacks, without importing the
+	-- input renderer (and its highlight/util graph) until there is a prompt.
+	vim.ui.input = function(opts, on_confirm)
+		return Snacks.input(opts, on_confirm)
+	end
 end
 
 return { {

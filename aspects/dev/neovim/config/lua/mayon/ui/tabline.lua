@@ -137,6 +137,11 @@ function M.build()
 	end
 	local TablineFileIcon = {
 		init = function(self)
+			if self.filename == "" then
+				self.icon = nil
+				return
+			end
+			require("mayon.ui.icons").ensure()
 			local ext = vim.fn.fnamemodify(self.filename, ":e")
 			self.icon = select(1, require("nvim-web-devicons").get_icon_color(self.filename, ext, { default = true }))
 		end,
@@ -249,7 +254,7 @@ function M.build()
 				return vim.api.nvim_get_option_value("modified", { buf = self.bufnr })
 			end,
 			provider = " ●",
-			hl = { fg = "green" },
+			hl = { fg = "bright" },
 		},
 		{
 			condition = function(self)

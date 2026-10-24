@@ -8,6 +8,7 @@ function M.setup()
 	end
 	ready = true
 	vim.ui.progress_status() -- Initialize the native collector before LSP progress can arrive.
+	require("mayon.config.loader").pack("heirline.nvim")
 	local heirline = require("heirline")
 	local conditions = require("heirline.conditions")
 	local utils = require("heirline.utils")
@@ -16,14 +17,15 @@ function M.setup()
 	local function setup_colors()
 		local palette = require("mayon.generated").palette
 		return {
-			bg = palette.bg,
+			bg = palette.deep,
 			position_bg = palette.surface,
 			fg = palette.fg,
-			gray = palette.muted,
+			bright = palette.brightFg,
+			gray = palette.fg,
 			blue = palette.blue,
 			cyan = palette.cyan,
 			green = palette.green,
-			purple = palette.purple,
+			accent = palette.cyan,
 			orange = palette.orange,
 			red = palette.red,
 			diag_warn = palette.yellow,
@@ -44,18 +46,18 @@ function M.setup()
 	-- Statusline providers parse %, and byte counts mismeasure Chinese names.
 	local mode_colors = {
 		n = "blue",
-		i = "green",
-		v = "purple",
-		V = "purple",
-		["\22"] = "purple",
-		c = "orange",
-		s = "purple",
-		S = "purple",
-		["\19"] = "purple",
-		R = "red",
-		r = "red",
-		["!"] = "red",
-		t = "green",
+		i = "cyan",
+		v = "yellow",
+		V = "yellow",
+		["\22"] = "yellow",
+		c = "blue",
+		s = "yellow",
+		S = "yellow",
+		["\19"] = "yellow",
+		R = "yellow",
+		r = "cyan",
+		["!"] = "yellow",
+		t = "cyan",
 	}
 	local mode_names = {
 		n = "NORMAL",
@@ -106,7 +108,7 @@ function M.setup()
 		end,
 		hl = function(self)
 			local key = mode_colors[self.mode:sub(1, 1)] or "blue"
-			return { fg = "bg", bg = key, bold = true }
+			return { fg = key, bg = "bg", bold = true }
 		end,
 	}
 
@@ -222,6 +224,10 @@ function M.setup()
 	}
 	FileNameBlock = utils.insert(FileNameBlock, {
 		provider = function(self)
+			if self.filename == "" then
+				return "󰈔 "
+			end
+			require("mayon.ui.icons").ensure()
 			local ext = vim.fn.fnamemodify(self.filename, ":e")
 			local icon = select(1, require("nvim-web-devicons").get_icon_color(self.filename, ext, { default = true }))
 			return (icon or "󰈔") .. " "
@@ -298,7 +304,7 @@ function M.setup()
 	}
 	local LSPActive = {
 		condition = function()
-			if not conditions.lsp_attached() then
+			if not package.loaded["vim.lsp"] or not conditions.lsp_attached() then
 				return false
 			end
 			if vim.o.columns >= 120 then
@@ -431,7 +437,7 @@ function M.setup()
 				.. (cc.count > 1 and (" ×" .. cc.count) or "")
 				.. " "
 		end,
-		hl = { fg = "purple", bold = true },
+		hl = { fg = "accent", bold = true },
 	}
 
 	local AI = {
@@ -454,7 +460,7 @@ function M.setup()
 			local cli = #names > 0 and (" " .. table.concat(names, "+")) or ""
 			return " C" .. state .. cli .. " AI:" .. provider .. busy .. " "
 		end,
-		hl = { fg = "purple" },
+		hl = { fg = "accent" },
 		update = { "ModeChanged", "BufEnter", "CursorHold", "User" },
 	}
 
@@ -545,7 +551,7 @@ function M.setup()
 				local a = self.meta.adapter
 				return "󰚩 " .. text.fit((a and a.name) or "CodeCompanion", 24) .. " "
 			end,
-			hl = { fg = "purple", bold = true },
+			hl = { fg = "accent", bold = true },
 		},
 		Align,
 		cc_stat("Σ", "tokens"),

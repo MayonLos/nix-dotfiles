@@ -6,6 +6,26 @@ import tempfile
 
 BEGIN = "/* BEGIN nix-dotfiles managed Firefox theme */"
 END = "/* END nix-dotfiles managed Firefox theme */"
+CONTENT_BEGIN = "/* >>> nix-dotfiles userContent segment >>>"
+CONTENT_END = "<<< nix-dotfiles userContent segment <<< */"
+
+
+def split_stylesheets(source: str) -> tuple[str, str]:
+    """Split the commented userContent payload from the shared palette template."""
+    if (CONTENT_BEGIN in source) != (CONTENT_END in source):
+        raise RuntimeError("Incomplete userContent segment markers in Firefox CSS template")
+    if CONTENT_BEGIN not in source:
+        return source.rstrip(), ""
+    if source.count(CONTENT_BEGIN) != 1 or source.count(CONTENT_END) != 1:
+        raise RuntimeError("Duplicate userContent segment markers in Firefox CSS template")
+    start = source.index(CONTENT_BEGIN)
+    finish = source.index(CONTENT_END, start)
+    if finish < start:
+        raise RuntimeError("Reversed userContent segment markers in Firefox CSS template")
+    content_start = start + len(CONTENT_BEGIN)
+    chrome = source[:start] + source[finish + len(CONTENT_END) :]
+    content = source[content_start:finish]
+    return chrome.rstrip(), content.strip()
 
 
 def _default_profile_path(profile_root: Path) -> Path | None:
@@ -62,13 +82,18 @@ def replace_managed_block(path: Path, begin: str, end: str, content: str) -> boo
     if path.is_symlink() or path.parent.is_symlink():
         raise RuntimeError(f"Refusing to modify symlinked Firefox config: {path}")
     old = path.read_text(encoding="utf-8") if path.exists() else ""
-    if (begin in old) != (end in old):
+    if (begin in old) != (end in old) or old.count(begin) != old.count(end):
         raise RuntimeError(f"Incomplete managed markers in {path}; preserving the file")
+    if old.count(begin) > 1:
+        raise RuntimeError(f"Duplicate managed markers in {path}; preserving the file")
 
     block = f"{begin}\n{content.rstrip()}\n{end}"
     if begin in old:
         start = old.index(begin)
-        finish = old.index(end, start) + len(end)
+        end_start = old.find(end, start + len(begin))
+        if end_start < 0:
+            raise RuntimeError(f"Reversed managed markers in {path}; preserving the file")
+        finish = end_start + len(end)
         new = old[:start] + block + old[finish:]
     else:
         new = old.rstrip() + ("\n\n" if old.strip() else "") + block + "\n"

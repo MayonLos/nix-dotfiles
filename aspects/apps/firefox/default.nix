@@ -1,4 +1,5 @@
-_: {
+{ inputs, ... }:
+{
   imports = [
     ../../desktop/mango-session
     ../../appearance/appearance
@@ -12,8 +13,28 @@ _: {
       }
     ];
     homeManager =
-      { lib, pkgs, ... }:
+      {
+        config,
+        lib,
+        pkgs,
+        ...
+      }:
       let
+        firefoxNoctaliaPaletteColors = {
+          onedark_bg = user.appearance.bg;
+          onedark_deep = user.appearance.deep;
+          onedark_surface = user.appearance.surface;
+          onedark_selection = user.appearance.selection;
+          onedark_bright_fg = user.appearance.brightFg;
+          onedark_fg = user.appearance.fg;
+          onedark_muted = user.appearance.muted;
+          onedark_border = user.appearance.border;
+          onedark_blue = user.appearance.blue;
+          onedark_black = user.appearance.black;
+          onedark_red = user.appearance.red;
+          onedark_purple = user.appearance.purple;
+          onedark_cyan = user.appearance.cyan;
+        };
         firefoxAddons = {
           darkReader = pkgs.fetchurl {
             name = "darkreader-4.9.133.xpi";
@@ -43,29 +64,40 @@ _: {
         firefoxChrome = pkgs.writeText "firefox-userChrome-fallback.css" (
           builtins.replaceStrings
             [
-              "{{ colors.surface.default.hex }}"
-              "{{ colors.surface_container_lowest.default.hex }}"
-              "{{ colors.surface_container_high.default.hex }}"
-              "{{ colors.on_surface.default.hex }}"
-              "{{ colors.on_surface_variant.default.hex }}"
-              "{{ colors.primary.default.hex }}"
-              "{{ colors.tertiary.default.hex }}"
-              "{{ colors.secondary.default.hex }}"
+              "{{ colors.onedark_bg.default.hex }}"
+              "{{ colors.onedark_surface.default.hex }}"
+              "{{ colors.onedark_deep.default.hex }}"
+              "{{ colors.onedark_selection.default.hex }}"
+              "{{ colors.onedark_bright_fg.default.hex }}"
+              "{{ colors.onedark_fg.default.hex }}"
+              "{{ colors.onedark_blue.default.hex }}"
+              "{{ colors.onedark_cyan.default.hex }}"
+              "{{ colors.onedark_purple.default.hex }}"
             ]
             [
               user.appearance.bg
+              user.appearance.surface
               user.appearance.deep
               user.appearance.selection
               user.appearance.brightFg
               user.appearance.fg
               user.appearance.blue
-              user.appearance.purple
               user.appearance.cyan
+              user.appearance.purple
             ]
             (builtins.readFile ./resources/noctalia-userChrome.css)
         );
       in
       {
+        imports = [ inputs.noctalia.homeModules.default ];
+        programs.noctalia.settings.theme.templates.custom_colors =
+          lib.mkIf config.programs.noctalia.enable
+            (
+              lib.mapAttrs (_: color: {
+                inherit color;
+                blend = false;
+              }) firefoxNoctaliaPaletteColors
+            );
         xdg.mimeApps.enable = true;
         xdg.mimeApps.defaultApplications = {
           "x-scheme-handler/about" = [ "firefox.desktop" ];

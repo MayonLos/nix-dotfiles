@@ -83,17 +83,20 @@ return {
 		cmd = { "CodeDiff" },
 		after = function()
 			local palette = require("mayon.generated").palette
-			vim.api.nvim_set_hl(0, "CodeDiffCharInsert", { fg = palette.green, bg = palette.selection, bold = true })
-			vim.api.nvim_set_hl(0, "CodeDiffCharDelete", { fg = palette.red, bg = palette.surface, bold = true })
+			local blend = require("mayon.ui.theme").blend
+			local line_insert = blend(palette.green, palette.deep, 0.08)
+			local line_delete = blend(palette.red, palette.deep, 0.08)
+			local char_insert = blend(palette.green, palette.deep, 0.12)
+			local char_delete = blend(palette.red, palette.deep, 0.12)
 			-- The Nix package ships libvscode_diff.so (unversioned). Skip upstream's
 			-- mutable auto-installer and let codediff's loader use its local fallback.
 			vim.env.VSCODE_DIFF_NO_AUTO_INSTALL = "1"
 			require("codediff").setup({
 				highlights = {
-					line_insert = "DiffAdd",
-					line_delete = "DiffDelete",
-					char_insert = "CodeDiffCharInsert",
-					char_delete = "CodeDiffCharDelete",
+					line_insert = line_insert,
+					line_delete = line_delete,
+					char_insert = char_insert,
+					char_delete = char_delete,
 					conflict_sign = "DiagnosticSignWarn",
 					conflict_sign_resolved = "Comment",
 					conflict_sign_accepted = "DiagnosticSignOk",
@@ -106,6 +109,15 @@ return {
 					view_mode = "tree",
 					icons = { folder_closed = "", folder_open = "" },
 				},
+			})
+			-- codediff resolves configured colors to backgrounds only. Restore its
+			-- foregrounds after plugin initialization and after its ColorScheme hook.
+			require("mayon.ui.theme").refresh()
+			vim.api.nvim_create_autocmd("ColorScheme", {
+				group = vim.api.nvim_create_augroup("MayonCodeDiffTheme", { clear = true }),
+				callback = function()
+					require("mayon.ui.theme").refresh()
+				end,
 			})
 		end,
 	},

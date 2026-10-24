@@ -1,5 +1,12 @@
 return {
 	{
+		"nvim-web-devicons",
+		event = { "FileType", "UIEnter" },
+		after = function()
+			require("mayon.ui.icons").ensure()
+		end,
+	},
+	{
 		"rainbow-delimiters.nvim",
 		event = { "BufReadPost", "BufNewFile" },
 		after = function()
@@ -27,6 +34,14 @@ return {
 		event = "User MayonVeryLazy",
 		after = function()
 			require("tiny-inline-diagnostic").setup({})
+			-- The plugin rebuilds its groups on ColorScheme. Restore the palette
+			-- body color after its listener, keeping severity on signs/arrows.
+			vim.api.nvim_create_autocmd("ColorScheme", {
+				group = vim.api.nvim_create_augroup("MayonDiagnosticTheme", { clear = true }),
+				callback = function()
+					require("mayon.ui.theme").refresh()
+				end,
+			})
 		end,
 	},
 	{

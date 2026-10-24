@@ -1,11 +1,21 @@
 -- Run the complete production configuration with real Nix-pinned plugins.
 assert(vim.v.errmsg == "", vim.v.errmsg)
 assert(vim.g.mayon_config_loaded)
-assert(vim.g.colors_name == "onedark-darker")
-assert(
-	vim.api.nvim_get_hl(0, { name = "Normal", link = false }).bg
-		== tonumber(require("mayon.generated").palette.bg:sub(2), 16)
-)
+assert(vim.g.colors_name == "onedark")
+local palette = require("mayon.generated").palette
+assert(vim.api.nvim_get_hl(0, { name = "Normal", link = false }).bg == tonumber(palette.deep:sub(2), 16))
+assert(vim.api.nvim_get_hl(0, { name = "Normal", link = false }).fg == tonumber(palette.brightFg:sub(2), 16))
+assert(vim.api.nvim_get_hl(0, { name = "NormalFloat", link = false }).bg == tonumber(palette.bg:sub(2), 16))
+assert(vim.api.nvim_get_hl(0, { name = "Pmenu", link = false }).bg == tonumber(palette.bg:sub(2), 16))
+assert(vim.api.nvim_get_hl(0, { name = "PmenuSel", link = false }).bg == tonumber(palette.selection:sub(2), 16))
+for _, name in ipairs({ "DiffAdd", "DiffChange", "DiffText", "DiffDelete" }) do
+	local highlight = vim.api.nvim_get_hl(0, { name = name, link = false })
+	assert(highlight.bg and highlight.fg == tonumber(palette.brightFg:sub(2), 16), "invalid diff highlight: " .. name)
+end
+assert(vim.api.nvim_get_hl(0, { name = "Visual", link = false }).fg == tonumber(palette.brightFg:sub(2), 16))
+assert(vim.api.nvim_get_hl(0, { name = "Visual", link = false }).bg == tonumber(palette.selection:sub(2), 16))
+assert(vim.api.nvim_get_hl(0, { name = "LineNr", link = false }).fg == tonumber(palette.fg:sub(2), 16))
+assert(vim.api.nvim_get_hl(0, { name = "@keyword.function", link = false }).fg == tonumber(palette.cyan:sub(2), 16))
 assert(vim.wo.number and vim.wo.relativenumber and vim.wo.cursorline and vim.wo.wrap)
 assert(vim.o.laststatus == 3 and vim.o.showtabline == 2)
 for _, provider in ipairs({ "python3", "ruby", "node", "perl" }) do
@@ -38,8 +48,38 @@ for _, module in ipairs({
 }) do
 	assert(not package.loaded[module], module .. " was eagerly loaded")
 end
+for _, module in ipairs({
+	"vim.lsp",
+	"snacks.explorer.actions",
+	"snacks.explorer.tree",
+	"snacks.git",
+	"nvim-web-devicons",
+	"mayon.features.sessions",
+	"mayon.features.urls",
+	"mayon.features.fileops",
+	"mayon.ui.dashboard",
+	"snacks.dashboard",
+}) do
+	assert(not package.loaded[module], module .. " was eagerly loaded")
+end
 assert(vim.fn.exists(":FzfLua") == 0 and not package.loaded.ufo)
-vim.api.nvim_exec_autocmds("BufReadPre", {})
+-- A special UI FileType must not initialize language services.
+vim.bo.buftype = "nofile"
+vim.bo.filetype = "snacks_dashboard"
+assert(not package.loaded["vim.lsp"], "dashboard FileType must not initialize LSP")
+vim.bo.filetype = ""
+vim.bo.buftype = ""
+-- Restore through the initially lazy mapping, before any file has been read.
+local session_dir = vim.fn.stdpath("state") .. "/sessions"
+vim.fn.mkdir(session_dir, "p")
+local session_fixture = session_dir .. "/lazy-restore.vim"
+vim.fn.writefile({ "let g:mayon_lazy_session_restored = 1" }, session_fixture)
+vim.fn.maparg("<leader>pl", "n", false, true).callback()
+assert(vim.g.mayon_lazy_session_restored == 1, "lazy session mapping did not restore the last session")
+assert(package.loaded["mayon.features.sessions"], "session implementation must load at the restore entry point")
+vim.fn.delete(session_fixture)
+vim.bo.filetype = "text"
+assert(package.loaded["vim.lsp"], "LSP core should load on the first FileType")
 require("lz.n").trigger_load("nvim-treesitter")
 assert(not package.loaded["blink.cmp"] and not package.loaded.copilot)
 assert(vim.opt.completeopt:get() and vim.tbl_contains(vim.opt.completeopt:get(), "noselect"))

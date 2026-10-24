@@ -33,7 +33,7 @@ class ReconcileOverridesTests(unittest.TestCase):
                 {
                     "theme": {
                         "mode": "dark",
-                        "custom_palette": "One-Dark-Darker",
+                        "custom_palette": "onedark",
                         "templates": {"builtin_ids": ["mango"]},
                     },
                     "dock": {"monitors": ["DP-1"]},
@@ -120,7 +120,7 @@ input_path = "/user/custom"
         self.assertNotIn("other_unknown_setting", backup_text)
 
     def test_idempotent_second_run_does_not_write_or_make_backup(self) -> None:
-        self.state.write_text('[theme]\nmode = "dark"\ncustom_palette = "One-Dark-Darker"\n', encoding="utf-8")
+        self.state.write_text('[theme]\nmode = "dark"\ncustom_palette = "onedark"\n', encoding="utf-8")
         self.assertEqual(len(self.run_reconcile()), 2)
         first = self.state.read_bytes()
         mtime = self.state.stat().st_mtime_ns

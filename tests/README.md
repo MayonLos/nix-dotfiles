@@ -39,7 +39,7 @@ aspect 和嵌入式组合 fixture 中：
 
 | 脚本 | 检查范围 |
 |---|---|
-| `startup.lua` | 完整生产配置能启动；One Dark Darker 背景、常用命令、插件和 parser 可用；入口幂等；Snacks picker SQLite 可读写。 |
+| `startup.lua` | 完整生产配置能启动；One Dark 背景、常用命令、插件和 parser 可用；入口幂等；Snacks picker SQLite 可读写。 |
 | `completion.lua` | Blink 从仓库片段目录发现真实 C++ 片段，提供补全并可展开、跳转原生 snippet 占位符。 |
 | `integration.lua` | 真实 Conform/StyLua 接收生成的语言 formatter 配置并格式化隔离临时文件。 |
 | `workflow.lua` | 长 Markdown 的折行、宽度变化时状态栏/标签栏不溢出、侧栏和未保存内容保护、临时草稿保存及 palette 背景。 |

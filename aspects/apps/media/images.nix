@@ -77,7 +77,7 @@ in
         background = "${palette.surface}ff";
         select = "${palette.selection}ff";
         border_color = "${palette.blue}ff";
-        border_width = 3;
+        border_width = 2;
       };
       list = {
         all = "yes";
@@ -88,7 +88,7 @@ in
         name = palette.fonts.sans;
         size = 11;
         color = "${palette.brightFg}ff";
-        background = "${palette.deep}d0";
+        background = "${palette.deep}ff";
       };
       "info.viewer" = {
         top_left = "name";

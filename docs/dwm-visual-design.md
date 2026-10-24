@@ -1,7 +1,7 @@
 # DWM 视觉与窗口规则
 
 2026-10-19。以 `f4686d6` 干净工作树为本轮基线。用户指出 B 初版视觉和窗口规则不完善，
-要求参考社区并由实际 Astra 设计。保留 One Dark Darker 和已选择的
+要求参考社区并由实际 Astra 设计。保留 One Dark 和已选择的
 dwm 原生栏、dmenu/j4、Picom、Dunst、i3lock-color 组合。
 
 ## 设计与来源

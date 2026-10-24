@@ -3,10 +3,17 @@
 
 import os
 from pathlib import Path
-import re
 import sys
 
-from firefox_profile import BEGIN, END, _default_profile_path, replace_managed_block
+from firefox_profile import (
+    BEGIN,
+    CONTENT_BEGIN,
+    CONTENT_END,
+    END,
+    _default_profile_path,
+    replace_managed_block,
+    split_stylesheets,
+)
 
 
 def main() -> int:
@@ -33,6 +40,12 @@ def main() -> int:
             # Override Firefox's persisted open launcher state on every start.
             'user_pref("sidebar.backupState", "{\\"launcherExpanded\\":false,\\"launcherVisible\\":true,\\"panelOpen\\":false}");',
             'user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);',
+            'user_pref("browser.newtabpage.activity-stream.showSearch", true);',
+            'user_pref("browser.newtabpage.activity-stream.topSitesRows", 1);',
+            'user_pref("browser.newtabpage.activity-stream.feeds.section.topstories", false);',
+            'user_pref("browser.newtabpage.activity-stream.feeds.snippets", false);',
+            'user_pref("browser.newtabpage.activity-stream.showSponsored", false);',
+            'user_pref("browser.newtabpage.activity-stream.showSponsoredTopSites", false);',
             'user_pref("browser.ctrlTab.sortByRecentlyUsed", true);',
             'user_pref("findbar.highlightAll", true);',
             'user_pref("browser.tabs.splitView.enabled", true);',
@@ -48,27 +61,22 @@ def main() -> int:
     except RuntimeError as error:
         raise SystemExit(str(error)) from error
 
-    rendered_theme = (
-        Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache")))
-        / "noctalia"
-        / "firefox"
-        / "userChrome.css"
-    )
-    theme_css = style_source.read_text()
-    if rendered_theme.is_file():
-        candidate = rendered_theme.read_text()
-        if "{{" not in candidate and "}}" not in candidate:
-            # Keep the rendered palette, but always install the current CSS
-            # structure. Noctalia's cache may predate this system generation.
-            for name, value in re.findall(r"(--tn-[a-z-]+):\s*(#[0-9a-fA-F]{6});", candidate):
-                theme_css = re.sub(
-                    rf"({re.escape(name)}:)\s*#[0-9a-fA-F]{{6}};",
-                    rf"\g<1> {value};",
-                    theme_css,
-                )
+    theme_css = style_source.read_text(encoding="utf-8")
 
     try:
-        replace_managed_block(profile_path / "chrome" / "userChrome.css", BEGIN, END, theme_css)
+        chrome_css, content_css = split_stylesheets(theme_css)
+    except RuntimeError as error:
+        raise SystemExit(str(error)) from error
+
+    try:
+        replace_managed_block(profile_path / "chrome" / "userChrome.css", BEGIN, END, chrome_css)
+        if content_css:
+            replace_managed_block(
+                profile_path / "chrome" / "userContent.css",
+                BEGIN,
+                END,
+                content_css,
+            )
     except RuntimeError as error:
         raise SystemExit(str(error)) from error
     print(f"Ensured managed Firefox UI settings in {profile_path}")

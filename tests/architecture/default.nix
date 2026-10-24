@@ -30,6 +30,7 @@ let
       m = builtins.stringLength suffix;
     in
     n >= m && builtins.substring (n - m) m value == suffix;
+  hasAnySuffix = suffixes: value: builtins.any (suffix: hasSuffix suffix value) suffixes;
   split = value: filter (part: part != "") (lib.splitString "/" value);
   join = builtins.concatStringsSep "/";
   normalize =
@@ -159,6 +160,144 @@ let
       }) (attrNames sources);
   codeSources = filter (source: hasSuffix ".nix" source.path) allSources;
   sourceNames = map (source: source.path) allSources;
+  # Palette regression checking covers source/config/document text formats
+  # beyond Nix and Markdown. Known generated/binary formats are skipped before
+  # readFile so large assets and invalid UTF-8 never enter the evaluator.
+  binarySuffixes = [
+    ".png"
+    ".jpg"
+    ".jpeg"
+    ".webp"
+    ".gif"
+    ".ico"
+    ".icns"
+    ".bmp"
+    ".tif"
+    ".tiff"
+    ".avif"
+    ".heic"
+    ".pdf"
+    ".woff"
+    ".woff2"
+    ".ttf"
+    ".otf"
+    ".eot"
+    ".mp3"
+    ".ogg"
+    ".wav"
+    ".flac"
+    ".m4a"
+    ".mp4"
+    ".mkv"
+    ".webm"
+    ".mov"
+    ".avi"
+    ".zip"
+    ".gz"
+    ".xz"
+    ".bz2"
+    ".zst"
+    ".7z"
+    ".rar"
+    ".tar"
+    ".sqlite"
+    ".db"
+    ".bin"
+    ".so"
+    ".a"
+    ".o"
+    ".class"
+    ".jar"
+    ".wasm"
+    ".lockb"
+    ".pyc"
+    ".DS_Store"
+  ];
+  paletteTextSources =
+    if sources != null then
+      map (path: {
+        inherit path;
+        text = sources.${path};
+      }) (attrNames sources)
+    else
+      lib.concatMap (source: if source.text != "" then [ source ] else [ ]) allSources
+      ++ (
+        let
+          readTextTree =
+            dir: prefix:
+            lib.concatMap (
+              name:
+              let
+                kind = (readDir dir).${name};
+                rel = if prefix == "" then name else "${prefix}/${name}";
+                full = dir + "/${name}";
+              in
+              if
+                (
+                  kind == "directory"
+                  && builtins.elem name [
+                    ".git"
+                    ".work"
+                    ".team"
+                    ".worktrees"
+                  ]
+                )
+                || lib.hasPrefix "result" name
+                || rel == "docs/history"
+                || lib.hasPrefix "docs/history/" rel
+              then
+                [ ]
+              else if kind == "directory" then
+                readTextTree full rel
+              else if
+                kind == "regular"
+                && !(hasAnySuffix binarySuffixes name)
+                && (!(hasSuffix ".nix" name || hasSuffix ".md" name) || !(elem rel sourceNames))
+                && name != "ONEDARK-LICENSE"
+              then
+                [
+                  {
+                    path = rel;
+                    text = readFile full;
+                  }
+                ]
+              else
+                [ ]
+            ) (attrNames (readDir dir));
+        in
+        readTextTree root ""
+      );
+  forbiddenPaletteHexes = map (value: "#" + value) [
+    "1f2329"
+    "4fa6ed"
+    "bf68d9"
+    "282c34"
+    "a0a8b7"
+    "535965"
+    "8ebd6b"
+    "cc9057"
+    "e2b86b"
+    "48b0bd"
+    "e55561"
+    "d1d5de"
+    "7a818e"
+    "30363f"
+  ];
+  paletteColorAllowed =
+    source: !(source.path == "ONEDARK-LICENSE" || lib.hasPrefix "docs/history/" source.path);
+  paletteErrors = lib.concatMap (
+    source:
+    if !paletteColorAllowed source then
+      [ ]
+    else
+      lib.concatMap (
+        color:
+        if lib.hasInfix color (lib.toLower source.text) then
+          [ (error "legacy-palette-color" source.path "contains removed palette color ${color}") ]
+        else
+          [ ]
+      ) forbiddenPaletteHexes
+  ) paletteTextSources;
   sourceMap = builtins.listToAttrs (
     map (source: {
       name = source.path;
@@ -544,7 +683,8 @@ let
   ) libFiles;
 
   errors =
-    referenceErrors
+    paletteErrors
+    ++ referenceErrors
     ++ inventoryErrors
     ++ legacyErrors
     ++ unstableErrors
@@ -598,6 +738,24 @@ let
     else
       [ ];
   fixtures = [
+    (fixture "legacy palette color in non-Nix text" {
+      "aspects/desktop/example/theme.css" =
+        ".old { color: "
+        + (lib.concatStrings [
+          "#"
+          "1f2329"
+        ])
+        + "; }";
+    } { } "legacy-palette-color")
+    (fixtureAbsent "legacy palette color in excluded history" {
+      "docs/history/old.md" =
+        "Historical palette used "
+        + (lib.concatStrings [
+          "#"
+          "1f2329"
+        ])
+        + ".";
+    } { } "legacy-palette-color")
     (fixture "private ordinary path" {
       "aspects/cli/shell/default.nix" = "x = import ../../desktop/greeter/private.nix;";
       "aspects/desktop/greeter/default.nix" = "den.aspects.greeter = {};";

@@ -1,6 +1,11 @@
 local M = {}
 
+local ready = false
 function M.setup()
+	if ready then
+		return
+	end
+	ready = true
 	local session_dir = vim.fn.stdpath("state") .. "/sessions"
 	local session_options = "buffers,curdir,tabpages,winsize,folds"
 	local mtime_baselines = {}
@@ -197,6 +202,12 @@ function M.setup()
 
 	vim.api.nvim_create_autocmd("DirChanged", { callback = snapshot_current_session })
 	vim.api.nvim_create_autocmd("VimLeavePre", { callback = save_session })
+	M.load = load_current_session
+	M.last = load_last_session
+	M.disable = function()
+		save_disabled = true
+		notify("automatic save disabled for this instance")
+	end
 	snapshot_current_session()
 end
 

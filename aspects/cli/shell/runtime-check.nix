@@ -23,12 +23,11 @@ let
       lazygit = "${home.programs.lazygit.package}/bin/lazygit";
       configs = {
         "btop/btop.conf" = home.xdg.configFile."btop/btop.conf".source;
-        "btop/themes/One Dark Darker.theme" =
-          home.xdg.configFile."btop/themes/One Dark Darker.theme".source;
+        "btop/themes/One Dark.theme" = home.xdg.configFile."btop/themes/One Dark.theme".source;
         "yazi/theme.toml" = home.xdg.configFile."yazi/theme.toml".source;
         "yazi/yazi.toml" = home.xdg.configFile."yazi/yazi.toml".source;
         "atuin/config.toml" = home.xdg.configFile."atuin/config.toml".source;
-        "atuin/themes/onedark-darker.toml" = home.xdg.configFile."atuin/themes/onedark-darker.toml".source;
+        "atuin/themes/onedark.toml" = home.xdg.configFile."atuin/themes/onedark.toml".source;
         "lazygit/config.yml" = home.home.file."${home.xdg.configHome}/lazygit/config.yml".source;
       };
     }
@@ -93,17 +92,17 @@ pkgs.runCommand "command-line-runtime"
     export HOME="$TMPDIR/home" XDG_CONFIG_HOME="$TMPDIR/config" XDG_CACHE_HOME="$TMPDIR/cache"
     mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" "$out"
     export BAT_CACHE_PATH=${home.home.sessionVariables.BAT_CACHE_PATH}
-    export BAT_THEME='One Dark Darker'
+    export BAT_THEME='One Dark'
     test -s "$BAT_CACHE_PATH/themes.bin"
     test -s "$BAT_CACHE_PATH/syntaxes.bin"
-    ${home.programs.bat.package}/bin/bat --list-themes --color=never | grep -Fx 'One Dark Darker' > "$out/bat-theme.txt"
+    ${home.programs.bat.package}/bin/bat --list-themes --color=never | grep -Fx 'One Dark' > "$out/bat-theme.txt"
     cat > "$TMPDIR/sample.py" <<'PY_SAMPLE'
-    # One Dark Darker syntax sample
+    # One Dark syntax sample
     def greet(name):
         return "hello " + str(42)
     PY_SAMPLE
     ${home.programs.bat.package}/bin/bat --no-config --theme="$BAT_THEME" --color=always --style=plain "$TMPDIR/sample.py" > "$out/bat-sample.ansi"
-    ${home.programs.delta.package}/bin/delta --list-syntax-themes | grep -F 'One Dark Darker' > "$out/delta-theme.txt"
+    ${home.programs.delta.package}/bin/delta --list-syntax-themes | grep -F 'One Dark' > "$out/delta-theme.txt"
     printf '%s\n' 'diff --git a/sample.py b/sample.py' '--- a/sample.py' '+++ b/sample.py' '@@ -1 +1 @@' '-value = 1' '+value = 42' | \
       ${home.programs.delta.package}/bin/delta --no-gitconfig --syntax-theme="$BAT_THEME" --paging=never --true-color=always \
         --plus-style=${pkgs.lib.escapeShellArg home.programs.delta.options.plus-style} \
@@ -116,8 +115,8 @@ pkgs.runCommand "command-line-runtime"
     ${home.programs.eza.package}/bin/eza --color=always --icons=always "$TMPDIR" > "$out/eza.ansi" 2> "$out/eza.err"
     test ! -s "$out/eza.err"
     ${pkgs.glow}/bin/glow --style ${
-      home.xdg.configFile."glow/onedark-darker.json".source
-    } ${pkgs.writeText "sample.md" "# One Dark Darker\n\nA **bold** word and `code`.\n"} > "$out/glow.txt"
+      home.xdg.configFile."glow/onedark.json".source
+    } ${pkgs.writeText "sample.md" "# One Dark\n\nA **bold** word and `code`.\n"} > "$out/glow.txt"
     ${home.programs.fastfetch.package}/bin/fastfetch --config ${
       home.xdg.configFile."fastfetch/config.jsonc".source
     } --pipe false > "$out/fastfetch.txt" 2> "$out/fastfetch.err"
@@ -127,7 +126,7 @@ pkgs.runCommand "command-line-runtime"
     grep -F 'color_theme = "${home.programs.btop.settings.color_theme}"' ${
       home.xdg.configFile."btop/btop.conf".source
     }
-    grep -F '${palette.blue}' ${home.xdg.configFile."btop/themes/One Dark Darker.theme".source}
+    grep -F '${palette.blue}' ${home.xdg.configFile."btop/themes/One Dark.theme".source}
     python3 - "$out/bat-sample.ansi" "$out/delta-sample.ansi" ${
       home.home.file."${home.xdg.configHome}/tealdeer/config.toml".source
     } <<'PY_CLI'
@@ -149,7 +148,7 @@ pkgs.runCommand "command-line-runtime"
     grep -Fq 'fzf-cd-widget' "$out/zsh-fzf-bindings"
     grep -Fq 'up-line-or-beginning-search' "$out/zsh-fzf-bindings"
     python3 - ${home.xdg.configFile."atuin/config.toml".source} ${
-      home.xdg.configFile."atuin/themes/onedark-darker.toml".source
+      home.xdg.configFile."atuin/themes/onedark.toml".source
     } <<'PY'
     import sys, tomllib
     with open(sys.argv[1], "rb") as source:
@@ -163,8 +162,8 @@ pkgs.runCommand "command-line-runtime"
     assert config["enter_accept"] is False
     assert config["filter_mode"] == "global"
     assert config["filter_mode_shell_up_key_binding"] == "session"
-    assert config["theme"]["name"] == "onedark-darker"
-    assert theme["theme"]["name"] == "onedark-darker"
+    assert config["theme"]["name"] == "onedark"
+    assert theme["theme"]["name"] == "onedark"
     assert set(theme["colors"]) == {
         "Base", "AlertInfo", "AlertWarn", "AlertError", "Annotation",
         "Guidance", "Important", "Title", "Muted"

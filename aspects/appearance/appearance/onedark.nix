@@ -1,8 +1,7 @@
-# "One Dark refined" palette (scheme B, user-approved 2026-10-24); file name kept
-# until the parallel visual-redesign branches merge, then renamed.
+# "One Dark refined" palette (scheme B, user-approved 2026-10-24).
 # Palette origin: navarasu/onedark.nvim (MIT); no highlight implementation here.
 {
-  name = "onedark-darker";
+  name = "onedark";
   reducedMotion = false;
   fonts = {
     sans = "Inter";
@@ -23,7 +22,7 @@
   border = "#5c6370";
   deep = "#181b20";
   fg = "#abb2bf";
-  muted = "#7d8590";
+  muted = "#828a95";
   purple = "#c678dd";
   green = "#98c379";
   orange = "#d19a66";

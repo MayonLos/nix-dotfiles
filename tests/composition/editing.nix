@@ -2,7 +2,7 @@
 let
   inherit (pkgs) lib;
   system = "x86_64-linux";
-  palette = import ../../aspects/appearance/appearance/onedark-darker.nix;
+  palette = import ../../aspects/appearance/appearance/onedark.nix;
 
   bindings = [
     "alice@hostA"
@@ -215,14 +215,14 @@ let
 
   clangdIntegrationCheck = pkgs.writeText "editing-clangd-integration.lua" ''
     local ok, err = xpcall(function()
-      vim.api.nvim_exec_autocmds("BufReadPre", {})
+      assert(not package.loaded["vim.lsp"], "empty startup must defer LSP")
+      vim.cmd.edit(vim.env.CONTRACT_PROJECT .. "/main.cpp")
+      assert(vim.bo.filetype == "cpp", "C++ filetype detection is missing")
       assert(vim.deep_equal(vim.lsp.config.clangd.cmd, {
         "clangd", "--background-index", "--clang-tidy",
       }), "production clangd command or arguments changed")
       assert(vim.lsp.is_enabled("clangd"), "C/C++ profile must enable clangd")
 
-      vim.cmd.edit(vim.env.CONTRACT_PROJECT .. "/main.cpp")
-      assert(vim.bo.filetype == "cpp", "C++ filetype detection is missing")
       local client
       assert(vim.wait(30000, function()
         client = vim.lsp.get_clients({ bufnr = 0, name = "clangd" })[1]

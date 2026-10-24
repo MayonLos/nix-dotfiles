@@ -2,7 +2,7 @@ _: {
   perSystem =
     { pkgs, ... }:
     let
-      palette = import ../aspects/appearance/appearance/onedark-darker.nix;
+      palette = import ../aspects/appearance/appearance/onedark.nix;
       contributions =
         builtins.attrValues
           (import ../aspects/dev/languages/contract.nix { inherit (pkgs) lib; }).defaults;

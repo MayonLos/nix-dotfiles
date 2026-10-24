@@ -1,5 +1,6 @@
 vim.api.nvim_exec_autocmds("UIEnter", {})
 vim.api.nvim_exec_autocmds("BufReadPre", {})
+vim.bo.filetype = "text"
 require("lz.n").trigger_load("nvim-treesitter")
 vim.api.nvim_exec_autocmds("User", { pattern = "MayonVeryLazy" })
 require("lz.n").trigger_load({
