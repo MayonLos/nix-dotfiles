@@ -20,8 +20,8 @@ in
     disable_ligatures cursor
 
     background_opacity 1.0
-    background ${palette.bg}
-    foreground ${palette.fg}
+    background ${palette.deep}
+    foreground ${palette.brightFg}
 
     cursor_shape beam
     cursor_beam_thickness 1.5
@@ -32,20 +32,20 @@ in
     cursor_trail_start_threshold 4
     cursor_trail_color ${palette.blue}
     cursor ${palette.brightFg}
-    cursor_text_color ${palette.bg}
+    cursor_text_color ${palette.deep}
 
     selection_background ${palette.selection}
     selection_foreground ${palette.brightFg}
 
     # Match the editor's quiet tabs without adding a second project manager.
     tab_bar_min_tabs 2
-    tab_bar_style powerline
-    tab_powerline_style slanted
+    tab_bar_style separator
+    tab_separator " │ "
     tab_title_template "{index}: {title}"
-    active_tab_foreground ${palette.brightFg}
-    active_tab_background ${palette.surface}
+    active_tab_foreground ${palette.blue}
+    active_tab_background ${palette.selection}
     active_tab_font_style bold
-    inactive_tab_foreground ${palette.muted}
+    inactive_tab_foreground ${palette.fg}
     inactive_tab_background ${palette.deep}
     tab_bar_background ${palette.deep}
 
@@ -55,7 +55,7 @@ in
     wheel_scroll_multiplier 5.0
 
     hide_window_decorations yes
-    window_padding_width 8
+    window_padding_width 12
     # Ask before closing a window with a running foreground task.
     confirm_os_window_close -1
     enable_audio_bell no

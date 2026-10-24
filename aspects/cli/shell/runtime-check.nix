@@ -11,6 +11,28 @@ let
     pkgs.lib.replaceStrings [ home.home.homeDirectory "/run/secrets/" ] [ "$HOME" "$HOME/secrets/" ]
       home.home.file."./.zshrc".text
   );
+  visualSettings = pkgs.writeText "cli-visual-settings.json" (
+    builtins.toJSON {
+      starshipConfig = home.home.file.${home.programs.starship.configPath}.source;
+      starship = "${home.programs.starship.package}/bin/starship";
+      git = "${pkgs.git}/bin/git";
+      tmux = "${pkgs.tmux}/bin/tmux";
+      btop = "${home.programs.btop.package}/bin/btop";
+      yazi = "${home.programs.yazi.package}/bin/yazi";
+      atuin = "${home.programs.atuin.package}/bin/atuin";
+      lazygit = "${home.programs.lazygit.package}/bin/lazygit";
+      configs = {
+        "btop/btop.conf" = home.xdg.configFile."btop/btop.conf".source;
+        "btop/themes/One Dark Darker.theme" =
+          home.xdg.configFile."btop/themes/One Dark Darker.theme".source;
+        "yazi/theme.toml" = home.xdg.configFile."yazi/theme.toml".source;
+        "yazi/yazi.toml" = home.xdg.configFile."yazi/yazi.toml".source;
+        "atuin/config.toml" = home.xdg.configFile."atuin/config.toml".source;
+        "atuin/themes/onedark-darker.toml" = home.xdg.configFile."atuin/themes/onedark-darker.toml".source;
+        "lazygit/config.yml" = home.home.file."${home.xdg.configHome}/lazygit/config.yml".source;
+      };
+    }
+  );
   kittyExtra = pkgs.writeText "kitty-workspace-check.py" ''
     import os, json
     from kitty.config import load_config
@@ -20,18 +42,22 @@ let
         raise RuntimeError("Invalid Kitty workspace settings")
     if opts.cursor.as_sharp != "${palette.brightFg}" or opts.selection_foreground.as_sharp != "${palette.brightFg}":
         raise RuntimeError("Invalid cursor/selection roles")
-    assert opts.tab_bar_style == "powerline" and opts.tab_powerline_style == "slanted"
+    assert opts.tab_bar_style == "separator" and opts.tab_separator == " │ "
+    assert opts.selection_background.as_sharp == "${palette.selection}"
+    assert opts.active_tab_background.as_sharp == "${palette.selection}"
+    assert opts.active_tab_foreground.as_sharp == "${palette.blue}"
+    assert opts.inactive_tab_foreground.as_sharp == "${palette.fg}"
     assert opts.undercurl_style == "thick-sparse"
     assert opts.cursor_trail == ${if palette.reducedMotion or false then "0" else "1"}
     assert opts.cursor_trail_decay == (0.08, 0.16)
     assert opts.cursor_trail_start_threshold == (4, 4)
     assert opts.cursor_trail_color.as_sharp == "${palette.blue}"
-    assert tuple(opts.window_padding_width) == (8, 8, 8, 8)
+    assert tuple(opts.window_padding_width) == (12, 12, 12, 12)
     expected = ${
       builtins.toJSON (
         {
-          background = palette.bg;
-          foreground = palette.fg;
+          background = palette.deep;
+          foreground = palette.brightFg;
         }
         // pkgs.lib.listToAttrs (
           pkgs.lib.imap0 (i: value: {
@@ -59,6 +85,8 @@ pkgs.runCommand "command-line-runtime"
       pkgs.tmux
       pkgs.python3
       pkgs.zsh
+      pkgs.git
+      home.programs.atuin.package
     ];
   }
   ''
@@ -77,7 +105,11 @@ pkgs.runCommand "command-line-runtime"
     ${home.programs.bat.package}/bin/bat --no-config --theme="$BAT_THEME" --color=always --style=plain "$TMPDIR/sample.py" > "$out/bat-sample.ansi"
     ${home.programs.delta.package}/bin/delta --list-syntax-themes | grep -F 'One Dark Darker' > "$out/delta-theme.txt"
     printf '%s\n' 'diff --git a/sample.py b/sample.py' '--- a/sample.py' '+++ b/sample.py' '@@ -1 +1 @@' '-value = 1' '+value = 42' | \
-      ${home.programs.delta.package}/bin/delta --no-gitconfig --syntax-theme="$BAT_THEME" --paging=never --true-color=always > "$out/delta-sample.ansi"
+      ${home.programs.delta.package}/bin/delta --no-gitconfig --syntax-theme="$BAT_THEME" --paging=never --true-color=always \
+        --plus-style=${pkgs.lib.escapeShellArg home.programs.delta.options.plus-style} \
+        --plus-emph-style=${pkgs.lib.escapeShellArg home.programs.delta.options.plus-emph-style} \
+        --minus-style=${pkgs.lib.escapeShellArg home.programs.delta.options.minus-style} \
+        --minus-emph-style=${pkgs.lib.escapeShellArg home.programs.delta.options.minus-emph-style} > "$out/delta-sample.ansi"
     test -z '${home.home.activation.batCache.data}'
     mkdir -p "$XDG_CONFIG_HOME/eza"
     cp ${home.xdg.configFile."eza/theme.yml".source} "$XDG_CONFIG_HOME/eza/theme.yml"
@@ -144,10 +176,26 @@ pkgs.runCommand "command-line-runtime"
     trap 'tmux -S "$TMPDIR/tmux.sock" kill-server || true' EXIT
     tmux -S "$TMPDIR/tmux.sock" list-keys -T root > root.keys
     tmux -S "$TMPDIR/tmux.sock" list-keys -T prefix > prefix.keys
-    if grep -E 'M-(h|j|k|l|z|n|p|Tab|[1-9])[[:space:]]' root.keys; then exit 1; fi
+    if grep -E 'M-(z|n|p|Tab|[1-9])[[:space:]]' root.keys; then exit 1; fi
     grep -E 'h[[:space:]]+select-pane -L' prefix.keys
     grep -E 'l[[:space:]]+select-pane -R' prefix.keys
     grep -E 'Tab[[:space:]]+last-window' prefix.keys
+    tmux -S "$TMPDIR/tmux.sock" list-keys -T copy-mode-vi > "$out/copy-mode.keys"
+    grep -E 'h[[:space:]]+send-keys -X cursor-left' "$out/copy-mode.keys"
+
+    python3 ${./resources/visual-check.py} ${visualSettings} "$out"
+
+    ${home.programs.fzf.package}/bin/fzf --filter fixture --color '${
+      pkgs.lib.concatStringsSep "," (
+        pkgs.lib.mapAttrsToList (name: value: "${name}:${value}") home.programs.fzf.colors
+      )
+    }' <<<'fixture' > "$out/fzf.txt"
+    python3 - ${home.xdg.configFile."yazi/theme.toml".source} <<'PY_YAZI'
+    import sys, tomllib
+    theme = tomllib.load(open(sys.argv[1], "rb"))
+    assert theme["indicator"]["current"]["fg"] == "${palette.blue}"
+    assert theme["indicator"]["current"]["bg"] == "${palette.selection}"
+    PY_YAZI
 
     mkdir -p spy '项目 with spaces'
     cat > spy/program <<'PY'

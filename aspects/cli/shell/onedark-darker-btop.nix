@@ -1,13 +1,13 @@
 { palette }:
 ''
-  theme[main_bg]="${palette.bg}"
-  theme[main_fg]="${palette.fg}"
+  theme[main_bg]="${palette.deep}"
+  theme[main_fg]="${palette.brightFg}"
   theme[title]="${palette.brightFg}"
   theme[hi_fg]="${palette.blue}"
   theme[selected_bg]="${palette.selection}"
   theme[selected_fg]="${palette.brightFg}"
-  theme[inactive_fg]="${palette.muted}"
-  theme[graph_text]="${palette.fg}"
+  theme[inactive_fg]="${palette.fg}"
+  theme[graph_text]="${palette.brightFg}"
   theme[meter_bg]="${palette.selection}"
   theme[proc_misc]="${palette.purple}"
   theme[cpu_box]="${palette.blue}"

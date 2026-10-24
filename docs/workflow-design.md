@@ -8,11 +8,15 @@
 |---|---|---|
 | 桌面窗口与工作区 | `Super` | Mango 拥有，不占用编辑器常用的 Ctrl/Alt 字母 |
 | 桌面启动器 | `Alt+Space` | 保留现有入口；键盘、面板点击调用同一 Noctalia 功能 |
-| 终端复用 | `Ctrl+a` 前缀 | tmux 管 pane/window/session；取消当前无前缀的 Alt 字母/数字拦截 |
-| 编辑器窗口与功能 | `Ctrl+h/j/k/l`、Space leader | 保留现有 Neovim 行为；不跨层猜测当前应用然后转发按键 |
+| 终端复用 | `Ctrl+a` 前缀，方向键跨层集成 | tmux 管 pane/window/session；`Ctrl+h/j/k/l` 移动、`Alt+h/j/k/l` 调整大小 |
+| 编辑器窗口与功能 | `Ctrl+h/j/k/l`、Space leader | smart-splits 用 pane-local `@pane-is-vim` 与 tmux 协作，编辑器边缘可移到相邻 pane |
 | shell 与 TUI | 原应用按键 | `Alt+b/f`、`Ctrl+r`、Esc 等正常到达应用 |
 
-迁移前 tmux 的无前缀 `M-h/j/k/l`、`M-n/p`、`M-Tab`、`M-1…9` 会在 pane 内应用收到之前截获按键；现已改为前缀操作。`Ctrl+a Ctrl+a` 仍发送字面 Ctrl+a 给 shell；复制、选区和窗口管理不自动互相接管。依据当前 [tmux 配置](../aspects/cli/shell/tmux.nix) 和 [tmux 官方入门](https://github.com/tmux/tmux/wiki/Getting-Started)。
+tmux 保留前缀窗口管理；无前缀 `Ctrl+h/j/k/l` 根据 smart-splits 维护的 pane-local
+`@pane-is-vim` 转给 Neovim 或移动 tmux pane，`Alt+h/j/k/l` 同理调整大小（tmux 每次 3 cell）。
+其他无前缀 Alt 字母/数字绑定仍清理；`Alt+b/f`、`Alt+C` 保持应用行为。复制模式保留 tmux 原生 vi 光标与选区键；上述跨层方向绑定属于 root 键表。`Ctrl+a Ctrl+a` 仍发送字面 Ctrl+a 给 shell。
+配置不会探测进程名；Neovim 退出/恢复后的标记与边缘导航仍须联合实机验收。见
+[tmux 配置](../aspects/cli/shell/tmux.nix) 与[本轮执行记录](history/visual-cli-2026-10-24.md)。
 
 ## 桌面主要操作
 
@@ -87,13 +91,21 @@ Kitty 新窗口默认进入普通 shell，不自动套 tmux。用户需要保持
 | tmux 操作 | 入口（先按 Ctrl+a） |
 |---|---|
 | 左右 / 上下分屏 | `\|` / `-`，继承当前 pane cwd |
-| pane 聚焦 | `h/j/k/l`（前缀绑定，无前缀 Alt 留给应用） |
+| pane 聚焦 | `h/j/k/l`；另可无前缀 `Ctrl+h/j/k/l` 跨 Neovim/tmux |
+| pane 调整大小 | `H/J/K/L`（可重复，5 cell）；另可无前缀 `Alt+h/j/k/l`（3 cell） |
 | 放大 pane | `z`，沿用默认 |
 | window 新建 / 前后 / 最近 / 按编号 | `c` / `n,p` / `Tab` / `1…9`；显式把最近窗口绑定为 `Tab`，让 `l` 专用于 pane 向右 |
 | 复制模式 / 选区 / 复制 | `[` 后 `v`、`y`，沿用 vi 模式 |
 | session/window/pane 搜索 | `F`，保留现有 tmux-fzf |
 | 离开但不结束 | `d` |
 | 重载 | `r` |
+
+终端视觉采用 Astra 设计稿 §8：Kitty 使用不透明 deep 阅读面、brightFg 正文、12 padding，
+两个及以上标签才显示 separator 标签栏；当前标签 selection/blue，普通标签 deep/fg。
+无需 Mango 客户端透明/模糊规则。tmux 底部使用字体圆端胶囊，正常/前缀/复制/放大均保留中性底；
+窄于 100 列隐藏时间，窄于 80 列隐藏路径。圆端缺字时可设 tmux `@rounded-caps off` 回退方括号。
+Starship 为两行：目录、分支、变更计数、耗时与环境信息在首行，第二行 `❯`；失败显示退出码，
+用户/主机只在 SSH 或 root 会话出现。没有强制重载已有 Kitty/tmux/shell 实例。
 
 tmux 会话恢复继续保留布局与编辑会话，禁止保存 pane 滚屏文本。恢复不等于重启数据库、容器、SSH 或付费 AI 任务；不能把“恢复窗口”实现成无条件重放历史命令。见 [现有恢复设置](../aspects/cli/shell/tmux.nix)。
 

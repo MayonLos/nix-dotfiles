@@ -5,6 +5,7 @@ let
   paletteA = import ../../aspects/appearance/appearance/onedark-darker.nix;
   paletteB = paletteA // {
     bg = "#20242a";
+    deep = "#161a20";
   };
   tools = {
     terminal.argv = [
@@ -269,10 +270,10 @@ let
       && !(defaultsAliceB.xdg.configFile ? "kitty/kitty.conf");
 
     bindingsReceiveTheirOwnPalettes =
-      lib.hasInfix "background ${paletteA.bg}" selectedPaletteA
-      && lib.hasInfix "background ${paletteB.bg}" selectedPaletteB
-      && !(lib.hasInfix "background ${paletteB.bg}" selectedPaletteA)
-      && !(lib.hasInfix "background ${paletteA.bg}" selectedPaletteB)
+      lib.hasInfix "background ${paletteA.deep}" selectedPaletteA
+      && lib.hasInfix "background ${paletteB.deep}" selectedPaletteB
+      && !(lib.hasInfix "background ${paletteB.deep}" selectedPaletteA)
+      && !(lib.hasInfix "background ${paletteA.deep}" selectedPaletteB)
       && lib.hasInfix "cursor_blink_interval 0\n" selectedPaletteA
       && lib.hasInfix "cursor_blink_interval 0.5\n" selectedPaletteB
       && lib.hasInfix "cursor_trail 0\n" selectedPaletteA
@@ -334,7 +335,7 @@ let
     printf 'cwd=<%s>\n' "$work" >> "$TMPDIR/expected"
     diff -u "$TMPDIR/expected" "$TMPDIR/capture"
     test ! -e "$work/injected"
-    grep -Fx 'background ${paletteA.bg}' ${terminalConfig} >/dev/null
+    grep -Fx 'background ${paletteA.deep}' ${terminalConfig} >/dev/null
     mkdir -p "$out"
     cp ${terminalConfig} "$out/kitty.conf"
     printf '%s\n' 'wrapper argv and cwd verified' > "$out/runtime.txt"

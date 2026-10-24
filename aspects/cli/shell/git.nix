@@ -1,7 +1,25 @@
 {
   palette ? null,
 }:
-_: {
+{ config, lib, ... }:
+let
+  mix =
+    base: tint: percent:
+    import ./color-mix.nix { inherit base tint percent; };
+  diff =
+    if palette == null then
+      null
+    else
+      {
+        add = mix palette.deep palette.green 8;
+        addEmph = mix palette.deep palette.green 12;
+        delete = mix palette.deep palette.red 8;
+        deleteEmph = mix palette.deep palette.red 12;
+        change = mix palette.deep palette.blue 8;
+        changeEmph = mix palette.deep palette.blue 12;
+      };
+in
+{
   programs = {
     git = {
       enable = true;
@@ -51,9 +69,8 @@ _: {
           ];
           inactiveBorderColor = [ "default" ];
           optionsTextColor = [ "cyan" ];
-          # Reverse video adapts to both dark and light terminal palettes.
           selectedLineBgColor = [ "reverse" ];
-          inactiveViewSelectedLineBgColor = [ "bold" ];
+          inactiveViewSelectedLineBgColor = [ "reverse" ];
           cherryPickedCommitFgColor = [ "black" ];
           cherryPickedCommitBgColor = [ "cyan" ];
           markedBaseCommitFgColor = [ "black" ];
@@ -77,11 +94,24 @@ _: {
               inactiveBorderColor = [ palette.border ];
               optionsTextColor = [ palette.cyan ];
               selectedLineBgColor = [ palette.selection ];
-              inactiveViewSelectedLineBgColor = [ palette.deep ];
-              defaultFgColor = [ palette.fg ];
+              inactiveViewSelectedLineBgColor = [ palette.selection ];
+              cherryPickedCommitFgColor = [ palette.black ];
+              cherryPickedCommitBgColor = [ palette.cyan ];
+              markedBaseCommitFgColor = [ palette.black ];
+              markedBaseCommitBgColor = [ palette.yellow ];
+              unstagedChangesColor = [ palette.red ];
+              defaultFgColor = [ palette.brightFg ];
             }
         );
       };
+      # LazyGit 0.61 uses the native pagers array. Reuse the same immutable
+      # cache wrapper and Git settings as command-line diff review.
+      settings.git.pagers = lib.optionals (palette != null) [
+        {
+          colorArg = "always";
+          pager = "${lib.getExe config.programs.delta.package} --paging=never";
+        }
+      ];
     };
 
     delta = {
@@ -99,11 +129,25 @@ _: {
         line-numbers = true;
         line-numbers-left-format = "{nm:>4} │";
         line-numbers-right-format = "{np:>4} │";
-        line-numbers-left-style = "blue";
-        line-numbers-right-style = "blue";
-        line-numbers-zero-style = "brightblack";
+        line-numbers-left-style = if palette == null then "blue" else palette.blue;
+        line-numbers-right-style = if palette == null then "blue" else palette.blue;
+        line-numbers-zero-style = if palette == null then "brightblack" else palette.fg;
         hunk-header-style = "file line-number syntax";
-      };
+      }
+      // (
+        if diff == null then
+          { }
+        else
+          {
+            plus-style = "${palette.brightFg} ${diff.add}";
+            plus-emph-style = "${palette.brightFg} ${diff.addEmph}";
+            minus-style = "${palette.brightFg} ${diff.delete}";
+            minus-emph-style = "${palette.brightFg} ${diff.deleteEmph}";
+            "line-numbers-plus-style" = "${palette.green}";
+            "line-numbers-minus-style" = "${palette.red}";
+            "line-numbers-zero-style" = "${palette.fg}";
+          }
+      );
     };
   };
 

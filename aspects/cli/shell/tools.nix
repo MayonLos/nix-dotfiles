@@ -19,7 +19,7 @@ let
     document = {
       block_prefix = "\n";
       block_suffix = "\n";
-      color = colors.fg;
+      color = colors.brightFg;
       margin = 1;
     };
     heading = {
@@ -30,8 +30,8 @@ let
     h1 = {
       prefix = " ";
       suffix = " ";
-      color = colors.black;
-      background_color = colors.blue;
+      color = colors.brightFg;
+      background_color = colors.selection;
       bold = true;
     };
     h2.color = colors.purple;
@@ -54,19 +54,19 @@ let
       background_color = colors.surface;
     };
     code_block = {
-      color = colors.fg;
+      color = colors.brightFg;
       margin = 1;
       chroma = {
-        text.color = colors.fg;
-        comment.color = colors.muted;
-        keyword.color = colors.purple;
-        keyword_reserved.color = colors.purple;
+        text.color = colors.brightFg;
+        comment.color = colors.fg;
+        keyword.color = colors.cyan;
+        keyword_reserved.color = colors.cyan;
         keyword_type.color = colors.yellow;
         operator.color = colors.cyan;
-        punctuation.color = colors.muted;
-        name.color = colors.fg;
+        punctuation.color = colors.fg;
+        name.color = colors.brightFg;
         name_builtin.color = colors.cyan;
-        name_tag.color = colors.red;
+        name_tag.color = colors.brightFg;
         name_attribute.color = colors.blue;
         name_class.color = colors.yellow;
         name_decorator.color = colors.orange;
@@ -74,8 +74,14 @@ let
         literal_number.color = colors.orange;
         literal_string.color = colors.green;
         literal_string_escape.color = colors.cyan;
-        generic_deleted.color = colors.red;
-        generic_inserted.color = colors.green;
+        generic_deleted = {
+          color = colors.brightFg;
+          background_color = batTheme.diff.delete;
+        };
+        generic_inserted = {
+          color = colors.brightFg;
+          background_color = batTheme.diff.add;
+        };
       };
     };
     block_quote = {
@@ -173,8 +179,8 @@ in
           number_giga.foreground = colors.purple;
           number_huge.foreground = colors.red;
         };
-        date.foreground = colors.muted;
-        inode.foreground = colors.muted;
+        date.foreground = colors.fg;
+        inode.foreground = colors.fg;
         header.foreground = colors.cyan;
         punctuation.foreground = colors.border;
       };

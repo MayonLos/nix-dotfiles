@@ -40,6 +40,54 @@ let
         '') secretExports
     )
   );
+  promptColors =
+    if palette == null then
+      {
+        directory = "bold blue";
+        foreground = "white";
+        warning = "yellow";
+        error = "red";
+      }
+    else
+      {
+        directory = "bold ${palette.blue}";
+        foreground = palette.fg;
+        warning = palette.yellow;
+        error = palette.red;
+      };
+  fzfPalette =
+    if palette == null then
+      {
+        fg = "-1";
+        bg = "-1";
+        "fg+" = "-1";
+        "bg+" = "bright-black";
+        hl = "yellow";
+        "hl+" = "bright-yellow";
+        border = "bright-black";
+        prompt = "blue";
+        pointer = "magenta";
+        marker = "green";
+        spinner = "cyan";
+        header = "bright-black";
+        info = "bright-black";
+      }
+    else
+      {
+        fg = palette.brightFg;
+        bg = palette.deep;
+        "fg+" = palette.blue;
+        "bg+" = palette.selection;
+        hl = palette.yellow;
+        "hl+" = palette.yellow;
+        inherit (palette) border;
+        prompt = palette.blue;
+        pointer = palette.blue;
+        marker = palette.green;
+        spinner = palette.cyan;
+        header = palette.fg;
+        info = palette.fg;
+      };
   zshInit = ''
 
     # fzf-tab supplies its own height after FZF_DEFAULT_OPTS; override it in
@@ -51,6 +99,9 @@ let
     zstyle ':fzf-tab:*' switch-group '[' ']'
     zstyle ':completion:*' menu no
     zstyle ':completion:*:descriptions' format '[%d]'
+    ${lib.optionalString (
+      palette != null
+    ) "export ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=${palette.fg},bg=${palette.deep}'"}
 
     zmodload zsh/terminfo 2>/dev/null
     autoload -U up-line-or-beginning-search down-line-or-beginning-search
@@ -114,26 +165,46 @@ in
       enableZshIntegration = true;
       settings = {
         add_newline = false;
-        format = "$username$hostname$directory$git_branch$git_status$all\n$character";
+        format = "$username\${custom.root_host}$hostname$directory$git_branch$git_status$nix_shell$python$nodejs$rust$golang$cmd_duration$status\n$character";
 
         directory = {
-          style = "bold blue";
+          style = promptColors.directory;
           truncation_length = 3;
           truncation_symbol = "…/";
           truncate_to_repo = true;
         };
-        git_branch.style = "bold purple";
+        git_branch.style = promptColors.foreground;
         git_branch.format = "[ $branch]($style) ";
-        git_status.style = "yellow";
+        git_status = {
+          style = promptColors.warning;
+          format = "[($all_status$ahead_behind)]($style) ";
+          stashed = "≡$count";
+          modified = "!$count";
+          staged = "+$count";
+          untracked = "?$count";
+          deleted = "×$count";
+          renamed = "»$count";
+          conflicted = "=$count";
+        };
         cmd_duration = {
           min_time = 3000;
           format = "[· $duration]($style) ";
-          style = "dimmed yellow";
+          style = promptColors.foreground;
         };
+        nix_shell.style = promptColors.foreground;
+        python.style = promptColors.foreground;
+        nodejs.style = promptColors.foreground;
+        rust.style = promptColors.foreground;
+        golang.style = promptColors.foreground;
         status = {
-          # The prompt arrow already turns red on failure; avoid numeric noise
-          # after cancelling an interactive picker (exit status 130).
-          disabled = true;
+          disabled = false;
+          symbol = "✘";
+          style = promptColors.error;
+          format = "[$symbol $status]($style) ";
+        };
+        character = {
+          success_symbol = if palette == null then "[❯](blue)" else "[❯](${palette.blue})";
+          error_symbol = if palette == null then "[❯](red)" else "[❯](${palette.red})";
         };
         sudo = {
           # Cached sudo credentials do not mean this shell is running as root.
@@ -141,9 +212,23 @@ in
           disabled = true;
         };
         line_break.disabled = true;
-        username.style_user = "bold cyan";
-        username.style_root = "bold red";
-        hostname.style = "bold cyan";
+        username = {
+          show_always = false;
+          style_user = if palette == null then "bold cyan" else "bold ${palette.cyan}";
+          style_root = if palette == null then "bold red" else "bold ${palette.red}";
+          format = "[$user]($style)";
+        };
+        hostname = {
+          ssh_only = true;
+          style = if palette == null then "bold cyan" else "bold ${palette.cyan}";
+          format = "@[$hostname]($style) ";
+        };
+        custom.root_host = {
+          command = "${pkgs.inetutils}/bin/hostname --short";
+          when = ''test "$(${pkgs.coreutils}/bin/id -u)" -eq 0 && test -z "$SSH_CONNECTION" && test -z "$SSH_CLIENT" && test -z "$SSH_TTY"'';
+          style = if palette == null then "bold cyan" else "bold ${palette.cyan}";
+          format = "@[$output]($style) ";
+        };
       };
     };
 
@@ -176,11 +261,11 @@ in
             AlertInfo = palette.green;
             AlertWarn = palette.yellow;
             AlertError = palette.red;
-            Annotation = palette.muted;
+            Annotation = palette.fg;
             Guidance = palette.cyan;
             Important = palette.blue;
             Title = palette.brightFg;
-            Muted = palette.muted;
+            Muted = palette.fg;
           };
         };
       };
@@ -206,22 +291,9 @@ in
         "--preview=eza --color=always --icons --group-directories-first -- {}"
         "--preview-window=right,45%,border-left"
       ];
-      # ANSI roles follow the selected terminal palette without a second renderer.
-      colors = {
-        fg = "-1";
-        bg = "-1";
-        "fg+" = "-1";
-        "bg+" = "bright-black";
-        hl = "yellow";
-        "hl+" = "bright-yellow";
-        border = "bright-black";
-        prompt = "blue";
-        pointer = "magenta";
-        marker = "green";
-        spinner = "cyan";
-        header = "bright-black";
-        info = "bright-black";
-      };
+      # Hex colors make the selected state match the shared palette exactly;
+      # without an appearance palette, retain terminal ANSI inheritance.
+      colors = fzfPalette;
     };
   };
 }
