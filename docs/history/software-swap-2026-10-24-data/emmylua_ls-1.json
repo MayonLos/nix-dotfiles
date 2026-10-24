@@ -1,0 +1,515 @@
+{
+  "progress": [
+    {
+      "title": "Load workspace",
+      "ms": 145.365689,
+      "message": "Load workspace",
+      "kind": "begin"
+    },
+    {
+      "title": "Load workspace",
+      "ms": 145.404088,
+      "message": "Loading workspace files",
+      "kind": "report"
+    },
+    {
+      "title": "Load workspace",
+      "ms": 145.466815,
+      "message": "Collecting files",
+      "kind": "report"
+    },
+    {
+      "title": "Load workspace",
+      "ms": 148.195449,
+      "message": "Indexing 314 files",
+      "kind": "report"
+    },
+    {
+      "title": "Load workspace",
+      "ms": 512.156474,
+      "message": "Finished loading workspace files",
+      "kind": "report"
+    },
+    {
+      "title": "Load workspace",
+      "ms": 512.185166,
+      "message": "Indexing complete",
+      "kind": "end"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 515.141336,
+      "message": "Diagnose workspace",
+      "kind": "begin"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 522.670954,
+      "message": "diagnostic 1%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 522.692566,
+      "message": "diagnostic 3%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 524.294094,
+      "message": "diagnostic 5%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 524.467291,
+      "message": "diagnostic 7%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 524.615616,
+      "message": "diagnostic 8%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 529.510436,
+      "message": "diagnostic 10%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 535.786783,
+      "message": "diagnostic 12%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 536.447626,
+      "message": "diagnostic 14%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 538.416907,
+      "message": "diagnostic 15%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 542.181778,
+      "message": "diagnostic 17%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 542.250491,
+      "message": "diagnostic 19%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 544.136472,
+      "message": "diagnostic 21%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 544.65662,
+      "message": "diagnostic 22%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 549.045066,
+      "message": "diagnostic 24%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 555.564786,
+      "message": "diagnostic 26%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 555.952146,
+      "message": "diagnostic 28%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 555.972381,
+      "message": "diagnostic 29%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 556.000961,
+      "message": "diagnostic 31%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 556.040635,
+      "message": "diagnostic 33%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 556.08436,
+      "message": "diagnostic 35%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 556.097565,
+      "message": "diagnostic 36%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.014855,
+      "message": "diagnostic 38%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.072833,
+      "message": "diagnostic 40%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.112668,
+      "message": "diagnostic 42%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.125555,
+      "message": "diagnostic 43%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.335506,
+      "message": "diagnostic 45%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.350179,
+      "message": "diagnostic 47%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.365888,
+      "message": "diagnostic 49%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.377431,
+      "message": "diagnostic 50%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.388536,
+      "message": "diagnostic 52%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.399385,
+      "message": "diagnostic 54%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.410469,
+      "message": "diagnostic 56%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.424882,
+      "message": "diagnostic 57%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.435956,
+      "message": "diagnostic 59%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.448763,
+      "message": "diagnostic 61%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.459594,
+      "message": "diagnostic 63%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.470682,
+      "message": "diagnostic 64%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.481504,
+      "message": "diagnostic 66%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.492555,
+      "message": "diagnostic 68%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.503331,
+      "message": "diagnostic 70%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.514244,
+      "message": "diagnostic 71%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.525792,
+      "message": "diagnostic 73%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.536664,
+      "message": "diagnostic 75%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.547542,
+      "message": "diagnostic 77%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.558638,
+      "message": "diagnostic 78%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.569443,
+      "message": "diagnostic 80%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.581718,
+      "message": "diagnostic 82%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.592685,
+      "message": "diagnostic 84%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.603419,
+      "message": "diagnostic 85%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.614385,
+      "message": "diagnostic 87%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.624281,
+      "message": "diagnostic 89%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.634434,
+      "message": "diagnostic 91%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.644528,
+      "message": "diagnostic 92%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.655165,
+      "message": "diagnostic 94%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.670457,
+      "message": "diagnostic 96%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.681489,
+      "message": "diagnostic 98%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.696036,
+      "message": "diagnostic 100%",
+      "kind": "report"
+    },
+    {
+      "title": "Diagnose workspace",
+      "ms": 557.707699,
+      "message": "Diagnosis complete",
+      "kind": "end"
+    }
+  ],
+  "server": "emmylua_ls",
+  "effective_settings": {
+    "runtime": {
+      "pathStrict": true,
+      "version": "LuaJIT",
+      "path": [
+        "?.lua",
+        "?/init.lua",
+        "lua/?.lua",
+        "lua/?/init.lua"
+      ]
+    },
+    "workspace": {
+      "ignoreDir": [],
+      "library": [
+        "/nix/store/s5znfdswpawzc9fcwnz91vn9swhmgm33-neovim-unwrapped-0.12.4/share/nvim/runtime/lua",
+        "/nix/store/wgzx055h2j0zwn1k9bv1v70j25zxwr1g-generated.lua/lua",
+        "/nix/store/6yrfppzwrxr77yayr34j4vpxlrmfwwc4-vimplugin-blink.cmp-1.10.2/lua"
+      ],
+      "checkThirdParty": false
+    },
+    "diagnostics": {
+      "globals": [
+        "vim"
+      ]
+    }
+  },
+  "diagnostics": [],
+  "attach_ms": 128.939715,
+  "handler_matches": true,
+  "client_root": "/home/mayon/nix-dotfiles/aspects/editing/neovim/config",
+  "first_diagnostics_ms": 549.719898,
+  "diagnostics_settled_ms": 1027.872967,
+  "probe_detected": true,
+  "settings": {
+    "Lua": {
+      "runtime": {
+        "pathStrict": true,
+        "version": "LuaJIT",
+        "path": [
+          "?.lua",
+          "?/init.lua"
+        ]
+      },
+      "workspace": {
+        "ignoreDir": [
+          "/lua"
+        ],
+        "library": [
+          "/nix/store/s5znfdswpawzc9fcwnz91vn9swhmgm33-neovim-unwrapped-0.12.4/share/nvim/runtime/lua",
+          "/home/mayon/nix-dotfiles/aspects/editing/neovim/config/lua",
+          "/nix/store/wgzx055h2j0zwn1k9bv1v70j25zxwr1g-generated.lua/lua",
+          "/nix/store/6yrfppzwrxr77yayr34j4vpxlrmfwwc4-vimplugin-blink.cmp-1.10.2/lua"
+        ],
+        "checkThirdParty": false
+      },
+      "diagnostics": {
+        "globals": [
+          "vim"
+        ]
+      }
+    }
+  },
+  "completion_items": [
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63
+  ],
+  "lazydev_attached": true,
+  "publications": [
+    {
+      "count": 1,
+      "ms": 549.145336
+    },
+    {
+      "count": 1,
+      "ms": 1019.275523
+    }
+  ],
+  "clients": [
+    "emmylua_ls"
+  ],
+  "workspace": "/home/mayon/nix-dotfiles/aspects/editing/neovim/config",
+  "completion_ms": [
+    1.615606,
+    0.7514,
+    0.729596,
+    1.424582,
+    0.858815,
+    0.6581,
+    0.838316,
+    0.622057,
+    0.718405,
+    0.695185
+  ],
+  "library": [
+    "/home/mayon/nix-dotfiles/aspects/editing/neovim/config/lua",
+    "/nix/store/wgzx055h2j0zwn1k9bv1v70j25zxwr1g-generated.lua/lua",
+    "/nix/store/6yrfppzwrxr77yayr34j4vpxlrmfwwc4-vimplugin-blink.cmp-1.10.2/lua"
+  ],
+  "completion_position": {
+    "character": 9,
+    "line": 118
+  },
+  "trial": 1,
+  "order_index": 2,
+  "exit_code": 0,
+  "peak_tree_rss_kib": 247536,
+  "peak_server_rss_kib": 211340,
+  "completion_median_ms": 0.740498,
+  "executables": {
+    "nvim": "/nix/store/b2piwmf0kqkw6y82hfzfhb7jx857pgdr-neovim-0.12.4-dev/bin/nvim",
+    "server": "/nix/store/3rdq8g57rpi65ryckiisrkd027vpswwg-emmylua_ls-0.23.1/bin/emmylua_ls"
+  }
+}

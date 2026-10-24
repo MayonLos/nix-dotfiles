@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-24",
+  "head": "b2c8ac5bc1add70ba8f7fbbcc2924c03a9b05e99",
+  "executables": {
+    "nvim": "/nix/store/b2piwmf0kqkw6y82hfzfhb7jx857pgdr-neovim-0.12.4-dev/bin/nvim",
+    "lua_ls": "/nix/store/pphp3krih1kan1f5abx8032glqw27fp0-lua-language-server-3.18.1/bin/lua-language-server",
+    "emmylua_ls": "/nix/store/3rdq8g57rpi65ryckiisrkd027vpswwg-emmylua_ls-0.23.1/bin/emmylua_ls"
+  },
+  "versions": {
+    "neovim": "0.12.4",
+    "lua_ls": "3.18.1",
+    "emmylua_ls": "0.23.1",
+    "lazydev": "1.10.0-unstable-2026-03-14"
+  },
+  "kernel": "6.18.57",
+  "cpu": "Intel(R) Core(TM) i7-14700HX",
+  "workspace": "/home/mayon/nix-dotfiles/aspects/editing/neovim/config",
+  "source_sha256": {
+    "aspects/editing/neovim/config/lua/mayon/lsp/servers.lua": "dae3b701d182ac5b614cc487836569b90edb6f1dd3ae979d4d98be5f79df7f22",
+    "aspects/editing/neovim/config/lua/mayon/ui/dashboard.lua": "5d937868f95740296ed3aae2714fd4a96a9de6889c04cffc991c82edd30ccd63"
+  },
+  "notes": [
+    "Fresh nvim process and empty XDG tree on every run; OS page cache was not flushed.",
+    "Order AB,BA,AB. Both servers use push diagnostics and the same lazydev local-workspace adapter.",
+    "Undefined-global probe is inserted only into memory before return M. Real quality counts exclude that line.",
+    "Diagnostics settled = no active progress plus 2s of diagnostic/progress silence, minus the 2s observation window.",
+    "RSS sampled from /proc every 10ms; tree includes nvim and descendants; server RSS includes all descendants and may double-count shared pages.",
+    "Performance data uses final Git flake dev output. Separate quality runs do not contribute to performance/peak metrics."
+  ]
+}

@@ -16,7 +16,7 @@ local lsp = require("mayon.lsp")
 lsp.setup()
 
 local configs = require("mayon.lsp.servers").servers
-assert(vim.tbl_count(configs) == 16, "expected all 16 LSP servers")
+assert(vim.tbl_count(configs) == 17, "expected all 17 LSP servers")
 assert(vim.bo.filetype == "", "test expects an empty current buffer")
 assert(vim.diagnostic.config().virtual_text == false)
 assert(vim.diagnostic.config().virtual_lines == false)
@@ -115,21 +115,27 @@ assert(vim.lsp.config.matlab_ls.settings.MATLAB.telemetry == false)
 assert(vim.lsp.config.matlab_ls.settings.MATLAB.matlabConnectionTiming == "onStart")
 assert(vim.lsp.config.marksman.filetypes[1] == "markdown")
 assert(vim.filetype.match({ filename = "note.mdx" }) == "markdown")
-local pyright_project = vim.fn.tempname()
-local pyright_python = pyright_project .. "/.venv/bin/python"
-local other_python = pyright_project .. "/other-venv/bin/python"
-vim.fn.mkdir(vim.fs.dirname(pyright_python), "p")
+local basedpyright_project = vim.fn.tempname()
+local basedpyright_python = basedpyright_project .. "/.venv/bin/python"
+local other_python = basedpyright_project .. "/other-venv/bin/python"
+vim.fn.mkdir(vim.fs.dirname(basedpyright_python), "p")
 vim.fn.mkdir(vim.fs.dirname(other_python), "p")
-vim.fn.writefile({ "#!/bin/sh", "exit 0" }, pyright_python)
+vim.fn.writefile({ "#!/bin/sh", "exit 0" }, basedpyright_python)
 vim.fn.writefile({ "#!/bin/sh", "exit 0" }, other_python)
-vim.fn.setfperm(pyright_python, "rwxr-xr-x")
+vim.fn.setfperm(basedpyright_python, "rwxr-xr-x")
 vim.fn.setfperm(other_python, "rwxr-xr-x")
 local old_virtual_env = vim.env.VIRTUAL_ENV
 vim.env.VIRTUAL_ENV = vim.fs.dirname(vim.fs.dirname(other_python))
-local pyright_config = { root_dir = pyright_project, settings = {} }
-vim.lsp.config.pyright.before_init(nil, pyright_config)
-assert(pyright_config.settings.python.pythonPath == pyright_python, "project .venv should take priority")
+local basedpyright_config = { root_dir = basedpyright_project, settings = {} }
+vim.lsp.config.basedpyright.before_init(nil, basedpyright_config)
+assert(basedpyright_config.settings.python.pythonPath == basedpyright_python, "project .venv should take priority")
 vim.env.VIRTUAL_ENV = old_virtual_env
+assert(vim.lsp.config.basedpyright.cmd[1] == "basedpyright-langserver")
+assert(vim.lsp.config.basedpyright.settings.basedpyright.analysis.typeCheckingMode == "basic")
+assert(vim.lsp.config.basedpyright.root_markers[1] == "pyrightconfig.json")
+assert(vim.lsp.config.basedpyright.root_markers[2] == "pyproject.toml")
+assert(vim.lsp.config.taplo.cmd[1] == "taplo" and vim.lsp.config.taplo.cmd[2] == "lsp")
+assert(vim.lsp.config.taplo.filetypes[1] == "toml")
 
 local original_diagnostics_handler = vim.lsp.handlers["textDocument/publishDiagnostics"]
 vim.lsp.handlers["textDocument/publishDiagnostics"] = function(_, result)

@@ -37,6 +37,13 @@ let
     in
     {
       maintenanceSelected = !c.nix.channel.enable;
+      sudoRsPolicy =
+        c.security.sudo-rs.enable
+        && !c.security.sudo.enable
+        && c.security.sudo-rs.wheelNeedsPassword
+        && !c.security.sudo-rs.execWheelOnly
+        && c.security.sudo-rs.defaultOptions == [ "SETENV" ]
+        && c.security.wrappers.sudo.source == "${c.security.sudo-rs.package}/bin/sudo";
       platform = c.nixpkgs.hostPlatform.system == system;
       noDesktop =
         !(c.programs ? mango)

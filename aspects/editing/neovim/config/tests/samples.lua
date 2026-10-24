@@ -2,7 +2,8 @@
 local cases = {
 	lua = { "main.lua", "lua_ls", { "local  answer=42", "return answer" } },
 	cpp = { "main.cpp", "clangd", { "int answer(){return 42;}", "int main(){return answer();}" } },
-	python = { "main.py", "pyright", { "value=1", "print(value)" } },
+	python = { "main.py", "basedpyright", { "value=1", "print(value)" } },
+	toml = { "pyproject.toml", "taplo", { "[project]", 'name="sample"' } },
 	markdown = { "README.md", "marksman", { "# Fixture", "", "A document." } },
 	nix = { "default.nix", "nixd", { "{ a=1; }" } },
 }

@@ -23,7 +23,8 @@ _: {
               pkgs.vscode-langservers-extracted
               pkgs.stylua
               pkgs.clang-tools
-              pkgs.pyright
+              pkgs.basedpyright
+              pkgs.taplo
               pkgs.marksman
               pkgs.nixd
               pkgs.nixfmt
@@ -46,7 +47,7 @@ _: {
                   ${neovim.normal}/bin/nvim --headless -c 'luafile ${neovim.configDir}/tests/run.lua'
                 done
                 export NVIM_TEST_FILE="${neovim.configDir}/tests/samples.lua"
-                for sample in lua cpp python markdown nix; do
+                for sample in lua cpp python toml markdown nix; do
                   NVIM_SAMPLE="$sample" ${neovim.normal}/bin/nvim --headless -c 'luafile ${neovim.configDir}/tests/run.lua'
                 done
                 export NVIM_LSP_INTEGRATION=1

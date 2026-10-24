@@ -30,7 +30,11 @@ _: {
         projectRootFile = "flake.nix";
         programs = {
           nixfmt.enable = true;
-          deadnix.enable = true;
+          deadnix = {
+            enable = true;
+            # Den dispatches by lambda argument shape, including unused names.
+            no-lambda-pattern-names = true;
+          };
           statix.enable = true;
           stylua.enable = true;
         };

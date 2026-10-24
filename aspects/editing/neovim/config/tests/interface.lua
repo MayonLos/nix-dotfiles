@@ -12,10 +12,55 @@ assert(cc.extensions.history.enabled)
 local snacks = require("snacks")
 vim.o.columns, vim.o.lines = 120, 45
 local dashboard = snacks.dashboard.open({ win = 0, buf = 0 })
-local lines = table.concat(vim.api.nvim_buf_get_lines(dashboard.buf, 0, -1, false), "\n")
-assert(lines:find("M   M", 1, true) and lines:find("新建文件", 1, true), "dashboard header/keys did not render")
+local rendered = vim.api.nvim_buf_get_lines(dashboard.buf, 0, -1, false)
+local lines = table.concat(rendered, "\n")
+assert(
+	lines:find("███╗", 1, true) and lines:find("新建文件", 1, true),
+	"dashboard header/keys did not render"
+)
 assert(lines:find("ms", 1, true), "dashboard lacks its config timing footer")
 assert(vim.bo[dashboard.buf].filetype == "snacks_dashboard")
+local header_row
+local gradient_colors = {}
+for index, line in ipairs(rendered) do
+	if not header_row and line:find("███╗", 1, true) then
+		header_row = index
+	end
+end
+assert(header_row and rendered[header_row]:find("███╗", 1, true), "dashboard MAYON header did not render")
+assert(rendered[header_row + 2]:find("╚████╔╝", 1, true), "the third dashboard glyph should be Y")
+assert(rendered[header_row + 5]:find("╚═╝", 1, true), "dashboard header should have six ANSI Shadow rows")
+assert(header_row - 1 == dashboard.row, "dashboard did not apply its centered vertical offset")
+local content_height = #dashboard.lines - dashboard.row
+local expected_row = math.max(math.floor((dashboard._size.height - content_height) / 2), 0)
+assert(dashboard.row == expected_row, "dashboard content is not vertically centered")
+for index = 1, 6 do
+	local name = "MayonDashboardGradient" .. index
+	local hl = vim.api.nvim_get_hl(0, { name = name, link = false })
+	assert(hl.fg, "missing dashboard gradient highlight: " .. name)
+	assert(not vim.tbl_contains(gradient_colors, hl.fg), "dashboard gradient colors should differ on every row")
+	gradient_colors[#gradient_colors + 1] = hl.fg
+end
+local palette = require("mayon.generated").palette
+local original_blue = palette.blue
+palette.blue = "#123456"
+vim.api.nvim_exec_autocmds("ColorScheme", { pattern = "dashboard-palette-refresh-test" })
+assert(vim.api.nvim_get_hl(0, { name = "MayonDashboardGradient1", link = false }).fg == 0x123456)
+palette.blue = original_blue
+vim.api.nvim_exec_autocmds("ColorScheme", { pattern = "dashboard-palette-restore-test" })
+local file_segments = require("mayon.ui.dashboard").config().formats.file({
+	file = vim.env.NVIM_CONFIG_DIR .. "/lua/mayon/config/init.lua",
+}, { width = 40 })
+assert(file_segments[1][1] == "init.lua", "recent file should lead with the filename")
+assert(file_segments[2].hl == "MayonDashboardMuted", "recent file parent path should be dimmed")
+assert(file_segments[2][1]:find("mayon/config", 1, true), "recent file should show its project-relative parent")
+local root_fixture = vim.fn.tempname()
+vim.fn.mkdir(root_fixture, "p")
+vim.fn.writefile({ "[project]", 'name = "dashboard-fixture"' }, root_fixture .. "/pyproject.toml")
+local root_file = require("mayon.ui.dashboard").config().formats.file({
+	file = root_fixture .. "/pyproject.toml",
+}, { width = 40 })
+assert(root_file[2][1] == "  .", "project-root files should show '.' as their parent")
 
 local real_picker = snacks.picker
 local seen = {}

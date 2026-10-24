@@ -1,0 +1,790 @@
+{
+  "settings": {
+    "Lua": {
+      "workspace": {
+        "checkThirdParty": false,
+        "library": [
+          "/nix/store/s5znfdswpawzc9fcwnz91vn9swhmgm33-neovim-unwrapped-0.12.4/share/nvim/runtime/lua",
+          "/home/mayon/nix-dotfiles/aspects/editing/neovim/config/lua",
+          "/nix/store/wgzx055h2j0zwn1k9bv1v70j25zxwr1g-generated.lua/lua",
+          "/nix/store/6yrfppzwrxr77yayr34j4vpxlrmfwwc4-vimplugin-blink.cmp-1.10.2/lua"
+        ],
+        "ignoreDir": [
+          "/lua"
+        ]
+      },
+      "runtime": {
+        "path": [
+          "?.lua",
+          "?/init.lua"
+        ],
+        "pathStrict": true,
+        "version": "LuaJIT"
+      },
+      "diagnostics": {
+        "globals": [
+          "vim"
+        ]
+      }
+    }
+  },
+  "lazydev_attached": true,
+  "clients": [
+    "lua_ls"
+  ],
+  "completion_items": [
+    65,
+    65,
+    65,
+    65,
+    65,
+    65,
+    65,
+    65,
+    65,
+    65
+  ],
+  "library": [
+    "/home/mayon/nix-dotfiles/aspects/editing/neovim/config/lua",
+    "/nix/store/wgzx055h2j0zwn1k9bv1v70j25zxwr1g-generated.lua/lua",
+    "/nix/store/6yrfppzwrxr77yayr34j4vpxlrmfwwc4-vimplugin-blink.cmp-1.10.2/lua",
+    "/nix/store/nvbx3ifrj8nkcw5pjrimv26llkcw1mb4-vimplugin-lazydev.nvim-1.10.0-unstable-2026-03-14/lua",
+    "/nix/store/sfyv67wfp2fvv7620q9rpj4xkvxqsly2-vimplugin-codecompanion.nvim-19.13.0/lua",
+    "/nix/store/hc6r94nd0c9xg17fgq0nmg4w848ixsfb-vimplugin-luajit2.1-lz.n-2.11.3-1-unstable-2.11.3-1/lua"
+  ],
+  "quality": [
+    {
+      "file": "init.lua",
+      "probe_detected": true,
+      "diagnostics": []
+    },
+    {
+      "file": "lua/mayon/config/bootstrap.lua",
+      "probe_detected": true,
+      "diagnostics": []
+    },
+    {
+      "file": "lua/mayon/lsp/servers.lua",
+      "probe_detected": true,
+      "diagnostics": []
+    },
+    {
+      "file": "lua/mayon/ui/dashboard.lua",
+      "probe_detected": true,
+      "diagnostics": []
+    },
+    {
+      "file": "lua/mayon/plugins/lua.lua",
+      "probe_detected": true,
+      "diagnostics": [
+        {
+          "code": "unused-local",
+          "source": "Lua Diagnostics.",
+          "severity": 4,
+          "col": 6,
+          "message": "Unused local `M`.",
+          "lnum": 0
+        }
+      ]
+    },
+    {
+      "file": "lua/mayon/plugins/completion.lua",
+      "probe_detected": true,
+      "diagnostics": [
+        {
+          "code": "unused-local",
+          "source": "Lua Diagnostics.",
+          "severity": 4,
+          "col": 6,
+          "message": "Unused local `M`.",
+          "lnum": 0
+        },
+        {
+          "code": "param-type-mismatch",
+          "source": "Lua Diagnostics.",
+          "severity": 2,
+          "col": 32,
+          "message": "Cannot assign `vim.api.keyset.get_hl_info` to parameter `vim.api.keyset.highlight`.\n- `vim.api.keyset.get_hl_info` cannot match `vim.api.keyset.highlight`\n- Type `vim.api.keyset.get_hl_info` cannot match `vim.api.keyset.highlight`\n- Type `vim.api.keyset.hl_info.base` cannot match `vim.api.keyset.highlight`",
+          "lnum": 127
+        },
+        {
+          "code": "assign-type-mismatch",
+          "source": "Lua Diagnostics.",
+          "severity": 2,
+          "col": 8,
+          "message": "Cannot assign `(number|function)?` to `number?`.\n- `(number|function)?` cannot match `number?`\n- Type `(number|function)?` cannot match `nil`\n- Type `(number|function)?` cannot match `number`",
+          "lnum": 49
+        }
+      ]
+    },
+    {
+      "file": "lua/mayon/plugins/ai.lua",
+      "probe_detected": true,
+      "diagnostics": [
+        {
+          "code": "unused-local",
+          "source": "Lua Diagnostics.",
+          "severity": 4,
+          "col": 6,
+          "message": "Unused local `M`.",
+          "lnum": 0
+        }
+      ]
+    },
+    {
+      "file": "tests/lua_workspace.lua",
+      "probe_detected": true,
+      "diagnostics": []
+    }
+  ],
+  "completion_ms": [
+    210.560337,
+    3.300299,
+    3.095417,
+    3.516334,
+    2.555615,
+    2.65319,
+    3.56914,
+    2.600634,
+    2.421319,
+    2.695276
+  ],
+  "publications": [
+    {
+      "count": 1,
+      "ms": 2046.719686
+    },
+    {
+      "count": 1,
+      "ms": 10067.899765
+    }
+  ],
+  "effective_settings": {
+    "workspace": {
+      "checkThirdParty": false,
+      "library": [
+        "/nix/store/s5znfdswpawzc9fcwnz91vn9swhmgm33-neovim-unwrapped-0.12.4/share/nvim/runtime/lua",
+        "/nix/store/wgzx055h2j0zwn1k9bv1v70j25zxwr1g-generated.lua/lua",
+        "/nix/store/6yrfppzwrxr77yayr34j4vpxlrmfwwc4-vimplugin-blink.cmp-1.10.2/lua",
+        "/nix/store/nvbx3ifrj8nkcw5pjrimv26llkcw1mb4-vimplugin-lazydev.nvim-1.10.0-unstable-2026-03-14/lua",
+        "/nix/store/sfyv67wfp2fvv7620q9rpj4xkvxqsly2-vimplugin-codecompanion.nvim-19.13.0/lua",
+        "/nix/store/hc6r94nd0c9xg17fgq0nmg4w848ixsfb-vimplugin-luajit2.1-lz.n-2.11.3-1-unstable-2.11.3-1/lua"
+      ],
+      "ignoreDir": []
+    },
+    "runtime": {
+      "pathStrict": true,
+      "path": [
+        "?.lua",
+        "?/init.lua",
+        "lua/?.lua",
+        "lua/?/init.lua"
+      ],
+      "version": "LuaJIT"
+    },
+    "diagnostics": {
+      "globals": [
+        "vim"
+      ]
+    }
+  },
+  "workspace": "/home/mayon/nix-dotfiles/aspects/editing/neovim/config",
+  "attach_ms": 135.649695,
+  "handler_matches": true,
+  "client_root": "/home/mayon/nix-dotfiles/aspects/editing/neovim/config",
+  "completion_position": {
+    "line": 118,
+    "character": 9
+  },
+  "first_diagnostics_ms": 2050.040393,
+  "diagnostics": [],
+  "diagnostics_settled_ms": 3219.069353,
+  "probe_detected": true,
+  "server": "lua_ls",
+  "progress": [
+    {
+      "message": "35/332",
+      "ms": 932.865234,
+      "title": "Loading workspace",
+      "kind": "begin"
+    },
+    {
+      "message": "47/332",
+      "ms": 985.883318,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "49/332",
+      "ms": 1039.484329,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "58/332",
+      "ms": 1095.590913,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "65/332",
+      "ms": 1150.864442,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "70/332",
+      "ms": 1201.906701,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "84/332",
+      "ms": 1272.529973,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "94/332",
+      "ms": 1324.956653,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "11/11",
+      "ms": 1349.763206,
+      "title": "Loading workspace",
+      "kind": "begin"
+    },
+    {
+      "ms": 1349.785656,
+      "title": "Loading workspace",
+      "kind": "end"
+    },
+    {
+      "message": "102/332",
+      "ms": 1393.824748,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "112/332",
+      "ms": 1444.128108,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "120/332",
+      "ms": 1495.871393,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "141/332",
+      "ms": 1545.318169,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "171/332",
+      "ms": 1595.972236,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "208/332",
+      "ms": 1650.155569,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "247/332",
+      "ms": 1701.476716,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "290/332",
+      "ms": 1752.949714,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "328/332",
+      "ms": 1803.220745,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "ms": 1943.446251,
+      "title": "Loading workspace",
+      "kind": "end"
+    },
+    {
+      "message": "66/332",
+      "ms": 3015.718983,
+      "title": "Diagnosing workspace",
+      "kind": "begin"
+    },
+    {
+      "message": "70/332",
+      "ms": 3103.327708,
+      "title": "Diagnosing workspace",
+      "kind": "report"
+    },
+    {
+      "message": "73/332",
+      "ms": 3152.518775,
+      "title": "Diagnosing workspace",
+      "kind": "report"
+    },
+    {
+      "message": "261/332",
+      "ms": 3202.516639,
+      "title": "Diagnosing workspace",
+      "kind": "report"
+    },
+    {
+      "ms": 3203.335512,
+      "title": "Diagnosing workspace",
+      "kind": "end"
+    },
+    {
+      "message": "lua/mayon/plugins/lua.lua",
+      "ms": 15973.369846,
+      "title": "Diagnosing",
+      "kind": "begin"
+    },
+    {
+      "ms": 16001.467241,
+      "title": "Diagnosing",
+      "kind": "end"
+    },
+    {
+      "message": "24/345",
+      "ms": 16576.336618,
+      "title": "Loading workspace",
+      "kind": "begin"
+    },
+    {
+      "message": "37/345",
+      "ms": 16625.807272,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "48/345",
+      "ms": 16686.77989,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "58/345",
+      "ms": 16736.822036,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "67/345",
+      "ms": 16788.507127,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "76/345",
+      "ms": 16840.660862,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "91/345",
+      "ms": 16899.957679,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "103/345",
+      "ms": 16965.060371,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "114/345",
+      "ms": 17015.954048,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "131/345",
+      "ms": 17066.496296,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "162/345",
+      "ms": 17117.382894,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "200/345",
+      "ms": 17166.970269,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "227/345",
+      "ms": 17217.593096,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "256/345",
+      "ms": 17268.167745,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "284/345",
+      "ms": 17319.054791,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "312/345",
+      "ms": 17374.70662,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "327/345",
+      "ms": 17529.278658,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "345/345",
+      "ms": 17646.415364,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "ms": 17747.512016,
+      "title": "Loading workspace",
+      "kind": "end"
+    },
+    {
+      "message": "59/345",
+      "ms": 18810.346491,
+      "title": "Diagnosing workspace",
+      "kind": "begin"
+    },
+    {
+      "message": "60/345",
+      "ms": 18860.329522,
+      "title": "Diagnosing workspace",
+      "kind": "report"
+    },
+    {
+      "message": "62/345",
+      "ms": 18910.76407,
+      "title": "Diagnosing workspace",
+      "kind": "report"
+    },
+    {
+      "ms": 18975.793286,
+      "title": "Diagnosing workspace",
+      "kind": "end"
+    },
+    {
+      "message": "22/590",
+      "ms": 24895.934447,
+      "title": "Loading workspace",
+      "kind": "begin"
+    },
+    {
+      "message": "24/590",
+      "ms": 24972.18608,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "34/590",
+      "ms": 25033.541991,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "45/590",
+      "ms": 25086.078852,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "47/590",
+      "ms": 25144.765639,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "52/590",
+      "ms": 25194.859874,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "58/590",
+      "ms": 25244.833958,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "61/590",
+      "ms": 25306.685113,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "65/590",
+      "ms": 25360.574408,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "70/590",
+      "ms": 25416.535709,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "79/590",
+      "ms": 25467.763721,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "91/590",
+      "ms": 25663.907924,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "102/590",
+      "ms": 25714.258493,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "105/590",
+      "ms": 25765.433189,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "112/590",
+      "ms": 25817.817853,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "123/590",
+      "ms": 25868.170152,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "137/590",
+      "ms": 25919.486701,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "161/590",
+      "ms": 25970.427069,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "190/590",
+      "ms": 26020.963271,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "211/590",
+      "ms": 26085.311651,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "220/590",
+      "ms": 26147.19644,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "230/590",
+      "ms": 26215.20343,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "248/590",
+      "ms": 26264.526962,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "268/590",
+      "ms": 26316.800419,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "291/590",
+      "ms": 26366.890773,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "318/590",
+      "ms": 26417.556632,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "338/590",
+      "ms": 26478.309446,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "342/590",
+      "ms": 26530.004535,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "366/590",
+      "ms": 26582.638055,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "394/590",
+      "ms": 26633.714405,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "432/590",
+      "ms": 26684.070012,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "473/590",
+      "ms": 26733.441548,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "520/590",
+      "ms": 26784.441382,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "message": "555/590",
+      "ms": 26834.813173,
+      "title": "Loading workspace",
+      "kind": "report"
+    },
+    {
+      "ms": 26976.274568,
+      "title": "Loading workspace",
+      "kind": "end"
+    },
+    {
+      "message": "49/590",
+      "ms": 28208.960993,
+      "title": "Diagnosing workspace",
+      "kind": "begin"
+    },
+    {
+      "message": "53/590",
+      "ms": 28268.055625,
+      "title": "Diagnosing workspace",
+      "kind": "report"
+    },
+    {
+      "message": "57/590",
+      "ms": 28333.924645,
+      "title": "Diagnosing workspace",
+      "kind": "report"
+    },
+    {
+      "message": "60/590",
+      "ms": 28437.804846,
+      "title": "Diagnosing workspace",
+      "kind": "report"
+    },
+    {
+      "message": "61/590",
+      "ms": 28487.499123,
+      "title": "Diagnosing workspace",
+      "kind": "report"
+    },
+    {
+      "message": "64/590",
+      "ms": 28542.413911,
+      "title": "Diagnosing workspace",
+      "kind": "report"
+    },
+    {
+      "message": "65/590",
+      "ms": 28604.238142,
+      "title": "Diagnosing workspace",
+      "kind": "report"
+    },
+    {
+      "message": "68/590",
+      "ms": 28666.114716,
+      "title": "Diagnosing workspace",
+      "kind": "report"
+    },
+    {
+      "message": "69/590",
+      "ms": 28781.425349,
+      "title": "Diagnosing workspace",
+      "kind": "report"
+    },
+    {
+      "message": "71/590",
+      "ms": 28834.082574,
+      "title": "Diagnosing workspace",
+      "kind": "report"
+    },
+    {
+      "message": "74/590",
+      "ms": 28910.538508,
+      "title": "Diagnosing workspace",
+      "kind": "report"
+    },
+    {
+      "ms": 28936.028002,
+      "title": "Diagnosing workspace",
+      "kind": "end"
+    }
+  ],
+  "executables": {
+    "nvim": "/nix/store/b2piwmf0kqkw6y82hfzfhb7jx857pgdr-neovim-0.12.4-dev/bin/nvim",
+    "server": "/nix/store/pphp3krih1kan1f5abx8032glqw27fp0-lua-language-server-3.18.1/bin/lua-language-server"
+  },
+  "trial": 1,
+  "order_index": 1,
+  "exit_code": 0,
+  "peak_tree_rss_kib": 711248,
+  "peak_server_rss_kib": 668348,
+  "completion_median_ms": 2.8953464999999996
+}

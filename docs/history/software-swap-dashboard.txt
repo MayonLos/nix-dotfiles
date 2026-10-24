@@ -1,0 +1,42 @@
+Headless Neovim: 120 columns x 43 dashboard rows; offset=10; content=23
+Gradient foregrounds:
+MayonDashboardGradient1 #4fa6ed
+MayonDashboardGradient2 #4ea8e3
+MayonDashboardGradient3 #4caada
+MayonDashboardGradient4 #4bacd0
+MayonDashboardGradient5 #49aec7
+MayonDashboardGradient6 #48b0bd
+
+
+
+
+
+
+
+
+
+
+
+                                 ███╗   ███╗   █████╗   ██╗   ██╗   ██████╗   ██╗   ██╗
+                                 ████╗ ████║  ██╔══██╗  ╚██╗ ██╔╝  ██╔═══██╗  ███╗  ██║
+                                 ██╔████╔██║  ███████║   ╚████╔╝   ██║   ██║  ████╗ ██║
+                                 ██║╚██╔╝██║  ██╔══██║    ╚██╔╝    ██║   ██║  ██╔██╗██║
+                                 ██║ ╚═╝ ██║  ██║  ██║     ██║     ╚██████╔╝  ██║╚████║
+                                 ╚═╝     ╚═╝  ╚═╝  ╚═╝     ╚═╝      ╚═════╝   ╚═╝ ╚═══╝
+
+                                  新建文件                                            n
+                                  查找文件                                            f
+                                  最近文件                                            r
+                                  全文搜索                                            g
+                                󰉋  项目列表                                            p
+                                  恢复最近会话                                        s
+                                  打开配置                                            c
+                                  退出                                                q
+
+                                  最近文件
+                                    servers.lua  …diting/neovim/config/lua/mayon/lsp  1
+                                    dashboard.lua  …iting/neovim/config/lua/mayon/ui  2
+                                    flake.nix  .                                      3
+                                󰉋  项目
+                                  󰉋  nix-dotfiles  /home/mayon                         4
+                                                 MAYON  ·  配置 20.5 ms

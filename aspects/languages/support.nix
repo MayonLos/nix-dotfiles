@@ -1,4 +1,4 @@
-{ lib, ... }:
+{ den, lib, ... }:
 let
   data = import ./data.nix;
   tools = {
@@ -13,9 +13,10 @@ let
       pkgs.stylua
     ];
     python = pkgs: [
-      pkgs.pyright
+      pkgs.basedpyright
       pkgs.ruff
     ];
+    toml = pkgs: [ pkgs.taplo ];
     java = pkgs: [
       pkgs.jdt-language-server
       pkgs.google-java-format
@@ -48,6 +49,9 @@ in
   den.aspects = lib.mapAttrs' (
     id: packages:
     lib.nameValuePair "${id}-support" {
+      # Python projects use pyproject.toml; keep TOML independently selectable
+      # while making its editing tools available with the Python workbench.
+      includes = lib.optional (id == "python") den.aspects.toml-support;
       editorLanguages = [ data.${id} ];
       homeManager = { pkgs, ... }: {
         imports = modules.${id} or [ ];

@@ -1,6 +1,6 @@
 # 保留应用逐项评估与补充候选
 
-核对日期：2026-10-18。当前功能已迁入 Den，本文保留软件决定，新的构建及未应用边界见[实施记录](history/den-execution.md)。本文先记录选型提案；随后用户确认的 pamixer、cliphist、pavucontrol 精简，以及 Xarchiver、Okular 新增已修改配置，验证状态见[重构执行计划](history/refactor-plan.md)。软件选型阶段已结束；其余条件推荐未纳入本轮，也未切换系统。
+核对日期：2026-10-18；2026-10-24 更新已确认的软件替换，验证见[第十轮记录](history/software-swap-2026-10-24.md)。当前功能已迁入 Den，本文保留软件决定，新的构建及未应用边界见[实施记录](history/den-execution.md)。本文先记录选型提案；随后用户确认的 pamixer、cliphist、pavucontrol 精简，以及 Xarchiver、Okular 新增已修改配置，验证状态见[重构执行计划](history/refactor-plan.md)。软件选型阶段已结束；其余条件推荐未纳入本轮，也未切换系统。
 
 依据包括当前工作树、`flake.lock`、已取得的锁定源码、官方文档，以及项目 issue 中的具体兼容案例。范围是用户直接使用的应用、桌面插件和工具组，不逐个罗列传递依赖。仓库没有声明某项，不代表用户在运行时没有手动安装或使用其他方案。没有做应用间的内存、功耗、速度基准测试；不据语言或界面技术推断谁一定更轻。
 
@@ -16,7 +16,7 @@
 | 已修改 | `cliphist` | 删除两个 watcher，日常历史统一使用 Noctalia；保留旧数据库和 X11↔Wayland 剪贴板桥。 |
 | 已修改 | `pamixer` | 移除无消费者的安装声明；音量键继续走 Noctalia。 |
 | 已修改 | `pavucontrol` | 移除安装声明与浮窗规则；Noctalia 覆盖日常混音，高级声卡 profile/端口操作使用已有 wpctl/pw-cli。 |
-| 按需 | Discord → Vesktop | 仅在 Linux 屏幕共享带音频是明确需求时试用；非官方客户端和 Portal 兼容是代价。 |
+| 已修改 | Discord → Vesktop | 用户确认替换；使用 stable 包及系统 Vencord，Wayland/PipeWire 接线已构建，实际分享待验。 |
 | 按需 | 跨设备同步、远程开发 | 有第二台设备/服务器后，再选 Syncthing、Remote-SSH、Tailscale；不提前把所有服务打开。 |
 
 固定方向继续沿用：Mango + Noctalia、Kitty + tmux、One Dark Darker、原生 Lua + Nix 管理 Neovim 插件、混合工具链、Den 实体与绑定。本文不重新打开这些选择。
@@ -29,8 +29,8 @@
 |---|---|---|
 | Firefox | 保留 | 已有 Dark Reader、受管深色主题和界面接线。后续统一 One Dark Darker；没有证据支持为优化而换浏览器。迁移会重做扩展、登录和界面。 |
 | QQ | 保留当前包与 wrapper | PipeWire、Wayland、输入法及桌面入口已有处理。官方 Linux 包仍维护，但换包装不等于解决当前 Nix 兼容问题。 |
-| 微信 UOS | 保留 | 当前输入法和剪贴板有专门接线。独立 Linux 微信作为故障时的比较候选，暂不无条件换包。 |
-| Discord | 保留；有条件试 Vesktop | 官方说明 Linux 客户端屏幕分享不带音频。Vesktop 针对此场景有价值，但会引入非官方客户端/Vencord，并仍依赖 Portal。 |
+| 微信 Linux | 已替换 UOS | 使用 unstable 官方版 4.1.13.26；按锁定 AppImage/FHS wrapper 保留官方后端探测，登录、中文输入及剪贴板待实机回归。旧数据保留。 |
+| Vesktop | 已替换 Discord | 用户确认使用系统 Vencord；锁定包包含 PipeWire/venmic，Wayland wrapper 跟随会话环境。实际音频与屏幕分享仍待验证，Discord 数据保留。 |
 | Clash Verge Rev | 保留 | 当前 GUI + service + TUN 覆盖整机应用。浏览器代理不能覆盖相同场景；纯 CLI 会损失当前配置管理界面。 |
 | Thunar | 保留 | GUI 拖放、GVFS、缩略图及自定义菜单有独立价值。换 Dolphin 要迁移菜单、快捷键、终端及 MIME，未发现足够收益。 |
 | Yazi | 保留 | 终端文件管理、Git/文档预览和 Kitty 图像与 Thunar 互补。换 lf/ranger 要重写插件与预览，不是现成精简。 |
@@ -71,7 +71,7 @@
 | LibreOffice | 保留 | ODF 与常用办公文档。若经常收到排版复杂的 OOXML，可拿真实文件试 ONLYOFFICE；不能仅凭“原生 OOXML”宣称兼容性普遍更好。 |
 | Zotero | 保留，优先补 Connector | 文献库和论文注释已有一体化流程；浏览器扩展可减少手动录入。不要用普通文件同步器同步正在使用的数据目录。 |
 | Obsidian | 保留 | 本地 Markdown 知识库、链接和检索有明确角色；无需为减少应用数量直接并入单文档编辑器。 |
-| Typora | 保留 | 单文档编辑和导出与 Obsidian 分工不同；后续将已有自定义主题统一到 One Dark Darker。 |
+| Typora | 已移除声明 | 用户确认删除包与受管主题；Markdown 默认 Obsidian，CLI 编辑仍遵循 default-tools。Typora 配置、文档与历史保留。 |
 | Zathura | 保留 | 键盘式 PDF 阅读与 SyncTeX；有手写或通用批注需求再补 Okular/Xournal++，而非强行换阅读器。 |
 | Quill | 保留 | 面板快记、todo 与主笔记库分工。先明确哪些内容应长期进入 Obsidian，避免同一事项在两处维护。 |
 | Musicfox | 保留 | 网易云终端入口；不承担通用本地音乐库，无需因为已有 mpv 就删除。 |

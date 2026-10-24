@@ -1,0 +1,257 @@
+{
+  "probe_detected": true,
+  "workspace": "/home/mayon/nix-dotfiles/aspects/editing/neovim/config",
+  "settings": {
+    "Lua": {
+      "runtime": {
+        "version": "LuaJIT",
+        "path": [
+          "?.lua",
+          "?/init.lua"
+        ],
+        "pathStrict": true
+      },
+      "workspace": {
+        "checkThirdParty": false,
+        "library": [
+          "/nix/store/s5znfdswpawzc9fcwnz91vn9swhmgm33-neovim-unwrapped-0.12.4/share/nvim/runtime/lua",
+          "/home/mayon/nix-dotfiles/aspects/editing/neovim/config/lua",
+          "/nix/store/wgzx055h2j0zwn1k9bv1v70j25zxwr1g-generated.lua/lua",
+          "/nix/store/6yrfppzwrxr77yayr34j4vpxlrmfwwc4-vimplugin-blink.cmp-1.10.2/lua"
+        ],
+        "ignoreDir": [
+          "/lua"
+        ]
+      },
+      "diagnostics": {
+        "globals": [
+          "vim"
+        ]
+      }
+    }
+  },
+  "library": [
+    "/home/mayon/nix-dotfiles/aspects/editing/neovim/config/lua",
+    "/nix/store/wgzx055h2j0zwn1k9bv1v70j25zxwr1g-generated.lua/lua",
+    "/nix/store/6yrfppzwrxr77yayr34j4vpxlrmfwwc4-vimplugin-blink.cmp-1.10.2/lua"
+  ],
+  "server": "lua_ls",
+  "completion_position": {
+    "character": 9,
+    "line": 118
+  },
+  "completion_items": [
+    65,
+    65,
+    65,
+    65,
+    65,
+    65,
+    65,
+    65,
+    65,
+    65
+  ],
+  "clients": [
+    "lua_ls"
+  ],
+  "completion_ms": [
+    208.392932,
+    3.265175,
+    10.037915,
+    3.191893,
+    2.903582,
+    2.785951,
+    2.660122,
+    2.610125,
+    2.66164,
+    2.563404
+  ],
+  "publications": [
+    {
+      "count": 1,
+      "ms": 2038.404989
+    }
+  ],
+  "diagnostics": [],
+  "diagnostics_settled_ms": 3312.538741,
+  "lazydev_attached": true,
+  "attach_ms": 132.107239,
+  "handler_matches": true,
+  "client_root": "/home/mayon/nix-dotfiles/aspects/editing/neovim/config",
+  "effective_settings": {
+    "runtime": {
+      "version": "LuaJIT",
+      "path": [
+        "?.lua",
+        "?/init.lua",
+        "lua/?.lua",
+        "lua/?/init.lua"
+      ],
+      "pathStrict": true
+    },
+    "diagnostics": {
+      "globals": [
+        "vim"
+      ]
+    },
+    "workspace": {
+      "checkThirdParty": false,
+      "library": [
+        "/nix/store/s5znfdswpawzc9fcwnz91vn9swhmgm33-neovim-unwrapped-0.12.4/share/nvim/runtime/lua",
+        "/nix/store/wgzx055h2j0zwn1k9bv1v70j25zxwr1g-generated.lua/lua",
+        "/nix/store/6yrfppzwrxr77yayr34j4vpxlrmfwwc4-vimplugin-blink.cmp-1.10.2/lua"
+      ],
+      "ignoreDir": []
+    }
+  },
+  "first_diagnostics_ms": 2041.544698,
+  "progress": [
+    {
+      "ms": 946.730133,
+      "kind": "begin",
+      "title": "Loading workspace",
+      "message": "48/332"
+    },
+    {
+      "ms": 998.752571,
+      "kind": "report",
+      "title": "Loading workspace",
+      "message": "58/332"
+    },
+    {
+      "ms": 1049.828955,
+      "kind": "report",
+      "title": "Loading workspace",
+      "message": "66/332"
+    },
+    {
+      "ms": 1107.242139,
+      "kind": "report",
+      "title": "Loading workspace",
+      "message": "76/332"
+    },
+    {
+      "ms": 1157.44205,
+      "kind": "report",
+      "title": "Loading workspace",
+      "message": "89/332"
+    },
+    {
+      "ms": 1208.491491,
+      "kind": "report",
+      "title": "Loading workspace",
+      "message": "98/332"
+    },
+    {
+      "ms": 1261.252204,
+      "kind": "report",
+      "title": "Loading workspace",
+      "message": "104/332"
+    },
+    {
+      "ms": 1339.656783,
+      "kind": "report",
+      "title": "Loading workspace",
+      "message": "112/332"
+    },
+    {
+      "ms": 1391.076193,
+      "kind": "report",
+      "title": "Loading workspace",
+      "message": "123/332"
+    },
+    {
+      "ms": 1441.363144,
+      "kind": "report",
+      "title": "Loading workspace",
+      "message": "146/332"
+    },
+    {
+      "ms": 1491.891794,
+      "kind": "report",
+      "title": "Loading workspace",
+      "message": "169/332"
+    },
+    {
+      "ms": 1541.765971,
+      "kind": "report",
+      "title": "Loading workspace",
+      "message": "206/332"
+    },
+    {
+      "ms": 1593.293571,
+      "kind": "report",
+      "title": "Loading workspace",
+      "message": "244/332"
+    },
+    {
+      "ms": 1642.890332,
+      "kind": "report",
+      "title": "Loading workspace",
+      "message": "272/332"
+    },
+    {
+      "ms": 1694.244903,
+      "kind": "report",
+      "title": "Loading workspace",
+      "message": "298/332"
+    },
+    {
+      "ms": 1839.842323,
+      "kind": "end",
+      "title": "Loading workspace"
+    },
+    {
+      "ms": 2984.370213,
+      "kind": "begin",
+      "title": "Diagnosing workspace",
+      "message": "63/332"
+    },
+    {
+      "ms": 3046.638783,
+      "kind": "report",
+      "title": "Diagnosing workspace",
+      "message": "64/332"
+    },
+    {
+      "ms": 3099.038399,
+      "kind": "report",
+      "title": "Diagnosing workspace",
+      "message": "68/332"
+    },
+    {
+      "ms": 3180.73497,
+      "kind": "report",
+      "title": "Diagnosing workspace",
+      "message": "70/332"
+    },
+    {
+      "ms": 3230.985723,
+      "kind": "report",
+      "title": "Diagnosing workspace",
+      "message": "72/332"
+    },
+    {
+      "ms": 3290.676685,
+      "kind": "report",
+      "title": "Diagnosing workspace",
+      "message": "75/332"
+    },
+    {
+      "ms": 3296.946281,
+      "kind": "end",
+      "title": "Diagnosing workspace"
+    }
+  ],
+  "trial": 3,
+  "order_index": 1,
+  "exit_code": 0,
+  "peak_tree_rss_kib": 604812,
+  "peak_server_rss_kib": 570672,
+  "completion_median_ms": 2.8447665,
+  "executables": {
+    "nvim": "/nix/store/b2piwmf0kqkw6y82hfzfhb7jx857pgdr-neovim-0.12.4-dev/bin/nvim",
+    "server": "/nix/store/pphp3krih1kan1f5abx8032glqw27fp0-lua-language-server-3.18.1/bin/lua-language-server"
+  }
+}

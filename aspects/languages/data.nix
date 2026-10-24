@@ -79,15 +79,15 @@
   python = {
     id = "python";
     neovim = {
-      servers.pyright = {
+      servers.basedpyright = {
         cmd = [
-          "pyright-langserver"
+          "basedpyright-langserver"
           "--stdio"
         ];
         filetypes = [ "python" ];
         root_markers = [
-          "pyproject.toml"
           "pyrightconfig.json"
+          "pyproject.toml"
           "uv.lock"
           "setup.py"
           "setup.cfg"
@@ -292,6 +292,26 @@
         root_markers = [ ".git" ];
       };
       formatters = { };
+      linters = { };
+    };
+  };
+  toml = {
+    id = "toml";
+    neovim = {
+      servers.taplo = {
+        cmd = [
+          "taplo"
+          "lsp"
+          "stdio"
+        ];
+        filetypes = [ "toml" ];
+        root_markers = [
+          ".taplo.toml"
+          "taplo.toml"
+          ".git"
+        ];
+      };
+      formatters.toml = [ "taplo" ];
       linters = { };
     };
   };

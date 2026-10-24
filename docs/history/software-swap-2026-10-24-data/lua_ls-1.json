@@ -1,0 +1,268 @@
+{
+  "workspace": "/home/mayon/nix-dotfiles/aspects/editing/neovim/config",
+  "completion_ms": [
+    292.56577,
+    3.468537,
+    2.741514,
+    2.466781,
+    2.622046,
+    2.631692,
+    2.551373,
+    2.618448,
+    2.661671,
+    2.614612
+  ],
+  "publications": [
+    {
+      "ms": 2015.018899,
+      "count": 1
+    }
+  ],
+  "progress": [
+    {
+      "title": "Loading workspace",
+      "message": "35/332",
+      "ms": 933.458535,
+      "kind": "begin"
+    },
+    {
+      "title": "Loading workspace",
+      "message": "45/332",
+      "ms": 992.099758,
+      "kind": "report"
+    },
+    {
+      "title": "Loading workspace",
+      "message": "52/332",
+      "ms": 1053.592981,
+      "kind": "report"
+    },
+    {
+      "title": "Loading workspace",
+      "message": "61/332",
+      "ms": 1105.747868,
+      "kind": "report"
+    },
+    {
+      "title": "Loading workspace",
+      "message": "67/332",
+      "ms": 1155.902065,
+      "kind": "report"
+    },
+    {
+      "title": "Loading workspace",
+      "message": "70/332",
+      "ms": 1207.367867,
+      "kind": "report"
+    },
+    {
+      "title": "Loading workspace",
+      "message": "81/332",
+      "ms": 1257.607026,
+      "kind": "report"
+    },
+    {
+      "title": "Loading workspace",
+      "message": "92/332",
+      "ms": 1307.69677,
+      "kind": "report"
+    },
+    {
+      "title": "Loading workspace",
+      "message": "11/11",
+      "ms": 1339.644049,
+      "kind": "begin"
+    },
+    {
+      "title": "Loading workspace",
+      "ms": 1339.679042,
+      "kind": "end"
+    },
+    {
+      "title": "Loading workspace",
+      "message": "96/332",
+      "ms": 1362.130768,
+      "kind": "report"
+    },
+    {
+      "title": "Loading workspace",
+      "message": "106/332",
+      "ms": 1414.772472,
+      "kind": "report"
+    },
+    {
+      "title": "Loading workspace",
+      "message": "122/332",
+      "ms": 1468.938989,
+      "kind": "report"
+    },
+    {
+      "title": "Loading workspace",
+      "message": "146/332",
+      "ms": 1517.985928,
+      "kind": "report"
+    },
+    {
+      "title": "Loading workspace",
+      "message": "176/332",
+      "ms": 1568.026307,
+      "kind": "report"
+    },
+    {
+      "title": "Loading workspace",
+      "message": "217/332",
+      "ms": 1618.651672,
+      "kind": "report"
+    },
+    {
+      "title": "Loading workspace",
+      "message": "247/332",
+      "ms": 1668.86817,
+      "kind": "report"
+    },
+    {
+      "title": "Loading workspace",
+      "message": "286/332",
+      "ms": 1718.028552,
+      "kind": "report"
+    },
+    {
+      "title": "Loading workspace",
+      "message": "325/332",
+      "ms": 1769.350295,
+      "kind": "report"
+    },
+    {
+      "title": "Loading workspace",
+      "ms": 1885.567384,
+      "kind": "end"
+    },
+    {
+      "title": "Diagnosing workspace",
+      "message": "65/332",
+      "ms": 2964.09133,
+      "kind": "begin"
+    },
+    {
+      "title": "Diagnosing workspace",
+      "message": "69/332",
+      "ms": 3027.724136,
+      "kind": "report"
+    },
+    {
+      "title": "Diagnosing workspace",
+      "message": "71/332",
+      "ms": 3089.931137,
+      "kind": "report"
+    },
+    {
+      "title": "Diagnosing workspace",
+      "message": "75/332",
+      "ms": 3139.506171,
+      "kind": "report"
+    },
+    {
+      "title": "Diagnosing workspace",
+      "ms": 3145.1864,
+      "kind": "end"
+    }
+  ],
+  "effective_settings": {
+    "runtime": {
+      "path": [
+        "?.lua",
+        "?/init.lua",
+        "lua/?.lua",
+        "lua/?/init.lua"
+      ],
+      "version": "LuaJIT",
+      "pathStrict": true
+    },
+    "workspace": {
+      "ignoreDir": [],
+      "checkThirdParty": false,
+      "library": [
+        "/nix/store/s5znfdswpawzc9fcwnz91vn9swhmgm33-neovim-unwrapped-0.12.4/share/nvim/runtime/lua",
+        "/nix/store/wgzx055h2j0zwn1k9bv1v70j25zxwr1g-generated.lua/lua",
+        "/nix/store/6yrfppzwrxr77yayr34j4vpxlrmfwwc4-vimplugin-blink.cmp-1.10.2/lua"
+      ]
+    },
+    "diagnostics": {
+      "globals": [
+        "vim"
+      ]
+    }
+  },
+  "attach_ms": 134.863256,
+  "handler_matches": true,
+  "client_root": "/home/mayon/nix-dotfiles/aspects/editing/neovim/config",
+  "first_diagnostics_ms": 2017.091871,
+  "diagnostics_settled_ms": 3146.734256,
+  "probe_detected": true,
+  "server": "lua_ls",
+  "diagnostics": [],
+  "clients": [
+    "lua_ls"
+  ],
+  "lazydev_attached": true,
+  "library": [
+    "/home/mayon/nix-dotfiles/aspects/editing/neovim/config/lua",
+    "/nix/store/wgzx055h2j0zwn1k9bv1v70j25zxwr1g-generated.lua/lua",
+    "/nix/store/6yrfppzwrxr77yayr34j4vpxlrmfwwc4-vimplugin-blink.cmp-1.10.2/lua"
+  ],
+  "completion_items": [
+    65,
+    65,
+    65,
+    65,
+    65,
+    65,
+    65,
+    65,
+    65,
+    65
+  ],
+  "settings": {
+    "Lua": {
+      "runtime": {
+        "path": [
+          "?.lua",
+          "?/init.lua"
+        ],
+        "version": "LuaJIT",
+        "pathStrict": true
+      },
+      "workspace": {
+        "ignoreDir": [
+          "/lua"
+        ],
+        "library": [
+          "/nix/store/s5znfdswpawzc9fcwnz91vn9swhmgm33-neovim-unwrapped-0.12.4/share/nvim/runtime/lua",
+          "/home/mayon/nix-dotfiles/aspects/editing/neovim/config/lua",
+          "/nix/store/wgzx055h2j0zwn1k9bv1v70j25zxwr1g-generated.lua/lua",
+          "/nix/store/6yrfppzwrxr77yayr34j4vpxlrmfwwc4-vimplugin-blink.cmp-1.10.2/lua"
+        ],
+        "checkThirdParty": false
+      },
+      "diagnostics": {
+        "globals": [
+          "vim"
+        ]
+      }
+    }
+  },
+  "completion_position": {
+    "line": 118,
+    "character": 9
+  },
+  "trial": 1,
+  "order_index": 1,
+  "exit_code": 0,
+  "peak_tree_rss_kib": 399152,
+  "peak_server_rss_kib": 364248,
+  "completion_median_ms": 2.626869,
+  "executables": {
+    "nvim": "/nix/store/b2piwmf0kqkw6y82hfzfhb7jx857pgdr-neovim-0.12.4-dev/bin/nvim",
+    "server": "/nix/store/pphp3krih1kan1f5abx8032glqw27fp0-lua-language-server-3.18.1/bin/lua-language-server"
+  }
+}

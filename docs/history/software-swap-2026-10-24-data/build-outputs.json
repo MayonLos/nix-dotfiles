@@ -1,0 +1,52 @@
+{
+  "checks": [
+    "command-line-runtime",
+    "desktop-composition",
+    "editing-composition",
+    "embedded-composition",
+    "embedded-home",
+    "embedded-tools",
+    "embedded-udev",
+    "interactive-session-config",
+    "local-services-composition",
+    "neovim",
+    "project-workbench",
+    "protocols-composition",
+    "remote-workspace-composition",
+    "rime-technical-runtime",
+    "system-boundaries",
+    "treefmt",
+    "workspace-composition",
+    "xorg-session-runtime"
+  ],
+  "outputs": [
+    "/nix/store/w2a5jblnwa20mw5qw406ibl8wp8fawxr-den-command-line-composition",
+    "/nix/store/crgmdj60gj3akc2ri49nz0vlqk6px4m0-den-protocol-composition",
+    "/nix/store/1580lz4i4794gz9arqrn2g4cl7z9m0qy-interactive-session-config",
+    "/nix/store/4rh4qxizav1mn302sphd3ygd6iw0bkgp-home-manager-generation",
+    "/nix/store/vx5m3731q8m3lfx0x3afyqg9hkxj2wcj-project-workbench-check",
+    "/nix/store/mxghpk8w47rqql8kaj0dh9f7ry4yd7i7-den-embedded-tools",
+    "/nix/store/28djn8im6xib00ra5ak780ajrm9sphm4-nixos-system-nixos-btw-26.05.20261021.da6dc0e",
+    "/nix/store/nfrkmakn1jgcch7cfycrpzcdja6j9ys1-treefmt-check",
+    "/nix/store/98fi9zibzbz5n4a3qjygkcy19d19f7xm-den-system-boundaries.json",
+    "/nix/store/bg8k45nh1s64khw5njvw28frjsj4lqmj-neovim-checks",
+    "/nix/store/bcr4pfqw1hmg72ip2ijgrd0m4pmxq7df-den-embedded-workbench-composition",
+    "/nix/store/mhnpg0wjpcjmzrm8bpmq4plzvdpajaf7-den-interactive-session-composition",
+    "/nix/store/72sgdk5q97r1bfm5kbbq94h0s4sqdph0-remote-workspace-composition.json",
+    "/nix/store/3h92g2wp96giaffyk56j8dqa6ivlqbsw-rime-technical-runtime",
+    "/nix/store/dx6a28g1fnq0w5258j3i9fgrbp15bd4b-den-embedded-udev",
+    "/nix/store/mj06apg9lqgmzx5cs3qp06f4cf6k3mmb-neovim-0.12.4",
+    "/nix/store/3fnphnz3gvvh9wr026g2k9znpj89gyff-den-local-services-composition",
+    "/nix/store/b2piwmf0kqkw6y82hfzfhb7jx857pgdr-neovim-0.12.4-dev",
+    "/nix/store/n4r2ys70vzn0bf07lizvn7qqpqp6hi2m-den-editing-composition",
+    "/nix/store/acy2sr8w8q0l8d5yhf6kddbkhigjs2d3-command-line-runtime",
+    "/nix/store/57jzs0lii5fslcb0z51v6q7q4d0c0w2w-xorg-session-runtime"
+  ],
+  "flake": "git+file:///home/mayon/nix-dotfiles",
+  "arguments": [
+    "--no-link",
+    "--no-write-lock-file",
+    "--print-out-paths"
+  ],
+  "exit_code": 0
+}

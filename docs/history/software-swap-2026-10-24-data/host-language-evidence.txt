@@ -1,0 +1,2 @@
+source: /nix/store/rkrgcr16b2wsrm4kdbklg9n3cfyz0zqc-nvim-config/lua/mayon/generated.lua
+basedpyright and taplo present; no legacy pyright server.

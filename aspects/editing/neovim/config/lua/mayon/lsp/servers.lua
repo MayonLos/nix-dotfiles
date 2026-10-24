@@ -58,15 +58,15 @@ local adapters = {
 			},
 		},
 	},
-	pyright = {
+	basedpyright = {
 		before_init = python_path,
 		settings = {
-			python = {
+			basedpyright = {
 				analysis = {
 					autoSearchPaths = true,
-					useLibraryCodeForTypes = true,
 					autoImportCompletions = true,
 					diagnosticMode = "openFilesOnly",
+					-- Keep the former Pyright level while allowing project overrides.
 					typeCheckingMode = "basic",
 				},
 			},

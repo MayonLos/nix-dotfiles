@@ -1,5 +1,7 @@
 # Neovim 第六轮完全重构
 
+2026-10-24 第十轮后续：Python 使用 basedpyright，新增 Taplo；启动页字形、渐变与路径展示已修正。Lua LSP 对比与本轮构建证据见[软件替换记录](history/software-swap-2026-10-24.md)。下文此前的首文件实测保留原版本语境。
+
 状态：2026-10-24，重构已实现并完成构建与隔离验证；本轮**尚未应用**，没有执行 `sudo`、
 `nixos-rebuild`、Git stage/commit/push 或系统切换。完整 health 仍有两个明确限制，见下文。
 此前实施与应用记录及本轮执行细节见[历史归档](history/neovim-rebuild-2026-10-24.md)。

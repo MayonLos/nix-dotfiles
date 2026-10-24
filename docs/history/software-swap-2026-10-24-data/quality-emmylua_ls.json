@@ -1,0 +1,909 @@
+{
+  "workspace": "/home/mayon/nix-dotfiles/aspects/editing/neovim/config",
+  "completion_position": {
+    "line": 118,
+    "character": 9
+  },
+  "completion_items": [
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63
+  ],
+  "clients": [
+    "emmylua_ls"
+  ],
+  "library": [
+    "/home/mayon/nix-dotfiles/aspects/editing/neovim/config/lua",
+    "/nix/store/wgzx055h2j0zwn1k9bv1v70j25zxwr1g-generated.lua/lua",
+    "/nix/store/6yrfppzwrxr77yayr34j4vpxlrmfwwc4-vimplugin-blink.cmp-1.10.2/lua",
+    "/nix/store/nvbx3ifrj8nkcw5pjrimv26llkcw1mb4-vimplugin-lazydev.nvim-1.10.0-unstable-2026-03-14/lua",
+    "/nix/store/sfyv67wfp2fvv7620q9rpj4xkvxqsly2-vimplugin-codecompanion.nvim-19.13.0/lua",
+    "/nix/store/hc6r94nd0c9xg17fgq0nmg4w848ixsfb-vimplugin-luajit2.1-lz.n-2.11.3-1-unstable-2.11.3-1/lua"
+  ],
+  "quality": [
+    {
+      "file": "init.lua",
+      "diagnostics": [
+        {
+          "source": "EmmyLua",
+          "lnum": 7,
+          "col": 15,
+          "severity": 2,
+          "message": "debug.getinfo(1, \"S\") may be nil",
+          "code": "need-check-nil"
+        }
+      ],
+      "probe_detected": true
+    },
+    {
+      "file": "lua/mayon/config/bootstrap.lua",
+      "diagnostics": [],
+      "probe_detected": true
+    },
+    {
+      "file": "lua/mayon/lsp/servers.lua",
+      "diagnostics": [],
+      "probe_detected": true
+    },
+    {
+      "file": "lua/mayon/ui/dashboard.lua",
+      "diagnostics": [
+        {
+          "source": "EmmyLua",
+          "lnum": 57,
+          "col": 81,
+          "severity": 2,
+          "message": "expected `string` but found `(\"███╗   ███╗\"|\"████╗ ████║\"|\"██╔████╔██║\"|\"██║╚██╔╝██║\"|\"██║ ╚═╝ ██║\"|\"╚═╝     ╚═╝\"...)?`. ",
+          "code": "param-type-mismatch"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 70,
+          "col": 28,
+          "severity": 2,
+          "message": "channel(from, offset) value may be nil",
+          "code": "need-check-nil"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 70,
+          "col": 67,
+          "severity": 2,
+          "message": "channel(to, offset) value may be nil",
+          "code": "need-check-nil"
+        }
+      ],
+      "probe_detected": true
+    },
+    {
+      "file": "lua/mayon/plugins/lua.lua",
+      "diagnostics": [
+        {
+          "source": "EmmyLua",
+          "lnum": 0,
+          "col": 6,
+          "severity": 4,
+          "message": "M is never used, if this is intentional, prefix it with an underscore: _M",
+          "code": "unused"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 3,
+          "col": 26,
+          "severity": 2,
+          "message": "Missing required fields in type `lazydev.Config`: `debug`, `runtime`",
+          "code": "missing-fields"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 3,
+          "col": 26,
+          "severity": 2,
+          "message": "expected `lazydev.Config?` but found `{ library = table, integrations = table, enabled = fun(root: string) -> boolean?, ... }`. ",
+          "code": "param-type-mismatch"
+        }
+      ],
+      "probe_detected": true
+    },
+    {
+      "file": "lua/mayon/plugins/completion.lua",
+      "diagnostics": [
+        {
+          "source": "EmmyLua",
+          "lnum": 0,
+          "col": 6,
+          "severity": 4,
+          "message": "M is never used, if this is intentional, prefix it with an underscore: _M",
+          "code": "unused"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 4,
+          "col": 15,
+          "severity": 2,
+          "message": "Missing required fields in type `blink.cmp.AppearanceConfigPartial`: `highlight_ns`, `nerd_font_variant`, `use_nvim_cmp_as_default`",
+          "code": "missing-fields"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 24,
+          "col": 10,
+          "severity": 2,
+          "message": "Missing required fields in type `blink.cmp.CompletionListConfigPartial`: `max_items`",
+          "code": "missing-fields"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 25,
+          "col": 10,
+          "severity": 2,
+          "message": "Missing required fields in type `blink.cmp.CompletionMenuConfigPartial`: `auto_show_delay_ms`, `auto_show`, `cmdline_position`, `direction_priority`, `enabled`, `scrollbar`, `scrolloff`, `winblend`, `winhighlight`",
+          "code": "missing-fields"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 71,
+          "col": 13,
+          "severity": 2,
+          "message": "Missing required fields in type `blink.cmp.CompletionTriggerConfigPartial`: `prefetch_on_insert`, `show_on_accept_on_trigger_character`, `show_on_backspace_after_accept`, `show_on_backspace_after_insert_enter`, `show_on_backspace_in_keyword`, `show_on_backspace`, `show_on_blocked_trigger_characters`, `show_on_insert_on_trigger_character`, `show_on_insert`, `show_on_keyword`, `show_on_trigger_character`, `show_on_x_blocked_trigger_characters`",
+          "code": "missing-fields"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 72,
+          "col": 19,
+          "severity": 2,
+          "message": "Missing required fields in type `blink.cmp.CompletionDocumentationConfigPartial`: `draw`, `treesitter_highlighting`, `update_delay_ms`",
+          "code": "missing-fields"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 75,
+          "col": 13,
+          "severity": 2,
+          "message": "Missing required fields in type `blink.cmp.CompletionDocumentationWindowConfigPartial`: `desired_min_height`, `desired_min_width`, `min_width`, `scrollbar`, `winblend`, `winhighlight`",
+          "code": "missing-fields"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 81,
+          "col": 12,
+          "severity": 2,
+          "message": "Missing required fields in type `blink.cmp.CompletionAcceptConfigPartial`: `create_undo_point`, `dot_repeat`, `resolve_timeout_ms`",
+          "code": "missing-fields"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 81,
+          "col": 30,
+          "severity": 2,
+          "message": "Missing required fields in type `blink.cmp.AutoBracketsConfigPartial`: `blocked_filetypes`, `default_brackets`, `force_allow_filetypes`, `override_brackets_for_filetypes`",
+          "code": "missing-fields"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 83,
+          "col": 12,
+          "severity": 2,
+          "message": "Missing required fields in type `blink.cmp.SourceConfigPartial`: `default`, `min_keyword_length`, `transform_items`",
+          "code": "missing-fields"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 100,
+          "col": 15,
+          "severity": 2,
+          "message": "Missing required fields in type `blink.cmp.SourceProviderConfigPartial`: `module`",
+          "code": "missing-fields"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 118,
+          "col": 13,
+          "severity": 2,
+          "message": "Missing required fields in type `blink.cmp.SnippetsConfigPartial`: `active`, `expand`, `jump`, `score_offset`",
+          "code": "missing-fields"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 119,
+          "col": 41,
+          "severity": 2,
+          "message": "Missing required fields in type `blink.cmp.SignatureWindowConfigPartial`: `direction_priority`, `max_height`, `max_width`, `min_width`, `scrollbar`, `show_documentation`, `treesitter_highlighting`, `winblend`, `winhighlight`",
+          "code": "missing-fields"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 3,
+          "col": 28,
+          "severity": 2,
+          "message": "expected `blink.cmp.Config?` but found `{ appearance = table, enabled = fun() -> boolean, keymap = table, ... }`. ",
+          "code": "param-type-mismatch"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 127,
+          "col": 32,
+          "severity": 2,
+          "message": "expected `vim.api.keyset.highlight` but found `vim.api.keyset.get_hl_info`. ",
+          "code": "param-type-mismatch"
+        }
+      ],
+      "probe_detected": true
+    },
+    {
+      "file": "lua/mayon/plugins/ai.lua",
+      "diagnostics": [
+        {
+          "source": "EmmyLua",
+          "lnum": 0,
+          "col": 6,
+          "severity": 4,
+          "message": "M is never used, if this is intentional, prefix it with an underscore: _M",
+          "code": "unused"
+        }
+      ],
+      "probe_detected": true
+    },
+    {
+      "file": "tests/lua_workspace.lua",
+      "diagnostics": [
+        {
+          "source": "EmmyLua",
+          "lnum": 79,
+          "col": 19,
+          "severity": 2,
+          "message": "expected `string` but found `string?`. ",
+          "code": "param-type-mismatch"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 136,
+          "col": 26,
+          "severity": 2,
+          "message": "expected `string` but found `string?`. ",
+          "code": "param-type-mismatch"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 153,
+          "col": 19,
+          "severity": 2,
+          "message": "expected `string` but found `string?`. ",
+          "code": "param-type-mismatch"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 42,
+          "col": 9,
+          "severity": 2,
+          "message": "client may be nil",
+          "code": "need-check-nil"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 79,
+          "col": 19,
+          "severity": 2,
+          "message": "ordinary_client may be nil",
+          "code": "need-check-nil"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 136,
+          "col": 26,
+          "severity": 2,
+          "message": "client may be nil",
+          "code": "need-check-nil"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 153,
+          "col": 19,
+          "severity": 2,
+          "message": "disabled_client may be nil",
+          "code": "need-check-nil"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 137,
+          "col": 24,
+          "severity": 2,
+          "message": "Undefined field `is_enabled`. ",
+          "code": "undefined-field"
+        },
+        {
+          "source": "EmmyLua",
+          "lnum": 156,
+          "col": 23,
+          "severity": 2,
+          "message": "Undefined field `is_enabled`. ",
+          "code": "undefined-field"
+        }
+      ],
+      "probe_detected": true
+    }
+  ],
+  "diagnostics": [],
+  "completion_ms": [
+    1.423035,
+    0.940702,
+    0.947005,
+    1.005713,
+    0.99392,
+    0.927011,
+    0.839239,
+    0.646936,
+    0.813634,
+    0.732833
+  ],
+  "publications": [
+    {
+      "ms": 539.35162,
+      "count": 1
+    },
+    {
+      "ms": 1018.434775,
+      "count": 1
+    },
+    {
+      "ms": 8733.400973,
+      "count": 1
+    },
+    {
+      "ms": 14496.916102,
+      "count": 1
+    },
+    {
+      "ms": 20655.36603,
+      "count": 1
+    }
+  ],
+  "effective_settings": {
+    "workspace": {
+      "ignoreDir": [],
+      "checkThirdParty": false,
+      "library": [
+        "/nix/store/s5znfdswpawzc9fcwnz91vn9swhmgm33-neovim-unwrapped-0.12.4/share/nvim/runtime/lua",
+        "/nix/store/wgzx055h2j0zwn1k9bv1v70j25zxwr1g-generated.lua/lua",
+        "/nix/store/6yrfppzwrxr77yayr34j4vpxlrmfwwc4-vimplugin-blink.cmp-1.10.2/lua",
+        "/nix/store/nvbx3ifrj8nkcw5pjrimv26llkcw1mb4-vimplugin-lazydev.nvim-1.10.0-unstable-2026-03-14/lua",
+        "/nix/store/sfyv67wfp2fvv7620q9rpj4xkvxqsly2-vimplugin-codecompanion.nvim-19.13.0/lua",
+        "/nix/store/hc6r94nd0c9xg17fgq0nmg4w848ixsfb-vimplugin-luajit2.1-lz.n-2.11.3-1-unstable-2.11.3-1/lua"
+      ]
+    },
+    "diagnostics": {
+      "globals": [
+        "vim"
+      ]
+    },
+    "runtime": {
+      "version": "LuaJIT",
+      "path": [
+        "?.lua",
+        "?/init.lua",
+        "lua/?.lua",
+        "lua/?/init.lua"
+      ],
+      "pathStrict": true
+    }
+  },
+  "server": "emmylua_ls",
+  "attach_ms": 122.765076,
+  "handler_matches": true,
+  "client_root": "/home/mayon/nix-dotfiles/aspects/editing/neovim/config",
+  "first_diagnostics_ms": 542.12054,
+  "diagnostics_settled_ms": 1025.284229,
+  "progress": [
+    {
+      "message": "Load workspace",
+      "title": "Load workspace",
+      "ms": 139.986591,
+      "kind": "begin"
+    },
+    {
+      "message": "Loading workspace files",
+      "title": "Load workspace",
+      "ms": 140.061803,
+      "kind": "report"
+    },
+    {
+      "message": "Collecting files",
+      "title": "Load workspace",
+      "ms": 140.095402,
+      "kind": "report"
+    },
+    {
+      "message": "Indexing 314 files",
+      "title": "Load workspace",
+      "ms": 144.541699,
+      "kind": "report"
+    },
+    {
+      "message": "Finished loading workspace files",
+      "title": "Load workspace",
+      "ms": 510.767208,
+      "kind": "report"
+    },
+    {
+      "message": "Indexing complete",
+      "title": "Load workspace",
+      "ms": 510.837495,
+      "kind": "end"
+    },
+    {
+      "message": "Diagnose workspace",
+      "title": "Diagnose workspace",
+      "ms": 514.563929,
+      "kind": "begin"
+    },
+    {
+      "message": "diagnostic 1%",
+      "title": "Diagnose workspace",
+      "ms": 518.057769,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 3%",
+      "title": "Diagnose workspace",
+      "ms": 518.699889,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 5%",
+      "title": "Diagnose workspace",
+      "ms": 518.944036,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 7%",
+      "title": "Diagnose workspace",
+      "ms": 532.742147,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 8%",
+      "title": "Diagnose workspace",
+      "ms": 538.36508,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 10%",
+      "title": "Diagnose workspace",
+      "ms": 538.386938,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 12%",
+      "title": "Diagnose workspace",
+      "ms": 539.347343,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 14%",
+      "title": "Diagnose workspace",
+      "ms": 542.177807,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 15%",
+      "title": "Diagnose workspace",
+      "ms": 542.19615,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 17%",
+      "title": "Diagnose workspace",
+      "ms": 542.224736,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 19%",
+      "title": "Diagnose workspace",
+      "ms": 542.642133,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 21%",
+      "title": "Diagnose workspace",
+      "ms": 542.929995,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 22%",
+      "title": "Diagnose workspace",
+      "ms": 542.961154,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 24%",
+      "title": "Diagnose workspace",
+      "ms": 542.991579,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 26%",
+      "title": "Diagnose workspace",
+      "ms": 543.005376,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 28%",
+      "title": "Diagnose workspace",
+      "ms": 543.234922,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 29%",
+      "title": "Diagnose workspace",
+      "ms": 545.811518,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 31%",
+      "title": "Diagnose workspace",
+      "ms": 547.961769,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 33%",
+      "title": "Diagnose workspace",
+      "ms": 548.646522,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 35%",
+      "title": "Diagnose workspace",
+      "ms": 548.985883,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 36%",
+      "title": "Diagnose workspace",
+      "ms": 549.115622,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 38%",
+      "title": "Diagnose workspace",
+      "ms": 549.129407,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 40%",
+      "title": "Diagnose workspace",
+      "ms": 549.14213,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 42%",
+      "title": "Diagnose workspace",
+      "ms": 549.154091,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 43%",
+      "title": "Diagnose workspace",
+      "ms": 549.165489,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 45%",
+      "title": "Diagnose workspace",
+      "ms": 549.176783,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 47%",
+      "title": "Diagnose workspace",
+      "ms": 549.188726,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 49%",
+      "title": "Diagnose workspace",
+      "ms": 549.20904,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 50%",
+      "title": "Diagnose workspace",
+      "ms": 549.22085,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 52%",
+      "title": "Diagnose workspace",
+      "ms": 549.232511,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 54%",
+      "title": "Diagnose workspace",
+      "ms": 549.243717,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 56%",
+      "title": "Diagnose workspace",
+      "ms": 549.271218,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 57%",
+      "title": "Diagnose workspace",
+      "ms": 549.283573,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 59%",
+      "title": "Diagnose workspace",
+      "ms": 550.704609,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 61%",
+      "title": "Diagnose workspace",
+      "ms": 550.719778,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 63%",
+      "title": "Diagnose workspace",
+      "ms": 550.731931,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 64%",
+      "title": "Diagnose workspace",
+      "ms": 550.743217,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 66%",
+      "title": "Diagnose workspace",
+      "ms": 550.764221,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 68%",
+      "title": "Diagnose workspace",
+      "ms": 550.78048,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 70%",
+      "title": "Diagnose workspace",
+      "ms": 550.807676,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 71%",
+      "title": "Diagnose workspace",
+      "ms": 550.831278,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 73%",
+      "title": "Diagnose workspace",
+      "ms": 550.849807,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 75%",
+      "title": "Diagnose workspace",
+      "ms": 550.871314,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 77%",
+      "title": "Diagnose workspace",
+      "ms": 550.882176,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 78%",
+      "title": "Diagnose workspace",
+      "ms": 551.352549,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 80%",
+      "title": "Diagnose workspace",
+      "ms": 551.366396,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 82%",
+      "title": "Diagnose workspace",
+      "ms": 551.377642,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 84%",
+      "title": "Diagnose workspace",
+      "ms": 551.391952,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 85%",
+      "title": "Diagnose workspace",
+      "ms": 551.402814,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 87%",
+      "title": "Diagnose workspace",
+      "ms": 551.418214,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 89%",
+      "title": "Diagnose workspace",
+      "ms": 551.429059,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 91%",
+      "title": "Diagnose workspace",
+      "ms": 551.439487,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 92%",
+      "title": "Diagnose workspace",
+      "ms": 552.562726,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 94%",
+      "title": "Diagnose workspace",
+      "ms": 552.578391,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 96%",
+      "title": "Diagnose workspace",
+      "ms": 552.590171,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 98%",
+      "title": "Diagnose workspace",
+      "ms": 552.611172,
+      "kind": "report"
+    },
+    {
+      "message": "diagnostic 100%",
+      "title": "Diagnose workspace",
+      "ms": 556.649114,
+      "kind": "report"
+    },
+    {
+      "message": "Diagnosis complete",
+      "title": "Diagnose workspace",
+      "ms": 556.668535,
+      "kind": "end"
+    },
+    {
+      "message": "Load workspace",
+      "title": "Load workspace",
+      "ms": 13291.159504,
+      "kind": "begin"
+    },
+    {
+      "message": "Loading workspace files",
+      "title": "Load workspace",
+      "ms": 13291.222167,
+      "kind": "report"
+    },
+    {
+      "message": "Collecting files",
+      "title": "Load workspace",
+      "ms": 13291.239577,
+      "kind": "report"
+    },
+    {
+      "message": "Indexing 327 files",
+      "title": "Load workspace",
+      "ms": 13299.436822,
+      "kind": "report"
+    },
+    {
+      "message": "Finished loading workspace files",
+      "title": "Load workspace",
+      "ms": 13983.13429,
+      "kind": "report"
+    },
+    {
+      "message": "Indexing complete",
+      "title": "Load workspace",
+      "ms": 13983.158433,
+      "kind": "end"
+    },
+    {
+      "message": "Load workspace",
+      "title": "Load workspace",
+      "ms": 19107.960249,
+      "kind": "begin"
+    },
+    {
+      "message": "Loading workspace files",
+      "title": "Load workspace",
+      "ms": 19108.009083,
+      "kind": "report"
+    },
+    {
+      "message": "Collecting files",
+      "title": "Load workspace",
+      "ms": 19108.028204,
+      "kind": "report"
+    },
+    {
+      "message": "Indexing 572 files",
+      "title": "Load workspace",
+      "ms": 19115.322141,
+      "kind": "report"
+    },
+    {
+      "message": "Finished loading workspace files",
+      "title": "Load workspace",
+      "ms": 20124.647503,
+      "kind": "report"
+    },
+    {
+      "message": "Indexing complete",
+      "title": "Load workspace",
+      "ms": 20124.703343,
+      "kind": "end"
+    }
+  ],
+  "probe_detected": true,
+  "settings": {
+    "Lua": {
+      "workspace": {
+        "ignoreDir": [
+          "/lua"
+        ],
+        "checkThirdParty": false,
+        "library": [
+          "/nix/store/s5znfdswpawzc9fcwnz91vn9swhmgm33-neovim-unwrapped-0.12.4/share/nvim/runtime/lua",
+          "/home/mayon/nix-dotfiles/aspects/editing/neovim/config/lua",
+          "/nix/store/wgzx055h2j0zwn1k9bv1v70j25zxwr1g-generated.lua/lua",
+          "/nix/store/6yrfppzwrxr77yayr34j4vpxlrmfwwc4-vimplugin-blink.cmp-1.10.2/lua"
+        ]
+      },
+      "diagnostics": {
+        "globals": [
+          "vim"
+        ]
+      },
+      "runtime": {
+        "version": "LuaJIT",
+        "path": [
+          "?.lua",
+          "?/init.lua"
+        ],
+        "pathStrict": true
+      }
+    }
+  },
+  "lazydev_attached": true,
+  "executables": {
+    "nvim": "/nix/store/b2piwmf0kqkw6y82hfzfhb7jx857pgdr-neovim-0.12.4-dev/bin/nvim",
+    "server": "/nix/store/3rdq8g57rpi65ryckiisrkd027vpswwg-emmylua_ls-0.23.1/bin/emmylua_ls"
+  },
+  "trial": 1,
+  "order_index": 2,
+  "exit_code": 0,
+  "peak_tree_rss_kib": 435200,
+  "peak_server_rss_kib": 386504,
+  "completion_median_ms": 0.9338565000000001
+}

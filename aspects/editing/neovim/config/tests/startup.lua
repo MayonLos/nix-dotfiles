@@ -40,7 +40,7 @@ local function value(option)
 	return option
 end
 assert(value(selection.preselect) == false and value(selection.auto_insert) == false)
-assert(vim.tbl_count(require("mayon.lsp.servers").servers) == 16)
+assert(vim.tbl_count(require("mayon.lsp.servers").servers) == 17)
 for _, lang in ipairs({ "lua", "nix", "javascript", "tsx", "cpp", "matlab", "latex", "markdown", "markdown_inline" }) do
 	assert(pcall(vim.treesitter.language.add, lang), "missing parser: " .. lang)
 end

@@ -98,11 +98,11 @@ in
     # that hook). Conference, camera/audio and capture still need a real call.
     pkgs.wemeet
 
-    # wechat-uos rather than `wechat`: the UOS build tracks upstream more
-    # closely (4.1.1.7 vs 4.1.1.4) and its launcher maps XMODIFIERS onto
-    # QT_IM_MODULE/GTK_IM_MODULE explicitly. It pins QT_QPA_PLATFORM=xcb, so it
-    # runs through XWayland — Xft.dpi=144 in xresources.nix keeps that readable.
-    # Switch to `wechat` (official Linux AppImage) if the UOS build misbehaves.
-    pkgs-unstable.wechat-uos
+    # unstable: the official Linux build is 4.1.13.26 here, while stable is
+    # still 4.1.1.4. nixpkgs wraps its AppImage in an FHS environment and
+    # installs wechat.desktop. Unlike the UOS launcher, this wrapper adds no
+    # QT_QPA_PLATFORM, IM-module remapping or Wayland flags, so the official
+    # build uses its own backend and input-method detection.
+    pkgs-unstable.wechat
   ];
 }
