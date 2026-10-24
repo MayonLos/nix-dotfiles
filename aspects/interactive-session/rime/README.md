@@ -20,7 +20,7 @@ they remain available without being pinned above common words; selecting a
 term continues to teach the existing user dictionary.
 
 Rime-Ice already provides English lookup, Chinese-English mixed terms,
-`custom_phrase`, five candidates per page, and its correction filter. The
+`custom_phrase` and its correction filter. Our default patch selects seven candidates per page. The
 English reduction mode only moves a curated set of collision-prone English
 spellings; it does not demote all English. Common fuzzy-initial/final rules
 remain disabled. This table does not override `custom_phrase`, correction
@@ -53,3 +53,19 @@ its `user_dict` remains `rime_ice`. Do not point the fixture at the real
 `~/.local/share/fcitx5/rime` directory. Runtime candidate order and learner
 continuity still require application-level verification after a separately
 reviewed deployment.
+
+## Pinned grammar and panel theme
+
+`package.nix` adds the simplified Wanxiang model to the Fcitx5-Rime shared
+`share/rime-data` directory. It pins the `LTS` release asset snapshot from
+2026-10-19 (398497836 bytes) by SHA-256, not a runtime download. Upstream's
+long-lived LTS tag can change; changed bytes intentionally fail the hash check.
+The schema uses the conservative [Rime-Frost README grammar weights](https://github.com/gaboolic/rime-frost#使用语言模型)
+and contextual suggestions with homophone/homograph limits of 4/2.
+
+The pinned nixpkgs builds Lua and Octagram into `librime.so` (merged plugins).
+The runtime check verifies both exported module symbols and `find_module`,
+then deploys into a disposable user-data directory. No separate plugin `.so`
+is expected. `theme.nix` generates all panel/menu SVGs and verifies every
+`Image=` target plus SVG rendering at build time, following the nine-slice
+approach in [Catppuccin Fcitx5](https://github.com/catppuccin/fcitx5).

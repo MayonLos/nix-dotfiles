@@ -14,8 +14,8 @@
         ./nix-index.nix
         ./tmux.nix
         (import ./yazi.nix { palette = user.appearance; })
-        ./sysinfo.nix
-        ./tools.nix
+        (import ./sysinfo.nix { palette = user.appearance; })
+        (import ./tools.nix { palette = user.appearance; })
       ];
       user = { pkgs, ... }: { shell = pkgs.zsh; };
       provides.${host.name}.includes = [ den.aspects.command-line-host ];

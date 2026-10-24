@@ -4,7 +4,10 @@ let
   system = "x86_64-linux";
 
   evaluate =
-    selected:
+    {
+      selected,
+      appearance ? null,
+    }:
     (inputs.flake-parts.lib.mkFlake { inherit inputs; } (
       { den, ... }:
       {
@@ -18,7 +21,7 @@ let
 
         den.hosts.${system} = {
           hostA.users = {
-            alice = { };
+            alice = { inherit appearance; };
             bob = { };
           };
           hostB.users = {
@@ -54,12 +57,18 @@ let
       }
     )).nixosConfigurations;
 
-  baseline = evaluate [ ];
-  aliceOnly = evaluate [ "alice@hostA" ];
-  sharedHost = evaluate [
-    "alice@hostA"
-    "bob@hostA"
-  ];
+  baseline = evaluate { selected = [ ]; };
+  aliceOnly = evaluate { selected = [ "alice@hostA" ]; };
+  withPalette = evaluate {
+    selected = [ "alice@hostA" ];
+    appearance = import ../../aspects/appearance/onedark-darker.nix;
+  };
+  sharedHost = evaluate {
+    selected = [
+      "alice@hostA"
+      "bob@hostA"
+    ];
+  };
   afterLastConsumerRemoved = baseline;
 
   hm =
@@ -155,7 +164,21 @@ let
       && !(lib.hasInfix "/run/secrets" selectedHome.programs.zsh.initContent)
       && (host aliceOnly "hostA").users.users.alice.extraGroups == [ ];
 
-    btopUsesBuiltInDefault = selectedHome.programs.btop.settings.color_theme == "Default";
+    noAppearanceKeepsPortableDefaults =
+      selectedHome.programs.btop.settings.color_theme == "Default"
+      && selectedHome.programs.bat.config.theme == "base16"
+      && selectedHome.programs.delta.options.syntax-theme == "base16"
+      && !(selectedHome.home.sessionVariables ? BAT_CACHE_PATH);
+    explicitAppearanceReachesCliConsumers =
+      let
+        themed = hm withPalette "hostA" "alice";
+      in
+      themed.programs.btop.settings.color_theme == "One Dark Darker"
+      && themed.programs.bat.config.theme == "One Dark Darker"
+      && themed.programs.delta.options.syntax-theme == "One Dark Darker"
+      && themed.home.sessionVariables ? BAT_CACHE_PATH
+      && themed.xdg.configFile ? "eza/theme.yml"
+      && themed.xdg.configFile ? "glow/onedark-darker.json";
 
     removingFinalConsumerRemovesHostDeclaration =
       !(host afterLastConsumerRemoved "hostA").programs.zsh.enable;

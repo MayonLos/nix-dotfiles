@@ -12,9 +12,7 @@
     fcitx5 = {
       waylandFrontend = true;
       addons = with pkgs; [
-        (fcitx5-rime.override {
-          rimeDataPkgs = [ pkgs.rime-ice ];
-        })
+        (import ./rime/package.nix { inherit pkgs; })
         fcitx5-gtk
         libsForQt5.fcitx5-qt
         qt6Packages.fcitx5-configtool
@@ -53,102 +51,9 @@
     Install.WantedBy = lib.mkForce config.nixDotfiles.graphicalSessionTargets;
   };
   xdg = {
-    dataFile."fcitx5/themes/One-Dark-Darker/theme.conf".text = ''
-      [Metadata]
-      Name=One-Dark-Darker
-      Version=1
-      Author=mayon
-      Description=One Dark Darker
-      ScaleWithDPI=True
-
-      [InputPanel]
-      NormalColor=${palette.brightFg}
-      HighlightColor=${palette.brightFg}
-      HighlightCandidateColor=${palette.black}
-      HighlightBackgroundColor=${palette.blue}
-      FullWidthHighlight=True
-      PageButtonAlignment=Bottom
-
-      [InputPanel/Background]
-      Color=${palette.bg}
-      BorderColor=${palette.border}
-      BorderWidth=1
-
-      [InputPanel/Background/Margin]
-      Left=2
-      Right=2
-      Top=2
-      Bottom=2
-
-      [InputPanel/Highlight]
-      Color=${palette.blue}
-
-      [InputPanel/Highlight/Margin]
-      Left=7
-      Right=7
-      Top=3
-      Bottom=3
-
-      [InputPanel/ContentMargin]
-      Left=0
-      Right=0
-      Top=0
-      Bottom=0
-
-      [InputPanel/TextMargin]
-      Left=7
-      Right=7
-      Top=3
-      Bottom=3
-
-      [InputPanel/PrevPage]
-      Image=${pkgs.fcitx5}/share/fcitx5/themes/default-dark/prev.png
-
-      [InputPanel/NextPage]
-      Image=${pkgs.fcitx5}/share/fcitx5/themes/default-dark/next.png
-
-      [Menu/CheckBox]
-      Image=${pkgs.fcitx5}/share/fcitx5/themes/default-dark/radio.png
-
-      [Menu/SubMenu]
-      Image=${pkgs.fcitx5}/share/fcitx5/themes/default-dark/arrow.png
-
-      [Menu]
-      NormalColor=${palette.brightFg}
-      HighlightCandidateColor=${palette.black}
-
-      [Menu/Background]
-      Color=${palette.bg}
-      BorderColor=${palette.border}
-      BorderWidth=1
-
-      [Menu/Background/Margin]
-      Left=2
-      Right=2
-      Top=2
-      Bottom=2
-
-      [Menu/Highlight]
-      Color=${palette.blue}
-
-      [Menu/Highlight/Margin]
-      Left=7
-      Right=7
-      Top=3
-      Bottom=3
-
-      [Menu/ContentMargin]
-      Left=2
-      Right=2
-      Top=2
-      Bottom=2
-
-      [Menu/TextMargin]
-      Left=5
-      Right=5
-      Top=3
-      Bottom=3
-    '';
+    dataFile."fcitx5/themes/One-Dark-Darker".source = import ./rime/theme.nix {
+      inherit pkgs palette;
+    };
 
     dataFile."fcitx5/rime/default.custom.yaml".text = ''
       patch:
@@ -157,7 +62,7 @@
         schema_list:
           - schema: rime_ice
 
-        menu/page_size: 5
+        menu/page_size: 7
 
         key_binder/bindings/+:
           - { when: paging, accept: comma, send: Page_Up }
@@ -168,6 +73,18 @@
 
     dataFile."fcitx5/rime/rime_ice.custom.yaml".text = ''
       patch:
+        # Conservative model weights recommended by rime-frost's README:
+        # https://github.com/gaboolic/rime-frost#使用语言模型
+        # Keep our existing Rime-Ice dictionary and all of its Lua processors.
+        grammar:
+          language: wanxiang-lts-zh-hans
+          non_collocation_penalty: -4
+          collocation_max_length: 5
+          collocation_min_length: 2
+          collocation_penalty: -14
+        translator/contextual_suggestions: true
+        translator/max_homophones: 4
+        translator/max_homographs: 2
         # Retain learning and sentence composition for personal words.
         translator/enable_user_dict: true
         translator/enable_sentence: true

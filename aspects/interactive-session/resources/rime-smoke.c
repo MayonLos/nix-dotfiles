@@ -11,9 +11,14 @@ int main(int argc, char **argv) {
   traits.user_data_dir = argv[2];
   traits.app_name = "rime.dotfiles-check";
   traits.log_dir = "";
-  traits.min_log_level = 2;
+  traits.min_log_level = 0;
   api->setup(&traits);
   api->initialize(&traits);
+  if (!api->find_module("lua") || !api->find_module("octagram")) {
+    fprintf(stderr, "Missing Lua or Octagram module\n");
+    api->finalize();
+    return 1;
+  }
   if (api->start_maintenance(True)) api->join_maintenance_thread();
   RimeSessionId session = api->create_session();
   int failed = !session || !api->select_schema(session, "rime_ice");

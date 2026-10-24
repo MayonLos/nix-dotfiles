@@ -4,6 +4,8 @@ let
   rime = builtins.head (
     builtins.filter (p: pkgs.lib.getName p == "fcitx5-rime") home.i18n.inputMethod.fcitx5.addons
   );
+  inherit (rime) engine;
+  theme = home.xdg.dataFile."fcitx5/themes/One-Dark-Darker".source;
   files = [
     "default.custom.yaml"
     "rime_ice.custom.yaml"
@@ -16,8 +18,9 @@ pkgs.runCommand "rime-technical-runtime"
     nativeBuildInputs = [
       pkgs.stdenv.cc
       python
+      pkgs.binutils
     ];
-    buildInputs = [ pkgs.librime ];
+    buildInputs = [ engine ];
   }
   ''
     export HOME="$TMPDIR/home" XDG_DATA_HOME="$TMPDIR/data"
@@ -25,22 +28,48 @@ pkgs.runCommand "rime-technical-runtime"
     ${pkgs.lib.concatMapStringsSep "\n" (name: ''
       cp ${home.xdg.dataFile."fcitx5/rime/${name}".source} "$TMPDIR/rime/${name}"
     '') files}
-    cc -Wall -Wextra -Werror -I${pkgs.librime}/include ${./resources/rime-smoke.c} \
-      -L${pkgs.librime}/lib -Wl,-rpath,${pkgs.librime}/lib -lrime -o "$TMPDIR/rime-smoke"
+    # Both plugins are merged into this library by the pinned nixpkgs recipe.
+    find ${engine}/lib -name '*.so*' > "$out/libraries.log"
+    nm -D ${engine}/lib/librime.so > "$out/symbols.log"
+    grep 'rime_require_module_lua' "$out/symbols.log"
+    grep 'rime_require_module_octagram' "$out/symbols.log"
+    test -L ${rime}/share/rime-data/wanxiang-lts-zh-hans.gram
+    test "$(stat -Lc %s ${rime}/share/rime-data/wanxiang-lts-zh-hans.gram)" = 398497836
+    echo '9eedac1d836f3fdafb61b162035c8937253aedc106be40b2b957d9ab64e9ed89  ${rime}/share/rime-data/wanxiang-lts-zh-hans.gram' | sha256sum -c - > "$out/model.log"
+    cc -Wall -Wextra -Werror -I${engine}/include ${./resources/rime-smoke.c} \
+      -L${engine}/lib -Wl,-rpath,${engine}/lib -lrime -o "$TMPDIR/rime-smoke"
     "$TMPDIR/rime-smoke" ${rime}/share/rime-data "$TMPDIR/rime" \
       nihao 你好 shurufa 输入法 \
       shengmingshipeizhi 声明式配置 kefuxiangoujian 可复现构建 \
       zhongzishuyun 中子输运 hongshizhongjiqi 红石中继器 \
       zhognzi 中子 hello hello > "$out/candidates.log" 2> "$out/deploy.log" \
       || { cat "$out/candidates.log" "$out/deploy.log"; exit 1; }
-    python3 - "$TMPDIR/rime" <<'PY'
-    import pathlib, sys, yaml
+    grep -F 'loading gram db: ${rime}/share/rime-data/wanxiang-lts-zh-hans.gram' "$out/deploy.log"
+    grep -F 'found double array image of size' "$out/deploy.log"
+    if grep -Ei 'error|failed|cannot|could not' "$out/deploy.log"; then exit 1; fi
+    python3 - "$TMPDIR/rime" ${theme} <<'PY'
+    import configparser, pathlib, sys, yaml
     user = pathlib.Path(sys.argv[1])
     schema = yaml.safe_load((user / "build/rime_ice.schema.yaml").read_text())
     translator = schema["translator"]
     assert translator["dictionary"] == "rime_ice_technical"
     assert translator["user_dict"] == "rime_ice"
     assert translator["enable_user_dict"] and translator["enable_sentence"]
+    assert translator["contextual_suggestions"] is True
+    assert translator["max_homophones"] == 4
+    assert translator["max_homographs"] == 2
+    assert schema["grammar"]["language"] == "wanxiang-lts-zh-hans"
+    assert schema["grammar"]["collocation_max_length"] == 5
+    default = yaml.safe_load((user / "build/default.yaml").read_text())
+    assert default["menu"]["page_size"] == 7
+    theme = pathlib.Path(sys.argv[2])
+    panel = configparser.ConfigParser()
+    panel.read(theme / "theme.conf")
+    assert panel["InputPanel"]["highlightcolor"] == panel["InputPanel"]["highlightcandidatecolor"]
+    images = [s["image"] for s in panel.values() if "image" in s]
+    assert len(images) == 8
+    assert set(images) == {"panel.svg", "highlight.svg", "prev.svg", "next.svg", "radio.svg", "arrow.svg"}
+    assert all((theme / image).is_file() for image in images)
     assert schema["reduce_english_filter"]["mode"] == "all"
     assert translator["always_show_comments"] and translator["spelling_hints"] == 8
     assert (user / "rime_ice.userdb").is_dir()

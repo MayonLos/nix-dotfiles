@@ -20,6 +20,13 @@ let
         raise RuntimeError("Invalid Kitty workspace settings")
     if opts.cursor.as_sharp != "${palette.brightFg}" or opts.selection_foreground.as_sharp != "${palette.brightFg}":
         raise RuntimeError("Invalid cursor/selection roles")
+    assert opts.tab_bar_style == "powerline" and opts.tab_powerline_style == "slanted"
+    assert opts.undercurl_style == "thick-sparse"
+    assert opts.cursor_trail == ${if palette.reducedMotion or false then "0" else "1"}
+    assert opts.cursor_trail_decay == (0.08, 0.16)
+    assert opts.cursor_trail_start_threshold == (4, 4)
+    assert opts.cursor_trail_color.as_sharp == "${palette.blue}"
+    assert tuple(opts.window_padding_width) == (8, 8, 8, 8)
     expected = ${
       builtins.toJSON (
         {
@@ -43,6 +50,9 @@ let
 in
 assert !(home.xdg.configFile ? "kitty/mayon.conf");
 assert !(home.home.activation ? seedKittyConfig);
+assert home.programs.delta.options.syntax-theme == home.programs.bat.config.theme;
+assert home.home.sessionVariables.BAT_THEME == home.programs.bat.config.theme;
+assert !home.programs.tealdeer.enableAutoUpdates;
 pkgs.runCommand "command-line-runtime"
   {
     nativeBuildInputs = [
@@ -54,6 +64,47 @@ pkgs.runCommand "command-line-runtime"
   ''
     export HOME="$TMPDIR/home" XDG_CONFIG_HOME="$TMPDIR/config" XDG_CACHE_HOME="$TMPDIR/cache"
     mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" "$out"
+    export BAT_CACHE_PATH=${home.home.sessionVariables.BAT_CACHE_PATH}
+    export BAT_THEME='One Dark Darker'
+    test -s "$BAT_CACHE_PATH/themes.bin"
+    test -s "$BAT_CACHE_PATH/syntaxes.bin"
+    ${home.programs.bat.package}/bin/bat --list-themes --color=never | grep -Fx 'One Dark Darker' > "$out/bat-theme.txt"
+    cat > "$TMPDIR/sample.py" <<'PY_SAMPLE'
+    # One Dark Darker syntax sample
+    def greet(name):
+        return "hello " + str(42)
+    PY_SAMPLE
+    ${home.programs.bat.package}/bin/bat --no-config --theme="$BAT_THEME" --color=always --style=plain "$TMPDIR/sample.py" > "$out/bat-sample.ansi"
+    ${home.programs.delta.package}/bin/delta --list-syntax-themes | grep -F 'One Dark Darker' > "$out/delta-theme.txt"
+    printf '%s\n' 'diff --git a/sample.py b/sample.py' '--- a/sample.py' '+++ b/sample.py' '@@ -1 +1 @@' '-value = 1' '+value = 42' | \
+      ${home.programs.delta.package}/bin/delta --no-gitconfig --syntax-theme="$BAT_THEME" --paging=never --true-color=always > "$out/delta-sample.ansi"
+    test -z '${home.home.activation.batCache.data}'
+    mkdir -p "$XDG_CONFIG_HOME/eza"
+    cp ${home.xdg.configFile."eza/theme.yml".source} "$XDG_CONFIG_HOME/eza/theme.yml"
+    ${home.programs.eza.package}/bin/eza --color=always --icons=always "$TMPDIR" > "$out/eza.ansi" 2> "$out/eza.err"
+    test ! -s "$out/eza.err"
+    ${pkgs.glow}/bin/glow --style ${
+      home.xdg.configFile."glow/onedark-darker.json".source
+    } ${pkgs.writeText "sample.md" "# One Dark Darker\n\nA **bold** word and `code`.\n"} > "$out/glow.txt"
+    ${home.programs.fastfetch.package}/bin/fastfetch --config ${
+      home.xdg.configFile."fastfetch/config.jsonc".source
+    } --pipe false > "$out/fastfetch.txt" 2> "$out/fastfetch.err"
+    test ! -s "$out/fastfetch.err"
+    grep -F 'SYSTEM' "$out/fastfetch.txt"
+    grep -F 'HARDWARE' "$out/fastfetch.txt"
+    grep -F 'color_theme = "${home.programs.btop.settings.color_theme}"' ${
+      home.xdg.configFile."btop/btop.conf".source
+    }
+    grep -F '${palette.blue}' ${home.xdg.configFile."btop/themes/One Dark Darker.theme".source}
+    python3 - "$out/bat-sample.ansi" "$out/delta-sample.ansi" ${
+      home.home.file."${home.xdg.configHome}/tealdeer/config.toml".source
+    } <<'PY_CLI'
+    import pathlib, sys, tomllib
+    for file in sys.argv[1:3]:
+        assert b'\x1b[' in pathlib.Path(file).read_bytes(), file
+    config = tomllib.loads(pathlib.Path(sys.argv[3]).read_text())
+    assert config["updates"]["auto_update"] is True
+    PY_CLI
     export KITTY_RESULT="$out/kitty.json"
     ${pkgs.kitty}/bin/kitty +runpy "exec(open('${kittyExtra}').read())"
     test -s "$KITTY_RESULT"
