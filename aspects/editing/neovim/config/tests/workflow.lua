@@ -109,27 +109,15 @@ for _, name in ipairs({
 	"NormalFloat",
 	"FloatBorder",
 	"FloatTitle",
-	"BlinkCmpMenu",
-	"BlinkCmpMenuBorder",
-	"BlinkCmpDoc",
-	"NoiceCmdlinePopup",
-	"NoiceCmdlinePopupBorder",
+	"Pmenu",
+	"PmenuBorder",
 	"SnacksPickerList",
 }) do
 	assert(hl(name).bg == hl("Normal").bg, name .. " has a disconnected background")
 end
-assert(hl("BlinkCmpMenuSelection").bg == hl("PmenuSel").bg, "completion selection has two surfaces")
-for _, name in ipairs({ "BlinkCmpKindValue", "BlinkCmpLabel", "BlinkCmpLabelDetail", "BlinkCmpSource" }) do
-	assert(hl(name).bg == nil, name .. " masks the selected row")
-end
-for _, name in ipairs({
-	"BlinkCmpLabelDetail",
-	"BlinkCmpLabelDescription",
-	"BlinkCmpSource",
-	"RenderMarkdownH5",
-	"RenderMarkdownH6",
-}) do
-	assert(hl(name).fg == hl("Normal").fg, name .. " uses low-contrast muted text for reading content")
+assert(hl("PmenuSel").bg == tonumber(require("mayon.generated").palette.selection:sub(2), 16))
+for _, name in ipairs({ "RenderMarkdownH5", "RenderMarkdownH6" }) do
+	assert(hl(name).fg == hl("Normal").fg)
 end
 -- A literal percent and multibyte names must render as text, never statusline
 -- directives, at narrow widths as well as in the full workspace rail.

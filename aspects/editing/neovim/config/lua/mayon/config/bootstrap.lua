@@ -2,6 +2,7 @@ local M = {}
 function M.setup()
 	local started = vim.uv.hrtime()
 	require("mayon.config.options").setup()
+	require("vim._core.ui2").enable()
 	require("mayon.ui.theme").setup()
 	require("mayon.ui.icons").setup()
 	require("mayon.config.loader").setup()

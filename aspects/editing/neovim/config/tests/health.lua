@@ -4,13 +4,16 @@ require("lz.n").trigger_load("nvim-treesitter")
 vim.api.nvim_exec_autocmds("User", { pattern = "MayonVeryLazy" })
 require("lz.n").trigger_load({
 	"codecompanion.nvim",
-	"diffview.nvim",
+	"claudecode.nvim",
+	"sidekick.nvim",
+	"minuet-ai.nvim",
+	"edgy.nvim",
+	"smart-splits.nvim",
+	"codediff.nvim",
 	"grug-far.nvim",
 	"trouble.nvim",
 	"yazi.nvim",
 	"oil.nvim",
-	"nvim-dap",
-	"overseer.nvim",
 })
 vim.wait(100)
 assert(not vim.g.mayon_load_error, vim.g.mayon_load_error)

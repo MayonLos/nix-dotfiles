@@ -4,14 +4,10 @@ vim.opt.rtp:prepend(root)
 if vim.env.NVIM_LSPCONFIG_PATH then
 	vim.opt.rtp:prepend(vim.env.NVIM_LSPCONFIG_PATH)
 end
-if vim.env.NVIM_BLINK_PATH then
-	vim.opt.rtp:prepend(vim.env.NVIM_BLINK_PATH)
-end
 
 -- --clean intentionally skips bootstrap. Load the optional payloads that
 -- production's lz.n language spec now supplies before native LSP setup.
 vim.cmd.packadd("nvim-lspconfig")
-vim.cmd.packadd("blink.cmp")
 local lsp = require("mayon.lsp")
 lsp.setup()
 
@@ -21,93 +17,6 @@ assert(vim.bo.filetype == "", "test expects an empty current buffer")
 assert(vim.diagnostic.config().virtual_text == false)
 assert(vim.diagnostic.config().virtual_lines == false)
 assert(vim.diagnostic.config().severity_sort == true)
-
--- LSP startup work can expose several concurrent tokens. Publish only a
--- compact statusline snapshot; routine progress must never create toasts.
-do
-	local client_id = 987654
-	local other_client_id = 987655
-	local original_notify = vim.notify
-	local original_get_client = vim.lsp.get_client_by_id
-	local notifications = {}
-	local progress_events = {}
-	local event_group = vim.api.nvim_create_augroup("LspProgressTest", { clear = true })
-	vim.api.nvim_create_autocmd("User", {
-		group = event_group,
-		pattern = "MayonLspProgressChanged",
-		callback = function(event)
-			progress_events[#progress_events + 1] = event.data
-		end,
-	})
-	vim.notify = function(message, level, opts)
-		opts = opts or {}
-		local id = opts.replace or (#notifications + 1)
-		notifications[#notifications + 1] = { id = id, message = message, level = level, opts = opts }
-		return id
-	end
-	vim.lsp.get_client_by_id = function(id)
-		if id == client_id then
-			return { name = "jdtls", attached_buffers = {} }
-		elseif id == other_client_id then
-			return { name = "clangd", attached_buffers = {} }
-		end
-		return original_get_client(id)
-	end
-	local function emit(id, token, kind, message)
-		vim.api.nvim_exec_autocmds("LspProgress", {
-			data = {
-				client_id = id,
-				params = { token = token, value = { kind = kind, title = token, message = message } },
-			},
-		})
-	end
-	emit(client_id, "jvm", "begin", "Detect installed JVMs")
-	assert(#notifications == 0, "LSP begin progress must not notify")
-	assert(#lsp.progress_status() == 1 and lsp.progress_status()[1].name == "jdtls")
-	emit(client_id, "sync", "begin", "Synchronizing projects")
-	assert(#notifications == 0, "parallel LSP progress must not notify")
-	assert(lsp.progress_status()[1].task_count == 2, "parallel tasks should be aggregated for the statusline")
-	assert(progress_events[#progress_events][1].task_count == 2, "progress change event should publish the aggregate")
-	emit(client_id, "jvm", "report", "Using configured JVM")
-	assert(#notifications == 0, "progress reports must not notify")
-	assert(
-		lsp.progress_status()[1].message:find("Synchronizing projects", 1, true),
-		"active parallel task should remain summarized"
-	)
-	emit(client_id, "jvm", "end", "")
-	assert(
-		#notifications == 0 and lsp.progress_status()[1].task_count == 1,
-		"partial completion should update the aggregate without notifying"
-	)
-	emit(client_id, "sync", "end", "")
-	assert(#notifications == 0, "completed LSP progress must not notify")
-	assert(#lsp.progress_status() == 0, "completed progress should leave no stale statusline entry")
-	emit(client_id, "restart", "begin", "Restarting language server")
-	emit(other_client_id, "index", "begin", "Indexing workspace")
-	emit(client_id, "restart", "report", "Loading project")
-	local latest = lsp.progress_status()
-	assert(#latest == 2 and latest[1].name == "clangd" and latest[2].name == "jdtls")
-	emit(client_id, "restart", "end", "")
-	assert(#lsp.progress_status() == 1 and lsp.progress_status()[1].name == "clangd")
-	-- A synthetic last-client detach resets Neovim buffer-local hint state.
-	-- Keep that lifecycle event off the buffer used by the attach tests below.
-	local detached_buf = vim.api.nvim_create_buf(false, true)
-	vim.api.nvim_exec_autocmds("LspDetach", {
-		buffer = detached_buf,
-		data = { client_id = other_client_id },
-	})
-	assert(
-		vim.wait(1000, function()
-			return #lsp.progress_status() == 0
-		end, 10),
-		"detaching the last buffer should clear the client's progress status"
-	)
-	vim.api.nvim_buf_delete(detached_buf, { force = true })
-	assert(#notifications == 0, "progress end and detach must never notify")
-	assert(progress_events[#progress_events][1] == nil, "cleared status should be published after detach")
-	vim.notify = original_notify
-	vim.lsp.get_client_by_id = original_get_client
-end
 
 assert(vim.lsp.config.lua_ls.settings.Lua.runtime.version == "LuaJIT")
 assert(vim.lsp.config.yamlls.settings.yaml.schemaStore.enable == false)
@@ -145,31 +54,39 @@ local missing_page = { code = "2", severity = vim.diagnostic.severity.ERROR }
 vim.lsp.config.marksman.handlers["textDocument/publishDiagnostics"](nil, { diagnostics = { missing_page } }, {}, {})
 vim.lsp.handlers["textDocument/publishDiagnostics"] = original_diagnostics_handler
 assert(missing_page.severity == vim.diagnostic.severity.HINT, "missing Marksman pages should be hints")
-if vim.env.NVIM_BLINK_PATH then
-	local blink = require("blink.cmp")
-	local expected = blink.get_lsp_capabilities(vim.lsp.protocol.make_client_capabilities())
-	assert(
-		vim.deep_equal(vim.lsp.config["*"].capabilities, expected),
-		"Blink LSP capabilities should be applied globally"
-	)
-end
+assert(
+	vim.deep_equal(vim.lsp.config["*"].capabilities, vim.lsp.protocol.make_client_capabilities()),
+	"LSP servers should use native Neovim capabilities"
+)
 
 local bufnr = vim.api.nvim_get_current_buf()
+local get_client_by_id = vim.lsp.get_client_by_id
+vim.lsp.get_client_by_id = function(id)
+	if id == -1 then
+		return {
+			id = id,
+			supports_method = function()
+				return false
+			end,
+		}
+	end
+	return get_client_by_id(id)
+end
 vim.api.nvim_exec_autocmds("LspAttach", { buffer = bufnr, data = { client_id = -1 } })
+vim.lsp.get_client_by_id = get_client_by_id
 local maps = {}
 for _, keymap in ipairs(vim.api.nvim_buf_get_keymap(bufnr, "n")) do
 	maps[keymap.desc] = true
 end
 for _, desc in ipairs({
-	"Go to definition",
-	"Go to declaration",
-	"Type definition",
-	"Implementation",
-	"Hover",
-	"Run codelens",
-	"Rename symbol",
-	"Code action",
-	"Workspace diagnostics",
+	"跳到定义",
+	"跳到声明",
+	"跳到类型定义",
+	"跳到实现",
+	"查看悬浮文档",
+	"运行代码透镜",
+	"重命名符号",
+	"执行代码动作",
 }) do
 	assert(maps[desc], "missing LspAttach map " .. desc)
 end
@@ -183,7 +100,7 @@ end
 for _, lhs in ipairs({ "gra", "gri", "grn", "grr", "grt", "grx" }) do
 	assert(global_maps[lhs], "native global LSP map was removed: " .. lhs)
 end
-assert(global_maps["Switch source/header"], "source/header map should remain global")
+assert(global_maps["切换源文件与头文件"], "source/header map should remain global")
 assert(vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr }), "inlay hints should be enabled for attached buffers")
 
 local ns = vim.api.nvim_create_namespace("lsp-migration-test")

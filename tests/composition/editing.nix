@@ -45,6 +45,9 @@ let
 
         den.default = {
           nixos = {
+            # Reuse the pipeline package set (including Copilot's unfree opt-in)
+            # rather than letting fixture hosts instantiate another nixpkgs.
+            nixpkgs.pkgs = pkgs;
             system.stateVersion = "26.05";
             boot.loader.grub.enable = false;
             fileSystems."/" = {

@@ -1,10 +1,20 @@
-_: {
+{ inputs, ... }: {
   perSystem =
-    { pkgs, ... }:
+    {
+      pkgs,
+      pkgs-unstable,
+      system,
+      ...
+    }:
     let
-      neovim = import ../aspects/editing/neovim/package.nix { inherit pkgs; };
+      agents = inputs.llm-agents.packages.${system};
+      acpAdapters = {
+        codex = "${agents.codex-acp}/bin/codex-acp";
+        claude = "${agents.claude-agent-acp}/bin/claude-agent-acp";
+      };
+      neovim = import ../aspects/editing/neovim/package.nix { inherit pkgs pkgs-unstable acpAdapters; };
       reduced = import ../aspects/editing/neovim/package.nix {
-        inherit pkgs;
+        inherit pkgs pkgs-unstable acpAdapters;
         palette = (import ../aspects/appearance/onedark-darker.nix) // {
           reducedMotion = true;
         };
@@ -42,7 +52,7 @@ _: {
                 export NVIM_APPNAME=nvim
                 unset VIMINIT
                 mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"
-                for test in startup completion integration workflow fileops lua_workspace modern interface; do
+                for test in startup completion integration workflow fileops lua_workspace modern interface ai native codediff; do
                   export NVIM_TEST_FILE="${neovim.configDir}/tests/$test.lua"
                   ${neovim.normal}/bin/nvim --headless -c 'luafile ${neovim.configDir}/tests/run.lua'
                 done

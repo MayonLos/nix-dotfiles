@@ -3,7 +3,6 @@ return {
 		"nvim-lspconfig",
 		event = { "BufReadPre", "BufNewFile" },
 		after = function()
-			require("mayon.config.loader").pack("blink.cmp")
 			require("mayon.lsp").setup()
 			require("mayon.features.folds").setup()
 		end,
@@ -13,14 +12,6 @@ return {
 		event = "LspAttach",
 		after = function()
 			require("mayon.ui.breadcrumbs").setup()
-		end,
-	},
-	{
-		"noice.nvim",
-		event = "User MayonVeryLazy",
-		cmd = { "Noice", "NoiceHistory", "NoiceErrors", "NoiceDismiss" },
-		after = function()
-			require("mayon.ui.noice").setup()
 		end,
 	},
 	{

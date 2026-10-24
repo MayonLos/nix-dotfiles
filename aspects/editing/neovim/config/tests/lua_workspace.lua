@@ -73,7 +73,7 @@ local ok, err = xpcall(function()
 	local ordinary_root, ordinary_file = project_file("ordinary")
 	mkdir(ordinary_root .. "/.git")
 	local ordinary_buf, ordinary_client = open_lua(ordinary_file, {
-		"local module = require('blink.cmp')",
+		"local module = require('snacks')",
 		"return module",
 	})
 	assert(
@@ -85,7 +85,7 @@ local ok, err = xpcall(function()
 	assert(ordinary_workspace:enabled(), "ordinary workspace should enable lazydev")
 	assert(
 		vim.wait(5000, function()
-			return has_path(ordinary_workspace.library, module_lua_root("blink.cmp"))
+			return has_path(ordinary_workspace.library, module_lua_root("snacks"))
 		end, 25),
 		"a required plugin module should add its Lua library on demand; found: "
 			.. vim.inspect(ordinary_workspace.library)
@@ -104,7 +104,7 @@ local ok, err = xpcall(function()
 		"LuaLS should retain lazydev's runtime module path; found: " .. vim.inspect(ordinary_settings)
 	)
 	assert(vim.tbl_contains(runtime_path, "?/init.lua"), "LuaLS should retain lazydev's runtime init path")
-	assert(has_path(ordinary_library, module_lua_root("blink.cmp")), "the required plugin library should reach LuaLS")
+	assert(has_path(ordinary_library, module_lua_root("snacks")), "the required plugin library should reach LuaLS")
 	assert(not has_path(ordinary_library, unrelated_lua_root), "LuaLS must not receive every plugin library")
 	assert(
 		vim.tbl_get(ordinary_settings, "Lua", "workspace", "checkThirdParty") == false,
@@ -133,7 +133,7 @@ local ok, err = xpcall(function()
 		end
 		write(config_path, config_lines)
 		local before = read(config_path)
-		local buf, client = open_lua(path, { "return require('blink.cmp')" })
+		local buf, client = open_lua(path, { "return require('snacks')" })
 		assert(vim.fs.normalize(client.root_dir) == vim.fs.normalize(root), "LuaLS must honor the project config root")
 		assert(lazydev_config.is_enabled(root) == false, "lazydev must defer to an ancestor .luarc." .. extension)
 		assert(not lazydev_buffer.attached[buf], "lazydev must not attach inside a project-owned LuaLS config")
@@ -149,7 +149,7 @@ local ok, err = xpcall(function()
 	local disabled_root, disabled_file = project_file("global-disabled")
 	mkdir(disabled_root .. "/.git")
 	vim.g.lazydev_enabled = false
-	local disabled_buf, disabled_client = open_lua(disabled_file, { "return require('blink.cmp')" })
+	local disabled_buf, disabled_client = open_lua(disabled_file, { "return require('snacks')" })
 	assert(
 		vim.fs.normalize(disabled_client.root_dir) == vim.fs.normalize(disabled_root),
 		"global opt-out must retain normal LuaLS rooting"

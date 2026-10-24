@@ -48,6 +48,8 @@ in
     # the immutable store package. Verified with an isolated 0.162.1 cold start;
     # the former --no-daemon wrapper is no longer needed.
     agents.codex
+    agents.codex-acp
+    agents.claude-agent-acp
 
     # Claude Code's Nix-managed CLI; authentication and history stay user-owned.
     agents.claude-code
@@ -57,6 +59,13 @@ in
     # browser OAuth on first launch or XAI_API_KEY for non-browser use.
     agents.grok
   ];
+
+  # Public runtime hand-off to editor consumers; only executable paths, no credentials.
+  # The standalone Neovim factory also accepts these as explicit build inputs.
+  home.sessionVariables = {
+    NVIM_CODEX_ACP = "${agents.codex-acp}/bin/codex-acp";
+    NVIM_CLAUDE_ACP = "${agents.claude-agent-acp}/bin/claude-agent-acp";
+  };
 
   # NOT here: `agents.zcode` (Z.ai's Electron IDE). Removed 2026-09-19 at the
   # user's instruction after it was observed pushing to a user repository

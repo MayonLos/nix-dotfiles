@@ -1,4 +1,7 @@
-{ pkgs }:
+{
+  pkgs,
+  pkgs-unstable ? pkgs,
+}:
 
 let
   inherit (pkgs) vimPlugins;
@@ -7,25 +10,30 @@ let
     vimPlugins.lz-n
     vimPlugins.oil-nvim
     vimPlugins.yazi-nvim
-    vimPlugins.nvim-dap
-    vimPlugins.nvim-dap-view
-    vimPlugins.nvim-dap-virtual-text
-    vimPlugins.overseer-nvim
     vimPlugins.todo-comments-nvim
     vimPlugins.rainbow-delimiters-nvim
     vimPlugins.nvim-colorizer-lua
     vimPlugins.tiny-inline-diagnostic-nvim
     vimPlugins.satellite-nvim
     vimPlugins.incline-nvim
-    vimPlugins.smear-cursor-nvim
-    vimPlugins.blink-cmp
-    vimPlugins.codecompanion-nvim
+    # unstable: 19.13 缺少 19.14–19.27 的修复与 ACP 改进；v20 有破坏性变更，待 nixpkgs 收录后再迁移
+    (pkgs-unstable.vimPlugins.codecompanion-nvim.overrideAttrs (_: {
+      # Keep the runtime graph on the editor's stable LuaJIT/Plenary. Mixing
+      # unstable Plenary would introduce a second LuaJIT into the wrapper env.
+      dependencies = [ vimPlugins.plenary-nvim ];
+    }))
+    vimPlugins.claudecode-nvim
+    vimPlugins.sidekick-nvim
+    vimPlugins.minuet-ai-nvim
+    vimPlugins.mini-diff
+    vimPlugins.edgy-nvim
+    vimPlugins.smart-splits-nvim
     (vimPlugins.codecompanion-history-nvim.overrideAttrs (_: {
       dependencies = [ vimPlugins.plenary-nvim ];
       doCheck = false;
     }))
     vimPlugins.conform-nvim
-    (pkgs.callPackage ./diffview-plus.nix { })
+    vimPlugins.codediff-nvim
     vimPlugins.flash-nvim
     vimPlugins.gitsigns-nvim
     vimPlugins.grug-far-nvim
@@ -33,7 +41,6 @@ let
     vimPlugins.lazydev-nvim
     vimPlugins.nvim-lint
     vimPlugins.nvim-navic
-    vimPlugins.noice-nvim
     vimPlugins.nvim-autopairs
     vimPlugins.multicursor-nvim
     vimPlugins.nvim-surround

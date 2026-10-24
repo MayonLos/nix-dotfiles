@@ -33,15 +33,12 @@ local function setup()
 		end,
 	})
 
-	vim.keymap.set("n", "<leader>lf", function()
-		require("conform").format({ async = true, lsp_format = "fallback" })
-	end, { desc = "Format buffer (manual)" })
 	vim.api.nvim_create_user_command("FormatDisable", function()
 		vim.g.disable_autoformat = true
-	end, { desc = "Disable autoformat-on-save" })
+	end, { desc = "关闭保存时格式化" })
 	vim.api.nvim_create_user_command("FormatEnable", function()
 		vim.g.disable_autoformat = false
-	end, { desc = "Enable autoformat-on-save" })
+	end, { desc = "启用保存时格式化" })
 end
 
 return {

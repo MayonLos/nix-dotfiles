@@ -290,10 +290,20 @@ contextual suggestions，同音/同形候选上限为 4/2。锁定 nixpkgs 将 L
 学习写入仍是原有 `rime_ice.userdb`；不接管个人短语、同步或历史。
 
 候选框借鉴 [Catppuccin Fcitx5](https://github.com/catppuccin/fcitx5) 的 SVG nine-slice
-方式：12px 外圆角、1px 边线、8px 高亮圆角，选中项 blue/black，正文 foregroundStrong。
-背景切片边距为 12，内容边距 6，文字边距横 10/纵 5；没有新增 compositor 阴影。
-SVG 由同一 palette 生成，图标不再依赖 default-dark PNG。构建检查解析 INI、核对所有
-Image 路径并渲染 SVG；实际 150% 缩放下的文字位置与圆角仍需现场观察。
+方式：横排、字号 13、12px 外圆角和 1px 边线；选中项用 palette.selection 底色、蓝字
+与 8px 圆角细蓝描边。序号和注释用 muted 色，正文用 foregroundStrong。背景切片边距为
+12，内容边距 8，文字边距横 12/纵 8；翻页箭头改为 20px 图标并扩大点击边距。Fcitx5
+5.1.19 classicui 源码有 `EnableBlur`、`BlurMargin` 和 `ShadowMargin` 字段，但 blur 明确
+针对 KWin，`ShadowMargin` 只参与 XCB 定位/屏幕边界计算；Mango 没有可依赖的 classicui
+阴影实现，所以保留清晰边线而不声明无效阴影或模糊。SVG 由同一 palette 生成，构建检查
+解析 INI、核对颜色/边距和 Image 路径并渲染 SVG；实际 150% 缩放下的文字位置与圆角仍需
+现场观察。
+
+官方微信 Linux 包由本地 launcher 和 `wechat.desktop` 共同设置 `QT_QPA_PLATFORM=xcb`、
+`QT_IM_MODULE=fcitx`、`XMODIFIERS=@im=fcitx`，变量仅作用于微信进程。原版 Qt Wayland
+输入路径不能正常向 Fcitx 输入；wrapper 将其固定为 XCB 并使用 Fcitx Qt 输入上下文。构建
+阶段检查 launcher 中三个变量和 desktop entry 的 wrapper 路径；实际候选输入仍以主机上的
+交互验收为准。
 
 CLI 中 bat 与 delta 共用从 palette 生成的 `One Dark Darker.tmTheme`，语法色参考
 [onedark.nvim](https://github.com/navarasu/onedark.nvim) 的 darker 作用域。

@@ -40,8 +40,7 @@ function M.setup()
 		"markdown",
 		"ai",
 		"decorations",
-		"debug",
-		"tasks",
+		"layout",
 	}) do
 		vim.list_extend(specs, require("mayon.plugins." .. domain))
 	end

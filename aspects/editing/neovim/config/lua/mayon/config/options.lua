@@ -2,6 +2,7 @@ local M = {}
 
 function M.setup()
 	vim.g.mapleader = " "
+	vim.g.maplocalleader = ","
 	-- 0.12 ships both markdown.vim and markdown.lua. Their undo_ftplugin
 	-- strings both unmap [[/]], leaving E31 on lz.n's FileType replay. Keep
 	-- the native Lua heading navigation and suppress only the duplicate Vim maps.
@@ -12,6 +13,12 @@ function M.setup()
 	end
 	local options = {
 		clipboard = "unnamedplus",
+		-- 0.12.4: nearest has no effect with fuzzy; retain fuzzy sorting.
+		completeopt = "menuone,noselect,popup,fuzzy",
+		pumborder = "rounded",
+		pummaxwidth = 60,
+		pumheight = 10,
+		wildoptions = "pum,fuzzy",
 		breakindent = true,
 		breakindentopt = "shift:2,min:20",
 		concealcursor = "nvic",
@@ -58,6 +65,8 @@ function M.setup()
 	for name, value in pairs(options) do
 		vim.opt[name] = value
 	end
+	vim.opt.diffopt:remove("inline:char")
+	vim.opt.diffopt:append("inline:word")
 	vim.opt.fillchars:append({ vert = " ", vertleft = " ", vertright = " ", verthoriz = " " })
 	vim.filetype.add({ extension = { mdx = "markdown" } })
 end

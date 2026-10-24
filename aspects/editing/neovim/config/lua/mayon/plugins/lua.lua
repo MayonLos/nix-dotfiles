@@ -4,7 +4,7 @@ local function setup()
 	require("lazydev").setup({
 		library = {},
 		-- Keep native LuaLS root detection, including projects with their own
-		-- configuration. Blink uses its explicit provider instead of nvim-cmp.
+		-- configuration. Lazydev remains responsible for LuaLS library injection.
 		integrations = { lspconfig = false, cmp = false },
 		enabled = function(root)
 			if vim.g.lazydev_enabled == false then

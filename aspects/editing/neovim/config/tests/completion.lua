@@ -1,111 +1,171 @@
--- Run in the wrapped editor so Blink and its snippet provider are available.
-local source_path = vim.fn.fnamemodify(debug.getinfo(1, "S").source:gsub("^@", ""), ":p")
-local config_dir = vim.fs.dirname(vim.fs.dirname(source_path))
+local completion = require("mayon.features.native_completion")
 
-local config = require("blink.cmp.config")
-local configured_path = config_dir .. "/snippets"
-local snippet_opts = config.sources.providers.snippets.opts
-assert(snippet_opts, "the startup config must configure Blink's snippets provider")
-assert(vim.tbl_contains(snippet_opts.search_paths, configured_path), "startup must include this config's snippets")
+local maps = vim.api.nvim_get_keymap("i")
+local found = {}
+for _, map in ipairs(maps) do
+	if map.lhs == "<Tab>" then
+		found.tab = map
+	elseif map.lhs == "<S-Tab>" then
+		found.shift_tab = map
+	elseif map.lhs == "<C-Space>" then
+		found.manual = map
+	elseif map.lhs == "<CR>" then
+		found.enter = map
+	elseif map.lhs == "<Esc>" then
+		found.escape = map
+	end
+end
+assert(
+	found.tab and found.shift_tab and found.manual and found.enter and found.escape,
+	"native completion maps should be installed"
+)
 
--- Exercise Blink's real per-filetype provider registry and lazydev's module
--- completion implementation against a specific module prefix.
-local previous_buf = vim.api.nvim_get_current_buf()
-local lua_buf = vim.api.nvim_create_buf(false, true)
-vim.api.nvim_win_set_buf(0, lua_buf)
-vim.bo[lua_buf].filetype = "lua"
-local sources = require("blink.cmp.sources.lib")
-local enabled_sources = sources.get_enabled_provider_ids("default")
-assert(vim.list_contains(enabled_sources, "lazydev"), "Lua buffers should enable lazydev completions")
-local lazydev_provider = sources.get_provider_by_id("lazydev")
-assert(lazydev_provider.name == "Lua Modules", "Blink should register the configured Lua module provider")
-local lazydev_prefix = "require('blink.cmp."
-vim.api.nvim_buf_set_lines(lua_buf, 0, -1, false, { lazydev_prefix })
-local lazydev_response
-lazydev_provider.module:get_completions({
-	id = 74,
-	cursor = { 1, #lazydev_prefix },
-	bounds = { start_col = 1 },
-	line = lazydev_prefix,
-}, function(result)
-	lazydev_response = result
-end)
-assert(lazydev_response and #lazydev_response.items > 0, "lazydev should return module completions")
-local blink_config_item
-for _, candidate in ipairs(lazydev_response.items) do
-	if candidate.label == "blink.cmp.config" then
-		blink_config_item = candidate
+local ai = require("mayon.features.ai_completion")
+local old_accept = ai.accept
+local old_dismiss = ai.dismiss
+local old_active, old_jump = vim.snippet.active, vim.snippet.jump
+local old_pumvisible = vim.fn.pumvisible
+local calls = {}
+ai.accept = function()
+	calls.ai = (calls.ai or 0) + 1
+	return true
+end
+vim.snippet.active = function()
+	calls.snippet_check = (calls.snippet_check or 0) + 1
+	return true
+end
+vim.snippet.jump = function(direction)
+	calls.jump = direction
+end
+assert(found.tab.callback() == "", "Tab should consume an available AI completion")
+assert(calls.ai == 1 and not calls.snippet_check, "AI acceptance must outrank snippet navigation")
+
+ai.accept = function()
+	calls.ai = calls.ai + 1
+	return false
+end
+assert(
+	found.tab.callback() == "<Cmd>lua vim.snippet.jump(1)<CR>",
+	"Tab should defer an active snippet jump until after its expression mapping"
+)
+assert(calls.snippet_check == 1, "snippet navigation should follow AI acceptance")
+assert(
+	found.shift_tab.callback() == "<Cmd>lua vim.snippet.jump(-1)<CR>",
+	"Shift-Tab should defer reverse snippet navigation"
+)
+
+vim.fn.pumvisible = function()
+	return 1
+end
+local previous_ai_calls = calls.ai
+assert(
+	found.tab.callback() == "<Cmd>lua vim.snippet.jump(1)<CR>",
+	"Tab in the native popup should preserve snippet navigation"
+)
+assert(calls.ai == previous_ai_calls, "Tab in the native popup must not accept an AI suggestion")
+vim.fn.pumvisible = old_pumvisible
+ai.dismiss = function()
+	return true
+end
+assert(found.escape.callback() == "", "Esc should dismiss a visible AI suggestion without leaving insert mode")
+ai.dismiss = function()
+	return false
+end
+assert(
+	found.escape.callback() == vim.api.nvim_replace_termcodes("<Esc>", true, false, true),
+	"Esc should retain its insert-mode exit behavior when no AI suggestion is visible"
+)
+ai.dismiss = old_dismiss
+
+vim.snippet.active = function()
+	return false
+end
+assert(found.tab.callback() == "<Tab>", "Tab should fall back to native indentation")
+assert(completion.enter(true, -1) == "<CR>", "Enter with no selected item should insert a newline")
+assert(completion.enter(true, 0) == "<C-y>", "Enter should accept an explicitly selected item")
+assert(completion.enter(false, -1) == "<CR>", "Enter without a completion menu should insert a newline")
+vim.snippet.active, vim.snippet.jump = old_active, old_jump
+
+local snippets = completion.snippet_complete(0, "for")
+assert(type(snippets) == "table", "C++ completefunc should return completion items")
+local forr
+for _, item in ipairs(snippets) do
+	if item.word == "forr" then
+		forr = item
 		break
 	end
 end
-assert(blink_config_item, "lazydev should discover a real Blink module from the runtime path")
-vim.api.nvim_win_set_buf(0, previous_buf)
-vim.api.nvim_buf_delete(lua_buf, { force = true })
-
-local provider = require("blink.cmp.sources.lib").get_provider_by_id("snippets")
-local source = provider.module
-local registry = source.registry
-assert(vim.tbl_contains(registry.config.search_paths, configured_path), "Blink must scan the repo snippets")
-
-local snippets = registry:get_snippets_for_ft("cpp")
-local function find_snippet(prefix, body_pattern)
-	for _, snippet in ipairs(snippets) do
-		if snippet.prefix == prefix and table.concat(snippet.body, "\n"):find(body_pattern, 1, true) then
-			return snippet
-		end
-	end
-end
-
-local cpt = find_snippet("cpt", "#include <bits/stdc++.h>")
-assert(cpt, "the custom C++ cpt snippet must load from cpp.json")
-local forr = find_snippet("forr", "for (int")
-assert(forr, "the custom C++ forr snippet must load alongside bundled snippets")
-local vt = find_snippet("vt", "vector<")
-assert(vt, "the custom C++ vt snippet must load from cpp.json")
-
--- Ask Blink's real snippets provider for completion items, then expand and
--- advance one placeholder through Neovim's native snippet engine.
-local prefix = "forr"
-vim.lsp.enable("clangd", false)
-local buf = vim.api.nvim_create_buf(false, true)
-vim.api.nvim_win_set_buf(0, buf)
-vim.bo[buf].filetype = "cpp"
-local response
-source:get_completions({
-	id = 73,
-	cursor = { 1, #prefix },
-	bounds = { start_col = 1 },
-	get_line = function()
-		return prefix
-	end,
-}, function(result)
-	response = result
-end)
-assert(response and not response.is_incomplete_forward and not response.is_incomplete_backward)
-local item
-for _, candidate in ipairs(response.items) do
-	if candidate.label == "forr" and candidate.insertText:find("for (int", 1, true) then
-		item = candidate
-		break
-	end
-end
-assert(item, "Blink's provider must offer the custom forr completion")
-
-vim.api.nvim_buf_set_lines(buf, 0, -1, false, { prefix })
-vim.api.nvim_win_set_cursor(0, { 1, #prefix })
-vim.api.nvim_buf_set_text(buf, 0, 0, 0, #prefix, {})
+assert(
+	forr and forr.user_data and forr.info:find("for (int", 1, true),
+	"C++ source should expose repository forr snippet"
+)
+assert(completion.snippet_complete(1, "") >= 0, "C++ completefunc should provide a valid findstart column")
+vim.api.nvim_buf_set_lines(0, 0, -1, false, { "" })
 vim.api.nvim_win_set_cursor(0, { 1, 0 })
-vim.snippet.expand(item.insertText)
-local expanded = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
-assert(expanded[1]:find("for (int i = 0; i < n; i++) {", 1, true), "forr body must expand")
-assert(vim.snippet.active(), "expanded snippet should expose native tabstops")
-local first_stop = vim.api.nvim_win_get_cursor(0)
-vim.snippet.jump(1)
-local second_stop = vim.api.nvim_win_get_cursor(0)
-assert(vim.snippet.active(), "jumping should keep the snippet session active")
-assert(first_stop[1] ~= second_stop[1] or first_stop[2] ~= second_stop[2], "jump should advance the cursor")
+vim.snippet.expand(forr.info)
+assert(
+	vim.api.nvim_get_current_line():find("for (int i = 0; i < n; i++) {", 1, true),
+	"native snippet engine should expand repository C++ snippet"
+)
+assert(vim.snippet.active(), "expanded C++ snippet should expose native tabstops")
+local previous_error = vim.v.errmsg
+vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("i<Tab><S-Tab>", true, false, true), "xt", false)
+assert(vim.v.errmsg == previous_error, "Tab and Shift-Tab snippet jumps should not raise expression-map errors")
+assert(vim.snippet.active(), "snippet navigation should preserve the active snippet")
 vim.snippet.stop()
-vim.api.nvim_win_set_buf(0, previous_buf)
-vim.api.nvim_buf_delete(buf, { force = true })
 
-io.stdout:write("Blink C++ snippets load, expand, and jump passed\n")
+local original_enable = vim.lsp.completion.enable
+local enabled
+vim.lsp.completion.enable = function(on, client_id, buf, opts)
+	enabled = { on = on, client_id = client_id, buf = buf, opts = opts }
+end
+completion.attach({
+	id = 12,
+	supports_method = function(_, method, buf)
+		return method == "textDocument/completion" and buf == vim.api.nvim_get_current_buf()
+	end,
+}, vim.api.nvim_get_current_buf())
+assert(
+	enabled and enabled.on and enabled.client_id == 12 and enabled.opts.autotrigger,
+	"LSP attach should enable autotrigger completion"
+)
+assert(enabled.opts.convert == completion.convert, "LSP attach should register native item conversion")
+vim.lsp.completion.enable = original_enable
+
+local converted = completion.convert({
+	label = "vector",
+	kind = vim.lsp.protocol.CompletionItemKind.Class,
+	detail = "std::vector<T>",
+})
+assert(
+	converted.abbr == "vector" and converted.kind:find("Class", 1, true),
+	"LSP completion should include kind icon and label"
+)
+assert(converted.menu == "std::vector<T>", "LSP completion should include concise detail")
+
+ai.accept = old_accept
+io.stdout:write("Native LSP completion, Tab priority, Enter noselect, and C++ snippets passed\n")
+
+-- InsertEnter also loads autopairs: test the final effective mapping, including
+-- selected and unselected popup items, rather than only the mapping callback.
+vim.snippet.stop()
+vim.api.nvim_buf_set_lines(0, 0, -1, false, { "" })
+vim.api.nvim_win_set_cursor(0, { 1, 0 })
+vim.api.nvim_feedkeys(vim.keycode('ia<Cmd>lua vim.fn.complete(1, {"abc", "abd"})<CR><C-n><CR><Esc>'), "xt", false)
+assert(
+	vim.api.nvim_buf_line_count(0) == 1 and vim.api.nvim_get_current_line() == "abc",
+	"Enter should confirm selected item without newline after autopairs loads"
+)
+vim.wait(10)
+assert(
+	vim.lsp.inline_completion.is_enabled({ bufnr = 0 }),
+	"closed completion popup must restore Copilot inline completion"
+)
+vim.api.nvim_buf_set_lines(0, 0, -1, false, { "" })
+vim.api.nvim_win_set_cursor(0, { 1, 0 })
+vim.api.nvim_feedkeys(vim.keycode('ia<Cmd>lua vim.fn.complete(1, {"abc", "abd"})<CR><CR><Esc>'), "xt", false)
+assert(
+	vim.api.nvim_buf_line_count(0) == 2 and vim.api.nvim_buf_get_lines(0, 0, 1, false)[1] == "a",
+	"Enter should insert newline when no candidate is selected"
+)
+assert(vim.v.errmsg == "", vim.v.errmsg)

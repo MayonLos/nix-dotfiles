@@ -65,11 +65,27 @@ pkgs.runCommand "rime-technical-runtime"
     theme = pathlib.Path(sys.argv[2])
     panel = configparser.ConfigParser()
     panel.read(theme / "theme.conf")
-    assert panel["InputPanel"]["highlightcolor"] == panel["InputPanel"]["highlightcandidatecolor"]
+    # These are the public roles in the One Dark Darker palette consumed here.
+    assert panel["InputPanel"]["highlightcandidatecolor"] == "#4fa6ed"
+    assert panel["InputPanel"]["highlightbackgroundcolor"] == "#30363f"
+    assert panel["InputPanel"]["candidatelabelcolor"] == "#7a818e"
+    assert panel["InputPanel"]["candidatecommentcolor"] == "#7a818e"
+    assert panel["InputPanel"]["fullwidthhighlight"] == "False"
+    assert panel["InputPanel/Background/Margin"]["left"] == "12"
+    assert panel["InputPanel/ContentMargin"]["left"] == "8"
+    assert panel["InputPanel/TextMargin"]["left"] == "12"
+    assert panel["InputPanel/PrevPage/ClickMargin"]["top"] == "6"
+    assert panel["InputPanel/NextPage/ClickMargin"]["top"] == "6"
     images = [s["image"] for s in panel.values() if "image" in s]
     assert len(images) == 8
     assert set(images) == {"panel.svg", "highlight.svg", "prev.svg", "next.svg", "radio.svg", "arrow.svg"}
     assert all((theme / image).is_file() for image in images)
+    selected = (theme / "highlight.svg").read_text()
+    assert 'rx="7.5"' in selected and 'fill="#30363f"' in selected
+    assert 'stroke="#4fa6ed"' in selected
+    for name in ("prev.svg", "next.svg"):
+        icon = (theme / name).read_text()
+        assert 'width="20" height="20"' in icon and 'stroke-width="2"' in icon
     assert schema["reduce_english_filter"]["mode"] == "all"
     assert translator["always_show_comments"] and translator["spelling_hints"] == 8
     assert (user / "rime_ice.userdb").is_dir()

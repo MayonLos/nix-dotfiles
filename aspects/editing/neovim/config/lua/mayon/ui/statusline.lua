@@ -7,6 +7,7 @@ function M.setup()
 		return
 	end
 	ready = true
+	vim.ui.progress_status() -- Initialize the native collector before LSP progress can arrive.
 	local heirline = require("heirline")
 	local conditions = require("heirline.conditions")
 	local utils = require("heirline.utils")
@@ -303,39 +304,18 @@ function M.setup()
 			if vim.o.columns >= 120 then
 				return true
 			end
-			local clients = vim.lsp.get_clients({ bufnr = 0 })
-			local lsp = package.loaded["mayon.lsp"]
-			for _, task in ipairs(lsp and lsp.progress_status and lsp.progress_status() or {}) do
-				for _, client in ipairs(clients) do
-					if client.id == task.id then
-						return true
-					end
-				end
-			end
-			return false
+			return vim.bo.busy > 0 or vim.ui.progress_status() ~= ""
 		end,
 		init = function(self)
-			local attached, client_names = {}, {}
+			local client_names = {}
 			for _, client in ipairs(vim.lsp.get_clients({ bufnr = 0 })) do
-				attached[client.id] = true
 				client_names[#client_names + 1] = client.name
 			end
-			local lsp = package.loaded["mayon.lsp"]
-			local progress = lsp and lsp.progress_status and lsp.progress_status() or {}
-			local count, names = 0, {}
-			for _, task in ipairs(progress) do
-				if attached[task.id] then
-					count = count + (task.task_count or 1)
-					names[#names + 1] = task.name or "LSP"
-				end
-			end
-			self.busy = #names > 0
+			self.progress = vim.ui.progress_status()
+			self.busy = vim.bo.busy > 0 or self.progress ~= ""
 			table.sort(client_names)
-			-- Raw progress messages can contain several rapidly changing file
-			-- counters. Keep the status rail stable; the LSP owns those details.
-			self.label = self.busy
-					and ("⋯ " .. (#names == 1 and names[1] or "LSP") .. (count > 1 and (" · " .. count) or ""))
-				or ("● " .. (#client_names > 0 and table.concat(client_names, ",") or "LSP"))
+			self.label = self.busy and ("◐ " .. (self.progress ~= "" and self.progress or "busy"))
+				or ("● " .. table.concat(client_names, ","))
 		end,
 		provider = function(self)
 			return text.fit(self.label, math.max(5, math.min(26, math.floor(vim.o.columns * 0.20)))) .. " "
@@ -376,7 +356,7 @@ function M.setup()
 	})
 	vim.api.nvim_create_autocmd("User", {
 		group = "HeirlineState",
-		pattern = { "GitSignsUpdate", "MayonLspProgressChanged" },
+		pattern = "GitSignsUpdate",
 		callback = vim.schedule_wrap(redraw_status),
 	})
 	local Encoding = {
@@ -433,6 +413,10 @@ function M.setup()
 			vim.cmd("redrawstatus")
 		end,
 	})
+	vim.api.nvim_create_autocmd("Progress", {
+		group = vim.api.nvim_create_augroup("HeirlineNativeProgress", { clear = true }),
+		callback = vim.schedule_wrap(redraw_status),
+	})
 	local CodeCompanion = {
 		condition = function()
 			return cc.count > 0
@@ -448,6 +432,30 @@ function M.setup()
 				.. " "
 		end,
 		hl = { fg = "purple", bold = true },
+	}
+
+	local AI = {
+		condition = function()
+			return vim.o.columns >= 100
+		end,
+		provider = function()
+			local completion = package.loaded["mayon.features.ai_completion"]
+			local provider = completion and completion.provider or "copilot"
+			local claude = package.loaded.claudecode
+			local state = claude and (claude.is_claude_connected() and "●" or "○") or "·"
+			local names = {}
+			if package.loaded.sidekick then
+				for _, session in ipairs(require("sidekick.status").cli()) do
+					names[#names + 1] = session.tool
+				end
+				table.sort(names)
+			end
+			local busy = completion and (completion.busy or completion.pending > 0) and "⋯" or ""
+			local cli = #names > 0 and (" " .. table.concat(names, "+")) or ""
+			return " C" .. state .. cli .. " AI:" .. provider .. busy .. " "
+		end,
+		hl = { fg = "purple" },
+		update = { "ModeChanged", "BufEnter", "CursorHold", "User" },
 	}
 
 	local DefaultStatusline = {
@@ -466,6 +474,7 @@ function M.setup()
 		Diagnostics,
 		{ flexible = 1, LSPActive, {} },
 		CodeCompanion,
+		{ flexible = 5, AI, {} },
 		Language,
 		Encoding,
 		Ruler,

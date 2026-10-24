@@ -9,7 +9,7 @@
 | 桌面窗口与工作区 | `Super` | Mango 拥有，不占用编辑器常用的 Ctrl/Alt 字母 |
 | 桌面启动器 | `Alt+Space` | 保留现有入口；键盘、面板点击调用同一 Noctalia 功能 |
 | 终端复用 | `Ctrl+a` 前缀 | tmux 管 pane/window/session；取消当前无前缀的 Alt 字母/数字拦截 |
-| 编辑器窗口与功能 | `Ctrl+h/j/k/l`、Space leader | 保留现有 Neovim 行为；不跨层猜测当前应用然后转发按键 |
+| 编辑器窗口与功能 | `Ctrl+h/j/k/l`、Space leader | smart-splits 在 Neovim/tmux 之间协作；桌面层不猜测当前应用并转发按键 |
 | shell 与 TUI | 原应用按键 | `Alt+b/f`、`Ctrl+r`、Esc 等正常到达应用 |
 
 迁移前 tmux 的无前缀 `M-h/j/k/l`、`M-n/p`、`M-Tab`、`M-1…9` 会在 pane 内应用收到之前截获按键；现已改为前缀操作。`Ctrl+a Ctrl+a` 仍发送字面 Ctrl+a 给 shell；复制、选区和窗口管理不自动互相接管。依据当前 [tmux 配置](../aspects/command-line/tmux.nix) 和 [tmux 官方入门](https://github.com/tmux/tmux/wiki/Getting-Started)。
@@ -113,17 +113,84 @@ Zsh 的 `Ctrl+R` 由 Atuin 搜索本地命令历史，使用 compact 视图、�
 覆盖已有目标，copy 使用独占创建；从回收站恢复同样先校验目标，永久 purge 禁止。具体文件
 安全边界和实现见 [Neovim 执行记录](neovim-rebuild-execution.md)。
 
-Snacks picker 保留常用文件搜索入口，并统一承担 grep、buffers、最近文件、帮助、符号、诊断、
-keymaps、命令历史、项目和恢复上次 picker：`<leader>ff/fg/fb/fr/fh`、`fs/fS/fd/fk`、
-`f:`、`f/`、`fp`。`<leader>gg` 打开 LazyGit；`<leader>st` 或 `<leader>xt` 搜索 Todo，
-`[t` / `]t` 在 Todo 之间跳转。调试使用 F5/F10/F11/F12 与 `<leader>d*`，任务运行使用
-`<leader>r*`。`<leader>rn` 保留 LSP 符号重命名，`<leader>fR` 是文件重命名；`zK` 现在执行
-原生 `zo` 打开折叠。which-key 分组统一使用英文，完整映射见 [Neovim 键位表](neovim-rebuild-execution.md#键位)。
+本轮 AI/键位重构尚未应用。顶部标签、未保存保护、长文档折行与会话/草稿数据边界保留。
+Claude Code 使用专属 IDE 协议 diff，Codex/Grok 使用 sidekick，DeepSeek 使用 CodeCompanion；
+补全以 Copilot 为主，DeepSeek FIM 手动兜底。流程与验证见[执行记录](neovim-rebuild-execution.md)。
 
-顶部标签在工具窗口聚焦时保留最近文档的选中状态；左键切换到正文窗口，中键/关闭按钮走原有
-安全关闭流程。Explorer 保留侧栏窗口；没有正文窗口时新开一个 split。状态栏随窗口显示文档或
-工具上下文；常规语言服务进度放在状态栏，并随任务完成清除，错误/警告与通知历史仍由原通知
-机制提供。Neovim 第六轮尚未应用，运行状态与待验项见[执行记录](neovim-rebuild-execution.md)。
+## Neovim 键位
+
+Leader 为 Space（下表 `␣`），localleader 为逗号。which-key 分组为中文与统一 Nerd Font 图标。
+未列出的 Vim 原生移动、窗口、编辑和折叠键继续可用；`s`、普通模式 Tab 为明确自定义入口。
+
+| 键位 | 行为 |
+|---|---|
+| `␣␣` / `␣/` / `␣,` | 智能找文件 / 全文搜索 / 切换缓冲区 |
+| `␣e` / `-` / `␣.` | 文件树 / Oil 父目录 / 草稿 |
+| `␣w` / `␣qq` | 保存 / 智能关闭窗口或缓冲（保留未保存确认） |
+| `␣fr` / `fn` / `fy` | 最近文件 / 新建 / Yazi |
+| `␣fR` / `fD` / `fc` / `fp` | 安全重命名文件 / 确认移入回收站 / 配置 / 项目 |
+| `␣su` / `␣qr` / `␣xw` / `␣uL` | 原生撤销树 / 保留 UI 重启 / 收集工作区诊断 / 按需显示 CodeLens |
+| `␣sw` / `ss` / `sS` | 光标词 / 文档符号 / 工作区符号 |
+| `␣sh` / `sk` / `sr` | 帮助 / 键位 / grug-far 替换 |
+| `␣sd` / `sc` / `s.` | 诊断 picker / 命令历史 / 恢复 picker |
+| `␣ca` / `cr` / `cf` | 代码动作 / 符号重命名 / 格式化 |
+| `␣co` / `ci` / `cO` / `cl` | 大纲 / 调用者 / 被调用项 / lint |
+| `␣c[` / `c]` | 与上一个 / 下一个参数交换 |
+| `␣gg` / `gd` / `gf` / `gb` | LazyGit / CodeDiff 工作区审阅 / 当前文件历史 / 当前行 blame |
+| `␣gD` / `gC` / `gT` | 输入提交或分支比较 / 当前文件冲突逐块解决 / 原生双目录 DiffTool |
+| `␣gs` / `gr` / `gp` | hunk 暂存（可视模式为选区）/ 还原 / 内联预览 |
+| `␣gS` / `gR` / `gq` / `gB` | 暂存整个文件 / 还原整个文件 / hunk quickfix / 远程浏览 |
+| `␣ac` / `as` | Claude 终端 / 发送可视选区到 Claude |
+| `␣aA` / `aD`；建议 buffer `,a` / `,r` | 接受 / 拒绝 Claude 当前文件提案 |
+| `␣ax` / `ag` | Codex / Grok 原生 TUI |
+| `␣af` / `av`（可视）/ `aE` / `aG` | 发送文件 / 选区 / 诊断 / Git diff 到当前 CLI |
+| `␣ad` / `ai` | DeepSeek 对话 / 内联改写（普通或可视） |
+| `␣ae` / `at`（可视）/ `am` | 解释诊断 / 为选区写测试 / 起草提交信息 |
+| `␣ap` / `ah` | 中文 prompt library / 对话历史 |
+| `␣au` 或 `␣ua` | copilot → deepseek → off 补全切换 |
+| 内联改写 buffer `,a` / `,r` | mini.diff 接受保留未保存内容 / 拒绝还原 |
+| `␣xx` / `xX` / `xq` / `xl` / `xt` | Trouble 工作区诊断 / 当前文件 / quickfix / loclist / TODO |
+| `␣uw` / `us` / `uh` / `uz` | 折行 / 拼写 / inlay hints / zen |
+| `␣uf` / `ud` / `un` | 保存格式化 / 诊断显示 / 相对行号 |
+| `␣tt` / `tv` / `th` | 浮动 / 右分 / 下分终端 |
+| `␣ps` / `pl` / `pp` / `pd` | 恢复当前会话 / 上次会话 / 切换项目 / 不保存当前会话 |
+| `Ctrl+h/j/k/l`；`Alt+h/j/k/l` | smart-splits 移动至 nvim/tmux 面板；调整大小 |
+| `s`；可视 `an/in`、`]n/[n`、`]N/[N` | Flash 跳转；原生 Treesitter 节点选择/导航，无 parser 时 an/in 使用 LSP selectionRange |
+| `[d ]d` / `[h ]h` / `[t ]t` / `[q ]q` | 上下诊断 / hunk / TODO / quickfix |
+| `[c`；`[m ]m [M ]M`；`[[ ]]` | 上层上下文；函数首尾；类开头 |
+| `af/if`、`ac/ic`、`aa/ia`、`al/il`、`ai/ii`（可视/操作符） | 函数、类、参数、循环、条件块文本对象 |
+| `␣mn/mN` / `ms/mS` / `mj/mk` | 下/上匹配加光标 / 跳过匹配 / 下/上行加光标 |
+| `␣ma` / `mt` / `mq` / `mg`；多光标层 `␣mx`、左右箭头、Esc | 所有匹配 / 光标开关 / 清空 / 动作添加；删主光标、切换、退出 |
+| `gd` / `gD` / `grt` / `gi` / `K` / `grx` | LSP 定义 / 声明 / 类型 / 实现 / 文档 / codelens |
+| `␣lh` / `ll` / `lr` | 源/头文件切换 / 诊断虚拟行 / 重启语言服务 |
+| `gx`（普通/可视） | 打开光标/选区链接；`:Urls` / `:UrlsBuffer` 搜索链接 |
+| 插入 `Tab` / `Shift+Tab` | 接受整条 AI 幽灵文本 → 原生片段跳转 → 缩进；反向片段跳转或反缩进 |
+| 插入 `Ctrl+y` / `Enter`；`Ctrl+n/p`；`Ctrl+e` | 显式确认所选项（Enter 未选择则换行）；上下选择；关闭菜单 |
+| 插入 `Ctrl+Space`；`Ctrl+x Ctrl+f`；C++ `Ctrl+x Ctrl+u` | 原生 LSP 补全；原生路径补全；仓库 C++ 片段源 |
+| 插入 `Ctrl+→` 或 `Alt+l`；`Esc` / `Ctrl+]` | 接受 AI 一个词；拒绝幽灵文本（无建议时 Esc 退出插入） |
+| 插入 `Alt+]` / `Alt+[`；普通 `Tab` | 轮换 AI 建议；Copilot NES 跳到/应用（无建议透传） |
+
+原生 LSP 菜单不预选；选中候选时 popup 显示文档，边框跟随 rounded。输入 `(` / `,` 自动签名帮助。
+AI 只显示灰色幽灵文本，不进入补全菜单；菜单显示期间隐藏 Copilot/Minuet 幽灵文本。
+普通模式 Tab 只负责 Sidekick NES，与插入模式 Tab 分开。
+窗口原生 `Ctrl+w` 与折叠 `zR/zM/zc/zo` 保留。所有破坏性文件操作继续走已有 fileops 保护。
+CodeCompanion 的 `ga` 切 adapter；聊天内 `gh` 浏览历史、`,h` 保存当前聊天。
+
+| 旧入口 | 新入口 / 处理 |
+|---|---|
+| `␣ff/fg/fb` | `␣␣` / `␣/` / `␣,` |
+| `␣fh/fk/fs/fS/fd/f:/f/` | `␣sh/sk/ss/sS/sd/sc/s.` |
+| `␣rn` / `␣lf` | `␣cr` / `␣cf` |
+| `␣gH` / `␣gd`（gitsigns index） | `␣gf` / `␣gd`（CodeDiff） |
+| `␣gB`（blame 开关） | `␣gb` 查看行；`␣gB` 远程浏览 |
+| `␣aa` / `␣av`（加到聊天） | `␣ad` DeepSeek；`␣av` 发送到 CLI |
+| `␣acp/aca/acd/act/aT`（CodeCompanion CLI） | `␣ax/ag` + `␣af/av/aE/aG` |
+| `␣ax`（生成命令）/ `␣at`（CLI）/ `␣as`（存聊天） | `:CodeCompanionCmd` / 可视写测试 / 发送 Claude 选区；聊天保存 `,h` |
+| F5/F10/F11/F12、`␣d*`、`␣r*` 任务 | 删除；使用项目终端或 AI CLI |
+| `␣w*` 窗口组 | 原生 `Ctrl+w` / smart-splits；`␣w` 专用于保存 |
+| `␣q` | `␣qq` 智能关闭，为 `␣qr` 重启让出前缀 |
+| `␣st` / `zK` | `␣xt`；原生 `zo`，不保留 zK 别名 |
+
 
 ## 交互反馈与实现边界
 
