@@ -29,8 +29,8 @@ let
     Top = 8;
     Bottom = 14;
   };
-  radius = 12;
-  pad = 6;
+  radius = 10;
+  pad = 4;
   addEach = n: m: lib.mapAttrs (_: v: v + n) m;
   margin = x: y: {
     Left = x;
@@ -71,8 +71,8 @@ let
     "InputPanel/ShadowMargin" = shadow;
     "InputPanel/ContentMargin" = addEach pad shadow;
     "InputPanel/Highlight".Image = "highlight.svg";
-    "InputPanel/Highlight/Margin" = margin 10 10;
-    "InputPanel/TextMargin" = margin 11 7;
+    "InputPanel/Highlight/Margin" = margin 8 8;
+    "InputPanel/TextMargin" = margin 8 5;
     "InputPanel/PrevPage".Image = "prev.svg";
     "InputPanel/PrevPage/ClickMargin" = margin 6 6;
     "InputPanel/NextPage".Image = "next.svg";
@@ -113,7 +113,7 @@ let
   images = {
     "panel.svg" = panelSvg;
     "highlight.svg" =
-      ''<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect width="40" height="40" rx="9" fill="${pill}"/></svg>'';
+      ''<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect width="40" height="40" rx="7" fill="${pill}"/></svg>'';
     "prev.svg" = chevron "m12 4.5-5.5 5.5 5.5 5.5" palette.muted;
     "next.svg" = chevron "m8 4.5 5.5 5.5-5.5 5.5" palette.fg;
     "arrow.svg" = chevron "m8 4.5 5.5 5.5-5.5 5.5" palette.fg;

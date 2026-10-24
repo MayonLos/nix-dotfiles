@@ -83,7 +83,7 @@ pkgs.runCommand "rime-technical-runtime"
     palette = json.loads(pathlib.Path(sys.argv[3]).read_text())
     classic_ui = json.loads(sys.argv[4])
     assert classic_ui["Vertical Candidate List"] == "False"
-    assert classic_ui["Font"].endswith(" 11")
+    assert classic_ui["Font"].endswith(" 10")
     panel = configparser.ConfigParser()
     panel.read(theme / "theme.conf")
     # These are the public roles in the One Dark palette consumed here.
@@ -98,9 +98,9 @@ pkgs.runCommand "rime-technical-runtime"
     assert panel["InputPanel"]["pagebuttonalignment"] == "Center"
     shadow = panel["InputPanel/ShadowMargin"]
     assert all(int(shadow[k]) > 0 for k in ("left", "right", "top", "bottom"))
-    assert int(panel["InputPanel/Background/Margin"]["left"]) == int(shadow["left"]) + 12
-    assert int(panel["InputPanel/ContentMargin"]["left"]) == int(shadow["left"]) + 6
-    assert panel["InputPanel/TextMargin"]["left"] == "11"
+    assert int(panel["InputPanel/Background/Margin"]["left"]) == int(shadow["left"]) + 10
+    assert int(panel["InputPanel/ContentMargin"]["left"]) == int(shadow["left"]) + 4
+    assert panel["InputPanel/TextMargin"]["left"] == "8"
     assert panel["InputPanel/PrevPage/ClickMargin"]["top"] == "6"
     assert panel["InputPanel/NextPage/ClickMargin"]["top"] == "6"
     assert panel["Metadata"]["scalewithdpi"] == "True"
@@ -112,7 +112,7 @@ pkgs.runCommand "rime-technical-runtime"
     background = (theme / "panel.svg").read_text()
     assert "feGaussianBlur" in background and f'fill="{palette["deep"]}"' in background
     selected = (theme / "highlight.svg").read_text()
-    assert 'rx="9"' in selected and "stroke" not in selected
+    assert 'rx="7"' in selected and "stroke" not in selected
     for name in ("prev.svg", "next.svg"):
         icon = (theme / name).read_text()
         assert 'width="20" height="20"' in icon and 'stroke-width="1.8"' in icon
