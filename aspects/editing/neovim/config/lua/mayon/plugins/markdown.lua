@@ -23,7 +23,7 @@ local function codecompanion_overrides()
 	}
 end
 
-function M.setup()
+local function setup()
 	require("render-markdown").setup({
 		file_types = { "markdown", "codecompanion" },
 		completions = { lsp = { enabled = true } },
@@ -64,4 +64,4 @@ function M.setup()
 	})
 end
 
-return M
+return { { "render-markdown.nvim", ft = { "markdown", "codecompanion" }, after = setup } }

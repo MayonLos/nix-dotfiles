@@ -39,3 +39,4 @@ generation、store 路径和样本数据只对应当时提交，与当前源码�
 | [execution-handoff.md](history/execution-handoff.md) | 2026-10-19–20 | 历次对话交接 |
 | [repository-cleanup-2026-10-23.md](history/repository-cleanup-2026-10-23.md) | 2026-10-23 | 提交已应用改动、归档分支与文档 |
 | [optimization-2026-10-24.md](history/optimization-2026-10-24.md) | 2026-10-24 | 五轮仓库与系统优化：依赖、启动、桌面、内核、登录与头像 |
+| [neovim-rebuild-2026-10-24.md](history/neovim-rebuild-2026-10-24.md) | 2026-10-24 | 第六轮 Neovim 完全重构、构建验证与此前历史 |

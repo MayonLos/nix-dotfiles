@@ -1,99 +1,146 @@
-# Neovim 重建与 Astra 工作台重设计
+# Neovim 第六轮完全重构
 
-## 当前重构（2026-10-20）
+状态：2026-10-24，重构已实现并完成构建与隔离验证；本轮**尚未应用**，没有执行 `sudo`、
+`nixos-rebuild`、Git stage/commit/push 或系统切换。完整 health 仍有两个明确限制，见下文。
+此前实施与应用记录及本轮执行细节见[历史归档](history/neovim-rebuild-2026-10-24.md)。
 
-用户再次要求完整重构、优化和美化，明确由 Astra 设计，参考社区配置，保留 One Dark Darker，并允许重做配置结构与交互。实际 Astra 查阅 LazyVim UI、AstroUI、NvChad base46 与 Noice 原始源码，给出完整方案；主代理组织实现与集成，Luna 负责组件，独立 reviewer 复核跨组件行为。下方 2026-10-18 的实现和应用记录作为历史保留，新状态以本节为准。
+用户授权完整重做 Neovim，可调整功能与交互。实现保持 Nix 固定插件、Den 生成的语言和
+palette 数据，以及 One Dark Darker（`#1f2329`）；Mango 仍为桌面默认。Home Manager
+配置随 NixOS 重建，没有独立 switch。
 
-本次保持 Nix 固定插件和 parser，继续使用原生 Lua，不引入发行版或另一层插件下载器。功能边界保留：文件重命名/覆盖保护与回收站、会话与草稿、URL、公式唯一渲染器、LSP 按需库和项目 PATH、格式化/lint、Git/Diffview、Flash/多光标/文本对象、CodeCompanion DeepSeek 与 Codex/Grok CLI。OpenCode CLI 移除及 Quill Go 直连的在途改动保留，用户数据不随重构迁移或清理。
+## 架构与加载
 
-### 设计与实现
+`config/init.lua` 只调用 bootstrap。配置分为 `mayon.config`（选项、键位、自动命令与
+加载器）、`mayon.plugins`（按领域返回 lz.n specs）、`mayon.ui`、`mayon.features` 和
+`mayon.lsp`。Nix 固定插件及完整依赖闭包；启动插件为 One Dark、Heirline、Snacks、lz.n
+和 nvim-web-devicons。其余插件与传递依赖列为 optional，由生成的依赖图在 lz.n 命中
+`event`、`cmd`、`keys` 或 `ft` 后按序 `packadd`。不在运行时下载插件。
 
-- 普通浮窗、补全、Noice、Snacks/Fzf 选择器、通知共用正文底色 `#1f2329`，边框与内容同底色；选择行统一中性 `#30363f`。蓝青用于前景与细指示，补全类别/来源不再带独立背景块。严重度仍以通知标题/图标颜色区分。
-- 命令框移至底部居中，宽度随屏幕变化，上限 76 列；清除各格式默认标题，底栏搜索保留。针对锁定 Noice/NUI 的缓存视图同步几何，配置尚未初始化时的 resize 回调也有保护。
-- Blink 关闭预选和自动插入：菜单出现不改正文，明确选择候选后再确认。原有 Tab/snippet、Ctrl-Space、文档与签名键保持；文档延迟 300ms。窄屏先去描述和来源，保留候选本身。
-- Markdown 保留插入时整篇渲染，但光标行显露真实标记；Visual 使用源字符。标题不再铺整行彩色底，代码区用统一 surface，短代码块最小宽降为 20 列，公式仍由 Snacks/math-preview 单独负责。
-- Picker 与 Explorer 均使用正文底色，以项目标题、树形、边界和中性选中行区分区域；使用 Snacks 原生窗口高亮，不增加窗口生命周期适配。普通选择器窄屏去预览，Explorer 极窄时使用浮层；Fzf 的预览也按窗口宽度降级。
-- Heirline 状态栏和标签栏按 120/80/40 列分级，去掉行列胶囊；CJK 截断和 `%` 转义抽到 `ui/text.lua`。保留重名消歧、侧栏焦点下的活动文档、未保存/只读标记、录制和并发 AI 状态。路径消歧按缓冲区签名缓存，真实 buffer 列表保持即时查询。
+普通 picker、项目树、dashboard、LazyGit 与图片入口共用 Snacks。保留 nvim-navic，状态栏
+只在宽屏使用其符号；导航模块按 `LspAttach` 懒加载并主动连接已附着客户端，因为 lz.n
+不会重放无 augroup 的已发生事件。`fzf-lua` 已删除。`nvim-ufo` 已删除，折叠改由 Neovim
+0.12 原生 LSP `foldingRange` 优先、Tree-sitter 回退，折叠文本显示首行和行数；`zR/zM/zc/zo`
+使用原生操作。
 
-社区参考只用于设计，字段与运行行为核对本仓库锁定版本：
+锁定 Neovim 0.12.4 已将旧 `vim._extui` 迁至 `vim._core.ui2`。其 runtime 文档仍明确标为
+experimental；公开选项控制消息路由、窗口高度和超时，`check_targets()` 将命令行创建为
+`relative=laststatus`、`col=0`、全宽且无边框，没有居中圆角弹框的公开几何配置。实现该布局
+需要改写私有窗口行为，因此本轮保留 Noice，由 `User MayonVeryLazy` 或其命令懒加载。命令框继续位于底部居中，消息由 Noice 接管并延后初始化。LSP、格式化、
+lint、Treesitter、Blink、Flash、文本对象、多光标、surround、autopairs、Markdown、Trouble、
+Diffview、CodeCompanion、会话、草稿、URL、公式预览、C++ snippets 和项目 PATH 保留；AI、
+语言服务及编辑器扩展按领域懒加载。
 
-- [LazyVim UI](https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/plugins/ui.lua)：按用途排列的状态信息与 Snacks 交互。
-- [AstroUI](https://github.com/AstroNvim/astroui/blob/main/lua/astroui/config.lua)：主题覆盖集中管理与活动文件层级。
-- [NvChad base46 Blink](https://github.com/NvChad/base46/blob/v3.0/lua/base46/integrations/blink.lua)：补全、文档、签名及类别前景的完整适配。
-- [Noice views](https://github.com/folke/noice.nvim/blob/main/lua/noice/config/views.lua)：命令与搜索的视图边界；未直接照抄 main 的新 API。
+新增插件为 `lz.n`、`oil.nvim`、`yazi.nvim`、`nvim-dap`、`nvim-dap-view`、
+`nvim-dap-virtual-text`、`overseer.nvim`、`todo-comments.nvim`、`rainbow-delimiters.nvim`、
+`nvim-colorizer.lua`、`tiny-inline-diagnostic.nvim`、`satellite.nvim`、`incline.nvim` 和
+`smear-cursor.nvim`。删除 `fzf-lua` 与 `nvim-ufo`，并移除不再需要的传递依赖。
 
-### 本次验证与应用状态
+```text
+lua/mayon/
+  config/    bootstrap、options、keymaps、autocmds、loader
+  plugins/   按领域返回 lz.n spec 列表
+  ui/        theme、dashboard、statusline、tabline、breadcrumbs、icons、noice、text
+  features/  fileops、oil、folds、sessions、scratch、urls、math_preview、AI/补全小组件
+  lsp/       原生 LSP 配置、服务器适配、进度与项目 PATH
+```
 
-重构前安装包在隔离 XDG 目录中 headless 启动三次为 76.339、74.092、74.955ms。这是 warm 文件缓存下的有限样本，不代表大型工程启动时间。重构后相同方式三次为 78.141、75.523、75.179ms；与原样本接近，不能宣称启动加速。
+## 文件安全与用户数据
 
-已通过 Neovim 专项、treefmt 与编辑器组合检查。新增检查覆盖 colorscheme 重载后的表面一致性、补全分段不遮住整行选中底色、CJK/字面 `%` 的宽度预算；40/60/80/100/160 列并发 AI、49 个错误和 50 个警告与未保存/只读标记同时出现的回归也通过。独立复核通过，无剩余阻断发现。
+Snacks Explorer 提供侧栏，Oil 通过 `-` 打开可编辑父目录缓冲，Yazi 通过 `<leader>fy` 打开
+浮窗。Oil 使用回收站删除并保留简单编辑确认；fileops 接管本地创建、移动、复制和删除的
+安全检查。目标存在、是符号链接或冲突时拒绝创建/覆盖；文件复制走自有 exclusive-copy，
+避免锁定 Oil 源码 `undo-copy` 路径的潜在覆盖问题。回收站只允许安全移回，永久 purge 被
+拒绝；Oil 的 LSP 文件操作关闭，以免与 fileops 重复应用 workspace edit。普通文件源 undo 不会随创建、移动、复制或删除迁移或删除；复制失败时保留已创建的部分目标，便于检查，不自动清除它们。
 
-真实嵌入 UI 已检查 160/100/80/60/40 列命令框：旧配置在 60/40 列边框越界，新框均在窗口内，标题为空，底部位置稳定。真实 Kitty 临时文档已查看 Markdown、命令框、补全和 Explorer，Astra 实际查看四张最终截图并通过视觉验收。真实补全交互确认未选择时 Enter 换行，Tab 选择后 Enter 接受候选；Explorer 60→40→60 列切换、底色与选择行一致性和关闭清理检查通过。测试只使用临时中文文档，未打开个人工程或真实历史。
+undo、会话、草稿、AI 对话历史、shada、项目、模型、凭据及其他 Neovim 用户数据保留原路径
+与格式，不因配置重排而清理或转换。配置重组不代表数据迁移。
 
-已执行 `sudo nixos-rebuild switch --flake .#nixos-btw`，成功应用 `/nix/store/j2ssn58y789ikkqc8y9qc4cydpljqqxr-nixos-system-nixos-btw-26.05.20261012.7993f34`。最终 flake 求值、Neovim/treefmt/编辑器组合检查构建与主机 toplevel 构建均通过。Home Manager 的 Result 为 success；安装后的 Lua 与工作树源码一致，隔离启动的正文/浮窗底色、选择行、CodeCompanion DeepSeek 与 Codex/Grok 入口及实际补全交互验证通过。
+## 键位
 
-OpenCode 两个命令已从新环境移除；Quill 持久声明为 Go 直连，旧三项运行时覆盖已对账清除，运行时 API Key 保留。Noctalia 随 Home Manager 正常重启；Mango 与原有终端继续运行。未清除历史、项目或模型，未关闭用户编辑器；已打开的旧编辑器需用户保存后重新启动才加载新包。未声称已验证个人大型工程性能或 Quill 的完整 GUI 模型交互。
+which-key 分组标签统一为英文：Files、Search、Git、Code、Debug、Run、AI、UI、Diagnostics、
+Windows、Buffers；LSP、Sessions、Docs、Multiple cursors 和 CLI agents 继续保留。
 
-## 2026-10-18 基线与历史
+| 键位 | 行为 |
+|---|---|
+| `<leader>ff` / `fg` / `fb` / `fr` / `fh` | Snacks 文件、grep、buffers、最近文件、帮助 picker；原入口保留 |
+| `<leader>fs` / `fS` / `fd` / `fk` | 文档符号、工作区符号、诊断、键位 picker |
+| `<leader>f:` / `f/` / `fp` / `f.` | 命令历史、恢复上次 picker、项目、当前 buffer 行 |
+| `<leader>fy` / `-` / `<leader>e` | Yazi 浮窗 / Oil 父目录编辑缓冲 / Snacks Explorer 侧栏 |
+| `<leader>gg` | Snacks LazyGit，保留 Git 入口 |
+| `<leader>st` / `<leader>xt`；`[t` / `]t` | Snacks Todo grep / 上一个、下一个 TODO |
+| `<leader>sr` | GrugFar 搜索替换，仍保留入口 |
+| `<F5>` / `<F10>` / `<F11>` / `<F12>` | DAP 继续 / 跨过 / 进入 / 跳出 |
+| `<leader>db` / `dB` / `dc` | 切换断点 / 条件断点 / 启动或继续 |
+| `<leader>di` / `do` / `dO` | 进入 / 跨过 / 跳出 |
+| `<leader>dr` / `dl` / `dt` / `dv` | REPL / 上次调试 / 终止 / 调试视图 |
+| `<leader>rr` / `rt` / `ra` / `rc` | 选择任务 / 任务列表 / 任务动作 / CMake 构建 |
+| `<leader>rn` | 保留 LSP 符号重命名；`<leader>fR` 用于文件重命名 |
+| `zK` | 原自定义上下文入口改为原生 `zo` 打开折叠 |
 
-日期：2026-10-18。用户提供 Markdown 实机截图，指出当前实现相较最初 Nixvim 有多处问题，
-明确要求推翻重做并按原效果配置。该要求覆盖之前“仅手写替代、不要恢复插件”的历史取舍。
-本轮以 Git 中实际 `a9d5614:nixvim/` 为布局、组件和交互参考，不把迁移文档的功能对等描述
-当作证据。用户再次确认：主题继续采用当前 One Dark Darker（`#1f2329`），旧 Nixvim 的
-TokyoNight 只属于历史；不恢复其主题选择器或主题 state。
+`<leader>` 的文件搜索、grep、buffers、最近文件、符号、诊断、Git、帮助、keymaps、命令历史、
+项目和 picker 恢复现统一使用 Snacks；此前 fzf-lua 同功能入口迁移到 Snacks，常用 `ff/fg`
+等键位保持。新键和保留键的当前完整定义以
+[`navigation.lua`](../aspects/editing/neovim/config/lua/mayon/plugins/navigation.lua)、
+[`keymaps.lua`](../aspects/editing/neovim/config/lua/mayon/config/keymaps.lua) 与领域插件为准。
 
-可回退起点为干净提交 `051579e`（已同步 origin/main）。保留现有 undo、会话、草稿、AI
-历史、项目、凭据及其他用户状态；不关闭用户现有编辑器、不影响 mod 任务。不改其他桌面
-功能、不升级无关输入。继续沿用 Nix 固定依赖、Den 语言/palette 贡献与唯一配置入口。
+| 旧入口 / 行为 | 本轮行为 |
+|---|---|
+| fzf-lua 的 `ff/fg/fb/fr/fh` 等搜索入口 | 绑定不变，底层统一换成 Snacks picker |
+| 原 `zK` 自定义折叠上下文 | `zK` 明确映射到原生 `zo` |
+| 原 `<leader>rn` 符号重命名 | 保留；文件重命名单独使用 `<leader>fR` |
+| 没有 Oil/Yazi 的专用导航键 | 新增 `-`、`<leader>fy`；`<leader>e` 继续打开 Explorer |
+| 尚无统一的 DAP/任务入口 | 新增 F 键、`<leader>d*` 与 `<leader>r*` 工作流 |
 
-原生多代理：Luna 并行核验历史和当前缺陷、恢复明确范围的编辑选项；实际 Astra 以原基准和社区源码
-重新设计界面组件；主代理负责插件/入口/交互/检查集成，跨模块由独立 reviewer 复核。
+## 外观与功能扩展
 
-## 已核实的回归
+One Dark Darker 和 Den palette 仍是唯一颜色来源。状态栏按 120/80/40 列收缩，包含模式、
+Git、相对路径、诊断、LSP、AI、文件类型、非 UTF-8 编码和位置；标签栏保留重名消歧、CJK
+截断、未保存标记和关闭行为。折叠、标记列、浮窗和新插件的高亮由集中 theme adapter 管理。
 
-原 `nixvim/options.nix` 未禁用默认折行；当前全局 `wrap=false` 由后续提交 `1c46de6` 引入，
-造成截图长段落右侧裁切。空 `[No Name]` 标签来自自写文件模块生成的 listed 空缓冲与标签
-模块直接列出它的组合；不能以 parser/headless 检查通过宣称实际界面没有问题。
+dashboard 使用蓝青 MAYON 标题、文件/搜索/项目/会话/配置快捷入口及配置初始化时长（从 bootstrap 计时，不冒充进程总启动时间）。Oil/Yazi、
+LazyGit/Diffview、DAP（lldb-dap 与 Python debugpy 路径来自 Nix 注入）、Overseer、
+todo-comments、rainbow-delimiters、Colorizer、tiny-inline-diagnostic、Satellite 与 Incline
+按触发条件加载。smear-cursor 在 reducedMotion 为假时启用，关闭插入动画和跨 buffer 拖尾，
+保留克制的相邻行动画。Kitty 是否闪烁尚未实机确认，不能据猜测宣称已验证；若实机出现问题，
+再禁用这一动画模块。Incline 单窗口隐藏；Colorizer 仅作用于 CSS/HTML/Lua/Nix。
 
-## 当前实现
+## 验证与性能
 
-用户随后要求超出原样恢复，允许完整重新设计。实际 Astra 完成了新 OneDark 工作台：深色侧栏和浮层、蓝青强调、与实际侧栏宽度对齐的页签、当前/可见/后台三级文件状态、小面积模式提示、紧凑 LSP 状态和右侧位置胶囊。默认侧栏 38 列，调整宽度后项目区也会跟随；空占位不显示，未保存文件继续可见。Markdown 保留正文折行，蓝/青标题、轻量代码区与表格；Visual 模式显示源字符。补全采用图标/名称/来源三列，去掉重复类型，最多九项，文档窗限制为 60×18。
+本轮没有修改 `flake.lock`。`git diff --check`、`nix fmt`、锁定 StyLua 检查、
+`nix flake check --no-build --no-write-lock-file` 均实际执行；后者只证明求值。
+完整 flake check 已构建当前 x86_64-linux 的全部 18 个命名 checks，包括 Neovim、treefmt、
+editing-composition 和系统/桌面组合。普通 Neovim、`neovim-dev` 和 NixOS toplevel 也已构建，
+没有执行激活。命令、源码快照边界和最终 store 路径记录在历史文件。
 
-实际查阅并采用的社区设计依据：
+`checks.neovim` 实际执行 startup、completion、integration、workflow、fileops、lua_workspace、
+modern、interface、五语言首次打开、真实 CSS 未保存诊断、三种 wrapper 及故意失败 runner。
+覆盖 optional 启动隔离和触发、Snacks picker 入口与真实 finder、dashboard 渲染、LSP/TS 折叠、
+Oil 的真实回收站/dirty/覆盖/symlink/只读目录/copy 防递归/源 undo 保护、DAP 适配器路径、
+全部插件 setup、重载主题和 40/60/80/100/120/180 列 UI。
+Lua/C++/Python/Markdown/Nix 首文件分别实际附着 LuaLS/clangd/pyright/marksman/nixd；
+Treesitter、Navic、格式化和诊断模块加载无错误。Markdown 没有配置外部 formatter，继续使用
+既有通用空白整理。AI 未进行联网模型请求，DAP 未执行真实项目调试。
 
-- [NvChad tabufline](https://github.com/NvChad/ui/blob/v3.0/lua/nvchad/tabufline/modules.lua) 的侧栏偏移关系；
-- [LazyVim UI](https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/plugins/ui.lua) 的 Snacks 布局与 buffer 操作；
-- [AstroUI Heirline](https://github.com/AstroNvim/AstroUI/blob/main/lua/astroui/status/heirline.lua) 的文件状态层级；
-- [lazydev.nvim](https://github.com/folke/lazydev.nvim) 的 Lua 按需工作区库和 Blink 模块补全。
+最终启动样本（最终普通包，三次独立 HOME/XDG，旧/新交替运行）：
 
-社区当前源码只作为设计参考，最终 API 按本仓库锁定的插件源码核对；没有引入发行版、运行时插件下载或另一套主题。插件与 parser 继续由 Nix 固定，保留 Den 语言贡献、项目 PATH 和普通/开发两个 wrapper。
+| 包 | 三次 NVIM STARTED（ms） | 中位数（ms） |
+|---|---|---:|
+| 旧普通包 | 75.766 / 74.574 / 75.159 | 75.159 |
+| 最终普通包 | 26.364 / 26.363 / 26.147 | 26.363 |
 
-移除自写的四个大型 UI/文件/图片实现，接入 Snacks、Heirline、Navic、完整 onedark.nvim、render-markdown 和 Trouble。保留独立的小功能：同目录草稿、会话保护、URL、公式浮窗、C++ snippets、AI 历史及原有格式化/LSP。PDF 继续外开；公式触发器和自动图像渲染不重复认领内容。普通 LSP 进度进入状态栏，警告与错误仍可见。
+中位数降低约 64.9%，满足 ≤35ms 的验收目标。首次开发包样本 24.742 / 23.845 /
+23.897ms（中位数 23.897ms）只保留为过程记录，不与最终普通包混作一组。
 
-核对锁定 Snacks 2.31 源码后增加必要的文件操作适配：重命名不强制删除修改中的 buffer、不覆盖已有目标/符号链接/已打开目标；重命名后首存校验外部变化，并交由原生 write 执行一次保存钩子，保存失败会阻止 `:wq`。目录删除检查所有已打开子文件；缺少或执行失败的回收站命令一律保留文件，没有永久删除回退。
+Lua 小项目的 `--startuptime` 为 **126.048 ms**（NVIM STARTED）；独立 LspAttach 探针从
+`--cmd` 执行点计为 **112.757 ms**。两者起点不同，attach 在启动期间已发生，不将其误写为
+启动之后额外等待该时长。该记录是小 fixture 的一次样本。
 
-LuaLS 原配置将全部 runtimepath 加入每个工作区，现改用锁定 lazydev 1.10 按 `require` 逐步加载；关闭其会覆盖 root_dir 的默认 lspconfig 集成，保留原生根探测。项目及祖先目录有 `.luarc.json` / `.luarc.jsonc` 或全局禁用时不注入。此修改针对扫描范围，不把隐藏进度等同于性能提升，也不宣称所有项目的耗时已测量。
+这是同机有限样例；没有清空操作系统文件缓存，不代表所有工程或真实界面性能。
 
-## 验证与应用
-
-已完成以下验证，均使用当前锁定输入，没有改动 `flake.lock`：
-
-- 全仓 `nix flake check --no-write-lock-file --max-jobs 1 --cores 2` 成功，当前 x86_64-linux 的 17 项检查通过；其他平台不因此视为构建或部署成功。
-- `checks.neovim` 实际执行完整配置启动、SQLite、Blink C++ snippet 加载/展开/跳转、Lua 模块候选、StyLua 格式化、Unicode/宽度/侧栏/buffer 保护、真实 CSSLS 诊断和真实 LuaLS 按需库/项目排除；runner 的故意失败用例确认断言会令构建失败。
-- 文件操作检查包括重命名后普通保存、钩子各执行一次、钩子失败和外部改写时 `:wq` 不退出、符号链接/目标 buffer 冲突、目录子文件及真实 Explorer 删除调用链保护。
-- reduced-motion、普通和开发 wrapper 分支通过；大文件禁用 completion/Tree-sitter/fold 的边界通过。上述均为隔离临时目录，没有使用个人工程或真实历史做 fixture。
-- 独立 reviewer 复核跨模块接线、文件安全、失败退出、LuaLS 根探测和补全源继承，未发现最终阻断。
-
-Astra 已只读检查真实 Kitty 测试窗口的长中文 Markdown、表格、标题、侧栏聚焦与页签对齐。行末偶见的 `>` 是 Neovim 宽字符剩余一格时的原生提示，完整字符移到下一行，不是截断丢字；已核对实际 wrap/listchars 和 [Neovim v0.12.4 drawline.c](https://github.com/neovim/neovim/blob/v0.12.4/src/nvim/drawline.c#L2041)。
-
-真实 Kitty 公式 smoke 另使用临时 Markdown：`\frac{1}{s} + x^2` 完成 pdflatex→PDF→PNG 并实际显示，普通公式采用 brightFg；`\badcommand{x}` 显示 LaTeX 错误浮窗，没有静默展示残缺图片。中文/Markdown、补全和公式截图分别保留于本机临时路径 `/tmp/codex-nvim-community-final.png`、`/tmp/codex-nvim-completion-final.png`、`/tmp/codex-nvim-math-neutral.png`，它们不是长期归档资源。
-
-最后公式颜色与说明调整后，重新构建 `checks.neovim`、`checks.treefmt`、`checks.editing-composition` 和真实主机 toplevel，全部成功。完整系统产物为 `/nix/store/39ny1hnzlzdi18w2km7rha2qqnjr28rr-nixos-system-nixos-btw-26.05.20261012.7993f34`。应用前比较 greetd、NetworkManager、nix-daemon unit 均与旧系统相同。随后按既有自主应用授权执行 `sudo nixos-rebuild switch --flake /home/mayon/nix-dotfiles#nixos-btw --no-write-lock-file --max-jobs 1 --cores 2`，退出码 0；`/run/current-system` 与上述构建产物一致，`home-manager-mayon.service` 为 active / Result=success / ExecMainStatus=0。
-
-应用前保存进程 PID 与内核 starttime，应用后 12/12 均保持相同身份：5 个 Java、3 个 Codex、1 个 Mango、3 个终端。Noctalia、Fcitx、Mango target、greetd、NetworkManager、nix-daemon 的状态及相关 MainPID 与应用前相同；另核对真实 `clipboard-bridge.service` active。没有杀 mod 进程、注销、重启桌面或重启机器。新安装普通 Neovim 在临时 HOME/XDG 中冷启动，通过 OneDark 背景、lazydev 原生根探测接线和真实 Blink provider 加载检查；此检查经仓库 runner 失败退出，避免 `:qa!` 吞掉错误。已运行的用户 Neovim 不强制重载，重新打开编辑器才能使用新插件布局。
-
-全仓与专项构建日志、nr 日志分别位于本机 `/tmp/codex-nvim-final-flake-check.log`、`/tmp/codex-nvim-final-host.log`、`/tmp/codex-nvim-rebuild-switch.log`；临时运行元数据不入仓。文档相对链接和 `git diff --check` 通过，最终文档再经 treefmt 检查后本地提交。
-
-可回退提交按语义保存：`8291bb0` 记录基准、`ceb06bf` 恢复完整功能、`37a7d85` 修复保存钩子、`d9caca6` 落实 Astra 新布局、`b1b176a` 按需 Lua 库及补全、`82bb691` 公式配色。旧系统 `/nix/store/yfp33chaag8955n5rlfwk2jq5850anf1-nixos-system-nixos-btw-26.05.20261012.7993f34` 与 NixOS generation 保留，不执行清理。
-
-Java 大项目、AI 联网、其他图片/媒体格式、tmux 内图片以及多屏尺寸仍需分别验收；未取得证据的项目不会标为完成。headless 及小 fixture 不代表所有个人工程性能，最终观感由用户验收。
+完整 headless `:checkhealth` 初始化 UI 生命周期和所有可选插件后仍有 **2 ERROR**：
+缺少可选 Mermaid 渲染命令 `mmdc`；无物理终端的 headless 会话无法协商 Kitty 图形协议。
+因此**未达到完整 health 零 ERROR 验收**。单独排除 Snacks 的可选媒体检查后，其余已加载
+插件和核心 LSP/provider/Tree-sitter 检查为 0 ERROR；该分项结果不替代完整扫描。
+warning 还包括未安装的可选任务工具、缺少项目模板、mini.icons 提示（已用 devicons）和版本提示。
+公式的实际显示、Kitty 图像能力、smear-cursor、dashboard/分屏 Incline、补全/命令框与
+40/80/120 列实际观感仍待实机视觉验收。构建、headless 与小 fixture 不能替代这些检查。

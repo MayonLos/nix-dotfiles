@@ -79,14 +79,14 @@ local function attach(event)
 	map(bufnr, "<leader>rn", vim.lsp.buf.rename, "Rename symbol")
 	map(bufnr, "<leader>ca", vim.lsp.buf.code_action, "Code action")
 	map(bufnr, "<leader>wd", function()
-		require("fzf-lua").diagnostics_workspace()
+		require("snacks").picker.diagnostics()
 	end, "Workspace diagnostics")
 end
 
 local function diagnostics()
 	vim.diagnostic.config({
 		virtual_text = false,
-		virtual_lines = { current_line = true },
+		virtual_lines = false,
 		severity_sort = true,
 		float = { border = "rounded", source = "if_many", header = "" },
 	})

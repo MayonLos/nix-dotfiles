@@ -211,6 +211,7 @@ let
 
   clangdIntegrationCheck = pkgs.writeText "editing-clangd-integration.lua" ''
     local ok, err = xpcall(function()
+      vim.api.nvim_exec_autocmds("BufReadPre", {})
       assert(vim.deep_equal(vim.lsp.config.clangd.cmd, {
         "clangd", "--background-index", "--clang-tidy",
       }), "production clangd command or arguments changed")

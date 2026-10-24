@@ -1,7 +1,12 @@
 local M = {}
 
 function M.setup()
-	local matlab = { icon = "󰘨", color = "#e16737", cterm_color = "173", name = "Matlab" }
+	local matlab = {
+		icon = "󰘨",
+		color = require("mayon.generated").palette.orange,
+		cterm_color = "173",
+		name = "Matlab",
+	}
 	require("nvim-web-devicons").setup({
 		override = {
 			m = matlab,

@@ -8,6 +8,10 @@ if vim.env.NVIM_BLINK_PATH then
 	vim.opt.rtp:prepend(vim.env.NVIM_BLINK_PATH)
 end
 
+-- --clean intentionally skips bootstrap. Load the optional payloads that
+-- production's lz.n language spec now supplies before native LSP setup.
+vim.cmd.packadd("nvim-lspconfig")
+vim.cmd.packadd("blink.cmp")
 local lsp = require("mayon.lsp")
 lsp.setup()
 
@@ -15,7 +19,7 @@ local configs = require("mayon.lsp.servers").servers
 assert(vim.tbl_count(configs) == 16, "expected all 16 LSP servers")
 assert(vim.bo.filetype == "", "test expects an empty current buffer")
 assert(vim.diagnostic.config().virtual_text == false)
-assert(vim.diagnostic.config().virtual_lines.current_line == true)
+assert(vim.diagnostic.config().virtual_lines == false)
 assert(vim.diagnostic.config().severity_sort == true)
 
 -- LSP startup work can expose several concurrent tokens. Publish only a

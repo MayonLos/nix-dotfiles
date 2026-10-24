@@ -2,6 +2,10 @@ local M = {}
 
 function M.setup()
 	vim.g.mapleader = " "
+	-- 0.12 ships both markdown.vim and markdown.lua. Their undo_ftplugin
+	-- strings both unmap [[/]], leaving E31 on lz.n's FileType replay. Keep
+	-- the native Lua heading navigation and suppress only the duplicate Vim maps.
+	vim.g.no_markdown_maps = 1
 	-- This config uses Lua plugins only; remote plugin hosts stay disabled.
 	for _, provider in ipairs({ "python3", "ruby", "node", "perl" }) do
 		vim.g["loaded_" .. provider .. "_provider"] = 0
@@ -13,6 +17,7 @@ function M.setup()
 		concealcursor = "nvic",
 		conceallevel = 2,
 		cursorline = true,
+		cursorlineopt = "number,line",
 		expandtab = true,
 		foldcolumn = "0",
 		foldenable = true,

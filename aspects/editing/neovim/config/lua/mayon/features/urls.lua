@@ -205,7 +205,7 @@ end
 
 function urls.from_dir(dir)
 	dir = vim.fn.expand(dir)
-	-- rg is on the profile PATH, same assumption fzf-lua already makes.
+	-- rg is supplied by the Nix wrapper; project PATH still takes precedence.
 	local ok, res = pcall(function()
 		return vim.system({
 			"rg",
@@ -255,73 +255,54 @@ function urls.pick(entries, opts)
 		return
 	end
 
-	local fzf = require("fzf-lua")
-	local ansi = require("fzf-lua.utils").ansi_codes
-
-	-- Field 1 is the index and is hidden by --with-nth, which makes every
-	-- entry unique no matter how many times the same URL appears and gives
-	-- the actions a key back into `entries`.
-	local display = {}
-	for i, e in ipairs(entries) do
-		local where = e.file and (vim.fn.fnamemodify(e.file, ":.") .. ":" .. e.lnum) or tostring(e.lnum)
-		local parts = { ansi.magenta(where) }
-		local text = urls.label(e)
-		if text ~= "" then
-			table.insert(parts, text)
-		end
-		table.insert(parts, ansi.blue(e.url))
-		display[i] = tostring(i) .. "\t" .. table.concat(parts, "  ")
+	local items = {}
+	for i, entry in ipairs(entries) do
+		local where = entry.file and (vim.fn.fnamemodify(entry.file, ":.") .. ":" .. entry.lnum) or tostring(entry.lnum)
+		items[i] = {
+			text = where .. "  " .. urls.label(entry) .. "  " .. entry.url,
+			url = entry.url,
+			file = entry.file or vim.api.nvim_buf_get_name(0),
+			pos = { entry.lnum, 0 },
+			entry = entry,
+		}
 	end
-
-	local function chosen(selected)
-		local picked = {}
-		for _, line in ipairs(selected or {}) do
-			local i = tonumber(line:match("^(%d+)\t"))
-			if i then
-				table.insert(picked, entries[i])
+	return require("snacks").picker({
+		title = opts.prompt,
+		items = items,
+		format = "text",
+		preview = "file",
+		confirm = function(picker)
+			local selected = picker:selected({ fallback = true })
+			picker:close()
+			for _, item in ipairs(selected) do
+				urls.open(item.url, #selected > 1)
 			end
-		end
-		return picked
-	end
-
-	fzf.fzf_exec(display, {
-		prompt = opts.prompt,
-		fzf_opts = {
-			["--multi"] = true,
-			["--no-sort"] = true,
-			["--delimiter"] = "\\t",
-			["--with-nth"] = "2..",
-		},
+		end,
 		actions = {
-			-- Tab-select a handful of bullets, hit enter, read them all later.
-			["default"] = function(selected)
-				local picked = chosen(selected)
-				for _, e in ipairs(picked) do
-					urls.open(e.url, #picked > 1)
+			url_yank = function(picker)
+				local selected = vim.tbl_map(function(item)
+					return item.url
+				end, picker:selected({ fallback = true }))
+				vim.fn.setreg("+", table.concat(selected, "\n"))
+				vim.notify(#selected .. " URL(s) yanked", vim.log.levels.INFO)
+			end,
+			url_source = function(picker, item)
+				picker:close()
+				if item and item.file and item.file ~= "" then
+					vim.cmd.edit(vim.fn.fnameescape(item.file))
 				end
-				if #picked > 1 then
-					vim.notify(#picked .. " links opened", vim.log.levels.INFO)
+				if item then
+					pcall(vim.api.nvim_win_set_cursor, 0, item.pos)
 				end
 			end,
-			["ctrl-y"] = function(selected)
-				local picked = vim.tbl_map(function(e)
-					return e.url
-				end, chosen(selected))
-				vim.fn.setreg("+", table.concat(picked, "\n"))
-				vim.notify(#picked .. " URL(s) yanked", vim.log.levels.INFO)
-			end,
-			-- Go to the line instead of the site — for editing the note, or for
-			-- ticking the checkbox once the link has been read.
-			["ctrl-o"] = function(selected)
-				local e = chosen(selected)[1]
-				if not e then
-					return
-				end
-				if e.file then
-					vim.cmd.edit(vim.fn.fnameescape(e.file))
-				end
-				pcall(vim.api.nvim_win_set_cursor, 0, { e.lnum, 0 })
-			end,
+		},
+		win = {
+			input = {
+				keys = {
+					["<c-y>"] = { "url_yank", mode = { "n", "i" } },
+					["<c-o>"] = { "url_source", mode = { "n", "i" } },
+				},
+			},
 		},
 	})
 end

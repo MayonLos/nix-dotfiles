@@ -12,7 +12,12 @@ let
     + pkgs.lib.generators.toLua { } {
       inherit palette;
       ansi = import ../../appearance/ansi.nix palette;
-      tools.sqlite3 = "${pkgs.lib.getLib pkgs.sqlite}/lib/libsqlite3.so";
+      tools = {
+        sqlite3 = "${pkgs.lib.getLib pkgs.sqlite}/lib/libsqlite3.so";
+        lldb_dap = "${pkgs.llvmPackages.lldb}/bin/lldb-dap";
+        debugpy_python = "${pkgs.python3.withPackages (ps: [ ps.debugpy ])}/bin/python3";
+      };
+      plugin_dependencies = pluginSet.dependencyMap;
       languages = { inherit (languages) servers formatters linters; };
     }
   );
@@ -27,7 +32,10 @@ let
     file
     tree-sitter
     fd
-    fzf
+    ripgrep
+    lazygit
+    yazi
+    trash-cli
     wl-clipboard
   ];
 

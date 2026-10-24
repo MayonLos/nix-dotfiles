@@ -22,9 +22,18 @@ _: {
               pkgs.lua-language-server
               pkgs.vscode-langservers-extracted
               pkgs.stylua
+              pkgs.clang-tools
+              pkgs.pyright
+              pkgs.marksman
+              pkgs.nixd
+              pkgs.nixfmt
+              pkgs.ruff
+              pkgs.lua54Packages.luacheck
             ];
           }
           ''
+                export HOME="$TMPDIR/home"
+                mkdir -p "$HOME"
                 export XDG_CONFIG_HOME="$TMPDIR/config"
                 export XDG_DATA_HOME="$TMPDIR/data"
                 export XDG_STATE_HOME="$TMPDIR/state"
@@ -32,9 +41,13 @@ _: {
                 export NVIM_APPNAME=nvim
                 unset VIMINIT
                 mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"
-                for test in startup completion integration workflow fileops lua_workspace; do
+                for test in startup completion integration workflow fileops lua_workspace modern interface; do
                   export NVIM_TEST_FILE="${neovim.configDir}/tests/$test.lua"
                   ${neovim.normal}/bin/nvim --headless -c 'luafile ${neovim.configDir}/tests/run.lua'
+                done
+                export NVIM_TEST_FILE="${neovim.configDir}/tests/samples.lua"
+                for sample in lua cpp python markdown nix; do
+                  NVIM_SAMPLE="$sample" ${neovim.normal}/bin/nvim --headless -c 'luafile ${neovim.configDir}/tests/run.lua'
                 done
                 export NVIM_LSP_INTEGRATION=1
                 for test in lsp; do

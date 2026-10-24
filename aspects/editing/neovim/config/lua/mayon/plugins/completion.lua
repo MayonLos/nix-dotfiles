@@ -1,6 +1,6 @@
 local M = {}
 
-function M.setup()
+local function setup()
 	require("blink-cmp").setup({
 		appearance = { kind_icons = require("mayon.kinds") },
 		enabled = function()
@@ -89,13 +89,13 @@ function M.setup()
 			providers = {
 				lazydev = {
 					name = "Lua Modules",
-					module = "lazydev.integrations.blink",
+					module = "mayon.features.lua_blink_proxy",
 					score_offset = 100,
 				},
 				codecompanion = {
 					name = "CodeCompanion",
 					-- This proxy avoids loading CodeCompanion during ordinary completion.
-					module = "mayon.plugins.cc_blink_proxy",
+					module = "mayon.features.cc_blink_proxy",
 					score_offset = 100,
 				},
 				snippets = {
@@ -130,4 +130,4 @@ function M.setup()
 	end
 end
 
-return M
+return { { "blink.cmp", event = { "BufReadPre", "BufNewFile", "InsertEnter", "CmdlineEnter" }, after = setup } }

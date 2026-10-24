@@ -10,7 +10,7 @@ local function sqlite3_path()
 	return ok and generated.tools and generated.tools.sqlite3 or nil
 end
 
-function M.setup(overrides)
+local function setup(overrides)
 	local motion_reduced = reduced_motion()
 	local config = {
 		input = {
@@ -153,7 +153,7 @@ function M.setup(overrides)
 				},
 			},
 		},
-		dashboard = { enabled = false },
+		dashboard = require("mayon.ui.dashboard").config(),
 	}
 
 	if overrides then
@@ -167,4 +167,10 @@ function M.setup(overrides)
 	Snacks.input.enable()
 end
 
-return M
+return { {
+	"snacks.nvim",
+	lazy = false,
+	after = function()
+		setup()
+	end,
+} }

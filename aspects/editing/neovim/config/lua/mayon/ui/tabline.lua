@@ -103,6 +103,7 @@ function M.build()
 		"BufFilePost",
 		"BufModifiedSet",
 		"BufUnload",
+		"DiagnosticChanged",
 		"DirChanged",
 		"TextChanged",
 		"TextChangedI",
@@ -143,6 +144,24 @@ function M.build()
 			return self.icon and (self.icon .. " ")
 		end,
 		hl = "MayonMuted",
+	}
+	local TablineDiagnostics = {
+		init = function(self)
+			self.errors, self.warns = 0, 0
+			for _, diagnostic in ipairs(vim.diagnostic.get(self.bufnr)) do
+				if diagnostic.severity == vim.diagnostic.severity.ERROR then
+					self.errors = self.errors + 1
+				elseif diagnostic.severity == vim.diagnostic.severity.WARN then
+					self.warns = self.warns + 1
+				end
+			end
+		end,
+		provider = function(self)
+			return self.errors + self.warns > 0 and "● " or ""
+		end,
+		hl = function(self)
+			return self.errors > 0 and "DiagnosticError" or "DiagnosticWarn"
+		end,
 	}
 
 	-- Resolve duplicate basenames only when the listed buffers or their paths change.
@@ -273,13 +292,14 @@ function M.build()
 		},
 		{ provider = " " },
 		TablineFileIcon,
+		TablineDiagnostics,
 		TablineFileName,
 		TablineFileFlags,
 	}
 
 	local TablineCloseButton = {
 		condition = function(self)
-			return self.is_active
+			return self.is_active or vim.o.columns >= 80
 		end,
 		{ provider = " " },
 		{

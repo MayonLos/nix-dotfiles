@@ -13,21 +13,24 @@ function M.setup()
 	local text = require("mayon.ui.text")
 
 	local function setup_colors()
+		local palette = require("mayon.generated").palette
 		return {
-			bg = utils.get_highlight("StatusLine").bg,
-			fg = utils.get_highlight("StatusLine").fg,
-			gray = utils.get_highlight("MayonMuted").fg or utils.get_highlight("NonText").fg,
-			blue = utils.get_highlight("Function").fg,
-			green = utils.get_highlight("String").fg,
-			purple = utils.get_highlight("Statement").fg,
-			orange = utils.get_highlight("Constant").fg,
-			red = utils.get_highlight("DiagnosticError").fg,
-			diag_warn = utils.get_highlight("DiagnosticWarn").fg,
-			diag_info = utils.get_highlight("DiagnosticInfo").fg,
-			diag_hint = utils.get_highlight("DiagnosticHint").fg,
-			git_add = utils.get_highlight("Added").fg or utils.get_highlight("diffAdded").fg,
-			git_change = utils.get_highlight("Changed").fg or utils.get_highlight("diffChanged").fg,
-			git_del = utils.get_highlight("Removed").fg or utils.get_highlight("diffRemoved").fg,
+			bg = palette.bg,
+			position_bg = palette.surface,
+			fg = palette.fg,
+			gray = palette.muted,
+			blue = palette.blue,
+			cyan = palette.cyan,
+			green = palette.green,
+			purple = palette.purple,
+			orange = palette.orange,
+			red = palette.red,
+			diag_warn = palette.yellow,
+			diag_info = palette.blue,
+			diag_hint = palette.cyan,
+			git_add = palette.green,
+			git_change = palette.orange,
+			git_del = palette.red,
 		}
 	end
 
@@ -97,11 +100,24 @@ function M.setup()
 	local ViMode = {
 		provider = function(self)
 			local name = mode_names[self.mode] or self.mode:upper()
-			return (vim.o.columns < 80 and (short_modes[self.mode:sub(1, 1)] or name:sub(1, 1)) or name) .. " "
+			local label = vim.o.columns < 80 and (short_modes[self.mode:sub(1, 1)] or name:sub(1, 1)) or name
+			return " " .. label .. " "
 		end,
 		hl = function(self)
-			return { fg = mode_colors[self.mode:sub(1, 1)] or "blue", bold = true }
+			local key = mode_colors[self.mode:sub(1, 1)] or "blue"
+			return { fg = "bg", bg = key, bold = true }
 		end,
+	}
+
+	-- Rounded mode capsule; the edge foreground follows the active mode.
+	local ModeBody = ViMode
+	local function mode_edge(self)
+		return { fg = mode_colors[self.mode:sub(1, 1)] or "blue", bg = "bg" }
+	end
+	ViMode = {
+		{ provider = "", hl = mode_edge },
+		ModeBody,
+		{ provider = "", hl = mode_edge },
 	}
 	ViMode.init = function(self)
 		self.mode = vim.fn.mode(1)
@@ -172,8 +188,8 @@ function M.setup()
 			if vim.o.columns < 120 then
 				return text.fit(vim.fn.fnamemodify(self.filename, ":t"), math.max(5, math.floor(vim.o.columns * 0.30)))
 			end
-			local path = vim.fn.fnamemodify(self.filename, ":~:.:h")
-			return text.fit(path == "." and "workspace" or path, math.max(5, math.floor(vim.o.columns * 0.20)))
+			local path = vim.fn.fnamemodify(self.filename, ":~:.")
+			return text.fit(path, math.max(8, math.floor(vim.o.columns * 0.30)))
 		end,
 		hl = { fg = "fg" },
 	}
@@ -203,16 +219,19 @@ function M.setup()
 			hl = { fg = "orange" },
 		},
 	}
-	FileNameBlock = utils.insert(
-		FileNameBlock,
-		{ provider = "󰉋 ", hl = { fg = "gray" } },
-		FileName,
-		{ provider = "%<" }
-	)
+	FileNameBlock = utils.insert(FileNameBlock, {
+		provider = function(self)
+			local ext = vim.fn.fnamemodify(self.filename, ":e")
+			local icon = select(1, require("nvim-web-devicons").get_icon_color(self.filename, ext, { default = true }))
+			return (icon or "󰈔") .. " "
+		end,
+		hl = "MayonStatusGit",
+	}, FileName, { provider = "%<" })
 
 	local Navic = {
 		condition = function()
-			local ok, navic = pcall(require, "nvim-navic")
+			local navic = package.loaded["nvim-navic"]
+			local ok = navic ~= nil
 			return vim.o.columns >= 120 and ok and navic.is_available()
 		end,
 		-- Use raw symbol data: truncating navic's formatted statusline would cut
@@ -296,9 +315,10 @@ function M.setup()
 			return false
 		end,
 		init = function(self)
-			local attached = {}
+			local attached, client_names = {}, {}
 			for _, client in ipairs(vim.lsp.get_clients({ bufnr = 0 })) do
 				attached[client.id] = true
+				client_names[#client_names + 1] = client.name
 			end
 			local lsp = package.loaded["mayon.lsp"]
 			local progress = lsp and lsp.progress_status and lsp.progress_status() or {}
@@ -310,11 +330,12 @@ function M.setup()
 				end
 			end
 			self.busy = #names > 0
+			table.sort(client_names)
 			-- Raw progress messages can contain several rapidly changing file
 			-- counters. Keep the status rail stable; the LSP owns those details.
 			self.label = self.busy
 					and ("⋯ " .. (#names == 1 and names[1] or "LSP") .. (count > 1 and (" · " .. count) or ""))
-				or "● LSP"
+				or ("● " .. (#client_names > 0 and table.concat(client_names, ",") or "LSP"))
 		end,
 		provider = function(self)
 			return text.fit(self.label, math.max(5, math.min(26, math.floor(vim.o.columns * 0.20)))) .. " "
@@ -358,18 +379,24 @@ function M.setup()
 		pattern = { "GitSignsUpdate", "MayonLspProgressChanged" },
 		callback = vim.schedule_wrap(redraw_status),
 	})
-	local FilePercent = {
+	local Encoding = {
 		condition = function()
-			return vim.o.columns >= 120
+			return vim.o.columns >= 80 and vim.bo.fileencoding ~= "" and vim.bo.fileencoding:lower() ~= "utf-8"
 		end,
-		provider = "%p%% ",
+		provider = function()
+			return vim.bo.fileencoding:upper() .. " "
+		end,
 		hl = { fg = "gray" },
 	}
 	local Ruler = {
-		provider = function()
-			return vim.o.columns < 80 and "%l:%v " or "LN %l:%v "
-		end,
-		hl = "MayonPosition",
+		{ provider = "", hl = { fg = "position_bg", bg = "bg" } },
+		{
+			provider = function()
+				return vim.o.columns >= 120 and " %l:%v · %p%% " or " %l:%v "
+			end,
+			hl = "MayonPosition",
+		},
+		{ provider = "", hl = { fg = "position_bg", bg = "bg" } },
 	}
 	local Language = {
 		condition = function()
@@ -426,22 +453,21 @@ function M.setup()
 	local DefaultStatusline = {
 		ViMode,
 		Space,
+		{ flexible = 2, Git, {} },
 		-- Drop optional context before Neovim truncates diagnostics on narrow UIs.
 		{ flexible = 3, FileNameBlock, CompactFileName, {} },
 		-- Buffer state stays visible when the flexible filename contracts.
 		FileFlags,
 		{ flexible = 4, Navic, {} },
 		Space,
-		{ flexible = 2, Git, {} },
-		Space,
 		Align,
 		Recording,
 		SearchCount,
-		CodeCompanion,
 		Diagnostics,
 		{ flexible = 1, LSPActive, {} },
+		CodeCompanion,
 		Language,
-		FilePercent,
+		Encoding,
 		Ruler,
 	}
 
@@ -530,7 +556,7 @@ function M.setup()
 		DefaultStatusline,
 	}
 
-	heirline.setup({ statusline = StatusLines, tabline = require("mayon.tabline").build() })
+	heirline.setup({ statusline = StatusLines, tabline = require("mayon.ui.tabline").build() })
 	heirline.load_colors(setup_colors())
 
 	vim.api.nvim_create_autocmd("ColorScheme", {

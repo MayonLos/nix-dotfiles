@@ -4,8 +4,7 @@ local function map(mode, lhs, rhs, desc)
 	vim.keymap.set(mode, lhs, rhs, { desc = desc })
 end
 
-function M.setup()
-	require("nvim-autopairs").setup({})
+local function setup()
 	require("nvim-surround").setup({})
 	require("flash").setup({})
 	require("treesitter-context").setup({
@@ -21,15 +20,6 @@ function M.setup()
 	require("nvim-treesitter-textobjects").setup({
 		select = { lookahead = true },
 		move = { set_jumps = true },
-	})
-	require("ufo").setup({
-		provider_selector = function(bufnr)
-			if vim.bo[bufnr].filetype == "bigfile" then
-				return ""
-			end
-			-- Keep folding independent of each server's folding capability.
-			return { "treesitter", "indent" }
-		end,
 	})
 	require("multicursor-nvim").setup()
 
@@ -86,15 +76,6 @@ function M.setup()
 	map("n", "<leader>sp", function()
 		require("nvim-treesitter-textobjects.swap").swap_previous("@parameter.inner")
 	end, "Swap parameter with prev")
-	map("n", "zR", function()
-		require("ufo").openAllFolds()
-	end, "Open all folds")
-	map("n", "zM", function()
-		require("ufo").closeAllFolds()
-	end, "Close all folds")
-	map("n", "zK", function()
-		require("ufo").peekFoldedLinesUnderCursor()
-	end, "Preview folded lines")
 
 	local mc = require("multicursor-nvim")
 	-- These bindings only exist while multiple cursors are active.
@@ -157,4 +138,27 @@ function M.setup()
 	end
 end
 
-return M
+return {
+	{
+		"nvim-autopairs",
+		event = "InsertEnter",
+		after = function()
+			require("nvim-autopairs").setup({})
+		end,
+	},
+	{
+		"flash.nvim",
+		event = { "BufReadPre", "BufNewFile" },
+		before = function()
+			for _, n in ipairs({
+				"nvim-surround",
+				"nvim-treesitter-context",
+				"nvim-treesitter-textobjects",
+				"multicursor.nvim",
+			}) do
+				require("mayon.config.loader").pack(n)
+			end
+		end,
+		after = setup,
+	},
+}

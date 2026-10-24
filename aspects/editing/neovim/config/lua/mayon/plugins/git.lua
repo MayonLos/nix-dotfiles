@@ -1,8 +1,7 @@
 local M = {}
 
-function M.setup()
+local function setup()
 	require("gitsigns").setup({})
-	require("diffview").setup({})
 	local function map(mode, lhs, callback, desc)
 		vim.keymap.set(mode, lhs, callback, { desc = desc })
 	end
@@ -51,4 +50,20 @@ function M.setup()
 	vim.keymap.set("n", "<leader>gC", "<cmd>DiffviewClose<cr>", { desc = "Close diff view" })
 end
 
-return M
+return {
+	{ "gitsigns.nvim", event = { "BufReadPost", "BufNewFile" }, after = setup },
+	{
+		"diffview.nvim",
+		cmd = {
+			"DiffviewOpen",
+			"DiffviewClose",
+			"DiffviewFileHistory",
+			"DiffviewToggleFiles",
+			"DiffviewFocusFiles",
+			"DiffviewRefresh",
+		},
+		after = function()
+			require("diffview").setup({})
+		end,
+	},
+}

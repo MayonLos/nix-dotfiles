@@ -1,6 +1,6 @@
 local M = {}
 
-function M.setup()
+local function setup()
 	require("lazydev").setup({
 		library = {},
 		-- Keep native LuaLS root detection, including projects with their own
@@ -18,4 +18,4 @@ function M.setup()
 	})
 end
 
-return M
+return { { "lazydev.nvim", ft = "lua", after = setup } }

@@ -1,5 +1,5 @@
 -- UI contracts against real Heirline/Navic/Snacks, using only temporary files.
-local tab = require("mayon.tabline")
+local tab = require("mayon.ui.tabline")
 local initial = vim.api.nvim_get_current_buf()
 assert(not vim.tbl_contains(tab.buffers(), initial), "empty placeholder occupies a tab")
 vim.api.nvim_buf_set_lines(initial, 0, -1, false, { "unsaved note" })
@@ -115,7 +115,6 @@ for _, name in ipairs({
 	"NoiceCmdlinePopup",
 	"NoiceCmdlinePopupBorder",
 	"SnacksPickerList",
-	"FzfLuaSurface",
 }) do
 	assert(hl(name).bg == hl("Normal").bg, name .. " has a disconnected background")
 end

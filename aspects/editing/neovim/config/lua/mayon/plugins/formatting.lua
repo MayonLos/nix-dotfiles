@@ -1,6 +1,6 @@
 local M = {}
 
-function M.setup()
+local function setup()
 	_G.slow_format_filetypes = {}
 	_G.autoformat_disabled = function(bufnr)
 		return vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat
@@ -44,4 +44,11 @@ function M.setup()
 	end, { desc = "Enable autoformat-on-save" })
 end
 
-return M
+return {
+	{
+		"conform.nvim",
+		event = { "BufReadPre", "BufNewFile" },
+		cmd = { "FormatDisable", "FormatEnable" },
+		after = setup,
+	},
+}

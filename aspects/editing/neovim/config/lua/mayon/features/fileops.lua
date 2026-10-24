@@ -132,6 +132,17 @@ local function buffer_conflict(target, old, renaming_directory)
 	return nil
 end
 
+local function move_conflict(target, old)
+	if uv.fs_lstat(target) then
+		return "Target already exists: " .. target
+	end
+	local conflicting_buffer = buffer_conflict(target, old, is_dir(old))
+	if conflicting_buffer then
+		return "Target is already open in a buffer: " .. conflicting_buffer
+	end
+	return nil
+end
+
 local function rename_now(old, new)
 	old, new = normalize(old), normalize(new)
 	local renaming_directory = is_dir(old)
@@ -144,12 +155,9 @@ local function rename_now(old, new)
 	if not uv.fs_lstat(old) then
 		return false, "Source does not exist: " .. old
 	end
-	if uv.fs_lstat(new) then
-		return false, "Target already exists: " .. new
-	end
-	local conflicting_buffer = buffer_conflict(new, old, renaming_directory)
-	if conflicting_buffer then
-		return false, "Target is already open in a buffer: " .. conflicting_buffer
+	local conflict = move_conflict(new, old)
+	if conflict then
+		return false, conflict
 	end
 	if not is_dir(vim.fs.dirname(new)) then
 		return false, "Target parent directory does not exist"
@@ -193,6 +201,12 @@ local function rename_now(old, new)
 	return true
 end
 
+-- Public synchronous path for adapters such as Oil. It deliberately uses the
+-- same LSP-aware, no-overwrite path as the Snacks rename action.
+function M.rename_path(old, new)
+	return rename_now(old, new)
+end
+
 function M.rename_file(opts)
 	opts = opts or {}
 	local from = opts.from or opts.file or api.nvim_buf_get_name(0)
@@ -229,9 +243,12 @@ function M.rename_file(opts)
 	end)
 end
 
-function M.trash(path, resolve)
+function M.check_trash(path)
 	path = normalize(path)
 	local directory = is_dir(path)
+	if not uv.fs_lstat(path) then
+		return false, "Item no longer exists; nothing was moved to trash"
+	end
 	for _, buf in ipairs(api.nvim_list_bufs()) do
 		if api.nvim_buf_is_valid(buf) and vim.bo[buf].modified then
 			local name = api.nvim_buf_get_name(buf)
@@ -243,6 +260,95 @@ function M.trash(path, resolve)
 				end
 			end
 		end
+	end
+	return true
+end
+
+function M.check_move_target(path, source)
+	path = normalize(path)
+	source = source and normalize(source) or nil
+	local reason = move_conflict(path, source or "")
+	return reason == nil, reason
+end
+
+-- Oil's locked recursive_copy has an undo-copy fallback that can retry a
+-- failed exclusive copy without EXCL. Keep source undo files untouched and
+-- copy only new filesystem entries through exclusive primitives instead.
+function M.copy_path(source, target)
+	source, target = normalize(source), normalize(target)
+	local safe, reason = M.check_move_target(target)
+	if not safe then
+		return false, reason
+	end
+	local source_stat = uv.fs_lstat(source)
+	if source_stat and source_stat.type == "directory" then
+		local resolved_source = uv.fs_realpath(source)
+		if not resolved_source then
+			return false, "Source no longer exists"
+		end
+		local resolved_parent = uv.fs_realpath(vim.fs.dirname(target))
+		if not resolved_parent then
+			return false, "Target parent directory does not exist"
+		end
+		local resolved_target = vim.fs.joinpath(resolved_parent, vim.fs.basename(target))
+		if
+			resolved_source == "/"
+			or resolved_target == resolved_source
+			or resolved_target:sub(1, #resolved_source + 1) == resolved_source .. "/"
+		then
+			return false, "Cannot copy a directory into itself"
+		end
+	end
+	local function copy(from, to)
+		local stat, err = uv.fs_lstat(from)
+		if not stat then
+			return nil, err
+		end
+		if uv.fs_lstat(to) then
+			return nil, "Target already exists: " .. to
+		end
+		if stat.type == "link" then
+			local link, link_error = uv.fs_readlink(from)
+			if not link then
+				return nil, link_error
+			end
+			return uv.fs_symlink(link, to)
+		elseif stat.type == "directory" then
+			local permissions = stat.mode % 512
+			-- Source resources may be read-only. Populate with owner access, then
+			-- restore permissions only after all descendants have been copied.
+			local ok, mkdir_error = uv.fs_mkdir(to, bit.bor(permissions, 448))
+			if not ok then
+				return nil, mkdir_error
+			end
+			local scan, scan_error = uv.fs_scandir(from)
+			if not scan then
+				return nil, scan_error
+			end
+			while true do
+				local name = uv.fs_scandir_next(scan)
+				if not name then
+					return uv.fs_chmod(to, permissions)
+				end
+				local copied, copy_error = copy(from .. "/" .. name, to .. "/" .. name)
+				if not copied then
+					return nil, copy_error
+				end
+			end
+		elseif stat.type == "file" then
+			return uv.fs_copyfile(from, to, { excl = true })
+		end
+		return nil, "Unsupported entry type: " .. stat.type
+	end
+	local ok, err = copy(source, target)
+	return ok == true, err
+end
+
+function M.trash(path, resolve)
+	path = normalize(path)
+	local safe, reason = M.check_trash(path)
+	if not safe then
+		return false, reason
 	end
 	local executable = (resolve or vim.fn.exepath)("trash-put")
 	if executable == "" then

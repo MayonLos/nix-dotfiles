@@ -4,6 +4,20 @@ let
   inherit (pkgs) vimPlugins;
 
   configuredPlugins = [
+    vimPlugins.lz-n
+    vimPlugins.oil-nvim
+    vimPlugins.yazi-nvim
+    vimPlugins.nvim-dap
+    vimPlugins.nvim-dap-view
+    vimPlugins.nvim-dap-virtual-text
+    vimPlugins.overseer-nvim
+    vimPlugins.todo-comments-nvim
+    vimPlugins.rainbow-delimiters-nvim
+    vimPlugins.nvim-colorizer-lua
+    vimPlugins.tiny-inline-diagnostic-nvim
+    vimPlugins.satellite-nvim
+    vimPlugins.incline-nvim
+    vimPlugins.smear-cursor-nvim
     vimPlugins.blink-cmp
     vimPlugins.codecompanion-nvim
     (vimPlugins.codecompanion-history-nvim.overrideAttrs (_: {
@@ -13,7 +27,6 @@ let
     vimPlugins.conform-nvim
     (pkgs.callPackage ./diffview-plus.nix { })
     vimPlugins.flash-nvim
-    vimPlugins.fzf-lua
     vimPlugins.gitsigns-nvim
     vimPlugins.grug-far-nvim
     vimPlugins.heirline-nvim
@@ -26,7 +39,6 @@ let
     vimPlugins.nvim-surround
     vimPlugins.nvim-treesitter-context
     vimPlugins.nvim-treesitter-textobjects
-    vimPlugins.nvim-ufo
     vimPlugins.nvim-web-devicons
     vimPlugins.onedark-nvim
     vimPlugins.render-markdown-nvim
@@ -63,7 +75,31 @@ let
       in
       visit nextSeen ((current.dependencies or [ ]) ++ rest);
 
-  plugins = visit [ ] roots;
+  closure = visit [ ] roots;
+  startup = with vimPlugins; [
+    lz-n
+    onedark-nvim
+    heirline-nvim
+    snacks-nvim
+    nvim-web-devicons
+  ];
+  # List the complete closure explicitly as optional too: nixpkgs otherwise
+  # promotes dependencies of optional roots into start/. Parsers and queries
+  # remain available through the same generated dependency graph.
+  plugins = map (plugin: {
+    inherit plugin;
+    optional = !(builtins.elem plugin.outPath (map (p: p.outPath) startup));
+  }) closure;
+  dependencyMap =
+    builtins.listToAttrs (
+      map (plugin: {
+        name = pkgs.lib.getName plugin;
+        value = map (dep: pkgs.lib.getName dep) (plugin.dependencies or [ ]);
+      }) closure
+    )
+    // {
+      "nvim-treesitter" = map (dep: pkgs.lib.getName dep) parsers.plugin.dependencies;
+    };
 in
 {
   inherit
@@ -71,5 +107,6 @@ in
     plugins
     parsers
     runtimeDependencies
+    dependencyMap
     ;
 }

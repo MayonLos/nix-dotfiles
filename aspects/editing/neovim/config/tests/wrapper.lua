@@ -4,6 +4,8 @@ if mode == "reduced" then
 	assert(require("mayon.generated").palette.reducedMotion)
 	assert(not require("snacks").config.scroll.enabled)
 	assert(not require("snacks").config.dim.animate.enabled)
+	vim.api.nvim_exec_autocmds("User", { pattern = "MayonVeryLazy" })
+	assert(not package.loaded.smear_cursor, "reducedMotion loaded cursor animation")
 elseif mode == "dev" then
 	assert(vim.env.NVIM_CONFIG_DIR == vim.env.NVIM_EXPECTED_CONFIG_DIR)
 	assert(require("mayon.generated").languages.servers.clangd)

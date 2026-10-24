@@ -23,7 +23,9 @@ local function visual_prompt(alias, description, prompt)
 	}
 end
 
-function M.setup()
+local function setup()
+	require("lz.n").trigger_load("blink.cmp")
+	require("mayon.config.loader").pack("codecompanion-history.nvim")
 	-- DeepSeek uses CodeCompanion's built-in adapter. The CLI agent names map
 	-- directly to the installed codex and grok executables.
 	require("codecompanion").setup({
@@ -129,7 +131,7 @@ function M.setup()
 		},
 	})
 
-	require("mayon.plugins.cc_inline_indicator").setup()
+	require("mayon.features.cc_inline_indicator").setup()
 	vim.api.nvim_create_autocmd("FileType", {
 		group = vim.api.nvim_create_augroup("MayonCodeCompanionCli", { clear = true }),
 		pattern = "codecompanion_cli",
@@ -179,4 +181,24 @@ function M.setup()
 	map("n", "<leader>aT", ":CodeCompanionCLI agent=", "CodeCompanion: CLI (pick agent)", { silent = false })
 end
 
-return M
+return {
+	{
+		"codecompanion.nvim",
+		cmd = { "CodeCompanion", "CodeCompanionChat", "CodeCompanionCLI", "CodeCompanionActions", "CodeCompanionCmd" },
+		keys = {
+			{ "<leader>aa", mode = { "n", "v" } },
+			{ "<leader>ap", mode = { "n", "v" } },
+			{ "<leader>av", mode = "v" },
+			{ "<leader>ai", mode = { "n", "v" } },
+			"<leader>at",
+			"<leader>ah",
+			{ "<leader>acp", mode = { "n", "v" } },
+			{ "<leader>aca", mode = { "n", "v" } },
+			"<leader>acd",
+			"<leader>act",
+			"<leader>ax",
+			"<leader>aT",
+		},
+		after = setup,
+	},
+}
