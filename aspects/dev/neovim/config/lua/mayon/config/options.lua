@@ -33,6 +33,8 @@ function M.setup()
 		foldlevelstart = 99,
 		ignorecase = true,
 		laststatus = 3,
+		-- Keep native Progress events for the statusline, without ui2 messages.
+		messagesopt = "hit-enter,history:500,progress:",
 		list = true,
 		listchars = { tab = "» ", trail = "·", nbsp = "␣" },
 		number = true,

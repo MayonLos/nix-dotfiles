@@ -260,10 +260,12 @@ in
               track_usage = true;
               sort_by_usage = true;
               pinned = [
-                "kitty.desktop"
-                "nvim.desktop"
-                "firefox.desktop"
-                "thunar.desktop"
+                # Noctalia resolves pinned values against DesktopEntry::id,
+                # which is the filename stem (without the .desktop suffix).
+                "kitty"
+                "nvim"
+                "firefox"
+                "thunar"
               ];
               # calculator-plus is removed. The built-in provider has no enable
               # switch; exclude it from ordinary search. Its explicit /calc

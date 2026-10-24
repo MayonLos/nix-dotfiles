@@ -183,5 +183,49 @@ local inline = vim.api.nvim_get_hl(0, { name = "LspInlineCompletion", link = fal
 assert(inline.fg == tonumber(palette.muted:sub(2), 16) and inline.italic, "AI ghost text must use muted italic")
 local normal = vim.api.nvim_get_hl(0, { name = "Normal", link = false })
 assert(normal.bg == tonumber(palette.deep:sub(2), 16), "editor surface must use generated deep")
+
+-- The right rail summarizes actionable diagnostics, independently of Git.
+require("lz.n").trigger_load("satellite.nvim")
+local handlers = require("satellite.handlers")
+handlers.init()
+local diagnostic_handler
+for _, handler in ipairs(handlers.handlers) do
+	assert(handler.name ~= "gitsigns" or not handler:enabled(), "Git marks duplicate the left gutter")
+	if handler.name == "diagnostic" then
+		diagnostic_handler = handler
+	end
+end
+assert(diagnostic_handler and diagnostic_handler:enabled())
+local rail_ns = vim.api.nvim_create_namespace("SatelliteDiagnosticTest")
+local rail_buf, rail_win = vim.api.nvim_get_current_buf(), vim.api.nvim_get_current_win()
+local function rail_marks()
+	local marks
+	require("satellite.async").run(function()
+		marks = diagnostic_handler.update(rail_buf, rail_win)
+	end)
+	assert(
+		vim.wait(1000, function()
+			return marks ~= nil
+		end),
+		"Satellite diagnostic update timed out"
+	)
+	return marks
+end
+local function set_diagnostics(severities)
+	local items = {}
+	for _, severity in ipairs(severities) do
+		items[#items + 1] = { lnum = 0, col = 0, message = "rail fixture", severity = severity }
+	end
+	vim.diagnostic.set(rail_ns, rail_buf, items)
+end
+local severity = vim.diagnostic.severity
+set_diagnostics({ severity.INFO, severity.HINT })
+assert(#rail_marks() == 0, "low severity diagnostics should not clutter the rail")
+set_diagnostics({ severity.ERROR, severity.WARN, severity.INFO, severity.HINT })
+local marks = rail_marks()
+assert(#marks == 1 and marks[1].symbol == "=", "rail must count only error/warning diagnostics")
+assert(marks[1].highlight == "SatelliteDiagnosticError", "rail must retain the highest severity")
+vim.diagnostic.reset(rail_ns, rail_buf)
+assert(#rail_marks() == 0, "a buffer without diagnostics should have no diagnostic rail marks")
 assert(vim.v.errmsg == "", vim.v.errmsg)
 print("Lazy setup, dashboard, unified pickers, folds and palette groups passed")

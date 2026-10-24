@@ -214,7 +214,9 @@
     };
 
     clock = {
-      format = "{:%m月%d日 %a  %H:%M}";
+      # %a follows the active LC_TIME locale; prefix it explicitly so Chinese
+      # locales render e.g. 周日 instead of the ambiguous bare 日.
+      format = "{:%m月%d日 周%a  %H:%M}";
       vertical_format = "{:%H\n%M}";
       font_family = palette.fonts.sans;
     };

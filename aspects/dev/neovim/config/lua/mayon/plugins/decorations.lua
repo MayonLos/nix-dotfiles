@@ -56,11 +56,10 @@ return {
 				handlers = {
 					cursor = { enable = false },
 					search = { enable = true },
-					diagnostic = { enable = true, min_severity = vim.diagnostic.severity.HINT },
-					gitsigns = {
-						enable = true,
-						signs = { add = "│", change = "│", delete = "-" },
-					},
+					-- Density marks (-/= /≡) are diagnostics, not Git changes.
+					-- Keep actionable diagnostics; Git already has the left gutter.
+					diagnostic = { enable = true, min_severity = vim.diagnostic.severity.WARN },
+					gitsigns = { enable = false },
 					marks = { enable = false },
 				},
 			})

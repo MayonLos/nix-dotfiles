@@ -88,6 +88,18 @@ if not has_progress_bridge or #progress_bridge == 0 then
 end
 
 vim.ui.progress_status() -- initializes Neovim's native Progress event collector.
+assert(vim.tbl_contains(vim.opt.messagesopt:get(), "progress:"), "progress must stay out of the message area")
+local message_ns = vim.api.nvim_create_namespace("NativeProgressMessagesTest")
+local messages = {}
+vim.ui_attach(message_ns, { ext_messages = true }, function(event, kind, chunks)
+	if event == "msg_show" then
+		messages[#messages + 1] = { kind = kind, chunks = chunks }
+	end
+	return true
+end)
+vim.api.nvim_echo({ { "message observer ready" } }, false, {})
+assert(#messages > 0, "message observer must see ordinary messages")
+messages = {}
 local bridge_client_id = 8122
 local bridge_client = {
 	id = bridge_client_id,
@@ -122,12 +134,30 @@ local function lsp_progress(token, kind, percentage, message)
 end
 lsp_progress("work", "begin", 0, "Starting")
 assert(vim.ui.progress_status():find("(1)", 1, true), "LspProgress begin should enter native Progress status")
-lsp_progress("work", "report", 45, "Working")
-assert(vim.ui.progress_status():find("45", 1, true), "LspProgress report should update native progress")
+lsp_progress("work", "report", 55, "Loading workspace: 55% 138/249")
+assert(vim.ui.progress_status():find("55", 1, true), "LspProgress report should update native progress")
 assert(bridged_events[#bridged_events].source == "lsp" and bridged_events[#bridged_events].status == "running")
+-- Evaluate the complete Heirline output, not just the progress provider string.
+local get_clients = vim.lsp.get_clients
+vim.lsp.get_clients = function()
+	return { bridge_client }
+end
+local columns = vim.o.columns
+for _, width in ipairs({ 80, 120, 180 }) do
+	vim.o.columns = width
+	local rail = vim.api.nvim_eval_statusline(vim.o.statusline, { maxwidth = width }).str
+	assert(rail:find("55%(1)", 1, true), "progress lost its single percent: " .. rail)
+	assert(not rail:find("55%%", 1, true), "progress was escaped twice: " .. rail)
+end
+vim.o.columns = columns
+vim.lsp.get_clients = get_clients
 lsp_progress("work", "end", 100, "Finished")
 assert(vim.ui.progress_status() == "", "LspProgress end should clear native progress")
 assert(bridged_events[#bridged_events].status == "success")
+vim.cmd.redraw()
+vim.wait(20)
+vim.ui_detach(message_ns)
+assert(#messages == 0, "LSP progress leaked into the message area: " .. vim.inspect(messages))
 
 lsp_progress("stale", "begin", 0, "Will detach")
 bridge_client.attached_buffers = {}

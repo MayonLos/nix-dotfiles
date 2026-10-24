@@ -317,7 +317,9 @@ function M.setup()
 			for _, client in ipairs(vim.lsp.get_clients({ bufnr = 0 })) do
 				client_names[#client_names + 1] = client.name
 			end
-			self.progress = vim.ui.progress_status()
+			-- 0.12.4 already escapes percent for statusline use. Decode before
+			-- text.fit clips display cells and performs the single final escape.
+			self.progress = vim.ui.progress_status():gsub("%%%%", "%%")
 			self.busy = vim.bo.busy > 0 or self.progress ~= ""
 			table.sort(client_names)
 			self.label = self.busy and ("◐ " .. (self.progress ~= "" and self.progress or "busy"))

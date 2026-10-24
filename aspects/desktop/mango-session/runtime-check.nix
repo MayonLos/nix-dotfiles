@@ -268,8 +268,10 @@ pkgs.runCommand "interactive-session-config"
     expected = {
         ("shell", "launcher", "layout"): "full",
         ("shell", "launcher", "category_icons_only"): True,
+        ("shell", "launcher", "default_view"): "pinned",
         ("shell", "launcher", "track_usage"): True,
         ("shell", "launcher", "sort_by_usage"): True,
+        ("shell", "launcher", "pinned"): ["kitty", "nvim", "firefox", "thunar"],
         ("shell", "launcher", "providers", "calculator", "global"): False,
         ("notification", "border_color"): "outline",
         ("notification", "border_width"): 1,
@@ -280,6 +282,7 @@ pkgs.runCommand "interactive-session-config"
         ("shell", "panel", "border_color"): "outline",
         ("shell", "panel", "border_width"): 1,
         ("bar", "main", "show_tooltip"): True,
+        ("widget", "clock", "format"): "{:%m月%d日 周%a  %H:%M}",
         ("widget", "workspaces", "style"): "regular",
         ("lockscreen_widgets", "widget", "lockscreen-login-box@eDP-1", "settings", "show_password_reveal"): True,
         ("lockscreen_widgets", "widget", "lockscreen-login-box@eDP-1", "settings", "input_radius"): 8.0,
