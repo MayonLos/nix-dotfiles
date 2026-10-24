@@ -68,7 +68,7 @@ Alt pane/window 截获已移除。输入完整快捷键与布局以 [Mango](aspe
 及 [tmux](aspects/command-line/tmux.nix) 当前配置为准。
 
 `Super+Alt+D` 切换勿扰，`Super+Alt+I` 切换防空闲；面板铃铛与咖啡显示状态。
-启动器提供“Nix 配置工作台”“NewNuclear 工作台”和“长任务终端”。
+启动器提供“Nix 配置工作台”和“长任务终端”。
 `workspace-project list` 列出显式项目，`workspace-task -- 命令 参数` 在命令运行期间
 阻止普通睡眠请求；它与防空闲开关各有范围，详见[操作说明](docs/workflow-design.md)。
 

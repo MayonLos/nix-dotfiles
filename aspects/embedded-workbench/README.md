@@ -8,7 +8,7 @@
 |---|---|
 | `default.nix` | 完整 Den aspect 与定向 host provider |
 | `home.nix` | ARM GCC/GDB、OpenOCD、ST-Link、probe-rs、DFU/UART、CubeMX、CubeProgrammer、tio |
-| `host.nix`、`rules.nix` | OpenOCD/ST-Link 权限规则与 STM32 DFU `0483:df11` uaccess 规则 |
+| `host.nix`、`rules.nix` | OpenOCD/ST-Link 权限规则、空 `plugdev` 组与 STM32 DFU `0483:df11` uaccess 规则 |
 | `package.nix` | 固定版本 CubeProgrammer GUI/CLI 配方及 FHS/启动适配 |
 | `checks.nix` | 最终规则权限/别名与工具运行检查 |
 
@@ -19,7 +19,8 @@ store 数据目录。项目 flake 继续拥有项目版本，不修改项目文�
 host support 是具名 `embedded-host-support` aspect，通过
 `provides.${host.name}.includes` 去重；不要改成每个用户重复输出宿主模块。该 aspect 只向选择者
 授予 `dialout`，不撤销其他配置授予的组。匹配 USB 探针由 logind 给当前活动本地 seat 用户动态
-ACL；OpenOCD 上游规则还包含 `plugdev`，本功能不创建或授权这个组。未选择者也可能经活动 seat
+ACL；OpenOCD 上游规则还引用 `plugdev`，本功能声明该组仅让规则可解析，不添加任何成员，设备
+访问仍由 `uaccess` 提供。未选择者也可能经活动 seat
 获得访问，不能称为按 binding 隔离 USB；也不承诺所有 probe-rs 设备或无 seat 远程使用免 sudo。
 [probe-rs 官方设置说明](https://probe.rs/docs/getting-started/probe-setup/)同样将 udev 规则列为
 Linux 普通用户访问设备的前提。

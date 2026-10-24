@@ -22,11 +22,6 @@ in
           label = "Nix 配置工作台";
           workspace = true;
         };
-        newnuclear = {
-          directory = "/home/mayon/Documents/NewNuclear";
-          label = "NewNuclear 工作台";
-          workspace = true;
-        };
       };
       defaultTools = {
         terminal.argv = [ "kitty" ];

@@ -38,3 +38,4 @@ generation、store 路径和样本数据只对应当时提交，与当前源码�
 | [repository-audit-2026-10-20.md](history/repository-audit-2026-10-20.md) | 2026-10-20 | 配置审核与 DSH 接线 |
 | [execution-handoff.md](history/execution-handoff.md) | 2026-10-19–20 | 历次对话交接 |
 | [repository-cleanup-2026-10-23.md](history/repository-cleanup-2026-10-23.md) | 2026-10-23 | 提交已应用改动、归档分支与文档 |
+| [optimization-2026-10-24.md](history/optimization-2026-10-24.md) | 2026-10-24 | 项目入口清理、空 plugdev 组、输入去重与更新 |

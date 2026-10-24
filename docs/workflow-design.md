@@ -129,9 +129,9 @@ mod 任务继续受保护，不注销 Mango 或终止业务。本轮明确获授
 
 ## 项目与长任务入口
 
-启动器搜索“Nix 配置工作台”“NewNuclear 工作台”可打开真实项目目录中的终端；项目目录
+启动器搜索“Nix 配置工作台”可打开真实项目目录中的终端；项目目录
 不存在时报错，不创建或退回其他位置。命令行支持 `workspace-project list`、
-`workspace-project newnuclear editor`、`workspace-project dotfiles files`。editor 使用 CLI
+`workspace-project dotfiles editor`、`workspace-project dotfiles files`。editor 使用 CLI
 默认编辑器，首次进入目录视图；`--` 后的文件参数按 argv 传递。有 `.envrc` 时用
 `direnv exec`，不自动 allow、不绕过信任失败，不自动运行构建或恢复历史命令。
 
@@ -160,6 +160,6 @@ Yazi 主题由 HM 消费共享 OneDark palette，不再由 Noctalia yazi 模板�
 
 启动器输入 `/tr 文本` 翻译为中文，`/tr en 文本` 指定英文；查询使用 Google 在线服务。
 项目入口的编辑器和目录可从 desktop actions 选择；明确启用 workspace 的项目还可用
-`workspace-project dotfiles workspace` 或 `workspace-project newnuclear workspace`
+`workspace-project dotfiles workspace`
 建立/复用编辑器与两个 shell 的 tmux 布局，不自动构建、执行测试或信任 `.envrc`。
 实现、验证和应用状态见[本轮记录](history/optimization-2026-10-20.md)。

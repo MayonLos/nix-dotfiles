@@ -2,12 +2,14 @@
 
 {
   # OpenOCD supplies probe matching (ST-Link, CMSIS-DAP, J-Link, etc.). Its
-  # rules use plugdev + uaccess; we neither create nor grant plugdev here.
-  # logind grants the active local seat user a dynamic ACL via uaccess.
+  # rules name plugdev, so declare the empty group to let udev resolve them.
+  # No users are added: access still comes from logind's dynamic uaccess ACL.
   #
   # stlink's installed rules instead use final MODE=0666. Normalize those
   # rules to 0660 + uaccess, preserving aliases without world-writable USB.
   # Selecting this host support is not per-account USB device isolation.
+  users.groups.plugdev = { };
+
   services.udev.packages = [
     pkgs.openocd
     (import ./rules.nix { inherit pkgs; })

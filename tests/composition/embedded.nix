@@ -102,6 +102,7 @@ let
           package: package.pname or (lib.getName package)
         ) config.home-manager.users.${name}.home.packages;
       });
+      plugdevMembers = config.users.groups.plugdev.members or null;
       graphical =
         config.services.xserver.enable
         || config.services.displayManager.enable
@@ -162,6 +163,8 @@ let
     selectedBindingGetsCompleteToolsAndRules =
       hasTools selectedA.accounts.alice
       && selectedA.accounts.alice.groups == [ "dialout" ]
+      && selectedA.plugdevMembers == [ ]
+      && !(lib.elem "plugdev" selectedA.accounts.alice.groups)
       && lib.all (package: lib.elem package selectedRules) expectedRulePackages
       && hasRulePackages selected.hostA
       && builtins.length selectedRules == 3
