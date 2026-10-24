@@ -8,6 +8,7 @@
 
 let
   seedFile = import ../../../lib/seed-file.nix { inherit lib pkgs; };
+  theme = if palette == null then null else import ./templates.nix { inherit pkgs palette; };
 in
 
 {
@@ -30,16 +31,14 @@ in
       database = "sqlite";
       continuous-hist-save = true;
 
-      # These configure recoloring; they do not switch it on. `recolor` itself
-      # stays at its default of false, so a PDF opens with its real colours and
-      # `^r` toggles the dark rendering these keys describe.
+      # Keep PDF recoloring off by default so documents open with their original
+      # colors; `^r` can still toggle the dark rendering described by the
+      # feature-owned palette template.
       #
-      # The two *colours* are deliberately absent. noctalia's zathura template
-      # already writes `recolor-lightcolor` and `recolor-darkcolor` into
-      # noctaliarc from the live palette, and Home Manager emits `options`
-      # *after* the `include` above -- so setting them here silently won that
-      # override and pinned `^r` to Catppuccin (#1e1e2e / #cdd6f4) while the
-      # rest of the window followed the desktop theme.
+      # The recolor colors live in the feature-owned palette template. This
+      # keeps the declared default at false while making `^r` use
+      # the same colors as the rest of the application.
+      recolor = false;
       recolor-keephue = true;
       recolor-reverse-video = true;
 
@@ -64,5 +63,7 @@ in
 
   home.activation.seedZathuraNoctaliaTheme =
     seedFile.mkActivation "${config.xdg.configHome}/zathura/noctaliarc"
-      { };
+      {
+        source = if theme == null then null else theme.zathura;
+      };
 }

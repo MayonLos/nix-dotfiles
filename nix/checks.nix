@@ -22,6 +22,8 @@
       };
       # Public feature hooks, explicitly registered. No module discovery.
       registry = [
+        ../aspects/apps/firefox/checks.nix
+        ../aspects/apps/documents/checks.nix
         ../aspects/cli/shell/checks.nix
         ../aspects/desktop/mango-session/checks.nix
         ../aspects/desktop/session-support/checks.nix

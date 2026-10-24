@@ -1,0 +1,124 @@
+/*
+ * One Dark GTK3 overrides. Noctalia renders this file into its existing
+ * ~/.config/gtk-3.0/noctalia.css output; it remains the only runtime writer.
+ */
+@import url("noctalia-extensions.css");
+
+@define-color accent_color {{ colors.onedark_blue.default.hex }};
+@define-color accent_bg_color {{ colors.onedark_selection.default.hex }};
+@define-color accent_fg_color {{ colors.onedark_blue.default.hex }};
+
+@define-color destructive_bg_color {{ colors.onedark_red.default.hex }};
+@define-color destructive_fg_color {{ colors.onedark_black.default.hex }};
+@define-color error_bg_color {{ colors.onedark_red.default.hex }};
+@define-color error_fg_color {{ colors.onedark_black.default.hex }};
+
+@define-color window_bg_color {{ colors.onedark_bg.default.hex }};
+@define-color window_fg_color {{ colors.onedark_bright_fg.default.hex }};
+@define-color view_bg_color {{ colors.onedark_bg.default.hex }};
+@define-color view_fg_color {{ colors.onedark_bright_fg.default.hex }};
+@define-color headerbar_bg_color {{ colors.onedark_surface.default.hex }};
+@define-color headerbar_fg_color {{ colors.onedark_bright_fg.default.hex }};
+@define-color headerbar_backdrop_color {{ colors.onedark_bg.default.hex }};
+@define-color popover_bg_color {{ colors.onedark_surface.default.hex }};
+@define-color popover_fg_color {{ colors.onedark_bright_fg.default.hex }};
+@define-color card_bg_color {{ colors.onedark_surface.default.hex }};
+@define-color card_fg_color {{ colors.onedark_bright_fg.default.hex }};
+@define-color dialog_bg_color {{ colors.onedark_bg.default.hex }};
+@define-color dialog_fg_color {{ colors.onedark_bright_fg.default.hex }};
+@define-color sidebar_bg_color {{ colors.onedark_deep.default.hex }};
+@define-color sidebar_fg_color {{ colors.onedark_bright_fg.default.hex }};
+@define-color sidebar_backdrop_color {{ colors.onedark_deep.default.hex }};
+@define-color sidebar_border_color {{ colors.onedark_border.default.hex }};
+@define-color secondary_sidebar_bg_color {{ colors.onedark_deep.default.hex }};
+@define-color secondary_sidebar_fg_color {{ colors.onedark_bright_fg.default.hex }};
+
+@define-color theme_bg_color {{ colors.onedark_bg.default.hex }};
+@define-color theme_fg_color {{ colors.onedark_bright_fg.default.hex }};
+@define-color theme_base_color {{ colors.onedark_deep.default.hex }};
+@define-color theme_text_color {{ colors.onedark_bright_fg.default.hex }};
+@define-color selected_bg_color {{ colors.onedark_selection.default.hex }};
+@define-color selected_fg_color {{ colors.onedark_bright_fg.default.hex }};
+@define-color theme_selected_bg_color {{ colors.onedark_selection.default.hex }};
+@define-color theme_selected_fg_color {{ colors.onedark_bright_fg.default.hex }};
+@define-color theme_unfocused_selected_bg_color {{ colors.onedark_selection.default.hex }};
+@define-color theme_unfocused_selected_fg_color {{ colors.onedark_bright_fg.default.hex }};
+@define-color borders {{ colors.onedark_border.default.hex }};
+
+/* Thunar's navigation rail and file rows use a calm, shared selected state. */
+headerbar,
+.titlebar {
+  min-height: 40px;
+  background-color: @headerbar_bg_color;
+  color: @headerbar_fg_color;
+}
+
+toolbar {
+  min-height: 40px;
+  padding: 4px 8px;
+  background-color: @headerbar_bg_color;
+  color: @headerbar_fg_color;
+}
+
+toolbar button {
+  min-height: 32px;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.thunar .sidebar,
+.thunar .sidebar treeview,
+placessidebar,
+placessidebar list,
+placessidebar row,
+placessidebar .view {
+  background-color: @sidebar_bg_color;
+  color: @sidebar_fg_color;
+}
+
+placessidebar row:selected,
+.thunar .sidebar treeview.view:selected,
+.thunar .standard-view treeview.view:selected,
+.thunar .standard-view iconview.view:selected,
+.view:selected {
+  color: @selected_fg_color;
+  background-color: @selected_bg_color;
+  border: 1px solid {{ colors.onedark_blue.default.hex }};
+  border-radius: 8px;
+}
+
+treeview.view,
+iconview.view {
+  background-color: @view_bg_color;
+  color: @view_fg_color;
+}
+
+treeview.view row,
+iconview.view {
+  min-height: 32px;
+}
+
+.thunar statusbar,
+statusbar {
+  min-height: 28px;
+  padding: 4px 8px;
+  background-color: @window_bg_color;
+  color: @theme_fg_color;
+}
+
+entry,
+searchbar entry,
+spinbutton entry {
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background-color: @theme_base_color;
+  color: @theme_text_color;
+}
+
+entry:focus,
+searchbar entry:focus,
+spinbutton entry:focus {
+  border-color: {{ colors.onedark_blue.default.hex }};
+}

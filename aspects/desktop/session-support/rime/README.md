@@ -69,3 +69,12 @@ then deploys into a disposable user-data directory. No separate plugin `.so`
 is expected. `theme.nix` generates all panel/menu SVGs and verifies every
 `Image=` target plus SVG rendering at build time, following the nine-slice
 approach in [Catppuccin Fcitx5](https://github.com/catppuccin/fcitx5).
+
+The Classic UI candidate panel uses a horizontal list and seven candidates per
+page. Its configured `Font` is a Pango font description with a 13 pt size;
+Classic UI parses it through `pango_font_description_from_string`, so this is a
+point size rather than a logical-pixel value. The panel uses the shared
+appearance palette: `bg` surface, `brightFg` candidate text, and `fg` labels
+and comments. Selection uses `selection` fill and `blue` candidate text with a
+1 px blue nine-slice outline. `ScaleWithDPI=True` remains enabled. Runtime
+placement and visual sizing still need confirmation in the active session.

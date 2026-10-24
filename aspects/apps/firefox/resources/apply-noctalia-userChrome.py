@@ -6,7 +6,13 @@ import os
 from pathlib import Path
 import sys
 
-from firefox_profile import BEGIN, END, default_profile, replace_managed_block
+from firefox_profile import (
+    BEGIN,
+    END,
+    default_profile,
+    replace_managed_block,
+    split_stylesheets,
+)
 
 
 def main() -> int:
@@ -18,6 +24,7 @@ def main() -> int:
     css = rendered_css.read_text(encoding="utf-8")
     if "{{" in css or "}}" in css:
         raise RuntimeError(f"Noctalia left unrendered template expressions in {rendered_css}")
+    chrome_css, content_css = split_stylesheets(css)
 
     config_home = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config")))
     profile_root = config_home / "mozilla" / "firefox"
@@ -27,7 +34,10 @@ def main() -> int:
         return 0
 
     css_path = profile / "chrome" / "userChrome.css"
-    changed = replace_managed_block(css_path, BEGIN, END, css)
+    changed = replace_managed_block(css_path, BEGIN, END, chrome_css)
+    if content_css:
+        content_path = profile / "chrome" / "userContent.css"
+        changed = replace_managed_block(content_path, BEGIN, END, content_css) or changed
     if changed:
         print(f"Updated Noctalia palette CSS in {css_path}; restart Firefox to see palette changes")
     return 0

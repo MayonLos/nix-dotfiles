@@ -213,22 +213,21 @@ bar 显式 `show_tooltip = true`，保留各 widget 继承默认 tooltip；
 
 | 消费者 | 实施目标与边界 |
 | --- | --- |
-| GTK 3 | 保留 `adw-gtk3-dark` 与 Papirus-Dark，通过现有 Noctalia gtk3 template 渲染固定 palette |
-| GTK 4 / libadwaita | 保留 `gtk4.theme = null` 和 prefer-dark，由现有 gtk4 输出提供可支持的颜色；逐个检查原生控件，不保证所有应用私有 UI 完全同色 |
-| Qt | 保留 qt6ct + Fusion、Papirus-Dark；qt6ct 的 mutable 入口继续引用单一 Noctalia palette 输出。Qt5、硬编码主题及第三方弹窗逐个验收 |
-| Firefox | 继续现有 userChrome template/application hook，输出固定 palette；标签、地址栏、侧栏与菜单统一。网站正文遵循网站自己的主题，不全局反色 |
-| Fcitx5 | 已使用自己的固定 Darker 资源，替代旧 `Tokyonight-Mayon` 派生主题；背景 background、前景 foregroundStrong、选中 blue/black。保留现有 10 pt 字体与 Wayland/X11 DPI 修正；构建期生成圆角 SVG 背景、高亮、翻页和菜单图标，1px border，留足文字与内容边距 |
+| GTK 3 | 按 Astra §10 保留 `adw-gtk3-dark`；共享支持提供 palette 原色模板资产束，Noctalia 仍独占 CSS 与 import hook。Thunar 主面 bg、侧栏 deep、工具栏 surface；选中 selection/brightFg 加蓝细边，路径栏圆角 8、焦点蓝线 2；sidebar 宽度保留用户窗口状态 |
+| GTK 4 / libadwaita | 保留 `gtk4.theme = null` 与 prefer-dark，经同一 Noctalia 资产束提供原色；私有绘制与未暴露的控件几何遵循原生实现 |
+| Qt | qt6ct + Fusion，Window=bg、Base=deep、Button/AlternateBase=surface、正文 brightFg、Highlight=selection、HighlightedText=brightFg、Link=blue、PlaceholderText=fg；初始 seed 与 Noctalia runtime 模板一致，既有 GUI 偏好保留。QPalette 不负责圆角 |
+| Firefox | Astra §10：地址栏高 32、圆角 8、蓝焦点线 2；原生垂直标签高 36、间隔 4、中性选中底与蓝短标记。单一 seed/template hook 同时维护 userChrome/userContent 的标记块；新标签页原生搜索框约 560×48、最多一行 8 个常用入口，网站正文保持自身主题 |
+| Fcitx5 | Astra §10：明确横排、每页 7 项、Pango 字号 13 pt，保留 Wayland/X11 DPI 修正；bg/brightFg，序号与注释 fg，高亮 selection/blue 加 1px 蓝边，外圆角 12、选项圆角 8，不增加 compositor 阴影 |
 | Kitty | Maple Mono NF CN 11 pt、padding 8、隐藏应用装饰、背景 opacity 1.0；ANSI 与上述 terminal 数据一致，光标 beam 1.5，短拖尾使用 blue、4 格起跳阈值、80–160 ms 衰减；斜角 powerline 标签、thick-sparse 下划波浪线，主题由 HM 生成 |
 | tmux | 状态栏一行、底部；左会话、中央窗口、右前缀/复制模式，现有条件日期可保留。普通背景 default，活动项 ANSI blue/black，copy mode yellow/black；仍从同一 ANSI palette 取色 |
 | Neovim | 保留现有 Lua 高亮、状态线、tabline、补全、诊断和语法色；Normal/NormalNC 固定 background。只有 palette 数据进入公共外观接口，Lua 行为与插件适配仍由编辑器拥有 |
-| Swayimg / Fastfetch | Swayimg 信息浮层采用共享 Inter 11 pt（中文回退 Noto CJK）、brightFg/deep，图库和选择色继续来自 palette；Fastfetch 普通电池标签用蓝色，避免常态错误红色 |
-| 其他模板消费者 | btop、Obsidian、VS Code、Zathura 继续现有模板选择；Yazi 主题改由 HM 消费共享 palette，退出 Noctalia 模板，逐个检查生成文件与重载行为；不因统一外观删除现有软件或插件 |
+| Swayimg / Fastfetch | Swayimg 信息使用不透明 brightFg/deep，图库 selection 底与 2px 蓝边；Fastfetch 由 CLI 分支负责 |
+| 文档、媒体与其他应用 | Zathura 与 Obsidian 改用 documents 拥有的 palette 原色模板，退出同名社区模板选择。Zathura 阅读底不透明，PDF recolor 默认关闭；Obsidian 只对其注册的 vault 接线同名 snippet。mpv/uosc 使用 brightFg 正文、中性选择面、蓝匹配标记，OSC 圆角 8；uosc 有限主题适配拆分进度/图标前景与选中底。Thunderbird 无既有自定义主题接线，保留原生暗色/GTK 支持。btop、VS Code、Yazi 由各自分支负责 |
 
 鼠标使用 Bibata-Modern-Classic 24，应用图标保持 Papirus-Dark，文件夹采用 blue。
 外观只拥有 `fonts.sans = "Inter"`、`fonts.cjk = "Noto Sans CJK SC"`、
 `fonts.mono = "Maple Mono NF CN"`、`iconFolderColor = "blue"` 等公共数据；GTK 与 Dunst
-各自用 `papirus-icon-theme.override { color = palette.iconFolderColor; }` 消费。blue 与当前蓝色焦点一致，
-本轮未另选 bluegrey，也没有更改主题名。Dunst 的 XDG 搜索路径使用相同变体，避免加载默认文件夹色。
+各自消费 Papirus blue 变体；GTK 对文件夹主色另由 palette.blue 派生重着色，保留 Papirus 图形层次。Dunst 的图标接线由桌面分支负责。
 GTK、面板、控制中心、Mango 装饰、greeter、锁屏、Swayimg 与 Zathura 界面均用 Inter；
 Qt 新配置使用相同字体，既有配置只迁移精确匹配旧仓库完整字体默认值的字段，其他 GUI 偏好保留；
 中文优先的 Fcitx 候选和 mpv 字幕用 `fonts.cjk`，mpv OSD 用 `fonts.mono`。
@@ -290,7 +289,7 @@ contextual suggestions，同音/同形候选上限为 4/2。锁定 nixpkgs 将 L
 学习写入仍是原有 `rime_ice.userdb`；不接管个人短语、同步或历史。
 
 候选框借鉴 [Catppuccin Fcitx5](https://github.com/catppuccin/fcitx5) 的 SVG nine-slice
-方式：12px 外圆角、1px 边线、8px 高亮圆角，选中项 blue/black，正文 foregroundStrong。
+方式：12px 外圆角、1px 边线、8px 高亮圆角；第十四轮按 Astra §10 改为横排、13 pt、选中项 selection/blue，正文 brightFg，序号/注释 fg。
 背景切片边距为 12，内容边距 6，文字边距横 10/纵 5；没有新增 compositor 阴影。
 SVG 由同一 palette 生成，图标不再依赖 default-dark PNG。构建检查解析 INI、核对所有
 Image 路径并渲染 SVG；实际 150% 缩放下的文字位置与圆角仍需现场观察。

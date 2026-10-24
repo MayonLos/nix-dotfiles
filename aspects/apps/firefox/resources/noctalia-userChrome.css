@@ -1,17 +1,27 @@
 /* Firefox browser chrome follows Noctalia's active palette. */
 :root {
-  --tn-bg: {{ colors.surface.default.hex }};
-  --tn-bg-dark: {{ colors.surface_container_lowest.default.hex }};
-  --tn-bg-highlight: {{ colors.surface_container_high.default.hex }};
-  --tn-fg: {{ colors.on_surface.default.hex }};
-  --tn-muted: {{ colors.on_surface_variant.default.hex }};
-  --tn-blue: {{ colors.primary.default.hex }};
-  --tn-cyan: {{ colors.tertiary.default.hex }};
-  --tn-purple: {{ colors.secondary.default.hex }};
-  --tab-min-height: 32px !important;
+  --tn-bg: {{ colors.onedark_bg.default.hex }};
+  --tn-surface: {{ colors.onedark_surface.default.hex }};
+  --tn-bg-dark: {{ colors.onedark_deep.default.hex }};
+  --tn-bg-highlight: {{ colors.onedark_selection.default.hex }};
+  --tn-fg: {{ colors.onedark_bright_fg.default.hex }};
+  --tn-muted: {{ colors.onedark_fg.default.hex }};
+  --tn-blue: {{ colors.onedark_blue.default.hex }};
+  --tn-cyan: {{ colors.onedark_cyan.default.hex }};
+  --tn-purple: {{ colors.onedark_purple.default.hex }};
   --tab-inline-padding: 6px !important;
   --tab-inner-inline-margin: 4px !important;
+  --urlbar-height: 32px !important;
+  --urlbar-background-border-radius: 8px !important;
+  --urlbarview-border-radius: 8px !important;
   --sidebar-launcher-button-padding-inline: 6px !important;
+}
+
+#tabbrowser-tabs[orient="vertical"],
+sidebar-main {
+  --tab-min-height: 36px !important;
+  /* Firefox applies this margin on both sides of each vertical row. */
+  --tab-margin-block-vertical: 2px !important;
 }
 
 #navigator-toolbox {
@@ -29,15 +39,17 @@
 
 #urlbar-background,
 #searchbar {
-  background: var(--tn-bg-highlight) !important;
+  background: var(--tn-bg) !important;
   border: 1px solid transparent !important;
-  border-radius: 12px !important;
+  border-radius: 8px !important;
+  min-height: 32px !important;
   box-shadow: none !important;
 }
 
 #urlbar[focused="true"] > #urlbar-background {
-  border-color: color-mix(in srgb, var(--tn-blue) 72%, transparent) !important;
-  outline: 2px solid color-mix(in srgb, var(--tn-blue) 18%, transparent) !important;
+  border-color: var(--tn-blue) !important;
+  outline: 2px solid var(--tn-blue) !important;
+  outline-offset: 2px !important;
 }
 
 #urlbar-input,
@@ -58,7 +70,7 @@
 }
 
 #navigator-toolbox toolbarbutton:not(#back-button):not(#forward-button) {
-  border-radius: 9px !important;
+  border-radius: 8px !important;
 }
 
 #navigator-toolbox toolbarbutton:hover {
@@ -67,8 +79,8 @@
 
 #navigator-toolbox toolbarbutton[checked="true"],
 #navigator-toolbox toolbarbutton[open="true"] {
-  background: color-mix(in srgb, var(--tn-blue) 18%, var(--tn-bg)) !important;
-  color: var(--tn-blue) !important;
+  background: var(--tn-bg-highlight) !important;
+  color: var(--tn-fg) !important;
 }
 
 #tabbrowser-tabs[orient="vertical"] .tabbrowser-tab,
@@ -77,8 +89,7 @@
 }
 
 .tab-background {
-  border-radius: 9px !important;
-  margin-block: 2px !important;
+  border-radius: 8px !important;
 }
 
 .tabbrowser-tab:hover .tab-background:not([selected]) {
@@ -86,13 +97,24 @@
 }
 
 .tabbrowser-tab[selected] .tab-background {
-  background: color-mix(in srgb, var(--tn-blue) 17%, var(--tn-bg)) !important;
-  outline: 1px solid color-mix(in srgb, var(--tn-blue) 38%, transparent) !important;
+  background: var(--tn-bg-highlight) !important;
+  outline: 1px solid color-mix(in srgb, var(--tn-blue) 46%, transparent) !important;
+  position: relative !important;
+}
+
+#tabbrowser-tabs[orient="vertical"] .tabbrowser-tab[selected] .tab-background::before {
+  content: "" !important;
+  position: absolute !important;
+  inset-block: 9px !important;
+  inset-inline-start: 0 !important;
+  width: 2px !important;
+  border-radius: 2px !important;
+  background: var(--tn-blue) !important;
 }
 
 .tabbrowser-tab[selected] .tab-label,
 .tabbrowser-tab[selected] .tab-icon-image {
-  color: var(--tn-blue) !important;
+  color: var(--tn-fg) !important;
 }
 
 #sidebar-container,
@@ -115,7 +137,12 @@ sidebar-main {
 
 sidebar-main toolbarbutton,
 sidebar-main .tabbrowser-tab {
-  border-radius: 9px !important;
+  border-radius: 8px !important;
+}
+
+sidebar-main .tabbrowser-tab {
+  min-height: 36px !important;
+  margin-block: 2px !important;
 }
 
 /* Keep Firefox's revamp launcher at icon width while it is collapsed. This
@@ -132,13 +159,24 @@ sidebar-main .tabbrowser-tab:hover .tab-background {
 
 sidebar-main toolbarbutton[checked="true"],
 sidebar-main .tabbrowser-tab[selected] .tab-background {
-  background: color-mix(in srgb, var(--tn-blue) 17%, var(--tn-bg)) !important;
+  background: var(--tn-bg-highlight) !important;
+  outline: 1px solid color-mix(in srgb, var(--tn-blue) 46%, transparent) !important;
 }
 
 sidebar-main toolbarbutton[checked="true"] .toolbarbutton-icon,
 sidebar-main .tabbrowser-tab[selected] .tab-icon-image {
   fill: var(--tn-blue) !important;
   color: var(--tn-blue) !important;
+}
+
+sidebar-main .tabbrowser-tab[selected] .tab-background::before {
+  content: "" !important;
+  position: absolute !important;
+  inset-block: 9px !important;
+  inset-inline-start: 0 !important;
+  width: 2px !important;
+  border-radius: 2px !important;
+  background: var(--tn-blue) !important;
 }
 
 /* Firefox has full-page and selection translation panels. The visible panel
@@ -154,10 +192,18 @@ menupopup {
   --arrowpanel-color: var(--tn-fg) !important;
   --arrowpanel-border-color: var(--panel-border-color) !important;
   --button-background-color: var(--tn-bg-highlight) !important;
-  --button-background-color-hover: color-mix(in srgb, var(--tn-blue) 18%, var(--tn-bg-highlight)) !important;
+  --button-background-color-hover: var(--tn-bg-highlight) !important;
+  --button-background-color-primary: var(--tn-bg-highlight) !important;
+  --button-background-color-primary-hover: var(--tn-bg-highlight) !important;
+  --button-background-color-primary-active: var(--tn-bg-highlight) !important;
+  --button-background-color-primary-selected: var(--tn-bg-highlight) !important;
+  --button-background-color-primary-disabled: var(--tn-bg-highlight) !important;
   --button-text-color: var(--tn-fg) !important;
   --color-accent-primary: var(--tn-blue) !important;
-  --button-text-color-primary: var(--tn-bg-dark) !important;
+  --button-text-color-primary: var(--tn-fg) !important;
+  --button-text-color-primary-hover: var(--tn-fg) !important;
+  --button-text-color-primary-active: var(--tn-fg) !important;
+  --button-text-color-primary-selected: var(--tn-fg) !important;
   color-scheme: dark !important;
 }
 
@@ -202,7 +248,7 @@ panel::part(content) {
   --toolbarbutton-inner-padding: 8px !important;
   --toolbarbutton-border-radius: 8px !important;
   --toolbarbutton-hover-background: var(--tn-bg-highlight) !important;
-  --toolbarbutton-active-background: color-mix(in srgb, var(--tn-blue) 20%, var(--tn-bg)) !important;
+  --toolbarbutton-active-background: var(--tn-bg-highlight) !important;
   --toolbarbutton-icon-fill: var(--tn-fg) !important;
   padding-block: 4px !important;
 }
@@ -218,3 +264,92 @@ panel::part(content) {
 #fxa-toolbar-menu-button {
   --avatar-image-size: 18px !important;
 }
+
+/* >>> nix-dotfiles userContent segment >>>
+@-moz-document url("about:home"), url("about:newtab") {
+  :root {
+    color-scheme: dark !important;
+    --tn-bg: {{ colors.onedark_bg.default.hex }};
+    --tn-surface: {{ colors.onedark_surface.default.hex }};
+    --tn-bg-highlight: {{ colors.onedark_selection.default.hex }};
+    --tn-fg: {{ colors.onedark_bright_fg.default.hex }};
+    --tn-muted: {{ colors.onedark_fg.default.hex }};
+    --tn-blue: {{ colors.onedark_blue.default.hex }};
+  }
+
+  :root,
+  body,
+  #root,
+  .outer-wrapper {
+    background: var(--tn-bg) !important;
+    color: var(--tn-fg) !important;
+  }
+
+  .outer-wrapper {
+    min-height: 100vh !important;
+  }
+
+  .search-wrapper .search-inner-wrapper {
+    width: min(100%, 560px) !important;
+    height: 48px !important;
+  }
+
+  .search-wrapper content-search-handoff-ui {
+    height: 48px !important;
+    --content-search-handoff-ui-background-color: var(--tn-surface) !important;
+    --content-search-handoff-ui-color: var(--tn-fg) !important;
+    --content-search-handoff-ui-fill: var(--tn-muted) !important;
+    --content-search-handoff-ui-caret-color: var(--tn-fg) !important;
+    --content-search-handoff-ui-border-width: 1px !important;
+    --content-search-handoff-ui-border-radius: 12px !important;
+    --content-search-handoff-ui-unfocused-border-color: color-mix(in srgb, var(--tn-muted) 18%, var(--tn-surface)) !important;
+    --content-search-handoff-ui-fakefocus-border-color: var(--tn-blue) !important;
+    --content-search-handoff-ui-fakefocus-box-shadow-inner: color-mix(in srgb, var(--tn-blue) 18%, transparent) !important;
+    --content-search-handoff-ui-fakefocus-box-shadow-outer: transparent !important;
+  }
+
+  .search-wrapper .search-inner-wrapper moz-urlbar {
+    --urlbar-height: 48px !important;
+  }
+
+  input[type="search"] {
+    min-height: 48px !important;
+    border-radius: 12px !important;
+    background-color: var(--tn-surface) !important;
+    border-color: color-mix(in srgb, var(--tn-fg) 18%, transparent) !important;
+    box-shadow: none !important;
+    color: var(--tn-fg) !important;
+  }
+
+  input[type="search"]:focus {
+    outline: 2px solid var(--tn-blue) !important;
+    outline-offset: 2px !important;
+  }
+
+  .top-sites-list {
+    column-gap: 8px !important;
+    row-gap: 4px !important;
+  }
+
+  .top-site-outer {
+    border-radius: 12px !important;
+  }
+
+  .top-site-inner > a {
+    border-radius: 12px !important;
+    color: var(--tn-fg) !important;
+  }
+
+  .top-site-outer:hover,
+  .top-site-inner > a:focus-visible {
+    background: var(--tn-bg-highlight) !important;
+    outline: 1px solid var(--tn-blue) !important;
+  }
+
+  .top-site-outer .tile {
+    background: var(--tn-surface) !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+  }
+}
+<<< nix-dotfiles userContent segment <<< */

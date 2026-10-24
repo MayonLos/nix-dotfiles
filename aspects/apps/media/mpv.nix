@@ -2,8 +2,7 @@
 { lib, pkgs, ... }:
 
 let
-  color =
-    name: fallback: lib.removePrefix "#" (if palette == null then fallback else palette.${name});
+  color = name: lib.removePrefix "#" palette.${name};
 
   anime4k-assets = pkgs.fetchzip {
     url = "https://github.com/bloc97/Anime4K/releases/download/v4.0.1/Anime4K_v4.0.zip";
@@ -19,7 +18,16 @@ in
     enable = true;
 
     scripts = with pkgs.mpvScripts; [
-      uosc
+      (
+        if palette == null then
+          uosc
+        else
+          uosc.overrideAttrs (old: {
+            postPatch = (old.postPatch or "") + ''
+              ${pkgs.python3}/bin/python3 ${./resources/refine-uosc.py} src/uosc
+            '';
+          })
+      )
       mpris
       autoload
       thumbfast
@@ -48,8 +56,6 @@ in
       # The selected CJK family covers both scripts in one family.
       sub-font = if palette == null then "sans-serif" else palette.fonts.cjk;
       sub-font-size = 45;
-      sub-color = if palette == null then "#d1d5de" else palette.brightFg;
-      sub-border-color = if palette == null then "#181b20" else palette.deep;
       sub-border-size = 2;
       sub-auto = "fuzzy";
       slang = "chs,sc,zh,chi,zho";
@@ -58,11 +64,15 @@ in
       # subtitle prose, with both surfaces following the fixed OneDark palette.
       osd-font = if palette == null then "monospace" else palette.fonts.mono;
       osd-font-size = 26;
-      osd-color = if palette == null then "#d1d5de" else palette.brightFg;
-      osd-border-color = if palette == null then "#181b20" else palette.deep;
       osd-border-size = 2;
-      osd-selected-color = if palette == null then "#4fa6ed" else palette.blue;
-      osd-selected-outline-color = if palette == null then "#181b20" else palette.deep;
+    }
+    // lib.optionalAttrs (palette != null) {
+      sub-color = palette.brightFg;
+      sub-border-color = palette.deep;
+      osd-color = palette.brightFg;
+      osd-border-color = palette.deep;
+      osd-selected-color = palette.blue;
+      osd-selected-outline-color = palette.deep;
     };
 
     scriptOpts.uosc = {
@@ -70,7 +80,7 @@ in
       # not fall back to rm when the trash command fails.
       use_trash = "yes";
       animation_duration = if palette != null && (palette.reducedMotion or false) then 0 else 100;
-      color = "foreground=${color "brightFg" "d1d5de"},foreground_text=${color "deep" "181b20"},background=${color "surface" "282c34"},background_text=${color "brightFg" "d1d5de"},curtain=${color "deep" "181b20"},success=${color "green" "8ebd6b"},error=${color "red" "e55561"},match=${color "blue" "4fa6ed"},heatmap=${color "cyan" "48b0bd"}";
+      border_radius = 8;
       timeline_style = "line";
       timeline_size = 36;
       timeline_persistency = "paused";
@@ -78,6 +88,12 @@ in
       top_bar = "no-border";
       top_bar_title = "yes";
       controls = "menu,gap,subtitles,audio,gap,space,prev,playlist,next,gap,fullscreen";
+    }
+    // lib.optionalAttrs (palette != null) {
+      # The bounded uosc theme adaptation separates selection from the
+      # foreground used by icons/progress, keeping both readable.
+      color = "selection=${color "selection"},foreground=${color "brightFg"},foreground_text=${color "deep"},background=${color "bg"},background_text=${color "brightFg"},curtain=${color "black"},success=${color "green"},error=${color "red"},match=${color "blue"},heatmap=${color "cyan"}";
+      opacity = "menu=1,submenu=1,title=1,tooltip=1,curtain=0.32";
     };
 
     bindings = {

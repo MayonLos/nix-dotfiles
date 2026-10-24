@@ -30,9 +30,13 @@ let
     };
     InputPanel = {
       NormalColor = palette.brightFg;
-      HighlightColor = palette.black;
-      HighlightCandidateColor = palette.black;
-      HighlightBackgroundColor = palette.blue;
+      HighlightColor = palette.brightFg;
+      HighlightCandidateColor = palette.blue;
+      HighlightBackgroundColor = palette.selection;
+      CandidateLabelColor = palette.fg;
+      HighlightCandidateLabelColor = palette.fg;
+      CandidateCommentColor = palette.fg;
+      HighlightCandidateCommentColor = palette.fg;
       FullWidthHighlight = "True";
       PageButtonAlignment = "Bottom";
     };
@@ -46,7 +50,7 @@ let
     "InputPanel/NextPage".Image = "next.svg";
     Menu = {
       NormalColor = palette.brightFg;
-      HighlightCandidateColor = palette.black;
+      HighlightCandidateColor = palette.blue;
       Spacing = 3;
     };
     "Menu/Background" = background;
@@ -63,7 +67,7 @@ let
     "panel.svg" =
       svg ''<rect x="0.5" y="0.5" width="47" height="47" rx="11.5" fill="${palette.bg}" stroke="${palette.border}"/>'';
     "highlight.svg" =
-      svg ''<rect x="0.5" y="0.5" width="47" height="47" rx="7.5" fill="${palette.blue}" stroke="${palette.blue}"/>'';
+      svg ''<rect x="0.5" y="0.5" width="47" height="47" rx="7.5" fill="${palette.selection}" stroke="${palette.blue}" stroke-width="1"/>'';
     "prev.svg" =
       icon ''<path d="m10 4-4 4 4 4" fill="none" stroke="${palette.brightFg}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>'';
     "next.svg" =

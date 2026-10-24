@@ -6,6 +6,7 @@ let
   );
   inherit (rime) engine;
   theme = home.xdg.dataFile."fcitx5/themes/One-Dark-Darker".source;
+  classicUi = home.i18n.inputMethod.fcitx5.settings.addons.classicui.globalSection;
   files = [
     "default.custom.yaml"
     "rime_ice.custom.yaml"
@@ -47,7 +48,7 @@ pkgs.runCommand "rime-technical-runtime"
     grep -F 'loading gram db: ${rime}/share/rime-data/wanxiang-lts-zh-hans.gram' "$out/deploy.log"
     grep -F 'found double array image of size' "$out/deploy.log"
     if grep -Ei 'error|failed|cannot|could not' "$out/deploy.log"; then exit 1; fi
-    python3 - "$TMPDIR/rime" ${theme} <<'PY'
+    python3 - "$TMPDIR/rime" ${theme} '${builtins.toJSON classicUi}' <<'PY'
     import configparser, pathlib, sys, yaml
     user = pathlib.Path(sys.argv[1])
     schema = yaml.safe_load((user / "build/rime_ice.schema.yaml").read_text())
@@ -63,9 +64,19 @@ pkgs.runCommand "rime-technical-runtime"
     default = yaml.safe_load((user / "build/default.yaml").read_text())
     assert default["menu"]["page_size"] == 7
     theme = pathlib.Path(sys.argv[2])
+    classic_ui = yaml.safe_load(sys.argv[3])
+    assert classic_ui["Vertical Candidate List"] == "False"
+    assert classic_ui["Font"].endswith(" 13")
     panel = configparser.ConfigParser()
     panel.read(theme / "theme.conf")
-    assert panel["InputPanel"]["highlightcolor"] == panel["InputPanel"]["highlightcandidatecolor"]
+    assert panel["Metadata"]["scalewithdpi"] == "True"
+    assert panel["InputPanel"]["normalcolor"] == "#d7dae0"
+    assert panel["InputPanel"]["highlightbackgroundcolor"] == "#323843"
+    assert panel["InputPanel"]["highlightcandidatecolor"] == "#61afef"
+    assert panel["InputPanel"]["candidatelabelcolor"] == "#abb2bf"
+    assert panel["InputPanel"]["candidatecommentcolor"] == "#abb2bf"
+    svg = (theme / "highlight.svg").read_text()
+    assert 'fill="#323843"' in svg and 'stroke="#61afef" stroke-width="1"' in svg
     images = [s["image"] for s in panel.values() if "image" in s]
     assert len(images) == 8
     assert set(images) == {"panel.svg", "highlight.svg", "prev.svg", "next.svg", "radio.svg", "arrow.svg"}

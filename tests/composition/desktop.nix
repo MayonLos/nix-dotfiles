@@ -206,11 +206,11 @@ let
       && selectedHome.programs.noctalia.settings.shell.font_family == palette.fonts.sans
       &&
         selectedHome.i18n.inputMethod.fcitx5.settings.addons.classicui.globalSection.Font
-        == "${palette.fonts.cjk} 10"
+        == "${palette.fonts.cjk} 13"
       && selectedHome.home.pointerCursor.name == palette.cursor.name
       && selectedHome.home.pointerCursor.size == palette.cursor.size
-      &&
-        xorgAliceHome.services.dunst.iconTheme.package.outPath == selectedHome.gtk.iconTheme.package.outPath
+      && xorgAliceHome.services.dunst.iconTheme.name == palette.iconTheme
+      && selectedHome.gtk.iconTheme.name == palette.iconTheme
       && xorgAliceHome.home.pointerCursor.name == palette.cursor.name;
 
     audioActivationIsBindingScoped =
@@ -382,7 +382,7 @@ pkgs.runCommand "den-interactive-session-composition" { nativeBuildInputs = [ pk
   for group in ("active_colors", "disabled_colors", "inactive_colors"):
       colors = [value.strip() for value in palette["ColorScheme"][group].split(",")]
       assert len(colors) == 22 and all(re.fullmatch(r"#[0-9a-fA-F]{6}", value) for value in colors)
-  assert "#1f2329" in palette["ColorScheme"]["active_colors"]
+  assert "${palette.bg}" in palette["ColorScheme"]["active_colors"]
   path.write_text("existing GUI-owned palette\n")
   PY_QT
   source ${qtSeed}
