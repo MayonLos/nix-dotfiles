@@ -17,6 +17,7 @@ let
       starship = "${home.programs.starship.package}/bin/starship";
       git = "${pkgs.git}/bin/git";
       tmux = "${pkgs.tmux}/bin/tmux";
+      tmuxCurrentFormat = "#[fg=${palette.brightFg},us=${palette.blue},bold,underscore]#I #W#[nounderscore,nobold,us=default]#{?window_zoomed_flag,#[fg=${palette.yellow}]#[bold] Z,}#[default]";
       btop = "${home.programs.btop.package}/bin/btop";
       yazi = "${home.programs.yazi.package}/bin/yazi";
       atuin = "${home.programs.atuin.package}/bin/atuin";

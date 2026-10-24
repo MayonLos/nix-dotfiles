@@ -71,10 +71,13 @@ is expected. `theme.nix` generates all panel/menu SVGs and verifies every
 approach in [Catppuccin Fcitx5](https://github.com/catppuccin/fcitx5).
 
 The Classic UI candidate panel uses a horizontal list and seven candidates per
-page. Its configured `Font` is a Pango font description with a 13 pt size;
+page. Its configured `Font` is a Pango font description with a 10 pt size;
 Classic UI parses it through `pango_font_description_from_string`, so this is a
 point size rather than a logical-pixel value. The panel uses the shared
-appearance palette: `bg` surface, `brightFg` candidate text, and `fg` labels
-and comments. Selection uses `selection` fill and `blue` candidate text with a
-1 px blue nine-slice outline. `ScaleWithDPI=True` remains enabled. Runtime
-placement and visual sizing still need confirmation in the active session.
+appearance palette: `surface` fill, `fg` candidate text, and `muted`
+indices/comments. Selection keeps the row transparent and draws a short 2 px
+rounded `blue` underline; selected indices use `blue`, while candidate text
+remains `brightFg`. Text and content margins leave at least 6 logical px from
+the panel edge. A thin palette-derived border and the nine-slice `ShadowMargin`
+preserve the soft shadow. `ScaleWithDPI=True` remains enabled. Runtime placement
+and visual sizing still need confirmation in the active session.

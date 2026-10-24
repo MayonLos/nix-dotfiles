@@ -59,6 +59,7 @@ let
       noGraphics = !c.hardware.graphics.enable && c.hardware.graphics.extraPackages == [ ];
       noPersonalAccount = !(c.users.users ? mayon);
       noLaptopPower = !c.services.thermald.enable && !c.services.upower.enable && !c.services.scx.enable;
+      noConservationGrant = !(c.users.groups ? legion-conservation);
       noProxy = !(c.systemd.services.nix-daemon.environment ? https_proxy);
       noTunTrust = builtins.all (i: !(builtins.elem i c.networking.firewall.trustedInterfaces)) [
         "Meta"

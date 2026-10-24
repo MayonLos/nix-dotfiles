@@ -12,9 +12,13 @@ Claude Code uses claudecode.nvim for its IDE protocol and terminal. Sidekick man
 
 The feature checks run in isolated HOME/XDG directories. They cover file safety, LSP and UI behavior, AI loading, ACP executable paths, completion switching, MiniDiff review, Claude protocol accept/reject, codediff and native Neovim features, and key mappings. Model requests, real tmux navigation, narrow-screen appearance, GUI input, and actual IME behavior require runtime verification.
 
+The Snacks explorer owns its 30-column left sidebar directly and opens with only the list window visible; its search input is hidden until requested with `i` (Snacks' `focus_input` action). The project name is shown in the list winbar. Edgy is reserved for AI, diagnostics, quickfix, and terminal panels; capturing the explorer list in Edgy duplicated Snacks' existing sidebar split. The explorer mapping chooses the current file's Git root, falling back to Neovim's working directory, and labels the tree with the uppercase project directory. Its current row uses a subtle selection surface and a blue gutter rail. The document tabline uses the same project root; the active tab uses the normal editor background with a blue top-line marker, and unsaved buffers have an orange dot. The mode indicator uses palette-colored text with an underline. Popup menus, pickers, which-key, and Edgy panels use the deep surface and palette border. These TUI marks approximate pixel borders with terminal glyphs and highlight attributes.
+
+Claude Code's terminal title is supplied through the pinned plugin's `snacks_win_opts.title`, and Edgy styles its panel title area with palette colors. Review uses the plugin's native vertical diff split, a custom accept/reject winbar, and palette-based `DiffAdd`/`DiffDelete` highlights. The pinned plugin exposes a diff split rather than a separate card layout, so a boxed diff card with inline action buttons is not represented in Neovim's TUI.
+
 Removing the aspect removes the package and managed `nvim/init.lua` link after activation. It preserves user projects, editor histories, plugin state, CodeCompanion history, and files outside the managed link; no project files or user data are rewritten.
 
-Theme data comes from `generated.palette`: editing uses deep/brightFg, floats and native menus use bg,
+Theme data comes from `generated.palette`: editing uses deep/brightFg, floats and native menus use deep,
 selection uses selection, and pending AI text uses muted italic. The immutable package compiles the pinned
 One Dark adapter into a LuaJIT highlight cache at build time; development overrides use the live adapter.
 LSP starts on the first FileType; explorer safety hooks are installed by its source configuration before actions.

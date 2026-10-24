@@ -6,22 +6,6 @@ local function wide_enough()
 	return vim.o.columns >= 90
 end
 
-local function is_explorer_buffer(buf)
-	local ok, pickers = pcall(function()
-		return require("snacks").picker.get({ source = "explorer" })
-	end)
-	if not ok then
-		return false
-	end
-	for _, picker in ipairs(pickers) do
-		local list = picker.list
-		if list and list.win and list.win.buf == buf then
-			return true
-		end
-	end
-	return false
-end
-
 local function terminal_command(buf)
 	local terminal = vim.b[buf].snacks_terminal
 	local cmd = terminal and terminal.cmd
@@ -45,19 +29,9 @@ local function setup_edgy()
 	vim.opt.laststatus = 3
 	vim.opt.splitkeep = "screen"
 	local palette = require("mayon.generated").palette
-	vim.api.nvim_set_hl(0, "EdgyNormal", { fg = palette.fg, bg = palette.surface })
-	vim.api.nvim_set_hl(0, "EdgyWinBar", { fg = palette.cyan, bg = palette.surface, bold = true })
+	vim.api.nvim_set_hl(0, "EdgyNormal", { fg = palette.brightFg, bg = palette.deep })
+	vim.api.nvim_set_hl(0, "EdgyWinBar", { fg = palette.blue, bg = palette.deep, bold = true })
 	require("edgy").setup({
-		left = {
-			{
-				ft = "snacks_picker_list",
-				title = "文件树",
-				filter = function(buf)
-					return wide_enough() and is_explorer_buffer(buf)
-				end,
-				size = { width = 30 },
-			},
-		},
 		right = {
 			{
 				ft = "claudecode",

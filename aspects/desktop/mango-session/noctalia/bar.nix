@@ -3,14 +3,12 @@
   palette,
   reducedMotion,
   distroLogo,
-  pkgs,
-  hostFacts,
 }:
 {
   bar.main = {
     position = "top";
     # Sized for the 1.5 output scale (user: UI felt too large, 2026-10-25).
-    thickness = 34;
+    thickness = 30;
     reserve_space = true;
     auto_hide = false;
     layer = "top";
@@ -20,14 +18,13 @@
     border_width = 1;
     show_tooltip = true;
     radius = 10;
-    margin_ends = 12;
+    margin_ends = 8;
     margin_edge = 6;
     padding = 6;
-    widget_spacing = 6;
+    widget_spacing = 5;
     shadow = true;
     contact_shadow = true;
-    # Only semantic groups and the launcher get a persistent surface.
-    # Group capsules are independent of this per-widget default.
+    # The compact bar uses separators and underlines rather than filled group capsules.
     capsule = false;
     capsule_opacity = 1.0;
     capsule_fill = "surface_variant";
@@ -38,26 +35,32 @@
     font_scale = 1.0;
 
     # Plugin widgets use manifest-id:entry-id. Everyday tools sit on the
-    # left, the clock and cat in the center, system status on the right.
+    # left, the date and clock in the center, system status on the right.
     start = [
       "launcher"
+      "separator-workspaces"
       "workspaces"
+      "separator-layout"
       # Mode feedback must stay visible even when tool drawers collapse.
       "gambled23/mangowm-keymode:mangowm-keymode"
-      "group:dev"
-      "group:panels"
+      "ezequiel/mango_layouts:btn"
+      "group:tools"
+      "separator-media"
       "group:media"
     ];
     center = [ "group:time" ];
     end = [
-      "group:sys"
-      "group:devices"
-      "tray"
-      "group:power"
+      "group:monitor"
+      "separator-nix"
+      "mindnbytes/nix-status:status"
+      "separator-privacy"
+      "privacy"
+      "group:system"
+      "separator-control"
       "control-center"
     ];
 
-    capsule_group = [
+    capsule_group = map (group: group // { opacity = 0.0; }) [
       {
         id = "media";
         members = [ "media" ] ++ lib.optional (!reducedMotion) "audio_visualizer";
@@ -67,75 +70,58 @@
       }
       {
         id = "time";
-        members = [ "clock" ] ++ lib.optional (!reducedMotion) "noctalia/bongocat:cat";
-        accordion = false;
-        fill = palette.deep;
-        foreground = "on_surface";
-        padding = 8.0;
-        widget_spacing = 8;
-      }
-      {
-        id = "panels";
         members = [
-          "fel/quill:status" # Markdown notes + todos; replaced noctalia/notes
-          "8bury/mini-docker:mini-docker" # Docker management
+          "clock-date"
+          "clock-time"
         ];
-        # First member stays visible; hover reveals Docker, not a click toggle.
-        accordion = true;
-        accordion_direction = "end";
-        padding = 6.0;
+        accordion = false;
+        padding = 4.0;
         widget_spacing = 4;
       }
       {
-        id = "sys";
+        id = "tools";
+        members = [
+          "fel/quill:status" # Always-visible anchor; only infrequent tools collapse.
+          "8bury/mini-docker:mini-docker"
+          "rxtsel/portctl:indicator"
+          "3ri4ng0ld/ip-monitor:widget"
+          "tray"
+          "brightness"
+          "power_profile"
+          "caffeine"
+        ];
+        # Infrequent tools stay out of the default bar and appear on hover.
+        accordion = true;
+        accordion_direction = "end";
+        padding = 4.0;
+        widget_spacing = 4;
+      }
+      {
+        id = "monitor";
+        members = [
+          "tmelik/system-monitor:summary"
+          "monitor-gpu"
+          "monitor-vram"
+          "monitor-memory"
+        ];
+        accordion = true;
+        accordion_direction = "end";
+        padding = 4.0;
+        widget_spacing = 4;
+      }
+      {
+        id = "system";
         members = [
           "network"
+          "bluetooth"
           "volume"
+          "keyboard_layout"
+          "battery"
+          "nix-dotfiles/legion-conservation:status"
           "notifications"
         ];
         accordion = false;
-        fill = palette.surface;
-        padding = 6.0;
-        widget_spacing = 4;
-      }
-      {
-        id = "devices";
-        members = [
-          "bluetooth"
-          "brightness"
-          "3ri4ng0ld/ip-monitor:widget"
-        ];
-        # Bluetooth anchors the device drawer; keyboard controls and the
-        # control center remain available without hovering the bar.
-        accordion = true;
-        accordion_direction = "end";
-        fill = palette.surface;
-        padding = 6.0;
-        widget_spacing = 4;
-      }
-      {
-        id = "power";
-        members = [
-          "power_profile"
-          "caffeine"
-          "battery"
-        ];
-        accordion = false;
-        fill = palette.surface;
-        padding = 6.0;
-        widget_spacing = 4;
-      }
-      {
-        id = "dev";
-        members = [
-          "ezequiel/mango_layouts:btn"
-          "rxtsel/portctl:indicator" # inspect and kill port listeners
-          "sysmon"
-        ];
-        # Keep layout as the anchor; /pan also exposes both tool panels.
-        accordion = true;
-        accordion_direction = "end";
-        padding = 6.0;
+        padding = 4.0;
         widget_spacing = 4;
       }
     ];
@@ -143,15 +129,103 @@
 
   widget = {
     launcher = {
-      capsule = true;
-      capsule_fill = palette.selection;
+      capsule = false;
       color = palette.brightFg;
       icon_color = palette.blue;
     };
+    separator-workspaces = {
+      type = "text";
+      text = "│";
+      color = palette.border;
+    };
+    separator-layout = {
+      type = "text";
+      text = "│";
+      color = palette.border;
+    };
+    separator-media = {
+      type = "text";
+      text = "│";
+      color = palette.border;
+    };
+    separator-nix = {
+      type = "text";
+      text = "│";
+      color = palette.border;
+    };
+    separator-privacy = {
+      type = "text";
+      text = "│";
+      color = palette.border;
+    };
+    separator-system = {
+      type = "text";
+      text = "│";
+      color = palette.border;
+    };
+    separator-control = {
+      type = "text";
+      text = "│";
+      color = palette.border;
+    };
+
+    # The community summary supplies CPU%; Noctalia's native sysmon widgets
+    # are the hover-expanded GPU, VRAM, and RAM members of the same accordion.
+    "tmelik/system-monitor:summary" = {
+      show_cpu_usage = true;
+      show_cpu_temperature = false;
+      show_gpu_usage = "off";
+      show_gpu_temperature = "off";
+      show_gpu_vram = "off";
+      show_ram = false;
+      show_swap = false;
+      show_disk = false;
+      show_download = false;
+      show_upload = false;
+      show_top_processes = false;
+      hide_unavailable = true;
+      show_separators = false;
+    };
+    monitor-gpu = {
+      type = "sysmon";
+      stat = "gpu_usage";
+      visualization = "none";
+      show_glyph = false;
+      custom_label = "GPU";
+    };
+    monitor-vram = {
+      type = "sysmon";
+      stat = "gpu_vram";
+      visualization = "none";
+      show_glyph = false;
+      custom_label = "VRAM";
+    };
+    monitor-memory = {
+      type = "sysmon";
+      stat = "ram_pct";
+      visualization = "none";
+      show_glyph = false;
+      custom_label = "MEM";
+    };
+    "nix-dotfiles/legion-conservation:status".active_color = palette.green;
 
     "control-center" = {
       custom_image = distroLogo;
       custom_image_colorize = false;
+    };
+    volume.show_label = true;
+    keyboard_layout = {
+      show_glyph = false;
+      show_label = true;
+      display = "short";
+      hide_when_single_layout = false;
+    };
+    privacy = {
+      hide_inactive = true;
+    };
+    "fel/quill:status" = {
+      hide_when_empty = false;
+      show_label = false;
     };
     "8bury/mini-docker:mini-docker" = {
       # An idle Docker engine is normal; only running containers need space.
@@ -161,12 +235,20 @@
 
     # Super+R enters resize mode; hide the badge in default mode.
     "gambled23/mangowm-keymode:mangowm-keymode".hide_on_default = true;
-    "ezequiel/mango_layouts:btn".show_text = false;
+    "ezequiel/mango_layouts:btn".show_text = true;
 
-    battery.warning_color = palette.yellow;
+    battery = {
+      warning_color = palette.yellow;
+      label_content = "percent";
+      show_label = true;
+      # Keep the battery indicator itself as the one persistent target; its
+      # left click toggles the declared host-side conservation command.
+      actions.left = "exec legion-conservation toggle";
+    };
 
     media = {
       hide_when_no_media = true;
+      hide_when_idle = true;
       max_length = 160;
       title_scroll = if reducedMotion then "none" else "on_hover";
     };
@@ -177,22 +259,13 @@
     # A compact spectrum beside the existing media controls. PipeWire is
     # handled by Noctalia itself; no separate cava process is needed.
     audio_visualizer = {
-      width = 64;
-      bands = 16;
+      width = 26;
+      bands = 6;
       mirrored = true;
       centered = true;
       show_when_idle = false;
       color_1 = "primary";
       color_2 = "secondary";
-    };
-
-    "noctalia/bongocat:cat" = {
-      executable_path = "${pkgs.evtest}/bin/evtest";
-      input_devices = hostFacts.keyboardDevices;
-      audio_spectrum = !reducedMotion;
-      tappy_mode = !reducedMotion;
-      rave_mode = false;
-      use_mpris_filter = true;
     };
 
     network = {
@@ -214,28 +287,33 @@
       label_min_width = 34;
     };
 
-    clock = {
-      # %a follows the active LC_TIME locale; prefix it explicitly so Chinese
-      # locales render e.g. 周日 instead of the ambiguous bare 日.
-      format = "{:%m月%d日 周%a  %H:%M}";
-      vertical_format = "{:%H\n%M}";
+    clock-date = {
+      type = "clock";
+      format = "{:%m月%d日 周%a}";
       font_family = palette.fonts.sans;
+    };
+    clock-time = {
+      type = "clock";
+      format = "{:%H:%M}";
+      vertical_format = "{:%H\n%M}";
+      font_family = palette.fonts.mono;
+      font_weight = 600;
     };
 
     workspaces = {
-      # Noctalia 5.3 draws app icons only in focus_hint (the active pill only).
-      # Keep regular numbered capsules so all nine workspace identities stay visible.
-      style = "regular";
+      # Minimal is the native no-fill workspace style; the local palette patch
+      # colors the active label blue while retaining occupancy/urgent semantics.
+      style = "minimal";
       label_source = "id";
       show_labels = true;
       hide_when_empty = false;
       show_all_outputs = false;
       focused_output_only = true;
-      active_pill_size = 1.5;
+      active_pill_size = 1.0;
       inactive_pill_size = 1.0;
-      focused_color = "hover";
-      occupied_color = "surface_variant";
-      empty_color = palette.deep;
+      focused_color = palette.blue;
+      occupied_color = palette.fg;
+      empty_color = palette.border;
       urgent_color = "error";
       font_scale = 1.0;
     };

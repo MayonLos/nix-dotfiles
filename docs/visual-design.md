@@ -1,34 +1,34 @@
-# Astra · One Dark 精修
+# 紧凑 · 下划指示 v3
 
-Astra 设计稿，2026-10-24 用户确认。以下保留设计交付原文；实施证据另见 [桌面执行记录](history/visual-desktop-2026-10-24.md)。
+2026-10-25 用户确认，第十八轮实施规范。实现与验证见 [执行记录](history/ui-v3-2026-10-25.md)。本版取代此前稿中顶栏、候选框、启动器、控制中心、通知、Neovim 与终端的尺寸和状态语言；其余平台约束与 palette 继续适用。
 
-全系统视觉规范 · 2026 年 10 月 24 日 · 设计交付，不包含配置实现
+## 1. 视觉依据与状态语言
 
-本目录的 BRIEF 是颜色与需求的唯一依据。仓库中原有 One Dark 的旧色值只用于理解结构，不沿用。未修改 `/home/mayon/nix-dotfiles`，未启动、重载或切换桌面服务。
+唯一视觉依据为用户提供的两组本地稿：
 
-## 1. 方向与阅读方式
+- 顶栏与输入法：`/tmp/claude-1000/-home-mayon-nix-dotfiles/13f9340b-d643-4d3f-bd2f-97266d0e2965/scratchpad/ui3/bar2.html` 与同目录 `bar2.png`。
+- Neovim、启动器、控制中心、通知、终端：同一 scratchpad 下 `ui2/desktop.html` 与 `desktop.png`。其中顶栏与候选框已由 bar2 取代。
 
-情绪关键词：**石墨、清醒、温润、安静、有秩序**。用明度区分背景、工作面与浮层；蓝色只标记方向、焦点和选择；青色用于类型与少量信息图标。紫色只保留为语法/特殊状态资源，不形成桌面色带。错误与警告使用图标、文字及边线共同表达。
+HTML 的 `html{zoom:1.5}` 只负责预览放大，CSS 数值均是逻辑像素。源稿中的示意派生色不作为新增 palette；实现只取下表源色与透明混合。PNG 为设计图，不是本机运行截图。
 
-默认阅读面不透明。半透明只发生在顶栏、通知、OSD，以及锁屏背景；不让终端文字透到另一段文字下面。保留 8 / 12 / 16 圆角，不引入更大的“玩具卡片”半径。单个头像可以是圆形，终端胶囊是字体字符形成的圆端，不能与真实窗口圆角等同。
+| 区域 | 尺寸与留白 | 状态语言 |
+|---|---|---|
+| 顶栏 | thickness 30、radius 10，上缘 6、两端 8 | 无分组填充胶囊，组间细分隔；活动为 2 px 蓝色圆角短下划线，hover 极淡底 |
+| 工作区 1–9 | 等宽紧凑数字 | 当前 blue+短下划；占用下方小圆点；紧急 red 下划；空项暗色 |
+| 日期与时间 | 日期 Inter；时间 Maple Mono 粗体 | `10月25日 周日`，日期由系统时钟生成，不固定日期 |
+| 输入法 | surface 面板、细边、radius 10、10 pt，选项距边 ≥6 | 选中无底色，2 px blue 底部圆角短条；正文 brightFg、选中序号 blue、其他序号/注释 muted；保留柔影及 ShadowMargin |
+| 启动器 | 宽 560，保留彩色应用图标 | 选中极淡底+左侧 2 px blue 竖条 |
+| 控制中心 | 可见宽 380，用户卡、3×2 开关、细轨滑块、媒体卡 | 激活 blue 文字/下划+极淡底；不铺高饱和蓝色 |
+| 通知 | 宽 320 | 细边、正文 brightFg，错误用图标/边线 |
+| Explorer | 单一左栏约30列，git root/cwd | 项目标题大写；目录 blue；当前 selection+左蓝条，git 字母右对齐 |
+| 标签栏 | 左侧项目区与 Explorer 等宽 | 当前 bg+顶部细蓝线，未保存 orange 点；TUI 精度以字符单元为限 |
+| 状态栏 | 单行，模式/分支/变更/文件/诊断/LSP/AI/位置 | 模式 blue 文字与柔和底；保持正文可读 |
+| 补全/picker/which-key/AI | deep 底、细边、圆字符边框 | 选中极淡底+blue 前景/左标记；Claude Code 标题和差异使用既有 provider 能力 |
+| tmux / Starship | 单行状态栏 / 两行 prompt | 当前窗口 blue+下划，无实心胶囊；耗时 ≥3s 才显示 `· 12s` |
 
-### 设计尺寸与图稿
+A 原生配置、B 主题接口（SVG/highlight/格式串）、C 局部源码适配须区分。Noctalia 的分组、工作区、选中面与 Home 布局部分需要 C 类补丁；配置项按锁定源码核实，不虚构 CSS/TOML API。TUI 不能逐像素绘制 2 px 线或改变单行字号，使用字符下划/上划与原生窗口边框近似，差距写入执行记录。
 
-- 全部桌面尺寸为逻辑 px；2560 × 1600 物理屏幕除以 1.5，得到 1706⅔ × 1066⅔ 的逻辑画布。不要先四舍五入再缩放。
-- `mockup.html` 的根画布严格为 2560 × 1600 CSS px，内部逻辑场景统一放大 1.5。浏览器 100% 查看对应物理稿；浏览器缩小只影响预览。图稿是多个可见状态的合成示意，控制中心、补全与输入法不会在真实键盘焦点下同时保持活动。
-- `mockup-panels.html` 是 1920 px 宽的长拼版；组件按逻辑 1:1 或标明的缩小比例呈现，不代表另一台显示器。
-- 两张 HTML 均离线、自包含。内嵌 SVG 只承担单色图标；壁纸使用 CSS。无字体下载、外链图片、脚本或网络请求。
-- 图稿展示以下“目标适配”外观。原生固定布局、圆端字形、配色限制均在相应章节列出；不是当前桌面的实机截图。
-
-### 可实现性分级（必须保留在实施交接中）
-
-**A 原生配置**：锁定版本已有的字段。**B 现有主题接口**：CSS、SVG nine-slice、终端格式串、Neovim highlight 等正常接口。**C 原生限制**：现成设置无法完全表达目标，先列原生替代；若坚持图稿的细节，需要明确的局部源码主题适配，不能把它写成虚构配置项。
-
-**关键限制：Noctalia 5.3 将 Primary 同时用于文字与整块选中背景。** 已核对 `launcher_panel.cpp` 的选中行直接填 Primary、文字取 OnPrimary；`home_tab.cpp` 的活动快捷块切到 Primary variant，而首页时间等直接以 Primary 作为文字。故仅把 `mPrimary` 改成深灰，会导致时钟等内容低对比，不能交付这种全局重映射。
-
-推荐保持 `mPrimary = blue`，用 C 类局部主题适配让“选中面”消费 selection、“选中文字/图标”消费 blue，普通标题仍为 brightFg。适配范围为 Launcher 结果、Home 快捷块、所需的原生 selected/primary 控件；保留文字 Primary 与错误边线原义。它是可定位的渲染规则变更，**不是 Noctalia 用户 CSS，也不是已有 TOML 字段**；本次没有编写或应用补丁。
-
-**不修改 Noctalia 源码的原生替代**：保留 blue/black 的原生选中配对，Home 用 system / wallpaper / clipboard / session 等导航快捷块减少常亮大块；工作区用 selection + 原生 OnSurface 的中性长胶囊。它可运行，但 Launcher 的原生选中行仍为蓝底，不能同时满足本 BRIEF 的全部外观约束。因此图稿采用目标主题适配，并显式交接这一处差距；不得宣称“只改 palette 就可逐像素实现”。若实施严格禁止 shell 主题补丁，应以此限制重新确认 Launcher 选中态，而不是悄悄引入第二套 shell。
+默认正文不透明，brightFg；蓝色表达焦点和选择，错误正文仍中性。分组以留白与细线组织，不把所有控件做成胶囊。固定 palette、不从壁纸取色。
 
 ## 2. 颜色令牌
 
@@ -96,9 +96,9 @@ Noctalia palette 的 A 类对应：`mPrimary/mOnPrimary=blue/black`、`mSecondar
 | red | 5.00 | 5.40 | 4.40 ✗ | 3.69 ✗ |
 | purple | 5.42 | 5.86 | 4.77 | 4.00 ✗ |
 
-正文统一 brightFg；deep 上代码可用 blue/cyan/green/orange/yellow，均 ≥7。选择行里的代码转 brightFg，语义保留在字形/诊断图标，避免蓝字在 selection 上被误称为 ≥7。短选中标签、来源名、行号按次级 ≥4.5 验收；正文注释使用 fg，AI 未接受的虚拟灰字使用 muted + 斜体（deep 上 4.95、bg 上 4.58），不是 comment/border。红色错误句子、紫色关键词改成 brightFg，红/紫只留标记。
+正文统一 brightFg；deep 上代码可用 blue/cyan/green/orange/yellow，均 ≥7。选择行里的代码转 brightFg，语义保留在字形/诊断图标，避免蓝字在 selection 上被误称为 ≥7。短选中标签、来源名、行号按次级 ≥4.5 验收；正文注释使用 fg，AI 未接受的虚拟灰字使用 muted + 斜体（deep 上 4.95、bg 上 4.58），不是 comment/border。v3 候选框按确认稿使用 surface/muted 元数据（4.03:1），它未达到4.5门槛；选中正文仍为 brightFg，不能把该元数据配对称为达标。红色错误句子、紫色关键词改成 brightFg，红/紫只留标记。
 
-透明最差情况：bg 以 0.98 覆盖纯白后约 `#22262c`；brightFg 对比约 10.81，fg 约 7.10，仍满足本案门槛。`mockup.html` 顶栏胶囊实底，壁纸不会改变里面文字的比值。壁纸上的 Home 用户资料有原生 tint；需真实截图验证其最终底色；图稿用户资料区以深色罩层保证阅读。
+透明最差情况：bg 以 0.98 覆盖纯白后约 `#22262c`；brightFg 对比约 10.81，fg 约 7.10，仍满足本案门槛。v3 顶栏内部无填充胶囊，背景透明度仍按0.98验收。壁纸上的 Home 用户资料有原生 tint；需真实截图验证其最终底色；图稿用户资料区以深色罩层保证阅读。
 
 ## 3. 几何、字排与运动
 
@@ -107,11 +107,11 @@ Noctalia palette 的 A 类对应：`mPrimary/mOnPrimary=blue/black`、`mSecondar
 | 项目 | 目标值 | 能力与边界 |
 |---|---|---|
 | 圆角 | 8：按钮/选项；12：窗口/内部卡片；16：独立面板/通知 | Noctalia 原生 Md/Lg/Xl 6/9/12 × `shell.corner_radius_scale=4/3`；Sm 3 → 4 是微控件例外 |
-| 胶囊 | 顶栏半径 8；头像圆形；tmux 圆端字符 | 不把所有控件改为半圆 |
+| 胶囊 | 顶栏半径 10；头像圆形；tmux 使用字符下划 | 不把所有控件改为半圆 |
 | 间距 | 4 / 8 / 12 / 16 / 24 / 32 / 48 | 4 为微间隙，8 为行内，16 为卡片，24 为分区 |
 | 固定原生留白 | Noctalia panel/card padding 14，capsule padding 6 | 源码常量；接受为光学例外，不声称有任意 padding 配置 |
 | 描边 | 静态 1 border；焦点 2 blue；紧急通知原生至少 3 red | border 是装饰，不承担唯一状态表达 |
-| 控件热区 | 常用按钮目标 ≥32 × 32；表单 40 高 | 原生按自身字号计算；顶栏可视图标 16–18、整行热区 40 |
+| 控件热区 | 常用按钮目标 ≥32 × 32；表单 40 高 | 原生按自身字号计算；顶栏可视图标 16–18、紧凑顶栏热区 30（按已确认稿） |
 | S0 | 无阴影 | 平铺窗口、卡片内部、Neovim/TUI |
 | S1 | `0 4 12 / black 0.24` | 顶栏/小浮层，CSS 目标 |
 | S2 | `0 8 24 / black 0.32` | shell 面板与通知，CSS 目标 |
@@ -159,44 +159,31 @@ Kitty 从 `font_size=11.0` pt 开始（约 14.67 CSS px），不是把 15 直接
 
 ## 4. Noctalia 顶栏
 
-**尺寸**：上缘 8、两端 16，厚 40，外圆角 12，padding 8、widget spacing 8；预留空间、不自动隐藏、top layer。逻辑可用宽约 1675。左段预算 ≤620、中段 ≤220、右段 ≤560，各段保留至少 16 的余量。
+采用 §1 的30逻辑像素紧凑栏。左侧依次为启动器、分隔线、1–9 工作区、分隔线、布局（图标+平铺文字）、Quill、播放中的媒体与频谱。mangowm-keymode 仅非默认模式出现。
 
-**内容**：左为启动入口、固定 1–9 工作区、布局、低频开发工具、短媒体信息；中央 `10月24日 周六  21:08`；右为网络、音量、中文输入状态、托盘、CPU/电池及控制中心。媒体无播放时收起，CPU 不以彩条抢夺注意，图稿省略低频插件展开态但保留其入口设计。
+中部为中文日期和 Maple Mono 粗体时间。右侧为社区 system-monitor 的 CPU%，悬停展开 GPU/内存；插件不能直接展开时用 accordion 组合。随后为社区 nix-status（❄+当前世代，点开查看世代与输入更新）、仅占用时出现的内置 privacy、网络/蓝牙/音量百分比、输入法、电池百分比与绿色“养护”、通知及 Nix 控制中心入口。
 
-- 工作区：regular，胶囊可视高约 24、间隔 4、active 长度约 36、inactive 24。活动 selection 底/blue 数字；占用 surface/brightFg；空 deep/fg；紧急以红提示加通知，不闪烁。固定数字，不在 regular 模式伪造应用图标。
-- 时钟：13/500，日期中文；`widget.clock.format="{:%m月%d日 %a  %H:%M}"`，`shell.lang="zh-CN"`，同时会话 `LC_TIME=zh_CN.UTF-8`（语言设置不等于日期 locale）。`%a` 本地化长短依库而定，可能为“星期六”，预算按较长形式；如果环境不本地化，退为 `10月24日 21:08`，不硬编码星期。
-- 状态胶囊：surface 实底、8 圆角、左右 8；只给组外层容器，不给每个图标画边框。托盘图标 16–18，间距 8；系统状态单色，第三方图标仍遵循其身份。
-- hover 为局部柔和底；键盘焦点 blue 线；全局胶囊关闭，由 capsule_group 做语义分组。展开的 IP/插件组不得覆盖中央时钟。
+mini-docker、portctl、ip-monitor、tray、亮度、电源模式等低频项放入可展开组；亮度、电源模式在控制中心也保留入口，默认不让所有图标占满顶栏。不启用任何 AI 额度/用量组件。nix-search 启用 nixpkgs/NixOS/HM 查询，声明 `nix-search-tv` 与 fzf 运行依赖。
 
-**依据 A/C**：`bar.main.{thickness,radius,margin_edge,margin_ends,padding,widget_spacing,background_opacity,border,border_width,reserve_space,auto_hide,layer}`、`capsule_group`、`capsule_radius`、`widget.*.{color,icon_color,capsule_foreground}`。工作区 `style/label_source/show_labels/hide_when_empty/active_pill_size/inactive_pill_size/focused_color/occupied_color/empty_color/urgent_color`。原生 `focused_color="hover"` 只给中性底与 OnSurface 字，不能独立给当前数字 blue；目标态需 C 类文本色适配。原生替代保留长胶囊 + brightFg，不给九个标签统一蓝描边冒充单个焦点。
+养护权限归 `hardware/legion-laptop`：host 声明组和 ideapad_acpi udev 规则，user class 授权；桌面调用公开 CLI 读取/切换。禁止运行时 sudo、groupadd、usermod，不使用 ideapad-conservation-mode 插件。构建不改变当前 sysfs 及组权限。
+
+字段与渲染实现以锁定 Noctalia 5.3、官方和社区插件源为依据。补丁仅改此 package 的绘制/布局，不替换全局 Primary 的语义；palette 的 Primary 仍为 blue。
 
 ## 5. 启动器与控制中心
 
-### 启动器
+启动器 full layout、宽560，彩色应用图标，常用 pinned Kitty/Neovim/Firefox/Thunar。选中为柔和中性底+左2px蓝条，说明文字 fg。色彩恢复必须追溯图标 monochrome/colorize/tint 路径，不通过更改系统全部图标来绕过。
 
-浮动居中，宽 680，内容随结果数量变化，图稿约 440 高；外圆角 16，原生 padding 14。使用 full layout，搜索在顶部，左导航按原生全布局，右侧列表；搜索框约 40 高，结果约 52 高，图标 24，文字标题 14/500、说明 13。默认 pinned；常用项为 Kitty / Neovim / Firefox / Thunar。选中行 selection + blue 图标/短标签，说明 fg；键盘焦点线 2 blue；空结果用中性正文“没有匹配的应用”。结果按原生可用空间滚动，不人为固定第七项越界。
-
-**依据 A/C**：`shell.launcher.{layout="full",width=680,search_position="top",default_view="pinned",compact=false,app_grid=false,show_icons=true,pinned}`，`shell.panel.launcher_placement="floating"`、`launcher_position="center"`。Launcher 原生 selected 填 Primary，需要第 1 节的主题适配；不能用 `list_item_background` 当作选中颜色 API。行高与内边距是内置布局估值。
-
-### 控制中心
-
-`control_center.width=680`，compact sidebar 时有效宽为 `680×0.85=578`；full 为 680，none 为 510。图稿首页宽 578，高约 440；上方与顶栏相隔 12。外圆角 16，padding 14。采用浮动右上，避免 attached 接缝挤占内容。
-
-首页遵循原生：头像用户卡在上，底部媒体/日期卡与两列快捷块并列。头像约 56–64，圆形或 12 圆角（推荐后者）；用户名 20/600，身份信息 13。用户卡壁纸来自当前横向壁纸，遮罩保持文字清晰。快捷块最多 6 个：Wi-Fi、蓝牙、免打扰、防休眠、夜灯、电源模式；约 64–80 高，原生按宽度算，不伪设固定 tile 尺寸。关闭为 bg/surface + fg，开启为 selection + blue 图标并保留标签，焦点 blue 线。
-
-音量页和亮度页分别展示滑块。目标轨道高 4–6、触点直径 14–16、热区至少 32；标签 14、百分比 13。fill blue 可以作为极细信息线，剩余轨道 selection；静音用划线扬声器和“已静音”，不只改颜色。鼠标悬停显示原生 tooltip。不要把音频/亮度滑块拼进 Home 当成现有设置。
-
-**依据 A/C**：`control_center.{width,sidebar="compact",sidebar_section="compact",show_shortcut_labels=true,circular_avatar=false,show_session_button=true}`、`control_center.shortcuts[].type`；`shell.panel.control_center_placement="floating"`、`control_center_position="top_right"`、`floating_offset=12`；`shell.avatar_path`。`home_tab.cpp` 的两列快捷块、壁纸用户卡与字体大小是源码布局，不提供任意换序/尺寸字段。活动块的 Primary variant 需 C 类适配；原生导航快捷块替代见第 1 节。滑块在 `audio` / `monitor` tab，保留原生尺寸与拖动行为。
+控制中心可见宽380，用户卡置顶，Wi-Fi/蓝牙/免打扰/防休眠/夜灯/电源模式构成3×2块；活动为蓝字/短下划和极淡底。下方音量与亮度细轨滑块、媒体卡。原生布局不提供的部分由局部补丁落实，并保持既有点击与拖动逻辑。浮动右上，面板与顶栏留间隔。
 
 ## 6. 通知、OSD、锁屏与登录
 
 ### 通知
 
-宽 380，普通高约 108–132，padding 14，外圆角 16，顶右 x=16 / y=64，间距 8；同时最多 3。正文 14/22，应用/时间 13，标题 14/600；标题 1–2 行，正文按原生换行，action 保留完整文字。
+宽 320，普通高约 108–132，padding 14，外圆角 16，顶右 x=16 / y=64，间距 8；同时最多 3。正文 14/22，应用/时间 13，标题 14/600；标题 1–2 行，正文按原生换行，action 保留完整文字。
 
 普通：border 1，信息图标 cyan。警告：同一中性卡片、yellow 图标与“注意”；**Freedesktop 没有 warning urgency**，作为 normal 消息的正文/发送方图标处理，不能编造 warning 配置。错误：正文 brightFg、red 错误标记；critical 原生边线至少 3 px red。图稿分别展示 normal、normal+警告语义、critical。正文不写一整段红字。
 
-**依据 A**：`notification.{width=380,background_opacity=0.98,border=true,border_color="outline",border_width=1,offset_x=16,offset_y=64,max_visible=3,position="top_right",show_app_name=true,show_actions=true}`。普通消息的关闭时间由发送方/现有 filter 决定，不以视觉稿改写交互语义。若控制中心覆盖通知，交由原生层级；图稿将通知移到空白区作为同时展示状态，不承诺自动避让算法。
+**依据 A**：`notification.{width=320,background_opacity=0.98,border=true,border_color="outline",border_width=1,offset_x=16,offset_y=64,max_visible=3,position="top_right",show_app_name=true,show_actions=true}`。普通消息的关闭时间由发送方/现有 filter 决定，不以视觉稿改写交互语义。若控制中心覆盖通知，交由原生层级；图稿将通知移到空白区作为同时展示状态，不承诺自动避让算法。
 
 ### OSD
 
@@ -239,15 +226,13 @@ Kitty 从 `font_size=11.0` pt 开始（约 14.67 CSS px），不是把 15 直接
 
 ### tmux
 
-底部一行，deep 底、左右 1 cell；顺序为 session → window 列表 → 空白 → prefix/copy/zoom 状态 → 时间。圆端用 Maple 自带 Powerline `` / ``，它们是一个字符，不存在 `border-radius`。圆端 foreground 必须等于胶囊底 selection、字符单元 background=deep，中央填 selection，文字 blue/brightFg。字体缺字或 cell 接缝时退回 `[ 1:终端 ]`，不安装第二套状态栏。
-
-正常：当前窗口蓝字、中性胶囊；后台 fg。prefix：“前缀” cyan，copy：“复制” yellow，zoom：“放大” blue；告警：red 图标 + brightFg 标签。图稿多状态分别呈现，最多两个模式提示同时显示。窄于 100 列去掉时间，窄于 80 列去掉路径；不截断活动窗口名称到无法识别。
+底部一行，deep 底、左右 1 cell；顺序为 session → window 列表 → 空白 → prefix/copy/zoom 状态 → 时间。当前窗口 blue 字加 underline，取消实心胶囊及圆端；后台 fg。prefix/copy/zoom 分别用 cyan/yellow/blue 标签，窄屏保留当前窗口身份。
 
 **依据 B**：现有 `status-left/right/style`、`window-status-format/current-format`、`pane-border-style/pane-active-border-style`、`message-style/mode-style`、`@prefix_highlight_*` 与 `#{client_width}`、`#{pane_in_mode}`、`#{window_zoomed_flag}` 格式表达式。使用真彩色 `#RRGGBB`，不把 ANSI 8 border 作为必要说明前景。
 
 ### Starship
 
-两行：第一行目录 blue、分支 fg、工作区变更 yellow 的短数字、耗时 fg；第二行 `❯` blue + 用户命令 brightFg。失败时 red 符号加可读 exit code；没有背景色块、没有重复用户名主机占位（SSH/root 才显示）。提示符不显示秒级时间，与顶栏避免重复。AI 灰字不属于 Starship prompt；如使用 shell suggestion 也应 fg/deep。
+两行：第一行目录 blue、分支 fg、工作区变更 yellow 的短数字、耗时 fg（≥3s 显示 `· 12s`）；第二行 `❯` blue + 用户命令 brightFg。失败时 red 符号加可读 exit code；没有背景色块、没有重复用户名主机占位（SSH/root 才显示）。提示符不显示秒级时间，与顶栏避免重复。AI 灰字不属于 Starship prompt；如使用 shell suggestion 也应 fg/deep。
 
 **依据 A/B**：`programs.starship.settings.format`、`directory.style/format`、`git_branch.style/format`、`git_status.style`、`cmd_duration.style/min_time`、`character.success_symbol/error_symbol`；现有 zsh 模块已声明相应结构。只调整呈现，不改变命令行为。
 
@@ -257,13 +242,13 @@ Kitty 从 `font_size=11.0` pt 开始（约 14.67 CSS px），不是把 15 直接
 |---|---|---|
 | 正文 | deep；Maple 约15/22；边距以 cell；行号 fg，当前行号 brightFg；当前行保持 deep，只在 gutter 画 blue 标记 | `Normal/NormalNC/LineNr/CursorLineNr/SignColumn`，`cursorlineopt`；真实终端无 CSS padding |
 | 语法 | 关键字 cyan（7.29）、函数 blue（7.31）、字符串 green（8.56）、数字 orange（7.01）、注释 fg（8.10）、标点/变量 brightFg；紫色不承担正文 | `nvim_set_hl`、Treesitter `@keyword/@function/@string/@number/@comment`，已有 `ui/theme.lua` |
-| 标签栏 | 一个字符行；deep 底；活动 selection/blue，后台 fg；改动圆点 brightFg；项目名独立区与 explorer 宽度对齐 | 已有 Heirline/`ui/tabline.lua`；圆角只能用字形 |
+| 标签栏 | 一个字符行；deep 底；活动 bg/brightFg、顶部细 blue 标记，后台 fg；改动圆点 orange；项目名独立区与 explorer 宽度对齐 | 已有 Heirline/`ui/tabline.lua`；圆角只能用字形 |
 | 状态栏 | 一个字符行；模式前景 blue/cyan/yellow，底 deep；文件、Git、诊断、LSP、AI、行列有优先级 | Heirline/`ui/statusline.lua`；不全行模式色底；长路径中间缩写 |
-| 浮窗 | NormalFloat=bg，正文 brightFg，FloatBorder=border；左右1 cell，`border="rounded"` | Neovim window border 为框线字符，视觉半径不可直接设 12；无独立阴影 |
+| 浮窗 | NormalFloat=deep，正文 brightFg，FloatBorder=border；左右1 cell，`border="rounded"` | Neovim window border 为框线字符，视觉半径不可直接设 12；无独立阴影 |
 | 补全菜单 | ≥28列，最多8项；左右1 cell；候选 brightFg，选中 selection/brightFg + blue 类型符号；来源 fg | 原生 `pumheight/pummaxwidth/pumborder`、`Pmenu*` 高亮；窄屏去说明与来源 |
-| 补全文档 | 最多60列×14行，bg/brightFg，border圆字符，延迟300ms | 原生 `completeopt=popup` 与 `Pmenu*` 高亮；不与输入法候选互相遮挡 |
+| 补全文档 | 最多60列×14行，deep/brightFg，border圆字符，延迟300ms | 原生 `completeopt=popup` 与 `Pmenu*` 高亮；不与输入法候选互相遮挡 |
 | AI 虚拟建议 | muted + 斜体；无光晕、无低透明度；未接受标识在状态栏“建议” | 插件 ghost-text highlight/extmark；具体组名以实际 provider 为准，CodeCompanion 不被假定自带持续 inline ghost completion |
-| AI 侧栏 | 正文约32–40列，bg/brightFg，标题“AI 对话”，内容 Markdown；分隔1字符 border；引用文件单独短行 | 当前 CodeCompanion split 布局与 highlight；宽不够时改独立 tab/浮窗，禁止压缩代码到小于约60列 |
+| AI 侧栏 | 正文约32–40列，deep/brightFg，Claude Code provider 标题可辨，内容 Markdown；分隔1字符 border；引用文件单独短行 | 当前 CodeCompanion split 布局与 highlight；宽不够时改独立 tab/浮窗，禁止压缩代码到小于约60列 |
 | diff 审阅 | deep 底；左右原文/修改；新增/删除各8% green/red底；局部12%；全文brightFg；gutter有 +/−；修改 blue 标记 | `DiffAdd/Change/Delete/Text`、CodeDiff、Claude 原生 diff、mini.diff；blend 颜色在主题生成阶段计算为实色，TUI 不支持逐cell alpha |
 | 启动页 | 项目名20视觉近似（终端仍同字号，可用两行布局）；最近项目5项、会话/新文件/查找3–4项；中性标题、小号蓝标记 | 已有 `ui/dashboard.lua`/Snacks dashboard；终端不混用任意字号，不渲染巨型彩色ASCII logo |
 
@@ -277,9 +262,9 @@ diff 合成后的实测正文对比：8% green/red/blue 底分别约 10.70 / 11.
 
 ### fcitx5 横排候选
 
-预编辑一行、候选一行；7 项一页，宽度由文字自适应，目标约 540–680，超出屏幕则由原生调整位置。外圆角12，内容6、文字左右10/上下5，选中项8圆角；bg 实底，brightFg 候选，fg 序号。首选项 selection 底、blue 字；对比4.99，按短交互标签验收，不用作说明段落。原生候选窗不叠加 Mango 阴影。
+预编辑一行、候选一行、每页7项、10pt；面板 surface、细 border，外 radius10。选中项不填底，brightFg 候选/blue 序号，下方2px蓝色圆角短条，其他序号与注释 muted。选中内容与面板边缘至少6逻辑像素；保留柔和阴影及 ShadowMargin，由 Fcitx 原生避边。SVG nine-slice 的底部短条代替旧 selection 填充。
 
-**依据 A/B**：Classic UI `Vertical Candidate List=False`，Rime `menu.page_size=7`；主题 `InputPanel.NormalColor/HighlightColor/HighlightCandidateColor/HighlightBackgroundColor`、`InputPanel/Background`、`InputPanel/Highlight`、`ContentMargin/TextMargin`。现有 `rime/theme.nix` 已能生成 SVG nine-slice；目标 highlight.svg 填 selection、1 blue 边，替换旧 blue/black；`ScaleWithDPI=True`。横排由 UI 设置决定，不能只改 SVG 就声称完成。
+**依据 A/B**：Classic UI 横排与字体设置、Rime page_size、`InputPanel.*Color`、`Background/Highlight`、`ContentMargin/TextMargin/ShadowMargin`。字段及像素效果由 rime-checks 对生成主题核验；GUI 截图与实际 DPI 行为属于应用后验证。
 
 ### GTK / Qt（Thunar 为代表）
 
@@ -309,13 +294,9 @@ diff 合成后的实测正文对比：8% green/red/blue 底分别约 10.70 / 11.
 - **M** = `/nix/store/qcya6bfk3h3f291ca9jidjfnlrx7l32x-source`（Mango 0.18.3）。已读 `docs/visuals/theming.md`、`effects.md`、`animations.md`、`docs/window-management/overview.md`。
 - **R** = `/home/mayon/nix-dotfiles`。只读 `docs/desktop-design.md` 及 `aspects/desktop/{mango-session,greeter,session-support}`、`aspects/cli/{terminal,shell}`、`aspects/dev/neovim/config/lua/mayon/{ui,plugins}`、`aspects/apps/firefox/resources/noctalia-userChrome.css`。引用现有配置说明接口已接线，不证明目标参数已实施。
 
-设计阶段交付四个请求文件。已完成 HTML 离线结构、色值与几何静态检查；`fc-match` 确认本机 Inter 与 Maple Mono NF CN 可用。浏览器截图未完成：当前沙箱拒绝 Chromium 的本地 socket 操作，Firefox headless 也退出；因此中文最终字形、裁切、阴影和实际布局仍需打开 HTML 目视复核。不用 Nix 构建来代替视觉验收。实施阶段还须检查：
+本轮采用上述用户确认的 HTML/PNG，不再使用此前 mockup.html/mockup-panels.html 的尺寸。实施只执行构建与隔离/headless 验证，没有应用系统配置、启动或重启桌面常驻进程。Noctalia parser、Neovim Explorer/文本渲染、palette 对比度与完整构建结果见 [执行记录](history/ui-v3-2026-10-25.md)。
 
-1. 在150%缩放下查看 CJK、Maple圆端与1px边线；普通/hover/active/focus/disabled/error状态均可辨。
-2. 开9个tag、5个托盘图标、最长日期、IP和插件展开，顶栏无重叠；窄外屏采用明确per-monitor布局，不承诺自动响应断点。
-3. 白色网页放在顶栏/通知后验证透明最差情形；长中文通知和候选不裁切；输入法贴近光标并由原生避边。
-4. 原生A/B接口先落实；C类选中态差距必须单独记录，不把HTML CSS当成Noctalia配置。Noctalia禁用文本、首页壁纸tint、认证错误提示须实屏测量。
-5. 实机功耗与动画帧时间尚未测量；图稿中的模糊与阴影不构成性能承诺。
+实机待验：150% 缩放下文字/下划线/候选边距、九工作区和最长媒体/展开组时顶栏容量、彩色应用图标、3×2开关及滑块、隐私占用出现/退出、电池养护权限和切换、中文候选避边、长通知裁切。构建不代替这些运行证据。
 
 ## 13. 第十九轮科技版（2026-10-25）
 

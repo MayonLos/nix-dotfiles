@@ -67,6 +67,7 @@ vim.bo.filetype = "snacks_picker_list"
 tab.select(doc)
 assert(vim.api.nvim_get_current_win() == docwin, "tab click chose the sidebar")
 assert(vim.api.nvim_win_get_buf(toolwin) == toolbuf, "tab click replaced the sidebar")
+vim.bo[toolbuf].filetype = "nofile"
 local confirm = vim.fn.confirm
 vim.api.nvim_buf_set_lines(doc, 0, -1, false, { "unsaved document" })
 vim.fn.confirm = function()
@@ -112,16 +113,19 @@ for _, name in ipairs({
 	"NormalFloat",
 	"FloatBorder",
 	"FloatTitle",
-	"Pmenu",
-	"PmenuBorder",
-	"SnacksPickerList",
 }) do
 	assert(
-		hl(name).bg == tonumber(require("mayon.generated").palette.bg:sub(2), 16),
+		hl(name).bg == tonumber(require("mayon.generated").palette.deep:sub(2), 16),
 		name .. " has a disconnected background"
 	)
 end
+local popup_bg = tonumber(require("mayon.generated").palette.deep:sub(2), 16)
+for _, name in ipairs({ "Pmenu", "PmenuBorder", "SnacksPickerList", "SnacksPickerNormal", "WhichKeyNormal" }) do
+	assert(hl(name).bg == popup_bg, name .. " should use the deep popup surface")
+end
 assert(hl("PmenuSel").bg == tonumber(require("mayon.generated").palette.selection:sub(2), 16))
+assert(hl("TabLineSel").bg == tonumber(require("mayon.generated").palette.bg:sub(2), 16))
+assert(hl("MayonTabAccent").fg == tonumber(require("mayon.generated").palette.blue:sub(2), 16))
 for _, name in ipairs({ "RenderMarkdownH5", "RenderMarkdownH6" }) do
 	assert(hl(name).fg == tonumber(require("mayon.generated").palette.fg:sub(2), 16))
 end
@@ -137,3 +141,117 @@ local literal = vim.api.nvim_eval_statusline(display.fit("中文 50% notes"), { 
 assert(literal.str == "中文 50% notes", "literal percent was interpreted as statusline syntax")
 assert(vim.v.errmsg == "", vim.v.errmsg)
 print("Long documents, Unicode tabs, sidebar preservation, close cancellation and scratch passed")
+
+-- The workspace explorer must own exactly one left column and follow the
+-- current file's project root rather than the process HOME or an unrelated cwd.
+local project = root .. "/workspace"
+vim.fn.mkdir(project .. "/.git", "p")
+local project_file = project .. "/entry.lua"
+vim.fn.writefile({ "return true" }, project_file)
+vim.cmd.edit(vim.fn.fnameescape(project_file))
+vim.o.columns = 120
+local explorer_mapping = vim.fn.maparg("<leader>e", "n", false, true)
+assert(type(explorer_mapping.callback) == "function", "workspace explorer mapping is missing")
+explorer_mapping.callback()
+local snacks = require("snacks")
+assert(
+	vim.wait(2000, function()
+		return #snacks.picker.get({ source = "explorer" }) > 0
+	end),
+	"explorer picker did not open"
+)
+local picker = snacks.picker.get({ source = "explorer" })[1]
+assert(
+	picker and picker:cwd() == project,
+	"explorer root should be the current git project: " .. tostring(picker and picker:cwd()) .. " != " .. project
+)
+assert(picker.opts.title == vim.fn.fnamemodify(project, ":t"):upper(), "explorer title should identify the project")
+assert(not picker.opts.icons.git.enabled, "explorer should show git letters rather than status icons")
+local list_win = picker.list.win.win
+assert(vim.api.nvim_win_is_valid(list_win), "explorer list window is missing")
+assert(vim.api.nvim_win_get_width(list_win) == 30, "explorer sidebar should be 30 columns")
+assert(tab.sidebar_width() == 31, "project title zone should align with the 30-column explorer")
+local visible_windows = {}
+for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+	visible_windows[win] = true
+end
+local picker_windows = {}
+local visible_panes = {}
+for _, name in ipairs({ "input", "list", "preview" }) do
+	local pane = picker[name]
+	local win = pane and pane.win and pane.win.win
+	local visible = win and visible_windows[win] or false
+	local where = "hidden"
+	if win and vim.api.nvim_win_is_valid(win) then
+		local position = vim.api.nvim_win_get_position(win)
+		where = string.format(
+			"row=%d col=%d width=%d relative=%s",
+			position[1],
+			position[2],
+			vim.api.nvim_win_get_width(win),
+			vim.api.nvim_win_get_config(win).relative
+		)
+	end
+	picker_windows[#picker_windows + 1] =
+		string.format("%s win=%s visible=%s %s", name, tostring(win), tostring(visible), where)
+	if visible then
+		visible_panes[#visible_panes + 1] = name
+	end
+end
+local picker_report = table.concat(picker_windows, "; ")
+print("Explorer picker panes: " .. picker_report)
+assert(picker.layout:is_hidden("input"), "explorer input should be hidden by default: " .. picker_report)
+assert(
+	not visible_windows[picker.input.win.win],
+	"explorer input window should not be displayed by default: " .. picker_report
+)
+assert(
+	#visible_panes == 1 and visible_panes[1] == "list",
+	"explorer should display only the list pane: " .. picker_report
+)
+assert(
+	vim.wo[list_win].winbar:find(picker.opts.title, 1, true),
+	"uppercase project title should be shown in list winbar: " .. vim.wo[list_win].winbar
+)
+assert(picker.opts.focus == "list", "explorer should open focused on the visible list")
+local rendered_tabs = vim.api.nvim_eval_statusline(vim.o.tabline, { use_tabline = true, maxwidth = 120 }).str
+assert(rendered_tabs:find(vim.fn.fnamemodify(project, ":t"), 1, true), "tabline should show the project root name")
+local project_win
+for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+	if vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(win)) == project_file then
+		project_win = win
+	end
+end
+assert(project_win, "project document window should remain visible beside the explorer")
+local rendered_status = vim.api.nvim_eval_statusline(vim.o.statusline, { maxwidth = 120, winid = project_win }).str
+assert(rendered_status:find("entry.lua", 1, true), "statusline should show the current filename: " .. rendered_status)
+assert(
+	vim.wo[list_win].statuscolumn:find("MayonExplorerStatusColumn", 1, true),
+	"explorer should use its selection rail"
+)
+vim.bo[vim.api.nvim_win_get_buf(project_win)].modified = true
+local modified_tabline = vim.api.nvim_eval_statusline(vim.o.tabline, {
+	use_tabline = true,
+	maxwidth = 120,
+	highlights = true,
+})
+assert(modified_tabline.str:find("●", 1, true), "modified document tab should display its unsaved marker")
+local orange = tonumber(require("mayon.generated").palette.orange:sub(2), 16)
+local orange_marker = false
+for _, highlight in ipairs(modified_tabline.highlights or {}) do
+	local colors = vim.api.nvim_get_hl(0, { name = highlight.group, link = false })
+	if colors.fg == orange then
+		orange_marker = true
+	end
+end
+assert(orange_marker, "unsaved tab marker should use the orange palette highlight")
+require("snacks.picker.actions").focus_input(picker)
+assert(not picker.layout:is_hidden("input"), "Snacks focus_input should show a hidden explorer search input")
+assert(
+	vim.wait(1000, function()
+		return picker.input.win.win and vim.api.nvim_get_current_win() == picker.input.win.win
+	end),
+	"Snacks focus_input should focus the restored search input"
+)
+picker:close()
+print("Project-root explorer, 30-column single list window, hidden/restorable search and workspace labels passed")

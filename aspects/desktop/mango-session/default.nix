@@ -25,6 +25,8 @@
               avatar = if builtins.elem "avatar" integrations.ids then user.avatar else null;
               noctaliaIntegrations = integrations.ids;
               integrationTemplates = integrations.entries;
+              hostName = host.name;
+              flakePath = user.flakePath or host.flakePath;
             })
             ./clipboard.nix
             ./screenshot.nix

@@ -1,0 +1,20 @@
+id = "nix-dotfiles/legion-conservation"
+name = "Legion Conservation Mode"
+version = "1.0.0"
+plugin_api = 24
+author = "nix-dotfiles"
+license = "MIT"
+description = "Shows and toggles the declared Legion battery conservation mode."
+tags = ["bar", "indicator", "hardware"]
+dependencies = ["legion-conservation"]
+icon = "battery-charging"
+
+[[widget]]
+id = "status"
+entry = "status.luau"
+
+  [[widget.setting]]
+  key = "active_color"
+  type = "color"
+  label_key = "settings.active_color.label"
+  default = "primary"

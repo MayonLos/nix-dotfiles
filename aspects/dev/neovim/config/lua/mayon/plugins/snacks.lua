@@ -91,6 +91,7 @@ local function setup(overrides)
 						if vim.o.columns < 52 then
 							return {
 								preset = "select",
+								hidden = { "input" },
 								layout = {
 									width = 0.82,
 									min_width = vim.o.columns - 4,
@@ -99,9 +100,10 @@ local function setup(overrides)
 								},
 							}
 						end
-						local width = math.max(24, math.min(34, math.floor(vim.o.columns * 0.30)))
+						local width = 30
 						return {
 							preset = "sidebar",
+							hidden = { "input" },
 							preview = false,
 							layout = { width = width, min_width = width, max_width = width, height = 0 },
 						}

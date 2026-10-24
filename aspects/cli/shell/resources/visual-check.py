@@ -41,9 +41,9 @@ run(settings["git"], "init", "--initial-branch=fixture", str(repo))
 ansi = re.compile(r"\x1b\[[0-9;]*m")
 
 
-def prompt(**changes):
+def prompt(duration=5000, **changes):
     result = subprocess.run(
-        [settings["starship"], "prompt", "--status=42", "--cmd-duration=5000", "--terminal-width=120"],
+        [settings["starship"], "prompt", "--status=42", f"--cmd-duration={duration}", "--terminal-width=120"],
         cwd=repo, env=env | changes, check=True, capture_output=True, text=True,
     )
     assert not result.stderr, result.stderr
@@ -55,6 +55,11 @@ assert normal.count("\n") == 1 and "❯" in normal, repr(normal)
 assert "42" in normal and "?1" in normal, repr(normal)
 if os.geteuid() != 0:
     assert "@" not in normal, repr(normal)
+slow = prompt(duration=12000)
+assert "· 12s" in slow, repr(slow)
+starship_config = tomllib.loads(pathlib.Path(settings["starshipConfig"]).read_text())
+assert starship_config["cmd_duration"]["min_time"] == 3000
+assert "· $duration" in starship_config["cmd_duration"]["format"]
 ssh = prompt(SSH_CONNECTION="127.0.0.1 22 127.0.0.2 2222")
 assert "@" in ssh, repr(ssh)
 nix = prompt(IN_NIX_SHELL="impure")
@@ -98,6 +103,9 @@ def status():
 
 try:
     settle()
+    active_format = tmux("show-window-option", "-gv", "window-status-current-format")
+    assert active_format == settings["tmuxCurrentFormat"], active_format
+    assert "underscore" in active_format and "#[bg=" not in active_format, active_format
     tmux("split-window", "-h", "-t", "validate", "-c", str(repo))
     panes = tmux("list-panes", "-F", "#{pane_id}").splitlines()
     left, right = panes

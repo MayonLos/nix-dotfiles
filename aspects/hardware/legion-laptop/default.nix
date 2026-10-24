@@ -20,9 +20,13 @@ _: {
       ];
     };
     legion-laptop-user = { host, ... }: {
+      user.extraGroups = [ "legion-conservation" ];
       homeManager = { pkgs, ... }: {
         programs.mpv.config.hwdec = host.facts.gpu.mpvHwdec;
-        home.packages = [ pkgs.lenovo-legion ];
+        home.packages = [
+          pkgs.lenovo-legion
+          (import ./conservation.nix { inherit pkgs; })
+        ];
       };
     };
   };

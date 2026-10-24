@@ -32,10 +32,6 @@
             };
           };
         };
-        keyboardDevices = lib.mkOption {
-          type = lib.types.listOf lib.types.str;
-          default = [ ];
-        };
         display = lib.mkOption {
           default = { };
           type = lib.types.submodule {
