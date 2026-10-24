@@ -3,22 +3,33 @@
   palette,
 }:
 let
+  mix =
+    base: tint: percent:
+    import ./color-mix.nix { inherit base tint percent; };
+  diff = {
+    add = mix palette.deep palette.green 8;
+    addEmph = mix palette.deep palette.green 12;
+    delete = mix palette.deep palette.red 8;
+    deleteEmph = mix palette.deep palette.red 12;
+    change = mix palette.deep palette.blue 8;
+    changeEmph = mix palette.deep palette.blue 12;
+  };
   entries = [
     {
       name = "Foreground";
       scope = "text, source, punctuation, meta.tag punctuation.definition.tag";
-      foreground = palette.fg;
+      foreground = palette.brightFg;
     }
     {
       name = "Comment";
       scope = "comment, punctuation.definition.comment";
-      foreground = palette.muted;
+      foreground = palette.fg;
       fontStyle = "italic";
     }
     {
       name = "Keyword";
       scope = "keyword, storage, storage.type, storage.modifier, entity.name.tag.yaml";
-      foreground = palette.purple;
+      foreground = palette.cyan;
     }
     {
       name = "String";
@@ -48,7 +59,7 @@ let
     {
       name = "Variable";
       scope = "variable, variable.other, meta.definition.variable";
-      foreground = palette.fg;
+      foreground = palette.brightFg;
     }
     {
       name = "Constant";
@@ -63,7 +74,7 @@ let
     {
       name = "Tag";
       scope = "entity.name.tag, punctuation.definition.tag";
-      foreground = palette.red;
+      foreground = palette.brightFg;
     }
     {
       name = "Attribute";
@@ -96,18 +107,26 @@ let
     {
       name = "Diff inserted";
       scope = "markup.inserted, meta.diff.header.to-file";
-      foreground = palette.green;
+      foreground = palette.brightFg;
+      background = diff.add;
     }
     {
       name = "Diff deleted";
       scope = "markup.deleted, meta.diff.header.from-file";
-      foreground = palette.red;
+      foreground = palette.brightFg;
+      background = diff.delete;
+    }
+    {
+      name = "Diff modified";
+      scope = "markup.changed";
+      foreground = palette.brightFg;
+      background = diff.change;
     }
     {
       name = "Invalid";
       scope = "invalid, invalid.illegal";
       foreground = palette.brightFg;
-      background = palette.red;
+      fontStyle = "underline";
     }
   ];
 
@@ -143,11 +162,11 @@ let
       <array>
         <dict><key>settings</key>${
           plistDict {
-            foreground = palette.fg;
-            background = palette.bg;
+            foreground = palette.brightFg;
+            background = palette.deep;
             caret = palette.blue;
             inherit (palette) selection;
-            "lineHighlight" = palette.surface;
+            lineHighlight = palette.selection;
           }
         }</dict>
         ${builtins.concatStringsSep "\n" (map rule entries)}
@@ -182,5 +201,10 @@ let
 in
 {
   name = "One Dark Darker";
-  inherit tmTheme cache delta;
+  inherit
+    tmTheme
+    cache
+    delta
+    diff
+    ;
 }

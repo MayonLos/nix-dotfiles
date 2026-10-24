@@ -1,34 +1,52 @@
+{ palette }:
 { pkgs, ... }:
 
 let
+  # Embedded composition fixtures may omit appearance. They retain a readable
+  # ANSI fallback; deployed instances always pass the shared palette.
+  colors =
+    if palette == null then
+      {
+        bg = "colour0";
+        deep = "colour0";
+        surface = "colour8";
+        selection = "colour8";
+        fg = "colour7";
+        brightFg = "colour15";
+        border = "colour8";
+        blue = "colour4";
+        cyan = "colour6";
+        yellow = "colour3";
+      }
+    else
+      palette;
+  capColor = "#{?#{==:#{@rounded-caps},on},${colors.selection},${colors.fg}}";
+  roundLeft = "#{?#{==:#{@rounded-caps},on},,[}";
+  roundRight = "#{?#{==:#{@rounded-caps},on},,]}";
+
   tmuxTheme = ''
-    # tmux draws its own status bar, so use ANSI palette indexes and the
-    # default background to follow the terminal, including opaque Kitty.
+    # Keep the status bar on the editor palette and render its capsule ends as
+    # Powerline characters; no status-line theme plugin is needed.
     set -g status on
     set -g status-position bottom
     set -g status-interval 30
-    set -g status-style "bg=default,fg=colour7"
+    set -g status-style "bg=${colors.deep},fg=${colors.brightFg}"
+    set -g @rounded-caps 'on'
 
     set -g status-left-length 30
-    set -g status-left "#[fg=colour0,bg=colour4,bold] #S #[default] "
-    set -g status-right-length 52
-    set -g status-right "#{prefix_highlight}#[default]#{?#{>=:#{client_width},100}, #[fg=colour8]│ #[fg=colour7]%a %d %b #[fg=colour4,bold]%H:%M#[default],} "
+    set -g status-left " #[fg=${capColor}]#[bg=${colors.deep}]${roundLeft}#[fg=${colors.blue}]#[bg=${colors.selection}]#[bold] #S #[fg=${capColor}]#[bg=${colors.deep}]${roundRight}"
 
-    set -g window-status-separator "#[fg=colour8]·#[default]"
-    setw -g window-status-format         "#[fg=colour8] #I #[fg=colour7]#W#[fg=colour8]#{window_flags} #[default]"
-    setw -g window-status-current-format "#[fg=colour0,bg=colour4,bold] #I:#W #[default]#[fg=colour8]#{?#{>=:#{client_width},100},·,}#[fg=colour7]#{?#{>=:#{client_width},100},#{b:pane_current_path},} #[default]"
+    setw -g window-status-separator "#[fg=${colors.border}] · #[default]"
+    setw -g window-status-format "#[fg=${colors.deep}]#[bg=${colors.deep}] #[fg=${colors.fg}]#I:#W#{window_flags} #[default]"
+    setw -g window-status-current-format "#[fg=${capColor}]#[bg=${colors.deep}]${roundLeft}#[fg=${colors.blue}]#[bg=${colors.selection}]#[bold] #I:#W#{window_flags} #[fg=${capColor}]#[bg=${colors.deep}]${roundRight}"
 
-    set -g pane-border-style        "fg=colour8"
-    set -g pane-active-border-style "fg=colour4"
-    set -g message-style            "bg=colour8,fg=colour15"
-    set -g mode-style               "bg=colour3,fg=colour0"
+    set -g status-right-length 64
+    set -g status-right "#{?#{e|>=:#{client_width},80},#[fg=${colors.fg}]#{b;=24:pane_current_path} ,}#{?client_prefix,#[fg=${capColor}]#[bg=${colors.deep}]${roundLeft}#[fg=${colors.cyan}]#[bg=${colors.selection}]#[bold] 前缀 #[fg=${capColor}]#[bg=${colors.deep}]${roundRight},}#{?#{m/r:(copy|view)-mode,#{pane_mode}},#[fg=${capColor}]#[bg=${colors.deep}]${roundLeft}#[fg=${colors.yellow}]#[bg=${colors.selection}]#[bold] 复制 #[fg=${capColor}]#[bg=${colors.deep}]${roundRight},}#{?client_prefix,,#{?#{m/r:(copy|view)-mode,#{pane_mode}},,#{?window_zoomed_flag,#[fg=${capColor}]#[bg=${colors.deep}]${roundLeft}#[fg=${colors.blue}]#[bg=${colors.selection}]#[bold] 放大 #[fg=${capColor}]#[bg=${colors.deep}]${roundRight},}}}#{?#{e|>=:#{client_width},100}, #[fg=${colors.border}]│ #[fg=${colors.fg}]%m月%d日 #[fg=${colors.brightFg}]#[bold]%H:%M,} "
 
-    set -g @prefix_highlight_fg 'colour0'
-    set -g @prefix_highlight_bg 'colour4'
-    set -g @prefix_highlight_show_copy_mode 'on'
-    set -g @prefix_highlight_copy_mode_attr 'fg=colour0,bg=colour3'
-    set -g @prefix_highlight_output_prefix ' '
-    set -g @prefix_highlight_output_suffix ' '
+    set -g pane-border-style        "fg=${colors.border}"
+    set -g pane-active-border-style "fg=${colors.blue}"
+    set -g message-style            "bg=${colors.surface},fg=${colors.brightFg}"
+    set -g mode-style               "bg=${colors.selection},fg=${colors.brightFg}"
 
     TMUX_FZF_LAUNCH_KEY="F"
     TMUX_FZF_ORDER="session|window|pane|command|keybinding"
@@ -52,15 +70,15 @@ in
       sensible
       {
         plugin = yank;
-        # Set the final status format after sensible defaults, before
-        # continuum adds its save marker and prefix-highlight expands its token.
+        # Apply palette formats after sensible defaults and before continuum's
+        # save marker is added to the right side.
         extraConfig = tmuxTheme;
       }
       {
         plugin = resurrect;
+        # Layout and nvim sessions only. Pane contents copy scrollback, including
+        # secrets, into the resurrect directory every save.
         extraConfig = ''
-          # Layout and nvim sessions only. Pane contents copy scrollback, including
-          # secrets, into the resurrect directory every save.
           set -g @resurrect-capture-pane-contents 'off'
           set -g @resurrect-strategy-nvim 'session'
         '';
@@ -72,7 +90,6 @@ in
           set -g @continuum-save-interval '15'
         '';
       }
-      prefix-highlight
       tmux-fzf
     ];
 
@@ -107,12 +124,15 @@ in
 
       ##### Prefix Navigation #####
 
-      # Release the former root-table navigation bindings when this file is
-      # reloaded into an already-running tmux server.
+      # Release root-table mappings when reloading over an existing tmux server.
       unbind -n M-h
       unbind -n M-j
       unbind -n M-k
       unbind -n M-l
+      unbind -n C-h
+      unbind -n C-j
+      unbind -n C-k
+      unbind -n C-l
       unbind -n M-z
       unbind -n M-n
       unbind -n M-p
@@ -127,7 +147,18 @@ in
       unbind -n M-8
       unbind -n M-9
 
-      # Keep Alt combinations available to shells, TUIs, and Neovim.
+      # smart-splits sets @pane-is-vim per pane; when there is no nvim pane,
+      # these same keys move between tmux panes. This stays inert outside tmux.
+      bind-key -n C-h if -F "#{@pane-is-vim}" 'send-keys C-h' 'select-pane -L'
+      bind-key -n C-j if -F "#{@pane-is-vim}" 'send-keys C-j' 'select-pane -D'
+      bind-key -n C-k if -F "#{@pane-is-vim}" 'send-keys C-k' 'select-pane -U'
+      bind-key -n C-l if -F "#{@pane-is-vim}" 'send-keys C-l' 'select-pane -R'
+      bind-key -n M-h if -F "#{@pane-is-vim}" 'send-keys M-h' 'resize-pane -L 3'
+      bind-key -n M-j if -F "#{@pane-is-vim}" 'send-keys M-j' 'resize-pane -D 3'
+      bind-key -n M-k if -F "#{@pane-is-vim}" 'send-keys M-k' 'resize-pane -U 3'
+      bind-key -n M-l if -F "#{@pane-is-vim}" 'send-keys M-l' 'resize-pane -R 3'
+
+      # Keep prefix navigation for users and tmuxp layouts that rely on it.
       bind h select-pane -L
       bind j select-pane -D
       bind k select-pane -U

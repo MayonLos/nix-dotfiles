@@ -14,6 +14,7 @@ let
         selection = "darkgray";
         border = "darkgray";
         fg = "white";
+        brightFg = "white";
         muted = "darkgray";
         blue = "blue";
         cyan = "cyan";
@@ -181,24 +182,24 @@ in
           bold = true;
         };
         marker_copied = {
-          fg = colors.black;
-          bg = colors.green;
+          fg = colors.green;
+          bg = colors.selection;
         };
         marker_cut = {
-          fg = colors.black;
-          bg = colors.red;
+          fg = colors.yellow;
+          bg = colors.selection;
         };
         marker_marked = {
-          fg = colors.black;
-          bg = colors.cyan;
+          fg = colors.cyan;
+          bg = colors.selection;
         };
         marker_selected = {
-          fg = colors.black;
-          bg = colors.blue;
+          fg = colors.blue;
+          bg = colors.selection;
         };
         count_selected = {
-          fg = colors.black;
-          bg = colors.blue;
+          fg = colors.brightFg;
+          bg = colors.selection;
         };
         border_style = {
           fg = colors.border;
@@ -207,8 +208,8 @@ in
 
       tabs = {
         active = {
-          fg = colors.black;
-          bg = colors.blue;
+          fg = colors.blue;
+          bg = colors.selection;
           bold = true;
         };
         inactive = {
@@ -219,8 +220,8 @@ in
 
       mode = {
         normal_main = {
-          fg = colors.black;
-          bg = colors.blue;
+          fg = colors.blue;
+          bg = colors.selection;
           bold = true;
         };
         normal_alt = {
@@ -228,8 +229,8 @@ in
           bg = colors.deep;
         };
         select_main = {
-          fg = colors.black;
-          bg = colors.green;
+          fg = colors.green;
+          bg = colors.selection;
           bold = true;
         };
         select_alt = {
@@ -237,8 +238,8 @@ in
           bg = colors.deep;
         };
         unset_main = {
-          fg = colors.black;
-          bg = colors.red;
+          fg = colors.brightFg;
+          bg = colors.selection;
           bold = true;
         };
         unset_alt = {
@@ -253,8 +254,8 @@ in
           bg = colors.selection;
         };
         current = {
-          fg = colors.black;
-          bg = colors.blue;
+          fg = colors.blue;
+          bg = colors.selection;
           bold = true;
         };
         preview = {

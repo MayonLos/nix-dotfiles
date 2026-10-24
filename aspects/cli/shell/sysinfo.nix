@@ -13,6 +13,7 @@ let
         yellow = "yellow";
         purple = "magenta";
         fg = "default";
+        brightFg = "default";
         border = "light_black";
       }
     else
@@ -56,7 +57,7 @@ in
             paddingLeft = 1;
           };
           color = {
-            output = colors.fg;
+            output = colors.brightFg;
             separator = colors.border;
           };
           bar = {
