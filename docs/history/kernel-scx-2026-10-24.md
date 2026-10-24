@@ -147,3 +147,10 @@ package =
 CNVi Wi-Fi/以太网、i915/Plymouth 启动画面、`systemctl status scx`、
 `cat /sys/kernel/sched_ext/state` 与当前调度器名称，以及不同供电/profile 下的指针、
 窗口交互和休眠恢复。尚无同条件性能/续航测量，不宣称交互或功耗已经改善。
+
+## 重启后实机验证（2026-10-24 18:11 启动）
+
+- `uname -r` = 6.18.57；`nvidia-smi` 识别 RTX 4060 Laptop，驱动 595.71.05。
+- `/sys/kernel/sched_ext/state` = enabled，ops = `lavd_1.1.2`；`scx.service` active；legion 模块已加载；Wi-Fi 已连接。
+- Plymouth 启动服务已运行；无失败的系统/用户单元。
+- loader 阶段仍为 5.7s：EFI 变量 `LoaderConfigTimeout` = 5 覆盖了 `loader.conf` 的 `timeout 1`。已用 `bootctl set-timeout ''` 清除，下次启动生效（未再次重启验证）。
