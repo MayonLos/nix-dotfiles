@@ -7,8 +7,10 @@
     }
   ];
   boot = {
-    # Linux 7.2 needs the newer NVIDIA driver selected in ./nvidia.nix.
-    kernelPackages = pkgs.linuxPackages_zen;
+    # Keep the LTS kernel and NVIDIA driver on stable's matching package set,
+    # without a cross-channel driver recipe. sched_ext is available since 6.12;
+    # scx provides the interactive scheduling policy instead of linux-zen.
+    kernelPackages = pkgs.linuxPackages;
     kernelModules = [
       "tun"
       "legion_laptop"

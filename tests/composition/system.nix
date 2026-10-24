@@ -1,4 +1,8 @@
-{ inputs, pkgs }:
+{
+  inputs,
+  pkgs,
+  host,
+}:
 let
   evaluate =
     system: leak:
@@ -45,7 +49,7 @@ let
         && !c.hardware.nvidia.nvidiaPersistenced;
       noGraphics = !c.hardware.graphics.enable && c.hardware.graphics.extraPackages == [ ];
       noPersonalAccount = !(c.users.users ? mayon);
-      noLaptopPower = !c.services.thermald.enable && !c.services.upower.enable;
+      noLaptopPower = !c.services.thermald.enable && !c.services.upower.enable && !c.services.scx.enable;
       noProxy = !(c.systemd.services.nix-daemon.environment ? https_proxy);
       noTunTrust = builtins.all (i: !(builtins.elem i c.networking.firewall.trustedInterfaces)) [
         "Meta"
@@ -58,6 +62,15 @@ let
   results = {
     x86 = inspect "x86_64-linux" false;
     arm = inspect "aarch64-linux" false;
+    laptop = {
+      stableDefaultKernel = host.boot.kernelPackages.kernel.drvPath == pkgs.linuxPackages.kernel.drvPath;
+      matchingStableNvidia =
+        host.hardware.nvidia.package.drvPath == host.boot.kernelPackages.nvidiaPackages.stable.drvPath;
+      lavdWithoutAutopower =
+        host.services.scx.enable
+        && host.services.scx.scheduler == "scx_lavd"
+        && builtins.all (arg: !(pkgs.lib.hasInfix "--autopower" arg)) host.services.scx.extraArgs;
+    };
   };
   rejectsLaptopNetwork = !(builtins.all (v: v) (builtins.attrValues (inspect "x86_64-linux" true)));
   passed =

@@ -41,6 +41,9 @@
         home = config.flake.nixosConfigurations.nixos-btw.config.home-manager.users.mayon;
         palette = import ../aspects/appearance/onedark-darker.nix;
       };
-      checks.system-boundaries = import ../tests/composition/system.nix { inherit inputs pkgs; };
+      checks.system-boundaries = import ../tests/composition/system.nix {
+        inherit inputs pkgs;
+        host = config.flake.nixosConfigurations.nixos-btw.config;
+      };
     };
 }
