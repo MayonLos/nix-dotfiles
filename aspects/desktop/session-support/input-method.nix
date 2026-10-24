@@ -34,7 +34,7 @@
           DarkTheme = "onedark";
           # Fcitx5 Classic UI parses this with Pango's font-description syntax;
           # the bare integer is a point size (13 pt), not a logical pixel size.
-          Font = "${palette.fonts.cjk} 13";
+          Font = "${palette.fonts.cjk} 11";
           "Vertical Candidate List" = "False";
 
           # Wayland already scales classicui through wp_fractional_scale_v1.

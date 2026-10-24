@@ -9,7 +9,8 @@
 {
   bar.main = {
     position = "top";
-    thickness = 40;
+    # Sized for the 1.5 output scale (user: UI felt too large, 2026-10-25).
+    thickness = 34;
     reserve_space = true;
     auto_hide = false;
     layer = "top";
@@ -18,11 +19,11 @@
     border = "outline";
     border_width = 1;
     show_tooltip = true;
-    radius = 12;
-    margin_ends = 16;
-    margin_edge = 8;
-    padding = 8;
-    widget_spacing = 8;
+    radius = 10;
+    margin_ends = 12;
+    margin_edge = 6;
+    padding = 6;
+    widget_spacing = 6;
     shadow = true;
     contact_shadow = true;
     # Only semantic groups and the launcher get a persistent surface.
@@ -236,7 +237,7 @@
       occupied_color = "surface_variant";
       empty_color = palette.deep;
       urgent_color = "error";
-      font_scale = 1.2;
+      font_scale = 1.0;
     };
   };
 

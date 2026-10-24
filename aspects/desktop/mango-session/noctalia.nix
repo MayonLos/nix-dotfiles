@@ -246,7 +246,7 @@ in
             launcher = {
               # v5.3's rebuilt full layout; `simple` retains the older compact UI.
               layout = "full";
-              width = 680;
+              width = 600;
               search_position = "top";
               default_view = "pinned";
               categories = true;
@@ -470,7 +470,7 @@ in
             # Direct volume/network/etc. entry keeps an icon rail; Home retains
             # its full labelled navigation and all tabs stay reachable.
             sidebar_section = "compact";
-            width = 680;
+            width = 600;
             show_shortcut_labels = true;
             circular_avatar = false;
             show_session_button = true;

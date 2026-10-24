@@ -83,7 +83,7 @@ pkgs.runCommand "rime-technical-runtime"
     palette = json.loads(pathlib.Path(sys.argv[3]).read_text())
     classic_ui = json.loads(sys.argv[4])
     assert classic_ui["Vertical Candidate List"] == "False"
-    assert classic_ui["Font"].endswith(" 13")
+    assert classic_ui["Font"].endswith(" 11")
     panel = configparser.ConfigParser()
     panel.read(theme / "theme.conf")
     # These are the public roles in the One Dark palette consumed here.
