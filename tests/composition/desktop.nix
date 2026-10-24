@@ -222,6 +222,9 @@ let
       && !sharedAliceHome.programs.noctalia.settings.shell.animation.enabled
       && sharedBobHome.programs.noctalia.settings.shell.animation.enabled
       && sharedAliceHome.programs.noctalia.settings.wallpaper.transition == [ ]
+      && !sharedAliceHome.programs.noctalia.settings.wallpaper.transition_on_startup
+      && sharedAliceHome.programs.noctalia.settings.wallpaper.automation.enabled
+      && sharedBobHome.programs.noctalia.settings.wallpaper.automation.enabled
       && sharedBobHome.programs.noctalia.settings.wallpaper.transition == [ "fade" ]
       && sharedAliceHome.programs.noctalia.settings.lockscreen.transition == [ ]
       && sharedBobHome.programs.noctalia.settings.lockscreen.transition == [ "fade" ]

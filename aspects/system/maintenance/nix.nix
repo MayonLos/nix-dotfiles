@@ -1,4 +1,9 @@
 _: {
+  # Bound journal rotation without removing existing logs during configuration work.
+  services.journald.extraConfig = ''
+    SystemMaxUse=1G
+  '';
+
   nix = {
     channel.enable = false;
     optimise.automatic = true;

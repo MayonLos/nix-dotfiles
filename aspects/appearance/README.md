@@ -3,7 +3,7 @@
 `default.nix` 将完整 palette 接入 Den host/user schema。真实绑定在
 `inventory/hosts/nixos-btw/default.nix` 选择 One Dark Darker；数据本身不会安装应用或启用
 桌面。`contract.nix` 检查主题名、颜色值、字体/光标字段和 `reducedMotion` 布尔偏好，`onedark-darker.nix` 保留当前
-主背景 `#1f2329`，来源和 MIT 许可见 `ONEDARK-LICENSE`。`ansi.nix` 是 Kitty 和 Neovim
+主背景 `#1f2329`，来源和 MIT 许可见 `ONEDARK-LICENSE`。`ansi.nix` 是 Kitty、Neovim 和宿主 TTY
 共用的 16 色顺序。
 
 palette 是静态类型化输入，功能 renderer 显式消费它：交互会话将颜色用于 Mango、Noctalia、

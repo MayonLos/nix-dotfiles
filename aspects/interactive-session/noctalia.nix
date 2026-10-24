@@ -15,7 +15,20 @@ let
   reducedMotion = palette.reducedMotion or false;
   logicalWidth = hostFacts.display.width / hostFacts.display.scale;
   logicalHeight = hostFacts.display.height / hostFacts.display.scale;
-  wallpaperDir = "${./resources/wallpaper}";
+  wallpaperDir = pkgs.linkFarm "noctalia-cool-wallpapers" (
+    map
+      (name: {
+        name = "wallpaper-${name}.png";
+        path = ./resources/wallpaper/wallpaper-${name}.png;
+      })
+      [
+        "002"
+        "005"
+        "008"
+        "009"
+        "011"
+      ]
+  );
   desktop = {
     primaryOutput = hostFacts.display.name;
   };
@@ -31,7 +44,7 @@ let
       --require-no-noctalia
   '';
 
-  defaultWallpaperPath = "${./resources/wallpaper/wallpaper-009.png}";
+  defaultWallpaperPath = "${./resources/wallpaper/wallpaper-005.png}";
 
   distroLogo = "${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg";
 
@@ -280,7 +293,7 @@ in
 
           wallpaper = {
             enabled = true;
-            directory = wallpaperDir;
+            directory = "${wallpaperDir}";
             fill_mode = "crop";
             fill_color = "surface";
             transition_on_startup = !reducedMotion;
@@ -288,10 +301,10 @@ in
             transition_duration = 450;
             default.path = defaultWallpaperPath;
             automation = {
-              enabled = false;
-              interval_seconds = 300;
+              enabled = true;
+              interval_seconds = 86400;
               order = "random";
-              recursive = true;
+              recursive = false;
             };
           };
 

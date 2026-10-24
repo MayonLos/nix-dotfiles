@@ -1,6 +1,9 @@
 { palette }:
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
 {
+  # The host appearance owns TTY colors; hardware boot policy stays independent.
+  console.colors = map (lib.removePrefix "#") (import ../../appearance/ansi.nix palette);
+
   fonts = {
     packages = with pkgs; [
       nerd-fonts.jetbrains-mono

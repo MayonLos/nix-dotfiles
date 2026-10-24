@@ -112,17 +112,25 @@ Kitty 主背景设为不透明 1.0，使 shell、tmux 和 Neovim 的 `#1f2329` �
 | 窗口阴影 | 仅浮窗，size 10、blur 20、offset 0/5、`0x00000059` | 浮窗有层次，平铺间隙不形成黑色污边 |
 
 2026-10-18 收尾实机截图显示，居中 Launcher 使用 glass 时后方终端文字清晰透出，干扰应用名称阅读。
-早期先改为 soft；本轮结合社区设计和当前明亮 006 壁纸，进一步采用 `solid`（浮动背景与卡片均为 1.0）。阴影、圆角与短动画继续保留，不依赖 layer blur 获得可读性。
+早期先改为 soft；本轮结合社区设计进一步采用 `solid`（浮动背景与卡片均为 1.0）。阴影、圆角与短动画继续保留，不依赖 layer blur 获得可读性。
 
 Noctalia bar 的 `compositor_blur` 只在 compositor 支持相应协议并实际处理请求时有意义。现有 `blur_layer = 0` 下，不承诺面板背后必然出现实时场景模糊，也不为达到效果擅自翻转它；首先检查协议与画面，必要时以 panel 内部 backdrop/更实的表面完成设计。[Bar blur 说明](https://github.com/noctalia-dev/noctalia-shell/blob/fc2af27c0e616006bf858cad3b7c9711a028e501/docs/user/bar/index.mdx)
 
 Mango 默认动效：open 200 ms、close 140 ms、move 160 ms、tag 220 ms、focus 0；open/close 用 zoom，起始/结束比例分别 0.94/0.96，淡入淡出保留；沿用已验证 parser 接受的 `0.46,1.0,0.29,0.99` 曲线。Noctalia `animation.speed = 1.0`，这是倍率，不是毫秒。按键重复切换 20 次不应积压动画；减少动画通过共享 `appearance.reducedMotion` 实现，具体边界见下节。
 
-默认壁纸选用仓库现有 `wallpaper-009.png`：蓝青森林、水面和中央柔光，为石墨面板提供明暗
-层次；所有原素材保留。Noctalia 默认与 greeter 使用同一公开资源，锁屏跟随当前壁纸。
-固定单张、自动轮换关闭，壁纸转场统一 `fade`、450 ms；不改写 palette，也不引入视频壁纸服务。
-当前运行态由用户选为 `wallpaper-006.png`，本轮保留，不强制改回 009。此前显式应用 009 的记录只属于当时状态；源码默认值不能证明当前实际壁纸。背景填色为 surface，
-`screen_corners.size = 12`。实际裁切、浮层和亮部的组合观感须在内屏与外屏截图验收。
+Noctalia 的轮换目录由 Nix 派生，只包含仓库现有 `wallpaper-002.png`、`005`、`008`、`009`、
+`011` 五张冷色调素材，`recursive = false`；原壁纸目录和全部素材保留。默认路径为 `005`，
+但启用自动化后，Noctalia 会在 shell 启动时先随机选图，再每 86400 秒随机轮换，因而默认路径
+是声明默认值而非每次登录的实际壁纸；手动/IPC 换图会重新计时，锁屏期间不执行轮换，
+解锁后已到期则可立即换图。这是间隔轮换，不是日历定时。Greeter、Xorg 桌面与 Xorg 锁屏统一固定使用 `005`；
+Wayland 锁屏跟随当前壁纸。壁纸转场为 `fade`、450 ms；`appearance.reducedMotion = true` 时
+启动和切换转场关闭，但不会关闭每日自动轮换。不改写 palette，也不引入视频壁纸服务。自动化
+字段及启动随机选图语义依据当前锁定 Noctalia `5f864d472676c77e5310881b243f15cc371bb223`
+的[壁纸文档](https://github.com/noctalia-dev/noctalia-shell/blob/5f864d472676c77e5310881b243f15cc371bb223/docs/user/desktop/wallpaper.mdx)、
+[配置 schema](https://github.com/noctalia-dev/noctalia-shell/blob/5f864d472676c77e5310881b243f15cc371bb223/src/config/schema/config_schema.cpp)
+和[轮换实现](https://github.com/noctalia-dev/noctalia-shell/blob/5f864d472676c77e5310881b243f15cc371bb223/src/shell/wallpaper/wallpaper.cpp)；
+先前文档对照的 `fc2af27c…` 已不是当前输入版本。背景填色为 surface，`screen_corners.size = 12`。
+实际裁切、浮层和亮部的组合观感须在内屏与外屏截图验收。
 
 ## Launcher、控制中心、通知与认证界面
 

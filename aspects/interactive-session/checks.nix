@@ -18,6 +18,25 @@ let
       environment = home.systemd.user.sessionVariables;
       sharedTargets = home.nixDotfiles.graphicalSessionTargets;
       greeter = host.services.displayManager.noctalia-greeter.settings;
+      boot = {
+        inherit (host.boot) kernelParams;
+        inherit (host.boot.loader) timeout;
+        inherit (host.boot.loader.systemd-boot) consoleMode editor;
+        initrdSystemd = host.boot.initrd.systemd.enable;
+        initrdVerbose = host.boot.initrd.verbose;
+        initrdModules = host.boot.initrd.kernelModules;
+        initrdAvailableModules = host.boot.initrd.availableKernelModules;
+        plymouth = {
+          inherit (host.boot.plymouth) enable theme;
+        };
+        inherit (host.services.greetd) greeterManagesPlymouth;
+        vt = host.services.greetd.settings.terminal.vt;
+        greetdAfter = host.systemd.services.greetd.unitConfig.After;
+      };
+      console = {
+        inherit (host.console) earlySetup font colors;
+        ansi = import ../appearance/ansi.nix palette;
+      };
       inherit palette;
     }
   );
@@ -36,6 +55,7 @@ pkgs.runCommand "interactive-session-config" { nativeBuildInputs = [ python ]; }
   python3 ${./resources}/test_reconcile_overrides.py -v > "$out/ownership.log" 2>&1 || { cat "$out/ownership.log"; exit 1; }
   python3 - ${metadata} ${home.xdg.configFile."noctalia/palettes/One-Dark-Darker.json".source} <<'PY'
   import json, re, sys
+  from pathlib import Path
   m = json.load(open(sys.argv[1]))
   p = json.load(open(sys.argv[2]))
   roles = "Primary OnPrimary Secondary OnSecondary Tertiary OnTertiary Error OnError Surface OnSurface SurfaceVariant OnSurfaceVariant Outline Shadow Hover OnHover".split()
@@ -52,6 +72,26 @@ pkgs.runCommand "interactive-session-config" { nativeBuildInputs = [ python ]; }
   colors(p)
   assert p["dark"]["mSurface"] == m["palette"]["bg"] == "#1f2329"
   settings = m["settings"]
+  boot = m["boot"]
+  assert boot["timeout"] == 1 and boot["consoleMode"] == "max" and not boot["editor"]
+  assert boot["initrdSystemd"] and not boot["initrdVerbose"]
+  assert "i915" in boot["initrdModules"]
+  assert not any(name.startswith("nvidia") for name in boot["initrdModules"] + boot["initrdAvailableModules"])
+  assert boot["plymouth"] == {"enable": True, "theme": "bgrt"}
+  assert boot["vt"] == 1 and not boot["greeterManagesPlymouth"]
+  assert "plymouth-quit-wait.service" in boot["greetdAfter"]
+  assert {"splash", "quiet", "udev.log_level=3", "systemd.show_status=auto"} <= set(boot["kernelParams"])
+  assert not {"rd.udev.log_level=3", "rd.systemd.show_status=auto"} & set(boot["kernelParams"])
+  assert m["console"]["earlySetup"] and m["console"]["font"] == "ter-v32n"
+  assert m["console"]["colors"] == [color.removeprefix("#") for color in m["console"]["ansi"]]
+  wallpaper = settings["wallpaper"]
+  directory = Path(wallpaper["directory"])
+  assert sorted(path.name for path in directory.iterdir()) == [f"wallpaper-{n}.png" for n in ("002", "005", "008", "009", "011")]
+  assert all(path.is_symlink() and path.is_file() for path in directory.iterdir())
+  assert wallpaper["automation"] == {"enabled": True, "order": "random", "interval_seconds": 86400, "recursive": False}
+  default = directory / "wallpaper-005.png"
+  assert Path(wallpaper["default"]["path"]).resolve() == default.resolve()
+  assert Path(m["greeter"]["appearance"]["wallpaper"]["path"]).resolve() == default.resolve()
   assert settings["theme"]["source"] == "custom" and settings["theme"]["mode"] == "dark"
   assert settings["theme"]["custom_palette"] == "One-Dark-Darker"
   assert "kitty" not in settings["theme"]["templates"]["builtin_ids"]

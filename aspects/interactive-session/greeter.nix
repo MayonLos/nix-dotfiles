@@ -6,7 +6,7 @@
   ...
 }:
 let
-  wallpaper = ./resources/wallpaper/wallpaper-009.png;
+  wallpaper = ./resources/wallpaper/wallpaper-005.png;
 in
 {
   imports = [ inputs.noctalia-greeter.nixosModules.default ];

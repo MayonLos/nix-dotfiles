@@ -150,8 +150,8 @@ Xorg portal 使用 GTK 文件选择、GNOME Settings 和 keyring；不把 Screen
 原生栏默认音量、电池、时钟，每八秒检查、内容变化才重绘；不常驻轮询 CPU、内存、SSID/IP。
 `status2d` 提供图标、分隔线及有限颜色：低电量红、充电绿；当前选中标签蓝字加下划线，标题保持深色。
 点击状态区或快捷键打开 dmenu 控制菜单，包含音量、网络、蓝牙、剪贴板、帮助、锁屏和退出。
-菜单另有受会话约束的 Picom 开关，退出有二次确认。当前 Xorg 壁纸与锁屏使用 wallpaper-002；
-greeter 的 wallpaper-009 不由该可选会话覆盖。
+菜单另有受会话约束的 Picom 开关，退出有二次确认。当前 Xorg 壁纸与锁屏统一使用 wallpaper-005；
+greeter 也使用 wallpaper-005，不由该可选会话覆盖。
 
 选型比较后采用增强原生栏：它直接掌握 dwm 的 tags、布局和焦点；Polybar 丰富模块需要
 另接 EWMH/IPC，Eww 适合更复杂的自制面板。dmenu/j4 按需启动，覆盖应用和菜单；

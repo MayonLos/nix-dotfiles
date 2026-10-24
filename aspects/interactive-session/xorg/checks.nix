@@ -55,7 +55,7 @@ let
       xlib = "${pkgs.libx11}/lib/libX11.so.6";
       maim = "${pkgs.maim}/bin/maim";
       feh = "${pkgs.feh}/bin/feh";
-      wallpaper = ../resources/wallpaper/wallpaper-002.png;
+      wallpaper = ../resources/wallpaper/wallpaper-005.png;
       xsetroot = "${pkgs.xsetroot}/bin/xsetroot";
       notifySend = "${pkgs.libnotify}/bin/notify-send";
       menu = "${menu}/bin/xorg-session-menu";
