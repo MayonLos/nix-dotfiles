@@ -14,3 +14,6 @@
 # Python bytecode from scripts run in-tree.
 __pycache__/
 *.pyc
+
+# Local work directories stay outside Git flakes and architecture scans.
+**/.work/

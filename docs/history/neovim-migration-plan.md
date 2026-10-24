@@ -4,8 +4,8 @@
 
 ## 当前结构
 
-- [Neovim aspect](../../aspects/editing/neovim)通过 Den 接入真实主机。Home Manager 使用同一固定 Neovim 包；没有单独的 Home Manager switch。
-- [Lua 配置](../../aspects/editing/neovim/config)负责界面和编辑行为；[package.nix](../../aspects/editing/neovim/package.nix)固定 wrapper、配置树和工具路径，[plugins.nix](../../aspects/editing/neovim/plugins.nix)固定插件闭包，[nix/neovim.nix](../../nix/neovim.nix)提供普通包、开发包和检查输出。
+- [Neovim aspect](../../aspects/dev/neovim)通过 Den 接入真实主机。Home Manager 使用同一固定 Neovim 包；没有单独的 Home Manager switch。
+- [Lua 配置](../../aspects/dev/neovim/config)负责界面和编辑行为；[package.nix](../../aspects/dev/neovim/package.nix)固定 wrapper、配置树和工具路径，[plugins.nix](../../aspects/dev/neovim/plugins.nix)固定插件闭包，[nix/neovim.nix](../../nix/outputs.nix)提供普通包、开发包和检查输出。
 - 语言服务、formatter 与 linter 仍通过 Den 语言贡献生成配置，不在本次界面重构中改写其主机选择和参数。
 - One Dark Darker 由固定的 `onedark.nvim` 提供完整语法和插件高亮，再由仓库配置叠加 palette 对齐与浮窗关系。主背景来自 palette 的 `#1f2329`。
 

@@ -271,7 +271,7 @@ Obsidian、Typora、Zathura、Quill 已全部确认保留，不再重复询问�
 |---|---|
 | 视频剪辑 | Kdenlive 暂留待考虑。 |
 
-开发工具声明集中在 [dev 模块目录](../../aspects)，日用包见 [packages.nix](../../aspects/default.nix) 和 [apps 模块目录](../../aspects)，容器与虚拟机分别见 [docker.nix](../../aspects/local-containers/host.nix)、[libvirt.nix](../../aspects/local-virtual-machines/host.nix)。本次是声明和引用盘点，未据此推断实际使用频率。
+开发工具声明集中在 [dev 模块目录](../../aspects)，日用包见 [packages.nix](../../aspects/default.nix) 和 [apps 模块目录](../../aspects)，容器与虚拟机分别见 [docker.nix](../../aspects/dev/containers/host.nix)、[libvirt.nix](../../aspects/dev/virtual-machines/host.nix)。本次是声明和引用盘点，未据此推断实际使用频率。
 
 JDK 同时供 Prism 使用；TeX 用于完整文档编译，Ghostscript 保留供普通 PDF/文档转换，编辑器自动公式图像流程已移除；ImageMagick 还供 Thunar 图片动作使用；编辑器工具按消费者保留。
 
@@ -312,10 +312,10 @@ nix shell --no-write-lock-file --inputs-from . nixpkgs#lua5_4 nixpkgs#lua54Packa
 
 | 组 | 当前配置 | 选择边界 |
 |---|---|---|
-| Docker | [rootless Docker 与每周 prune](../../aspects/local-containers/host.nix)，以及 Noctalia mini-docker 入口。 | 本机运行容器时保留引擎；仅管理远程服务器可另设计 CLI/远程连接，笔记本不必同时运行本地引擎。项目 devShell 提供编译环境，不直接提供系统 Docker 服务。 |
-| 虚拟机 | [libvirt/QEMU/KVM、virt-manager、TPM、USB 重定向](../../aspects/local-virtual-machines/host.nix)，并启用嵌套 KVM；`libvirt-guests` 被关闭，未检查现有 VM 自启动状态。 | 本机运行完整客体系统时保留；以后只管理远端虚拟机时，可将客户端与本地虚拟化服务分开。未来服务器需要虚拟化，不要求当前笔记本也启用。 |
-| MATLAB | [FHS 启动集成](../../aspects/languages/matlab/home.nix) 和编辑器语言支持；MATLAB 本体由用户手工安装。 | 课程/项目依赖 MATLAB、Simulink 或工具箱时保留；移除 Nix 集成不等于卸载手工安装树，也不自动删除 `.m` 文件。未检查授权和安装状态。 |
-| STM32/Cortex-M | [ARM GCC、OpenOCD/ST-Link/probe-rs、DFU/UART、CubeMX、CubeProgrammer、tio](../../aspects/embedded-workbench/home.nix)，另有 [USB 探针权限](../../aspects/embedded-workbench/host.nix)。 | 编写、烧录、调试开发板固件时使用，独立于已经删除的 KiCad。可保留设备权限和常用 GUI，将版本敏感的编译/调试命令放进项目 flake；普通 devShell 不能代替系统 udev 权限配置。 |
+| Docker | [rootless Docker 与每周 prune](../../aspects/dev/containers/host.nix)，以及 Noctalia mini-docker 入口。 | 本机运行容器时保留引擎；仅管理远程服务器可另设计 CLI/远程连接，笔记本不必同时运行本地引擎。项目 devShell 提供编译环境，不直接提供系统 Docker 服务。 |
+| 虚拟机 | [libvirt/QEMU/KVM、virt-manager、TPM、USB 重定向](../../aspects/dev/virtual-machines/host.nix)，并启用嵌套 KVM；`libvirt-guests` 被关闭，未检查现有 VM 自启动状态。 | 本机运行完整客体系统时保留；以后只管理远端虚拟机时，可将客户端与本地虚拟化服务分开。未来服务器需要虚拟化，不要求当前笔记本也启用。 |
+| MATLAB | [FHS 启动集成](../../aspects/dev/languages/matlab/home.nix) 和编辑器语言支持；MATLAB 本体由用户手工安装。 | 课程/项目依赖 MATLAB、Simulink 或工具箱时保留；移除 Nix 集成不等于卸载手工安装树，也不自动删除 `.m` 文件。未检查授权和安装状态。 |
+| STM32/Cortex-M | [ARM GCC、OpenOCD/ST-Link/probe-rs、DFU/UART、CubeMX、CubeProgrammer、tio](../../aspects/dev/embedded/home.nix)，另有 [USB 探针权限](../../aspects/dev/embedded/host.nix)。 | 编写、烧录、调试开发板固件时使用，独立于已经删除的 KiCad。可保留设备权限和常用 GUI，将版本敏感的编译/调试命令放进项目 flake；普通 devShell 不能代替系统 udev 权限配置。 |
 
 功能依据：[Docker 概览](https://docs.docker.com/get-started/docker-overview/) 与 [rootless 模式](https://docs.docker.com/engine/security/rootless/)、[virt-manager](https://virt-manager.org/)、[MATLAB](https://www.mathworks.com/products/matlab.html)、[STM32CubeMX](https://www.st.com/en/development-tools/stm32cubemx.html)。本轮只核对配置和资料，未更改四组模块或运行服务。
 
@@ -466,7 +466,7 @@ nix/neovim.nix             # neovim / neovim-dev outputs
 
 ### 4. 接入 Den 主机与职责边界
 
-新方案见 [架构设计](../architecture-design.md)，已由主代理与 Astra 交叉设计。[Den 样本](../../tests/README.md) 已固定 v0.19.0，通过 shell 与嵌入式两条路径的两主机/两账号选择、共享资源去重及 shell 单值冲突检查。嵌入式工具、规则、包配方已收拢到 [功能目录](../../aspects/embedded-workbench/README.md)；旧入口兼容引用仅用于当时的迁移过渡，批次 7 完成后旧适配器与兼容入口已退出。最终规则检查发现并修正 ST-Link 0666 权限，改为 0660/uaccess 且保留别名。真实笔记本构建、样本 HM/udev 与 ARM 编译/GDB/CLI 检查通过，尚未切换或验证设备。
+新方案见 [架构设计](../architecture-design.md)，已由主代理与 Astra 交叉设计。[Den 样本](../../tests/README.md) 已固定 v0.19.0，通过 shell 与嵌入式两条路径的两主机/两账号选择、共享资源去重及 shell 单值冲突检查。嵌入式工具、规则、包配方已收拢到 [功能目录](../../aspects/dev/embedded/README.md)；旧入口兼容引用仅用于当时的迁移过渡，批次 7 完成后旧适配器与兼容入口已退出。最终规则检查发现并修正 ST-Link 0666 权限，改为 0660/uaccess 且保留别名。真实笔记本构建、样本 HM/udev 与 ARM 编译/GDB/CLI 检查通过，尚未切换或验证设备。
 
 外观、默认工具和语言协议已各自进入功能目录并由同一样本消费。数据/启用/安装的边界、用户与主机隔离、命令整体合并及同 ID/跨 ID 冲突已验证；Kitty parser、Neovim 高亮、wrapper 参数与 MIME、C++ 编译和 clangd hover 的运行检查通过，相关负例也被拒绝。以上为接入前样本阶段的历史结果。真实主机现已迁入 Den，旧适配器与兼容入口已退出；当前检查见实施记录。
 

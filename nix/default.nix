@@ -6,9 +6,10 @@
     inputs.treefmt-nix.flakeModule
     ./checks.nix
     ./den.nix
-    ./nixpkgs.nix
+    ./pkgs.nix
+    ./hosts.nix
     ./dev.nix
-    ./neovim.nix
+    ./outputs.nix
     ../aspects
     ../bundles
     ../inventory/hosts/nixos-btw

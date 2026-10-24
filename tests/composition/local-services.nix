@@ -10,79 +10,81 @@ let
       {
         imports = [
           inputs.den.flakeModule
-          ../../aspects/local-containers
-          ../../aspects/local-virtual-machines
-          ../../aspects/embedded-workbench
+          ../../aspects/dev/containers
+          ../../aspects/dev/virtual-machines
+          ../../aspects/dev/embedded
         ];
 
-        den.systems = [ system ];
-        den.schema.user.classes = [ "homeManager" ];
+        den = {
+          systems = [ system ];
+          schema.user.classes = [ "homeManager" ];
 
-        den.hosts.${system} = {
-          hostA.users = {
-            alice = { };
-            bob = { };
-          };
-          hostB.users = {
-            alice = { };
-            bob = { };
-          };
-        };
-
-        den.default = {
-          nixos = {
-            system.stateVersion = "26.05";
-            boot.loader.grub.enable = false;
-            fileSystems."/" = {
-              device = "none";
-              fsType = "tmpfs";
+          hosts.${system} = {
+            hostA.users = {
+              alice = { };
+              bob = { };
             };
-            home-manager.useGlobalPkgs = true;
-            home-manager.extraSpecialArgs.inputs = inputs;
+            hostB.users = {
+              alice = { };
+              bob = { };
+            };
           };
-          homeManager = {
-            home.stateVersion = "26.05";
-          };
-        };
 
-        den.aspects =
-          lib.genAttrs
-            [
-              "alice@hostA"
-              "bob@hostA"
-              "alice@hostB"
-              "bob@hostB"
-            ]
-            (
-              binding:
-              let
-                username = builtins.head (lib.splitString "@" binding);
-                selectedForUser = selected.${binding} or [ ];
-              in
-              {
-                user.isNormalUser = true;
-                homeManager.home = {
-                  inherit username;
-                  homeDirectory = "/home/${username}";
-                };
-                includes =
-                  lib.optionals (lib.elem "container-client" selectedForUser) [
-                    den.aspects.container-client
-                  ]
-                  ++ lib.optionals (lib.elem "virtual-machine-client" selectedForUser) [
-                    den.aspects.virtual-machine-client
-                  ]
-                  ++ lib.optionals (lib.elem "local-containers" selectedForUser) [
-                    den.aspects.local-containers
-                  ]
-                  ++ lib.optionals (lib.elem "local-virtual-machines" selectedForUser) [
-                    den.aspects.local-virtual-machines
-                  ]
-                  ++ lib.optionals (lib.elem "embedded-workbench" selectedForUser) [
-                    den.aspects.embedded-workbench
-                  ];
-              }
-            );
+          default = {
+            nixos = {
+              system.stateVersion = "26.05";
+              boot.loader.grub.enable = false;
+              fileSystems."/" = {
+                device = "none";
+                fsType = "tmpfs";
+              };
+              home-manager.useGlobalPkgs = true;
+              home-manager.extraSpecialArgs.inputs = inputs;
+            };
+            homeManager = {
+              home.stateVersion = "26.05";
+            };
+          };
+
+          aspects =
+            lib.genAttrs
+              [
+                "alice@hostA"
+                "bob@hostA"
+                "alice@hostB"
+                "bob@hostB"
+              ]
+              (
+                binding:
+                let
+                  username = builtins.head (lib.splitString "@" binding);
+                  selectedForUser = selected.${binding} or [ ];
+                in
+                {
+                  user.isNormalUser = true;
+                  homeManager.home = {
+                    inherit username;
+                    homeDirectory = "/home/${username}";
+                  };
+                  includes =
+                    lib.optionals (lib.elem "container-client" selectedForUser) [
+                      den.aspects.container-client
+                    ]
+                    ++ lib.optionals (lib.elem "virtual-machine-client" selectedForUser) [
+                      den.aspects.virtual-machine-client
+                    ]
+                    ++ lib.optionals (lib.elem "local-containers" selectedForUser) [
+                      den.aspects.local-containers
+                    ]
+                    ++ lib.optionals (lib.elem "local-virtual-machines" selectedForUser) [
+                      den.aspects.local-virtual-machines
+                    ]
+                    ++ lib.optionals (lib.elem "embedded-workbench" selectedForUser) [
+                      den.aspects.embedded-workbench
+                    ];
+                }
+              );
+        };
       }
     )).nixosConfigurations;
 
@@ -129,7 +131,7 @@ let
   sharedBob = home sharedHost "hostA" "bob";
   embeddedRules = [
     pkgs.openocd
-    (import ../../aspects/embedded-workbench/rules.nix { inherit pkgs; })
+    (import ../../aspects/dev/embedded/contract.nix { inherit pkgs; }).seatRules
   ];
   rulePaths = config: map toString config.services.udev.packages;
   hasAllRules =

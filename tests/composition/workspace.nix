@@ -13,47 +13,49 @@ let
       {
         imports = [
           inputs.den.flakeModule
-          ../../aspects/command-line
+          ../../aspects/cli/shell
         ];
 
-        den.systems = [ system ];
-        den.schema.user.classes = [ "homeManager" ];
+        den = {
+          systems = [ system ];
+          schema.user.classes = [ "homeManager" ];
 
-        den.hosts.${system} = {
-          hostA.users = {
-            alice = { inherit appearance; };
-            bob = { };
-          };
-          hostB.users = {
-            alice = { };
-            bob = { };
-          };
-        };
-
-        den.default = {
-          nixos = {
-            system.stateVersion = "26.05";
-            boot.loader.grub.enable = false;
-            fileSystems."/" = {
-              device = "none";
-              fsType = "tmpfs";
+          hosts.${system} = {
+            hostA.users = {
+              alice = { inherit appearance; };
+              bob = { };
             };
-            home-manager.useGlobalPkgs = true;
-            home-manager.extraSpecialArgs.inputs = inputs;
+            hostB.users = {
+              alice = { };
+              bob = { };
+            };
           };
-          homeManager = {
-            home.stateVersion = "26.05";
-          };
-        };
 
-        den.aspects = lib.genAttrs [ "alice@hostA" "bob@hostA" "alice@hostB" "bob@hostB" ] (binding: {
-          user.isNormalUser = true;
-          homeManager.home = {
-            username = builtins.head (lib.splitString "@" binding);
-            homeDirectory = "/home/${builtins.head (lib.splitString "@" binding)}";
+          default = {
+            nixos = {
+              system.stateVersion = "26.05";
+              boot.loader.grub.enable = false;
+              fileSystems."/" = {
+                device = "none";
+                fsType = "tmpfs";
+              };
+              home-manager.useGlobalPkgs = true;
+              home-manager.extraSpecialArgs.inputs = inputs;
+            };
+            homeManager = {
+              home.stateVersion = "26.05";
+            };
           };
-          includes = lib.optionals (builtins.elem binding selected) [ den.aspects.command-line ];
-        });
+
+          aspects = lib.genAttrs [ "alice@hostA" "bob@hostA" "alice@hostB" "bob@hostB" ] (binding: {
+            user.isNormalUser = true;
+            homeManager.home = {
+              username = builtins.head (lib.splitString "@" binding);
+              homeDirectory = "/home/${builtins.head (lib.splitString "@" binding)}";
+            };
+            includes = lib.optionals (builtins.elem binding selected) [ den.aspects.command-line ];
+          });
+        };
       }
     )).nixosConfigurations;
 
@@ -61,7 +63,7 @@ let
   aliceOnly = evaluate { selected = [ "alice@hostA" ]; };
   withPalette = evaluate {
     selected = [ "alice@hostA" ];
-    appearance = import ../../aspects/appearance/onedark-darker.nix;
+    appearance = import ../../aspects/appearance/appearance/onedark-darker.nix;
   };
   sharedHost = evaluate {
     selected = [

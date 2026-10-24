@@ -13,63 +13,66 @@ let
       {
         imports = [
           inputs.den.flakeModule
-          ../../aspects/embedded-workbench
-          ../../aspects/command-line
+          ../../aspects/dev/embedded
+          ../../aspects/cli/shell
         ];
 
-        den.systems = [ system ];
-        den.schema.user.classes = [ "homeManager" ];
+        den = {
+          systems = [ system ];
+          schema.user.classes = [ "homeManager" ];
 
-        den.hosts.${system} = {
-          hostA.users = {
-            alice = { };
-            bob = { };
-          };
-          hostB.users = {
-            alice = { };
-            bob = { };
-          };
-        };
-
-        den.default = {
-          nixos = {
-            system.stateVersion = "26.05";
-            boot.loader.grub.enable = false;
-            fileSystems."/" = {
-              device = "none";
-              fsType = "tmpfs";
+          hosts.${system} = {
+            hostA.instantiate = args: inputs.nixpkgs.lib.nixosSystem (args // { inherit pkgs; });
+            hostB.instantiate = args: inputs.nixpkgs.lib.nixosSystem (args // { inherit pkgs; });
+            hostA.users = {
+              alice = { };
+              bob = { };
             };
-            home-manager.useGlobalPkgs = true;
-            home-manager.extraSpecialArgs.inputs = inputs;
-            nixpkgs.config.allowUnfree = true;
+            hostB.users = {
+              alice = { };
+              bob = { };
+            };
           };
-          homeManager.home.stateVersion = "26.05";
-        };
 
-        den.aspects =
-          lib.genAttrs
-            [
-              "alice@hostA"
-              "bob@hostA"
-              "alice@hostB"
-              "bob@hostB"
-            ]
-            (
-              binding:
-              let
-                username = builtins.head (lib.splitString "@" binding);
-              in
-              {
-                user.isNormalUser = true;
-                homeManager.home = {
-                  inherit username;
-                  homeDirectory = "/home/${username}";
-                };
-                includes =
-                  lib.optionals (lib.elem binding embedded) [ den.aspects.embedded-workbench ]
-                  ++ lib.optionals (lib.elem binding commandLine) [ den.aspects.command-line ];
-              }
-            );
+          default = {
+            nixos = {
+              system.stateVersion = "26.05";
+              boot.loader.grub.enable = false;
+              fileSystems."/" = {
+                device = "none";
+                fsType = "tmpfs";
+              };
+              home-manager.useGlobalPkgs = true;
+              home-manager.extraSpecialArgs.inputs = inputs;
+            };
+            homeManager.home.stateVersion = "26.05";
+          };
+
+          aspects =
+            lib.genAttrs
+              [
+                "alice@hostA"
+                "bob@hostA"
+                "alice@hostB"
+                "bob@hostB"
+              ]
+              (
+                binding:
+                let
+                  username = builtins.head (lib.splitString "@" binding);
+                in
+                {
+                  user.isNormalUser = true;
+                  homeManager.home = {
+                    inherit username;
+                    homeDirectory = "/home/${username}";
+                  };
+                  includes =
+                    lib.optionals (lib.elem binding embedded) [ den.aspects.embedded-workbench ]
+                    ++ lib.optionals (lib.elem binding commandLine) [ den.aspects.command-line ];
+                }
+              );
+        };
       }
     )).nixosConfigurations;
 
@@ -138,7 +141,7 @@ let
   selectedRules = additions selectedA;
   expectedRulePackages = map toString [
     pkgs.openocd
-    (import ../../aspects/embedded-workbench/rules.nix { inherit pkgs; })
+    (import ../../aspects/dev/embedded/contract.nix { inherit pkgs; }).seatRules
   ];
   groups = config: user: lib.sort builtins.lessThan config.users.users.${user}.extraGroups;
   hasRulePackages =
@@ -223,10 +226,10 @@ let
   passed = lib.all (value: value) (builtins.attrValues result);
   selectedHost = combined.hostA.config;
   selectedHome = selectedHost.home-manager.users.alice;
-  checks = import ../../aspects/embedded-workbench/checks.nix {
+  checks = import ../../aspects/dev/embedded/checks.nix {
     inherit pkgs;
-    profile = selectedHome.home.path;
-    rules = selectedHost.environment.etc."udev/rules.d".source;
+    home = selectedHome;
+    nixos = selectedHost;
   };
 in
 {
@@ -240,6 +243,6 @@ in
       cp ${pkgs.writeText "den-embedded-workbench-composition.json" (builtins.toJSON result)} "$out/results.json"
     '';
   home = selectedHome.home.activationPackage;
-  inherit (checks) udev;
-  inherit (checks) tools;
+  udev = checks.embedded-udev;
+  tools = checks.embedded-tools;
 }

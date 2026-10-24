@@ -26,7 +26,7 @@ dwm 原生栏、dmenu/j4、Picom、Dunst、i3lock-color 组合。
 dwm、菜单与 Picom 由 host facts 换算物理像素；Dunst 与锁屏按其 Xft 规则缩放。
 状态栏仍每八秒检查、内容变化才绘制，没有增加常驻硬件轮询。
 
-dmenu 5.4 本地补丁在 `aspects/interactive-session/xorg/dmenu/`，通过 Nix override 构建。
+dmenu 5.4 本地补丁在 `aspects/desktop/xorg-session/dmenu/`，通过 Nix override 构建。
 按官方 [center](https://tools.suckless.org/dmenu/patches/center/)、
 [line-height](https://tools.suckless.org/dmenu/patches/line-height/)、
 [border](https://tools.suckless.org/dmenu/patches/border/) 与

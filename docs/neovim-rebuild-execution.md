@@ -82,8 +82,8 @@ Windows、Buffers；LSP、Sessions、Docs、Multiple cursors 和 CLI agents 继�
 `<leader>` 的文件搜索、grep、buffers、最近文件、符号、诊断、Git、帮助、keymaps、命令历史、
 项目和 picker 恢复现统一使用 Snacks；此前 fzf-lua 同功能入口迁移到 Snacks，常用 `ff/fg`
 等键位保持。新键和保留键的当前完整定义以
-[`navigation.lua`](../aspects/editing/neovim/config/lua/mayon/plugins/navigation.lua)、
-[`keymaps.lua`](../aspects/editing/neovim/config/lua/mayon/config/keymaps.lua) 与领域插件为准。
+[`navigation.lua`](../aspects/dev/neovim/config/lua/mayon/plugins/navigation.lua)、
+[`keymaps.lua`](../aspects/dev/neovim/config/lua/mayon/config/keymaps.lua) 与领域插件为准。
 
 | 旧入口 / 行为 | 本轮行为 |
 |---|---|

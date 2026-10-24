@@ -23,7 +23,7 @@
 
 ## 日用桌面
 
-仓库入口：[应用清单](../aspects/default.nix)、[应用模块](../aspects/)、[MIME 与图片配置](../aspects/media/images.nix)、[Mango 配置](../aspects/interactive-session/mango.nix)。
+仓库入口：[应用清单](../aspects/default.nix)、[应用模块](../aspects/)、[MIME 与图片配置](../aspects/apps/media/images.nix)、[Mango 配置](../aspects/desktop/mango-session/mango.nix)。
 
 | 应用 | 判断 | 更优解、收益和代价 |
 |---|---|---|
@@ -59,7 +59,7 @@
 
 ## 创作、办公、笔记与阅读
 
-入口：[应用清单](../aspects/default.nix)、[Blender](../aspects/media/blender.nix)、[OBS](../aspects/media/obs-studio.nix)、[LibreOffice](../aspects/documents/default.nix)、[Thunderbird](../aspects/communication/thunderbird.nix)、[Zathura](../aspects/documents/zathura.nix)、[Musicfox](../aspects/media/musicfox.nix)。
+入口：[应用清单](../aspects/default.nix)、[Blender](../aspects/apps/media/blender.nix)、[OBS](../aspects/apps/media/obs-studio.nix)、[LibreOffice](../aspects/apps/documents/default.nix)、[Thunderbird](../aspects/apps/communication/thunderbird.nix)、[Zathura](../aspects/apps/documents/zathura.nix)、[Musicfox](../aspects/apps/media/musicfox.nix)。
 
 | 应用 | 判断 | 更优解、收益和代价 |
 |---|---|---|
@@ -84,7 +84,7 @@
 
 ## 编辑器、终端与 Git
 
-入口：[JetBrains](../aspects/editing/jetbrains.nix)、[VSCode](../aspects/editing/vscode.nix)、[Neovim](../aspects/editing/default.nix)、[Kitty](../aspects/command-line/kitty.nix)、[tmux](../aspects/command-line/tmux.nix)、[Git](../aspects/command-line/git.nix)、[Shell](../aspects/command-line/zsh.nix)。
+入口：[JetBrains](../aspects/dev/jetbrains/jetbrains.nix)、[VSCode](../aspects/dev/vscode/vscode.nix)、[Neovim](../aspects/dev/neovim/default.nix)、[Kitty](../aspects/cli/terminal/kitty.nix)、[tmux](../aspects/cli/shell/tmux.nix)、[Git](../aspects/cli/shell/git.nix)、[Shell](../aspects/cli/shell/zsh.nix)。
 
 | 项目 | 判断 | 更优解、收益和代价 |
 |---|---|---|
@@ -92,7 +92,7 @@
 | PyCharm | 保留；可选合并入口 | IDEA 官方有 Python 插件。只有现有许可、插件和 Python 工作流都满足时，才值得试把 PyCharm 项目放入 IDEA；会改变独立设置与窗口习惯。用户已确认常用，本轮不删。 |
 | CLion | 保留 | C/C++ 项目模型、调试与嵌入式支持不是 clangd 的等价功能；无需额外安装 DataGrip 才能获得全部基础数据库入口，具体能力看 IDE 功能和许可。 |
 | VSCode FHS | 保留 | 为扩展附带的二进制和 USB/调试库提供兼容环境。改普通包会重新承担逐个扩展追依赖的工作。Remote-SSH 是否已手动安装需核对。 |
-| Neovim | 已迁移到原生 Lua + Nix 包 | `aspects/editing/neovim/config/` 承载配置，`aspects/editing/neovim/` 固定插件/parser 和 wrapper；保留插件由 Nix 提供，不使用在线插件管理器。专项包检查已通过；见[迁移计划](history/neovim-migration-plan.md)了解尚待核验项目。没有性能比较结论。 |
+| Neovim | 已迁移到原生 Lua + Nix 包 | `aspects/dev/neovim/config/` 承载配置，`aspects/dev/neovim/` 固定插件/parser 和 wrapper；保留插件由 Nix 提供，不使用在线插件管理器。专项包检查已通过；见[迁移计划](history/neovim-migration-plan.md)了解尚待核验项目。没有性能比较结论。 |
 | colorizer | 已改原生 | 移除外部插件，使用内建 LSP documentColor 和 `<leader>uc` 当前 buffer 开关；不再独立扫描无相关 LSP 的文件/Tailwind 类名，没有新写 CSS 解析器。 |
 | vim-matchup | 已改原生 | 移除外部插件，使用内建 matchit/matchparen；不保留 matchup 离屏 popup、专有 surround/transmute，独立 nvim-surround 保留。 |
 | Heirline | 已恢复固定插件 | 按旧 Nixvim 效果参考重建状态栏、标签和宽度收缩，保留同名消歧、未保存保护和 LSP/Git/AI 状态，主题保持 OneDark。 |
@@ -116,7 +116,7 @@
 
 ## AI 应用与编辑器集成
 
-入口：[AI agents](../aspects/ai-workbench/ai-agents.nix)、[Grok Bot](../aspects/ai-workbench/grok-bot.nix)、[DSH 包装](../aspects/ai-workbench/dsh-desktop.nix)、[CodeCompanion](../aspects/editing/neovim/config/lua/mayon/plugins/ai.lua)。2026-10-20 用户决定删除 OpenCode；Codex、Grok Build、DeepSeek Harness、Grok Bot 和 CodeCompanion 继续保留。配置更新已于 2026-10-20 应用，Home Manager 返回 success，OpenCode 命令已从新环境移除。
+入口：[AI agents](../aspects/dev/ai-agents/ai-agents.nix)、[Grok Bot](../aspects/dev/ai-agents/grok-bot.nix)、[DSH 包装](../aspects/dev/ai-agents/dsh-desktop.nix)、[CodeCompanion](../aspects/dev/neovim/config/lua/mayon/plugins/ai.lua)。2026-10-20 用户决定删除 OpenCode；Codex、Grok Build、DeepSeek Harness、Grok Bot 和 CodeCompanion 继续保留。配置更新已于 2026-10-20 应用，Home Manager 返回 success，OpenCode 命令已从新环境移除。
 
 2026-10-22：新增 Claude Code 2.1.299，主机 toplevel 与 treefmt 检查构建通过，系统 switch 成功；新 shell 的 `claude --version` 验证通过。程序由 Nix 管理，未修改既有登录、设置或会话，也未发起模型请求。
 
@@ -128,7 +128,7 @@
 | OpenCode | 用户于 2026-10-20 决定删除 | 包、命令兼容 wrapper、CodeCompanion CLI 入口和 Quill 的 CLI 调用已从配置移除；Quill AI 改为直接调用 Go。已应用并核验运行时覆盖，保留其他应用及用户数据。 |
 | DeepSeek Harness 桌面入口 | 保留为实验性图形入口 | 当前是官方 Web UI + Chromium 应用窗口和私有后端，不是官方 Linux Electron 安装包。预览版变化与自维护包装有成本，不引入同名第三方桌面客户端。 |
 | Grok Bot | 保留，承担云端持续任务/流程 | 云端电脑可在本机关闭后继续工作；资格/账户和网络依赖不同于本地 CLI。不是本地终端复用器。当前 Electron workaround 另见使用文档，不能随意删除。 |
-| CodeCompanion | 保留 | Nvim 内联/聊天/选区上下文有独立价值；聊天默认 DeepSeek，CLI agent 清单保留 Codex 和 Grok。原生 Lua 配置保留现有历史和快捷键；插件由 `aspects/editing/neovim/plugins.nix` 固定提供。 |
+| CodeCompanion | 保留 | Nvim 内联/聊天/选区上下文有独立价值；聊天默认 DeepSeek，CLI agent 清单保留 Codex 和 Grok。原生 Lua 配置保留现有历史和快捷键；插件由 `aspects/dev/neovim/plugins.nix` 固定提供。 |
 | MCPHub | 用户最新确认删除 | 编辑器面板、CodeCompanion 扩展、专用输入与二次 nixpkgs 接线移除；各 agent 的独立 MCP 设置保留。 |
 
 当前保留的本地编码入口是 Codex、Claude Code、DSH headless 与 Grok Build，图形和云端入口按需打开。进程数、模型费用和实际速度取决于使用方式，单纯安装多个 CLI 不等于全部常驻。各工具的账号/密钥及运行时状态不强制合并进 Nix。
@@ -137,7 +137,7 @@
 
 ## 语言工具链、工程与虚拟化
 
-入口：[工具链模块](../aspects/)、[共享版本](../lib/toolchains.nix)、[Java 版本](../lib/java.nix)、[开发 shell](../nix/dev.nix)、[Docker](../aspects/local-containers/host.nix)、[libvirt](../aspects/local-virtual-machines/host.nix)。同组中的工具分别说明，相关安装可按项目长期使用情况再收敛。
+入口：[工具链模块](../aspects/)、[共享版本](../aspects/dev/languages/toolchains.nix)、[Java 版本](../lib/java.nix)、[开发 shell](../nix/dev.nix)、[Docker](../aspects/dev/containers/host.nix)、[libvirt](../aspects/dev/virtual-machines/host.nix)。同组中的工具分别说明，相关安装可按项目长期使用情况再收敛。
 
 | 工具 | 判断与更优解 |
 |---|---|
@@ -191,7 +191,7 @@
 
 ## Noctalia 插件与系统集成
 
-入口：[Noctalia 配置](../aspects/interactive-session/noctalia.nix)、[输入法](../aspects/interactive-session/input-method.nix)、[Portal/keyring](../aspects/interactive-session/host/portal.nix)。十个插件此前已确认全部保留，以下说明适合怎样优化。
+入口：[Noctalia 配置](../aspects/desktop/mango-session/noctalia.nix)、[输入法](../aspects/desktop/session-support/input-method.nix)、[Portal/keyring](../aspects/desktop/mango-session/host/portal.nix)。十个插件此前已确认全部保留，以下说明适合怎样优化。
 
 | 项目 | 结论 |
 |---|---|

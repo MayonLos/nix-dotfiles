@@ -28,6 +28,15 @@ _: {
 
       treefmt = {
         projectRootFile = "flake.nix";
+        settings.formatter.statix = {
+          command = pkgs.writeShellScriptBin "statix-check" ''
+            set -euo pipefail
+            for file in "$@"; do
+              ${pkgs.statix}/bin/statix check "$file"
+            done
+          '';
+          includes = [ "*.nix" ];
+        };
         programs = {
           nixfmt.enable = true;
           deadnix = {
@@ -35,7 +44,8 @@ _: {
             # Den dispatches by lambda argument shape, including unused names.
             no-lambda-pattern-names = true;
           };
-          statix.enable = true;
+          # Statix is a lint gate; automatic fixes can alter aspect semantics.
+          statix.enable = false;
           stylua.enable = true;
         };
       };

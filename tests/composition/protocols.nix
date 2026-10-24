@@ -2,7 +2,7 @@
 let
   inherit (pkgs) lib;
   system = "x86_64-linux";
-  paletteA = import ../../aspects/appearance/onedark-darker.nix;
+  paletteA = import ../../aspects/appearance/appearance/onedark-darker.nix;
   paletteB = paletteA // {
     bg = "#20242a";
   };
@@ -45,73 +45,76 @@ let
           inputs.den.flakeModule
           # Register the production aspect declarations, while selecting only
           # their real terminal/default-tools consumers below.
-          ../../aspects/command-line
-          ../../aspects/default-tools
-          ../../aspects/project-workbench
+          ../../aspects/cli/shell
+          ../../aspects/cli/terminal
+          ../../aspects/system/default-tools
+          ../../aspects/workspace/project-workbench
         ];
 
-        den.systems = [ system ];
-        den.schema.user.classes = [ "homeManager" ];
-        den.hosts.${system} = {
-          hostA.users = {
-            alice = lib.optionalAttrs withData {
-              appearance = paletteA // {
-                reducedMotion = true;
+        den = {
+          systems = [ system ];
+          schema.user.classes = [ "homeManager" ];
+          hosts.${system} = {
+            hostA.users = {
+              alice = lib.optionalAttrs withData {
+                appearance = paletteA // {
+                  reducedMotion = true;
+                };
+                defaultTools = tools;
+                workspaceProjects.sample = {
+                  directory = "/home/alice/project space";
+                  label = "Example workspace";
+                };
               };
-              defaultTools = tools;
-              workspaceProjects.sample = {
-                directory = "/home/alice/project space";
-                label = "Example workspace";
+              bob = lib.optionalAttrs withData {
+                appearance = paletteA;
+                defaultTools = tools;
               };
             };
-            bob = lib.optionalAttrs withData {
-              appearance = paletteA;
-              defaultTools = tools;
+            hostB.users = {
+              alice = lib.optionalAttrs withData {
+                appearance = paletteA;
+                defaultTools = tools;
+              };
+              bob = lib.optionalAttrs withData {
+                appearance = paletteB // {
+                  reducedMotion = false;
+                };
+                defaultTools = tools;
+              };
             };
           };
-          hostB.users = {
-            alice = lib.optionalAttrs withData {
-              appearance = paletteA;
-              defaultTools = tools;
-            };
-            bob = lib.optionalAttrs withData {
-              appearance = paletteB // {
-                reducedMotion = false;
-              };
-              defaultTools = tools;
-            };
-          };
-        };
 
-        den.default = {
-          nixos = {
-            system.stateVersion = "26.05";
-            boot.loader.grub.enable = false;
-            fileSystems."/" = {
-              device = "none";
-              fsType = "tmpfs";
+          default = {
+            nixos = {
+              system.stateVersion = "26.05";
+              boot.loader.grub.enable = false;
+              fileSystems."/" = {
+                device = "none";
+                fsType = "tmpfs";
+              };
+              home-manager.useGlobalPkgs = true;
+              home-manager.extraSpecialArgs.inputs = inputs;
             };
-            home-manager.useGlobalPkgs = true;
-            home-manager.extraSpecialArgs.inputs = inputs;
+            homeManager.home.stateVersion = "26.05";
           };
-          homeManager.home.stateVersion = "26.05";
-        };
 
-        den.aspects = lib.genAttrs bindings (
-          binding:
-          let
-            user = builtins.head (lib.splitString "@" binding);
-            includes = selected.${binding} or [ ];
-          in
-          {
-            user.isNormalUser = true;
-            homeManager.home = {
-              username = user;
-              homeDirectory = "/home/${user}";
-            };
-            includes = map (name: den.aspects.${name}) includes;
-          }
-        );
+          aspects = lib.genAttrs bindings (
+            binding:
+            let
+              user = builtins.head (lib.splitString "@" binding);
+              includes = selected.${binding} or [ ];
+            in
+            {
+              user.isNormalUser = true;
+              homeManager.home = {
+                username = user;
+                homeDirectory = "/home/${user}";
+              };
+              includes = map (name: den.aspects.${name}) includes;
+            }
+          );
+        };
       }
     )).nixosConfigurations;
 
@@ -150,9 +153,9 @@ let
 
   evaluateSchema = modules: (lib.evalModules { inherit modules; }).config;
   protocolSchema = [
-    ../../aspects/appearance/contract.nix
-    ../../aspects/default-tools/contract.nix
-    ../../aspects/project-workbench/contract.nix
+    ../../aspects/appearance/appearance/contract.nix
+    ../../aspects/system/default-tools/contract.nix
+    ../../aspects/workspace/project-workbench/contract.nix
   ];
   schema = modules: evaluateSchema (protocolSchema ++ modules);
   fails = value: !(builtins.tryEval (builtins.deepSeq value true)).success;
@@ -207,8 +210,8 @@ let
     }
   ];
 
-  cpp = import ../../aspects/languages/cpp-data.nix;
-  languageContract = import ../../aspects/languages/contract.nix { inherit lib; };
+  cpp = (import ../../aspects/dev/languages/contract.nix { inherit lib; }).defaults.cpp;
+  languageContract = import ../../aspects/dev/languages/contract.nix { inherit lib; };
   sharedServer = languageContract.collect [
     cpp
     (cpp // { id = "second-cpp-client"; })

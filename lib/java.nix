@@ -1,4 +1,4 @@
-{ pkgs, pkgs-unstable }:
+{ pkgs }:
 
 # Single source of truth for the Temurin JDKs installed on this host.
 # Consumers: aspects/languages/java-tools.nix (packages and javaNN wrappers),
@@ -7,7 +7,6 @@
 let
   temurin = pkgs.javaPackages.compiler.temurin-bin;
   # 26 is not in stable 26.05 yet.
-  temurin-unstable = pkgs-unstable.javaPackages.compiler.temurin-bin;
 in
 {
   # Feature version used for JAVA_HOME and the profile `java` on PATH.
@@ -18,6 +17,6 @@ in
     "17" = temurin.jdk-17;
     "21" = temurin.jdk-21;
     "25" = temurin.jdk-25;
-    "26" = temurin-unstable.jdk-26;
+    "26" = pkgs.unstable.jdk26;
   };
 }

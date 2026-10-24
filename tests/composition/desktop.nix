@@ -2,7 +2,7 @@
 let
   inherit (pkgs) lib;
   system = "x86_64-linux";
-  palette = import ../../aspects/appearance/onedark-darker.nix;
+  palette = import ../../aspects/appearance/appearance/onedark-darker.nix;
 
   # Public fixture facts only. These values make the actual Mango/Noctalia
   # modules evaluable; the fixture does not represent another deployable host.
@@ -39,67 +39,79 @@ let
       {
         imports = [
           inputs.den.flakeModule
-          ../../aspects/appearance
-          ../../aspects/interactive-session
+          ../../aspects/appearance/appearance
+          ../../aspects
         ];
 
-        den.systems = [ system ];
-        den.schema.user.classes = [ "homeManager" ];
+        den = {
+          systems = [ system ];
+          schema.user.classes = [ "homeManager" ];
 
-        den.hosts.${system} = lib.genAttrs [ "hostA" "hostB" ] (_: {
-          appearance = palette;
-          users = {
-            # Exercise two independent user preferences while both share the
-            # same host-level compositor support.
-            alice.appearance = palette // {
-              reducedMotion = true;
+          hosts.${system} = lib.genAttrs [ "hostA" "hostB" ] (_: {
+            appearance = palette;
+            facts = hostFacts;
+            avatar = {
+              name = "alice";
+              initial = "A";
             };
-            bob.appearance = palette // {
-              reducedMotion = false;
+            users = {
+              # Exercise two independent user preferences while both share the
+              # same host-level compositor support.
+              alice.avatar = {
+                name = "alice";
+                initial = "A";
+              };
+              alice.appearance = palette // {
+                reducedMotion = true;
+              };
+              bob.appearance = palette // {
+                reducedMotion = false;
+              };
             };
-          };
-          instantiate =
-            args:
-            inputs.nixpkgs.lib.nixosSystem (
-              args
-              // {
-                specialArgs = (args.specialArgs or { }) // {
-                  inherit inputs hostFacts;
-                };
-              }
-            );
-        });
+            instantiate =
+              args:
+              inputs.nixpkgs.lib.nixosSystem (
+                args
+                // {
+                  inherit pkgs;
+                  specialArgs = (args.specialArgs or { }) // {
+                    inherit inputs hostFacts;
+                  };
+                }
+              );
+          });
 
-        den.default = {
-          nixos = {
-            system.stateVersion = "26.05";
-            boot.loader.grub.enable = false;
-            fileSystems."/" = {
-              device = "none";
-              fsType = "tmpfs";
+          default = {
+            nixos = {
+              system.stateVersion = "26.05";
+              boot.loader.grub.enable = false;
+              fileSystems."/" = {
+                device = "none";
+                fsType = "tmpfs";
+              };
+              home-manager.useGlobalPkgs = true;
+              home-manager.extraSpecialArgs = {
+                inherit inputs hostFacts;
+              };
             };
-            home-manager.useGlobalPkgs = true;
-            home-manager.extraSpecialArgs = {
-              inherit inputs hostFacts;
-            };
+            homeManager.home.stateVersion = "26.05";
           };
-          homeManager.home.stateVersion = "26.05";
+
+          aspects = lib.genAttrs bindings (
+            binding:
+            let
+              user = builtins.head (lib.splitString "@" binding);
+            in
+            {
+              user.isNormalUser = true;
+              homeManager = {
+                home.username = user;
+                home.homeDirectory = "/home/${user}";
+              };
+              includes = map (name: den.aspects.${name}) (selected.${binding} or [ ]);
+            }
+          );
         };
-
-        den.aspects = lib.genAttrs bindings (
-          binding:
-          let
-            user = builtins.head (lib.splitString "@" binding);
-          in
-          {
-            user.isNormalUser = true;
-            homeManager = {
-              home.username = user;
-              home.homeDirectory = "/home/${user}";
-            };
-            includes = map (name: den.aspects.${name}) (selected.${binding} or [ ]);
-          }
-        );
       }
     )).nixosConfigurations;
 
@@ -109,6 +121,19 @@ let
     "bob@hostA" = [ "interactive-session" ];
   };
   afterLastConsumerRemoved = evaluate { };
+  avatarMango = evaluate {
+    "alice@hostA" = [
+      "avatar"
+      "interactive-session"
+    ];
+  };
+  avatarOnly = evaluate { "alice@hostA" = [ "avatar" ]; };
+  avatarXorg = evaluate {
+    "alice@hostA" = [
+      "avatar"
+      "xorg-session"
+    ];
+  };
   xorgOnly = evaluate { "alice@hostA" = [ "xorg-session" ]; };
 
   host = configs: name: configs.${name}.config;
@@ -296,6 +321,21 @@ let
       && !(xorgAliceHome.systemd.user.targets ? mango-session)
       && !(hasHomeUnit xorgAliceHome "noctalia")
       && !(hasHomeUnit xorgAliceHome "clipboard-bridge");
+
+    removingAvatarRemovesWidget =
+      !(
+        selectedHome.programs.noctalia.settings.lockscreen_widgets.widget or { } ? lockscreen-widget-avatar
+      )
+      && (
+        (home avatarMango "hostA" "alice").programs.noctalia.settings.lockscreen_widgets.widget
+          ? lockscreen-widget-avatar
+      );
+
+    avatarDoesNotSelectMango =
+      (home avatarOnly "hostA" "alice").xdg.dataFile ? "nix-dotfiles/alice-avatar.png"
+      && !((home avatarOnly "hostA" "alice").programs.noctalia.enable or false)
+      && !((home avatarXorg "hostA" "alice").programs.noctalia.enable or false)
+      && (home avatarXorg "hostA" "alice").xdg.dataFile ? "nix-dotfiles/alice-avatar.png";
 
     xorgSelectionDoesNotCrossAccountsOrHosts =
       hasNoXorgServices unselectedXorgBobHome

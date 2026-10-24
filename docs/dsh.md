@@ -1,6 +1,6 @@
 # DeepSeek Harness 命令与桌面入口
 
-2026-10-24。`aspects/ai-workbench/ai-agents.nix` 安装 `dsh` 命令与 `dsh-desktop`，两者调用同一个锁定 DSH 0.2.1-rc.3。Node 兼容修正已由上游 llm-agents 配方提供，本地不再重复替换。更新与构建记录见[本轮记录](history/optimization-2026-10-24.md)。不需要 OpenCode CLI，也不通过 npm 临时下载另一份运行时。
+2026-10-24。`aspects/dev/ai-agents/ai-agents.nix` 安装 `dsh` 命令与 `dsh-desktop`，两者调用同一个锁定 DSH 0.2.1-rc.3。Node 兼容修正已由上游 llm-agents 配方提供，本地不再重复替换。更新与构建记录见[本轮记录](history/optimization-2026-10-24.md)。不需要 OpenCode CLI，也不通过 npm 临时下载另一份运行时。
 
 ## 使用
 

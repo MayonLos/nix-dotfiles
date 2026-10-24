@@ -1,0 +1,327 @@
+status	before	after
+modified	.gitignore	.gitignore
+modified	AGENTS.md	AGENTS.md
+modified	README.md	README.md
+moved+edited	aspects/ai-workbench/ai-agents.nix	aspects/dev/ai-agents/ai-agents.nix
+moved	aspects/ai-workbench/claude-code.nix	aspects/dev/ai-agents/claude-code.nix
+moved	aspects/ai-workbench/claude-statusline.sh	aspects/dev/ai-agents/claude-statusline.sh
+moved	aspects/ai-workbench/default.nix	aspects/dev/ai-agents/default.nix
+moved	aspects/ai-workbench/dsh-desktop.nix	aspects/dev/ai-agents/dsh-desktop.nix
+moved+edited	aspects/ai-workbench/grok-bot.nix	aspects/dev/ai-agents/grok-bot.nix
+moved	aspects/appearance/ONEDARK-LICENSE	aspects/appearance/appearance/ONEDARK-LICENSE
+moved+edited	aspects/appearance/README.md	aspects/appearance/appearance/README.md
+moved	aspects/appearance/ansi.nix	aspects/appearance/appearance/ansi.nix
+moved	aspects/appearance/contract.nix	aspects/appearance/appearance/contract.nix
+moved+edited	aspects/appearance/default.nix	aspects/appearance/appearance/default.nix
+moved	aspects/appearance/onedark-darker.nix	aspects/appearance/appearance/onedark-darker.nix
+moved+edited	aspects/command-line/checks.nix	aspects/cli/shell/runtime-check.nix
+moved+edited	aspects/command-line/default.nix	aspects/cli/shell/default.nix
+moved	aspects/command-line/direnv.nix	aspects/cli/shell/direnv.nix
+moved+edited	aspects/command-line/git.nix	aspects/cli/shell/git.nix
+moved	aspects/command-line/host.nix	aspects/cli/shell/host.nix
+moved+edited	aspects/command-line/kitty.nix	aspects/cli/terminal/kitty.nix
+moved	aspects/command-line/nix-index.nix	aspects/cli/shell/nix-index.nix
+moved	aspects/command-line/onedark-darker-bat.nix	aspects/cli/shell/onedark-darker-bat.nix
+moved	aspects/command-line/onedark-darker-btop.nix	aspects/cli/shell/onedark-darker-btop.nix
+moved	aspects/command-line/sysinfo.nix	aspects/cli/shell/sysinfo.nix
+moved	aspects/command-line/tmux.nix	aspects/cli/shell/tmux.nix
+moved+edited	aspects/command-line/tools.nix	aspects/cli/shell/tools.nix
+moved	aspects/command-line/yazi.nix	aspects/cli/shell/yazi.nix
+moved+edited	aspects/command-line/zsh.nix	aspects/cli/shell/zsh.nix
+moved	aspects/communication/default.nix	aspects/apps/communication/default.nix
+moved+edited	aspects/communication/im.nix	aspects/apps/communication/im.nix
+moved	aspects/communication/thunderbird.nix	aspects/apps/communication/thunderbird.nix
+moved+edited	aspects/default-tools/README.md	aspects/system/default-tools/README.md
+moved	aspects/default-tools/consumer.nix	aspects/system/default-tools/consumer.nix
+moved	aspects/default-tools/contract.nix	aspects/system/default-tools/contract.nix
+moved	aspects/default-tools/default.nix	aspects/system/default-tools/default.nix
+modified	aspects/default.nix	aspects/default.nix
+moved+edited	aspects/documents/default.nix	aspects/apps/documents/default.nix
+moved+edited	aspects/documents/zathura.nix	aspects/apps/documents/zathura.nix
+split	aspects/editing/default.nix	aspects/dev/neovim/default.nix,aspects/dev/vscode/default.nix,aspects/dev/jetbrains/default.nix,aspects/dev/editor-runtime/default.nix
+moved	aspects/editing/host.nix	aspects/dev/editor-runtime/host.nix
+moved	aspects/editing/jetbrains.nix	aspects/dev/jetbrains/jetbrains.nix
+moved	aspects/editing/neovim/benchmarks/lua-servers.lua	aspects/dev/neovim/benchmarks/lua-servers.lua
+moved	aspects/editing/neovim/benchmarks/run.py	aspects/dev/neovim/benchmarks/run.py
+moved	aspects/editing/neovim/config/after/queries/javascript/highlights.scm	aspects/dev/neovim/config/after/queries/javascript/highlights.scm
+moved	aspects/editing/neovim/config/after/queries/nix/injections.scm	aspects/dev/neovim/config/after/queries/nix/injections.scm
+moved	aspects/editing/neovim/config/after/queries/tsx/highlights.scm	aspects/dev/neovim/config/after/queries/tsx/highlights.scm
+moved	aspects/editing/neovim/config/colors/ONEDARK-LICENSE	aspects/dev/neovim/config/colors/ONEDARK-LICENSE
+moved	aspects/editing/neovim/config/colors/onedark-darker.lua	aspects/dev/neovim/config/colors/onedark-darker.lua
+moved	aspects/editing/neovim/config/init.lua	aspects/dev/neovim/config/init.lua
+moved	aspects/editing/neovim/config/lua/mayon/config/autocmds.lua	aspects/dev/neovim/config/lua/mayon/config/autocmds.lua
+moved	aspects/editing/neovim/config/lua/mayon/config/bootstrap.lua	aspects/dev/neovim/config/lua/mayon/config/bootstrap.lua
+moved	aspects/editing/neovim/config/lua/mayon/config/keymaps.lua	aspects/dev/neovim/config/lua/mayon/config/keymaps.lua
+moved	aspects/editing/neovim/config/lua/mayon/config/loader.lua	aspects/dev/neovim/config/lua/mayon/config/loader.lua
+moved	aspects/editing/neovim/config/lua/mayon/config/options.lua	aspects/dev/neovim/config/lua/mayon/config/options.lua
+moved	aspects/editing/neovim/config/lua/mayon/features/cc_blink_proxy.lua	aspects/dev/neovim/config/lua/mayon/features/cc_blink_proxy.lua
+moved	aspects/editing/neovim/config/lua/mayon/features/cc_inline_indicator.lua	aspects/dev/neovim/config/lua/mayon/features/cc_inline_indicator.lua
+moved	aspects/editing/neovim/config/lua/mayon/features/fileops.lua	aspects/dev/neovim/config/lua/mayon/features/fileops.lua
+moved	aspects/editing/neovim/config/lua/mayon/features/folds.lua	aspects/dev/neovim/config/lua/mayon/features/folds.lua
+moved	aspects/editing/neovim/config/lua/mayon/features/lua_blink_proxy.lua	aspects/dev/neovim/config/lua/mayon/features/lua_blink_proxy.lua
+moved	aspects/editing/neovim/config/lua/mayon/features/math_preview.lua	aspects/dev/neovim/config/lua/mayon/features/math_preview.lua
+moved	aspects/editing/neovim/config/lua/mayon/features/oil.lua	aspects/dev/neovim/config/lua/mayon/features/oil.lua
+moved	aspects/editing/neovim/config/lua/mayon/features/scratch.lua	aspects/dev/neovim/config/lua/mayon/features/scratch.lua
+moved	aspects/editing/neovim/config/lua/mayon/features/sessions.lua	aspects/dev/neovim/config/lua/mayon/features/sessions.lua
+moved	aspects/editing/neovim/config/lua/mayon/features/urls.lua	aspects/dev/neovim/config/lua/mayon/features/urls.lua
+moved	aspects/editing/neovim/config/lua/mayon/kinds.lua	aspects/dev/neovim/config/lua/mayon/kinds.lua
+moved	aspects/editing/neovim/config/lua/mayon/lsp/init.lua	aspects/dev/neovim/config/lua/mayon/lsp/init.lua
+moved	aspects/editing/neovim/config/lua/mayon/lsp/servers.lua	aspects/dev/neovim/config/lua/mayon/lsp/servers.lua
+moved	aspects/editing/neovim/config/lua/mayon/plugins/ai.lua	aspects/dev/neovim/config/lua/mayon/plugins/ai.lua
+moved	aspects/editing/neovim/config/lua/mayon/plugins/completion.lua	aspects/dev/neovim/config/lua/mayon/plugins/completion.lua
+moved	aspects/editing/neovim/config/lua/mayon/plugins/debug.lua	aspects/dev/neovim/config/lua/mayon/plugins/debug.lua
+moved	aspects/editing/neovim/config/lua/mayon/plugins/decorations.lua	aspects/dev/neovim/config/lua/mayon/plugins/decorations.lua
+moved	aspects/editing/neovim/config/lua/mayon/plugins/editing.lua	aspects/dev/neovim/config/lua/mayon/plugins/editing.lua
+moved	aspects/editing/neovim/config/lua/mayon/plugins/formatting.lua	aspects/dev/neovim/config/lua/mayon/plugins/formatting.lua
+moved	aspects/editing/neovim/config/lua/mayon/plugins/git.lua	aspects/dev/neovim/config/lua/mayon/plugins/git.lua
+moved	aspects/editing/neovim/config/lua/mayon/plugins/languages.lua	aspects/dev/neovim/config/lua/mayon/plugins/languages.lua
+moved	aspects/editing/neovim/config/lua/mayon/plugins/lint.lua	aspects/dev/neovim/config/lua/mayon/plugins/lint.lua
+moved	aspects/editing/neovim/config/lua/mayon/plugins/lua.lua	aspects/dev/neovim/config/lua/mayon/plugins/lua.lua
+moved	aspects/editing/neovim/config/lua/mayon/plugins/markdown.lua	aspects/dev/neovim/config/lua/mayon/plugins/markdown.lua
+moved	aspects/editing/neovim/config/lua/mayon/plugins/navigation.lua	aspects/dev/neovim/config/lua/mayon/plugins/navigation.lua
+moved	aspects/editing/neovim/config/lua/mayon/plugins/snacks.lua	aspects/dev/neovim/config/lua/mayon/plugins/snacks.lua
+moved	aspects/editing/neovim/config/lua/mayon/plugins/tasks.lua	aspects/dev/neovim/config/lua/mayon/plugins/tasks.lua
+moved	aspects/editing/neovim/config/lua/mayon/plugins/treesitter.lua	aspects/dev/neovim/config/lua/mayon/plugins/treesitter.lua
+moved	aspects/editing/neovim/config/lua/mayon/plugins/utility.lua	aspects/dev/neovim/config/lua/mayon/plugins/utility.lua
+moved	aspects/editing/neovim/config/lua/mayon/ui/breadcrumbs.lua	aspects/dev/neovim/config/lua/mayon/ui/breadcrumbs.lua
+moved	aspects/editing/neovim/config/lua/mayon/ui/dashboard.lua	aspects/dev/neovim/config/lua/mayon/ui/dashboard.lua
+moved	aspects/editing/neovim/config/lua/mayon/ui/icons.lua	aspects/dev/neovim/config/lua/mayon/ui/icons.lua
+moved	aspects/editing/neovim/config/lua/mayon/ui/noice.lua	aspects/dev/neovim/config/lua/mayon/ui/noice.lua
+moved	aspects/editing/neovim/config/lua/mayon/ui/statusline.lua	aspects/dev/neovim/config/lua/mayon/ui/statusline.lua
+moved	aspects/editing/neovim/config/lua/mayon/ui/tabline.lua	aspects/dev/neovim/config/lua/mayon/ui/tabline.lua
+moved	aspects/editing/neovim/config/lua/mayon/ui/text.lua	aspects/dev/neovim/config/lua/mayon/ui/text.lua
+moved	aspects/editing/neovim/config/lua/mayon/ui/theme.lua	aspects/dev/neovim/config/lua/mayon/ui/theme.lua
+moved	aspects/editing/neovim/config/snippets/cpp.json	aspects/dev/neovim/config/snippets/cpp.json
+moved	aspects/editing/neovim/config/snippets/package.json	aspects/dev/neovim/config/snippets/package.json
+moved	aspects/editing/neovim/config/tests/completion.lua	aspects/dev/neovim/config/tests/completion.lua
+moved	aspects/editing/neovim/config/tests/fileops.lua	aspects/dev/neovim/config/tests/fileops.lua
+moved	aspects/editing/neovim/config/tests/health.lua	aspects/dev/neovim/config/tests/health.lua
+moved	aspects/editing/neovim/config/tests/integration.lua	aspects/dev/neovim/config/tests/integration.lua
+moved	aspects/editing/neovim/config/tests/interface.lua	aspects/dev/neovim/config/tests/interface.lua
+moved	aspects/editing/neovim/config/tests/lsp.lua	aspects/dev/neovim/config/tests/lsp.lua
+moved	aspects/editing/neovim/config/tests/lua_workspace.lua	aspects/dev/neovim/config/tests/lua_workspace.lua
+moved	aspects/editing/neovim/config/tests/modern.lua	aspects/dev/neovim/config/tests/modern.lua
+moved	aspects/editing/neovim/config/tests/run.lua	aspects/dev/neovim/config/tests/run.lua
+moved	aspects/editing/neovim/config/tests/samples.lua	aspects/dev/neovim/config/tests/samples.lua
+moved	aspects/editing/neovim/config/tests/startup.lua	aspects/dev/neovim/config/tests/startup.lua
+moved	aspects/editing/neovim/config/tests/workflow.lua	aspects/dev/neovim/config/tests/workflow.lua
+moved	aspects/editing/neovim/config/tests/wrapper.lua	aspects/dev/neovim/config/tests/wrapper.lua
+moved	aspects/editing/neovim/diffview-plus.nix	aspects/dev/neovim/diffview-plus.nix
+moved+edited	aspects/editing/neovim/package.nix	aspects/dev/neovim/package.nix
+moved	aspects/editing/neovim/parsers.nix	aspects/dev/neovim/parsers.nix
+moved	aspects/editing/neovim/plugins.nix	aspects/dev/neovim/plugins.nix
+moved	aspects/editing/vscode.nix	aspects/dev/vscode/vscode.nix
+moved+edited	aspects/embedded-workbench/README.md	aspects/dev/embedded/README.md
+moved	aspects/embedded-workbench/checks.nix	aspects/dev/embedded/runtime-checks.nix
+moved+edited	aspects/embedded-workbench/default.nix	aspects/dev/embedded/default.nix
+moved	aspects/embedded-workbench/home.nix	aspects/dev/embedded/home.nix
+moved	aspects/embedded-workbench/host.nix	aspects/dev/embedded/host.nix
+moved	aspects/embedded-workbench/package.nix	aspects/dev/embedded/package.nix
+moved	aspects/embedded-workbench/rules.nix	aspects/dev/embedded/rules.nix
+moved	aspects/file-manager/default.nix	aspects/apps/file-manager/default.nix
+moved	aspects/file-manager/host.nix	aspects/apps/file-manager/host.nix
+moved+edited	aspects/file-manager/thunar-actions.nix	aspects/apps/file-manager/thunar-actions.nix
+moved	aspects/file-manager/thunar-terminal.nix	aspects/apps/file-manager/thunar-terminal.nix
+moved+edited	aspects/firefox/default.nix	aspects/apps/firefox/default.nix
+moved	aspects/firefox/resources/apply-noctalia-userChrome.py	aspects/apps/firefox/resources/apply-noctalia-userChrome.py
+moved	aspects/firefox/resources/firefox_profile.py	aspects/apps/firefox/resources/firefox_profile.py
+moved	aspects/firefox/resources/noctalia-userChrome.css	aspects/apps/firefox/resources/noctalia-userChrome.css
+moved	aspects/firefox/resources/seed-firefox-ui.py	aspects/apps/firefox/resources/seed-firefox-ui.py
+moved+edited	aspects/gaming/default.nix	aspects/apps/gaming/default.nix
+moved	aspects/gaming/host/gamemode.nix	aspects/apps/gaming/host/gamemode.nix
+moved	aspects/gaming/host/gamescope.nix	aspects/apps/gaming/host/gamescope.nix
+moved	aspects/gaming/host/steam.nix	aspects/apps/gaming/host/steam.nix
+moved	aspects/gaming/mangohud.nix	aspects/apps/gaming/mangohud.nix
+moved+edited	aspects/gaming/prismlauncher.nix	aspects/apps/gaming/prismlauncher.nix
+moved+edited	aspects/interactive-session/checks.nix	aspects/desktop/mango-session/runtime-check.nix
+moved+edited	aspects/interactive-session/clipboard.nix	aspects/desktop/mango-session/clipboard.nix
+split	aspects/interactive-session/default.nix	aspects/desktop/session-support/default.nix,aspects/desktop/mango-session/default.nix,aspects/desktop/xorg-session/default.nix,aspects/desktop/greeter/default.nix
+moved+edited	aspects/interactive-session/environment.nix	aspects/desktop/session-support/environment.nix
+moved+edited	aspects/interactive-session/greeter.nix	aspects/desktop/greeter/greeter.nix
+moved	aspects/interactive-session/gtk.nix	aspects/desktop/session-support/gtk.nix
+moved+edited	aspects/interactive-session/host/audio.nix	aspects/desktop/session-support/host/audio.nix
+moved+edited	aspects/interactive-session/host/fonts.nix	aspects/desktop/session-support/host/fonts.nix
+moved	aspects/interactive-session/host/mango.nix	aspects/desktop/mango-session/host/mango.nix
+moved	aspects/interactive-session/host/polkit.nix	aspects/desktop/session-support/host/polkit.nix
+moved	aspects/interactive-session/host/portal-common.nix	aspects/desktop/session-support/host/portal-common.nix
+moved	aspects/interactive-session/host/portal.nix	aspects/desktop/mango-session/host/portal.nix
+moved+edited	aspects/interactive-session/input-method.nix	aspects/desktop/session-support/input-method.nix
+moved+edited	aspects/interactive-session/mango.nix	aspects/desktop/mango-session/mango.nix
+moved	aspects/interactive-session/mango/keybinds.nix	aspects/desktop/mango-session/mango/keybinds.nix
+moved+edited	aspects/interactive-session/noctalia.nix	aspects/desktop/mango-session/noctalia.nix
+moved+edited	aspects/interactive-session/noctalia/bar.nix	aspects/desktop/mango-session/noctalia/bar.nix
+moved	aspects/interactive-session/noctalia/plugins.nix	aspects/desktop/mango-session/noctalia/plugins.nix
+moved+edited	aspects/interactive-session/qt.nix	aspects/desktop/session-support/qt.nix
+moved	aspects/interactive-session/resources/reconcile-overrides.py	aspects/desktop/mango-session/resources/reconcile-overrides.py
+moved	aspects/interactive-session/resources/rime-smoke.c	aspects/desktop/session-support/resources/rime-smoke.c
+moved	aspects/interactive-session/resources/test_reconcile_overrides.py	aspects/desktop/mango-session/resources/test_reconcile_overrides.py
+moved	aspects/interactive-session/resources/wallpaper/wallpaper-001.png	aspects/appearance/appearance/resources/wallpaper/wallpaper-001.png
+moved	aspects/interactive-session/resources/wallpaper/wallpaper-002.png	aspects/appearance/appearance/resources/wallpaper/wallpaper-002.png
+moved	aspects/interactive-session/resources/wallpaper/wallpaper-003.png	aspects/appearance/appearance/resources/wallpaper/wallpaper-003.png
+moved	aspects/interactive-session/resources/wallpaper/wallpaper-004.png	aspects/appearance/appearance/resources/wallpaper/wallpaper-004.png
+moved	aspects/interactive-session/resources/wallpaper/wallpaper-005.png	aspects/appearance/appearance/resources/wallpaper/wallpaper-005.png
+moved	aspects/interactive-session/resources/wallpaper/wallpaper-006.png	aspects/appearance/appearance/resources/wallpaper/wallpaper-006.png
+moved	aspects/interactive-session/resources/wallpaper/wallpaper-007.png	aspects/appearance/appearance/resources/wallpaper/wallpaper-007.png
+moved	aspects/interactive-session/resources/wallpaper/wallpaper-008.png	aspects/appearance/appearance/resources/wallpaper/wallpaper-008.png
+moved	aspects/interactive-session/resources/wallpaper/wallpaper-009.png	aspects/appearance/appearance/resources/wallpaper/wallpaper-009.png
+moved	aspects/interactive-session/resources/wallpaper/wallpaper-010.png	aspects/appearance/appearance/resources/wallpaper/wallpaper-010.png
+moved	aspects/interactive-session/resources/wallpaper/wallpaper-011.png	aspects/appearance/appearance/resources/wallpaper/wallpaper-011.png
+moved	aspects/interactive-session/resources/wallpaper/wallpaper-012.png	aspects/appearance/appearance/resources/wallpaper/wallpaper-012.png
+moved	aspects/interactive-session/resources/window-detection-mango	aspects/desktop/mango-session/resources/window-detection-mango
+moved	aspects/interactive-session/rime-checks.nix	aspects/desktop/session-support/rime-checks.nix
+moved	aspects/interactive-session/rime/README.md	aspects/desktop/session-support/rime/README.md
+moved	aspects/interactive-session/rime/nixdotfiles_technical.dict.yaml	aspects/desktop/session-support/rime/nixdotfiles_technical.dict.yaml
+moved	aspects/interactive-session/rime/package.nix	aspects/desktop/session-support/rime/package.nix
+moved	aspects/interactive-session/rime/rime_ice_technical.dict.yaml	aspects/desktop/session-support/rime/rime_ice_technical.dict.yaml
+moved	aspects/interactive-session/rime/theme.nix	aspects/desktop/session-support/rime/theme.nix
+moved+edited	aspects/interactive-session/screenshot.nix	aspects/desktop/mango-session/screenshot.nix
+moved	aspects/interactive-session/service.nix	lib/service.nix
+moved	aspects/interactive-session/session-targets.nix	aspects/desktop/session-support/session-targets.nix
+moved	aspects/interactive-session/tesseract-ocr.nix	aspects/desktop/mango-session/tesseract-ocr.nix
+moved	aspects/interactive-session/tools.nix	aspects/desktop/session-support/tools.nix
+moved+edited	aspects/interactive-session/xorg/appearance.nix	aspects/desktop/xorg-session/appearance.nix
+moved+edited	aspects/interactive-session/xorg/checks.nix	aspects/desktop/xorg-session/runtime-check.nix
+moved+edited	aspects/interactive-session/xorg/default.nix	aspects/desktop/xorg-session/home.nix
+moved	aspects/interactive-session/xorg/dmenu/package.nix	aspects/desktop/xorg-session/dmenu/package.nix
+moved	aspects/interactive-session/xorg/dmenu/presentation.patch	aspects/desktop/xorg-session/dmenu/presentation.patch
+moved	aspects/interactive-session/xorg/dwm/configure.py	aspects/desktop/xorg-session/dwm/configure.py
+moved	aspects/interactive-session/xorg/dwm/package.nix	aspects/desktop/xorg-session/dwm/package.nix
+moved+edited	aspects/interactive-session/xorg/host.nix	aspects/desktop/xorg-session/host.nix
+moved+edited	aspects/interactive-session/xorg/lock.nix	aspects/desktop/xorg-session/lock.nix
+moved	aspects/interactive-session/xorg/runtime.nix	aspects/desktop/xorg-session/runtime.nix
+moved	aspects/interactive-session/xorg/session	aspects/desktop/xorg-session/session
+moved	aspects/interactive-session/xorg/tests/test_desktop.py	aspects/desktop/xorg-session/tests/test_desktop.py
+moved	aspects/interactive-session/xorg/tests/test_menu.py	aspects/desktop/xorg-session/tests/test_menu.py
+moved	aspects/interactive-session/xorg/tests/test_qq.py	aspects/desktop/xorg-session/tests/test_qq.py
+moved	aspects/interactive-session/xorg/tests/test_session.py	aspects/desktop/xorg-session/tests/test_session.py
+moved	aspects/interactive-session/xorg/tools.nix	aspects/desktop/xorg-session/tools.nix
+moved	aspects/interactive-session/xorg/ui.nix	aspects/desktop/xorg-session/ui.nix
+moved+edited	aspects/interactive-session/xresources.nix	aspects/desktop/session-support/xresources.nix
+moved+edited	aspects/languages/README.md	aspects/dev/languages/README.md
+moved+edited	aspects/languages/contract.nix	aspects/dev/languages/contract.nix
+moved	aspects/languages/cpp-data.nix	aspects/dev/languages/cpp-data.nix
+moved+edited	aspects/languages/cpp-tools.nix	aspects/dev/languages/cpp-tools.nix
+moved	aspects/languages/cpp.nix	aspects/dev/languages/cpp.nix
+moved	aspects/languages/data.nix	aspects/dev/languages/data.nix
+moved	aspects/languages/default.nix	aspects/dev/languages/default.nix
+moved+edited	aspects/languages/java-shell.nix	aspects/dev/languages/java-shell.nix
+moved+edited	aspects/languages/java-tools.nix	aspects/dev/languages/java-tools.nix
+moved	aspects/languages/latex-tools.nix	aspects/dev/languages/latex-tools.nix
+moved+edited	aspects/languages/lua-tools.nix	aspects/dev/languages/lua-tools.nix
+moved	aspects/languages/matlab/home.nix	aspects/dev/languages/matlab/home.nix
+moved	aspects/languages/matlab/package.nix	aspects/dev/languages/matlab/package.nix
+moved+edited	aspects/languages/python-tools.nix	aspects/dev/languages/python-tools.nix
+moved	aspects/languages/support.nix	aspects/dev/languages/support.nix
+moved+edited	aspects/local-containers/default.nix	aspects/dev/containers/default.nix
+moved+edited	aspects/local-containers/home.nix	aspects/dev/containers/home.nix
+moved+edited	aspects/local-containers/host.nix	aspects/dev/containers/host.nix
+moved+edited	aspects/local-virtual-machines/default.nix	aspects/dev/virtual-machines/default.nix
+moved	aspects/local-virtual-machines/home.nix	aspects/dev/virtual-machines/home.nix
+moved+edited	aspects/local-virtual-machines/host.nix	aspects/dev/virtual-machines/host.nix
+moved	aspects/media/blender.nix	aspects/apps/media/blender.nix
+moved	aspects/media/default.nix	aspects/apps/media/default.nix
+moved+edited	aspects/media/images.nix	aspects/apps/media/images.nix
+moved	aspects/media/mpv.nix	aspects/apps/media/mpv.nix
+moved	aspects/media/musicfox.nix	aspects/apps/media/musicfox.nix
+moved	aspects/media/obs-studio.nix	aspects/apps/media/obs-studio.nix
+moved+edited	aspects/project-workbench/README.md	aspects/workspace/project-workbench/README.md
+moved	aspects/project-workbench/checks.nix	aspects/workspace/project-workbench/runtime-check.nix
+moved	aspects/project-workbench/contract.nix	aspects/workspace/project-workbench/contract.nix
+moved	aspects/project-workbench/default.nix	aspects/workspace/project-workbench/default.nix
+moved	aspects/project-workbench/runner.py	aspects/workspace/project-workbench/runner.py
+moved	aspects/project-workbench/tests.py	aspects/workspace/project-workbench/tests.py
+moved	aspects/remote-access/host.nix	aspects/network/remote-access/host.nix
+split	aspects/system/default.nix	aspects/system/maintenance/default.nix,aspects/hardware/legion-laptop/default.nix,aspects/network/laptop-network/default.nix,aspects/network/remote-access/default.nix
+moved	aspects/system/laptop-network/clash.nix	aspects/network/laptop-network/clash.nix
+moved	aspects/system/laptop-network/network.nix	aspects/network/laptop-network/network.nix
+moved	aspects/system/legion-laptop/bluetooth.nix	aspects/hardware/legion-laptop/bluetooth.nix
+moved	aspects/system/legion-laptop/boot.nix	aspects/hardware/legion-laptop/boot.nix
+moved	aspects/system/legion-laptop/firmware.nix	aspects/hardware/legion-laptop/firmware.nix
+moved	aspects/system/legion-laptop/intel-video.nix	aspects/hardware/legion-laptop/intel-video.nix
+moved	aspects/system/legion-laptop/memory.nix	aspects/hardware/legion-laptop/memory.nix
+moved	aspects/system/legion-laptop/nvidia.nix	aspects/hardware/legion-laptop/nvidia.nix
+moved	aspects/system/legion-laptop/power.nix	aspects/hardware/legion-laptop/power.nix
+modified	aspects/system/maintenance/nh.nix	aspects/system/maintenance/nh.nix
+moved	aspects/workspace-task/default.nix	aspects/workspace/workspace-task/default.nix
+moved	aspects/workspace-task/package.nix	aspects/workspace/workspace-task/package.nix
+modified	docs/README.md	docs/README.md
+modified	docs/application-review.md	docs/application-review.md
+modified	docs/config-ownership.md	docs/config-ownership.md
+modified	docs/desktop-design.md	docs/desktop-design.md
+modified	docs/dsh.md	docs/dsh.md
+modified	docs/dwm-visual-design.md	docs/dwm-visual-design.md
+modified	docs/grok-bot.md	docs/grok-bot.md
+modified	docs/neovim-rebuild-execution.md	docs/neovim-rebuild-execution.md
+modified	docs/obsidian-handwriting.md	docs/obsidian-handwriting.md
+modified	docs/server-plan.md	docs/server-plan.md
+modified	docs/service-policy.md	docs/service-policy.md
+modified	docs/workflow-design.md	docs/workflow-design.md
+modified	docs/xorg-desktop-execution.md	docs/xorg-desktop-execution.md
+modified	flake.nix	flake.nix
+split	inventory/hosts/nixos-btw/accounts.nix	aspects/appearance/avatar/default.nix,aspects/appearance/avatar/home.nix,aspects/appearance/avatar/nixos.nix,aspects/appearance/avatar/package.nix,aspects/desktop/mango-session/lockscreen-avatar.nix,inventory/hosts/nixos-btw/users/mayon.nix
+moved	inventory/hosts/nixos-btw/credentials.nix	inventory/hosts/nixos-btw/secrets.nix
+modified	inventory/hosts/nixos-btw/default.nix	inventory/hosts/nixos-btw/default.nix
+moved	inventory/hosts/nixos-btw/discovered.nix	inventory/hosts/nixos-btw/hardware-configuration.nix
+modified	lib/java.nix	lib/java.nix
+moved	lib/session-environment.nix	aspects/desktop/mango-session/session-environment.nix
+moved	lib/toolchains.nix	aspects/dev/languages/toolchains.nix
+modified	nix/checks.nix	nix/checks.nix
+modified	nix/default.nix	nix/default.nix
+modified	nix/dev.nix	nix/dev.nix
+split	nix/neovim.nix	nix/outputs.nix,aspects/dev/neovim/checks.nix
+moved+edited	nix/nixpkgs.nix	nix/pkgs.nix
+modified	tests/README.md	tests/README.md
+modified	tests/composition/desktop.nix	tests/composition/desktop.nix
+modified	tests/composition/editing.nix	tests/composition/editing.nix
+modified	tests/composition/embedded.nix	tests/composition/embedded.nix
+modified	tests/composition/local-services.nix	tests/composition/local-services.nix
+modified	tests/composition/protocols.nix	tests/composition/protocols.nix
+modified	tests/composition/remote.nix	tests/composition/remote.nix
+modified	tests/composition/system.nix	tests/composition/system.nix
+modified	tests/composition/workspace.nix	tests/composition/workspace.nix
+added		aspects/appearance/avatar/README.md
+added		aspects/appearance/avatar/contract.nix
+added		aspects/apps/communication/README.md
+added		aspects/apps/documents/README.md
+added		aspects/apps/file-manager/README.md
+added		aspects/apps/firefox/README.md
+added		aspects/apps/gaming/README.md
+added		aspects/apps/media/README.md
+added		aspects/cli/shell/README.md
+added		aspects/cli/shell/checks.nix
+added		aspects/cli/shell/contract.nix
+added		aspects/cli/terminal/README.md
+added		aspects/cli/terminal/default.nix
+added		aspects/desktop/greeter/README.md
+added		aspects/desktop/mango-session/README.md
+added		aspects/desktop/mango-session/checks.nix
+added		aspects/desktop/mango-session/contract.nix
+added		aspects/desktop/session-support/README.md
+added		aspects/desktop/session-support/checks.nix
+added		aspects/desktop/xorg-session/README.md
+added		aspects/desktop/xorg-session/checks.nix
+added		aspects/dev/ai-agents/README.md
+added		aspects/dev/containers/README.md
+added		aspects/dev/editor-runtime/README.md
+added		aspects/dev/embedded/checks.nix
+added		aspects/dev/embedded/contract.nix
+added		aspects/dev/jetbrains/README.md
+added		aspects/dev/neovim/README.md
+added		aspects/dev/virtual-machines/README.md
+added		aspects/dev/vscode/README.md
+added		aspects/hardware/legion-laptop/README.md
+added		aspects/hardware/legion-laptop/contract.nix
+added		aspects/network/laptop-network/README.md
+added		aspects/network/remote-access/README.md
+added		aspects/system/maintenance/README.md
+added		aspects/system/maintenance/contract.nix
+added		aspects/workspace/project-workbench/checks.nix
+added		aspects/workspace/workspace-task/README.md
+added		docs/history/architecture-v2-baseline.json
+added		docs/history/architecture-v2-execution.md
+added		docs/history/architecture-v2-files.tsv
+added		docs/history/architecture-v2-result.json
+added		docs/operations.md
+added		nix/hosts.nix
+added		tests/architecture/README.md
+added		tests/architecture/default.nix

@@ -2,7 +2,7 @@
 let
   inherit (pkgs) lib;
   system = "x86_64-linux";
-  palette = import ../../aspects/appearance/onedark-darker.nix;
+  palette = import ../../aspects/appearance/appearance/onedark-darker.nix;
 
   bindings = [
     "alice@hostA"
@@ -17,66 +17,68 @@ let
       {
         imports = [
           inputs.den.flakeModule
-          ../../aspects/appearance
-          ../../aspects/languages
-          ../../aspects/editing
+          ../../aspects/appearance/appearance
+          ../../aspects/dev/languages
+          ../../aspects
         ];
 
-        den.systems = [ system ];
-        den.schema.user.classes = [ "homeManager" ];
-        den.hosts.${system} = {
-          hostA.users = {
-            alice = {
-              appearance = palette;
+        den = {
+          systems = [ system ];
+          schema.user.classes = [ "homeManager" ];
+          hosts.${system} = {
+            hostA.users = {
+              alice = {
+                appearance = palette;
+              };
+              bob = {
+                appearance = palette;
+              };
             };
-            bob = {
-              appearance = palette;
+            hostB.users = {
+              alice = {
+                appearance = palette;
+              };
+              bob = {
+                appearance = palette;
+              };
             };
           };
-          hostB.users = {
-            alice = {
-              appearance = palette;
+
+          default = {
+            nixos = {
+              system.stateVersion = "26.05";
+              boot.loader.grub.enable = false;
+              fileSystems."/" = {
+                device = "none";
+                fsType = "tmpfs";
+              };
+              home-manager.useGlobalPkgs = true;
+              home-manager.extraSpecialArgs.inputs = inputs;
             };
-            bob = {
-              appearance = palette;
-            };
+            homeManager.home.stateVersion = "26.05";
           };
+
+          aspects = lib.genAttrs bindings (
+            binding:
+            let
+              user = builtins.head (lib.splitString "@" binding);
+            in
+            {
+              user.isNormalUser = true;
+              homeManager = {
+                home.username = user;
+                home.homeDirectory = "/home/${user}";
+              };
+              includes = lib.optionals (builtins.hasAttr binding selected) (
+                let
+                  chosen = selected.${binding} or [ ];
+                in
+                map (name: den.aspects.${name}) chosen
+              );
+            }
+          );
+
         };
-
-        den.default = {
-          nixos = {
-            system.stateVersion = "26.05";
-            boot.loader.grub.enable = false;
-            fileSystems."/" = {
-              device = "none";
-              fsType = "tmpfs";
-            };
-            home-manager.useGlobalPkgs = true;
-            home-manager.extraSpecialArgs.inputs = inputs;
-          };
-          homeManager.home.stateVersion = "26.05";
-        };
-
-        den.aspects = lib.genAttrs bindings (
-          binding:
-          let
-            user = builtins.head (lib.splitString "@" binding);
-          in
-          {
-            user.isNormalUser = true;
-            homeManager = {
-              home.username = user;
-              home.homeDirectory = "/home/${user}";
-            };
-            includes = lib.optionals (builtins.hasAttr binding selected) (
-              let
-                chosen = selected.${binding} or [ ];
-              in
-              map (name: den.aspects.${name}) chosen
-            );
-          }
-        );
-
       }
     )).nixosConfigurations;
 
@@ -104,8 +106,8 @@ let
     configs: hostName: user:
     (host configs hostName).home-manager.users.${user}.home.path;
 
-  cppData = import ../../aspects/languages/cpp-data.nix;
-  contract = import ../../aspects/languages/contract.nix { inherit lib; };
+  cppData = (import ../../aspects/dev/languages/contract.nix { inherit lib; }).defaults.cpp;
+  contract = import ../../aspects/dev/languages/contract.nix { inherit lib; };
   conflictFails =
     contributions: !(builtins.tryEval (builtins.deepSeq (contract.collect contributions) true)).success;
   conflict = contribution: lib.recursiveUpdate cppData contribution;

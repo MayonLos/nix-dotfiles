@@ -34,7 +34,7 @@
 
 ## Mango：逐项决策
 
-实现：[mango.nix](../../aspects/interactive-session/mango.nix)。默认值以
+实现：[mango.nix](../../aspects/desktop/mango-session/mango.nix)。默认值以
 `src/config/option_defs.c` 为准；其 `docs/configuration/miscellaneous.md:26` 把
 `drag_tile_to_tile` 默认写为 0，但实际初始化 `option_defs.c:2470` 为 1，本轮保留实际行为。
 
@@ -67,9 +67,9 @@
 
 ## Noctalia：逐项决策
 
-实现：[noctalia.nix](../../aspects/interactive-session/noctalia.nix)、
-[bar.nix](../../aspects/interactive-session/noctalia/bar.nix)、
-[greeter.nix](../../aspects/interactive-session/greeter.nix)。
+实现：[noctalia.nix](../../aspects/desktop/mango-session/noctalia.nix)、
+[bar.nix](../../aspects/desktop/mango-session/noctalia/bar.nix)、
+[greeter.nix](../../aspects/desktop/greeter/greeter.nix)。
 下表 `schema` 指锁定 `src/config/schema/config_schema.cpp`。
 
 | 项目 | 最终取值 / 取舍 | 锁定证据 |

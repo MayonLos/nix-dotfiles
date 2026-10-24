@@ -8,6 +8,7 @@ generation、store 路径和样本数据只对应当时提交，与当前源码�
 | 文档 | 内容 |
 |---|---|
 | [architecture-design.md](architecture-design.md) | Den 实体、aspect/bundle/inventory 边界 |
+| [operations.md](operations.md) | 求值、构建、应用、回滚、清理与实机验证层级 |
 | [config-ownership.md](config-ownership.md) | 配置文件、可变状态与秘密的写入归属 |
 | [service-policy.md](service-policy.md) | 后台服务的 session 边界与所有权 |
 | [workflow-design.md](workflow-design.md) | 快捷键、tmux、项目工作台与长任务 |
@@ -43,3 +44,5 @@ generation、store 路径和样本数据只对应当时提交，与当前源码�
 | [im-cli-polish-2026-10-24.md](history/im-cli-polish-2026-10-24.md) | 2026-10-24 | 第七轮输入法语法模型、候选框主题与 CLI 配色 |
 | [desktop-polish-2026-10-24.md](history/desktop-polish-2026-10-24.md) | 2026-10-24 | 第九轮 Noctalia/Mango 标题条、视觉刻度与动效 |
 | [software-swap-2026-10-24.md](history/software-swap-2026-10-24.md) | 2026-10-24 | 第十轮软件替换、Neovim 启动页与 Lua LSP 实测 |
+| [architecture-design-v1.md](history/architecture-design-v1.md) | 2026-10 | v2 架构规范取代的旧版全文 |
+| [architecture-v2-execution.md](history/architecture-v2-execution.md) | 2026-10-24 | 第八轮 v2.1 重构、B0 对照、逐文件清单与验证边界 |

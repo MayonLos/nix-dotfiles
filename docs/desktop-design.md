@@ -18,11 +18,11 @@
 
 外观数据与各软件适配遵守 [架构设计](architecture-design.md)：外观拥有语义色、字体等公共数据，Noctalia、Mango、Kitty、Neovim 等各自消费；greeter 是主机的明确选择。最终文件只有一个写入者。本文中的尺寸、布局和时长是设计目标；硬件相关参数以验收结果决定是否保留。
 
-现有配置已经具备丰富的基础：[Noctalia](../aspects/interactive-session/noctalia.nix) 有分组胶囊、媒体频谱、BongoCat、开发工具、通知和锁屏；[Mango](../aspects/interactive-session/mango.nix) 有圆角、浮窗阴影、动画和 monocle 标签栏。实施以这些能力为基础，插件继续从 flake 锁定路径加载，`auto_update = "none"`。
+现有配置已经具备丰富的基础：[Noctalia](../aspects/desktop/mango-session/noctalia.nix) 有分组胶囊、媒体频谱、BongoCat、开发工具、通知和锁屏；[Mango](../aspects/desktop/mango-session/mango.nix) 有圆角、浮窗阴影、动画和 monocle 标签栏。实施以这些能力为基础，插件继续从 flake 锁定路径加载，`auto_update = "none"`。
 
 ## 语义调色板
 
-下表是外观接口的数据，不是所有应用都原样接受的选项名。共享 [Darker palette](../aspects/appearance/onedark-darker.nix) 是颜色依据，Neovim 的丰富高亮消费生成数据，桌面文字增加已有 ANSI bright-white 作为强调前景。
+下表是外观接口的数据，不是所有应用都原样接受的选项名。共享 [Darker palette](../aspects/appearance/appearance/onedark-darker.nix) 是颜色依据，Neovim 的丰富高亮消费生成数据，桌面文字增加已有 ANSI bright-white 作为强调前景。
 
 | 语义 | 值 | 使用位置 |
 | --- | --- | --- |
@@ -281,7 +281,7 @@ One Dark Darker；TokyoNight 只作历史画面参考。实际 Astra 负责本�
 ## 输入法与 CLI 的统一适配（第七轮）
 
 Fcitx5 保持 Rime-Ice 与两张专业补充词表，候选页改为 7 项。万象简体模型由
-[rime/package.nix](../aspects/interactive-session/rime/package.nix) 固定 `LTS` release
+[rime/package.nix](../aspects/desktop/session-support/rime/package.nix) 固定 `LTS` release
 的 2026-10-19 资产和 SHA-256，作为只读 store 链接加入 fcitx5-rime 的 `share/rime-data`。
 上游 `LTS` 标签长期复用，因此可复现性由固定 hash 保证；不在登录时下载或自动换模型。
 语法权重采用[白霜推荐参数](https://github.com/gaboolic/rime-frost#使用语言模型)，启用
@@ -344,7 +344,7 @@ Mango HM 的非空 autostart 是补充同步；C 实现会更早请求 session t
 
 透明表面的实际对比取决于背后的画面，不能直接套用上述数值。用纯白窗口、浅色网页、高细节壁纸与深色壁纸分别置于浮层后方，检查 100% 与实际 150% 缩放下的中文字、数字、选中项。验收目标：必要小字 ≥4.5:1，大字/主要非文本状态指示 ≥3:1；装饰边框不承担唯一状态信息。这些是本项目验收门槛，本文没有声称整桌面已经符合某项无障碍认证。
 
-内屏事实保持 `eDP-1`、2560×1600、165.002 Hz、scale 1.5；约 1707×1067 逻辑工作区。面板 38 在此对应 57 物理像素，2 像素边框对应 3；字体应用自身单位，不机械换算所有 pt 为逻辑 px。`Xft.dpi = 144` 与 Mango `xwayland_ignore_scale = 1` 的现有配对、Mango 会话环境注入以及 Fcitx `PerScreenDPI` 修正按源码/运行行为保留。[桌面常量](../inventory/hosts/nixos-btw/facts.nix)、[Mango 模块](../aspects/interactive-session/mango.nix)、[输入法模块](../aspects/interactive-session/input-method.nix)
+内屏事实保持 `eDP-1`、2560×1600、165.002 Hz、scale 1.5；约 1707×1067 逻辑工作区。面板 38 在此对应 57 物理像素，2 像素边框对应 3；字体应用自身单位，不机械换算所有 pt 为逻辑 px。`Xft.dpi = 144` 与 Mango `xwayland_ignore_scale = 1` 的现有配对、Mango 会话环境注入以及 Fcitx `PerScreenDPI` 修正按源码/运行行为保留。[桌面常量](../inventory/hosts/nixos-btw/facts.nix)、[Mango 模块](../aspects/desktop/mango-session/mango.nix)、[输入法模块](../aspects/desktop/session-support/input-method.nix)
 
 外屏连接器、分辨率、刷新率与物理尺寸尚未取得；实施时读取真实输出，按 EDID/connector 配置。通常 1080p/1440p 外屏从 1.0、4K 从 1.5 或 2.0 做现场字号比较，这些是测试起点，不是硬件事实。不得直接复制内屏 scale 1.5 到所有外屏。Noctalia 每屏使用相同逻辑尺寸，必要时以 `bar.main.monitor.<id>` 覆盖 `start/center/end`；窄屏先折叠工具组，完整功能仍由原生面板/launcher 可达。
 

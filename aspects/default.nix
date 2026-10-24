@@ -1,24 +1,35 @@
 _: {
   # Explicit registry: resources, helpers and recipes are never scanned as modules.
   imports = [
-    ./appearance
-    ./default-tools
-    ./workspace-task
-    ./project-workbench
-    ./languages
-    ./system
-    ./command-line
-    ./editing
-    ./interactive-session
-    ./embedded-workbench
-    ./ai-workbench
-    ./firefox
-    ./communication
-    ./documents
-    ./file-manager
-    ./media
-    ./gaming
-    ./local-containers
-    ./local-virtual-machines
+    ./appearance/avatar
+    ./appearance/appearance
+    ./system/default-tools
+    ./workspace/workspace-task
+    ./workspace/project-workbench
+    ./dev/languages
+    ./system/maintenance
+    ./network/laptop-network
+    ./network/remote-access
+    ./hardware/legion-laptop
+    ./cli/shell
+    ./cli/terminal
+    ./dev/neovim
+    ./dev/vscode
+    ./dev/jetbrains
+    ./dev/editor-runtime
+    ./desktop/session-support
+    ./desktop/mango-session
+    ./desktop/xorg-session
+    ./desktop/greeter
+    ./dev/embedded
+    ./dev/ai-agents
+    ./apps/firefox
+    ./apps/communication
+    ./apps/documents
+    ./apps/file-manager
+    ./apps/media
+    ./apps/gaming
+    ./dev/containers
+    ./dev/virtual-machines
   ];
 }

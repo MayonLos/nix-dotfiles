@@ -150,7 +150,7 @@
 | 总 closure（NAR 大小） | 64,511,171,856 → 65,747,263,928 字节；60.08 → 61.23 GiB，增加 1.15 GiB（1.92%） |
 
 以上内核与驱动属于本轮历史产物；后续源码已改为 stable 默认 LTS 和同源 NVIDIA，
-并启用 scx_lavd，见[第四轮记录](#第四轮-lts-内核stable-nvidia-与-sched-ext)。构建和实际启动状态分别记录。
+并启用 scx_lavd，见[第四轮记录](#第四轮lts-内核stable-nvidia-与-sched-ext)。构建和实际启动状态分别记录。
 
 显著增加项：DSH +248.1 MiB，Python 汇总 +137.1 MiB（新增 3.14.8 路径）、
 Perl 汇总 +55.2 MiB；此外有多份运行库因不同输入 pin 并存。

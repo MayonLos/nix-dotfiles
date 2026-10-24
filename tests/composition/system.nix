@@ -10,21 +10,23 @@ let
       { den, ... }: {
         imports = [
           inputs.den.flakeModule
-          ../../aspects/system
+          ../../aspects
         ];
-        den.systems = [ system ];
-        den.hosts.${system}.headless-fixture = { };
-        den.aspects.headless-fixture = {
-          includes = [
-            den.aspects.system-maintenance
-          ]
-          ++ inputs.nixpkgs.lib.optional leak den.aspects.laptop-network;
-          nixos = {
-            system.stateVersion = "26.05";
-            boot.loader.grub.enable = false;
-            fileSystems."/" = {
-              device = "none";
-              fsType = "tmpfs";
+        den = {
+          systems = [ system ];
+          hosts.${system}.headless-fixture = { };
+          aspects.headless-fixture = {
+            includes = [
+              den.aspects.system-maintenance
+            ]
+            ++ inputs.nixpkgs.lib.optional leak den.aspects.laptop-network;
+            nixos = {
+              system.stateVersion = "26.05";
+              boot.loader.grub.enable = false;
+              fileSystems."/" = {
+                device = "none";
+                fsType = "tmpfs";
+              };
             };
           };
         };

@@ -2,7 +2,7 @@
 
 2026-10-22 按本机 Vaults 的实际插件与运行状态整理。当前 Obsidian 应用为 1.14.4，
 安装器为 Nix 提供的 1.13.7；应用后台更新不等于重建或改变 Nix 包声明。
-Obsidian 由 `aspects/documents/default.nix` 安装；Vault 内插件和设置由应用管理，
+Obsidian 由 `aspects/apps/documents/default.nix` 安装；Vault 内插件和设置由应用管理，
 不把笔记、插件状态或账户数据放进 Nix store。
 
 ## 保留的插件

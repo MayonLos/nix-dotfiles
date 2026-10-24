@@ -12,7 +12,7 @@
 | 编辑器窗口与功能 | `Ctrl+h/j/k/l`、Space leader | 保留现有 Neovim 行为；不跨层猜测当前应用然后转发按键 |
 | shell 与 TUI | 原应用按键 | `Alt+b/f`、`Ctrl+r`、Esc 等正常到达应用 |
 
-迁移前 tmux 的无前缀 `M-h/j/k/l`、`M-n/p`、`M-Tab`、`M-1…9` 会在 pane 内应用收到之前截获按键；现已改为前缀操作。`Ctrl+a Ctrl+a` 仍发送字面 Ctrl+a 给 shell；复制、选区和窗口管理不自动互相接管。依据当前 [tmux 配置](../aspects/command-line/tmux.nix) 和 [tmux 官方入门](https://github.com/tmux/tmux/wiki/Getting-Started)。
+迁移前 tmux 的无前缀 `M-h/j/k/l`、`M-n/p`、`M-Tab`、`M-1…9` 会在 pane 内应用收到之前截获按键；现已改为前缀操作。`Ctrl+a Ctrl+a` 仍发送字面 Ctrl+a 给 shell；复制、选区和窗口管理不自动互相接管。依据当前 [tmux 配置](../aspects/cli/shell/tmux.nix) 和 [tmux 官方入门](https://github.com/tmux/tmux/wiki/Getting-Started)。
 
 ## 桌面主要操作
 
@@ -63,7 +63,7 @@ Noctalia 设置、portal 文件选择及 Swayimg 使用相对输出尺寸；Thun
 父窗口关联、模态与 IDE 弹窗沿用 Mango/应用逻辑；未用宽泛规则让整个 IDE 浮动或禁止聚焦。
 精确到父窗口中心、跨屏 DPI 无缝恢复和所有应用的焦点策略不是当前实现承诺。
 
-现有进阶操作（master 数量/比例、scroller 比例、隐藏边距、特定显示器开关等）继续保留，归入帮助的进阶分组；只对重复或冲突的入口去重，禁止因未列入主表就静默删除。完整来源是 [Mango 配置](../aspects/interactive-session/mango.nix)。
+现有进阶操作（master 数量/比例、scroller 比例、隐藏边距、特定显示器开关等）继续保留，归入帮助的进阶分组；只对重复或冲突的入口去重，禁止因未列入主表就静默删除。完整来源是 [Mango 配置](../aspects/desktop/mango-session/mango.nix)。
 
 ## 截图、文件和剪贴板
 
@@ -76,7 +76,7 @@ Noctalia 设置、portal 文件选择及 Swayimg 使用相对输出尺寸；Thun
 | 截图文件位置 | 应用保存动作 | 显示真实目标路径；用户已选路径不被激活脚本重置 |
 | 打开 / 看图 | MIME 默认 | Thunar；图片 Swayimg；PDF Zathura 默认、Okular 可选；文本图形默认 VS Code，CLI 默认 Neovim |
 
-保留 Thunar 的“在此打开终端”“复制为图片”“复制路径”“粘贴剪贴板图片”“粘贴为链接”。文件 URI、路径文字、图片像素是三种不同用途，不能为了减少代码把它们合并成一种复制。迁移终端入口时保持当前文件夹作为 cwd，路径包含空格/中文/引号仍正常，不经拼接 shell 字符串。当前实现见 [文件动作](../aspects/file-manager/thunar-actions.nix)、[终端入口](../aspects/file-manager/thunar-terminal.nix)、[截图](../aspects/interactive-session/screenshot.nix)。
+保留 Thunar 的“在此打开终端”“复制为图片”“复制路径”“粘贴剪贴板图片”“粘贴为链接”。文件 URI、路径文字、图片像素是三种不同用途，不能为了减少代码把它们合并成一种复制。迁移终端入口时保持当前文件夹作为 cwd，路径包含空格/中文/引号仍正常，不经拼接 shell 字符串。当前实现见 [文件动作](../aspects/apps/file-manager/thunar-actions.nix)、[终端入口](../aspects/apps/file-manager/thunar-terminal.nix)、[截图](../aspects/desktop/mango-session/screenshot.nix)。
 
 剪贴板历史只由 Noctalia 管理；现有 Wayland/X11 桥接不是第二个历史后端，其退出与轮询策略按 [服务设计](service-policy.md) 核验。保留 WeChat/XWayland 与原生 Wayland 间文字、图片互通。锁屏和秘密复制行为先按锁定实现验证，不声称所有密码管理器内容都会自动排除；不输出剪贴板内容到测试日志。
 
@@ -95,7 +95,7 @@ Kitty 新窗口默认进入普通 shell，不自动套 tmux。用户需要保持
 | 离开但不结束 | `d` |
 | 重载 | `r` |
 
-tmux 会话恢复继续保留布局与编辑会话，禁止保存 pane 滚屏文本。恢复不等于重启数据库、容器、SSH 或付费 AI 任务；不能把“恢复窗口”实现成无条件重放历史命令。见 [现有恢复设置](../aspects/command-line/tmux.nix)。
+tmux 会话恢复继续保留布局与编辑会话，禁止保存 pane 滚屏文本。恢复不等于重启数据库、容器、SSH 或付费 AI 任务；不能把“恢复窗口”实现成无条件重放历史命令。见 [现有恢复设置](../aspects/cli/shell/tmux.nix)。
 
 Zsh 的 `Ctrl+R` 由 Atuin 搜索本地命令历史，使用 compact 视图、全局默认筛选，并保留上箭头的原生 shell 搜索行为；候选需要再次按 Enter 才会执行。Atuin 同步与更新检查关闭。fzf 保留 `Ctrl+T` 文件选择和 `Alt+C` 目录选择。Atuin 数据库属于运行态用户数据，首次配置完成后如需导入旧历史，由用户在应用后显式执行；配置构建与隔离按键检查不会导入或读取真实历史。
 

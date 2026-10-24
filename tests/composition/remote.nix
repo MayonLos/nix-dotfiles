@@ -10,30 +10,32 @@ let
           ../../aspects
           ../../bundles
         ];
-        den.systems = [ system ];
-        den.schema.user.classes = [ "homeManager" ];
-        den.hosts.${system}.fixture.users.alice.appearance =
-          import ../../aspects/appearance/onedark-darker.nix;
-        den.aspects.fixture = {
-          includes = [ den.aspects.system-maintenance ];
-          nixos = {
-            system.stateVersion = "26.05";
-            boot.loader.grub.enable = false;
-            fileSystems."/" = {
-              device = "none";
-              fsType = "tmpfs";
+        den = {
+          systems = [ system ];
+          schema.user.classes = [ "homeManager" ];
+          hosts.${system}.fixture.users.alice.appearance =
+            import ../../aspects/appearance/appearance/onedark-darker.nix;
+          aspects.fixture = {
+            includes = [ den.aspects.system-maintenance ];
+            nixos = {
+              system.stateVersion = "26.05";
+              boot.loader.grub.enable = false;
+              fileSystems."/" = {
+                device = "none";
+                fsType = "tmpfs";
+              };
+              home-manager.useGlobalPkgs = true;
+              home-manager.extraSpecialArgs = { inherit inputs; };
             };
-            home-manager.useGlobalPkgs = true;
-            home-manager.extraSpecialArgs = { inherit inputs; };
           };
-        };
-        den.aspects."alice@fixture" = {
-          includes = [ den.aspects.remote-workspace ];
-          user.isNormalUser = true;
-          homeManager.home = {
-            username = "alice";
-            homeDirectory = "/home/alice";
-            stateVersion = "26.05";
+          aspects."alice@fixture" = {
+            includes = [ den.aspects.remote-workspace ];
+            user.isNormalUser = true;
+            homeManager.home = {
+              username = "alice";
+              homeDirectory = "/home/alice";
+              stateVersion = "26.05";
+            };
           };
         };
       }
