@@ -47,12 +47,23 @@ let
       inherit palette;
     }
   );
+  avatarMetadata = pkgs.writeText "avatar-contract.json" (
+    builtins.toJSON {
+      homeSource = builtins.toString home.xdg.dataFile."nix-dotfiles/mayon-avatar.png".source;
+      hostSource = builtins.toString host.environment.etc."nix-dotfiles/mayon-avatar.png".source;
+      sticker = home.programs.noctalia.settings.lockscreen_widgets.widget.lockscreen-widget-avatar;
+    }
+  );
+  homeAvatarActivation = pkgs.writeText "seed-mayon-avatar.sh" home.home.activation.seedMayonAvatar.data;
+  hostAvatarActivation = pkgs.writeText "accountsservice-mayon-avatar.sh" host.system.activationScripts.mayonAccountsServiceAvatar.text;
 in
 pkgs.runCommand "interactive-session-config"
   {
     nativeBuildInputs = [
       python
       pkgs.fontconfig
+      pkgs.gawk
+      pkgs.coreutils
     ];
   }
   ''
@@ -74,6 +85,140 @@ pkgs.runCommand "interactive-session-config"
     fc-match -f '%{family}\n' '${palette.fonts.sans}:lang=zh-cn:charset=4e2d' | tee "$out/cjk-fallback.txt"
     grep -Fx '${palette.fonts.cjk}' "$out/cjk-fallback.txt"
     python3 ${./resources}/test_reconcile_overrides.py -v > "$out/ownership.log" 2>&1 || { cat "$out/ownership.log"; exit 1; }
+    python3 - ${avatarMetadata} <<'PY'
+    import json, sys
+    from pathlib import Path
+    data = json.load(open(sys.argv[1]))
+    assert data["homeSource"] == data["hostSource"], data
+    assert Path(data["homeSource"]).is_file()
+    widget = data["sticker"]
+    assert widget["type"] == "sticker", widget
+    assert widget["box_width"] == 80.0 and widget["box_height"] == 80.0, widget
+    assert widget["settings"]["image_path"] == "/home/mayon/.face", widget
+    PY
+
+    fixture="$TMPDIR/avatar-activation"
+    mkdir -p "$fixture"
+    run_home_activation() {
+      local home_dir="$1" dry_run="''${2:-}"
+      mkdir -p "$home_dir"
+      sed "s|/home/mayon|$home_dir|g" ${homeAvatarActivation} > "$fixture/home-activation.sh"
+      HOME="$home_dir" DRY_RUN="$dry_run" bash -c '
+        run() { [ "''${DRY_RUN:-}" = 1 ] && return 0; "$@"; }
+        source "$1"
+      ' _ "$fixture/home-activation.sh"
+    }
+    data_home="$fixture/home/.local/share/nix-dotfiles"
+    mkdir -p "$data_home"
+    printf first-avatar > "$fixture/avatar-first.png"
+    printf second-avatar > "$fixture/avatar-second.png"
+    ln -s "$fixture/avatar-first.png" "$data_home/mayon-avatar.png"
+    run_home_activation "$fixture/home"
+    face="$fixture/home/.face"
+    test -L "$face"
+    test "$(readlink "$face")" = "$data_home/mayon-avatar.png"
+    run_home_activation "$fixture/home"
+    test "$(readlink "$face")" = "$data_home/mayon-avatar.png"
+    ln -sfn "$fixture/avatar-second.png" "$data_home/mayon-avatar.png"
+    test "$(cat "$face")" = second-avatar
+
+    printf custom-regular > "$fixture/custom-regular"
+    mkdir -p "$fixture/custom-home"
+    cp "$fixture/custom-regular" "$fixture/custom-home/.face"
+    cp "$fixture/custom-home/.face" "$fixture/custom-before"
+    run_home_activation "$fixture/custom-home"
+    cmp "$fixture/custom-before" "$fixture/custom-home/.face"
+
+    mkdir -p "$fixture/custom-link-home"
+    ln -s "$fixture/custom-regular" "$fixture/custom-link-home/.face"
+    run_home_activation "$fixture/custom-link-home"
+    test "$(readlink "$fixture/custom-link-home/.face")" = "$fixture/custom-regular"
+    mkdir -p "$fixture/dangling-home"
+    ln -s "$fixture/missing-custom-target" "$fixture/dangling-home/.face"
+    run_home_activation "$fixture/dangling-home"
+    test "$(readlink "$fixture/dangling-home/.face")" = "$fixture/missing-custom-target"
+    mkdir -p "$fixture/dry-home"
+    run_home_activation "$fixture/dry-home" 1
+    test ! -e "$fixture/dry-home/.face" && test ! -L "$fixture/dry-home/.face"
+
+    run_host_activation() {
+      local accounts_root="$1"
+      mkdir -p "$fixture"
+      sed "s|/var/lib/AccountsService|$accounts_root|g" ${hostAvatarActivation} > "$fixture/host-activation.sh"
+      bash "$fixture/host-activation.sh"
+    }
+    account_root="$fixture/AccountsService"
+    icon_file="$account_root/icons/mayon"
+    users_file="$account_root/users/mayon"
+    run_host_activation "$account_root"
+    test -L "$icon_file"
+    test "$(readlink "$icon_file")" = /etc/nix-dotfiles/mayon-avatar.png
+    grep -Fx "Icon=$icon_file" "$users_file" >/dev/null
+    cp "$users_file" "$fixture/users-first"
+    run_host_activation "$account_root"
+    cmp "$fixture/users-first" "$users_file"
+
+    printf custom-icon > "$fixture/custom-icon"
+    rm "$icon_file"
+    cp "$fixture/custom-icon" "$icon_file"
+    run_host_activation "$account_root"
+    cmp "$fixture/custom-icon" "$icon_file"
+    rm "$icon_file"
+    ln -s "$fixture/custom-icon" "$icon_file"
+    run_host_activation "$account_root"
+    test "$(readlink "$icon_file")" = "$fixture/custom-icon"
+
+    rm "$users_file"
+    cat > "$users_file" <<'INI'
+    [Other]
+    Name=keep-other
+    [User]
+    Name=Mayon
+    INI
+    run_host_activation "$account_root"
+    test "$(grep -Fc '[User]' "$users_file")" = 1
+    grep -Fx 'Name=keep-other' "$users_file" >/dev/null
+    grep -Fx 'Name=Mayon' "$users_file" >/dev/null
+    grep -Fx "Icon=$icon_file" "$users_file" >/dev/null
+
+    printf '[User]\nName=Mayon\nIcon =    \n[Other]\nKeep=metadata\n' > "$users_file"
+    run_host_activation "$account_root"
+    test "$(grep -Fc '[User]' "$users_file")" = 1
+    grep -Fx "Icon=$icon_file" "$users_file" >/dev/null
+    grep -Fx 'Keep=metadata' "$users_file" >/dev/null
+
+    printf '[Other]\nKeep=bytes\n[User]\nName=Mayon\nIcon = /custom/avatar with spaces.png\nNoFinalNewline=preserve' > "$users_file"
+    cp "$users_file" "$fixture/custom-users-before"
+    run_host_activation "$account_root"
+    cmp "$fixture/custom-users-before" "$users_file"
+
+    rm "$users_file"
+    printf '[User]\nName=Mayon\n' > "$fixture/users-target"
+    ln -s "$fixture/users-target" "$users_file"
+    run_host_activation "$account_root"
+    test "$(readlink "$users_file")" = "$fixture/users-target"
+    grep -Fx 'Name=Mayon' "$fixture/users-target" >/dev/null
+    ! grep -q '^Icon=' "$fixture/users-target"
+
+    linked_root="$fixture/linked-root"
+    mkdir -p "$fixture/real-accounts"
+    ln -s "$fixture/real-accounts" "$linked_root"
+    run_host_activation "$linked_root"
+    test ! -e "$fixture/real-accounts/icons/mayon"
+
+    icon_link_root="$fixture/icon-link-root"
+    mkdir -p "$icon_link_root/AccountsService/users" "$fixture/real-icons"
+    ln -s "$fixture/real-icons" "$icon_link_root/AccountsService/icons"
+    run_host_activation "$icon_link_root/AccountsService"
+    test ! -e "$fixture/real-icons/mayon"
+
+    users_link_root="$fixture/users-link-root"
+    mkdir -p "$users_link_root/AccountsService/icons" "$fixture/real-users"
+    ln -s "$fixture/real-users" "$users_link_root/AccountsService/users"
+    run_host_activation "$users_link_root/AccountsService"
+    test ! -e "$users_link_root/AccountsService/icons/mayon"
+    test ! -e "$fixture/real-users/mayon"
+
     python3 - ${metadata} ${home.xdg.configFile."noctalia/palettes/One-Dark-Darker.json".source} <<'PY'
     import json, re, sys
     from pathlib import Path

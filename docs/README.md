@@ -38,7 +38,4 @@ generation、store 路径和样本数据只对应当时提交，与当前源码�
 | [repository-audit-2026-10-20.md](history/repository-audit-2026-10-20.md) | 2026-10-20 | 配置审核与 DSH 接线 |
 | [execution-handoff.md](history/execution-handoff.md) | 2026-10-19–20 | 历次对话交接 |
 | [repository-cleanup-2026-10-23.md](history/repository-cleanup-2026-10-23.md) | 2026-10-23 | 提交已应用改动、归档分支与文档 |
-| [optimization-2026-10-24.md](history/optimization-2026-10-24.md) | 2026-10-24 | 项目入口清理、空 plugdev 组、输入去重与更新 |
-| [boot-wallpaper-2026-10-24.md](history/boot-wallpaper-2026-10-24.md) | 2026-10-24 | systemd initrd、Plymouth、TTY 与冷色调壁纸轮换 |
-| [fonts-icons-atuin-2026-10-24.md](history/fonts-icons-atuin-2026-10-24.md) | 2026-10-24 | Maple / Inter、蓝色 Papirus、Classic 指针与本地 atuin |
-| [kernel-scx-2026-10-24.md](history/kernel-scx-2026-10-24.md) | 2026-10-24 | LTS 内核、同源 stable NVIDIA 与 scx_lavd 默认调度 |
+| [optimization-2026-10-24.md](history/optimization-2026-10-24.md) | 2026-10-24 | 五轮仓库与系统优化：依赖、启动、桌面、内核、登录与头像 |

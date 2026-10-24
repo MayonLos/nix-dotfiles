@@ -131,11 +131,18 @@
         seedFile.mkActivation "${config.xdg.configHome}/${name}/${name}.conf" {
           source = mkConf name;
         };
+      qt6ctConfig = "${config.xdg.configHome}/qt6ct/qt6ct.conf";
     in
     {
       seedQt6ctConfig = seed "qt6ct";
       migrateQt6ctFonts = lib.hm.dag.entryAfter [ "seedQt6ctConfig" ] ''
-        run ${pkgs.python3}/bin/python3 ${migrateFonts} ${lib.escapeShellArg "${config.xdg.configHome}/qt6ct/qt6ct.conf"}
+        qt6ct_config=${lib.escapeShellArg qt6ctConfig}
+        if [ -f "$qt6ct_config" ] && [ ! -L "$qt6ct_config" ] && {
+          grep -Fq -- 'general=Noto Sans CJK SC,11,-1,5,400,0,0,0,0,0' "$qt6ct_config" ||
+          grep -Fq -- 'fixed=JetBrainsMono Nerd Font,11,-1,5,400,0,0,0,0,0' "$qt6ct_config"
+        }; then
+          run ${pkgs.python3}/bin/python3 ${migrateFonts} "$qt6ct_config"
+        fi
       '';
       seedQt6ctPalette = seedFile.mkActivation colorScheme { source = initialPalette; };
     };
