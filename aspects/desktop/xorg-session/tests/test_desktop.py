@@ -18,6 +18,18 @@ import time
 programs = json.loads(Path(sys.argv[1]).read_text())
 output = Path(sys.argv[2])
 m = json.loads(Path(sys.argv[3]).read_text())
+palette = programs["palette"]
+assert programs["wallpaper"] == m["wallpaper"] == m["greeterWallpaper"]
+config_header = Path(programs["dwmConfig"]).read_text()
+for key, role in {
+    "selfgcolor": "blue", "selbgcolor": "selection", "selbordercolor": "blue",
+    "titleselfgcolor": "blue", "titleselbgcolor": "selection", "titleselbordercolor": "blue",
+    "tagsselfgcolor": "blue", "tagsselbgcolor": "selection", "tagsselbordercolor": "blue",
+}.items():
+    assert re.search(rf'static char {key}\[\]\s*= "{re.escape(palette[role])}";', config_header), key
+dmenu_config = Path(programs["dmenu"]).read_text()
+assert re.search(rf"-sb\s+'{re.escape(palette['selection'])}'", dmenu_config)
+assert re.search(rf"-sf\s+'{re.escape(palette['blue'])}'", dmenu_config)
 assert m['defaultSession'] == 'Mango'
 assert m['xserver'] and m['startx'] and not m['generatedXinitrc'] and m['pam']
 assert not m['rofiEnabled'], 'B uses dmenu; the old Rofi renderer must be absent'
@@ -96,7 +108,7 @@ def atom(name):
 
 
 def window(name, klass, dialog=False, transient_for=None, width=640, height=420):
-    result = x.XCreateSimpleWindow(display, root, 0, 0, width, height, 0, 0, 0x1F2329)
+    result = x.XCreateSimpleWindow(display, root, 0, 0, width, height, 0, 0, int(palette["bg"].removeprefix("#"), 16))
     wm_class = (klass.lower() + "\0" + klass + "\0").encode()
     x.XChangeProperty(display, result, atom("WM_CLASS"), atom("STRING"), 8, 0, wm_class, len(wm_class))
     x.XStoreName(display, result, name.encode())
@@ -196,7 +208,7 @@ try:
     assert dunst.poll() is None, "Dunst failed to parse/start on isolated D-Bus"
     subprocess.run(["dbus-send", "--session", "--print-reply", "--dest=org.freedesktop.Notifications", "/org/freedesktop/Notifications", "org.freedesktop.Notifications.GetServerInformation"], check=True, stdout=(output / "notification-server.txt").open("w"), timeout=10)
     subprocess.run([programs["feh"], "--no-fehbg", "--bg-fill", programs["wallpaper"]], check=True)
-    subprocess.run([programs["xsetroot"], "-name", "^c#7a818e^^d^ 45%  ·  BAT 80%  ·  ^c#4fa6ed^12:00^d^"], check=True)
+    subprocess.run([programs["xsetroot"], "-name", f"^c{palette['muted']}^^d^ 45%  ·  BAT 80%  ·  ^c{palette['blue']}^12:00^d^"], check=True)
     # Render the production menu but cancel it: none of its actions run.
     menu = start("menu-preview", [programs["menu"]])
     eventually(lambda: subprocess.run([programs["xdotool"], "search", "--onlyvisible", "--class", "dmenu"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0, "production menu did not map")

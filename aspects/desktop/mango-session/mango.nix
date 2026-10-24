@@ -11,6 +11,7 @@ let
   inherit (hostFacts) display;
   reducedMotion = palette.reducedMotion or false;
   color = value: "0x${lib.removePrefix "#" value}ff";
+  alphaColor = value: alpha: "0x${lib.removePrefix "#" value}${alpha}";
   helpPath = "${config.xdg.dataHome}/mango/keybindings.txt";
   renderBind =
     row:
@@ -131,14 +132,14 @@ in
       shadows_size = 10;
       shadows_blur = 20;
       shadows_position_x = 0;
-      shadows_position_y = 5;
-      shadows_color = "0x00000059";
+      shadows_position_y = 6;
+      shadows_color = alphaColor palette.black "52";
 
       # Comparing multiple documents should not change their text contrast.
       # The accent border identifies focus without tinting the other clients.
       dim_enable = 0;
-      dim_focused_color = "0x00000000";
-      dim_unfocused_color = "0x00000010";
+      dim_focused_color = alphaColor palette.black "00";
+      dim_unfocused_color = alphaColor palette.black "10";
 
       # Include the fallback canvas and drag/split hints in the same palette.
       root_color = color palette.bg;
@@ -153,10 +154,10 @@ in
       overlay_color = "${color palette.purple}";
       maximized_screen_color = "${color palette.blue}";
       border_radius = 12;
-      gap_inner_horizontal = 6;
-      gap_inner_vertical = 6;
-      gap_outer_horizontal = 10;
-      gap_outer_vertical = 10;
+      gap_inner_horizontal = 8;
+      gap_inner_vertical = 8;
+      gap_outer_horizontal = 16;
+      gap_outer_vertical = 16;
       smart_gaps = 0;
       no_border_when_single = 0;
       no_radius_when_single = 0;
@@ -170,12 +171,12 @@ in
       animation_fade_out = 1;
       fade_in_begin_opacity = 0.5;
       fade_out_begin_opacity = 0.5;
-      zoom_initial_ratio = 0.94;
-      zoom_end_ratio = 0.96;
+      zoom_initial_ratio = 0.96;
+      zoom_end_ratio = 0.98;
       animation_duration_move = 180;
-      animation_duration_open = 240;
-      animation_duration_tag = 240;
-      animation_duration_close = 160;
+      animation_duration_open = 220;
+      animation_duration_tag = 220;
+      animation_duration_close = 140;
       animation_duration_focus = 0;
       # A smooth ease-out settles opens/moves quickly; short ease-in closes
       # leave promptly. No overshoot or focus-only animation.
@@ -225,8 +226,8 @@ in
       jump_labels = "HJKLASDFGQWERTYUIOPZXCVBNM";
       # Preserve numbered tag navigation without wrapping at either end.
       tag_carousel = 0;
-      overview_gap_inner = 12;
-      overview_gap_outer = 24;
+      overview_gap_inner = 16;
+      overview_gap_outer = 32;
       scratchpad_width_ratio = 0.78;
       scratchpad_height_ratio = 0.78;
       single_scratchpad = 1;
@@ -244,51 +245,51 @@ in
       # deck_tab_mode stays at its default because deck is outside circle_layout.
       monocle_tab_mode = 1;
       tab_bar_height = 32;
-      tab_bar_decorate_font_desc = "${palette.fonts.sans} 10";
+      tab_bar_decorate_font_desc = "${palette.fonts.sans} 10.5";
       tab_bar_decorate_fg_color = "${color palette.fg}";
       tab_bar_decorate_bg_color = "${color palette.deep}";
-      tab_bar_decorate_focus_fg_color = "${color palette.black}";
-      tab_bar_decorate_focus_bg_color = "${color palette.blue}";
+      tab_bar_decorate_focus_fg_color = "${color palette.blue}";
+      tab_bar_decorate_focus_bg_color = "${color palette.selection}";
       tab_bar_decorate_border_color = "${color palette.border}";
       tab_bar_decorate_border_width = 1;
       tab_bar_decorate_corner_radius = 8;
-      tab_bar_decorate_padding_x = 6;
-      tab_bar_decorate_padding_y = 2;
+      tab_bar_decorate_padding_x = 8;
+      tab_bar_decorate_padding_y = 4;
       group_bar_height = 32;
       group_bar_close_button_enable = 0;
       group_bar_button_size = 16;
       group_bar_button_margin = 8;
       group_bar_button_color = color palette.red;
-      group_bar_decorate_font_desc = "${palette.fonts.sans} 10";
+      group_bar_decorate_font_desc = "${palette.fonts.sans} 10.5";
       group_bar_decorate_fg_color = "${color palette.fg}";
       group_bar_decorate_bg_color = "${color palette.deep}";
-      group_bar_decorate_focus_fg_color = "${color palette.black}";
-      group_bar_decorate_focus_bg_color = "${color palette.purple}";
+      group_bar_decorate_focus_fg_color = "${color palette.blue}";
+      group_bar_decorate_focus_bg_color = "${color palette.selection}";
       group_bar_decorate_border_color = "${color palette.border}";
       group_bar_decorate_border_width = 1;
       group_bar_decorate_corner_radius = 8;
-      group_bar_decorate_padding_x = 6;
-      group_bar_decorate_padding_y = 2;
-      jump_label_decorate_font_desc = "${palette.fonts.sans} 10";
+      group_bar_decorate_padding_x = 8;
+      group_bar_decorate_padding_y = 4;
+      jump_label_decorate_font_desc = "${palette.fonts.mono} Bold 12";
       jump_label_decorate_fg_color = "${color palette.brightFg}";
-      jump_label_decorate_bg_color = "${color palette.selection}";
-      jump_label_decorate_focus_fg_color = "${color palette.black}";
-      jump_label_decorate_focus_bg_color = "${color palette.blue}";
+      jump_label_decorate_bg_color = "${color palette.deep}";
+      jump_label_decorate_focus_fg_color = "${color palette.blue}";
+      jump_label_decorate_focus_bg_color = "${color palette.selection}";
       jump_label_decorate_border_color = "${color palette.border}";
       jump_label_decorate_border_width = 1;
       jump_label_decorate_corner_radius = 8;
-      jump_label_decorate_padding_x = 6;
-      jump_label_decorate_padding_y = 2;
+      jump_label_decorate_padding_x = 8;
+      jump_label_decorate_padding_y = 4;
 
       # overcircle/switcher titles otherwise inherit upstream green/Gruvbox.
       # Use the same type, outline and focused blue as the monocle tab bar.
       title_message_bar_height = 48;
       title_message_bar_gap = 12;
-      title_message_bar_decorate_font_desc = "${palette.fonts.sans} 10";
+      title_message_bar_decorate_font_desc = "${palette.fonts.sans} 10.5";
       title_message_bar_decorate_fg_color = color palette.fg;
       title_message_bar_decorate_bg_color = color palette.deep;
-      title_message_bar_decorate_focus_fg_color = color palette.black;
-      title_message_bar_decorate_focus_bg_color = color palette.blue;
+      title_message_bar_decorate_focus_fg_color = color palette.blue;
+      title_message_bar_decorate_focus_bg_color = color palette.selection;
       title_message_bar_decorate_border_color = color palette.border;
       title_message_bar_decorate_border_width = 1;
       title_message_bar_decorate_corner_radius = 8;

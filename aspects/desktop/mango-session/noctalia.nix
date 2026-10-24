@@ -17,20 +17,10 @@ let
   reducedMotion = palette.reducedMotion or false;
   logicalWidth = hostFacts.display.width / hostFacts.display.scale;
   logicalHeight = hostFacts.display.height / hostFacts.display.scale;
-  wallpaperDir = pkgs.linkFarm "noctalia-cool-wallpapers" (
-    map
-      (name: {
-        name = "wallpaper-${name}.png";
-        path = ../../appearance/appearance/resources/wallpaper/wallpaper-${name}.png;
-      })
-      [
-        "002"
-        "005"
-        "008"
-        "009"
-        "011"
-      ]
-  );
+  wallpapers = import ../../appearance/appearance/resources/wallpaper/package.nix {
+    inherit pkgs palette;
+  };
+  wallpaperRoot = "${config.home.homeDirectory}/Pictures/Wallpapers";
   desktop = {
     primaryOutput = hostFacts.display.name;
   };
@@ -46,7 +36,7 @@ let
       --require-no-noctalia
   '';
 
-  defaultWallpaperPath = "${../../appearance/appearance/resources/wallpaper/wallpaper-005.png}";
+  defaultWallpaperPath = wallpapers.default;
 
   distroLogo = "${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg";
 
@@ -79,6 +69,10 @@ let
     (import ./session-environment.nix { inherit lib; })
       config.systemd.user.sessionVariables;
 
+  noctaliaPackage = pkgs.local.noctalia.overrideAttrs (old: {
+    patches = (old.patches or [ ]) ++ [ ./noctalia/astra-selection.patch ];
+  });
+
 in
 {
   imports = [
@@ -87,19 +81,49 @@ in
   ];
 
   config = {
-    # External dependencies declared by the enabled plugins that this machine
-    # would otherwise be missing. Plugins never install their own dependencies
-    # and just silently do nothing when one is absent -- no error, no hint.
-    # Keep this in sync when adding or removing plugins; every entry maps to
-    # one specific plugin.
-    home.packages = with pkgs; [
-      tmuxp # tmux-provider (tmux itself lives in tmux.nix)
-      evtest # bongocat keyboard reactivity; mayon already belongs to input
-    ];
+    xdg.dataFile."applications/nvim.desktop".text = ''
+      [Desktop Entry]
+      Type=Application
+      Name=Neovim
+      Comment=Terminal text editor
+      Exec=kitty --class=Neovim nvim
+      Icon=utilities-terminal
+      Terminal=false
+      Categories=Development;TextEditor;
+      StartupWMClass=Neovim
+    '';
+
+    # HM owns this one symlink; user pictures stay outside the store and Git.
+    home = {
+      file."Pictures/Wallpapers/managed".source = wallpapers.directory;
+      activation.wallpaperLocalDirectory = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+        local_wallpapers=${lib.escapeShellArg "${wallpaperRoot}/local"}
+        if [ -e "$local_wallpapers" ] || [ -L "$local_wallpapers" ]; then
+          if [ ! -d "$local_wallpapers" ]; then
+            echo "Wallpapers/local exists and is not a directory; preserving it" >&2
+            exit 1
+          fi
+        else
+          run mkdir -p -- "$local_wallpapers"
+        fi
+      '';
+
+      # External dependencies declared by the enabled plugins that this machine
+      # would otherwise be missing. Plugins never install their own dependencies
+      # and just silently do nothing when one is absent -- no error, no hint.
+      # Keep this in sync when adding or removing plugins; every entry maps to
+      # one specific plugin.
+      packages = with pkgs; [
+        tmuxp # tmux-provider (tmux itself lives in tmux.nix)
+        evtest # bongocat keyboard reactivity; mayon already belongs to input
+        libnotify # notify-send for desktop notification review
+      ];
+
+    };
 
     programs.noctalia = {
       enable = true;
-      package = pkgs.local.noctalia;
+      package = noctaliaPackage;
 
       systemd.enable = true;
       customPalettes.One-Dark-Darker = {
@@ -167,6 +191,7 @@ in
           shell = {
             lang = "zh-CN";
             font_family = palette.fonts.sans;
+            avatar_path = "${config.home.homeDirectory}/.face";
             corner_radius_scale = 4.0 / 3.0;
             # One outer outline, quieter cards, and distinct input boundaries.
             button_borders = false;
@@ -211,7 +236,7 @@ in
               control_center_position = "top_right";
               open_near_click_launcher = false;
               open_near_click_control_center = false;
-              floating_offset = 16;
+              floating_offset = 12;
               # Hover/selection provides the row emphasis without a card per row.
               list_item_background = false;
               wallpaper_placement = "attached";
@@ -223,7 +248,7 @@ in
               layout = "full";
               width = 680;
               search_position = "top";
-              default_view = "recent";
+              default_view = "pinned";
               categories = true;
               category_icons_only = true;
               show_icons = true;
@@ -236,9 +261,9 @@ in
               sort_by_usage = true;
               pinned = [
                 "kitty.desktop"
+                "nvim.desktop"
                 "firefox.desktop"
                 "thunar.desktop"
-                "code.desktop"
               ];
               # calculator-plus is removed. The built-in provider has no enable
               # switch; exclude it from ordinary search. Its explicit /calc
@@ -298,7 +323,7 @@ in
 
           wallpaper = {
             enabled = true;
-            directory = "${wallpaperDir}";
+            directory = wallpaperRoot;
             fill_mode = "crop";
             fill_color = "surface";
             transition_on_startup = !reducedMotion;
@@ -309,12 +334,12 @@ in
               enabled = true;
               interval_seconds = 86400;
               order = "random";
-              recursive = false;
+              recursive = true;
             };
           };
 
           backdrop = {
-            enabled = true;
+            enabled = false;
             blur_intensity = 0.40;
             tint_intensity = 0.50;
           };
@@ -376,16 +401,18 @@ in
 
           notification = {
             enable_daemon = true;
+            show_app_name = true;
+            show_actions = true;
             position = "top_right";
             layer = "overlay";
             width = 380;
-            offset_x = 14;
-            offset_y = 62;
+            offset_x = 16;
+            offset_y = 64;
             max_visible = 3;
             border = true;
             border_color = "outline";
             border_width = 1;
-            background_opacity = 0.97;
+            background_opacity = 0.98;
             # Keep transient messages on the output currently being used.
             follow_focused_output = true;
           };
@@ -394,12 +421,12 @@ in
             # Separate transient device feedback from notifications/control center.
             position = "bottom_center";
             orientation = "horizontal";
-            offset_y = 28;
+            offset_y = 32;
             hide_delay_ms = 1400;
             border = true;
             border_color = "outline";
             border_width = 1;
-            background_opacity = 0.97;
+            background_opacity = 0.98;
             follow_focused_output = true;
           };
 
@@ -437,22 +464,32 @@ in
           dock.enabled = false;
 
           control_center = {
-            sidebar = "full";
+            sidebar = "compact";
             # Direct volume/network/etc. entry keeps an icon rail; Home retains
             # its full labelled navigation and all tabs stay reachable.
             sidebar_section = "compact";
-            width = 720;
+            width = 680;
             show_shortcut_labels = true;
+            circular_avatar = false;
+            show_session_button = true;
+            shortcuts = map (type: { inherit type; }) [
+              "wifi"
+              "bluetooth"
+              "notification"
+              "caffeine"
+              "nightlight"
+              "power_profile"
+            ];
           };
 
           lockscreen = {
             enabled = true;
             # Lock/unlock has its own effect pool; it does not inherit wallpaper.
             transition = lib.optional (!reducedMotion) "fade";
-            transition_duration = 550;
+            transition_duration = 200;
             edge_smoothness = 0.3;
             blur_intensity = 0.40;
-            tint_intensity = 0.60;
+            tint_intensity = 0.48;
             blurred_desktop = false;
           };
 
@@ -470,10 +507,10 @@ in
                 cx = logicalWidth / 2;
                 cy = logicalHeight * 0.54;
                 settings = {
-                  layout = "regular";
+                  layout = "compact";
                   show_media = false;
-                  show_weather = true;
-                  show_session_buttons = true;
+                  show_weather = false;
+                  show_session_buttons = false;
                   show_unlock_hint = true;
                   show_caps_lock = true;
                   show_keyboard_layout = true;
@@ -509,7 +546,7 @@ in
                 box_width = 360.0;
                 box_height = 32.0;
                 settings = {
-                  format = "{:%m-%d  %A}";
+                  format = "{:%Y年%m月%d日  %A}";
                   font_family = palette.fonts.sans;
                   center_text = true;
                   background = false;
@@ -538,7 +575,9 @@ in
         ExecStartPre = "${reconcileOverrides}";
         Restart = "on-failure";
         RestartSec = 2;
-        Environment = lib.mapAttrsToList (name: value: "${name}=${value}") safeSessionVariables;
+        Environment = (lib.mapAttrsToList (name: value: "${name}=${value}") safeSessionVariables) ++ [
+          "LC_TIME=zh_CN.UTF-8"
+        ];
       };
       # force: Replace upstream generic session dependencies with the Mango target.
       Install.WantedBy = lib.mkForce [ "mango-session.target" ];

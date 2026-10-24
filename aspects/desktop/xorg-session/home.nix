@@ -8,6 +8,9 @@
 }:
 let
   target = "xorg-session.target";
+  wallpaper =
+    (import ../../appearance/appearance/resources/wallpaper/package.nix { inherit pkgs palette; })
+    .default;
   dwmPackage = import ./dwm/package.nix {
     inherit pkgs lib palette;
     profileDirectory = config.home.profileDirectory;
@@ -91,7 +94,7 @@ in
         Type = "oneshot";
         RemainAfterExit = true;
         ExecStart = pkgs.writeShellScript "xorg-background" ''
-          ${pkgs.feh}/bin/feh --no-fehbg --bg-fill ${../../appearance/appearance/resources/wallpaper/wallpaper-005.png}
+          ${pkgs.feh}/bin/feh --no-fehbg --bg-fill ${wallpaper}
           ${pkgs.xset}/bin/xset s 600 600
           ${pkgs.xset}/bin/xset dpms 0 0 900
         '';

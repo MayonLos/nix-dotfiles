@@ -2,8 +2,13 @@
   pkgs,
   home,
   host,
+  appearance,
 }:
 let
+  wallpapers = import ../../appearance/appearance/resources/wallpaper/package.nix {
+    inherit pkgs;
+    palette = appearance;
+  };
   qq = pkgs.lib.findFirst (
     package: (package.name or "") == "qq-with-pipewire"
   ) (throw "Xorg capture check requires the real configured QQ wrapper") home.home.packages;
@@ -29,6 +34,8 @@ let
       ] home.systemd.user.services;
       sharedTargets = home.nixDotfiles.graphicalSessionTargets;
       defaultSession = host.services.displayManager.noctalia-greeter.settings.session.default;
+      wallpaper = wallpapers.default;
+      greeterWallpaper = host.services.displayManager.noctalia-greeter.settings.appearance.wallpaper.path;
       xserver = host.services.xserver.enable;
       startx = host.services.xserver.displayManager.startx.enable;
       generatedXinitrc = host.services.xserver.displayManager.startx.generateScript;
@@ -42,6 +49,7 @@ let
   desktop = pkgs.writeText "xorg-programs.json" (
     builtins.toJSON {
       dwm = "${home.nixDotfiles.xorgDwmPackage}/bin/dwm";
+      dwmConfig = "${home.nixDotfiles.xorgDwmPackage}/share/dwm/config.h";
       picom = "${pkgs.picom}/bin/picom";
       picomConfig = home.xdg.configFile."picom/picom.conf".source;
       launcher = "${launcher}/bin/xorg-launcher";
@@ -55,10 +63,11 @@ let
       xlib = "${pkgs.libx11}/lib/libX11.so.6";
       maim = "${pkgs.maim}/bin/maim";
       feh = "${pkgs.feh}/bin/feh";
-      wallpaper = ../../appearance/appearance/resources/wallpaper/wallpaper-005.png;
+      wallpaper = wallpapers.default;
       xsetroot = "${pkgs.xsetroot}/bin/xsetroot";
       notifySend = "${pkgs.libnotify}/bin/notify-send";
       menu = "${menu}/bin/xorg-session-menu";
+      palette = appearance;
     }
   );
 in
@@ -70,11 +79,14 @@ pkgs.runCommand "xorg-session-runtime"
       pkgs.xvfb-run
       pkgs.xorg-server
       pkgs.fontconfig
+      pkgs.imagemagick
     ];
   }
   ''
     export HOME="$TMPDIR/home" XDG_CONFIG_HOME="$TMPDIR/config" XDG_DATA_HOME="$TMPDIR/data" XDG_CACHE_HOME="$TMPDIR/cache" XDG_STATE_HOME="$TMPDIR/state" XDG_RUNTIME_DIR="$TMPDIR/runtime"
     mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME" "$XDG_STATE_HOME" "$XDG_RUNTIME_DIR" "$out"
+    test "$(magick identify -format '%wx%h' ${wallpapers.default})" = 2560x1600
+    test '${wallpapers.default}' = '${host.services.displayManager.noctalia-greeter.settings.appearance.wallpaper.path}'
     chmod 700 "$XDG_RUNTIME_DIR"
     unset DISPLAY WAYLAND_DISPLAY DBUS_SESSION_BUS_ADDRESS
     export XORG_TEST_SHELL=${pkgs.bash}/bin/bash

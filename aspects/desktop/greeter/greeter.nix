@@ -2,11 +2,16 @@
 {
   hostFacts,
   inputs,
+  lib,
   pkgs,
+  config,
   ...
 }:
 let
-  wallpaper = ../../appearance/appearance/resources/wallpaper/wallpaper-005.png;
+  wallpaper =
+    (import ../../appearance/appearance/resources/wallpaper/package.nix {
+      inherit pkgs palette;
+    }).default;
 in
 {
   imports = [ inputs.noctalia-greeter.nixosModules.default ];
@@ -55,7 +60,7 @@ in
         enabled = true;
         position = "above-panel";
         time_format = "{:%H:%M}";
-        date_format = "%m-%d %A";
+        date_format = "%Y年%m月%d日 %A";
       };
 
       # Pin the known internal panel scale while allowing unknown external
@@ -72,6 +77,18 @@ in
   };
 
   environment.pathsToLink = [ "/share/wayland-sessions" ];
+
+  # The pinned greeter calls setlocale(LC_ALL, "") and formats weekday names
+  # from LC_TIME. greetd starts its session with a deliberately empty
+  # environment, so pass the Chinese locale on the existing greeter command.
+  # force: add LC_TIME to the pinned command while preserving XDG_DATA_DIRS and argument forwarding.
+  services.greetd.settings.default_session.command = lib.mkForce (
+    "${lib.getExe' pkgs.coreutils "env"} "
+    + "LC_TIME=zh_CN.UTF-8 "
+    + "XDG_DATA_DIRS=${config.services.displayManager.sessionData.desktops}/share "
+    + "${config.services.displayManager.noctalia-greeter.package}/bin/noctalia-greeter-session -- "
+    + config.services.displayManager.noctalia-greeter.greeter-args
+  );
 
   # Greeter runs before the user session, so these assets must be in the
   # system closure and discoverable without relying on a user's Home Manager.

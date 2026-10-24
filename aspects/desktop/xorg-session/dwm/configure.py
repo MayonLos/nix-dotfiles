@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 
 p = argparse.ArgumentParser()
-for name in ("profile", "bg", "fg", "blue", "muted", "red", "deep", "surface", "font-mono", "font-cjk"):
+for name in ("profile", "bg", "fg", "blue", "selection", "muted", "red", "deep", "surface", "font-mono", "font-cjk"):
     p.add_argument("--" + name, required=True)
 p.add_argument("--dpi", required=True, type=int)
 a = p.parse_args()
@@ -60,16 +60,16 @@ once(r"(static const int ulineall\s*=\s*)\d+", r"\g<1>0")
 once(r"(static const int ulinetop\s*=\s*)\d+", r"\g<1>0")
 
 colors = {"normfgcolor": a.fg, "normbgcolor": a.deep, "normbordercolor": a.surface,
-          "normfloatcolor": a.surface, "selfgcolor": a.blue, "selbgcolor": a.deep,
-          "selbordercolor": a.blue, "selfloatcolor": a.blue,
+          "normfloatcolor": a.surface, "selfgcolor": a.blue, "selbgcolor": a.selection,
+          "selbordercolor": a.blue, "selfloatcolor": a.selection,
           "titlenormfgcolor": a.fg, "titlenormbgcolor": a.deep,
           "titlenormbordercolor": a.surface, "titlenormfloatcolor": a.surface,
-          "titleselfgcolor": a.fg, "titleselbgcolor": a.deep,
-          "titleselbordercolor": a.blue, "titleselfloatcolor": a.blue,
+          "titleselfgcolor": a.blue, "titleselbgcolor": a.selection,
+          "titleselbordercolor": a.blue, "titleselfloatcolor": a.selection,
           "tagsnormfgcolor": a.muted, "tagsnormbgcolor": a.deep,
           "tagsnormbordercolor": a.surface, "tagsnormfloatcolor": a.surface,
-          "tagsselfgcolor": a.blue, "tagsselbgcolor": a.deep,
-          "tagsselbordercolor": a.blue, "tagsselfloatcolor": a.blue,
+          "tagsselfgcolor": a.blue, "tagsselbgcolor": a.selection,
+          "tagsselbordercolor": a.blue, "tagsselfloatcolor": a.selection,
           "hidnormfgcolor": a.muted, "hidselfgcolor": a.blue,
           "urgfgcolor": a.deep, "urgbgcolor": a.red, "urgbordercolor": a.red}
 for key, value in colors.items():
