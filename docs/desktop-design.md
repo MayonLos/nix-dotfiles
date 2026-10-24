@@ -170,8 +170,8 @@ Greeter 由主机显式生成 `appearance.scheme = "Synced"`、`theme_mode = "da
 | GTK 4 / libadwaita | 保留 `gtk4.theme = null` 和 prefer-dark，由现有 gtk4 输出提供可支持的颜色；逐个检查原生控件，不保证所有应用私有 UI 完全同色 |
 | Qt | 保留 qt6ct + Fusion、Papirus-Dark；qt6ct 的 mutable 入口继续引用单一 Noctalia palette 输出。Qt5、硬编码主题及第三方弹窗逐个验收 |
 | Firefox | 继续现有 userChrome template/application hook，输出固定 palette；标签、地址栏、侧栏与菜单统一。网站正文遵循网站自己的主题，不全局反色 |
-| Fcitx5 | 已使用自己的固定 Darker 资源，替代旧 `Tokyonight-Mayon` 派生主题；背景 background、前景 foregroundStrong、选中 blue/black。保留现有 10 pt 字体和紧凑 padding，保留 Wayland/X11 DPI 修正依据 |
-| Kitty | Maple Mono NF CN 11 pt、padding 8、隐藏应用装饰、背景 opacity 1.0；ANSI 与上述 terminal 数据一致，光标 beam 1.5，主题不再运行时随 shell 改写 |
+| Fcitx5 | 已使用自己的固定 Darker 资源，替代旧 `Tokyonight-Mayon` 派生主题；背景 background、前景 foregroundStrong、选中 blue/black。保留现有 10 pt 字体与 Wayland/X11 DPI 修正；构建期生成圆角 SVG 背景、高亮、翻页和菜单图标，1px border，留足文字与内容边距 |
+| Kitty | Maple Mono NF CN 11 pt、padding 8、隐藏应用装饰、背景 opacity 1.0；ANSI 与上述 terminal 数据一致，光标 beam 1.5，短拖尾使用 blue、4 格起跳阈值、80–160 ms 衰减；斜角 powerline 标签、thick-sparse 下划波浪线，主题由 HM 生成 |
 | tmux | 状态栏一行、底部；左会话、中央窗口、右前缀/复制模式，现有条件日期可保留。普通背景 default，活动项 ANSI blue/black，copy mode yellow/black；仍从同一 ANSI palette 取色 |
 | Neovim | 保留现有 Lua 高亮、状态线、tabline、补全、诊断和语法色；Normal/NormalNC 固定 background。只有 palette 数据进入公共外观接口，Lua 行为与插件适配仍由编辑器拥有 |
 | Swayimg / Fastfetch | Swayimg 信息浮层采用共享 Inter 11 pt（中文回退 Noto CJK）、brightFg/deep，图库和选择色继续来自 palette；Fastfetch 普通电池标签用蓝色，避免常态错误红色 |
@@ -230,6 +230,39 @@ One Dark Darker；TokyoNight 只作历史画面参考。实际 Astra 负责本�
 工具且不能丢掉未保存缓冲。会话、草稿、撤销和 AI 历史不随配置重做而迁移或清空。
 真实文件树操作、窄窗口/CJK 标签、Markdown 长段落、补全和 Java LSP 仍按记录区分隔离
 检查与真实终端验收；不把插件配置或无报错启动当作视觉已完成。
+
+## 输入法与 CLI 的统一适配（第七轮）
+
+Fcitx5 保持 Rime-Ice 与两张专业补充词表，候选页改为 7 项。万象简体模型由
+[rime/package.nix](../aspects/interactive-session/rime/package.nix) 固定 `LTS` release
+的 2026-10-19 资产和 SHA-256，作为只读 store 链接加入 fcitx5-rime 的 `share/rime-data`。
+上游 `LTS` 标签长期复用，因此可复现性由固定 hash 保证；不在登录时下载或自动换模型。
+语法权重采用[白霜推荐参数](https://github.com/gaboolic/rime-frost#使用语言模型)，启用
+contextual suggestions，同音/同形候选上限为 4/2。锁定 nixpkgs 将 Lua、Octagram
+合并进 `librime.so`；显式保留两插件，Rime-Ice 的 Lua 过滤、纠错与日期功能继续可用。
+学习写入仍是原有 `rime_ice.userdb`；不接管个人短语、同步或历史。
+
+候选框借鉴 [Catppuccin Fcitx5](https://github.com/catppuccin/fcitx5) 的 SVG nine-slice
+方式：12px 外圆角、1px 边线、8px 高亮圆角，选中项 blue/black，正文 foregroundStrong。
+背景切片边距为 12，内容边距 6，文字边距横 10/纵 5；没有新增 compositor 阴影。
+SVG 由同一 palette 生成，图标不再依赖 default-dark PNG。构建检查解析 INI、核对所有
+Image 路径并渲染 SVG；实际 150% 缩放下的文字位置与圆角仍需现场观察。
+
+CLI 中 bat 与 delta 共用从 palette 生成的 `One Dark Darker.tmTheme`，语法色参考
+[onedark.nvim](https://github.com/navarasu/onedark.nvim) 的 darker 作用域。
+Nix 构建期运行 `bat cache --build --source … --target …`，`BAT_CACHE_PATH` 指向
+只读 store 缓存，HM 的 batCache 激活为空；登录无需重建缓存。
+Delta 0.19.2 忽略 `BAT_CACHE_PATH`，因此其专用 wrapper 仅对 Delta 进程设置
+`XDG_CACHE_HOME` 到含 `bat` 缓存链接的 store 目录，其他程序的 cache 根目录不变。
+显式选择 palette 的无桌面 CLI btop 默认选择自有 `One Dark Darker` 主题；选择 Mango 时保留现有
+`noctalia` 主题选项，正常 apply 跳过 btop.conf 改写并渲染独立的 `noctalia.theme`，
+HM 声明 `btop.conf` 与自有主题；上游 undo hook 仍尝试重写这个只读配置，存在既有
+冲突，尚未实机验证。eza 的 `theme.yml` 采用蓝目录、绿可执行、
+青符号链接和语义 Git 状态。glow 使用 palette JSON 样式；tealdeer 每周在使用时自动
+更新页面缓存，不新增后台 timer。fastfetch 保留原有系统/硬件/电量等信息，用小号 Nix
+logo、Nerd 图标和框线分组统一呈现。Zsh/Starship/fzf/lazygit/Yazi 已有 palette 或 ANSI
+映射，保留其键位和行为。未选择可选外观数据的 CLI 组合继续用内置主题/ANSI
+回退，不隐式选用 Darker；组合检查同时覆盖这两条路径。构建与实机边界见[第七轮记录](history/im-cli-polish-2026-10-24.md)。
 
 ## 单一写入者与现场交接
 
@@ -301,7 +334,7 @@ Tag 0 使用 scroller/65%，遮罩 0.32，内间距 8、外间距 20。它是可
 
 `appearance.reducedMotion` 默认 `false`。显式选 `true` 时：Mango animations=0；Noctalia
 shell animation 关闭，壁纸/锁屏 transition=[]，媒体不滚字、天气 effects 关闭，面板移除猫与
-频谱；Kitty 光标停止闪烁。插件配置、媒体入口与用户 state 均保留。该参数不改变 GPU、电源、
+频谱；Kitty 光标停止闪烁并关闭拖尾。插件配置、媒体入口与用户 state 均保留。该参数不改变 GPU、电源、
 模糊或应用自身动画，不是自动省电策略，也没有新增常驻切换器。单独 host/user 外观输入各自生效。
 
 社区参考：[end-4](https://github.com/end-4/dots-hyprland) 的概览与一致浮层、

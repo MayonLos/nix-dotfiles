@@ -26,6 +26,11 @@ in
     cursor_shape beam
     cursor_beam_thickness 1.5
     cursor_blink_interval ${if palette.reducedMotion or false then "0" else "0.5"}
+    # Only animate cursor jumps that pause briefly; honor the shared motion preference.
+    cursor_trail ${if palette.reducedMotion or false then "0" else "1"}
+    cursor_trail_decay 0.08 0.16
+    cursor_trail_start_threshold 4
+    cursor_trail_color ${palette.blue}
     cursor ${palette.brightFg}
     cursor_text_color ${palette.bg}
 
@@ -34,8 +39,8 @@ in
 
     # Match the editor's quiet tabs without adding a second project manager.
     tab_bar_min_tabs 2
-    tab_bar_style separator
-    tab_separator " │ "
+    tab_bar_style powerline
+    tab_powerline_style slanted
     tab_title_template "{index}: {title}"
     active_tab_foreground ${palette.brightFg}
     active_tab_background ${palette.surface}
@@ -43,6 +48,8 @@ in
     inactive_tab_foreground ${palette.muted}
     inactive_tab_background ${palette.deep}
     tab_bar_background ${palette.deep}
+
+    undercurl_style thick-sparse
 
     scrollback_lines 5000
     wheel_scroll_multiplier 5.0

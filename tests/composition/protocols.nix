@@ -271,7 +271,9 @@ let
       && !(lib.hasInfix "background ${paletteB.bg}" selectedPaletteA)
       && !(lib.hasInfix "background ${paletteA.bg}" selectedPaletteB)
       && lib.hasInfix "cursor_blink_interval 0\n" selectedPaletteA
-      && lib.hasInfix "cursor_blink_interval 0.5\n" selectedPaletteB;
+      && lib.hasInfix "cursor_blink_interval 0.5\n" selectedPaletteB
+      && lib.hasInfix "cursor_trail 0\n" selectedPaletteA
+      && lib.hasInfix "cursor_trail 1\n" selectedPaletteB;
 
     invalidProtocolDataRejected =
       fails badArgv.defaultTools.terminal.argv

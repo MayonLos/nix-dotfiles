@@ -1,9 +1,33 @@
+{
+  palette,
+}:
 { lib, ... }:
 let
-  # Named ANSI colours consume the terminal's palette without extra effects.
+  # An absent optional appearance keeps portable CLI consumers on ANSI roles.
+  colors =
+    if palette == null then
+      {
+        blue = "blue";
+        cyan = "cyan";
+        green = "green";
+        yellow = "yellow";
+        purple = "magenta";
+        fg = "default";
+        border = "light_black";
+      }
+    else
+      palette;
   section = label: color: {
     type = "custom";
-    format = "{#${color}}── ${label} {#light_black}────────────────{#}";
+    format = "{#${color}}╭─ ${label} ─────────────────────────╮{#}";
+  };
+  sectionEnd = color: {
+    type = "custom";
+    format = "{#${color}}╰────────────────────────────────────╯{#}";
+  };
+  key = glyph: label: color: {
+    key = "${glyph} ${label}";
+    keyColor = color;
   };
 in
 
@@ -18,8 +42,8 @@ in
           position = "left";
           padding.right = 2;
           color = {
-            "1" = "blue";
-            "2" = "cyan";
+            "1" = colors.blue;
+            "2" = colors.cyan;
           };
         };
         display = {
@@ -32,8 +56,8 @@ in
             paddingLeft = 1;
           };
           color = {
-            output = "default";
-            separator = "light_black";
+            output = colors.fg;
+            separator = colors.border;
           };
           bar = {
             width = 8;
@@ -42,81 +66,64 @@ in
               total = "─";
             };
             color = {
-              total = "light_black";
-              border = "light_black";
+              total = colors.border;
+              inherit (colors) border;
             };
           };
         };
         modules = [
           {
             type = "title";
-            format = "{#bold_magenta}{user-name}{#}{#light_black}@{#blue}{host-name}{#}";
+            format = "{#${colors.purple}}{user-name}{#}{#${colors.border}}@{#}{#${colors.blue}}{host-name}{#}";
           }
           "break"
-          (section "SYSTEM" "blue")
-          {
-            type = "os";
-            key = " OS";
-            keyColor = "blue";
-          }
-          {
-            type = "kernel";
-            key = " Kernel";
-            keyColor = "cyan";
-          }
-          {
-            type = "uptime";
-            key = " Up";
-            keyColor = "green";
-          }
-          {
-            type = "packages";
-            key = "󰏖 Pkgs";
-            keyColor = "yellow";
-          }
-          {
-            type = "wm";
-            key = " WM";
-            keyColor = "magenta";
-          }
-          {
-            type = "display";
-            key = "󰍹 Display";
-            keyColor = "blue";
-            compactType = "original-with-refresh-rate";
-          }
+          (section "SYSTEM" colors.blue)
+          ((key "" "OS" colors.blue) // { type = "os"; })
+          ((key "" "Kernel" colors.cyan) // { type = "kernel"; })
+          ((key "" "Up" colors.green) // { type = "uptime"; })
+          ((key "󰏖" "Pkgs" colors.yellow) // { type = "packages"; })
+          ((key "" "WM" colors.purple) // { type = "wm"; })
+          (
+            (key "󰍹" "Display" colors.blue)
+            // {
+              type = "display";
+              compactType = "original-with-refresh-rate";
+            }
+          )
+          (sectionEnd colors.blue)
           "break"
-          (section "HARDWARE" "magenta")
-          {
-            type = "cpu";
-            key = " CPU";
-            keyColor = "cyan";
-          }
-          {
-            type = "gpu";
-            key = "󰾲 GPU";
-            keyColor = "green";
-            format = "{vendor} {name}";
-          }
-          {
-            type = "memory";
-            key = " Memory";
-            keyColor = "yellow";
-            percent.type = 3;
-          }
-          {
-            type = "disk";
-            key = " Disk";
-            keyColor = "yellow";
-            folders = "/";
-            percent.type = 3;
-          }
-          {
-            type = "battery";
-            key = " Battery";
-            keyColor = "blue";
-            percent.type = 3;
-          }
+          (section "HARDWARE" colors.purple)
+          ((key "" "CPU" colors.cyan) // { type = "cpu"; })
+          (
+            (key "󰾲" "GPU" colors.green)
+            // {
+              type = "gpu";
+              format = "{vendor} {name}";
+            }
+          )
+          (
+            (key "" "Memory" colors.yellow)
+            // {
+              type = "memory";
+              percent.type = 3;
+            }
+          )
+          (
+            (key "" "Disk" colors.yellow)
+            // {
+              type = "disk";
+              folders = "/";
+              percent.type = 3;
+            }
+          )
+          (
+            (key "" "Battery" colors.blue)
+            // {
+              type = "battery";
+              percent.type = 3;
+            }
+          )
+          (sectionEnd colors.purple)
           "break"
           {
             type = "colors";
@@ -126,12 +133,16 @@ in
       };
     };
 
-    # The portable CLI uses btop's built-in theme. A selected desktop may
-    # choose Noctalia's palette; HM remains the single btop.conf renderer.
+    # The CLI uses the shared One Dark Darker palette. HM remains the single
+    # btop.conf renderer; Noctalia integration only supplies its own theme.
     btop = {
       enable = true;
+      themes = lib.optionalAttrs (palette != null) {
+        "One Dark Darker" = import ./onedark-darker-btop.nix { inherit palette; };
+      };
       settings = {
-        color_theme = lib.mkDefault "Default";
+        # Noctalia may select its own theme for the desktop session.
+        color_theme = lib.mkDefault (if palette == null then "Default" else "One Dark Darker");
         # Keep the terminal background consistent with other CLI tools.
         theme_background = false;
         vim_keys = true;

@@ -91,9 +91,8 @@ _: {
     # rendered through git's own pager until this line existed.
     enableGitIntegration = true;
     options = {
-      # This complete built-in syntax theme consumes the terminal's ANSI
-      # palette, shared with Bat, Kitty and tmux.
-      syntax-theme = "base16";
+      # tools.nix supplies Delta's wrapper for the same build-time Bat cache.
+      syntax-theme = if palette == null then "base16" else "One Dark Darker";
       navigate = true;
       side-by-side = true;
       line-numbers = true;

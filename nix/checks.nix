@@ -5,6 +5,14 @@
       embedded = import ../tests/composition/embedded.nix { inherit inputs pkgs; };
     in
     {
+      # path:. includes a worktree's .git pointer file. treefmt's check creates
+      # its own temporary Git repository; do not let that pointer redirect it
+      # to the checkout outside the build sandbox. Keep untracked source files.
+      treefmt.projectRoot = builtins.path {
+        path = ../.;
+        name = "treefmt-source";
+        filter = path: _: builtins.baseNameOf path != ".git";
+      };
       checks.project-workbench = import ../aspects/project-workbench/checks.nix { inherit pkgs; };
       checks.protocols-composition = import ../tests/composition/protocols.nix { inherit inputs pkgs; };
       checks.remote-workspace-composition = import ../tests/composition/remote.nix {
