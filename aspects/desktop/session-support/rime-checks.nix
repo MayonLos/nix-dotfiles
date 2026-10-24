@@ -17,6 +17,8 @@ let
         selection
         fg
         brightFg
+        muted
+        deep
         ;
     }
   );
@@ -87,27 +89,33 @@ pkgs.runCommand "rime-technical-runtime"
     # These are the public roles in the One Dark palette consumed here.
     assert panel["InputPanel"]["highlightcandidatecolor"] == palette["blue"]
     assert panel["InputPanel"]["highlightbackgroundcolor"] == palette["selection"]
-    assert panel["InputPanel"]["candidatelabelcolor"] == palette["fg"]
-    assert panel["InputPanel"]["candidatecommentcolor"] == palette["fg"]
+    # Variant A: dimmed labels/comments, deep panel with baked drop shadow,
+    # borderless pill selection, centred page buttons.
+    assert panel["InputPanel"]["candidatelabelcolor"] == palette["muted"]
+    assert panel["InputPanel"]["candidatecommentcolor"] == palette["muted"]
+    assert panel["InputPanel"]["highlightcandidatelabelcolor"] == palette["blue"]
     assert panel["InputPanel"]["fullwidthhighlight"] == "True"
-    assert panel["InputPanel/Background/Margin"]["left"] == "12"
-    assert panel["InputPanel/ContentMargin"]["left"] == "6"
-    assert panel["InputPanel/TextMargin"]["left"] == "10"
+    assert panel["InputPanel"]["pagebuttonalignment"] == "Center"
+    shadow = panel["InputPanel/ShadowMargin"]
+    assert all(int(shadow[k]) > 0 for k in ("left", "right", "top", "bottom"))
+    assert int(panel["InputPanel/Background/Margin"]["left"]) == int(shadow["left"]) + 12
+    assert int(panel["InputPanel/ContentMargin"]["left"]) == int(shadow["left"]) + 6
+    assert panel["InputPanel/TextMargin"]["left"] == "11"
     assert panel["InputPanel/PrevPage/ClickMargin"]["top"] == "6"
     assert panel["InputPanel/NextPage/ClickMargin"]["top"] == "6"
     assert panel["Metadata"]["scalewithdpi"] == "True"
-    assert panel["InputPanel"]["normalcolor"] == palette["brightFg"]
+    assert panel["InputPanel"]["normalcolor"] == palette["fg"]
     images = [s["image"] for s in panel.values() if "image" in s]
     assert len(images) == 8
     assert set(images) == {"panel.svg", "highlight.svg", "prev.svg", "next.svg", "radio.svg", "arrow.svg"}
     assert all((theme / image).is_file() for image in images)
+    background = (theme / "panel.svg").read_text()
+    assert "feGaussianBlur" in background and f'fill="{palette["deep"]}"' in background
     selected = (theme / "highlight.svg").read_text()
-    assert 'rx="7.5"' in selected
-    assert f'fill="{palette["selection"]}"' in selected
-    assert f'stroke="{palette["blue"]}"' in selected
+    assert 'rx="9"' in selected and "stroke" not in selected
     for name in ("prev.svg", "next.svg"):
         icon = (theme / name).read_text()
-        assert 'width="20" height="20"' in icon and 'stroke-width="2"' in icon
+        assert 'width="20" height="20"' in icon and 'stroke-width="1.8"' in icon
     assert schema["reduce_english_filter"]["mode"] == "all"
     assert translator["always_show_comments"] and translator["spelling_hints"] == 8
     assert (user / "rime_ice.userdb").is_dir()
