@@ -1,172 +1,267 @@
-# Den 架构设计：实体、选择与完整功能
+# 仓库架构规范 v2.1
 
-状态：Den v0.19.0 已锁入根 flake，真实 `nixos-btw`/`mayon` 已完成逐功能迁移。本文规定架构边界；当前接线见 `nix/`、`aspects/default.nix`、`bundles/default.nix` 和 inventory。各批实现与重新执行的检查见 [实施记录](history/den-execution.md)。Den 初轮没有应用；其后应用与运行证据按 [交接记录](history/execution-handoff.md) 链接的各轮状态，不能把初轮限制当作当前运行状态。
-最近的目录/依赖整理见 [整理记录](history/repository-organization.md)。
+状态：规范性文档，2026-10-24 起生效，取代旧版设计说明（旧文全文见 [architecture-design-v1](history/architecture-design-v1.md)）。
+本版由主代理起草，经 Codex（GPT）、Claude Fable、Claude Sonnet 三方独立审阅后修订；依据为锁定 Den v0.19.0
+（rev 37eb88c）源码、仓库现状与实测（求值剖析、移动文件的 drv 对照实验）。
 
-## 设计结论
+规则分两级：**[硬]** 必须遵守，能自动检查的由 `checks.architecture` 在**求值期**强制，不能自动检查的由审阅与语义测试强制；
+**[建议]** 审阅提示，不阻断。“没有自动检查”不降低硬规则的效力。
 
-实体说明存在什么，绑定说明谁在什么机器上需要什么，完整功能负责实现这个结果。用途组合只是普通 aspect 的 `includes`。
+---
 
-| 职责 | 所有者与内容 |
+## 1. 原则
+
+1. **功能内聚**：一个功能的系统侧、用户侧、账号侧声明集中在一个目录；移除其选择与登记后，它不再贡献任何专属声明，
+   共享支持在最后一个消费者退出后消失，用户数据保留。
+2. **事实与实现分离**：inventory 只描述有什么、谁选择什么；实现全部在功能里。
+3. **只依赖公开接口**：功能之间只经 §4 列出的通道与 §5 的公开入口交换数据。
+4. **保留 Den，保持身份稳定**：实体、aspect、includes、class 分发由 Den 负责。剖析显示求值 16s 中 Home Manager 占 63%、
+   nixpkgs-unstable 19%、noctalia-greeter 自带 nixpkgs 12%，Den 本身可忽略；性能工作不针对组合机制。
+5. **规则可执行**：能静态判断的规则自动检查；其余写成语义测试。
+
+## 2. 顶层布局
+
+```text
+flake.nix                 # inputs 与 mkFlake ./nix；follows 策略注释在此
+nix/                      # flake 管线，无业务配置
+  default.nix             # 导入下列文件
+  pkgs.nix                # 每个 system 一组 stable 与 unstable 实例；overlay（见 §8）
+  hosts.nix               # den.schema.host 默认：instantiate、Home Manager 全局接线（见 §6）
+  den.nix                 # Den 导入、schema 类注册、quirk 注册
+  outputs.nix             # flake packages（如 neovim）、apps
+  checks.nix              # 显式登记表收集各功能 checks + tests + architecture
+  dev.nix                 # devShells、treefmt
+aspects/<领域>/<功能>/    # 功能（§3）
+bundles/                  # 只含 includes 的用途组合（§7）
+inventory/                # 实体、事实、绑定（§6）
+lib/                      # 跨功能 helper（§8.4）
+tests/                    # 跨功能组合与负例（§10）
+secrets/                  # sops 加密文件
+docs/                     # 现行文档；history/ 只追加
+```
+
+## 3. 功能
+
+### 3.1 领域（仅用于导航）
+
+领域目录是**导航分类，不是依赖层级**；aspect ID 与目录路径解耦，迁移目录不改 aspect ID。
+
+| 领域 | 内容 |
 |---|---|
-| 主机事实 | 目标平台、设备地址、磁盘/显示器标识等真实实例信息 |
-| 个人身份 | 只保存跨机器语义相同的身份与偏好；没有复用价值时无需单独拆文件 |
-| 主机—账号绑定 | 账号是否存在、home/UID、HM stateVersion、授权、用途与默认应用选择 |
-| 主机策略选择 | 内核/驱动/电源策略、启动方案、实际系统服务；与硬件事实分开 |
-| 用途组合 | 日常工作、工程开发、远程工作等经常一起选择的功能；不复制实现 |
-| 完整功能 | 自己的系统/用户/账号配置、依赖、资源、包配方、必要适配与功能测试 |
+| `system/` | nix 设置与维护、locale、sudo/安全策略、账号公共策略 |
+| `hardware/` | 机型驱动与策略（legion-laptop：NVIDIA PRIME、电源、启动、gamemode GPU、mpv 硬解等，由 facts 参数化） |
+| `appearance/` | 外观契约、主题数据（onedark-darker、ansi、壁纸、头像生成） |
+| `desktop/` | `session-support`（输入法、GTK/Qt、字体、portal、音频 socket、session targets）、`mango-session`（Mango+Noctalia+剪贴板+截图）、`xorg-session`、`greeter` |
+| `cli/` | shell、terminal、git、tmux、yazi、系统信息、CLI 工具 |
+| `dev/` | 编辑器（neovim、vscode、jetbrains）、languages（契约+各语言）、embedded、containers、virtual-machines、ai-agents |
+| `apps/` | firefox、communication、documents、media、file-manager、gaming |
+| `network/` | 网络管理、代理、远程访问/SSH 策略 |
+| `workspace/` | workspace-task、project-workbench（CLI 与桌面共用） |
 
-PCI 地址是事实，选择省电策略是意图，驱动与 PRIME 配置是实现。生成的硬件扫描模块可作为实例工件显式引用，不把每个 NixOS 原生选项再包装成自制 facts 字段。
+桌面不再细拆成每个维度一个功能：拆分会制造只有一个消费者的伪契约。只有出现真实复用或替换需求时才拆。
 
-这是 Den 实体、aspect 与关系机制上的仓库设计，不新增角色解释器或实体类型。参考：[核心原则](https://den.denful.dev/explanation/core-principles/)、[实体与 schema](https://den.denful.dev/reference/schema/)。
-
-## 一次选择完整功能
-
-公共调用界面不再要求用户配对选择 workstation 的系统半边和 desktop 的用户半边，也不要求分别选择嵌入式工具、设备规则和串口权限。
-
-```text
-某账号在某主机上选择一个完整功能
-  ├── 用户配置        → 该账号的 Home Manager
-  ├── 账号属性/授权   → 该主机上的该账号
-  └── 主机共享支持    → 该主机，按真实资源合并
-```
-
-例如 `embedded-workbench` 拥有工具、探针规则、当前账号权限的完整配套；`interactive-session` 组合 Mango/Noctalia 与 `graphical-session-support`，`xorg-session` 组合同一公共支持与 dwm/Xorg。公共支持只包含实际共用的输入、GTK/Qt、音频、字体和基础 portal；Xorg 不再隐式选择 Mango。另一个账号不会仅因存在于该主机上就得到相同的个人环境。
-
-“一次选择”不等于多个 class 会自动投递到正确位置。功能内部必须使用所锁版本的 `user` class、Home Manager 和定向宿主提供机制。用户作用域的裸 `nixos` 不能作为路由保证。原生机制与落点依据：[机制选择](https://den.denful.dev/explanation/choosing-a-mechanism/)、[配置落点](https://den.denful.dev/explanation/where-config-lands/)。
-
-不同用户可有不同默认终端、编辑器或会话；多个桌面会话也可以共存。只对真实互斥资源检查冲突，例如同一监听端口或同一目标文件，不把所有实现都当成 host 单例。远程客户端与本地 daemon 有独立用途时，分别成为可选择功能。
-
-## 组合与实现
-
-功能意图和具体选型要分清，但不为每个应用强制建立 interface/backend 两层。固定选择直接由功能实现；出现真实替换需求和稳定消费者后再提取共同接口。
-
-- `personal-desktop` 组合交互会话、命令行、日用功能与默认工具。
-- `engineering-workbench` 组合编辑、语言支持和已经确认需要的专业工具。
-- `remote-workspace` 组合命令行、编辑和实际需要的语言；这是组合示意，不是提前部署的服务器。
-- 桌面内部，会话实现与桌面 shell 是不同选择维度；更换其中一项时，其余消费者不应引用旧应用私有配置。
-- 安装多个编辑器是有效选择；默认编辑器是另一项单值选择。
-
-这些名称描述用途，均是普通 Den aspect。具体软件已按既定保留决定逐项接入，组合变化不自动成为删软件的理由。
-
-## 当前结构
+### 3.2 功能目录文件角色
 
 ```text
-.
-├── flake.nix / flake.lock             # 锁定输入与薄 flake-parts 入口
-├── nix/                              # Den、包集合、devShell、Neovim 输出和 checks
-├── inventory/
-│   ├── users/mayon.nix                # 跨主机身份
-│   └── hosts/nixos-btw/               # 唯一部署实例
-│       ├── default.nix                # 实体、选择和实际主机策略
-│       ├── facts.nix                  # 平台/PCI/显示器/键盘公开事实
-│       ├── accounts.nix               # 本机账号与运行时凭据读取授权
-│       ├── credentials.nix            # sops runtime owner/mode/template
-│       └── discovered.nix             # 未改磁盘/交换的扫描工件
-├── aspects/
-│   ├── default.nix                    # 显式 registry；登记不代表启用
-│   ├── system/                        # 维护、实际笔记本设备策略与本地网络策略
-│   ├── command-line/                  # 完整 CLI 与独立 terminal
-│   ├── workspace-task/                # CLI 与桌面共用的显式长任务命令
-│   ├── editing/neovim/                # 丰富 Lua、包/插件/parser 与专项测试
-│   ├── languages/                     # 工具与有序编辑器贡献
-│   ├── appearance/ / default-tools/   # 公开数据协议
-│   ├── interactive-session/           # Mango/Noctalia 与实际共用的会话支持
-│   │   └── xorg/                     # dwm/Xorg 模块、配方、脚本和 tests
-│   ├── embedded-workbench/            # 工具、共享规则及 binding 授权
-│   ├── local-containers/ / local-virtual-machines/
-│   └── firefox/ / communication/ / documents/ / media/ / file-manager/ / ai-workbench/ / gaming/ / remote-access/
-├── bundles/default.nix                # personal-desktop / engineering-workbench / remote-workspace
-├── lib/                              # 有实际共享价值的小函数
-├── tests/composition/                 # 生产模块组合、不导出部署 fixture
-├── secrets/                          # 仅加密输入
-└── docs/
+default.nix     # [硬] 唯一 flake-parts 入口：注册 den.aspects（一个入口可注册多个紧密相关 aspect）；允许短实现
+nixos.nix       # [建议] 主机侧 class 内容（经具名 -host aspect 投递，见 §4.3）
+home.nix        # [建议] homeManager class 内容
+user.nix        # [建议] user class（账号属性/授权，见 §4.5）
+contract.nix    # 公开接口（三种形态见 §5.2）
+package.nix     # 私有配方或声明过的公开包工厂
+resources/      # 静态资源、脚本、模板
+checks.nix      # 本功能检查，签名见 §10.1
+README.md       # [硬] 有契约、有主机侧内容、拥有用户状态或配置文件的功能必需；其余用 aspect 的 description
 ```
 
-旧递归模块树、兼容包入口及测试子 flake 已退出；所有检查使用根输入锁。专项检查靠近功能，跨功能隔离、冲突和授权检查放 `tests/composition/`。构建不执行 activation，设备与桌面行为另做运行验收。
+允许 `home/`、`host/` 子目录。单文件超过 400 行为 **[建议]** 拆分（存量白名单；`package.nix` 与生成数据豁免）。
 
-资源、配置脚本、包配方与专项测试优先靠近其功能。没有跨功能复用价值时，不为了沿用旧布局强制拆到顶层 `config/`、`pkgs/` 或公共 helpers。
+### 3.3 class 文件写法 [硬]
 
-采用显式入口登记：只加载功能的公开入口，功能内部再引用私有文件。不会对整棵新树递归导入每个 `.nix`，从而允许 `package.nix`、原始 class 模块和 helper 靠近消费者。登记定义与启用功能仍是两个步骤；一个入口文件可以注册多个紧密相关的 aspect，无需每个函数再建文件。
+Den 只对**函数值**注入上下文，路径字面量原样交给模块系统（`nix/lib/aspects/fx/class-module.nix`）。因此：
 
-本次不为 policies、schema 生成器、provider registry 或每种实现预建目录。只有实际出现重复的关系规则才提取 policy；只有真实共享才提升协议或纯函数。Den 自己负责实体、aspect 组合与 class 分发。
+- 需要 `host`/`user` 的 class 文件写成偏应用：`homeManager = import ./home.nix { inherit host user; };`
+  或直接以函数值赋给 class；**禁止** `homeManager.imports = [ ./home.nix ]` 依赖 `host`/`user` 参数。
+- aspect 函数与 class 函数的**参数形状是语义**（Den 按参数分派与生成实例身份）。增删 `{ host, user, … }` 参数视为行为改动。
 
-## 少量公开数据协议
+## 4. 跨功能通道
 
-先确定数据含义、所有者和合并规则，再选择 Den 传输机制。schema 适合类型化实体输入；quirks 适合所选功能贡献数据；确实跨作用域时才使用 pipes。Aspect Settings 是官方提供的用户实现 pattern，并非开箱即用的内建功能，本方案不先复制它的全树生成器。参考：[schema](https://den.denful.dev/reference/schema/)、[Aspect Settings](https://den.denful.dev/guides/aspect-settings/)。
+### 4.1 允许的五种通道 [硬]
 
-| 协议 | 所有者与消费者 | 基本规则 |
+| 通道 | 用途 | 例 |
 |---|---|---|
-| 外观 | 一个有效外观选择；各应用适配消费相同语义色、字体等真实共享字段 | 同一用户/绑定明确选择；宿主 greeter 有自己的选择；不跨账号隐式继承 |
-| 默认工具 | 绑定选择默认 terminal/editor/browser/fileManager；启动入口、快捷键、MIME 消费 | 安装与设默认分开；参数用结构化 argv；仅建立实际消费者需要的字段 |
-| Noctalia 模板请求 | 所选应用贡献 `noctaliaIntegrations` 标记；会话中的唯一 Noctalia renderer 消费 | 只启用实际选中应用的模板；不隐式安装应用，不写 Kitty/Mango |
-| 语言支持 | 所选语言贡献稳定 ID、包和命令描述；所选编辑器消费 | 编辑器只解释自己支持的贡献；专属设置/扩展保留明确命名，不伪造通用编辑器配置语言 |
+| `includes` | **选择与组合** aspect；不承载数据 | bundles、绑定 |
+| 实体 schema 属性 | 实体输入（由 `den.schema.{host,user}.imports` 的契约定义） | `host.appearance`、`user.defaultTools`、`user.workspaceProjects`、`host.facts` |
+| quirks（必要时 pipes） | 已选功能向消费者**贡献数据** | `editorLanguages`、`noctaliaIntegrations` |
+| 公开模块选项 | 同一模块系统内的合并接线 | `nixDotfiles.graphicalSessionTargets` |
+| 公开包工厂 | 带参数的包 | dwm 配方（palette、DPI） |
 
-One Dark Darker、具体终端和编辑器属于这些接口的实际选择，不决定架构层次。语言到编辑器的数据贡献可借鉴官方 [Quirk Recipes](https://den.denful.dev/guides/quirk-recipes/)；本仓库的字段、类型和冲突检查仍需自行明确。
+其他方式（读取其他功能私有文件、通过全局变量、跨功能 `imports` 私有模块）一律禁止。
 
-公开 `contract.nix` 是该功能允许其他功能引用的稳定边界，私有实现不作为外部 API。共享数据不收集 token、解密内容或隐式授权。
+### 4.2 quirk 规则 [硬]
 
-### 合并、覆盖与写入者
+- 每个 quirk 只有一个声明者（在其契约所属功能的 `default.nix` 注册），名称不得与 class 同名（Den `modules/options.nix` 会 throw）。
+- Den 不校验 quirk payload 类型：**消费者必须经契约的 collector/validator（`lib.evalModules` 或断言）校验**后使用。
+- user 作用域的 quirk 不会自动进入 host；需要跨作用域时显式使用 pipe，并在契约中写明方向。
+- 未选择的功能不贡献数据；收到数据不隐式安装或启用任何功能。
 
-- 每个字段明确作用域和类型；可共享的事实与可调的默认值分开声明。
-- 默认值只影响已经选择的功能。未选功能不贡献有效数据；收到数据也不自动启用功能或安装软件。
-- 单值在相同优先级下不接受不同结果；包集合可明确去重，argv 与 formatter 顺序不能作为普通集合拼接。
-- 带 ID 的贡献可以按不同 ID 合并；同一 ID 的不兼容定义必须报错或显式覆盖。quirk 登记本身不等于完成类型检查，消费者需验证。
-- 实例覆盖走公开输入；`mkForce` 只用于有依据、有范围的例外，不是处理接口冲突的常规手段。实际 Nix option/quirk 合并行为要用测试验证。
-- 一个最终文件/配置树有一个写入者；多个模块可向 Nix 选项贡献数据，最终仍由一个 renderer/HM 模块序列化。
-- 声明式主题文件、应用运行时偏好、历史/缓存/模型等数据分别明确所有者。例如 Nix 写 Kitty 主题时，桌面模板不能同时改写同一路径。
+### 4.3 主机侧投递 [硬]
 
-同作用域 quirks 收集与跨作用域传播是不同问题；跨主机、跨账号传播必须有明确边界。依据：[Quirks & Pipes](https://den.denful.dev/explanation/quirks-and-pipes/)。
+- 被用户绑定选择的功能，其主机侧内容只能放进具名 `<功能>-host` aspect，经 `provides.${host.name}.includes` 投递。
+- **禁止**在用户作用域写裸 `nixos`（Den #694 隔离缺陷，`where-config-lands` 文档）。
+- `-host` aspect 只消费主机级输入（facts、host 实体属性），不得捕获某个用户的偏好；多个绑定引用同一 `-host` aspect 时由 Den 按 scope+identity 去重。
+- 禁止 `den.aspects.<host>.<user>` 子 aspect（会落到每个用户）；定向投递用 `provides`。
 
-## 功能的公共边界
+### 4.4 默认值与合并 [硬]
 
-一个完整功能应能回答：从哪里选择、需要什么输入、向哪些 class/实体输出、拥有哪些文件、贡献哪些数据，以及移除后还留下什么用户状态。
+- 优先级三层：功能默认 `mkDefault` → 绑定/实例普通赋值 → 有理由的例外 `mkForce`（每处注释 `# force: <原因>`）。
+- 相同优先级的单值冲突必须报错；argv 等有序值整体替换、不拼接；有序列表的顺序是语义；按 ID 合并的贡献同 ID 不兼容即报错。
+- 默认值只影响已选择的功能。
+- `den.default` 只放所有实体都必须有的管线，**不得**承载业务配置。
 
-功能自身负责正确路由；库存中的绑定负责谁获得该功能。系统共享资源按 host 合并，账号授权按 binding 生成。不会为了去重系统支持而扩大到所有账号，也不会让一个账号的默认应用变成整台机器的强制单例。
+### 4.5 授权分界 [硬]
 
-具体实现未支持某个平台时给出明确约束；不同 CPU 平台复用配置与配方，不意味着共享同一二进制。项目 flake 继续拥有项目依赖，仓库开发组合不悄悄接管项目版本。
+- 功能运行所需的组（dialout、input、gamemode、libvirtd、kvm 等）放该功能的 `user` class。
+- 管理特权（wheel、`nix.settings.trusted-users`、sops owner）放绑定。
+- 主机共享能力（portal、PAM、udev、uaccess）不是按用户访问控制；USB uaccess 仍按活动 seat。
 
-## 两种组合示意
+## 5. 公开入口与契约
+
+### 5.1 公开入口 [硬]
+
+其他功能、bundles、inventory、tests、`nix/` 只能引用：功能的 `default.nix`、`contract.nix`、在 README 中声明为公开的包工厂/数据导出（例如外观数据、neovim 包工厂、checks 测试钩子）。其余文件私有。
+
+### 5.2 契约的三种形态
+
+1. **实体 schema 模块**：`den.schema.{host,user}.imports` 引入，定义类型化实体属性（appearance、default-tools、workspaceProjects、facts）。
+2. **collector/validator 函数库**：`{ lib }: { collect = …; }`，对 quirk 贡献做类型校验与合并（languages）。
+3. **quirk 声明**：在契约所属功能注册，附带对应 validator。
+
+### 5.3 当前契约表
+
+| 契约 | 归属 | 形态 | 提供者 → 消费者 |
+|---|---|---|---|
+| appearance | `appearance/appearance` | schema（host、user） | 绑定选择 onedark-darker → 所有外观适配 |
+| default-tools | `system/default-tools` | schema（user） | 绑定 → 快捷键、MIME、启动器 |
+| workspace-projects | `workspace/project-workbench` | schema（user） | 绑定 → 项目工作台 |
+| facts | `hardware/` 下契约 | schema（host） | inventory facts → hardware、desktop、greeter |
+| languages | `dev/languages` | quirk `editorLanguages` + collector | 各语言 → neovim（已实现）；vscode（计划） |
+| desktop-integrations | `desktop/mango-session` | quirk `noctaliaIntegrations` + validator | 选用的应用 → Noctalia 模板 |
+| session-targets | `desktop/session-support` | 公开模块选项 `nixDotfiles.graphicalSessionTargets` | 会话 → 输入法、Xresources、音频 socket 等 |
+
+## 6. inventory [硬]
 
 ```text
-个人笔记本
-  事实：真实平台、磁盘、GPU 地址、显示器
-  主机选择：系统维护、启动/图形/电源策略
-  mayon 绑定：
-    personal-desktop + engineering-workbench
-    + 本地容器/虚拟机 + 嵌入式工作台 + 游戏
-    + 该机明确授权与默认工具
-
-未来无头机器（概念样本）
-  事实：它自己的平台、存储、网络
-  主机选择：系统维护、实际服务、明确远程访问策略
-  人类账号绑定：
-    remote-workspace + 实际需要的语言支持
-    + 该机明确授权
+inventory/
+  users/<user>.nix              # 跨主机身份：姓名、邮箱、git 身份等纯数据；实体 aspect `<user>`
+  hosts/<host>/
+    default.nix                 # den.hosts 声明；主机实体 aspect `<host>`：选择 system/hardware/network 功能、hostName、stateVersion
+    facts.nix                   # 硬件事实（纯数据）
+    hardware-configuration.nix  # 扫描工件（唯一允许的原生模块）
+    secrets.nix                 # sops 声明：秘密名、路径、owner、mode、template（无秘密内容）
+    users/<user>.nix            # 绑定 `<user>@<host>`：选择 bundles/功能、默认工具、外观、workspaceProjects、管理特权、flakePath 等数据
 ```
 
-不按 machine 标签暗中安装整套软件，不创建虚构的可部署服务器。既定保留软件以后逐一适配；当前命名与目录不是未来抽象的约束。
+- inventory 中**不得出现** `pkgs`、`runCommand`、`writeText`、`writeShellScript*`、`toFile`、activation、脚本、`imports` 实现模块（hardware-configuration 与 sops 模块导入除外）。
+- 实体 aspect 名（主机名、用户名、`user@host`）是**保留名**，只在 inventory 定义；功能、bundle 不得同名。
+- `instantiate`、Home Manager 全局设置（`useGlobalPkgs`、`useUserPackages`、`backupFileExtension`、`extraSpecialArgs`）属于管线：在 `nix/hosts.nix` 经 `den.schema.host` 以 `mkDefault` 提供，按当前主机的 system/facts 参数化，不闭包捕获某台机器的 facts。
+- 绝对路径（flake 目录等）只作为绑定数据字段声明一次，消费者读字段。
 
-## 架构成立的验收条件
+## 7. bundles [硬]
 
-先做纵向最小样本，再迁移现有配置。入口和协议需要能证明以下行为：
+`bundles/default.nix` 只含 `den.aspects.<bundle>.includes = [ … ]`；bundle 名不得与功能或实体同名；不得循环。
 
-1. 两主机、两账号样本中，一个绑定选择功能后，只有目标账号和其宿主得到对应配置。
-2. 两个账号选择同一系统支持时，不重复创建资源；权限仍只授予所选账号。
-3. 真正互斥的资源或单值选择冲突明确失败；正常可共存的会话和应用不误判冲突。
-4. 无桌面组合的实例不激活图形会话；默认工具的缺省值不反向启动桌面。
-5. 同一外观输入能被至少两个已选消费者正确渲染，目标文件只有一个写入者。
-6. 一项语言贡献能被所选编辑器消费；未选择的语言/编辑器不因协议存在而启用。
-7. 移除功能会移除它拥有的声明与输出，保留不应由配置删除的用户状态。
+## 8. 包与输入
 
-实施顺序：锁定 Den 并保存基线 → 先以完整 shell 功能证明账号/宿主/HM 路由 → 再以嵌入式功能证明系统资源和权限 → 建立小型外观/默认工具/语言接口样本 → 逐项适配当前功能 → 清理旧入口。首批只验证一至两条纵向路径，不先生成大批空目录。
+### 8.1 nixpkgs 实例 [硬]
 
-每个可审查的设计决策、纵向验证闭环或功能迁移及时提交。允许推翻已有抽象与实现；发现边界不成立时直接修正，不为保持旧目录或减少 diff 保留错误设计。提交前完成该阶段必要核验，保留清晰的回退点。
+- 每个 system 只在 `nix/pkgs.nix` 实例化一组 stable 与一组 unstable（参数：`inherit system; config.allowUnfree = true;`）。
+  除此之外**禁止** `import inputs.nixpkgs*`；新增实例或新增自带 nixpkgs 的输入必须记录求值代价。
+- 实例经 `nixosSystem { inherit pkgs; }` 传入；**禁止**在任何模块使用 `nixpkgs.overlays`/`nixpkgs.config`（HM `useGlobalPkgs` 下亦禁用）。
 
-## 实现证据与限制
+### 8.2 overlay [硬]
 
-架构与桌面规格来自先前主代理和实际 Astra 设计；本轮实现没有重新设计视觉。Den 的共享 host 支持使用具名 aspect，账号授权仍在 binding，避免多个账号重复输出同一文本。根组合检查覆盖命令行、丰富编辑器/语言、桌面、容器/VM、嵌入式及无头工作台；负例检查有序数据冲突与系统边界。实际包和程序检查见 [tests/README](../tests/README.md) 与 [实施记录](history/den-execution.md)。
+- `pkgs.unstable`：一个**白名单 attrset**，每项来自同一 unstable 实例并写明理由，例如
+  `unstable = { qq = u.qq; /* 理由 */ jdk26 = u.javaPackages.compiler.temurin-bin.jdk-26; … };`。
+  功能只能访问 `pkgs.unstable.<白名单名>`；检查比对用法与白名单。
+- 包替换 overlay（如 `xdg-desktop-portal-wlr` 取 unstable）保留原位置与顺序，并注释理由。
+- `pkgs.local.<名>`：第三方 flake 包只做**别名** `inputs.<x>.packages.${system}.<y>`，不得用上游 overlay 或以本仓库 nixpkgs 重新 callPackage（会改 drv 并丢缓存）。HM/NixOS 模块形式的输入（如 mango 的 HM 模块）照常导入。
 
-同宿主的 portal、PAM/keyring、polkit、udev 等是共享系统能力，不是账号级访问控制。串口组、input/libvirtd/kvm/gamemode 授权按绑定；USB uaccess 仍按活动 seat。PipeWire 自动 socket wants 与本地 Docker daemon 自动启动均不再套到所有用户。
+### 8.3 配方位置
 
-当前只有真实笔记本部署输出。ARM 无头 fixture 验证到求值，未做 ARM closure 构建、跨架构运行或服务器部署。本次目录与依赖整理没有切换系统、执行真实数据迁移、停止旧服务或清理用户状态。历轮 GUI/设备运行证据见对应执行记录；新整理的构建证据不替代实机行为。
+- 私有配方留在功能目录；带参数的配方以**包工厂**公开（不要固定成全局单例）。
+- 只有被 ≥2 个功能使用的无参配方才放 `packages/`（目前可为空，不预建）。
+- flake 对外导出（如 `.#neovim`）由 `nix/outputs.nix` 调用功能的公开包工厂并显式传入默认数据。
+
+### 8.4 lib [硬]
+
+- `lib/` 放被 **≥2 个功能目录**使用的 helper（可接收 `pkgs`，须确定性、无隐藏状态）。
+- 零消费者即失败；单消费者为审阅提示（应迁回消费者附近）。
+
+### 8.5 输入管理 [硬]
+
+- `flake.nix` 中每个输入注明 follows 策略与理由；`mango`、`noctalia-greeter`、`mark-shot`、`wayscrollshot`、`llm-agents` **不加 follows**（源码依赖组合或预构建缓存依赖其 pin）。
+- 架构重构期间冻结 `flake.lock`、`stateVersion`、包版本与依赖组合。
+- 更新输入后必须：构建 toplevel、`nix store diff-closures` 摘要、对照 workaround 原因复核。
+
+## 9. 秘密、状态与服务 [硬]
+
+- **秘密**：声明在 `inventory/hosts/<h>/secrets.nix`；消费者只用 `config.sops.secrets.<n>.path` 或 `config.sops.templates.<n>.path` / placeholder；
+  禁止求值期读取明文、写入 Nix 字符串/store/日志，禁止硬编码 `/run/secrets/...`。
+- **用户状态**：功能停用或迁移不清理历史、认证、模型、项目、容器卷、VM 镜像；seed/迁移必须幂等，明确对软链与用户自定义值的处理。
+- **写入归属**：每个声明式输出或可变字段有唯一权威写入者；seed、迁移、运行时交接（如 Noctalia sidecar、Qt seed/GUI、mark-shot 字段补丁）在 `docs/config-ownership.md` 单列。
+- **服务**：system/user/session 生命周期、`WantedBy`/`PartOf`/`After`、socket/D-Bus 激活按 `docs/service-policy.md`；客户端与 daemon 分开选择。
+
+## 10. 测试与检查
+
+### 10.1 功能检查签名
+
+`checks.nix` 为 `{ pkgs, lib, system, nixos, home, appearance }: { <名> = drv; }`（按需取用；`nixos` 为真实主机 config，`home` 为该用户 HM config）。
+`nix/checks.nix` 用**显式登记表**收集，复用 `config.flake.nixosConfigurations` 的结果，不重复实例化真实主机。
+
+### 10.2 语义测试 [硬，tests/]
+
+保留并维持通过：两主机两账号路由隔离；双用户共享主机支持去重而授权分离；冲突负例（单值、同 ID）；无桌面组合不激活图形会话；
+外观数据被 ≥2 个消费者正确渲染且单写入者；语言贡献只被选中的编辑器消费；移除功能后无残留声明且用户状态保留；客户端不启动 daemon。
+tests 只能经 §5.1 公开入口组合功能。
+
+### 10.3 `checks.architecture` [硬]
+
+**求值期执行**（`builtins.readDir` + `readFile` + 检查，失败即 `throw`），保证 `nix flake check --no-build` 也会触发；扫描范围为 Git 跟踪源码，排除 `.work/`、`result*`。
+
+1. 跨功能引用非公开入口（静态解析路径字面量与 `${…}` 插值；例外显式登记）。
+2. inventory 违禁项（§6）。
+3. `pkgs.unstable` 访问名不在白名单；`pkgs-unstable` 旧参数残留；`mkForce`/`mkOverride` 缺 `# force:` 注释。
+4. 功能目录与 `aspects/` 登记表、Den aspect 名不一致；实体保留名被功能占用。
+5. 应有 README 的功能缺 README。
+6. `lib/` 文件零消费者。
+
+扫描器自带**会失败的 fixture**，证明每条规则确实能报错。
+
+### 10.4 质量门 [硬]
+
+treefmt（nixfmt、stylua）；**deadnix 必须带 `--no-lambda-pattern-names`**（Den 按参数形状分派，自动删除未用 lambda 参数会静默改变语义）；
+statix 只检查不自动修复 aspect 文件。
+
+### 10.5 性能预算 [建议]
+
+toplevel 求值 ≤ 20s（`NIX_SHOW_STATS=1`，记录 Nix 版本、lock、缓存状态、3 次样本）；新增 nixpkgs 实例或重型输入需附剖析。
+
+## 11. 重构规程（纯重构必须遵守）[硬]
+
+1. 在**冻结的干净提交**上取基线：toplevel outPath、`.#packages.*`、`.#devShells.*`、`.#formatter.*` 的 drvPath、checks 名单。
+2. 每一批只做一类变动（目录移动 / 文件拆分 / overlay / aspect 改名 / 文档），批后立即比对；
+   **toplevel outPath 必须严格相等**——不相等就修正直到相等，差异分析只用于定位，不作为接受理由。功能变化另立轮次。
+3. 已验证安全：注释改动、移动 Nix 模块文件（含声明选项的模块）不改变 toplevel drv（2026-10-24 对照实验）。
+4. 已知危险：资源文件/目录**改名**（basename 进入 store 名）、往被整体插值的目录加文件、改变 `includes`/`imports`/列表顺序、
+   改变 `writeText`/activation/unit/脚本名称或文本缩进、增删 class/aspect 函数参数、把第三方包改为重新构建。
+5. 新文件需主代理 stage 后再用 Git flake 求值；`path:.` 只用于临时诊断并检查源范围。
+
+## 12. 文档
+
+- 现行文档保持原文件名以免 history 断链：`architecture-design.md`（本规范）、`config-ownership.md`、`service-policy.md`、`desktop-design.md`、`workflow-design.md`、`operations.md`（新增：重建、清理、回滚、验证层级）。
+- 功能细节写在功能 README；`docs/history/` 只追加。当前文档与源码矛盾时以源码为准并修正文档。
+
+## 13. 验证层级
+
+求值 < 构建 < 应用 < 实机验证；报告必须写明达到哪一层，不把前者写成后者。
