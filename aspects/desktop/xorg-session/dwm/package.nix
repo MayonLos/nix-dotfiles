@@ -13,6 +13,7 @@ let
     inherit (palette) bg;
     fg = palette.brightFg;
     inherit (palette) blue;
+    inherit (palette) selection;
     inherit (palette) muted;
     inherit (palette) red;
     inherit (palette) deep;
@@ -50,6 +51,7 @@ stdenv.mkDerivation {
       --bg ${lib.escapeShellArg colors.bg} \
       --fg ${lib.escapeShellArg colors.fg} \
       --blue ${lib.escapeShellArg colors.blue} \
+      --selection ${lib.escapeShellArg colors.selection} \
       --muted ${lib.escapeShellArg colors.muted} \
       --red ${lib.escapeShellArg colors.red} \
       --deep ${lib.escapeShellArg colors.deep} \

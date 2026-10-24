@@ -382,7 +382,7 @@ pkgs.runCommand "den-interactive-session-composition" { nativeBuildInputs = [ pk
   for group in ("active_colors", "disabled_colors", "inactive_colors"):
       colors = [value.strip() for value in palette["ColorScheme"][group].split(",")]
       assert len(colors) == 22 and all(re.fullmatch(r"#[0-9a-fA-F]{6}", value) for value in colors)
-  assert "#1f2329" in palette["ColorScheme"]["active_colors"]
+  assert "${palette.bg}" in palette["ColorScheme"]["active_colors"]
   path.write_text("existing GUI-owned palette\n")
   PY_QT
   source ${qtSeed}

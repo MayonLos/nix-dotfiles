@@ -9,7 +9,7 @@
 {
   bar.main = {
     position = "top";
-    thickness = 38;
+    thickness = 40;
     reserve_space = true;
     auto_hide = false;
     layer = "top";
@@ -19,7 +19,7 @@
     border_width = 1;
     show_tooltip = true;
     radius = 12;
-    margin_ends = 14;
+    margin_ends = 16;
     margin_edge = 8;
     padding = 8;
     widget_spacing = 8;
@@ -28,7 +28,7 @@
     # Only semantic groups and the launcher get a persistent surface.
     # Group capsules are independent of this per-widget default.
     capsule = false;
-    capsule_opacity = 0.96;
+    capsule_opacity = 1.0;
     capsule_fill = "surface_variant";
     capsule_radius = 8;
     capsule_thickness = 0.78;
@@ -93,7 +93,7 @@
           "notifications"
         ];
         accordion = false;
-        fill = "surface";
+        fill = palette.surface;
         padding = 6.0;
         widget_spacing = 4;
       }
@@ -108,7 +108,7 @@
         # control center remain available without hovering the bar.
         accordion = true;
         accordion_direction = "end";
-        fill = "surface";
+        fill = palette.surface;
         padding = 6.0;
         widget_spacing = 4;
       }
@@ -120,7 +120,7 @@
           "battery"
         ];
         accordion = false;
-        fill = "surface";
+        fill = palette.surface;
         padding = 6.0;
         widget_spacing = 4;
       }
@@ -143,9 +143,9 @@
   widget = {
     launcher = {
       capsule = true;
-      capsule_fill = "primary";
-      color = "on_primary";
-      icon_color = "on_primary";
+      capsule_fill = palette.selection;
+      color = palette.brightFg;
+      icon_color = palette.blue;
     };
 
     "control-center" = {
@@ -214,9 +214,9 @@
     };
 
     clock = {
-      format = "{:%m-%d  %H:%M}";
+      format = "{:%m月%d日 %a  %H:%M}";
       vertical_format = "{:%H\n%M}";
-      font_family = palette.fonts.mono;
+      font_family = palette.fonts.sans;
     };
 
     workspaces = {
@@ -230,11 +230,11 @@
       focused_output_only = true;
       active_pill_size = 1.5;
       inactive_pill_size = 1.0;
-      focused_color = "primary";
+      focused_color = "hover";
       occupied_color = "surface_variant";
       empty_color = palette.deep;
       urgent_color = "error";
-      font_scale = 1.0;
+      font_scale = 1.2;
     };
   };
 

@@ -2,11 +2,12 @@
   pkgs,
   home,
   nixos,
+  appearance,
   ...
 }:
 {
   xorg-session-runtime = import ./runtime-check.nix {
-    inherit pkgs home;
+    inherit pkgs home appearance;
     host = nixos;
   };
 }

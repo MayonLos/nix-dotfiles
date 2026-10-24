@@ -2,6 +2,9 @@
 { pkgs, lib, ... }:
 let
   rgba = color: alpha: "${lib.removePrefix "#" color}${alpha}";
+  wallpaper =
+    (import ../../appearance/appearance/resources/wallpaper/package.nix { inherit pkgs palette; })
+    .default;
   # Only this public repository image enters the store. Prepare the subdued
   # backdrop at build time, so locking never waits for a screenshot or filter.
   background =
@@ -10,7 +13,7 @@ let
         nativeBuildInputs = [ pkgs.imagemagick ];
       }
       ''
-        magick ${../../appearance/appearance/resources/wallpaper/wallpaper-005.png} \
+        magick ${wallpaper} \
           -fill '${palette.bg}' -colorize 28% -strip PNG24:"$out"
       '';
   lock = pkgs.writeShellApplication {
@@ -19,6 +22,7 @@ let
       # i3lock-color 2.13.c.5 closes XSS_SLEEP_LOCK_FD after MapNotify.
       # exec and --nofork preserve xss-lock's process/inhibitor ownership.
       # Xft.dpi is handled by the locker itself, including these logical sizes.
+      export LC_TIME=zh_CN.UTF-8
       exec ${lib.getExe pkgs.i3lock-color} \
         --nofork --ignore-empty-password --show-failed-attempts \
         --color=${rgba palette.bg "ff"} --image=${background} --fill \
@@ -26,7 +30,7 @@ let
         --radius=28 --ring-width=2 \
         --inside-color=${rgba palette.bg "b8"} \
         --ring-color=${rgba palette.selection "cc"} \
-        --line-color=00000000 --separator-color=00000000 \
+        --line-color=${rgba palette.black "00"} --separator-color=${rgba palette.black "00"} \
         --insidever-color=${rgba palette.bg "e6"} \
         --ringver-color=${rgba palette.blue "ff"} \
         --insidewrong-color=${rgba palette.bg "e6"} \
@@ -48,7 +52,7 @@ let
         --greeter-font=${lib.escapeShellArg palette.fonts.sans} \
         --time-size=56 --date-size=12 --verif-size=11 --wrong-size=11 \
         --layout-size=11 --modif-size=11 --greeter-size=11 \
-        --time-str='%H:%M' --date-str='%Y-%m-%d · %A' \
+        --time-str='%H:%M' --date-str='%Y年%m月%d日 %A' \
         --ind-pos='x+w/2:y+h/2+32' \
         --time-pos='ix:iy-120' --date-pos='tx:ty+28' \
         --verif-pos='ix:iy+5' --wrong-pos='ix:iy+5' \

@@ -1,0 +1,111 @@
+--- a/src/shell/launcher/launcher_panel.cpp
++++ b/src/shell/launcher/launcher_panel.cpp
+@@ -424,7 +424,7 @@
+   private:
+     void applyVisualState() {
+       if (m_selected) {
+-        m_row->setFill(colorSpecFromRole(ColorRole::Primary));
++        m_row->setFill(colorSpecFromRole(ColorRole::Hover));
+       } else if (m_hovered) {
+         m_row->setFill(colorSpecFromRole(ColorRole::Hover));
+       } else {
+@@ -436,17 +436,16 @@
+         m_row->clearBorder();
+       }
+ 
+-      const auto activeRole = m_selected ? ColorRole::OnPrimary : ColorRole::OnHover;
+       const bool active = m_selected || m_hovered;
+-      const ColorSpec foreground = colorSpecFromRole(active ? activeRole : ColorRole::OnSurface);
+-      const ColorSpec mutedForeground =
+-          active ? colorSpecFromRole(activeRole, 0.7F) : colorSpecFromRole(ColorRole::OnSurfaceVariant);
+-      m_badgeLabel->setColor(foreground);
+-      m_glyph->setColor(foreground);
++      const ColorSpec foreground = colorSpecFromRole(active ? ColorRole::OnHover : ColorRole::OnSurface);
++      const ColorSpec mutedForeground = active ? colorSpecFromRole(ColorRole::OnHover)
++                                               : colorSpecFromRole(ColorRole::OnSurfaceVariant);
++      m_badgeLabel->setColor(m_selected ? colorSpecFromRole(ColorRole::Primary) : foreground);
++      m_glyph->setColor(m_selected ? colorSpecFromRole(ColorRole::Primary) : foreground);
+       m_title->setColor(foreground);
+-      m_subtitle->setColor(mutedForeground);
+-      m_pinnedGlyph->setColor(mutedForeground);
+-      m_originGlyph->setColor(mutedForeground);
++      m_subtitle->setColor(m_selected ? colorSpecFromRole(ColorRole::OnSurfaceVariant) : mutedForeground);
++      m_pinnedGlyph->setColor(m_selected ? colorSpecFromRole(ColorRole::Primary) : mutedForeground);
++      m_originGlyph->setColor(m_selected ? colorSpecFromRole(ColorRole::Primary) : mutedForeground);
+     }
+ 
+     LauncherListStyle m_style{};
+@@ -648,7 +647,7 @@
+   private:
+     void applyVisualState() {
+       if (m_selected) {
+-        m_col->setFill(colorSpecFromRole(ColorRole::Primary));
++        m_col->setFill(colorSpecFromRole(ColorRole::Hover));
+       } else if (m_hovered) {
+         m_col->setFill(colorSpecFromRole(ColorRole::Hover));
+       } else {
+@@ -660,16 +659,15 @@
+         m_col->clearBorder();
+       }
+ 
+-      const auto activeRole = m_selected ? ColorRole::OnPrimary : ColorRole::OnHover;
+       const bool active = m_selected || m_hovered;
+-      const ColorSpec foreground = colorSpecFromRole(active ? activeRole : ColorRole::OnSurface);
++      const ColorSpec foreground = colorSpecFromRole(active ? ColorRole::OnHover : ColorRole::OnSurface);
+       m_glyph->setColor(foreground);
+       m_title->setColor(foreground);
+       m_pinnedGlyph->setColor(
+-          active ? colorSpecFromRole(activeRole, 0.7F) : colorSpecFromRole(ColorRole::OnSurfaceVariant)
++          active ? colorSpecFromRole(ColorRole::OnHover) : colorSpecFromRole(ColorRole::OnSurfaceVariant)
+       );
+       m_originGlyph->setColor(
+-          active ? colorSpecFromRole(activeRole, 0.7F) : colorSpecFromRole(ColorRole::OnSurfaceVariant)
++          active ? colorSpecFromRole(ColorRole::OnHover) : colorSpecFromRole(ColorRole::OnSurfaceVariant)
+       );
+     }
+ 
+--- a/src/shell/control_center/tabs/home_tab.cpp
++++ b/src/shell/control_center/tabs/home_tab.cpp
+@@ -28,6 +28,7 @@
+ #include "ui/builders.h"
+ #include "ui/controls/grid_view.h"
+ #include "ui/dialogs/file_dialog.h"
++#include "ui/palette.h"
+ 
+ #include <algorithm>
+ #include <cmath>
+@@ -134,7 +135,21 @@
+ 
+   void applyShortcutButtonStyle(Button& button, bool enabled, bool active, float fillOpacity) {
+     const bool on = enabled && active;
+-    button.setVariant(on ? ButtonVariant::Primary : ButtonVariant::Default);
++    button.setVariant(ButtonVariant::Default);
++    auto selectedPalette = Button::defaultPalette(ButtonVariant::Default);
++    if (on) {
++      const auto selected = Button::ButtonStateColors{
++          .bg = colorSpecFromRole(ColorRole::Hover),
++          .border = colorSpecFromRole(ColorRole::Primary),
++          .label = colorSpecFromRole(ColorRole::Primary),
++      };
++      selectedPalette.borderWidth = Style::borderWidth;
++      selectedPalette.normal = selected;
++      selectedPalette.hover = selected;
++      selectedPalette.pressed = selected;
++      selectedPalette.selected = selected;
++    }
++    button.setCustomPalette(std::move(selectedPalette));
+     button.setSurfaceOpacity(on ? 1.0F : fillOpacity);
+     button.setEnabled(enabled);
+   }
+--- a/src/shell/bar/widgets/workspaces_widget.cpp
++++ b/src/shell/bar/widgets/workspaces_widget.cpp
+@@ -1512,6 +1512,9 @@
+     return isMinimal() ? m_urgentColor : readableColorForFill(m_urgentColor);
+   }
+   if (!isMinimal()) {
++    if (workspaceUsesFocusedStyle(workspace, output)) {
++      return colorSpecFromRole(ColorRole::Primary);
++    }
+     return readableColorForFill(workspaceFillColor(workspace, output));
+   }
+   if (workspace.active) {
