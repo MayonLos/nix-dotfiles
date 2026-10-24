@@ -41,4 +41,5 @@ generation、store 路径和样本数据只对应当时提交，与当前源码�
 | [optimization-2026-10-24.md](history/optimization-2026-10-24.md) | 2026-10-24 | 五轮仓库与系统优化：依赖、启动、桌面、内核、登录与头像 |
 | [neovim-rebuild-2026-10-24.md](history/neovim-rebuild-2026-10-24.md) | 2026-10-24 | 第六轮 Neovim 完全重构、构建验证与此前历史 |
 | [im-cli-polish-2026-10-24.md](history/im-cli-polish-2026-10-24.md) | 2026-10-24 | 第七轮输入法语法模型、候选框主题与 CLI 配色 |
+| [desktop-polish-2026-10-24.md](history/desktop-polish-2026-10-24.md) | 2026-10-24 | 第九轮 Noctalia/Mango 标题条、视觉刻度与动效 |
 | [software-swap-2026-10-24.md](history/software-swap-2026-10-24.md) | 2026-10-24 | 第十轮软件替换、Neovim 启动页与 Lua LSP 实测 |
