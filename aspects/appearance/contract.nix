@@ -35,7 +35,7 @@ in
           };
           fonts = lib.mkOption {
             type = lib.types.submodule {
-              options = lib.genAttrs [ "sans" "mono" "serif" ] (
+              options = lib.genAttrs [ "sans" "cjk" "mono" "serif" ] (
                 _: lib.mkOption { type = lib.types.nonEmptyStr; }
               );
             };
@@ -49,6 +49,10 @@ in
             };
           };
           iconTheme = lib.mkOption { type = lib.types.nonEmptyStr; };
+          iconFolderColor = lib.mkOption {
+            type = lib.types.nonEmptyStr;
+            description = "Folder accent requested by selected icon theme adapters.";
+          };
         }
         // lib.genAttrs roles (_: lib.mkOption { type = color; });
       }

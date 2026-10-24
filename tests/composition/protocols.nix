@@ -180,6 +180,22 @@ let
   badArgv = schema [ { defaultTools.terminal.argv = [ ]; } ];
   badDesktopId = schema [ { defaultTools.guiTextEditor = "code desktop"; } ];
   badPaletteType = schema [ { appearance.bg = 123; } ];
+  badCjkType = schema [
+    {
+      appearance = paletteA // {
+        fonts = paletteA.fonts // {
+          cjk = 42;
+        };
+      };
+    }
+  ];
+  missingCjk = schema [
+    {
+      appearance = paletteA // {
+        fonts = builtins.removeAttrs paletteA.fonts [ "cjk" ];
+      };
+    }
+  ];
   badReducedMotionType = schema [ { appearance.reducedMotion = "yes"; } ];
   defaultAppearance = schema [ { appearance = builtins.removeAttrs paletteA [ "reducedMotion" ]; } ];
   badProjectDirectory = schema [
@@ -262,6 +278,8 @@ let
       && fails badDesktopId.defaultTools.guiTextEditor
       && fails badPaletteType.appearance.bg
       && fails badReducedMotionType.appearance.reducedMotion
+      && fails badCjkType.appearance.fonts.cjk
+      && fails missingCjk.appearance.fonts.cjk
       && fails badProjectDirectory.workspaceProjects.sample.directory
       && defaultAppearance.appearance.reducedMotion == false;
 

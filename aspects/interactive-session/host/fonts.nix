@@ -6,7 +6,8 @@
 
   fonts = {
     packages = with pkgs; [
-      nerd-fonts.jetbrains-mono
+      maple-mono.NF-CN
+      inter
       # Keep the separately named Symbols Nerd Font Mono available for icon
       # fallback as well as the patched monospace family.
       nerd-fonts.symbols-only
@@ -20,7 +21,10 @@
       defaultFonts = {
         emoji = [ "Noto Color Emoji" ];
         monospace = [ palette.fonts.mono ];
-        sansSerif = [ palette.fonts.sans ];
+        sansSerif = [
+          palette.fonts.sans
+          palette.fonts.cjk
+        ];
         serif = [ palette.fonts.serif ];
       };
     };

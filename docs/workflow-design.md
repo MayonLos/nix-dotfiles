@@ -95,6 +95,8 @@ Kitty 新窗口默认进入普通 shell，不自动套 tmux。用户需要保持
 
 tmux 会话恢复继续保留布局与编辑会话，禁止保存 pane 滚屏文本。恢复不等于重启数据库、容器、SSH 或付费 AI 任务；不能把“恢复窗口”实现成无条件重放历史命令。见 [现有恢复设置](../aspects/command-line/tmux.nix)。
 
+Zsh 的 `Ctrl+R` 由 Atuin 搜索本地命令历史，使用 compact 视图、全局默认筛选，并保留上箭头的原生 shell 搜索行为；候选需要再次按 Enter 才会执行。Atuin 同步与更新检查关闭。fzf 保留 `Ctrl+T` 文件选择和 `Alt+C` 目录选择。Atuin 数据库属于运行态用户数据，首次配置完成后如需导入旧历史，由用户在应用后显式执行；配置构建与隔离按键检查不会导入或读取真实历史。
+
 项目的依赖、编译器和 SDK 版本由项目 `flake.nix`/`flake.lock` 拥有；全局只提供确认保留的基础工具和交互工具。direnv/nix-direnv 负责目录环境缓存：新的或变化的 `.envrc` 需用户信任，首次缺依赖时下载是正常行为，不承诺进入项目零等待。编辑器、语言服务器必须从项目 cwd/环境启动；桌面打开目录不能假装自动获得其 devShell。全局 clangd 用 PATH，项目可覆盖，已有语言接口不把所有工具写死成 store 路径。
 
 远程默认在服务器内用 tmux 持续工作，笔记本只作 SSH 客户端。SSH 不嵌套自动启动 tmux；有意嵌套时文档说明如何发送前缀。服务器远程 workspace 不附带 GUI、Kitty 或本地剪贴板 daemon，参考 [服务器规划](server-plan.md)。

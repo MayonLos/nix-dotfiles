@@ -39,7 +39,7 @@ in
     };
     iconTheme = {
       name = desktop.iconTheme;
-      package = pkgs.papirus-icon-theme;
+      package = pkgs.papirus-icon-theme.override { color = palette.iconFolderColor; };
     };
     gtk3.extraConfig.gtk-enable-animations = !(palette.reducedMotion or false);
     gtk4.extraConfig.gtk-enable-animations = !(palette.reducedMotion or false);

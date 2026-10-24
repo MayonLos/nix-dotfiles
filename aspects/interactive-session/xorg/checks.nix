@@ -78,12 +78,13 @@ pkgs.runCommand "xorg-session-runtime"
     chmod 700 "$XDG_RUNTIME_DIR"
     unset DISPLAY WAYLAND_DISPLAY DBUS_SESSION_BUS_ADDRESS
     export XORG_TEST_SHELL=${pkgs.bash}/bin/bash
-    export XDG_DATA_DIRS=${pkgs.papirus-icon-theme}/share:${pkgs.hicolor-icon-theme}/share:$XDG_DATA_DIRS
+    export XDG_DATA_DIRS=${home.services.dunst.iconTheme.package}/share:${pkgs.hicolor-icon-theme}/share:$XDG_DATA_DIRS
     export FONTCONFIG_FILE=${
       pkgs.makeFontsConf {
         fontDirectories = [
           pkgs.noto-fonts-cjk-sans
-          pkgs.nerd-fonts.jetbrains-mono
+          pkgs.maple-mono.NF-CN
+          pkgs.inter
         ];
       }
     }

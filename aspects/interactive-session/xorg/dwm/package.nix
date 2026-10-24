@@ -45,6 +45,8 @@ stdenv.mkDerivation {
     python ${configure} \
       --profile ${lib.escapeShellArg (toString profileDirectory)} \
       --dpi ${toString x11Dpi} \
+      --font-mono ${lib.escapeShellArg palette.fonts.mono} \
+      --font-cjk ${lib.escapeShellArg palette.fonts.cjk} \
       --bg ${lib.escapeShellArg colors.bg} \
       --fg ${lib.escapeShellArg colors.fg} \
       --blue ${lib.escapeShellArg colors.blue} \

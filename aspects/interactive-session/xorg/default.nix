@@ -65,7 +65,7 @@ in
         Unit = guardedUnit;
         Install.WantedBy = [ target ];
         Service.Environment = [
-          "XDG_DATA_DIRS=${pkgs.papirus-icon-theme}/share:${pkgs.hicolor-icon-theme}/share:${config.home.profileDirectory}/share:/run/current-system/sw/share"
+          "XDG_DATA_DIRS=${config.services.dunst.iconTheme.package}/share:${pkgs.hicolor-icon-theme}/share:${config.home.profileDirectory}/share:/run/current-system/sw/share"
         ];
       };
       xorg-copyq = sessionService "Xorg clipboard history" {

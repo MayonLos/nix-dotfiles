@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Apply the small, pinned dwm-flexipatch configuration at build time."""
 import argparse
+import json
 import re
 from pathlib import Path
 
 p = argparse.ArgumentParser()
-for name in ("profile", "bg", "fg", "blue", "muted", "red", "deep", "surface"):
+for name in ("profile", "bg", "fg", "blue", "muted", "red", "deep", "surface", "font-mono", "font-cjk"):
     p.add_argument("--" + name, required=True)
 p.add_argument("--dpi", required=True, type=int)
 a = p.parse_args()
@@ -49,7 +50,8 @@ once(r'static const char \*termcmd\[\]\s*=\s*\{ "st", NULL \};', "")
 
 # Use a mono face with fontconfig CJK fallback; the Xft DPI is provided by the host.
 once(r"static const char \*fonts\[\]\s*=\s*\{[^}]*\};",
-     'static const char *fonts[] = { "JetBrainsMono Nerd Font:size=9.5", "Noto Sans CJK SC:size=9.5" };')
+     'static const char *fonts[] = { '
+     + ', '.join(json.dumps(f"{font}:size=9.5") for font in (a.font_mono, a.font_cjk)) + ' };')
 
 # Underline only the active tag, keeping its label legible against the shared deep bar.
 once(r"(static const unsigned int ulinepad\s*=\s*)\d+", rf"\g<1>{scale(5)}")

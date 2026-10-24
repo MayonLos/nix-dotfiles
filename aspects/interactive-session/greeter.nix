@@ -77,6 +77,7 @@ in
   # system closure and discoverable without relying on a user's Home Manager.
   environment.systemPackages = [
     pkgs.bibata-cursors
+    pkgs.inter
     pkgs.noto-fonts-cjk-sans
   ];
 }

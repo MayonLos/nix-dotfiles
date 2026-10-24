@@ -152,7 +152,11 @@ let
     && config.security.polkit.enable
     && config.xdg.portal.enable
     && config.xdg.portal.config ? dwm
-    && config.fonts.fontconfig.defaultFonts.sansSerif == [ palette.fonts.sans ];
+    &&
+      config.fonts.fontconfig.defaultFonts.sansSerif == [
+        palette.fonts.sans
+        palette.fonts.cjk
+      ];
 
   selectedHost = host aliceOnly "hostA";
   unselectedHost = host aliceOnly "hostB";
@@ -171,6 +175,19 @@ let
   unselectedXorgHostBobHome = home xorgOnly "hostB" "bob";
 
   results = {
+    fontRolesAndCursorReachTheirConsumers =
+      selectedHost.fonts.fontconfig.defaultFonts.monospace == [ palette.fonts.mono ]
+      && selectedHome.gtk.font.name == palette.fonts.sans
+      && selectedHome.programs.noctalia.settings.shell.font_family == palette.fonts.sans
+      &&
+        selectedHome.i18n.inputMethod.fcitx5.settings.addons.classicui.globalSection.Font
+        == "${palette.fonts.cjk} 10"
+      && selectedHome.home.pointerCursor.name == palette.cursor.name
+      && selectedHome.home.pointerCursor.size == palette.cursor.size
+      &&
+        xorgAliceHome.services.dunst.iconTheme.package.outPath == selectedHome.gtk.iconTheme.package.outPath
+      && xorgAliceHome.home.pointerCursor.name == palette.cursor.name;
+
     audioActivationIsBindingScoped =
       selectedHost.systemd.user.sockets.pipewire.wantedBy == [ ]
       && selectedHost.systemd.user.sockets.pipewire-pulse.wantedBy == [ ]
@@ -185,7 +202,11 @@ let
       && selectedHost.services.pipewire.enable
       && selectedHost.xdg.portal.enable
 
-      && selectedHost.fonts.fontconfig.defaultFonts.sansSerif == [ palette.fonts.sans ]
+      &&
+        selectedHost.fonts.fontconfig.defaultFonts.sansSerif == [
+          palette.fonts.sans
+          palette.fonts.cjk
+        ]
       && selectedHome.programs.noctalia.enable
       && selectedHome.programs.noctalia.customPalettes.One-Dark-Darker.dark.mSurface == palette.bg
       && selectedHome.i18n.inputMethod.enable
@@ -294,6 +315,10 @@ let
     lib.replaceStrings [ xorgAliceHome.xdg.configHome ] [ "$XDG_CONFIG_HOME" ]
       xorgAliceHome.home.activation.seedQt6ctPalette.data
   );
+  qtFontMigration = pkgs.writeText "xorg-qt-font-migration.sh" (
+    lib.replaceStrings [ xorgAliceHome.xdg.configHome ] [ "$XDG_CONFIG_HOME" ]
+      xorgAliceHome.home.activation.migrateQt6ctFonts.data
+  );
   passed = lib.all (value: value) (builtins.attrValues results);
   report = pkgs.writeText "den-interactive-session-composition.json" (builtins.toJSON results);
 in
@@ -322,6 +347,28 @@ pkgs.runCommand "den-interactive-session-composition" { nativeBuildInputs = [ pk
   PY_QT
   source ${qtSeed}
   grep -Fx 'existing GUI-owned palette' "$XDG_CONFIG_HOME/qt6ct/colors/noctalia.conf" > "$out/qt-seed-preserves-existing.txt"
+  mkdir -p "$XDG_CONFIG_HOME/qt6ct"
+  cat > "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf" <<'QT_OLD'
+  [Appearance]
+  style=CustomStyle
+  [Fonts]
+  general=Noto Sans CJK SC,11,-1,5,400,0,0,0,0,0
+  fixed=JetBrainsMono Nerd Font,11,-1,5,400,0,0,0,0,0
+  [Unknown]
+  value=keep me
+  QT_OLD
+  source ${qtFontMigration}
+  cp "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf" "$out/qt-font-migrated.conf"
+  grep -Fx 'general=${palette.fonts.sans},11,-1,5,400,0,0,0,0,0' "$out/qt-font-migrated.conf"
+  grep -Fx 'fixed=${palette.fonts.mono},11,-1,5,400,0,0,0,0,0' "$out/qt-font-migrated.conf"
+  grep -Fx 'style=CustomStyle' "$out/qt-font-migrated.conf"
+  grep -Fx 'value=keep me' "$out/qt-font-migrated.conf"
+  source ${qtFontMigration}
+  cmp "$out/qt-font-migrated.conf" "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf"
+  sed -i 's/^general=.*/general=User Choice,12,-1,5,400,0,0,0,0,0/' "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf"
+  cp "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf" "$out/qt-font-custom.conf"
+  source ${qtFontMigration}
+  cmp "$out/qt-font-custom.conf" "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf"
   # Validate the reduced-motion branch with the actual pinned parsers as well
   # as checking its composition. The real host check covers the rich default.
   ${lib.getExe sharedAliceHome.programs.noctalia.package} config validate ${

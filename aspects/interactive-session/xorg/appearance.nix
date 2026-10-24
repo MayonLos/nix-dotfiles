@@ -65,7 +65,7 @@ in
     enable = true;
     package = pkgs.dunst;
     iconTheme = {
-      package = pkgs.papirus-icon-theme;
+      package = pkgs.papirus-icon-theme.override { color = palette.iconFolderColor; };
       name = palette.iconTheme;
       size = "32x32";
     };

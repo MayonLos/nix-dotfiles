@@ -1,6 +1,7 @@
 # One Dark Darker 桌面视觉设计
 
-状态：**此前桌面配置已由用户 nr 应用；本轮系统与编辑器优化获授权继续应用**。
+状态：此前桌面配置已由用户应用；2026-10-24 第三轮字体、图标、指针与 Atuin
+只修改声明并构建验证，尚未应用，见[第三轮记录](history/fonts-icons-atuin-2026-10-24.md)。
 此前 Den 迁移的构建证据见[实施记录](history/den-execution.md)，本轮检查与交付状态另见
 [视觉优化执行记录](history/desktop-polish-execution.md)。尺寸、动画、混合缩放与功耗仍需本机验收，
 构建不证明视觉效果；用户正在运行的 mod 任务不受本轮配置编辑影响。
@@ -71,7 +72,7 @@ Noctalia 使用 `theme.mode = "dark"`、`shell_mode = "follow"`、`source = "cus
 | 内部节奏 | `padding = 8`，`widget_spacing = 8`；组内 padding 6、间距 4；时间组 padding 8、间距 8 |
 | 表面 | `background_opacity = 0.98`，`border = "outline"`，`border_width = 1` |
 | 胶囊 | 全局 `capsule = false`，语义分组及 launcher 单独保留胶囊；默认 `capsule_fill = "surface_variant"`，`capsule_radius = 8`，`capsule_thickness = 0.78`，`capsule_opacity = 0.96`；不逐个再加边框 |
-| 文字 | Noto Sans CJK SC，`font_weight = 500`，`font_scale = 1.0`；时钟单独用 JetBrainsMono Nerd Font，数字等宽 |
+| 文字 | Inter（中文由 fontconfig 回退 Noto Sans CJK SC），`font_weight = 500`，`font_scale = 1.0`；时钟单独用 Maple Mono NF CN，数字等宽 |
 | 图标 | 保留 Noctalia 自带图标与应用原图；系统状态单色、应用身份保留彩色；右端保留现有 Nix SVG |
 | 阴影 | `shadow = true`、`contact_shadow = true`，全局 shadow alpha 0.32、方向 down |
 | 位置 | `reserve_space = true`、`auto_hide = false`、`layer = "top"`；attached 接缝初始 `panel_overlap = 1` |
@@ -96,7 +97,7 @@ Mango 保持 `tile,scroller,monocle` 切换，并按下述活动设置工作区�
 
 `dim_enable = 0`，保持非焦点文档、代码注释和图表的原始对比度。焦点由 2 像素蓝边框表达；不降低应用正文不透明度。
 
-monocle 标签栏已显式适配：高度 32，`tab_bar_decorate_font_desc = "Noto Sans CJK SC 10"`，普通 fg/background 为 foreground/deep，选中 fg/background 为 black/blue，border 为 border，圆角 8。对应 `tab_bar_decorate_{fg_color,bg_color,focus_fg_color,focus_bg_color,border_color,corner_radius}` 均存在于 pinned Mango。当前标签栏使用共享 palette，不再依赖旧 Tokyo Night 试验色。Noctalia 当前 Mango template 输出了 group bar 色，**没有输出 tab bar 色**，所以只换 palette 不会覆盖 monocle 标签栏。[Mango parser](https://github.com/mangowm/mango/blob/1cfb497eea7b18a2fb8372321b7927629208436a/src/config/option_defs.c)、[Noctalia Mango template](https://github.com/noctalia-dev/noctalia-shell/blob/fc2af27c0e616006bf858cad3b7c9711a028e501/assets/templates/mango/mango.conf)
+monocle 标签栏已显式适配：高度 32，`tab_bar_decorate_font_desc = "Inter 10"`，普通 fg/background 为 foreground/deep，选中 fg/background 为 black/blue，border 为 border，圆角 8。对应 `tab_bar_decorate_{fg_color,bg_color,focus_fg_color,focus_bg_color,border_color,corner_radius}` 均存在于 pinned Mango。当前标签栏使用共享 palette，不再依赖旧 Tokyo Night 试验色。Noctalia 当前 Mango template 输出了 group bar 色，**没有输出 tab bar 色**，所以只换 palette 不会覆盖 monocle 标签栏。[Mango parser](https://github.com/mangowm/mango/blob/1cfb497eea7b18a2fb8372321b7927629208436a/src/config/option_defs.c)、[Noctalia Mango template](https://github.com/noctalia-dev/noctalia-shell/blob/fc2af27c0e616006bf858cad3b7c9711a028e501/assets/templates/mango/mango.conf)
 
 ## 透明、模糊、动画与壁纸
 
@@ -143,9 +144,9 @@ Launcher 使用原生 full layout、浮动居中、宽 680、`search_position = 
 锁屏采用同一静态壁纸与配色，`blurred_desktop = false`，blur 0.40、tint 0.60；较暗的背景承托中央时钟与认证框。
 锁屏有独立转场池，现明确为单一 `fade`、550 ms；不再继承上游随机效果池和 1500 ms 默认。
 锁定实现会为转场临时捕获桌面（内存中留至解锁），这与使用桌面截图作为持续锁屏背景不同；
-没有 screencopy 能力或捕获失败时跳过转场。`reducedMotion` 使用空池，避免这项动画捕获。使用原生 regular login box、圆角 16、背景 surface_variant/1.0、输入框 radius 10/opacity 1.0；保留认证提示、Caps Lock、键盘布局和会话按钮。媒体摘要关闭、天气保留，时钟单独配置为原生 clock widget，使用 Noto Sans CJK SC、居中文本、无底板、保留文字阴影。`lockscreen_widgets` 的坐标属于真实输出：内屏按约 1707×1067 逻辑画布，clock 中心为宽度 1/2、高度 24%、box 420×110，独立日期位于高度 32.5%；认证框中心为高度 54%，外屏仍须按真实输出建立记录，不复制物理像素坐标。这些 widget 类型和字段已支持，最终坐标、实际尺寸与边界仍须解锁状态预览验证。[Lockscreen widgets](https://github.com/noctalia-dev/noctalia-shell/blob/fc2af27c0e616006bf858cad3b7c9711a028e501/docs/user/lockscreen/widgets.mdx)
+没有 screencopy 能力或捕获失败时跳过转场。`reducedMotion` 使用空池，避免这项动画捕获。使用原生 regular login box、圆角 16、背景 surface_variant/1.0、输入框 radius 10/opacity 1.0；保留认证提示、Caps Lock、键盘布局和会话按钮。媒体摘要关闭、天气保留，时钟单独配置为原生 clock widget，使用 Inter（中文回退 Noto CJK）、居中文本、无底板、保留文字阴影。`lockscreen_widgets` 的坐标属于真实输出：内屏按约 1707×1067 逻辑画布，clock 中心为宽度 1/2、高度 24%、box 420×110，独立日期位于高度 32.5%；认证框中心为高度 54%，外屏仍须按真实输出建立记录，不复制物理像素坐标。这些 widget 类型和字段已支持，最终坐标、实际尺寸与边界仍须解锁状态预览验证。[Lockscreen widgets](https://github.com/noctalia-dev/noctalia-shell/blob/fc2af27c0e616006bf858cad3b7c9711a028e501/docs/user/lockscreen/widgets.mdx)
 
-Greeter 由主机显式生成 `appearance.scheme = "Synced"`、`theme_mode = "dark"`、完整 `appearance.palette`、同一可公开壁纸的 store 路径、Noto Sans CJK SC、与 shell 一致的圆角 scale 1.2。其 palette 使用 `primary` 等 snake_case 字段，不直接塞 Noctalia JSON 的 `mPrimary`。时间在 above-panel，24 小时、日期 `%m-%d %A`；隐藏 scheme selector 与底部品牌 logo，保留右下电源按钮、当前 random password mask 与 Mango 默认会话。`greeter.toml` 的完整 palette 优先于 mutable `sync.toml`，不用 shell 运行时同步来取得登录前必需的颜色。字体/壁纸必须进入系统可访问 closure，不能指向个人 home。[Greeter 配置及优先级](https://github.com/noctalia-dev/noctalia-greeter/blob/05fc8e3763de7940233358b5e0b1a5ae1967bcf1/docs/user/configuration.md)
+Greeter 由主机显式生成 `appearance.scheme = "Synced"`、`theme_mode = "dark"`、完整 `appearance.palette`、同一可公开壁纸的 store 路径、Inter（中文回退 Noto CJK）、与 shell 一致的圆角 scale 1.2。其 palette 使用 `primary` 等 snake_case 字段，不直接塞 Noctalia JSON 的 `mPrimary`。时间在 above-panel，24 小时、日期 `%m-%d %A`；隐藏 scheme selector 与底部品牌 logo，保留右下电源按钮、当前 random password mask 与 Mango 默认会话。`greeter.toml` 的完整 palette 优先于 mutable `sync.toml`，不用 shell 运行时同步来取得登录前必需的颜色。字体/壁纸必须进入系统可访问 closure，不能指向个人 home。[Greeter 配置及优先级](https://github.com/noctalia-dev/noctalia-greeter/blob/05fc8e3763de7940233358b5e0b1a5ae1967bcf1/docs/user/configuration.md)
 
 本轮场景表面统一使用外框、下投影和清楚的输入框；`shell.shadow.alpha = 0.32`、
 `corner_radius_scale = 1.2`，内部 `button_borders/card_borders = false`，
@@ -169,13 +170,36 @@ Greeter 由主机显式生成 `appearance.scheme = "Synced"`、`theme_mode = "da
 | Qt | 保留 qt6ct + Fusion、Papirus-Dark；qt6ct 的 mutable 入口继续引用单一 Noctalia palette 输出。Qt5、硬编码主题及第三方弹窗逐个验收 |
 | Firefox | 继续现有 userChrome template/application hook，输出固定 palette；标签、地址栏、侧栏与菜单统一。网站正文遵循网站自己的主题，不全局反色 |
 | Fcitx5 | 已使用自己的固定 Darker 资源，替代旧 `Tokyonight-Mayon` 派生主题；背景 background、前景 foregroundStrong、选中 blue/black。保留现有 10 pt 字体和紧凑 padding，保留 Wayland/X11 DPI 修正依据 |
-| Kitty | JetBrainsMono Nerd Font 11 pt、padding 8、隐藏应用装饰、背景 opacity 1.0；ANSI 与上述 terminal 数据一致，光标 beam 1.5，主题不再运行时随 shell 改写 |
+| Kitty | Maple Mono NF CN 11 pt、padding 8、隐藏应用装饰、背景 opacity 1.0；ANSI 与上述 terminal 数据一致，光标 beam 1.5，主题不再运行时随 shell 改写 |
 | tmux | 状态栏一行、底部；左会话、中央窗口、右前缀/复制模式，现有条件日期可保留。普通背景 default，活动项 ANSI blue/black，copy mode yellow/black；仍从同一 ANSI palette 取色 |
 | Neovim | 保留现有 Lua 高亮、状态线、tabline、补全、诊断和语法色；Normal/NormalNC 固定 background。只有 palette 数据进入公共外观接口，Lua 行为与插件适配仍由编辑器拥有 |
-| Swayimg / Fastfetch | Swayimg 信息浮层采用共享 Noto Sans CJK SC 11 pt、brightFg/deep，图库和选择色继续来自 palette；Fastfetch 普通电池标签用蓝色，避免常态错误红色 |
+| Swayimg / Fastfetch | Swayimg 信息浮层采用共享 Inter 11 pt（中文回退 Noto CJK）、brightFg/deep，图库和选择色继续来自 palette；Fastfetch 普通电池标签用蓝色，避免常态错误红色 |
 | 其他模板消费者 | btop、Obsidian、VS Code、Zathura 继续现有模板选择；Yazi 主题改由 HM 消费共享 palette，退出 Noctalia 模板，逐个检查生成文件与重载行为；不因统一外观删除现有软件或插件 |
 
-鼠标保持 Bibata-Modern-Ice 24，应用图标保持 Papirus-Dark；中文 UI 使用 Noto Sans CJK SC，等宽内容使用 JetBrainsMono Nerd Font。不把 Nerd Font 作为全部桌面文字字体。GTK/Qt 的字体设置需各自适配，不能以设置 Noctalia `font_family` 代替。浏览器与代码编辑区保持足够内容密度，应用自己的标题栏高度不强行伪装为同一个 36 像素条。
+鼠标使用 Bibata-Modern-Classic 24，应用图标保持 Papirus-Dark，文件夹采用 blue。
+外观只拥有 `fonts.sans = "Inter"`、`fonts.cjk = "Noto Sans CJK SC"`、
+`fonts.mono = "Maple Mono NF CN"`、`iconFolderColor = "blue"` 等公共数据；GTK 与 Dunst
+各自用 `papirus-icon-theme.override { color = palette.iconFolderColor; }` 消费。blue 与当前蓝色焦点一致，
+本轮未另选 bluegrey，也没有更改主题名。Dunst 的 XDG 搜索路径使用相同变体，避免加载默认文件夹色。
+GTK、面板、控制中心、Mango 装饰、greeter、锁屏、Swayimg 与 Zathura 界面均用 Inter；
+Qt 新配置使用相同字体，既有配置只迁移精确匹配旧仓库完整字体默认值的字段，其他 GUI 偏好保留；
+中文优先的 Fcitx 候选和 mpv 字幕用 `fonts.cjk`，mpv OSD 用 `fonts.mono`。
+系统 sans-serif 顺序为 `[ "Inter" "Noto Sans CJK SC" ]`，monospace 跟随 Maple；
+Noctalia 面板时钟与 dwm 栏使用 Maple，dwm 另有公开 CJK 字段作为回退。
+Kitty 保持 11 pt：内屏 2560×1600 / scale 1.5 下约 1707×1067 逻辑空间，
+仅更换家族不足以决定缩字号，最终宽度与行距留待真实窗口比较。Maple 自带 Nerd/CJK 字形，
+Kitty 原本没有 `symbol_map`，本轮也无需新增；保留独立 Symbols Nerd Font Mono 包供其他应用回退，
+没有显式字体的 tmux/终端 Neovim 继承 Kitty，JetBrains Mono 字体包已移除。
+
+锁定 Noctalia `fc2af27c` 的 `src/render/text/cairo_text_renderer.cpp` 使用
+`pango_cairo_font_map_new`、`pango_font_description_set_family` 与 `pango_layout_set_text`，
+没有关闭 Pango 缺字回退；因此按家族名请求 Inter 不会限制为仅 Inter 字形。
+当前 pin 已是原生 C++/Pango，不能按旧 Quickshell/QML 实现推断。构建检查使用真实 host
+生成的 fontconfig 规则、隔离 HOME 和 `fc-match 'Inter:lang=zh-cn:charset=4e2d'`
+验证中文选择 Noto Sans CJK SC；这证明字体选择，不替代面板中文裁切与混合文本实机验收。
+字体文件 family 与全部构建结果见[第三轮记录](history/fonts-icons-atuin-2026-10-24.md)。
+
+不把 Nerd Font 作为全部桌面文字字体。GTK/Qt 的字体设置需各自适配，不能以设置 Noctalia `font_family` 代替。浏览器与代码编辑区保持足够内容密度，应用自己的标题栏高度不强行伪装为同一个 36 像素条。
 
 ## Neovim：OneDark 工作台重设计
 

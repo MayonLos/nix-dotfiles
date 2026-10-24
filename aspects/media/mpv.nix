@@ -45,8 +45,8 @@ in
       # more to the point they are often Chinese here -- a Latin-only mono
       # family means every CJK glyph is a fontconfig fallback, so the line
       # renders in two typefaces with two different vertical metrics.
-      # Noto Sans CJK SC covers both scripts in one family.
-      sub-font = if palette == null then "Noto Sans CJK SC" else palette.fonts.sans;
+      # The selected CJK family covers both scripts in one family.
+      sub-font = if palette == null then "sans-serif" else palette.fonts.cjk;
       sub-font-size = 45;
       sub-color = if palette == null then "#d1d5de" else palette.brightFg;
       sub-border-color = if palette == null then "#181b20" else palette.deep;
@@ -56,7 +56,7 @@ in
 
       # uosc draws the progress/seek UI; use mono for timestamps and sans for
       # subtitle prose, with both surfaces following the fixed OneDark palette.
-      osd-font = if palette == null then "JetBrainsMono Nerd Font" else palette.fonts.mono;
+      osd-font = if palette == null then "monospace" else palette.fonts.mono;
       osd-font-size = 26;
       osd-color = if palette == null then "#d1d5de" else palette.brightFg;
       osd-border-color = if palette == null then "#181b20" else palette.deep;

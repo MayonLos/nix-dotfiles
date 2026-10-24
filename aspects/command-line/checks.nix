@@ -5,6 +5,12 @@
   systemPath,
 }:
 let
+  # HM renders absolute home/history/plugin paths. Rebase them for the shell
+  # binding test so interactive startup cannot touch the real user's history.
+  isolatedZshrc = pkgs.writeText "isolated-zshrc" (
+    pkgs.lib.replaceStrings [ home.home.homeDirectory "/run/secrets/" ] [ "$HOME" "$HOME/secrets/" ]
+      home.home.file."./.zshrc".text
+  );
   kittyExtra = pkgs.writeText "kitty-workspace-check.py" ''
     import os, json
     from kitty.config import load_config
@@ -52,6 +58,35 @@ pkgs.runCommand "command-line-runtime"
     ${pkgs.kitty}/bin/kitty +runpy "exec(open('${kittyExtra}').read())"
     test -s "$KITTY_RESULT"
     zsh -n ${home.home.file."./.zshrc".source}
+    ln -s ${isolatedZshrc} "$HOME/.zshrc"
+    TERM=xterm zsh -i -c 'bindkey "^R"' > "$out/zsh-ctrl-r"
+    TERM=xterm zsh -i -c 'bindkey "^T"; bindkey "^[c"; bindkey "^[[A"' > "$out/zsh-fzf-bindings"
+    grep -Fq 'atuin-search' "$out/zsh-ctrl-r"
+    grep -Fq 'fzf-file-widget' "$out/zsh-fzf-bindings"
+    grep -Fq 'fzf-cd-widget' "$out/zsh-fzf-bindings"
+    grep -Fq 'up-line-or-beginning-search' "$out/zsh-fzf-bindings"
+    python3 - ${home.xdg.configFile."atuin/config.toml".source} ${
+      home.xdg.configFile."atuin/themes/onedark-darker.toml".source
+    } <<'PY'
+    import sys, tomllib
+    with open(sys.argv[1], "rb") as source:
+        config = tomllib.load(source)
+    with open(sys.argv[2], "rb") as source:
+        theme = tomllib.load(source)
+    assert config["auto_sync"] is False
+    assert config["update_check"] is False
+    assert config["style"] == "compact"
+    assert config["inline_height"] == 20
+    assert config["enter_accept"] is False
+    assert config["filter_mode"] == "global"
+    assert config["filter_mode_shell_up_key_binding"] == "session"
+    assert config["theme"]["name"] == "onedark-darker"
+    assert theme["theme"]["name"] == "onedark-darker"
+    assert set(theme["colors"]) == {
+        "Base", "AlertInfo", "AlertWarn", "AlertError", "Annotation",
+        "Guidance", "Important", "Title", "Muted"
+    }
+    PY
     tmux -S "$TMPDIR/tmux.sock" -f ${
       home.xdg.configFile."tmux/tmux.conf".source
     } new-session -d -s validate

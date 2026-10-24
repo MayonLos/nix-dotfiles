@@ -8,7 +8,7 @@
       noctaliaIntegrations = [ "btop" ];
       includes = [ den.aspects.workspace-task ];
       homeManager.imports = [
-        ./zsh.nix
+        (import ./zsh.nix { palette = user.appearance; })
         (import ./git.nix { palette = user.appearance; })
         ./direnv.nix
         ./nix-index.nix

@@ -8,7 +8,8 @@
 {
   # qt6ct needs both its configuration and a color scheme on a fresh account,
   # including Xorg-only accounts that never run Noctalia. These are initial
-  # seeds, not ongoing writers: preserve qt6ct GUI settings and let Noctalia
+  # seeds with a bounded migration of the former repository font defaults:
+  # preserve all other qt6ct GUI settings and let Noctalia
   # keep updating its existing mutable palette path when that shell is selected.
   # Neither file is owned through a Home Manager symlink.
   home.activation =
@@ -98,6 +99,33 @@
           general=${palette.fonts.sans},11,-1,5,400,0,0,0,0,0
           fixed=${palette.fonts.mono},11,-1,5,400,0,0,0,0,0
         '';
+      migrateFonts = pkgs.writeText "qt6ct-migrate-fonts.py" ''
+        import re
+        import sys
+        from pathlib import Path
+
+        path = Path(sys.argv[1])
+        if not path.is_file() or path.is_symlink():
+            sys.exit(0)
+        # Match the complete former seeds, including size and weight. A GUI
+        # choice with different metrics or another family remains user-owned.
+        replacements = {
+            "general=Noto Sans CJK SC,11,-1,5,400,0,0,0,0,0": "general=${palette.fonts.sans},11,-1,5,400,0,0,0,0,0",
+            "fixed=JetBrainsMono Nerd Font,11,-1,5,400,0,0,0,0,0": "fixed=${palette.fonts.mono},11,-1,5,400,0,0,0,0,0",
+        }
+        text = path.read_text()
+        lines = text.splitlines(keepends=True)
+        section = ""
+        for index, line in enumerate(lines):
+            match = re.fullmatch(r"\[([^]]+)\]", line.strip())
+            if match:
+                section = match[1]
+            if section == "Fonts" and line.rstrip("\n") in replacements:
+                lines[index] = replacements[line.rstrip("\n")] + ("\n" if line.endswith("\n") else "")
+        result = "".join(lines)
+        if result != text:
+            path.write_text(result)
+      '';
       seed =
         name:
         seedFile.mkActivation "${config.xdg.configHome}/${name}/${name}.conf" {
@@ -106,6 +134,9 @@
     in
     {
       seedQt6ctConfig = seed "qt6ct";
+      migrateQt6ctFonts = lib.hm.dag.entryAfter [ "seedQt6ctConfig" ] ''
+        run ${pkgs.python3}/bin/python3 ${migrateFonts} ${lib.escapeShellArg "${config.xdg.configHome}/qt6ct/qt6ct.conf"}
+      '';
       seedQt6ctPalette = seedFile.mkActivation colorScheme { source = initialPalette; };
     };
 }

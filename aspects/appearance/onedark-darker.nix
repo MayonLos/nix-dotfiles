@@ -4,15 +4,17 @@
   name = "onedark-darker";
   reducedMotion = false;
   fonts = {
-    sans = "Noto Sans CJK SC";
-    mono = "JetBrainsMono Nerd Font";
+    sans = "Inter";
+    cjk = "Noto Sans CJK SC";
+    mono = "Maple Mono NF CN";
     serif = "Noto Serif CJK SC";
   };
   cursor = {
-    name = "Bibata-Modern-Ice";
+    name = "Bibata-Modern-Classic";
     size = 24;
   };
   iconTheme = "Papirus-Dark";
+  iconFolderColor = "blue";
   black = "#0e1013";
   bg = "#1f2329";
   surface = "#282c34";

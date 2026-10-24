@@ -45,7 +45,7 @@ in
 
       # Keep the page counter, without a permanent scrollbar or long path.
       guioptions = "s";
-      font = "${if palette == null then "Noto Sans CJK SC" else palette.fonts.sans} 11";
+      font = "${if palette == null then "sans-serif" else palette.fonts.sans} 11";
       page-v-padding = 12;
       page-h-padding = 12;
       statusbar-h-padding = 12;

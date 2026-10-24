@@ -1,7 +1,5 @@
-{
-  pkgs,
-  ...
-}:
+{ palette }:
+{ lib, pkgs, ... }:
 
 let
   zshInit = ''
@@ -110,6 +108,40 @@ in
     zoxide = {
       enable = true;
       enableZshIntegration = true;
+    };
+
+    atuin = {
+      enable = true;
+      enableZshIntegration = true;
+      flags = [ "--disable-up-arrow" ];
+      settings = {
+        auto_sync = false;
+        update_check = false;
+        style = "compact";
+        inline_height = 20;
+        enter_accept = false;
+        filter_mode = "global";
+        filter_mode_shell_up_key_binding = "session";
+      }
+      // lib.optionalAttrs (palette != null) {
+        theme.name = "onedark-darker";
+      };
+      themes = lib.optionalAttrs (palette != null) {
+        onedark-darker = {
+          theme.name = "onedark-darker";
+          colors = {
+            Base = palette.fg;
+            AlertInfo = palette.green;
+            AlertWarn = palette.yellow;
+            AlertError = palette.red;
+            Annotation = palette.muted;
+            Guidance = palette.cyan;
+            Important = palette.blue;
+            Title = palette.brightFg;
+            Muted = palette.muted;
+          };
+        };
+      };
     };
 
     fzf = {
