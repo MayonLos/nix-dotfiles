@@ -81,6 +81,25 @@ assert(
 	"CodeDiff did not open the temporary repository review explorer"
 )
 assert(vim.api.nvim_tabpage_is_valid(opened.tabpage), "CodeDiff explorer tab is invalid")
+-- CodeDiffOpen announces the tab before its asynchronous file-selection
+-- update has loaded/rendered both buffers. Keep the fixture/cwd alive until
+-- the actual diff is ready, rather than deleting it underneath scheduled work.
+local lifecycle = require("codediff.ui.lifecycle")
+assert(
+	vim.wait(5000, function()
+		local original, modified = lifecycle.get_buffers(opened.tabpage)
+		if type(original) ~= "number" or type(modified) ~= "number" then
+			return false
+		end
+		if not vim.api.nvim_buf_is_loaded(original) or not vim.api.nvim_buf_is_loaded(modified) then
+			return false
+		end
+		return vim.api.nvim_buf_get_lines(original, 0, -1, false)[1] == "before"
+			and vim.api.nvim_buf_get_lines(modified, 0, -1, false)[1] == "after"
+	end),
+	"CodeDiff did not load both sides of the temporary review"
+)
+vim.wait(50)
 assert_diff_highlights()
 
 -- codediff's ColorScheme hook resets the foregrounds after the theme hook;
@@ -90,5 +109,8 @@ assert_diff_highlights()
 
 vim.api.nvim_del_augroup_by_id(group)
 vim.cmd("tabonly!")
+vim.wait(50)
+vim.cmd.lcd(vim.fn.fnamemodify(repo, ":h"))
 vim.fn.delete(repo, "rf")
+assert(vim.v.errmsg == "", vim.v.errmsg)
 print("CodeDiff setup, mappings, packaged native library, and temporary Git review passed")

@@ -112,7 +112,7 @@ local function attach(event)
 	map(bufnr, "gD", vim.lsp.buf.declaration, "跳到声明")
 	map(bufnr, "grt", vim.lsp.buf.type_definition, "跳到类型定义")
 	map(bufnr, "gi", vim.lsp.buf.implementation, "跳到实现")
-	map(bufnr, "K", vim.lsp.buf.hover, "查看悬浮文档")
+	map(bufnr, "K", require("mayon.ui.floats").hover, "查看悬浮文档")
 	map(bufnr, "grx", vim.lsp.codelens.run, "运行代码透镜")
 	map(bufnr, "<leader>cr", vim.lsp.buf.rename, "重命名符号")
 	map(bufnr, "<leader>ca", vim.lsp.buf.code_action, "执行代码动作")
@@ -143,7 +143,7 @@ local function attach(event)
 				if vim.v.char == "(" or vim.v.char == "," then
 					vim.schedule(function()
 						if vim.api.nvim_buf_is_valid(bufnr) and vim.api.nvim_get_current_buf() == bufnr then
-							vim.lsp.buf.signature_help({ border = "rounded" })
+							require("mayon.ui.floats").signature()
 						end
 					end)
 				end
@@ -157,7 +157,7 @@ local function diagnostics()
 		virtual_text = false,
 		virtual_lines = false,
 		severity_sort = true,
-		float = { border = "rounded", source = "if_many", header = "" },
+		float = { border = "rounded", source = "if_many", header = "", title = " diagnostics ", title_pos = "left" },
 	})
 
 	vim.keymap.set("n", "[d", function()
@@ -187,9 +187,11 @@ function M.setup()
 		"LspAttach",
 		{ group = vim.api.nvim_create_augroup("NativeLspAttach", { clear = true }), callback = attach }
 	)
+	require("mayon.ui.floats").setup()
 	require("mayon.lsp.servers").setup()
 	require("mayon.features.ai_completion").copilot_setup()
-	vim.lsp.inlay_hint.enable(true)
+	-- Parameter names are opt-in with <leader>uh.
+	vim.lsp.inlay_hint.enable(false)
 	diagnostics()
 	progress()
 	vim.keymap.set("n", "<leader>uL", function()

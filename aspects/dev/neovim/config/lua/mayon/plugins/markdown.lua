@@ -2,15 +2,7 @@ local M = {}
 
 local function codecompanion_overrides()
 	return {
-		heading = {
-			width = "block",
-			left_pad = 1,
-			right_pad = 2,
-			custom = {
-				user = { pattern = "^##%s+Me", icon = "󰭹 " },
-				llm = { pattern = "^##%s+CodeCompanion", icon = "󰚩 " },
-			},
-		},
+		heading = { enabled = false },
 		code = {
 			sign = false,
 			width = "block",

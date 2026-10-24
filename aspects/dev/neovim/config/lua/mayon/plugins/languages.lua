@@ -41,11 +41,7 @@ return {
 		"trouble.nvim",
 		cmd = "Trouble",
 		after = function()
-			require("trouble").setup({
-				focus = true,
-				icons = { indent = { last = "╰╴" } },
-				preview = { type = "main", scratch = false },
-			})
+			require("mayon.features.diagnostic_panel").setupTrouble()
 		end,
 	},
 }

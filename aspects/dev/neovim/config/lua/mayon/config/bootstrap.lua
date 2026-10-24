@@ -43,16 +43,31 @@ function M.setup()
 	})
 	require("mayon.config.keymaps").setup()
 	require("mayon.config.autocmds").setup()
+	require("mayon.ui.extras").setup()
 	vim.api.nvim_create_autocmd("FileType", {
 		once = true,
 		callback = function()
 			vim.cmd.packadd("matchit")
 		end,
 	})
-	vim.api.nvim_create_autocmd({ "UIEnter", "FileType" }, {
+	-- The dashboard's first frame needs only this rail. Load the full editing
+	-- statusline after that frame, or synchronously when a document is opened.
+	vim.o.statusline = "%#MayonDashboardMode# NORMAL %*  dashboard%=%#StatusLine#q 退出 "
+	local function statusline()
+		require("mayon.ui.statusline").setup()
+	end
+	vim.api.nvim_create_autocmd("FileType", {
+		callback = function(ev)
+			if ev.match ~= "snacks_dashboard" then
+				statusline()
+				return true
+			end
+		end,
+	})
+	vim.api.nvim_create_autocmd("UIEnter", {
 		once = true,
 		callback = function()
-			require("mayon.ui.statusline").setup()
+			vim.schedule(statusline)
 		end,
 	})
 	vim.g.mayon_config_loaded = true

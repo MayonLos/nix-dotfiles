@@ -8,6 +8,7 @@ local function setup()
 	require("nvim-surround").setup({})
 	require("flash").setup({})
 	require("treesitter-context").setup({
+		enable = false,
 		max_lines = 3,
 		multiline_threshold = 1,
 		trim_scope = "outer",

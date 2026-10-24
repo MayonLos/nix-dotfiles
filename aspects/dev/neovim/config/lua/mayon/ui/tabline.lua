@@ -142,39 +142,6 @@ function M.build()
 	local function tab_highlight(self)
 		return self.is_active and "TabLineSel" or "TabLine"
 	end
-	local TablineFileIcon = {
-		init = function(self)
-			if self.filename == "" then
-				self.icon = nil
-				return
-			end
-			require("mayon.ui.icons").ensure()
-			local ext = vim.fn.fnamemodify(self.filename, ":e")
-			self.icon = select(1, require("nvim-web-devicons").get_icon_color(self.filename, ext, { default = true }))
-		end,
-		provider = function(self)
-			return self.icon and (self.icon .. " ")
-		end,
-		hl = "MayonMuted",
-	}
-	local TablineDiagnostics = {
-		init = function(self)
-			self.errors, self.warns = 0, 0
-			for _, diagnostic in ipairs(vim.diagnostic.get(self.bufnr)) do
-				if diagnostic.severity == vim.diagnostic.severity.ERROR then
-					self.errors = self.errors + 1
-				elseif diagnostic.severity == vim.diagnostic.severity.WARN then
-					self.warns = self.warns + 1
-				end
-			end
-		end,
-		provider = function(self)
-			return self.errors + self.warns > 0 and "● " or ""
-		end,
-		hl = function(self)
-			return self.errors > 0 and "DiagnosticError" or "DiagnosticWarn"
-		end,
-	}
 
 	-- Resolve duplicate basenames only when the listed buffers or their paths change.
 	local function buffer_path_parts(filename)
@@ -303,48 +270,16 @@ function M.build()
 			name = "heirline_tabline_buffer_callback",
 		},
 		{ provider = " " },
-		TablineFileIcon,
-		TablineDiagnostics,
 		TablineFileName,
 		TablineFileFlags,
 	}
 
-	local TablineCloseButton = {
-		condition = function(self)
-			return self.is_active or vim.o.columns >= 80
-		end,
-		{ provider = " " },
-		{
-			provider = "×",
-			hl = { fg = "gray" },
-			on_click = {
-				callback = function(_, minwid)
-					vim.schedule(function()
-						close_buffer(minwid)
-					end)
-				end,
-				minwid = function(self)
-					return self.bufnr
-				end,
-				name = "heirline_tabline_close_buffer_callback",
-			},
-		},
-	}
-
+	-- Underline the active label: a terminal cell cannot draw a 2px top rule.
 	local TablineBufferBlock = {
 		hl = function(self)
 			return tab_highlight(self)
 		end,
-		{
-			provider = function(self)
-				return self.is_active and "▔" or " "
-			end,
-			hl = function(self)
-				return self.is_active and "MayonTabAccent" or "TabLine"
-			end,
-		},
 		TablineFileNameBlock,
-		TablineCloseButton,
 		Space,
 	}
 
@@ -377,14 +312,12 @@ function M.build()
 			return tab_highlight(self)
 		end,
 	}
-	local TabpageClose = { provider = "%999X × %X", hl = "TabLine" }
 	local TabPages = {
 		condition = function()
 			return #vim.api.nvim_list_tabpages() >= 2
 		end,
 		{ provider = "%=" },
 		utils.make_tablist(Tabpage),
-		TabpageClose,
 	}
 
 	local Project = {
@@ -398,26 +331,23 @@ function M.build()
 			local name = vim.fn.fnamemodify(root, ":t")
 			local offset = M.sidebar_width()
 			if offset > 0 then
-				local raw_label = " 󰉋 " .. text.truncate(name, math.max(1, offset - 6)) .. " "
-				local width = vim.fn.strwidth(raw_label)
-				-- The following Space component occupies the split separator.
-				return text.escape(raw_label) .. string.rep(" ", math.max(0, offset - 1 - width))
+				return string.rep(" ", offset - 1)
 			end
-			return "  󰉋 " .. text.fit(name, math.min(20, math.floor(vim.o.columns * 0.14))) .. "  "
+			return "  " .. text.fit(name, math.min(20, math.floor(vim.o.columns * 0.14))) .. "  "
 		end,
 		hl = "MayonProject",
 	}
-	local Count = {
+	local TabLine = {
 		condition = function()
-			return vim.o.columns >= 120 and #vim.api.nvim_list_tabpages() == 1
+			return vim.bo.filetype ~= "snacks_dashboard"
 		end,
-		provider = function()
-			local count = #M.buffers()
-			return count > 0 and ("  " .. count .. (count == 1 and " file  " or " files  ")) or ""
-		end,
-		hl = "MayonMuted",
+		hl = "TabLineFill",
+		Project,
+		Space,
+		BufferList,
+		{ provider = "%=" },
+		TabPages,
 	}
-	local TabLine = { hl = "TabLineFill", Project, Space, BufferList, { provider = "%=" }, Count, TabPages }
 
 	return TabLine
 end

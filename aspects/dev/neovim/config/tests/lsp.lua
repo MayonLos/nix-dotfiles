@@ -10,6 +10,7 @@ end
 vim.cmd.packadd("nvim-lspconfig")
 local lsp = require("mayon.lsp")
 lsp.setup()
+require("mayon.config.keymaps").setup()
 
 local configs = require("mayon.lsp.servers").servers
 assert(vim.tbl_count(configs) == 17, "expected all 17 LSP servers")
@@ -17,6 +18,13 @@ assert(vim.bo.filetype == "", "test expects an empty current buffer")
 assert(vim.diagnostic.config().virtual_text == false)
 assert(vim.diagnostic.config().virtual_lines == false)
 assert(vim.diagnostic.config().severity_sort == true)
+assert(not vim.lsp.inlay_hint.is_enabled({ bufnr = 0 }), "inlay hints should default to off")
+local inlay_toggle = vim.fn.maparg("<leader>uh", "n", false, true)
+assert(type(inlay_toggle.callback) == "function", "inlay hint toggle mapping is missing")
+inlay_toggle.callback()
+assert(vim.lsp.inlay_hint.is_enabled({ bufnr = 0 }), "inlay hint toggle should enable hints")
+inlay_toggle.callback()
+assert(not vim.lsp.inlay_hint.is_enabled({ bufnr = 0 }), "inlay hint toggle should disable hints")
 
 assert(vim.lsp.config.lua_ls.settings.Lua.runtime.version == "LuaJIT")
 assert(vim.lsp.config.yamlls.settings.yaml.schemaStore.enable == false)
@@ -101,7 +109,7 @@ for _, lhs in ipairs({ "gra", "gri", "grn", "grr", "grt", "grx" }) do
 	assert(global_maps[lhs], "native global LSP map was removed: " .. lhs)
 end
 assert(global_maps["切换源文件与头文件"], "source/header map should remain global")
-assert(vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr }), "inlay hints should be enabled for attached buffers")
+assert(not vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr }), "LspAttach should keep inlay hints disabled")
 
 local ns = vim.api.nvim_create_namespace("lsp-migration-test")
 vim.diagnostic.set(
@@ -138,7 +146,7 @@ if vim.env.NVIM_LSP_INTEGRATION == "1" then
 		"cssls did not publish diagnostics for unsaved edits"
 	)
 	assert(vim.bo[cssbuf].modified, "integration diagnostic should be from an unsaved buffer")
-	assert(vim.lsp.inlay_hint.is_enabled({ bufnr = cssbuf }), "LspAttach should enable inlay hints")
+	assert(not vim.lsp.inlay_hint.is_enabled({ bufnr = cssbuf }), "LspAttach should keep inlay hints disabled")
 	print("CSS LSP attached and reported an unsaved diagnostic")
 end
 

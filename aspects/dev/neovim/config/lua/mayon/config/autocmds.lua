@@ -11,6 +11,17 @@ function M.setup()
 			end
 		end,
 	})
+	-- Scratch/picker styles may change inherited window options. Reassert the
+	-- editor cursor line when a normal document becomes the active view.
+	vim.api.nvim_create_autocmd({ "BufWinEnter", "WinEnter" }, {
+		group = group,
+		callback = function(ev)
+			if vim.bo[ev.buf].buftype == "" and vim.bo[ev.buf].filetype ~= "" and not vim.wo.diff then
+				vim.wo.cursorline = true
+				vim.wo.cursorlineopt = "both"
+			end
+		end,
+	})
 	-- Replace the binary read with the desktop PDF handler.
 	vim.api.nvim_create_autocmd("BufReadCmd", {
 		group = group,

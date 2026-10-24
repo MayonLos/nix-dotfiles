@@ -162,11 +162,45 @@ local function review(title, decision)
 	)
 	vim.wait(50)
 	assert(vim.b.claudecode_diff_tab_name == title)
+	assert(vim.wo.winhighlight:find("DiffChange:DiffAdd", 1, true), "Claude proposed lines must use a green background")
+	local target = vim.b.claudecode_diff_target_win
+	assert(
+		target and vim.wo[target].winhighlight:find("DiffChange:DiffDelete", 1, true),
+		"Claude original lines must use a red background"
+	)
+	local proposed = vim.api.nvim_get_current_win()
+	local original_style = vim.w[proposed].mayon_claude_style
+	vim.cmd("diffoff")
+	-- -c tests run before VimEnter, when Neovim suppresses OptionSet.
+	if vim.v.vim_did_enter == 0 then
+		vim.api.nvim_exec_autocmds("OptionSet", { pattern = "diff" })
+	end
+	vim.wait(30)
+	assert(not vim.w[proposed].mayon_claude_style, "diffoff must restore a retained review window")
+	assert(vim.wo.winhighlight == original_style.winhighlight, "diffoff left red/green mappings in a normal window")
+	vim.api.nvim_set_current_win(target)
+	assert(not vim.wo.cursorline, "entering the original diff window overlaid its review colors")
+	vim.api.nvim_set_current_win(proposed)
+	vim.wait(30)
+	assert(not vim.w[proposed].mayon_claude_style, "re-entering a non-diff review window reapplied diff styles")
+	vim.cmd("diffthis")
+	if vim.v.vim_did_enter == 0 then
+		vim.api.nvim_exec_autocmds("OptionSet", { pattern = "diff" })
+	end
+	vim.wait(30)
+	assert(vim.wo.winhighlight:find("DiffChange:DiffAdd", 1, true), "diffthis must restore the review palette")
 	assert(vim.fn.maparg(",a", "n") ~= "" and vim.fn.maparg(",r", "n") ~= "")
-	assert(vim.wo.winbar:find("Claude", 1, true), "diff lacks its review hint")
+	assert(
+		vim.api.nvim_eval_statusline(vim.wo.winbar, { winid = 0 }).str:find(",a 接受", 1, true),
+		"diff lacks its review hint"
+	)
 	vim.cmd(decision)
 	assert(resolved, "Claude diff did not resolve")
 	diff.close_diff_by_tab_name(title)
+	vim.wait(20)
+	if vim.api.nvim_win_is_valid(target) then
+		assert(not vim.w[target].mayon_claude_style, "closing Claude review must restore the original window style")
+	end
 	return resolved
 end
 review("fixture-deny", "ClaudeCodeDiffDeny")

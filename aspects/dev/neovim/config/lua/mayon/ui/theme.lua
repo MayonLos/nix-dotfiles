@@ -22,22 +22,24 @@ local function overrides()
 		return vim.api.nvim_get_hl(0, { name = name, link = false })
 	end
 	local c = require("mayon.generated").palette
+	local edge = blend(c.border, c.deep, 0.28)
 	local function set(name, values)
 		vim.api.nvim_set_hl(0, name, values)
 	end
-	set("Normal", { fg = c.brightFg, bg = c.deep })
-	set("NormalNC", { fg = c.brightFg, bg = c.deep })
+	set("Normal", { fg = c.brightFg, bg = c.bg })
+	set("NormalNC", { fg = c.brightFg, bg = c.bg })
 	set("Visual", { fg = c.brightFg, bg = c.selection })
 	set("VisualNOS", { fg = c.brightFg, bg = c.selection })
-	set("LineNr", { fg = c.fg, bg = c.deep })
-	set("CursorLineNr", { fg = c.brightFg, bg = c.deep, bold = true })
-	set("CursorLine", { bg = c.deep })
-	set("CursorLineSign", { bg = c.deep })
-	set("SignColumn", { bg = c.deep })
-	set("WinSeparator", { fg = c.border, bg = c.deep })
+	set("LineNr", { fg = c.muted, bg = c.bg })
+	set("CursorLineNr", { fg = c.brightFg, bg = blend(c.blue, c.bg, 0.035), bold = true })
+	set("CursorLine", { bg = blend(c.blue, c.bg, 0.035) })
+	set("CursorLineSign", { bg = c.bg })
+	set("SignColumn", { bg = c.bg })
+	set("WinSeparator", { fg = edge, bg = c.deep })
 	set("StatusLine", { fg = c.fg, bg = c.deep })
 	set("StatusLineNC", { fg = c.fg, bg = c.deep })
-	set("MayonProject", { fg = c.blue, bg = c.surface, bold = true })
+	set("MayonDashboardMode", { fg = c.blue, bg = c.selection, bold = true })
+	set("MayonProject", { fg = c.muted, bg = c.deep })
 	set("MayonPosition", { fg = c.brightFg, bg = c.surface, bold = true })
 	set("MayonTabAccent", { fg = c.blue, bg = c.bg })
 	set("MayonTabVisible", { fg = c.fg, bg = c.deep, bold = true })
@@ -66,29 +68,29 @@ local function overrides()
 	set("DiagnosticSignHint", { fg = c.cyan })
 	set("DiagnosticSignOk", { fg = c.green })
 	vim.api.nvim_set_hl(0, "NormalFloat", { fg = c.brightFg, bg = c.deep })
-	vim.api.nvim_set_hl(0, "FloatBorder", { fg = c.border, bg = c.deep })
-	vim.api.nvim_set_hl(0, "FloatTitle", { fg = c.blue, bg = c.deep, bold = true })
+	vim.api.nvim_set_hl(0, "FloatBorder", { fg = edge, bg = c.deep })
+	vim.api.nvim_set_hl(0, "FloatTitle", { fg = c.brightFg, bg = c.deep, bold = true })
 	vim.api.nvim_set_hl(0, "MultiCursorCursor", { fg = c.bg, bg = c.cyan, bold = true })
 	vim.api.nvim_set_hl(0, "MultiCursorDisabledCursor", { fg = c.bg, bg = c.muted })
 	local match = get("MatchParen")
 	match.bold, match.underline = true, true
 	vim.api.nvim_set_hl(0, "MatchParen", match)
 	set("TabLine", { bg = c.deep, fg = c.fg })
-	set("TabLineSel", { bg = c.bg, fg = c.brightFg, bold = true })
+	set("TabLineSel", { bg = c.bg, fg = c.brightFg, bold = true, underline = true, sp = c.blue })
 	set("TabLineFill", { bg = c.deep, fg = c.fg })
 	set("TreesitterContext", { bg = c.surface })
 	set("TreesitterContextLineNumber", { bg = c.surface, fg = c.fg })
 	set("TreesitterContextSeparator", { fg = c.border, bg = c.surface })
 	set("Pmenu", { fg = c.brightFg, bg = c.deep })
 	set("PmenuSel", { fg = c.brightFg, bg = c.selection, bold = true })
-	set("PmenuKind", { fg = c.cyan, bg = c.deep })
-	set("PmenuKindSel", { fg = c.blue, bg = c.selection })
-	set("PmenuExtra", { fg = c.fg, bg = c.deep })
-	set("PmenuExtraSel", { fg = c.fg, bg = c.selection })
-	set("PmenuBorder", { fg = c.border, bg = c.deep })
+	set("PmenuKind", { fg = c.purple, bg = c.deep })
+	set("PmenuKindSel", { fg = c.purple, bg = c.selection })
+	set("PmenuExtra", { fg = c.muted, bg = c.deep })
+	set("PmenuExtraSel", { fg = c.muted, bg = c.selection })
+	set("PmenuBorder", { fg = edge, bg = c.deep })
 	set("PmenuSbar", { bg = c.surface })
 	set("PmenuThumb", { bg = c.border })
-	set("PmenuMatch", { fg = c.cyan, bg = c.deep, bold = true })
+	set("PmenuMatch", { fg = c.blue, bg = c.deep, bold = true })
 	set("PmenuMatchSel", { fg = c.blue, bg = c.selection, bold = true })
 	set("SnippetTabstopActive", { bg = c.selection, underline = true, sp = c.cyan })
 	set("LspInlineCompletion", { fg = c.muted, italic = true })
@@ -195,9 +197,42 @@ local function overrides()
 	set("MinuetVirtualText", { link = "LspInlineCompletion" })
 	set("Directory", { fg = c.blue, bold = true })
 	set("MayonPopup", { fg = c.brightFg, bg = c.deep })
-	set("MayonPopupBorder", { fg = c.border, bg = c.deep })
+	set("MayonPopupBorder", { fg = edge, bg = c.deep })
 	set("MayonPopupTitle", { fg = c.blue, bg = c.deep, bold = true })
-	set("MayonExplorerCursor", { fg = c.blue, bg = c.deep, bold = true })
+	set("MayonExplorerFile", { fg = c.fg })
+	set("MayonExplorerTitle", { fg = c.muted, bg = c.deep })
+	set("MayonExplorerDirectory", { fg = c.fg, bg = c.deep })
+	set("MayonExplorerCursor", { fg = c.blue, bg = c.selection, bold = true })
+	set("MayonIndentScope", { fg = blend(c.border, c.bg, 0.4) })
+	set("SnacksPickerPreview", { fg = c.brightFg, bg = c.deep })
+	set("SnacksPickerDimmed", { fg = blend(c.muted, c.deep, 0.5) })
+	set("MayonNotificationTitle", { fg = c.brightFg, bg = c.deep })
+	set("MayonNotificationBody", { fg = c.muted, bg = c.deep })
+	set("MayonPanelTitle", { fg = c.muted, bg = c.deep })
+	set("MayonCompletionRail", { fg = c.blue, bg = c.selection })
+	set("MayonPreviewLine", { bg = blend(c.blue, c.deep, 0.12) })
+	for name, spec in pairs({
+		SnacksPickerPrompt = { fg = c.blue, bold = true },
+		SnacksPickerMatch = { fg = c.blue, bold = true },
+		MayonPickerRail = { fg = c.blue },
+		MayonPickerSource = { fg = c.brightFg, bg = c.deep },
+		MayonPickerRange = { fg = c.muted, bg = c.deep },
+		MayonPickerCount = { fg = c.muted, bg = c.deep },
+		SnacksPickerRow = { fg = c.border },
+		SnacksPickerCol = { fg = c.border },
+		SnacksPickerFile = { fg = c.brightFg },
+		SnacksPickerTotals = { fg = c.muted },
+		FlashLabel = { fg = c.bg, bg = c.blue, bold = true },
+		FlashMatch = { fg = c.blue, bg = c.selection },
+		FlashCurrent = { fg = c.brightFg, bg = c.selection, bold = true },
+		HealthNormal = { fg = c.brightFg, bg = c.deep },
+		MsgArea = { fg = c.fg, bg = c.deep },
+		MsgSeparator = { fg = edge, bg = c.deep },
+		Question = { fg = c.blue, bold = true },
+		MoreMsg = { fg = c.muted },
+	}) do
+		set(name, spec)
+	end
 	local links = {
 		SoftFloatBorder = "FloatBorder",
 		WhichKeyNormal = "MayonPopup",
@@ -208,13 +243,13 @@ local function overrides()
 		SnacksPicker = "MayonPopup",
 		SnacksPickerList = "MayonPopup",
 		SnacksPickerBorder = "MayonPopupBorder",
-		SnacksPickerTitle = "MayonPopupTitle",
+		SnacksPickerTitle = "FloatTitle",
 		SnacksPickerInput = "MayonPopup",
 		SnacksPickerInputBorder = "MayonPopupBorder",
 		SnacksPickerBoxBorder = "MayonPopupBorder",
 		SnacksPickerListCursorLine = "PmenuSel",
-		SnacksPickerPreviewCursorLine = "CursorLine",
-		SnacksPickerDirectory = "Directory",
+		SnacksPickerPreviewCursorLine = "MayonPreviewLine",
+		SnacksPickerDirectory = "MayonExplorerDirectory",
 		SnacksPickerTree = "Comment",
 		SnacksDashboardNormal = "Normal",
 		SnacksDashboardHeader = "MayonDashboardBlue",
@@ -227,14 +262,15 @@ local function overrides()
 		SnacksDashboardSpecial = "MayonDashboardCyan",
 		SnacksDashboardDir = "MayonDashboardBlue",
 		SnacksIndent = "NonText",
-		SnacksIndentScope = "Comment",
+		SnacksIndentScope = "MayonIndentScope",
+		SnacksPickerGitStatusModified = "MayonStatusChanged",
 		MultiCursorVisual = "Visual",
 		MultiCursorSign = "SignColumn",
 		MultiCursorMatchPreview = "Search",
 		MultiCursorDisabledVisual = "Folded",
 		MultiCursorDisabledSign = "SignColumn",
-		TroubleNormal = "Normal",
-		TroubleNormalNC = "Normal",
+		TroubleNormal = "NormalFloat",
+		TroubleNormalNC = "NormalFloat",
 	}
 	for name, value in pairs({
 		Comment = { fg = c.fg, italic = true },
@@ -327,7 +363,7 @@ local function overrides()
 		links["SnacksNotifierBorder" .. level] = "FloatBorder"
 		local diagnostic = get("DiagnosticSign" .. level)
 		local severity = diagnostic.fg or c.muted
-		vim.api.nvim_set_hl(0, "SnacksNotifierTitle" .. level, { fg = severity })
+		vim.api.nvim_set_hl(0, "SnacksNotifierTitle" .. level, { fg = c.brightFg, bg = c.deep })
 		vim.api.nvim_set_hl(0, "SnacksNotifierIcon" .. level, { fg = severity })
 	end
 	local tiny_colors = {

@@ -31,49 +31,84 @@ local function setup_edgy()
 	local palette = require("mayon.generated").palette
 	vim.api.nvim_set_hl(0, "EdgyNormal", { fg = palette.brightFg, bg = palette.deep })
 	vim.api.nvim_set_hl(0, "EdgyWinBar", { fg = palette.blue, bg = palette.deep, bold = true })
+	local ai_winbar = "%!v:lua.require'mayon.ui.ai_panels'.winbar()"
 	require("edgy").setup({
 		right = {
 			{
 				ft = "claudecode",
 				title = "Claude Code",
+				wo = {
+					winbar = ai_winbar,
+					winhighlight = "WinBar:EdgyWinBar,Normal:EdgyNormal",
+					signcolumn = "yes:1",
+					fillchars = "eob: ",
+				},
 				filter = function()
 					return wide_enough()
 				end,
-				size = { width = 42 },
+				size = { width = 0.38 },
 			},
 			{
 				ft = "codecompanion",
 				title = "CodeCompanion",
+				wo = {
+					winbar = ai_winbar,
+					winhighlight = "WinBar:EdgyWinBar,Normal:EdgyNormal",
+					signcolumn = "yes:1",
+					fillchars = "eob: ",
+				},
 				filter = function()
 					return wide_enough()
 				end,
-				size = { width = 42 },
+				size = { width = 0.38 },
 			},
 			{
 				ft = "snacks_terminal",
 				title = "AI 命令行",
+				wo = {
+					winbar = ai_winbar,
+					winhighlight = "WinBar:EdgyWinBar,Normal:EdgyNormal",
+					signcolumn = "yes:1",
+					fillchars = "eob: ",
+				},
 				filter = function(buf)
 					return wide_enough() and is_ai_terminal(buf)
 				end,
-				size = { width = 42 },
+				size = { width = 0.38 },
 			},
 			{
 				ft = "sidekick_terminal",
 				title = "Sidekick AI",
+				wo = {
+					winbar = ai_winbar,
+					winhighlight = "WinBar:EdgyWinBar,Normal:EdgyNormal",
+					signcolumn = "yes:1",
+					fillchars = "eob: ",
+				},
 				filter = function()
 					return wide_enough()
 				end,
-				size = { width = 42 },
+				size = { width = 0.38 },
 			},
 		},
 		bottom = {
-			{ ft = "trouble", title = "问题与诊断", size = { height = 12 } },
-			{ ft = "qf", title = "快速修复与位置列表", size = { height = 10 } },
+			{
+				ft = "trouble",
+				title = "诊断",
+				size = { height = 12 },
+				wo = { winbar = "%!v:lua.MayonTroubleTitle()" },
+			},
+			{
+				ft = "qf",
+				title = "快速修复",
+				size = { height = 10 },
+				wo = { winbar = "%!v:lua.MayonQuickfixTitle()" },
+			},
 			{
 				ft = "snacks_terminal",
 				title = "终端",
-				filter = function(buf)
-					return not is_ai_terminal(buf)
+				filter = function(buf, win)
+					return not is_ai_terminal(buf) and vim.api.nvim_win_get_config(win).relative == ""
 				end,
 				size = { height = 14 },
 			},
@@ -86,7 +121,7 @@ local function setup_edgy()
 			},
 			right = {
 				size = function()
-					return math.min(42, math.max(30, math.floor(vim.o.columns * 0.36)))
+					return math.max(36, math.floor(vim.o.columns * 0.38))
 				end,
 			},
 			bottom = { size = 12 },

@@ -18,6 +18,8 @@ function M.setup()
 		local palette = require("mayon.generated").palette
 		return {
 			bg = palette.deep,
+			selection = palette.selection,
+			purple = palette.purple,
 			position_bg = palette.surface,
 			fg = palette.fg,
 			bright = palette.brightFg,
@@ -25,14 +27,14 @@ function M.setup()
 			blue = palette.blue,
 			cyan = palette.cyan,
 			green = palette.green,
-			accent = palette.cyan,
+			accent = palette.muted,
 			orange = palette.orange,
 			red = palette.red,
 			diag_warn = palette.yellow,
 			diag_info = palette.blue,
 			diag_hint = palette.cyan,
 			git_add = palette.green,
-			git_change = palette.orange,
+			git_change = palette.yellow,
 			git_del = palette.red,
 		}
 	end
@@ -108,7 +110,7 @@ function M.setup()
 		end,
 		hl = function(self)
 			local key = mode_colors[self.mode:sub(1, 1)] or "blue"
-			return { fg = key, bg = "bg", bold = true, underline = true, sp = key }
+			return { fg = key, bg = "selection", bold = true }
 		end,
 	}
 	ViMode.init = function(self)
@@ -127,12 +129,10 @@ function M.setup()
 		init = function(self)
 			self.status = vim.b.gitsigns_status_dict or {}
 		end,
-		hl = { fg = "gray" },
+		hl = { fg = "purple" },
 		{
 			provider = function(self)
-				return " "
-					.. text.fit(self.status.head or "git", math.max(6, math.floor(vim.o.columns * 0.12)))
-					.. " "
+				return text.fit(self.status.head or "git", math.max(6, math.floor(vim.o.columns * 0.12))) .. " "
 			end,
 		},
 		{
@@ -177,20 +177,7 @@ function M.setup()
 			if self.filename == "" then
 				return "[No Name]"
 			end
-			if vim.o.columns < 120 then
-				return text.fit(vim.fn.fnamemodify(self.filename, ":t"), math.max(5, math.floor(vim.o.columns * 0.30)))
-			end
-			local path = vim.fn.fnamemodify(self.filename, ":~:.")
-			local width = math.max(8, math.floor(vim.o.columns * 0.30))
-			if vim.fn.strwidth(path) <= width then
-				return text.escape(path)
-			end
-			local suffix = "…/" .. vim.fn.fnamemodify(path, ":t")
-			local prefix_width = width - vim.fn.strwidth(suffix)
-			if prefix_width <= 0 then
-				return text.fit(vim.fn.fnamemodify(path, ":t"), width)
-			end
-			return text.escape(text.truncate(path, prefix_width, "") .. suffix)
+			return text.fit(vim.fn.fnamemodify(self.filename, ":t"), math.max(5, math.floor(vim.o.columns * 0.30)))
 		end,
 		hl = { fg = "fg" },
 	}
@@ -209,56 +196,28 @@ function M.setup()
 			condition = function()
 				return vim.bo.modified
 			end,
-			provider = " ●",
-			hl = { fg = "green" },
+			provider = " [+]",
+			hl = { fg = "orange" },
 		},
 		{
 			condition = function()
 				return not vim.bo.modifiable or vim.bo.readonly
 			end,
-			provider = " 󰌾",
+			provider = " RO",
 			hl = { fg = "orange" },
 		},
 	}
-	FileNameBlock = utils.insert(FileNameBlock, {
-		provider = function(self)
-			if self.filename == "" then
-				return "󰈔 "
-			end
-			require("mayon.ui.icons").ensure()
-			local ext = vim.fn.fnamemodify(self.filename, ":e")
-			local icon = select(1, require("nvim-web-devicons").get_icon_color(self.filename, ext, { default = true }))
-			return (icon or "󰈔") .. " "
-		end,
-		hl = "MayonStatusGit",
-	}, FileName, { provider = "%<" })
-
-	local Navic = {
-		condition = function()
-			local navic = package.loaded["nvim-navic"]
-			local ok = navic ~= nil
-			return vim.o.columns >= 120 and ok and navic.is_available()
-		end,
-		-- Use raw symbol data: truncating navic's formatted statusline would cut
-		-- highlight escapes in half. The scope still gets one quiet text colour.
-		provider = function()
-			local data = require("nvim-navic").get_data() or {}
-			local parts = {}
-			for i = math.max(1, #data - 2), #data do
-				parts[#parts + 1] = (data[i].icon or "") .. data[i].name
-			end
-			if #parts == 0 then
-				return ""
-			end
-			return " › " .. text.fit(table.concat(parts, " › "), math.floor(vim.o.columns * 0.18))
-		end,
-		hl = { fg = "gray" },
-	}
+	FileNameBlock = utils.insert(FileNameBlock, FileName, { provider = "%<" })
 
 	local function diag_icon(severity)
-		local signs = vim.diagnostic.config().signs
-		return type(signs) == "table" and signs.text and signs.text[severity] or ""
+		return ({
+			[vim.diagnostic.severity.ERROR] = "▲",
+			[vim.diagnostic.severity.WARN] = "▲",
+			[vim.diagnostic.severity.INFO] = "i",
+			[vim.diagnostic.severity.HINT] = "·",
+		})[severity]
 	end
+
 	local Diagnostics = {
 		condition = conditions.has_diagnostics,
 		init = function(self)
@@ -313,7 +272,9 @@ function M.setup()
 		init = function(self)
 			local client_names = {}
 			for _, client in ipairs(vim.lsp.get_clients({ bufnr = 0 })) do
-				client_names[#client_names + 1] = client.name
+				if client.name ~= "copilot" and client.name ~= "minuet" then
+					client_names[#client_names + 1] = client.name
+				end
 			end
 			-- 0.12.4 already escapes percent for statusline use. Decode before
 			-- text.fit clips display cells and performs the single final escape.
@@ -321,7 +282,7 @@ function M.setup()
 			self.busy = vim.bo.busy > 0 or self.progress ~= ""
 			table.sort(client_names)
 			self.label = self.busy and ("◐ " .. (self.progress ~= "" and self.progress or "busy"))
-				or ("● " .. table.concat(client_names, ","))
+				or (client_names[1] or "")
 		end,
 		provider = function(self)
 			return text.fit(self.label, math.max(5, math.min(26, math.floor(vim.o.columns * 0.20)))) .. " "
@@ -375,23 +336,12 @@ function M.setup()
 		hl = { fg = "gray" },
 	}
 	local Ruler = {
-		{ provider = "", hl = { fg = "position_bg", bg = "bg" } },
 		{
 			provider = function()
 				return vim.o.columns >= 120 and " %l:%v · %p%% " or " %l:%v "
 			end,
 			hl = "MayonPosition",
 		},
-		{ provider = "", hl = { fg = "position_bg", bg = "bg" } },
-	}
-	local Language = {
-		condition = function()
-			return vim.o.columns >= 80 and vim.bo.filetype ~= ""
-		end,
-		provider = function()
-			return text.fit(vim.bo.filetype, 14) .. " "
-		end,
-		hl = { fg = "gray" },
 	}
 
 	local cc = { count = 0, name = nil, requests = {}, order = {} }
@@ -447,18 +397,9 @@ function M.setup()
 		provider = function()
 			local completion = package.loaded["mayon.features.ai_completion"]
 			local provider = completion and completion.provider or "copilot"
-			local claude = package.loaded.claudecode
-			local state = claude and (claude.is_claude_connected() and "●" or "○") or "·"
-			local names = {}
-			if package.loaded.sidekick then
-				for _, session in ipairs(require("sidekick.status").cli()) do
-					names[#names + 1] = session.tool
-				end
-				table.sort(names)
-			end
-			local busy = completion and (completion.busy or completion.pending > 0) and "⋯" or ""
-			local cli = #names > 0 and (" " .. table.concat(names, "+")) or ""
-			return " C" .. state .. cli .. " AI:" .. provider .. busy .. " "
+			local name = provider == "copilot" and "Copilot" or "DeepSeek"
+			local busy = completion and (completion.busy or completion.pending > 0) and " …" or ""
+			return " AI · " .. name .. busy .. " "
 		end,
 		hl = { fg = "accent" },
 		update = { "ModeChanged", "BufEnter", "CursorHold", "User" },
@@ -472,7 +413,6 @@ function M.setup()
 		{ flexible = 3, FileNameBlock, CompactFileName, {} },
 		-- Buffer state stays visible when the flexible filename contracts.
 		FileFlags,
-		{ flexible = 4, Navic, {} },
 		Space,
 		Align,
 		Recording,
@@ -481,7 +421,6 @@ function M.setup()
 		{ flexible = 1, LSPActive, {} },
 		CodeCompanion,
 		{ flexible = 5, AI, {} },
-		Language,
 		Encoding,
 		Ruler,
 	}
@@ -561,11 +500,22 @@ function M.setup()
 		Ruler,
 	}
 
+	local DashboardStatusline = {
+		condition = function()
+			return vim.bo.filetype == "snacks_dashboard"
+		end,
+		ViMode,
+		{ provider = "  dashboard", hl = { fg = "gray" } },
+		Align,
+		{ provider = "q 退出 ", hl = { fg = "gray" } },
+	}
+
 	local StatusLines = {
 		hl = function()
 			return conditions.is_active() and "StatusLine" or "StatusLineNC"
 		end,
 		fallthrough = false,
+		DashboardStatusline,
 		CodeCompanionStatusline,
 		SpecialStatusline,
 		DefaultStatusline,

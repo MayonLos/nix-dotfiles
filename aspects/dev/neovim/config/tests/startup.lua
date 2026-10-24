@@ -3,7 +3,7 @@ assert(vim.v.errmsg == "", vim.v.errmsg)
 assert(vim.g.mayon_config_loaded)
 assert(vim.g.colors_name == "onedark")
 local palette = require("mayon.generated").palette
-assert(vim.api.nvim_get_hl(0, { name = "Normal", link = false }).bg == tonumber(palette.deep:sub(2), 16))
+assert(vim.api.nvim_get_hl(0, { name = "Normal", link = false }).bg == tonumber(palette.bg:sub(2), 16))
 assert(vim.api.nvim_get_hl(0, { name = "Normal", link = false }).fg == tonumber(palette.brightFg:sub(2), 16))
 assert(vim.api.nvim_get_hl(0, { name = "NormalFloat", link = false }).bg == tonumber(palette.deep:sub(2), 16))
 assert(vim.api.nvim_get_hl(0, { name = "Pmenu", link = false }).bg == tonumber(palette.deep:sub(2), 16))
@@ -14,10 +14,14 @@ for _, name in ipairs({ "DiffAdd", "DiffChange", "DiffText", "DiffDelete" }) do
 end
 assert(vim.api.nvim_get_hl(0, { name = "Visual", link = false }).fg == tonumber(palette.brightFg:sub(2), 16))
 assert(vim.api.nvim_get_hl(0, { name = "Visual", link = false }).bg == tonumber(palette.selection:sub(2), 16))
-assert(vim.api.nvim_get_hl(0, { name = "LineNr", link = false }).fg == tonumber(palette.fg:sub(2), 16))
+assert(vim.api.nvim_get_hl(0, { name = "LineNr", link = false }).fg == tonumber(palette.muted:sub(2), 16))
 assert(vim.api.nvim_get_hl(0, { name = "@keyword.function", link = false }).fg == tonumber(palette.cyan:sub(2), 16))
-assert(vim.wo.number and vim.wo.relativenumber and vim.wo.cursorline and vim.wo.wrap)
+assert(vim.wo.number and not vim.wo.relativenumber and vim.wo.cursorline and vim.wo.wrap)
 assert(vim.o.laststatus == 3 and vim.o.showtabline == 2)
+assert(not package.loaded.heirline, "empty startup must defer the full editing statusline")
+local initial_rail = vim.api.nvim_eval_statusline(vim.o.statusline, { maxwidth = 120 }).str
+assert(initial_rail:find("NORMAL", 1, true) and initial_rail:find("dashboard", 1, true))
+assert(initial_rail:find("q 退出", 1, true), "first dashboard frame lost its exit hint")
 for _, provider in ipairs({ "python3", "ruby", "node", "perl" }) do
 	assert(vim.g["loaded_" .. provider .. "_provider"] == 0)
 end
@@ -80,6 +84,7 @@ assert(package.loaded["mayon.features.sessions"], "session implementation must l
 vim.fn.delete(session_fixture)
 vim.bo.filetype = "text"
 assert(package.loaded["vim.lsp"], "LSP core should load on the first FileType")
+assert(not vim.lsp.inlay_hint.is_enabled({ bufnr = 0 }), "inlay hints should start disabled")
 require("lz.n").trigger_load("nvim-treesitter")
 assert(not package.loaded["blink.cmp"] and not package.loaded.copilot)
 assert(vim.opt.completeopt:get() and vim.tbl_contains(vim.opt.completeopt:get(), "noselect"))

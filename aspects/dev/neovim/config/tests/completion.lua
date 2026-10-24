@@ -138,8 +138,8 @@ local converted = completion.convert({
 	detail = "std::vector<T>",
 })
 assert(
-	converted.abbr == "vector" and converted.kind:find("Class", 1, true),
-	"LSP completion should include kind icon and label"
+	converted.abbr == "vector" and converted.kind == require("mayon.kinds").Class,
+	"LSP completion should put its kind icon in the leading column"
 )
 assert(converted.menu == "std::vector<T>", "LSP completion should include concise detail")
 

@@ -83,33 +83,7 @@ function M.setup()
 	map("n", "<leader>qr", "<cmd>restart<cr>", "重启 Neovim 并保留界面")
 	map("n", "<leader>e", function()
 		local root = project_root()
-		local name = vim.fn.fnamemodify(root, ":t")
-		_G.MayonExplorerStatusColumn = _G.MayonExplorerStatusColumn
-			or function()
-				local win = vim.api.nvim_get_current_win()
-				local cursor = vim.api.nvim_win_get_cursor(win)[1]
-				return vim.v.lnum == cursor and "%#MayonExplorerCursor#▎%*" or " "
-			end
-		Snacks.explorer({
-			cwd = root,
-			focus = "list",
-			title = name:upper(),
-			icons = { git = { enabled = false } },
-			on_show = function(picker)
-				local win = picker.list.win and picker.list.win.win
-				if win and vim.api.nvim_win_is_valid(win) then
-					vim.wo[win].number = true
-					vim.wo[win].relativenumber = false
-					vim.wo[win].signcolumn = "no"
-					vim.wo[win].numberwidth = 1
-					vim.wo[win].statuscolumn = "%!v:lua.MayonExplorerStatusColumn()"
-					vim.wo[win].cursorline = true
-					vim.wo[win].cursorlineopt = "line"
-					local title = picker.opts.title:gsub("%%", "%%%%")
-					vim.wo[win].winbar = "%#MayonPopupTitle# " .. title .. " %*"
-				end
-			end,
-		})
+		Snacks.explorer({ cwd = root, focus = "list" })
 	end, "打开文件树")
 	map("n", "<leader>fn", "<cmd>enew<cr>", "新建文件")
 	map("n", "<leader>fD", delete_to_trash, "移入回收站")

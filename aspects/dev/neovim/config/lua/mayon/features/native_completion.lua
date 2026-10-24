@@ -176,8 +176,8 @@ function M.convert(item)
 	end
 	return {
 		abbr = item.label:gsub("%b()", ""),
-		kind = (kind_icons[kind] or "") .. " " .. kind,
-		menu = detail,
+		kind = kind_icons[kind] or "",
+		menu = detail ~= "" and detail or kind,
 	}
 end
 

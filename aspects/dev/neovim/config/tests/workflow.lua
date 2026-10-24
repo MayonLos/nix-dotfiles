@@ -21,43 +21,47 @@ vim.lsp.enable("marksman", false)
 vim.cmd.edit(vim.fn.fnameescape(path))
 assert(vim.bo.filetype == "markdown" and vim.wo.wrap, "long Markdown is clipped")
 local doc, docwin = vim.api.nvim_get_current_buf(), vim.api.nvim_get_current_win()
+local function contains_private_use(text)
+	for index = 0, vim.fn.strchars(text) - 1 do
+		local codepoint = vim.fn.char2nr(vim.fn.strcharpart(text, index, 1))
+		if
+			(codepoint >= 0xE000 and codepoint <= 0xF8FF)
+			or (codepoint >= 0xF0000 and codepoint <= 0xFFFFD)
+			or (codepoint >= 0x100000 and codepoint <= 0x10FFFD)
+		then
+			return true
+		end
+	end
+	return false
+end
 for _, width in ipairs({ 40, 60, 80, 100, 120, 180 }) do
 	vim.o.columns = width
 	local status = vim.api.nvim_eval_statusline(vim.o.statusline, { maxwidth = width })
 	local tabs = vim.api.nvim_eval_statusline(vim.o.tabline, { use_tabline = true, maxwidth = width })
 	assert(status.str ~= "" and status.width <= width, "status line overflow")
 	assert(tabs.width <= width, "tab line overflow")
+	for _, forbidden in ipairs({ "×", "‾", "▔", "2 files" }) do
+		assert(not tabs.str:find(forbidden, 1, true), "tab line contains obsolete decoration: " .. forbidden)
+	end
+	assert(not contains_private_use(tabs.str), "tab line should not contain devicon glyphs")
 end
--- Busy tool state must not displace unsaved/readonly information on a narrow
--- screen. Checking only final width would miss whole components folding away.
+-- A diagnostic remains visible without making the statusline overflow narrow
+-- layouts; unsaved work and close cancellation are covered below.
 local attention = vim.api.nvim_create_namespace("workflow-attention")
 local diagnostics = {}
-for index = 1, 99 do
-	diagnostics[#diagnostics + 1] = {
-		lnum = 0,
-		col = 0,
-		message = "workflow fixture",
-		severity = index <= 49 and vim.diagnostic.severity.ERROR or vim.diagnostic.severity.WARN,
-	}
-end
+diagnostics[1] = { lnum = 0, col = 0, message = "workflow fixture", severity = vim.diagnostic.severity.ERROR }
 vim.diagnostic.set(attention, doc, diagnostics)
 vim.bo[doc].modified, vim.bo[doc].readonly = true, true
-vim.api.nvim_exec_autocmds("User", {
-	pattern = "CodeCompanionRequestStarted",
-	data = { id = "workflow-attention", adapter = { name = "DeepSeek" } },
-})
 for _, width in ipairs({ 40, 60, 80, 100, 160 }) do
 	vim.o.columns = width
 	vim.cmd.redrawstatus()
 	local rail = vim.api.nvim_eval_statusline(vim.o.statusline, { maxwidth = width })
-	assert(rail.str:find("●", 1, true), "unsaved marker disappeared at " .. width .. " columns")
-	assert(rail.str:find("󰌾", 1, true), "readonly marker disappeared at " .. width .. " columns")
-	assert(rail.str:find("49", 1, true) and rail.str:find("50", 1, true), "diagnostic counts disappeared")
+	assert(rail.width <= width, "diagnostics overflow the status line at " .. width .. " columns")
+	if width >= 100 then
+		assert(rail.str:find("▲1", 1, true), "single error should have a compact diagnostic indicator")
+		assert(rail.str:find("AI · Copilot", 1, true), "statusline should identify Copilot as the AI provider")
+	end
 end
-vim.api.nvim_exec_autocmds("User", {
-	pattern = "CodeCompanionRequestFinished",
-	data = { id = "workflow-attention" },
-})
 vim.diagnostic.reset(attention, doc)
 vim.bo[doc].modified, vim.bo[doc].readonly = false, false
 vim.cmd.vnew()
@@ -102,7 +106,7 @@ assert(not vim.treesitter.highlighter.active[vim.api.nvim_get_current_buf()], "l
 vim.cmd.colorscheme("onedark")
 assert(
 	vim.api.nvim_get_hl(0, { name = "Normal", link = false }).bg
-		== tonumber(require("mayon.generated").palette.deep:sub(2), 16)
+		== tonumber(require("mayon.generated").palette.bg:sub(2), 16)
 )
 -- Surface colours must survive a theme reload after plugins have registered
 -- their highlight groups. Text overlays must not punch holes in selected rows.
@@ -146,7 +150,8 @@ print("Long documents, Unicode tabs, sidebar preservation, close cancellation an
 -- current file's project root rather than the process HOME or an unrelated cwd.
 local project = root .. "/workspace"
 vim.fn.mkdir(project .. "/.git", "p")
-local project_file = project .. "/entry.lua"
+vim.fn.mkdir(project .. "/nested", "p")
+local project_file = project .. "/nested/entry.lua"
 vim.fn.writefile({ "return true" }, project_file)
 vim.cmd.edit(vim.fn.fnameescape(project_file))
 vim.o.columns = 120
@@ -162,11 +167,26 @@ assert(
 )
 local picker = snacks.picker.get({ source = "explorer" })[1]
 assert(
+	vim.wait(2000, function()
+		return picker and #picker:items() > 0
+	end),
+	"explorer finder did not populate its list"
+)
+assert(
 	picker and picker:cwd() == project,
 	"explorer root should be the current git project: " .. tostring(picker and picker:cwd()) .. " != " .. project
 )
 assert(picker.opts.title == vim.fn.fnamemodify(project, ":t"):upper(), "explorer title should identify the project")
 assert(not picker.opts.icons.git.enabled, "explorer should show git letters rather than status icons")
+assert(
+	vim.api.nvim_get_hl(0, { name = "SnacksPickerGitStatusModified", link = false }).fg
+		== tonumber(require("mayon.generated").palette.orange:sub(2), 16),
+	"Explorer modified status should use orange"
+)
+assert(
+	not picker.opts.diagnostics and not picker.opts.diagnostics_open,
+	"Explorer diagnostics should not crowd filenames"
+)
 local list_win = picker.list.win.win
 assert(vim.api.nvim_win_is_valid(list_win), "explorer list window is missing")
 assert(vim.api.nvim_win_get_width(list_win) == 30, "explorer sidebar should be 30 columns")
@@ -213,9 +233,51 @@ assert(
 	vim.wo[list_win].winbar:find(picker.opts.title, 1, true),
 	"uppercase project title should be shown in list winbar: " .. vim.wo[list_win].winbar
 )
+assert(
+	vim.wo[list_win].winbar:find("MayonExplorerTitle", 1, true),
+	"Explorer root title should use the muted highlight"
+)
+local _, title_count = vim.wo[list_win].winbar:gsub(picker.opts.title, "")
+assert(title_count == 1, "Explorer root title should appear once")
+local listbuf = vim.api.nvim_win_get_buf(list_win)
+local explorer_lines = vim.api.nvim_buf_get_lines(listbuf, 0, -1, false)
+local explorer_text = table.concat(explorer_lines, "\n")
+for _, glyph in ipairs({ "├", "└", "│" }) do
+	assert(not explorer_text:find(glyph, 1, true), "Explorer contains tree connector " .. glyph)
+end
+assert(
+	explorer_text:find("▾", 1, true) or explorer_text:find("▸", 1, true),
+	"Explorer should show disclosure arrows"
+)
+assert(not explorer_text:find(vim.fn.fnamemodify(project, ":t"), 1, true), "Explorer root title was repeated in rows")
+local long_name = "extension-preserving-" .. string.rep("long-name-", 5) .. ".lua"
+local formatted_long_file = picker.opts.format({ file = project .. "/nested/" .. long_name, dir = false }, picker)
+assert(formatted_long_file[3][1]:match("%.lua$"), "Explorer truncation should preserve the extension")
+assert(formatted_long_file[3][1]:find("…", 1, true), "long Explorer filenames should use an ellipsis")
+assert(formatted_long_file[3][2] == "MayonExplorerFile", "Explorer filenames should use the normal foreground")
+local formatted_directory = picker.opts.format({
+	file = project .. "/nested",
+	dir = true,
+	open = true,
+	parent = { file = project },
+}, picker)
+assert(formatted_directory[2][1] == "▾ 󰉋 " and formatted_directory[2][2] == "Directory")
+assert(formatted_directory[3][1] == "nested" and formatted_directory[3][2] == "MayonExplorerFile")
+local git_status = require("snacks.picker.format").file_git_status({ status = " M" }, picker)
+assert(git_status[1].virt_text_pos == "right_align", "Git status letters should align at the row's right edge")
+for _, item in ipairs(picker:items()) do
+	assert(item.file ~= project, "Explorer repeated its root as a list item")
+end
 assert(picker.opts.focus == "list", "explorer should open focused on the visible list")
 local rendered_tabs = vim.api.nvim_eval_statusline(vim.o.tabline, { use_tabline = true, maxwidth = 120 }).str
-assert(rendered_tabs:find(vim.fn.fnamemodify(project, ":t"), 1, true), "tabline should show the project root name")
+assert(
+	not rendered_tabs:find(vim.fn.fnamemodify(project, ":t"), 1, true),
+	"Explorer root should not be repeated in the tabline"
+)
+for _, forbidden in ipairs({ "×", "‾", "▔", "2 files" }) do
+	assert(not rendered_tabs:find(forbidden, 1, true), "tabline contains obsolete decoration: " .. forbidden)
+end
+assert(not contains_private_use(rendered_tabs), "tabline should not contain devicon glyphs")
 local project_win
 for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
 	if vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(win)) == project_file then
@@ -225,6 +287,8 @@ end
 assert(project_win, "project document window should remain visible beside the explorer")
 local rendered_status = vim.api.nvim_eval_statusline(vim.o.statusline, { maxwidth = 120, winid = project_win }).str
 assert(rendered_status:find("entry.lua", 1, true), "statusline should show the current filename: " .. rendered_status)
+assert(not rendered_status:find(project, 1, true), "statusline should show only the basename, not its path")
+assert(rendered_status:find("AI · Copilot", 1, true), "statusline should show the selected AI provider")
 assert(
 	vim.wo[list_win].statuscolumn:find("MayonExplorerStatusColumn", 1, true),
 	"explorer should use its selection rail"
@@ -245,13 +309,25 @@ for _, highlight in ipairs(modified_tabline.highlights or {}) do
 	end
 end
 assert(orange_marker, "unsaved tab marker should use the orange palette highlight")
-require("snacks.picker.actions").focus_input(picker)
-assert(not picker.layout:is_hidden("input"), "Snacks focus_input should show a hidden explorer search input")
+local search = picker.opts.actions.focus_input(picker)
 assert(
 	vim.wait(1000, function()
-		return picker.input.win.win and vim.api.nvim_get_current_win() == picker.input.win.win
+		return search.input.win.win and vim.api.nvim_get_current_win() == search.input.win.win
 	end),
-	"Snacks focus_input should focus the restored search input"
+	"Explorer search should focus the centered input"
+)
+assert(search:cwd() == picker:cwd(), "Explorer search changed its project scope")
+assert(search.opts.mayon_label == "Explorer 搜索")
+assert(search.layout.root.opts.position == "float", "Explorer search must use the shared floating layout")
+search:close()
+assert(vim.api.nvim_win_get_width(picker.list.win.win) == 30, "Explorer search changed the navigation sidebar width")
+picker:set_cwd(project .. "/nested")
+picker:find()
+assert(
+	vim.wait(2000, function()
+		return picker.opts.title == "NESTED" and vim.wo[picker.list.win.win].winbar:find("NESTED", 1, true)
+	end),
+	"Explorer title should follow root changes"
 )
 picker:close()
-print("Project-root explorer, 30-column single list window, hidden/restorable search and workspace labels passed")
+print("Project-root explorer, 30-column list, centered scoped search and workspace labels passed")

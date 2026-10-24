@@ -1,7 +1,8 @@
 return {
 	{
 		"nvim-web-devicons",
-		event = { "FileType", "UIEnter" },
+		-- The dashboard uses explicit glyphs; load the icon table on first file.
+		event = { "BufReadPre", "BufNewFile" },
 		after = function()
 			require("mayon.ui.icons").ensure()
 		end,
@@ -41,27 +42,6 @@ return {
 				callback = function()
 					require("mayon.ui.theme").refresh()
 				end,
-			})
-		end,
-	},
-	{
-		"satellite.nvim",
-		event = { "BufReadPost", "BufNewFile" },
-		after = function()
-			require("satellite").setup({
-				current_only = false,
-				winblend = 0,
-				width = 2,
-				zindex = 40,
-				handlers = {
-					cursor = { enable = false },
-					search = { enable = true },
-					-- Density marks (-/= /≡) are diagnostics, not Git changes.
-					-- Keep actionable diagnostics; Git already has the left gutter.
-					diagnostic = { enable = true, min_severity = vim.diagnostic.severity.WARN },
-					gitsigns = { enable = false },
-					marks = { enable = false },
-				},
 			})
 		end,
 	},

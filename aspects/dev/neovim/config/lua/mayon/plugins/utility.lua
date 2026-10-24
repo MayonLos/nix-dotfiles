@@ -18,24 +18,8 @@ return {
 		"which-key.nvim",
 		event = "User MayonVeryLazy",
 		after = function()
-			require("which-key").setup({
-				spec = {
-					{ "<leader>f", group = "文件", icon = "󰈔 " },
-					{ "<leader>s", group = "搜索", icon = " " },
-					{ "<leader>g", group = "Git", icon = "󰊢 " },
-					{ "<leader>c", group = "代码", icon = "󰅩 " },
-					{ "<leader>a", group = "AI", icon = "󰚩 " },
-					{ "<leader>x", group = "列表", icon = "󰓙 " },
-					{ "<leader>u", group = "界面", icon = "󰔎 " },
-					{ "<leader>t", group = "终端", icon = " " },
-					{ "<leader>p", group = "项目与会话", icon = "󰉋 " },
-					{ "<leader>b", group = "缓冲区", icon = "󰓩 " },
-					{ "<leader>l", group = "语言服务", icon = "󰿘 " },
-					{ "<leader>m", group = "多光标", mode = { "n", "x" }, icon = "󰗧 " },
-					{ "<leader>n", group = "文档", icon = "󰈙 " },
-				},
-				win = { border = "rounded", padding = { 0, 1 }, wo = { winblend = 0 } },
-			})
+			require("mayon.ui.whichkey").setup()
+			require("mayon.features.diagnostic_panel").setupQuickfix()
 		end,
 	},
 	{

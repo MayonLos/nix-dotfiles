@@ -15,6 +15,7 @@ function M.setup()
 		clipboard = "unnamedplus",
 		-- 0.12.4: nearest has no effect with fuzzy; retain fuzzy sorting.
 		completeopt = "menuone,noselect,popup,fuzzy",
+		completeitemalign = "kind,abbr,menu",
 		pumborder = "rounded",
 		pumwidth = 28,
 		pummaxwidth = 60,
@@ -25,7 +26,7 @@ function M.setup()
 		concealcursor = "nvic",
 		conceallevel = 2,
 		cursorline = true,
-		cursorlineopt = "number",
+		cursorlineopt = "both",
 		expandtab = true,
 		foldcolumn = "0",
 		foldenable = true,
@@ -38,7 +39,8 @@ function M.setup()
 		list = true,
 		listchars = { tab = "» ", trail = "·", nbsp = "␣" },
 		number = true,
-		relativenumber = true,
+		-- Absolute numbers match the preview and keep line references stable.
+		relativenumber = false,
 		scrolloff = 8,
 		shiftwidth = 4,
 		showmode = false,
@@ -70,7 +72,7 @@ function M.setup()
 	end
 	vim.opt.diffopt:remove("inline:char")
 	vim.opt.diffopt:append("inline:word")
-	vim.opt.fillchars:append({ vert = " ", vertleft = " ", vertright = " ", verthoriz = " " })
+	vim.opt.fillchars:append({ vert = "│", vertleft = "│", vertright = "│", verthoriz = "│" })
 	-- Register the extra extension before the first read/new-file detection.
 	vim.api.nvim_create_autocmd({ "BufReadPre", "BufNewFile" }, {
 		once = true,

@@ -20,6 +20,7 @@ local ok, err = xpcall(function()
 		return vim.g.mayon_load_error ~= nil
 	end, 10)
 	assert(not vim.g.mayon_load_error, vim.g.mayon_load_error)
+	assert(vim.v.errmsg == "", "delayed runtime error: " .. vim.v.errmsg)
 end, debug.traceback)
 if not ok then
 	io.stderr:write(tostring(err) .. "\n")

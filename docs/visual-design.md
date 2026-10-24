@@ -238,25 +238,37 @@ mini-docker、portctl、ip-monitor、tray、亮度、电源模式等低频项放
 
 ## 9. Neovim 工作台
 
-| 区域 | 尺寸、留白、状态 | 可实现性依据 B |
+本节以第二十轮用户确认的 `ui2/desktop.html/png` 左侧编辑器和 `ui5/dash.html/png` 启动页，以及 `ui5/panels.html/png` 面板延伸稿为准，取代第十八轮中与之冲突的 Neovim 规则。实现、多轮实际 TUI 截图与验证见 [执行记录](history/nvim-visual-2026-10-25.md)。
+
+| 区域 | 尺寸、留白、状态 | TUI 实现与边界 |
 |---|---|---|
-| 正文 | deep；Maple 约15/22；边距以 cell；行号 fg，当前行号 brightFg；当前行保持 deep，只在 gutter 画 blue 标记 | `Normal/NormalNC/LineNr/CursorLineNr/SignColumn`，`cursorlineopt`；真实终端无 CSS padding |
-| 语法 | 关键字 cyan（7.29）、函数 blue（7.31）、字符串 green（8.56）、数字 orange（7.01）、注释 fg（8.10）、标点/变量 brightFg；紫色不承担正文 | `nvim_set_hl`、Treesitter `@keyword/@function/@string/@number/@comment`，已有 `ui/theme.lua` |
-| 标签栏 | 一个字符行；deep 底；活动 bg/brightFg、顶部细 blue 标记，后台 fg；改动圆点 orange；项目名独立区与 explorer 宽度对齐 | 已有 Heirline/`ui/tabline.lua`；圆角只能用字形 |
-| 状态栏 | 一个字符行；模式前景 blue/cyan/yellow，底 deep；文件、Git、诊断、LSP、AI、行列有优先级 | Heirline/`ui/statusline.lua`；不全行模式色底；长路径中间缩写 |
-| 浮窗 | NormalFloat=deep，正文 brightFg，FloatBorder=border；左右1 cell，`border="rounded"` | Neovim window border 为框线字符，视觉半径不可直接设 12；无独立阴影 |
-| 补全菜单 | ≥28列，最多8项；左右1 cell；候选 brightFg，选中 selection/brightFg + blue 类型符号；来源 fg | 原生 `pumheight/pummaxwidth/pumborder`、`Pmenu*` 高亮；窄屏去说明与来源 |
-| 补全文档 | 最多60列×14行，deep/brightFg，border圆字符，延迟300ms | 原生 `completeopt=popup` 与 `Pmenu*` 高亮；不与输入法候选互相遮挡 |
-| AI 虚拟建议 | muted + 斜体；无光晕、无低透明度；未接受标识在状态栏“建议” | 插件 ghost-text highlight/extmark；具体组名以实际 provider 为准，CodeCompanion 不被假定自带持续 inline ghost completion |
-| AI 侧栏 | 正文约32–40列，deep/brightFg，Claude Code provider 标题可辨，内容 Markdown；分隔1字符 border；引用文件单独短行 | 当前 CodeCompanion split 布局与 highlight；宽不够时改独立 tab/浮窗，禁止压缩代码到小于约60列 |
-| diff 审阅 | deep 底；左右原文/修改；新增/删除各8% green/red底；局部12%；全文brightFg；gutter有 +/−；修改 blue 标记 | `DiffAdd/Change/Delete/Text`、CodeDiff、Claude 原生 diff、mini.diff；blend 颜色在主题生成阶段计算为实色，TUI 不支持逐cell alpha |
-| 启动页 | 项目名20视觉近似（终端仍同字号，可用两行布局）；最近项目5项、会话/新文件/查找3–4项；中性标题、小号蓝标记 | 已有 `ui/dashboard.lua`/Snacks dashboard；终端不混用任意字号，不渲染巨型彩色ASCII logo |
+| 正文 | bg/brightFg；Maple 等宽；绝对行号 muted、当前 brightFg；当前行 blue/bg 3.5% 淡底；无折叠箭头 | `Normal/NormalNC/LineNr/CursorLineNr/SignColumn`；`zc/zo` 保留；相对行号默认关，仍可手动切换 |
+| 语法 | 关键字 cyan、函数 blue、字符串 green、数字 orange、注释 fg、标点/变量 brightFg | palette 与 Treesitter；选区 brightFg/selection |
+| Explorer | 左30列、deep底、细edge分隔；仅一次大写muted根标题；▸/▾与蓝目录图标、缩进、fg名称；无树线 | Snacks 自有布局，标题随根目录变；当前文件selection+左蓝条；git字母右对齐；无诊断挤占文件名；长名省略保留扩展名 |
+| 标签栏 | deep；活动bg/brightFg、蓝色指示；orange未保存点；无×、文件总数和devicon | 用真实蓝下划线属性替代图稿顶部2px线，禁止漂浮的overline字符；根标题不重复 |
+| 状态栏 | NORMAL selection底+blue粗体，模式变色；purple分支、green/yellow Git计数、仅文件名；右侧▲诊断、单个主LSP、AI · Copilot、surface位置块 | 不列Copilot LSP，不显示分支符/连接圆点；未保存/只读用`[+]`/`RO`保留安全信息；原生进度与请求状态保留 |
+| 启动页 | 一行mayon.nvim、蓝点、muted项目/分支；72列内容、左48列蓝线段；两列8动作；键帽surface/muted，选中selection+左蓝条+blue键；RECENT/PROJECTS muted、路径右对齐、文件名brightFg | CJK不插字距；同窗bg；底部插件数量/配置耗时/版本/Copilot提供者；状态栏仅NORMAL dashboard与q退出；单字号终端不能混用HTML的30px字标/11px标题 |
+| 行内提示与滚动标记 | 参数名默认关，␣uh开启；无右侧Satellite标记；仅当前作用域一条淡缩进线；无自动顶部粘性上下文 | 行号/位置与实际文件一致，不伪造预览的217:28/64%示例数字 |
+| 浮窗与补全 | deep/brightFg，细edge边；kind紫、类型元数据muted；最多8项、左右留白 | 原生菜单及圆字符边界；类型列按原生菜单对齐，无CSS像素半径/阴影 |
+| AI侧栏与diff | deep、细边、Claude Code标题；原生纵向diff、增删palette混色、接受/拒绝winbar | 锁定插件无独立HTML卡片或内联按钮renderer；不把截图中的假想卡片当作已实现功能 |
 
-选区中的所有源码以 brightFg/selection 呈现。错误正文中性，DiagnosticError 用 red 图标或 undercurl；虚拟诊断正文 brightFg，避免红字在 tinted surface 低对比。diff 彩底仅用于已有/待审变化；AI 产出未接受时不自动显示为已应用的绿色成功。
+edge由现有palette的border与deep混色得到，不增加第二套颜色来源。AI建议仍为muted斜体，未接受内容不显示为已应用。diff正文brightFg；8% green/red/blue底的历史实测约10.70/11.21/10.79，12%字内底约9.82/10.53/10.00，均≥7。原生菜单打开时仍抑制抢占的ghost text。
 
-diff 合成后的实测正文对比：8% green/red/blue 底分别约 10.70 / 11.21 / 10.79；12% 字内底分别约 9.82 / 10.53 / 10.00，均 ≥7。
+启动页插件数统计实际打包的插件/parser闭包，不硬编码稿中38；耗时为配置初始化，不代表首帧或外部新进程时间。Copilot标识表示配置的可执行提供者，登录/网络健康需真实会话验证。最近文件/项目随历史变化；隔离截图只使用临时历史。终端字号、窗口比例和当前源码行号决定最终排版，不能用HTML截图宣称已在用户桌面应用。
 
-图稿同时展示补全菜单、AI 灰字与侧栏是覆盖状态样本；实际补全弹出时应抑制抢占的 ghost text，接受方式维持现有键位与 provider 能力，不把视觉稿当成功能升级。
+第二阶段统一以下原生界面，不改命令行 fzf 或 lazygit 的应用配色：
+
+| 界面 | 规则与行为 |
+|---|---|
+| Snacks picker | 文件、grep、符号、buffers、recent、help、keymaps、diagnostics 共享居中 deep 浮层、细 edge、来源/范围/计数标题、blue ❯ 与匹配、selection/左蓝条；文件名与路径分列、预览当前行淡蓝。Explorer 的 `i` 搜索使用同一居中浮层及根目录范围，原30列导航侧栏保留。 |
+| grep 分组 | 文件标题与计数是实际列表行，包含首个命中的原生路径/位置，Enter 打开首个命中；正文行号 dim。收集一次 rg 返回后按文件分组，保持原生异步取消与导航，避免虚拟行破坏滚动索引。 |
+| AI | 右侧约38% deep 面板；winbar 显示提供者、活动下划线、真实可用状态/模型。CodeCompanion 用户灰 rail、muted 大写角色、cyan 工具摘要、淡红绿代码行、原生紫输入提示与 Ctrl-S；Claude diff 文件/计数/接受拒绝提示。CLI 内部 TUI 由 CLI 自己绘制。 |
+| 通知 | 右上 deep、brightFg 标题、muted 正文；级别仅用于左侧细 rail，无大图标。 |
+| 原生浮窗 | hover/signature 的来源标题、细 edge、deep；hover 在签名与说明间加细线，诊断沿用同一窗口表面。 |
+| 诊断与 quickfix | 底部 deep 面板、错误/警告计数、文件分组、selection/左 rail、dim 位置右对齐；位置列表使用所属窗口的原生数据，截断按显示宽度保留 CJK 与位置。 |
+| which-key | 接近全宽的底部四列，blue 键、purple +分组、muted ␣ LEADER winbar；无外框。窄屏随实际可用列宽调整。 |
+| 补全 | 原生菜单保留紫 kind、muted 类型、selection/左蓝条；原生文档窗增加 completion 标题、deep 与细 edge，滚动选项仍跟随原生菜单。 |
+| 其他 | Oil/grug-far/help/checkhealth/ui2 消息共享窗口表面；codediff/MiniDiff 淡底审阅；multicursor/Flash palette 标签；render-markdown 薄代码块；终端和 lazygit 仅统一 Neovim 侧容器。 |
 
 ## 10. 输入法、GTK / Qt 与 Firefox
 

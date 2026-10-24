@@ -46,6 +46,7 @@ end
 local function companion()
 	require("mayon.config.loader").pack("codecompanion-history.nvim")
 	require("mayon.config.loader").pack("mini.diff")
+	require("mayon.ui.ai_panels").setup()
 	require("codecompanion").setup({
 		adapters = {
 			acp = {
@@ -63,7 +64,16 @@ local function companion()
 			},
 		},
 		interactions = {
-			chat = { adapter = "deepseek", opts = { completion_provider = "default" } },
+			chat = {
+				adapter = "deepseek",
+				roles = {
+					user = "YOU",
+					llm = function(adapter)
+						return ((adapter.formatted_name or adapter.name or "DeepSeek"):upper())
+					end,
+				},
+				opts = { completion_provider = "default" },
+			},
 			inline = { adapter = "deepseek" },
 			cmd = { adapter = "deepseek" },
 		},
@@ -72,7 +82,7 @@ local function companion()
 				window = {
 					layout = vim.o.columns < 120 and "float" or "vertical",
 					position = "right",
-					width = 0.38,
+					width = 0.42,
 					opts = {
 						number = false,
 						relativenumber = false,
@@ -83,6 +93,9 @@ local function companion()
 				},
 				show_settings = false,
 				start_in_insert_mode = false,
+				intro_message = "❯ 继续提问 · Ctrl-S 发送",
+				separator = "",
+				show_header_separator = false,
 			},
 		},
 		opts = { language = "Chinese" },
@@ -159,6 +172,7 @@ local function companion()
 	require("mayon.features.cc_inline_indicator").setup()
 end
 local function claude()
+	require("mayon.ui.ai_panels").setup()
 	require("claudecode").setup({
 		auto_start = true,
 		track_selection = true,
@@ -225,15 +239,13 @@ local function claude()
 					"<cmd>ClaudeCodeDiffDeny<cr>",
 					{ buffer = ev.buf, desc = "拒绝 Claude 当前文件修改" }
 				)
-				for _, win in ipairs(vim.fn.win_findbuf(ev.buf)) do
-					vim.wo[win].winbar =
-						"%#MayonDiffHint# Claude 审阅 · ,a / ␣aA 接受 · ,r / ␣aD 拒绝 · 可先编辑建议 "
-				end
+				require("mayon.ui.ai_panels").style_diff(ev.buf)
 			end)
 		end,
 	})
 end
 local function sidekick()
+	require("mayon.ui.ai_panels").setup()
 	require("sidekick").setup({
 		nes = {
 			enabled = function(buf)
