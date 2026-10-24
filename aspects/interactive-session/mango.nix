@@ -112,18 +112,16 @@ in
       cursor_theme = palette.cursor.name;
       cursor_size = palette.cursor.size;
       cursor_hide_on_keypress = 1;
+      # Keep pointer discovery and activation semantics; typing still hides it.
+      cursor_hide_timeout = 0;
+      focus_on_activate = 1;
+      warp_cursor = 1;
 
-      # Noctalia owns layer shadows/animations. Its reading panels are opaque;
-      # client blur remains available for apps that explicitly use transparency.
-      blur = 1;
+      # Noctalia owns layer shadows/animations. Kitty and reading panels are
+      # opaque; there is no declared transparent client needing GPU blur.
+      # Keep layer blur off as recommended by Noctalia's Mango guide (#1196).
+      blur = 0;
       blur_layer = 0;
-      blur_optimized = 1;
-      blur_params_num_passes = 2;
-      blur_params_radius = 6;
-      blur_params_noise = 0.02;
-      blur_params_brightness = 0.9;
-      blur_params_contrast = 0.9;
-      blur_params_saturation = 1.0;
       layer_animations = 0;
       shadows = 1;
       layer_shadows = 0;
@@ -142,6 +140,10 @@ in
       dim_focused_color = "0x00000000";
       dim_unfocused_color = "0x00000010";
 
+      # Include the fallback canvas and drag/split hints in the same palette.
+      root_color = color palette.bg;
+      drop_color = "0x${lib.removePrefix "#" palette.blue}80";
+      split_color = color palette.cyan;
       border_px = 2;
       border_color = "${color palette.border}";
       focus_color = "${color palette.blue}";
@@ -157,6 +159,9 @@ in
       gap_outer_vertical = 10;
       smart_gaps = 0;
       no_border_when_single = 0;
+      no_radius_when_single = 0;
+      monocle_no_border = 0;
+      monocle_no_gap = 0;
 
       animations = if reducedMotion then 0 else 1;
       animation_type_open = "zoom";
@@ -167,22 +172,20 @@ in
       fade_out_begin_opacity = 0.5;
       zoom_initial_ratio = 0.94;
       zoom_end_ratio = 0.96;
-      animation_duration_move = 160;
-      animation_duration_open = 200;
-      animation_duration_tag = 220;
-      animation_duration_close = 140;
+      animation_duration_move = 180;
+      animation_duration_open = 240;
+      animation_duration_tag = 240;
+      animation_duration_close = 160;
       animation_duration_focus = 0;
-      animation_curve_open = "0.46,1.0,0.29,0.99";
-      animation_curve_move = "0.46,1.0,0.29,0.99";
-      animation_curve_tag = "0.46,1.0,0.29,0.99";
-      animation_curve_close = "0.46,1.0,0.29,0.99";
-      animation_curve_focus = "0.46,1.0,0.29,0.99";
-      animation_curve_opacity_fade_in = "0.46,1.0,0.29,0.99";
-      # Was "0.5,0.5,0.5,0.5" -- a bezier straight down the diagonal, i.e.
-      # constant velocity. Every other curve here, including its own
-      # opafadein counterpart, eases; the fade-out was the one motion in the
-      # compositor that did not.
-      animation_curve_opacity_fade_out = "0.46,1.0,0.29,0.99";
+      # A smooth ease-out settles opens/moves quickly; short ease-in closes
+      # leave promptly. No overshoot or focus-only animation.
+      animation_curve_open = "0.16,1.0,0.3,1.0";
+      animation_curve_move = "0.16,1.0,0.3,1.0";
+      animation_curve_tag = "0.16,1.0,0.3,1.0";
+      animation_curve_close = "0.4,0.0,1.0,1.0";
+      animation_curve_focus = "0.16,1.0,0.3,1.0";
+      animation_curve_opacity_fade_in = "0.16,1.0,0.3,1.0";
+      animation_curve_opacity_fade_out = "0.4,0.0,1.0,1.0";
       tag_animation_direction = 1;
 
       scroller_structs = 20;
@@ -217,6 +220,11 @@ in
         "id:6,layout_name:monocle"
         "id:8,layout_name:monocle"
       ];
+      # A larger centered preview makes titles/content readable on 1.5x DPI.
+      overcircle_center_ratio = 0.60;
+      jump_labels = "HJKLASDFGQWERTYUIOPZXCVBNM";
+      # Preserve numbered tag navigation without wrapping at either end.
+      tag_carousel = 0;
       overview_gap_inner = 12;
       overview_gap_outer = 24;
       scratchpad_width_ratio = 0.78;
@@ -246,6 +254,11 @@ in
       tab_bar_decorate_corner_radius = 8;
       tab_bar_decorate_padding_x = 6;
       tab_bar_decorate_padding_y = 2;
+      group_bar_height = 32;
+      group_bar_close_button_enable = 0;
+      group_bar_button_size = 16;
+      group_bar_button_margin = 8;
+      group_bar_button_color = color palette.red;
       group_bar_decorate_font_desc = "${palette.fonts.sans} 10";
       group_bar_decorate_fg_color = "${color palette.fg}";
       group_bar_decorate_bg_color = "${color palette.deep}";
@@ -263,9 +276,24 @@ in
       jump_label_decorate_focus_bg_color = "${color palette.blue}";
       jump_label_decorate_border_color = "${color palette.border}";
       jump_label_decorate_border_width = 1;
-      jump_label_decorate_corner_radius = 6;
-      jump_label_decorate_padding_x = 5;
+      jump_label_decorate_corner_radius = 8;
+      jump_label_decorate_padding_x = 6;
       jump_label_decorate_padding_y = 2;
+
+      # overcircle/switcher titles otherwise inherit upstream green/Gruvbox.
+      # Use the same type, outline and focused blue as the monocle tab bar.
+      title_message_bar_height = 48;
+      title_message_bar_gap = 12;
+      title_message_bar_decorate_font_desc = "${palette.fonts.sans} 10";
+      title_message_bar_decorate_fg_color = color palette.fg;
+      title_message_bar_decorate_bg_color = color palette.deep;
+      title_message_bar_decorate_focus_fg_color = color palette.black;
+      title_message_bar_decorate_focus_bg_color = color palette.blue;
+      title_message_bar_decorate_border_color = color palette.border;
+      title_message_bar_decorate_border_width = 1;
+      title_message_bar_decorate_corner_radius = 8;
+      title_message_bar_decorate_padding_x = 8;
+      title_message_bar_decorate_padding_y = 4;
 
       repeat_rate = 30;
       repeat_delay = 400;
@@ -286,6 +314,11 @@ in
       # warp (pointer.c treats 0 as "do not warp", not as "no corner").
       drag_corner = 4;
       drag_warp_cursor = 0;
+      # An 8px grab strip is easier than the 2px outline without consuming
+      # the default 10px of application edge controls. Super+R stays available.
+      enable_border_resize = 1;
+      border_resize_size = 8;
+      drag_tile_to_tile = 1;
       enable_floating_snap = 1;
       snap_distance = 12;
 

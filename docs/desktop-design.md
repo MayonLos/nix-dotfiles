@@ -1,5 +1,8 @@
 # One Dark Darker 桌面视觉设计
 
+2026-10-24 第九轮在隔离 worktree 优化 Mango / Noctalia 声明；本轮仅求值、构建和隔离配置校验，
+没有激活配置。逐项取舍、锁定源码依据与验收清单见[桌面美化记录](history/desktop-polish-2026-10-24.md)。
+
 状态：此前桌面配置已由用户应用；2026-10-24 第三轮字体、图标、指针与 Atuin 先完成声明和构建验证，随后包含在第四轮系统构建与 18:11 启动的 generation 中。字体文件与配置构建证据见[第三轮记录](history/optimization-2026-10-24.md#第三轮字体图标与-atuin)，完整系统的实机核对见[第四轮记录](history/optimization-2026-10-24.md#第四轮lts-内核stable-nvidia-与-sched-ext)；字体在各桌面组件中的实际显示仍待检查。
 此前 Den 迁移的构建证据见[实施记录](history/den-execution.md)，本轮检查与交付状态另见
 [视觉优化执行记录](history/desktop-polish-execution.md)。尺寸、动画、混合缩放与功耗仍需本机验收，
@@ -15,7 +18,7 @@
 
 外观数据与各软件适配遵守 [架构设计](architecture-design.md)：外观拥有语义色、字体等公共数据，Noctalia、Mango、Kitty、Neovim 等各自消费；greeter 是主机的明确选择。最终文件只有一个写入者。本文中的尺寸、布局和时长是设计目标；硬件相关参数以验收结果决定是否保留。
 
-现有配置已经具备丰富的基础：[Noctalia](../aspects/interactive-session/noctalia.nix) 有分组胶囊、媒体频谱、BongoCat、开发工具、通知和锁屏；[Mango](../aspects/interactive-session/mango.nix) 有圆角、窗口模糊、动画和 monocle 标签栏。实施以这些能力为基础，插件继续从 flake 锁定路径加载，`auto_update = "none"`。
+现有配置已经具备丰富的基础：[Noctalia](../aspects/interactive-session/noctalia.nix) 有分组胶囊、媒体频谱、BongoCat、开发工具、通知和锁屏；[Mango](../aspects/interactive-session/mango.nix) 有圆角、浮窗阴影、动画和 monocle 标签栏。实施以这些能力为基础，插件继续从 flake 锁定路径加载，`auto_update = "none"`。
 
 ## 语义调色板
 
@@ -55,6 +58,27 @@ Noctalia 使用 `theme.mode = "dark"`、`shell_mode = "follow"`、`source = "cus
 
 `success`、`warning` 和 `deep` 保留在公共外观数据中；它们不是额外的 Noctalia palette 字段。需要这些颜色的已支持 widget 字段可以传固定十六进制值，不能虚构新的 ColorRole。JSON 同时填写 `terminal`：背景/前景为 background/foreground，光标为 foregroundStrong，光标下文字为 background，选区为 selection/foregroundStrong；ANSI 0–7 为 black/red/green/yellow/blue/purple/cyan/foreground，8 为 border，9–14 与对应普通彩色相同，15 为 foregroundStrong。主题格式依据 [锁定版本 palette 文档](https://github.com/noctalia-dev/noctalia-shell/blob/5f864d472676c77e5310881b243f15cc371bb223/docs/user/theming/palette.mdx)。
 
+## 视觉刻度
+
+以逻辑像素为设计单位，字体仍使用各 API 的原生单位。Noctalia 与 greeter 的原生中/大/特大
+圆角为 6/9/12；`corner_radius_scale = 4/3` 将它们映射到 8/12/16（内容缩放为 1 时）。
+Bar 的 radius/capsule_radius 和锁屏 login box 的 radius 是独立显式值；不把所有 UI 参数都
+当作同一种缩放。极小控件仍可使用原生 small 半径 4，胶囊/圆形控件保留几何限制。
+
+| 刻度 | 使用位置 | 描边、阴影与间距 |
+| --- | --- | --- |
+| 小圆角 8 | bar 内胶囊、Mango tab/group/jump/title、锁屏输入框、Noctalia/greeter 中号控件 | 装饰描边 1、`palette.border`；输入框清楚，内部卡片不再重复描边 |
+| 中圆角 12 | bar 外框、Mango 窗口、screen corners、Noctalia/greeter 大号控件 | bar 描边 1；窗口焦点描边 2、blue；单窗口与 monocle 仍保留间距/圆角/边框 |
+| 大圆角 16 | Launcher / 控制中心 / shell panel、通知、OSD 外表面、锁屏认证卡、greeter 特大表面 | Noctalia panel 用 outline/1；通知描边 1；OSD 同样显式 outline/1 |
+| 内间距 4 / 6 / 8 | 标题 padding_y 4；tab/group padding_x 6；胶囊组 padding 6；bar padding/spacing 8 | title padding_x 8；组内 spacing 4；窗口 inner gap 6 |
+| 外间距 10 / 12 / 16 | 窗口 outer gap 10；标题与预览 gap 12；浮层 offset 16 | bar 两端 14、上缘 8；通知 offset 14/62、OSD 底部 28 是定位避让值 |
+| 阴影 | Noctalia 负责自身 shell/bar/panel；Mango 仅负责浮动客户端 | Noctalia alpha 0.32/down；Mango size 10/blur 20/offset 0,5/alpha 0x59；Mango layer_shadows=0 |
+
+源码依据：Noctalia `src/ui/style.h:13–16`、`src/ui/style.cpp:68–76`，panel
+`src/shell/panel/panel_manager.cpp:1016`、notification `notification_toast.cpp:2375`、OSD
+`osd_overlay.cpp:171`；greeter `src/ui/style.h:56–59`、`style.cpp:18–19`。
+配色继续只从共享 palette 读取，字体用 `palette.fonts.sans`；新增视觉层不引入第二个主题写入者。
+
 ## 面板：固定骨架与有状态的内容
 
 所有尺寸均为逻辑像素，字体另行标注。主面板固定在顶部、预留窗口空间、不自动隐藏，普通 `top` layer 不覆盖全屏应用。沿用三个区段与现有 `capsule_group`：
@@ -90,13 +114,22 @@ Noctalia 的正文基准为 14，图标基准为 16，regular 工作区文字基
 
 ## Mango 工作区、窗口与层次
 
-工作区采用 regular 有标签胶囊，`label_source = "id"`、`show_labels = true`、`hide_when_empty = false`，固定显示 1–9，保持位置记忆；`active_pill_size = 1.5`、`inactive_pill_size = 1.0`。当前工作区为 primary，已占用为 surface_variant，空工作区用 `#181b20`，紧急为 error；active 的长度与数字同时提供状态线索。`show_all_outputs = false`、`focused_output_only = true`，每块屏只呈现自己的工作区，键盘焦点所在输出显示蓝色当前项。文字由源码按填充色选择可读色，不额外发明 per-state text 参数。[工作区字段](https://github.com/noctalia-dev/noctalia-shell/blob/5f864d472676c77e5310881b243f15cc371bb223/docs/user/bar/widgets/workspaces.mdx)
+工作区采用 regular 有标签胶囊，`label_source = "id"`、`show_labels = true`、`hide_when_empty = false`，固定显示 1–9，保持位置记忆；`active_pill_size = 1.5`、`inactive_pill_size = 1.0`。当前工作区为 primary，已占用为 surface_variant，空工作区用 `#181b20`，紧急为 error；active 的长度与数字同时提供状态线索。`show_all_outputs = false`、`focused_output_only = true`，每块屏只呈现自己的工作区，键盘焦点所在输出显示蓝色当前项。文字由源码按填充色选择可读色，不额外发明 per-state text 参数。
+锁定 5.3 的 `show_icons` **仅对 focus_hint 的当前工作区活动应用生效**，regular 不画应用图标，
+因此不能在固定 1–9 胶囊内展示各 tag 的应用。保持数字胶囊，不切换成隐藏其他标签身份的点阵。
+Mango 后端有 workspace app/window 数据，但另加 grouped taskbar 没有每组图标上限；四个
+pinned-only 图标又重复 launcher 的 pins。九胶囊几何下界约 184px，已有媒体/频谱和工具组，
+因此不加 taskbar，左段仍沿用 ≤640 的待实测预算。[工作区字段](https://github.com/noctalia-dev/noctalia-shell/blob/5f864d472676c77e5310881b243f15cc371bb223/docs/user/bar/widgets/workspaces.mdx)
 
-Mango 保持 `tile,scroller,monocle` 切换，并按下述活动设置工作区默认布局。窗口边框 2、圆角 12；内间距横纵各 6、外间距各 10；单窗口保留边框与间距。focus 为 blue，普通边框为 border，urgent 为 red，scratchpad 为 purple。半透明预览与拖放提示可以使用 accent 的 alpha，应用前景不随聚焦降低透明度。
+Mango 保持 `tile,scroller,monocle` 切换，并按下述活动设置工作区默认布局。窗口边框 2、圆角 12；内间距横纵各 6、外间距各 10；单窗口保留边框与间距。focus 为 blue，普通边框为 border，urgent 为 red，scratchpad 为 purple。fallback root 使用 background，拖放提示使用 blue/0x80、分割提示使用 cyan；半透明预览与拖放提示可以使用 accent 的 alpha，应用前景不随聚焦降低透明度。
 
 `dim_enable = 0`，保持非焦点文档、代码注释和图表的原始对比度。焦点由 2 像素蓝边框表达；不降低应用正文不透明度。
 
-monocle 标签栏已显式适配：高度 32，`tab_bar_decorate_font_desc = "Inter 10"`，普通 fg/background 为 foreground/deep，选中 fg/background 为 black/blue，border 为 border，圆角 8。对应 `tab_bar_decorate_{fg_color,bg_color,focus_fg_color,focus_bg_color,border_color,corner_radius}` 均存在于 pinned Mango。当前标签栏使用共享 palette，不再依赖旧 Tokyo Night 试验色。当前锁定 Noctalia Mango template 为 group bar 与 tab bar 都输出前景、背景、焦点色和边框色；tab bar 字体与圆角仍由本仓库的 Mango 配置显式指定。模板颜色随 Noctalia palette 变化，本地显式配置则以 Mango 配置为准。[Mango parser](https://github.com/mangowm/mango/blob/900b8d7e06c396a20b6d4e56f242c4e240a69dfa/src/config/option_defs.c)、[Noctalia Mango template](https://github.com/noctalia-dev/noctalia-shell/blob/5f864d472676c77e5310881b243f15cc371bb223/assets/templates/mango/mango.conf)
+monocle 标签栏已显式适配：高度 32，`tab_bar_decorate_font_desc = "Inter 10"`，普通 fg/background 为 foreground/deep，选中 fg/background 为 black/blue，border 为 border，圆角 8。对应 `tab_bar_decorate_{fg_color,bg_color,focus_fg_color,focus_bg_color,border_color,corner_radius}` 均存在于 pinned Mango。当前标签栏使用共享 palette，不再依赖旧 Tokyo Night 试验色。当前锁定 Noctalia Mango template 为 group bar 与 tab bar 都输出前景、背景、焦点色和边框色；tab bar 字体与圆角仍由本仓库的 Mango 配置显式指定。本仓库未选择 builtin mango 模板，也没有 noctalia-mango 用户模板或生成文件 include；
+Mango 配色仅由本仓库写入。新 `title_message_bar_*` 全套显式设置：height 48、gap 12、
+Inter 10、fg/deep、聚焦 black/blue、border/1、radius 8、padding 8/4。
+标题条有标题和 app-id 两行，48 高度为两行文字及 padding 留空间；不照搬 32 高的单行 tab。
+group bar 高 32，关闭按钮隐藏，备用按钮 red/16、margin 8；jump 标签圆角统一为 8。[Mango parser](https://github.com/mangowm/mango/blob/900b8d7e06c396a20b6d4e56f242c4e240a69dfa/src/config/option_defs.c)、[Noctalia Mango template](https://github.com/noctalia-dev/noctalia-shell/blob/5f864d472676c77e5310881b243f15cc371bb223/assets/templates/mango/mango.conf)
 
 ## 透明、模糊、动画与壁纸
 
@@ -107,16 +140,24 @@ Kitty 主背景设为不透明 1.0，使 shell、tmux 和 Neovim 的 `#1f2329` �
 | Noctalia 浮层 | `shell.panel.transparency_mode = "solid"`，border 1、shadow 开启 | 锁定实现的浮动背景和内部卡片均为 1.0，避免后方应用文字透出 |
 | 通知 / OSD | alpha 0.97 | 不与文本一起降低透明度 |
 | 背景遮罩 | `backdrop.blur_intensity = 0.40`、`tint_intensity = 0.50` | 核对覆盖范围、首开成本和文字对比 |
-| Mango 客户端模糊 | 沿用 `blur = 1`、optimized、2 passes、radius 6 | 仅实际透明的客户端受益；Noctalia 的玻璃和 backdrop 不能等同于 Mango 的 client blur |
+| Mango 客户端模糊 | `blur = 0`，移除无效 blur_params 声明 | Kitty 不透明，阅读浮层实底，没有已声明的透明客户端受益；省去不必要渲染路径，未测功耗差值 |
 | layer 效果 | 保持 `blur_layer = 0`、`layer_animations = 0`、`layer_shadows = 0` | 不叠加两套阴影/动画；bar blur 协议请求是否生效单独验收 |
 | 窗口阴影 | 仅浮窗，size 10、blur 20、offset 0/5、`0x00000059` | 浮窗有层次，平铺间隙不形成黑色污边 |
 
 2026-10-18 收尾实机截图显示，居中 Launcher 使用 glass 时后方终端文字清晰透出，干扰应用名称阅读。
 早期先改为 soft；本轮结合社区设计进一步采用 `solid`（浮动背景与卡片均为 1.0）。阴影、圆角与短动画继续保留，不依赖 layer blur 获得可读性。
 
-Noctalia bar 的 `compositor_blur` 只在 compositor 支持相应协议并实际处理请求时有意义。现有 `blur_layer = 0` 下，不承诺面板背后必然出现实时场景模糊，也不为达到效果擅自翻转它；首先检查协议与画面，必要时以 panel 内部 backdrop/更实的表面完成设计。[Bar blur 说明](https://github.com/noctalia-dev/noctalia-shell/blob/5f864d472676c77e5310881b243f15cc371bb223/docs/user/bar/index.mdx)
+Noctalia bar 的 `compositor_blur` 只在 compositor 支持相应协议并实际处理请求时有意义。
+本轮 `blur = 0`、`blur_layer = 0`，不依赖 compositor bar blur。Noctalia 自己的 backdrop/锁屏
+内部效果不等于 Mango 客户端模糊，保持原值。[官方 Mango 指南](https://docs.noctalia.dev/noctalia/compositor-settings/mango/)
+允许两种阴影分工；此处沿用 Noctalia 渲染自身阴影，故不照抄示例的 layer_shadows=1。
+[Mango #1196](https://github.com/mangowm/mango/issues/1196) 报告的是 layer blur 与圆角裁切问题；
+不据此断言本机 0.18.3 客户端一定有同一缺陷，也不声称关模糊能修复所有圆角边框问题。[Bar blur 说明](https://github.com/noctalia-dev/noctalia-shell/blob/5f864d472676c77e5310881b243f15cc371bb223/docs/user/bar/index.mdx)
 
-Mango 默认动效：open 200 ms、close 140 ms、move 160 ms、tag 220 ms、focus 0；open/close 用 zoom，起始/结束比例分别 0.94/0.96，淡入淡出保留；沿用已验证 parser 接受的 `0.46,1.0,0.29,0.99` 曲线。Noctalia `animation.speed = 1.0`，这是倍率，不是毫秒。按键重复切换 20 次不应积压动画；减少动画通过共享 `appearance.reducedMotion` 实现，具体边界见下节。
+Mango 默认动效：open 240 ms、close 160 ms、move 180 ms、tag 240 ms、focus 0；open/close
+用轻微 zoom，起始/结束比例保持 0.94/0.96，淡入淡出保留。open/move/tag/fade-in 用
+`0.16,1.0,0.3,1.0` ease-out，close/fade-out 用 `0.4,0.0,1.0,1.0` ease-in，收尾更快、无回弹。
+曲线是本仓库设计取值，源码支持四点 Bézier，并非照抄社区实机测量。Noctalia `animation.speed = 1.0`，这是倍率，不是毫秒。按键重复切换 20 次不应积压动画；减少动画通过共享 `appearance.reducedMotion` 实现，具体边界见下节。
 
 Noctalia 的轮换目录由 Nix 派生，只包含仓库现有 `wallpaper-002.png`、`005`、`008`、`009`、
 `011` 五张冷色调素材，`recursive = false`；原壁纸目录和全部素材保留。默认路径为 `005`，
@@ -134,24 +175,30 @@ Wayland 锁屏跟随当前壁纸。壁纸转场为 `fade`、450 ms；`appearance
 
 ## Launcher、控制中心、通知与认证界面
 
-Launcher 使用原生 full layout、浮动居中、宽 680、`search_position = "top"`、`default_view = "recent"`、`app_grid = false`、`compact = false`，显示图标与完整名称/副标题。常用应用通过真实 desktop ID 固定：Kitty、浏览器、文件管理器、编辑器；ID 由实施时枚举确认。保留 tmux、JetBrains、Prism 等现有 providers；calculator 继续仅 `/calc` 显式调用。中文搜索、长文件名、上下键/Enter/Esc、Ctrl+A/E/U/K 都纳入验收。宽度是 full layout 的真实选项，不给内部卡片臆造 padding/font API。[Shell / Launcher 配置](https://github.com/noctalia-dev/noctalia-shell/blob/5f864d472676c77e5310881b243f15cc371bb223/docs/user/configuration/shell.mdx)
+Launcher 使用原生 full layout、浮动居中、宽 680、`search_position = "top"`、`default_view = "recent"`、`app_grid = false`、`compact = false`，显示应用图标与完整名称/副标题。5.3 的新布局是 `full`，旧简化布局为 `simple`；
+分类启用且 `category_icons_only = true`，`track_usage = true` 与 `sort_by_usage = true`
+分别启用使用次数记录和排序，不把二者当成同一字段。常用应用通过真实 desktop ID 固定：Kitty、浏览器、文件管理器、编辑器；ID 由实施时枚举确认。保留 tmux、JetBrains、Prism 等现有 providers；calculator 继续仅 `/calc` 显式调用。中文搜索、长文件名、上下键/Enter/Esc、Ctrl+A/E/U/K 都纳入验收。宽度是 full layout 的真实选项，不给内部卡片臆造 padding/font API。[Shell / Launcher 配置](https://github.com/noctalia-dev/noctalia-shell/blob/5f864d472676c77e5310881b243f15cc371bb223/docs/user/configuration/shell.mdx)
 
 控制中心为 floating top_right、720 宽，与居中 Launcher 分开；二者显式关闭 `open_near_click`。`sidebar = "full"`、`sidebar_section = "compact"`，Home 保留完整导航，直接设备分区采用紧凑图标栏，保留快捷方式标签。Home 给出用户、媒体、日期天气与入口；音频、网络、蓝牙、显示、系统、通知使用原生 tabs，具体内容沿用已有服务。常用滑块、开关与设备名直接可见；不重排上游未开放布局的内部卡片。布局插件自身面板放置沿用锁定 manifest（floating / bottom_right）。左下启动器热区保留 200 ms 延迟；用户明确要求关闭右下弹出功能，右下与上方热区均为 `none`。[Control Center](https://github.com/noctalia-dev/noctalia-shell/blob/5f864d472676c77e5310881b243f15cc371bb223/docs/user/control-center/index.mdx)
 
 通知设置右上角，`width = 380`、`offset_x = 14`、`offset_y = 62`、`max_visible = 3`、border 1、alpha 0.97，避免覆盖顶部面板。继续 `follow_focused_output = true`；已经出现的通知留在原输出，不因鼠标移动跳屏。正常通知显示应用名、正文与动作，critical 使用原生加粗边框；错误文案保持可读前景，红色负责警示。保留当前 overlay 行为，专注/演示时使用原生勿扰；不新添后台规则替用户吞通知。OSD 使用下中横向布局、offset_y 28、1400ms 隐藏，跟随焦点输出，与右上通知分开。[通知字段与语义](https://github.com/noctalia-dev/noctalia-shell/blob/5f864d472676c77e5310881b243f15cc371bb223/docs/user/services/notifications.mdx)
 
-锁屏采用同一静态壁纸与配色，`blurred_desktop = false`，blur 0.40、tint 0.60；较暗的背景承托中央时钟与认证框。
+锁屏跟随当前轮换壁纸并采用同一配色，`blurred_desktop = false`，blur 0.40、tint 0.60；较暗的背景承托中央时钟与认证框。
 锁屏有独立转场池，现明确为单一 `fade`、550 ms；不再继承上游随机效果池和 1500 ms 默认。
 锁定实现会为转场临时捕获桌面（内存中留至解锁），这与使用桌面截图作为持续锁屏背景不同；
-没有 screencopy 能力或捕获失败时跳过转场。`reducedMotion` 使用空池，避免这项动画捕获。使用原生 regular login box、圆角 16、背景 surface_variant/1.0、输入框 radius 10/opacity 1.0；保留认证提示、Caps Lock、键盘布局和会话按钮。媒体摘要关闭、天气保留，时钟单独配置为原生 clock widget，使用 Inter（中文回退 Noto CJK）、居中文本、无底板、保留文字阴影。`lockscreen_widgets` 的坐标属于真实输出：内屏按约 1707×1067 逻辑画布，clock 中心为宽度 1/2、高度 24%、box 420×110，独立日期位于高度 32.5%；认证框中心为高度 54%，外屏仍须按真实输出建立记录，不复制物理像素坐标。这些 widget 类型和字段已支持，最终坐标、实际尺寸与边界仍须解锁状态预览验证。[Lockscreen widgets](https://github.com/noctalia-dev/noctalia-shell/blob/5f864d472676c77e5310881b243f15cc371bb223/docs/user/lockscreen/widgets.mdx)
+没有 screencopy 能力或捕获失败时跳过转场。`reducedMotion` 使用空池，避免这项动画捕获。使用原生 regular login box、圆角 16、背景 surface_variant/1.0、输入框 radius 8/opacity 1.0；保留认证提示、Caps Lock、键盘布局、会话按钮与 `show_password_reveal = true`。媒体摘要关闭、天气保留，时钟单独配置为原生 clock widget，使用 Inter（中文回退 Noto CJK）、居中文本、无底板、保留文字阴影。`lockscreen_widgets` 的坐标属于真实输出：内屏按约 1707×1067 逻辑画布，clock 中心为宽度 1/2、高度 24%、box 420×110，独立日期位于高度 32.5%；认证框中心为高度 54%，外屏仍须按真实输出建立记录，不复制物理像素坐标。这些 widget 类型和字段已支持，最终坐标、实际尺寸与边界仍须解锁状态预览验证。[Lockscreen widgets](https://github.com/noctalia-dev/noctalia-shell/blob/5f864d472676c77e5310881b243f15cc371bb223/docs/user/lockscreen/widgets.mdx)
 
-Greeter 由主机显式生成 `appearance.scheme = "Synced"`、`theme_mode = "dark"`、完整 `appearance.palette`、同一可公开壁纸的 store 路径、Inter（中文回退 Noto CJK）、与 shell 一致的圆角 scale 1.2。其 palette 使用 `primary` 等 snake_case 字段，不直接塞 Noctalia JSON 的 `mPrimary`。时间在 above-panel，24 小时、日期 `%m-%d %A`；隐藏 scheme selector 与底部品牌 logo，保留右下电源按钮、当前 random password mask 与 Mango 默认会话。`greeter.toml` 的完整 palette 优先于 mutable `sync.toml`，不用 shell 运行时同步来取得登录前必需的颜色。字体/壁纸必须进入系统可访问 closure，不能指向个人 home。[Greeter 配置及优先级](https://github.com/noctalia-dev/noctalia-greeter/blob/8cc00abfdce3d8c1e68709a44eb0efc055932ada/docs/user/configuration.md)
+Greeter 由主机显式生成 `appearance.scheme = "Synced"`、`theme_mode = "dark"`、完整 `appearance.palette`、同一可公开壁纸的 store 路径、Inter（中文回退 Noto CJK）、与 shell 一致的圆角 scale 4/3。其 palette 使用 `primary` 等 snake_case 字段，不直接塞 Noctalia JSON 的 `mPrimary`。时间在 above-panel，24 小时、日期 `%m-%d %A`；隐藏 scheme selector 与底部品牌 logo，保留右下电源按钮、当前 random password mask 与 Mango 默认会话。`greeter.toml` 的完整 palette 优先于 mutable `sync.toml`，不用 shell 运行时同步来取得登录前必需的颜色。字体/壁纸必须进入系统可访问 closure，不能指向个人 home。[Greeter 配置及优先级](https://github.com/noctalia-dev/noctalia-greeter/blob/8cc00abfdce3d8c1e68709a44eb0efc055932ada/docs/user/configuration.md)
 
 第五轮为 mayon 构建共享 palette 的 512×512 字母头像：蓝色圆角方形、黑色 Inter 700 的 “M”。AccountsService 为 launcher、控制中心及 greeter 提供图标；`~/.face` 另以安全 seed 供其他应用使用。锁定版本的 login box 不读取头像，使用原生 `sticker` widget 读取绝对 `.face` 路径，80×80、中心在内屏逻辑高度 13%、水平居中，位于时钟上方，避开认证提示卡。声明和隔离构建已验证，真实头像加载、裁切和冷登录仍待验；详见[第五轮记录](history/optimization-2026-10-24.md#第五轮仓库整理登录加速与头像)。
 
 本轮场景表面统一使用外框、下投影和清楚的输入框；`shell.shadow.alpha = 0.32`、
-`corner_radius_scale = 1.2`，内部 `button_borders/card_borders = false`，
+`corner_radius_scale = 4/3`，内部 `button_borders/card_borders = false`，
 `input_borders/popup_borders/popup_shadows = true`、`list_item_background = false`。
+bar 显式 `show_tooltip = true`，保留各 widget 继承默认 tooltip；
+`shell.show_close_buttons = false` 隐藏重复关闭按钮，面板保留 Esc/外点关闭、通知保留右键关闭。
+`theme.sync_color_scheme = false` 停止 shell 改写 GNOME 明暗偏好，shell 自身仍固定 dark。
+不增加桌面媒体 widget：bar 已有媒体与频谱，保留每日壁纸轮换，不再增加封面模糊和持续动画。
 `floating_offset = 16` 统一浮层边缘间隔；居中布局不依赖该偏移模拟自定义坐标。
 未修改插件、会话与认证行为，也没有引入新壁纸资源。折叠规则、透明度与字段依据
 [Bar 实现](https://github.com/noctalia-dev/noctalia-shell/blob/5f864d472676c77e5310881b243f15cc371bb223/src/shell/bar/bar.cpp)、

@@ -374,7 +374,7 @@ pkgs.runCommand "den-interactive-session-composition" { nativeBuildInputs = [ pk
   ${lib.getExe sharedAliceHome.programs.noctalia.package} config validate ${
     sharedAliceHome.xdg.configFile."noctalia/config.toml".source
   } > "$out/noctalia-reduced-motion.log" 2>&1 || { cat "$out/noctalia-reduced-motion.log"; exit 1; }
-  if grep -iE '\[WARN\]|warning:|\[ERROR\]' "$out/noctalia-reduced-motion.log"; then exit 1; fi
+  if grep -iE '\[WARN\]|warning:|\[ERROR\]|^WARN[[:space:]]|[1-9][0-9]* warning\(s\)' "$out/noctalia-reduced-motion.log"; then exit 1; fi
   ${lib.getExe sharedAliceHome.wayland.windowManager.mango.package} -c ${
     sharedAliceHome.xdg.configFile."mango/config.conf".source
   } -p > "$out/mango-reduced-motion.log" 2>&1 || { cat "$out/mango-reduced-motion.log"; exit 1; }

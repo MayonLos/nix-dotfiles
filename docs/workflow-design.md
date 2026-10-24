@@ -36,6 +36,8 @@
 | 移窗口并跟随 | `Super+Shift+1…9` | 保留 Mango `tag` 的实际语义 |
 | 停放窗口、不跟随 | `Super+Ctrl+1…9` | 保留 `tagsilent`，帮助中说清差异 |
 | 最近窗口 / 概览 | `Super+Tab` / `Super+0` | 保留 |
+| 带标题预览 / 原生切换器 | `Super+Alt+J/K` / `Super+Alt+T` | 保留当前 tag 的 overcircle 前后与 switcher；新标题条使用 One Dark |
+| 跳转标签 | `Super+Shift+0` | 保留 togglejump，按 US 布局 HJKL 优先的字母标签选择窗口 |
 | 调整大小 | `Super+R`，随后 HJKL/方向键 | 保留模式；模式内 Esc 退出，所有模式下 `Super+Esc` 可退出 |
 | 最大化 / 真全屏 | `Super+F` / `Super+Shift+F` | 保留二者差异 |
 | 浮动 / 布局 / 主窗口 | `Super+Space` / `Super+W` / `Super+Z` | 布局仍为 tile/scroller/monocle；不模拟不存在的 niri 操作 |
@@ -171,3 +173,15 @@ Yazi 主题由 HM 消费共享 OneDark palette，不再由 Noctalia yazi 模板�
 `workspace-project dotfiles workspace`
 建立/复用编辑器与两个 shell 的 tmux 布局，不自动构建、执行测试或信任 `.envrc`。
 实现、验证和应用状态见[本轮记录](history/optimization-2026-10-20.md)。
+
+
+## 2026-10-24 桌面美化声明
+
+本轮没有新增或更改快捷键；生成帮助继续来自同一份 `mango/keybinds.nix`。
+保留 `focus_on_activate = 1`（launcher/应用激活可聚焦）、`warp_cursor = 1`（沿用键盘聚焦时
+指针跟随），不以美化改变操作习惯；指针仅打字隐藏，`cursor_hide_timeout = 0` 不计时隐藏。
+边缘 resize 保持开启、抓取条由默认 10 改为 8，Super+右键与 Super+R 模式仍可用；平铺拖放
+交换保持开启。Tag 不新增循环、截图不新增全局 shield；现有截图和分享语义保持。
+Launcher 分类改为仅图标，名称仍在 tooltip；全局关闭图标隐藏后，普通面板仍可 Esc 或点击外部
+关闭，通知右键关闭，设置窗口由 Mango 关闭。锁屏保留密码显示按钮。
+取舍与只构建不应用的验证记录见[桌面美化记录](history/desktop-polish-2026-10-24.md)。
