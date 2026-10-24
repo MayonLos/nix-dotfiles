@@ -1,111 +1,744 @@
+--- a/src/shell/bar/widgets/media_widget.cpp
++++ b/src/shell/bar/widgets/media_widget.cpp
+@@ -406,3 +406,3 @@
+-      return artists + " - " + player.title;
+-    }
+-    return player.title + " - " + artists;
++      return artists + " · " + player.title;
++    }
++    return player.title + " · " + artists;
+--- a/src/shell/bar/widgets/workspaces_widget.cpp
++++ b/src/shell/bar/widgets/workspaces_widget.cpp
+@@ -86,4 +86,4 @@
+-// Precedence: the master switch wins everywhere, then the style's own annotation
+-// rule, then label content, then the occupied filter. FocusHint annotates only the
+-// focused workspace, so the occupied filter never applies to it.
+-// An empty label still annotates when the focused app icon fills the pill.
++// Precedence: the master switch wins everywhere, then the style's own
++// annotation rule, then label content, then the occupied filter. FocusHint
++// annotates only the focused workspace, so the occupied filter never applies to
++// it. An empty label still annotates when the focused app icon fills the pill.
+@@ -159,0 +160,9 @@
++  }
++  if (item.accent != nullptr) {
++    const auto& workspace = item.visualWorkspace;
++    item.accent->setVisible(workspace.active || workspace.urgent || workspace.occupied);
++    item.accent->setFill(
++        workspace.urgent       ? colorSpecFromRole(ColorRole::Error)
++            : workspace.active ? colorSpecFromRole(ColorRole::Primary)
++                               : colorSpecFromRole(ColorRole::OnSurfaceVariant)
++    );
+@@ -310 +319,2 @@
+-      // Focus moving between two other outputs changes which workspace is styled as focused.
++      // Focus moving between two other outputs changes which workspace is
++      // styled as focused.
+@@ -450,2 +460,2 @@
+-  // Active and inactive labels share the configured weight: a heavier weight selects a different
+-  // face whose digits sit at a different height.
++  // Active and inactive labels share the configured weight: a heavier weight
++  // selects a different face whose digits sit at a different height.
+@@ -455 +465,2 @@
+-  // Width = max(baseSize * pill_size, textWidth + padding); pill_size comes from active/inactive settings.
++  // Width = max(baseSize * pill_size, textWidth + padding); pill_size comes
++  // from active/inactive settings.
+@@ -571,2 +582,2 @@
+-    // Minimal draws labels and nothing else; an unlabeled entry keeps its layout
+-    // slot as empty space.
++    // Minimal draws labels and nothing else; an unlabeled entry keeps its
++    // layout slot as empty space.
+@@ -598,0 +610,12 @@
++    }
++
++    if (isMinimal()) {
++      item.accent = static_cast<Box*>(area->addChild(
++          ui::box({
++              .fill = clearColorSpec(),
++              .radius = 1.0F,
++              .width = 12.0F,
++              .height = 2.0F,
++              .visible = false,
++          })
++      ));
+@@ -772,3 +795,4 @@
+-  // A gap precedes an item only in proportion to how visible both it and the items before it are, so
+-  // gaps grow and collapse with the pills they separate. precedingProgress is the accumulated (clamped)
+-  // visibility of earlier items: it keeps the first visible pill from getting a leading gap.
++  // A gap precedes an item only in proportion to how visible both it and the
++  // items before it are, so gaps grow and collapse with the pills they
++  // separate. precedingProgress is the accumulated (clamped) visibility of
++  // earlier items: it keeps the first visible pill from getting a leading gap.
+@@ -798,3 +822,4 @@
+-    // The container is not clipped: it must always enclose the pills, so reserve the larger of the
+-    // current and target bounds. Taking the max keeps a shrinking transition from clipping pills that
+-    // are still wide, and a growing one from snapping the bar wider than the pills have reached.
++    // The container is not clipped: it must always enclose the pills, so
++    // reserve the larger of the current and target bounds. Taking the max keeps
++    // a shrinking transition from clipping pills that are still wide, and a
++    // growing one from snapping the bar wider than the pills have reached.
+@@ -1028 +1053,2 @@
+-  // Reserve final bounds before the first animated frame to avoid one-frame overflow.
++  // Reserve final bounds before the first animated frame to avoid one-frame
++  // overflow.
+@@ -1134,0 +1161,12 @@
++  if (it.accent != nullptr) {
++    const bool line = it.workspace.active || it.workspace.urgent;
++    const float markSize = line ? std::min(12.0F, std::max(2.0F, itemW - 4.0F)) : 3.0F;
++    it.accent->setFrameSize(m_isVertical ? 2.0F : markSize, m_isVertical ? markSize : (line ? 2.0F : 3.0F));
++    if (m_isVertical) {
++      it.accent->setPosition(itemW - 2.0F, std::round((itemH - markSize) * 0.5F));
++    } else {
++      it.accent->setPosition(std::round((itemW - markSize) * 0.5F), itemH - (line ? 2.0F : 3.0F));
++    }
++    it.accent->setRadius(line ? 1.0F : markSize * 0.5F);
++  }
++
+@@ -1423 +1461,2 @@
+-      // Named workspaces have no numeric id, so the name beats labeling them by bar position.
++      // Named workspaces have no numeric id, so the name beats labeling them by
++      // bar position.
+@@ -1454 +1493,2 @@
+-  // retarget() runs on every workspace update; only touch the tooltip when its text changes.
++  // retarget() runs on every workspace update; only touch the tooltip when its
++  // text changes.
+@@ -1513,0 +1554,3 @@
++  if (workspace.active) {
++    return colorSpecFromRole(ColorRole::Primary);
++  }
+@@ -1514,0 +1558,3 @@
++    if (workspaceUsesFocusedStyle(workspace, output)) {
++      return colorSpecFromRole(ColorRole::Primary);
++    }
+@@ -1516,3 +1561,0 @@
+-  }
+-  if (workspace.active) {
+-    return workspaceUsesFocusedStyle(workspace, output) ? m_focusedColor : m_occupiedColor;
+--- a/src/shell/bar/widgets/workspaces_widget.h
++++ b/src/shell/bar/widgets/workspaces_widget.h
+@@ -87 +87,2 @@
+-  // The workspace name, unless the pill already shows it in full. Empty means no tooltip.
++  // The workspace name, unless the pill already shows it in full. Empty means
++  // no tooltip.
+@@ -124,0 +126 @@
++    Box* accent = nullptr;
+--- a/src/shell/control_center/control_center_panel.cpp
++++ b/src/shell/control_center/control_center_panel.cpp
+@@ -38 +38,2 @@
+-  // Full-height cards need room for rounded-rect AA before the tab viewport clips them.
++  // Full-height cards need room for rounded-rect AA before the tab viewport clips
++  // them.
+@@ -86 +87 @@
+-    return fullSize * 0.75F * m_contentScale;
++    return fullSize * m_contentScale;
+@@ -895 +896,2 @@
+-  // Scrollbar gutter lives inside the scroll viewport; reserve it only when the nav overflows.
++  // Scrollbar gutter lives inside the scroll viewport; reserve it only when the
++  // nav overflows.
+--- a/src/shell/control_center/control_center_panel.h
++++ b/src/shell/control_center/control_center_panel.h
+@@ -100 +100 @@
+-  [[nodiscard]] float preferredHeight() const override { return scaled(520.0F); }
++  [[nodiscard]] float preferredHeight() const override { return scaled(tabFromContext(pendingOpenContext()) == TabId::Home ? 420.0F : 520.0F); }
+--- a/src/shell/control_center/tabs/home_tab.cpp
++++ b/src/shell/control_center/tabs/home_tab.cpp
+@@ -14,0 +15 @@
++#include "pipewire/pipewire_service.h"
+@@ -23,0 +25 @@
++#include "system/brightness_service.h"
+@@ -29,0 +32 @@
++#include "ui/controls/slider.h"
+@@ -30,0 +34 @@
++#include "ui/palette.h"
+@@ -49,2 +53,3 @@
+-  constexpr float kHomeAvatarScale = 2.6F;
+-  // Avatar sources above this size decode noticeably slowly; warn so users understand why.
++  constexpr float kHomeAvatarScale = 0.9F;
++  // Avatar sources above this size decode noticeably slowly; warn so users
++  // understand why.
+@@ -52,9 +57,3 @@
+-  // Bottom row split: media/clock column grows more than the shortcuts column so the row feels balanced
+-  // (tweak either value slightly if needed).
+-  constexpr float kHomeMainColumnFlexGrow = 1.66F;
+-  constexpr float kHomeShortcutsFlexGrow = 1.0F;
+-  // Left-column card height split (media above, clock/weather below).
+-  constexpr float kHomeMediaCardFlexGrow = 1.4F;
+-  constexpr float kHomeDateTimeCardFlexGrow = 1.0F;
+-  constexpr std::size_t kHomeShortcutGridColumns = 2;
+-  // At or below this count the shortcuts stack in a single narrow column instead of the 2-column grid.
++  constexpr std::size_t kHomeShortcutGridColumns = 3;
++  // Keep the sparse shortcut set in a single column; six configured items use the
++  // 3x2 grid.
+@@ -62,2 +60,0 @@
+-  // Square tiles are trimmed slightly (height = width * trim) so the grid stays compact.
+-  constexpr float kHomeShortcutSquareTrim = 0.82F;
+@@ -71,21 +67,0 @@
+-
+-  // Width for the stacked (single-column) shortcuts so each tile keeps the same width it would have
+-  // as one cell of the standard 2-column grid, rather than stretching across the whole column.
+-  float homeStackedShortcutsWidth(float contentWidth, float bottomRowGap, const GridView& grid) {
+-    const float totalGrow = kHomeMainColumnFlexGrow + kHomeShortcutsFlexGrow;
+-    const float fullGridWidth = std::max(1.0F, contentWidth - bottomRowGap) * (kHomeShortcutsFlexGrow / totalGrow);
+-    const float horizontalPadding = grid.paddingLeft() + grid.paddingRight();
+-    const float fullGridInnerWidth = std::max(1.0F, fullGridWidth - horizontalPadding);
+-    const float cellWidth = std::max(
+-        1.0F,
+-        (fullGridInnerWidth - grid.columnGap() * static_cast<float>(kHomeShortcutGridColumns - 1))
+-            / static_cast<float>(kHomeShortcutGridColumns)
+-    );
+-    return cellWidth + horizontalPadding;
+-  }
+-
+-  // The 2-column shortcuts grid's natural width = its flex share of the bottom row.
+-  float homeShortcutsGridNaturalWidth(float contentWidth, float bottomRowGap) {
+-    const float totalGrow = kHomeMainColumnFlexGrow + kHomeShortcutsFlexGrow;
+-    return std::max(1.0F, contentWidth - bottomRowGap) * (kHomeShortcutsFlexGrow / totalGrow);
+-  }
+@@ -125 +101,2 @@
+-  // The compositor's own version line already names it; fall back to the detected name.
++  // The compositor's own version line already names it; fall back to the detected
++  // name.
+@@ -137 +114,14 @@
+-    button.setVariant(on ? ButtonVariant::Primary : ButtonVariant::Default);
++    button.setVariant(ButtonVariant::Default);
++    auto palette = Button::defaultPalette(ButtonVariant::Default);
++    if (on) {
++      const auto selected = Button::ButtonStateColors{
++          .bg = colorSpecFromRole(ColorRole::Hover, 0.35F),
++          .border = clearColorSpec(),
++          .label = colorSpecFromRole(ColorRole::Primary),
++      };
++      palette.normal = selected;
++      palette.hover = selected;
++      palette.pressed = selected;
++      palette.selected = selected;
++    }
++    button.setCustomPalette(std::move(palette));
+@@ -142,3 +132,4 @@
+-  // The whole home cards are clickable; on hover swap the card outline to the hover colour. No fill
+-  // change: the user card's fill sits behind the wallpaper, so a thin hover border is the one hover
+-  // signal that reads consistently across all three cards.
++  // The whole home cards are clickable; on hover swap the card outline to the
++  // hover colour. No fill change: the user card's fill sits behind the wallpaper,
++  // so a thin hover border is the one hover signal that reads consistently across
++  // all three cards.
+@@ -170,4 +161,4 @@
+-    : m_mpris(services.mpris), m_httpClient(services.httpClient), m_weather(services.weather),
+-      m_config(services.config), m_accounts(services.accounts), m_wallpaper(services.wallpaper),
+-      m_thumbnails(services.thumbnails), m_asyncTextures(services.asyncTextures),
+-      m_services(services.shortcutServices()) {
++    : m_audio(services.audio), m_brightness(services.brightness), m_mpris(services.mpris),
++      m_httpClient(services.httpClient), m_weather(services.weather), m_config(services.config),
++      m_accounts(services.accounts), m_wallpaper(services.wallpaper), m_thumbnails(services.thumbnails),
++      m_asyncTextures(services.asyncTextures), m_services(services.shortcutServices()) {
+@@ -218,2 +209 @@
+-      .fillHeight = true,
+-      .flexGrow = 1.0F,
++      .flexGrow = 0.0F,
+@@ -335 +325 @@
+-              .fontSize = Style::fontSizeTitle * 1.12F * scale,
++              .fontSize = 14.0F * scale,
+@@ -374 +364,2 @@
+-  // Wallpaper panel: full-card keyboard target; carved pointer target leaves the avatar clickable.
++  // Wallpaper panel: full-card keyboard target; carved pointer target leaves
++  // the avatar clickable.
+@@ -379,0 +371,7 @@
++  // Keep the user card compact; version/compositor details remain in Settings.
++  for (auto* label : {m_userUptime, m_userVersion, m_userCompositor}) {
++    if (label != nullptr) {
++      label->setVisible(false);
++      label->setParticipatesInLayout(false);
++    }
++  }
+@@ -382 +380 @@
+-  auto bottomRow = ui::row({
++  auto bottomRow = ui::column({
+@@ -394 +392 @@
+-      .flexGrow = kHomeMainColumnFlexGrow,
++      .flexGrow = 0.0F,
+@@ -403,2 +401,2 @@
+-      .fillHeight = true,
+-      .flexGrow = kHomeMediaCardFlexGrow,
++      .height = 64.0F * scale,
++      .flexGrow = 0.0F,
+@@ -482,2 +480,2 @@
+-       .fillHeight = true,
+-       .flexGrow = kHomeDateTimeCardFlexGrow,
++       .visible = false,
++       .participatesInLayout = false,
+@@ -532 +529,0 @@
+-  bottomRow->addChild(std::move(leftColumn));
+@@ -541,2 +538,2 @@
+-  grid->setColumnGap(Style::spaceMd * scale);
+-  grid->setRowGap(Style::spaceMd * scale);
++  grid->setColumnGap(6.0F * scale);
++  grid->setRowGap(6.0F * scale);
+@@ -547 +544 @@
+-  grid->setMinCellHeight(0.0F);
++  grid->setMinCellHeight(52.0F * scale);
+@@ -549 +546 @@
+-  grid->setFlexGrow(kHomeShortcutsFlexGrow);
++  grid->setFlexGrow(0.0F);
+@@ -552,2 +549,3 @@
+-  // Keep Shortcut instances across open/close so plugin file watches and runtimes
+-  // are not recreated on every Control Center open. Match by id/type from config.
++  // Keep Shortcut instances across open/close so plugin file watches and
++  // runtimes are not recreated on every Control Center open. Match by id/type
++  // from config.
+@@ -572,4 +570,5 @@
+-  // A plugin shortcut seeds its Luau runtime once, at construction. Plugin settings changed
+-  // since the last build means every reusable plugin instance is stale, so drop it and let
+-  // ShortcutRegistry::create() re-seed from the current config. Match on the id syntax, not
+-  // the registry: a disabled plugin has already left the registry and must not be reused.
++  // A plugin shortcut seeds its Luau runtime once, at construction. Plugin
++  // settings changed since the last build means every reusable plugin instance
++  // is stale, so drop it and let ShortcutRegistry::create() re-seed from the
++  // current config. Match on the id syntax, not the registry: a disabled plugin
++  // has already left the registry and must not be reused.
+@@ -607 +606 @@
+-        .glyphSize = Style::fontSizeTitle * 1.35F * scale,
++        .glyphSize = 18.0F * scale,
+@@ -630,2 +629,2 @@
+-                // Stretch so the label width follows the cell; Center uses intrinsic text
+-                // width and fights setMaxWidth.
++                // Stretch so the label width follows the cell; Center uses
++                // intrinsic text width and fights setMaxWidth.
+@@ -655 +654,2 @@
+-        // Scroll up moves forward (toward performance); Wayland reports up as a negative delta.
++        // Scroll up moves forward (toward performance); Wayland reports up
++        // as a negative delta.
+@@ -678,0 +679,2 @@
++  bottomRow->addChild(createCompactControls());
++  bottomRow->addChild(std::move(leftColumn));
+@@ -681,0 +684,94 @@
++}
++
++std::unique_ptr<Flex> HomeTab::createCompactControls() {
++  const float scale = contentScale();
++  auto controls = ui::column({.align = FlexAlign::Stretch, .gap = Style::spaceXs * scale});
++  const auto addSlider = [this, scale,
++                          &controls](const std::string& title, Slider** slider, Label** value, bool volume) {
++    auto row = ui::row({.align = FlexAlign::Center, .gap = Style::spaceSm * scale});
++    row->addChild(
++        ui::label(
++            {.text = title,
++             .fontSize = Style::fontSizeCaption * scale,
++             .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
++             .width = 36.0F * scale}
++        )
++    );
++    row->addChild(
++        ui::slider({
++            .out = slider,
++            .minValue = volume || m_config == nullptr ? 0.0 : m_config->config().brightness.minimumBrightness,
++            .maxValue = 1.0,
++            .step = 0.01,
++            .value = 0.0,
++            .trackHeight = 4.0F * scale,
++            .thumbSize = 14.0F * scale,
++            .controlHeight = 28.0F * scale,
++            .flexGrow = 1.0F,
++            .onValueChanged =
++                [this, value, volume](double v) {
++                  if (*value != nullptr)
++                    (*value)->setText(std::format("{}%", static_cast<int>(std::lround(v * 100.0))));
++                  if (!m_syncingCompact && volume && m_audio != nullptr)
++                    m_audio->setVolume(static_cast<float>(v));
++                },
++            .onDragEnd =
++                [this, slider, volume]() {
++                  if (!volume && *slider != nullptr && m_brightness != nullptr) {
++                    m_brightness->setAllBrightness(static_cast<float>((*slider)->value()));
++                    m_compactBrightnessHoldUntil = std::chrono::steady_clock::now() + std::chrono::milliseconds(180);
++                  }
++                },
++        })
++    );
++    row->addChild(
++        ui::label(
++            {.out = value,
++             .text = "0%",
++             .fontSize = Style::fontSizeCaption * scale,
++             .color = colorSpecFromRole(ColorRole::OnSurface),
++             .width = 38.0F * scale,
++             .textAlign = TextAlign::End}
++        )
++    );
++    controls->addChild(std::move(row));
++  };
++  addSlider("音量", &m_compactVolume, &m_compactVolumeValue, true);
++  addSlider("亮度", &m_compactBrightness, &m_compactBrightnessValue, false);
++  syncCompactControls();
++  return controls;
++}
++
++void HomeTab::syncCompactControls() {
++  m_syncingCompact = true;
++  if (m_compactVolume != nullptr) {
++    const auto* sink = m_audio != nullptr ? m_audio->defaultSink() : nullptr;
++    m_compactVolume->setEnabled(sink != nullptr && sink->available);
++    if (sink != nullptr && !m_compactVolume->dragging()) {
++      m_compactVolume->setValue(std::clamp(sink->volume, 0.0F, 1.0F));
++      m_compactVolumeValue->setText(
++          sink->muted ? "静音" : std::format("{}%", static_cast<int>(std::lround(sink->volume * 100.0F)))
++      );
++    }
++  }
++  if (m_compactBrightness != nullptr) {
++    const BrightnessDisplay* display = nullptr;
++    if (m_brightness != nullptr) {
++      for (const auto& candidate : m_brightness->displays()) {
++        if (candidate.controllable) {
++          display = &candidate;
++          break;
++        }
++      }
++    }
++    m_compactBrightness->setEnabled(display != nullptr);
++    if (display != nullptr
++        && !m_compactBrightness->dragging()
++        && std::chrono::steady_clock::now() >= m_compactBrightnessHoldUntil) {
++      m_compactBrightness->setValue(display->brightness);
++      m_compactBrightnessValue->setText(
++          std::format("{}%", static_cast<int>(std::lround(display->brightness * 100.0F)))
++      );
++    }
++  }
++  m_syncingCompact = false;
+@@ -724,41 +820,5 @@
+-    const float scale = contentScale();
+-    const float bottomRowGap = m_bottomRow != nullptr ? m_bottomRow->gap() : 0.0F;
+-    const bool stacked = m_shortcutPads.size() <= kHomeStackedShortcutMax;
+-    const std::size_t cols = stacked ? 1U : kHomeShortcutGridColumns;
+-    // Rows of height the bottom row reserves: a lone shortcut is one row, which would collapse the
+-    // row (and the media/clock cards sized from it) to a single tile.
+-    const std::size_t heightRows = std::max((m_shortcutPads.size() + cols - 1) / cols, kHomeStackedShortcutMax);
+-    const float padH = m_shortcutsGrid->paddingLeft() + m_shortcutsGrid->paddingRight();
+-    const float padV = m_shortcutsGrid->paddingTop() + m_shortcutsGrid->paddingBottom();
+-    const float colGap = m_shortcutsGrid->columnGap();
+-    const float rowGap = m_shortcutsGrid->rowGap();
+-
+-    float gridWidth = stacked ? homeStackedShortcutsWidth(contentWidth, bottomRowGap, *m_shortcutsGrid)
+-                              : homeShortcutsGridNaturalWidth(contentWidth, bottomRowGap);
+-
+-    // A wide control center would otherwise grow the square tiles tall enough to crush the
+-    // user card (which content-overflows). Reserve the user card's natural height and cap the
+-    // square side to fit; cap the grid width to keep tiles square, handing the freed width to
+-    // the media/clock column.
+-    const float userCardReserve = homeAvatarSize(scale) + 2.0F * (Style::spaceSm + Style::spaceXs) * scale;
+-    const float rootGap = m_rootLayout->gap();
+-    const float availForGrid = std::max(1.0F, bodyHeight - userCardReserve - rootGap);
+-    const float maxCellSide = std::max(
+-        1.0F, (availForGrid - static_cast<float>(heightRows - 1) * rowGap - padV) / static_cast<float>(heightRows)
+-    );
+-    const float maxGridWidth = static_cast<float>(cols) * (maxCellSide / kHomeShortcutSquareTrim)
+-        + static_cast<float>(cols - 1) * colGap
+-        + padH;
+-
+-    const bool capped = gridWidth > maxGridWidth;
+-    if (capped) {
+-      gridWidth = maxGridWidth;
+-    }
+-    // Pin the width (flexGrow 0) for the stacked column or whenever capped, so the left column
+-    // absorbs the slack; otherwise let the 2-column grid flex-grow normally.
+-    if (stacked || capped) {
+-      m_shortcutsGrid->setFlexGrow(0.0F);
+-      m_shortcutsGrid->setSize(gridWidth, m_shortcutsGrid->height());
+-    } else {
+-      m_shortcutsGrid->setFlexGrow(kHomeShortcutsFlexGrow);
+-    }
++    const auto cols = std::max<std::size_t>(1, m_shortcutsGrid->columns());
++    const auto rows = (m_shortcutPads.size() + cols - 1) / cols;
++    const float height =
++        static_cast<float>(rows) * 52.0F * contentScale() + static_cast<float>(rows - 1) * m_shortcutsGrid->rowGap();
++    m_shortcutsGrid->setSize(contentWidth, height);
+@@ -769 +829,2 @@
+-  // Cap shortcut labels to the button's content width after cells are sized (avoids elide from grid math mismatch).
++  // Cap shortcut labels to the button's content width after cells are sized
++  // (avoids elide from grid math mismatch).
+@@ -823,3 +884,4 @@
+-  // Grow the album art square to fill the media card height so the row feels balanced
+-  // when the card flex-grows. A later bottom-row min-height pass can change the card
+-  // height, so this runs again after that final layout pass below.
++  // Grow the album art square to fill the media card height so the row feels
++  // balanced when the card flex-grows. A later bottom-row min-height pass can
++  // change the card height, so this runs again after that final layout pass
++  // below.
+@@ -867,53 +928,0 @@
+-  // Lock the shortcuts grid height to its square-cell natural size so it does not vary
+-  // when the media or clock cards change. The leftColumn stretches to match this height.
+-  if (m_shortcutsGrid != nullptr && !m_shortcutPads.empty()) {
+-    const float scale = contentScale();
+-    const float gridW = m_shortcutsGrid->width();
+-    const float innerGridW = std::max(1.0F, gridW - m_shortcutsGrid->paddingLeft() - m_shortcutsGrid->paddingRight());
+-    const std::size_t cols = std::max<std::size_t>(1, std::min(m_shortcutsGrid->columns(), m_shortcutPads.size()));
+-    // Height floor as in the pre-layout pass: one shortcut reserves the two-row stacked height.
+-    const std::size_t heightRows = std::max((m_shortcutPads.size() + cols - 1) / cols, kHomeStackedShortcutMax);
+-    const float cellWidth = std::max(
+-        1.0F, (innerGridW - static_cast<float>(cols - 1) * m_shortcutsGrid->columnGap()) / static_cast<float>(cols)
+-    );
+-    // Cells aim for square but trimmed slightly so the grid stays compact and the bottom row
+-    // doesn't tower over the user card area. The width was capped earlier so this stays bounded.
+-    const float cellSide = cellWidth * kHomeShortcutSquareTrim;
+-    const bool showLabels = m_config != nullptr ? m_config->config().controlCenter.showShortcutLabels : true;
+-    for (auto& pad : m_shortcutPads) {
+-      if (pad.glyph == nullptr) {
+-        continue;
+-      }
+-      if (showLabels) {
+-        pad.glyph->setGlyphSize(Style::fontSizeTitle * 1.35F * scale);
+-      } else {
+-        const float dynamicGlyphSize = std::clamp(cellSide * 0.28F, 22.0F * scale, 44.0F * scale);
+-        pad.glyph->setGlyphSize(dynamicGlyphSize);
+-      }
+-    }
+-
+-    const float gridH = std::round(
+-        static_cast<float>(heightRows) * cellSide
+-        + static_cast<float>(heightRows - 1) * m_shortcutsGrid->rowGap()
+-        + m_shortcutsGrid->paddingTop()
+-        + m_shortcutsGrid->paddingBottom()
+-    );
+-    if (m_bottomRow != nullptr) {
+-      m_bottomRow->setMinHeight(gridH);
+-    }
+-
+-    // Integer card heights track the snapped row height so top/bottom borders land on pixels.
+-    if (m_mediaCard != nullptr && m_dateTimeCard != nullptr) {
+-      const float colGap = Style::spaceMd * contentScale();
+-      const float avail = std::max(0.0F, gridH - colGap);
+-      const float cardGrowTotal = kHomeMediaCardFlexGrow + kHomeDateTimeCardFlexGrow;
+-      const float mediaH = std::round(avail * (kHomeMediaCardFlexGrow / cardGrowTotal));
+-      const float dateH = std::max(0.0F, avail - mediaH);
+-
+-      m_mediaCard->setMinHeight(mediaH);
+-      m_mediaCard->setMaxHeight(mediaH);
+-      m_dateTimeCard->setMinHeight(dateH);
+-      m_dateTimeCard->setMaxHeight(dateH);
+-    }
+-  }
+-
+@@ -929 +938,2 @@
+-    // Keep the final tree consistent even if an unusual layout combination hits the pass cap.
++    // Keep the final tree consistent even if an unusual layout combination hits
++    // the pass cap.
+@@ -1007,2 +1017,3 @@
+-  // The pointer overlay must not swallow the avatar's own click, so start it just past the
+-  // avatar's right edge; the avatar (a nested InputArea) keeps the carved-out left region.
++  // The pointer overlay must not swallow the avatar's own click, so start it
++  // just past the avatar's right edge; the avatar (a nested InputArea) keeps
++  // the carved-out left region.
+@@ -1051,2 +1062,3 @@
+-  // The wallpaper sits one border width inside the card so a hover or focus stroke has a gap of
+-  // its own to fill; the card fill is cleared behind it, so that gap reads as panel background.
++  // The wallpaper sits one border width inside the card so a hover or focus
++  // stroke has a gap of its own to fill; the card fill is cleared behind it, so
++  // that gap reads as panel background.
+@@ -1086,2 +1098,2 @@
+-  // Only a fully opaque layer counts: keeping the fill through a crossfade avoids a flash of
+-  // panel background under a half-faded wallpaper.
++  // Only a fully opaque layer counts: keeping the fill through a crossfade
++  // avoids a flash of panel background under a half-faded wallpaper.
+@@ -1146,2 +1158,3 @@
+-  // Instant placeholder: show the resident full-screen wallpaper texture (already
+-  // in VRAM, mipmapped) so the correct wallpaper appears with no decode wait.
++  // Instant placeholder: show the resident full-screen wallpaper texture
++  // (already in VRAM, mipmapped) so the correct wallpaper appears with no
++  // decode wait.
+@@ -1154,2 +1167,3 @@
+-  // Reset the crisp layer when the wallpaper identity or target size changes; the
+-  // placeholder carries the view until the new card-sized thumbnail is decoded.
++  // Reset the crisp layer when the wallpaper identity or target size changes;
++  // the placeholder carries the view until the new card-sized thumbnail is
++  // decoded.
+@@ -1175 +1189,2 @@
+-    // Still decoding: keep the placeholder; fade the crisp layer in once it lands.
++    // Still decoding: keep the placeholder; fade the crisp layer in once it
++    // lands.
+@@ -1251,2 +1266,3 @@
+-        // refresh() schedules update+layout (Surface::requestUpdate); update-only ticks skipped
+-        // HomeTab::doLayout so album art never picked up the final media card height.
++        // refresh() schedules update+layout (Surface::requestUpdate);
++        // update-only ticks skipped HomeTab::doLayout so album art never picked
++        // up the final media card height.
+@@ -1283,2 +1299,3 @@
+-    // Other tabs were laid out while this body was hidden; flex sizes for the media row can be stale.
+-    // Defer so the tab container receives its configure size before HomeTab::doLayout runs.
++    // Other tabs were laid out while this body was hidden; flex sizes for the
++    // media row can be stale. Defer so the tab container receives its configure
++    // size before HomeTab::doLayout runs.
+@@ -1290,4 +1307,5 @@
+-    // Tick the clock once per second so the time/date labels keep moving while the panel is
+-    // open and idle. Without this, the clock only refreshes when an unrelated service happens
+-    // to force a redraw (see issue #4046). setText() is a no-op when the text is unchanged, so
+-    // formats without seconds cost nothing beyond the cheap format + comparison each second.
++    // Tick the clock once per second so the time/date labels keep moving while
++    // the panel is open and idle. Without this, the clock only refreshes when
++    // an unrelated service happens to force a redraw (see issue #4046).
++    // setText() is a no-op when the text is unchanged, so formats without
++    // seconds cost nothing beyond the cheap format + comparison each second.
+@@ -1316,0 +1335,4 @@
++  m_compactVolume = nullptr;
++  m_compactBrightness = nullptr;
++  m_compactVolumeValue = nullptr;
++  m_compactBrightnessValue = nullptr;
+@@ -1367 +1389,2 @@
+-  // Keep Shortcut instances alive; drop only the UI pointers destroyed with the scene.
++  // Keep Shortcut instances alive; drop only the UI pointers destroyed with the
++  // scene.
+@@ -1421 +1444 @@
+-        pad.glyph->setGlyphSize(Style::fontSizeTitle * 1.35F * s);
++        pad.glyph->setGlyphSize(18.0F * s);
+@@ -1427,0 +1451 @@
++  syncCompactControls();
+@@ -1446,4 +1470,5 @@
+-      // Decode at the avatar's final on-screen size with no mipmaps: layout grows the
+-      // avatar to match the user text block, and trilinear mipmap sampling softens an
+-      // image displayed near 1:1. Both made the avatar look blurry. The decode runs on
+-      // the async cache workers so a large source never stalls the panel open.
++      // Decode at the avatar's final on-screen size with no mipmaps: layout
++      // grows the avatar to match the user text block, and trilinear mipmap
++      // sampling softens an image displayed near 1:1. Both made the avatar look
++      // blurry. The decode runs on the async cache workers so a large source
++      // never stalls the panel open.
+@@ -1462,0 +1488 @@
++    if (m_userHost != nullptr) m_userHost->setText(userHostLine() + " · " + m_userUptime->text());
+@@ -1670,2 +1696,3 @@
+-      "avatar source '{}' is {} MiB; large images decode slowly, consider a smaller image", path,
+-      bytes / (1024ULL * 1024ULL)
++      "avatar source '{}' is {} MiB; large images decode slowly, "
++      "consider a smaller image",
++      path, bytes / (1024ULL * 1024ULL)
+--- a/src/shell/control_center/tabs/home_tab.h
++++ b/src/shell/control_center/tabs/home_tab.h
+@@ -31,0 +32 @@
++class Slider;
+@@ -61,2 +62,3 @@
+-  // The card fill is only the backdrop for an absent wallpaper: while one covers the card it is
+-  // cleared, so the card's rounded edge is the wallpaper's own and nothing shows around it.
++  // The card fill is only the backdrop for an absent wallpaper: while one
++  // covers the card it is cleared, so the card's rounded edge is the
++  // wallpaper's own and nothing shows around it.
+@@ -64,3 +66,3 @@
+-  // Only the topmost ready wallpaper layer draws. Two stacked rounded images would each
+-  // antialias the same edge, hardening it; the placeholder steps aside once the crisp layer is
+-  // fully faded in.
++  // Only the topmost ready wallpaper layer draws. Two stacked rounded images
++  // would each antialias the same edge, hardening it; the placeholder steps
++  // aside once the crisp layer is fully faded in.
+@@ -83,0 +86,2 @@
++  std::unique_ptr<Flex> createCompactControls();
++  void syncCompactControls();
+@@ -87,0 +92,8 @@
++  PipeWireService* m_audio = nullptr;
++  BrightnessService* m_brightness = nullptr;
++  Slider* m_compactVolume = nullptr;
++  Slider* m_compactBrightness = nullptr;
++  Label* m_compactVolumeValue = nullptr;
++  Label* m_compactBrightnessValue = nullptr;
++  bool m_syncingCompact = false;
++  std::chrono::steady_clock::time_point m_compactBrightnessHoldUntil;
+@@ -128,2 +140,2 @@
+-  // wallpaper texture immediately (slightly soft), m_wallpaperBg holds the crisp
+-  // card-sized thumbnail and crossfades in over it once decoded.
++  // wallpaper texture immediately (slightly soft), m_wallpaperBg holds the
++  // crisp card-sized thumbnail and crossfades in over it once decoded.
+@@ -163,2 +175,2 @@
+-  // Keeps the home tab clock ticking while the panel is open and idle; the clock
+-  // otherwise only refreshes when an unrelated service forces a redraw.
++  // Keeps the home tab clock ticking while the panel is open and idle; the
++  // clock otherwise only refreshes when an unrelated service forces a redraw.
+@@ -169,2 +181,3 @@
+-  // Plugin config as of the last shortcut grid build. A plugin shortcut seeds its Luau
+-  // runtime at construction, so a change here must block instance reuse.
++  // Plugin config as of the last shortcut grid build. A plugin shortcut seeds
++  // its Luau runtime at construction, so a change here must block instance
++  // reuse.
 --- a/src/shell/launcher/launcher_panel.cpp
 +++ b/src/shell/launcher/launcher_panel.cpp
-@@ -424,7 +424,7 @@
-   private:
-     void applyVisualState() {
-       if (m_selected) {
+@@ -46 +46,2 @@
+-  // Minimum trimmed query length before prefixed opt-in providers join the global search.
++  // Minimum trimmed query length before prefixed opt-in providers join the global
++  // search.
+@@ -223,0 +225,11 @@
++      m_row->addChild(
++          ui::box({
++              .out = &m_selectionIndicator,
++              .fill = colorSpecFromRole(ColorRole::Primary),
++              .radius = 1.0F,
++              .width = 2.0F,
++              .height = 0.0F,
++              .visible = false,
++              .participatesInLayout = false,
++          })
++      );
+@@ -327,0 +340,3 @@
++      m_selectionIndicator->setPosition(0.0F, 0.0F);
++      m_selectionIndicator->setFrameSize(2.0F, height);
++      m_selectionIndicator->setVisible(selected);
+@@ -427 +442 @@
 -        m_row->setFill(colorSpecFromRole(ColorRole::Primary));
-+        m_row->setFill(colorSpecFromRole(ColorRole::Hover));
-       } else if (m_hovered) {
-         m_row->setFill(colorSpecFromRole(ColorRole::Hover));
-       } else {
-@@ -436,17 +436,16 @@
-         m_row->clearBorder();
-       }
- 
++        m_row->setFill(colorSpecFromRole(ColorRole::Hover, 0.35F));
+@@ -429 +444 @@
+-        m_row->setFill(colorSpecFromRole(ColorRole::Hover));
++        m_row->setFill(colorSpecFromRole(ColorRole::Hover, 0.35F));
+@@ -439 +453,0 @@
 -      const auto activeRole = m_selected ? ColorRole::OnPrimary : ColorRole::OnHover;
-       const bool active = m_selected || m_hovered;
+@@ -441 +455 @@
 -      const ColorSpec foreground = colorSpecFromRole(active ? activeRole : ColorRole::OnSurface);
--      const ColorSpec mutedForeground =
++      const ColorSpec foreground = colorSpecFromRole(active ? ColorRole::OnHover : ColorRole::OnSurface);
+@@ -443,3 +457,3 @@
 -          active ? colorSpecFromRole(activeRole, 0.7F) : colorSpecFromRole(ColorRole::OnSurfaceVariant);
 -      m_badgeLabel->setColor(foreground);
 -      m_glyph->setColor(foreground);
-+      const ColorSpec foreground = colorSpecFromRole(active ? ColorRole::OnHover : ColorRole::OnSurface);
-+      const ColorSpec mutedForeground = active ? colorSpecFromRole(ColorRole::OnHover)
-+                                               : colorSpecFromRole(ColorRole::OnSurfaceVariant);
++          active ? colorSpecFromRole(ColorRole::OnHover) : colorSpecFromRole(ColorRole::OnSurfaceVariant);
 +      m_badgeLabel->setColor(m_selected ? colorSpecFromRole(ColorRole::Primary) : foreground);
 +      m_glyph->setColor(m_selected ? colorSpecFromRole(ColorRole::Primary) : foreground);
-       m_title->setColor(foreground);
+@@ -447,3 +461,3 @@
 -      m_subtitle->setColor(mutedForeground);
 -      m_pinnedGlyph->setColor(mutedForeground);
 -      m_originGlyph->setColor(mutedForeground);
 +      m_subtitle->setColor(m_selected ? colorSpecFromRole(ColorRole::OnSurfaceVariant) : mutedForeground);
 +      m_pinnedGlyph->setColor(m_selected ? colorSpecFromRole(ColorRole::Primary) : mutedForeground);
 +      m_originGlyph->setColor(m_selected ? colorSpecFromRole(ColorRole::Primary) : mutedForeground);
-     }
- 
-     LauncherListStyle m_style{};
-@@ -648,7 +647,7 @@
-   private:
-     void applyVisualState() {
-       if (m_selected) {
+@@ -456,0 +471 @@
++    Box* m_selectionIndicator = nullptr;
+@@ -651 +666 @@
 -        m_col->setFill(colorSpecFromRole(ColorRole::Primary));
-+        m_col->setFill(colorSpecFromRole(ColorRole::Hover));
-       } else if (m_hovered) {
-         m_col->setFill(colorSpecFromRole(ColorRole::Hover));
-       } else {
-@@ -660,16 +659,15 @@
-         m_col->clearBorder();
-       }
- 
++        m_col->setFill(colorSpecFromRole(ColorRole::Hover, 0.35F));
+@@ -653 +668 @@
+-        m_col->setFill(colorSpecFromRole(ColorRole::Hover));
++        m_col->setFill(colorSpecFromRole(ColorRole::Hover, 0.35F));
+@@ -663 +677,0 @@
 -      const auto activeRole = m_selected ? ColorRole::OnPrimary : ColorRole::OnHover;
-       const bool active = m_selected || m_hovered;
+@@ -665 +679 @@
 -      const ColorSpec foreground = colorSpecFromRole(active ? activeRole : ColorRole::OnSurface);
 +      const ColorSpec foreground = colorSpecFromRole(active ? ColorRole::OnHover : ColorRole::OnSurface);
-       m_glyph->setColor(foreground);
-       m_title->setColor(foreground);
-       m_pinnedGlyph->setColor(
+@@ -669 +683 @@
 -          active ? colorSpecFromRole(activeRole, 0.7F) : colorSpecFromRole(ColorRole::OnSurfaceVariant)
 +          active ? colorSpecFromRole(ColorRole::OnHover) : colorSpecFromRole(ColorRole::OnSurfaceVariant)
-       );
-       m_originGlyph->setColor(
+@@ -672 +686 @@
 -          active ? colorSpecFromRole(activeRole, 0.7F) : colorSpecFromRole(ColorRole::OnSurfaceVariant)
 +          active ? colorSpecFromRole(ColorRole::OnHover) : colorSpecFromRole(ColorRole::OnSurfaceVariant)
-       );
-     }
- 
---- a/src/shell/control_center/tabs/home_tab.cpp
-+++ b/src/shell/control_center/tabs/home_tab.cpp
-@@ -28,6 +28,7 @@
- #include "ui/builders.h"
- #include "ui/controls/grid_view.h"
- #include "ui/dialogs/file_dialog.h"
-+#include "ui/palette.h"
- 
- #include <algorithm>
- #include <cmath>
-@@ -134,7 +135,21 @@
- 
-   void applyShortcutButtonStyle(Button& button, bool enabled, bool active, float fillOpacity) {
-     const bool on = enabled && active;
--    button.setVariant(on ? ButtonVariant::Primary : ButtonVariant::Default);
-+    button.setVariant(ButtonVariant::Default);
-+    auto selectedPalette = Button::defaultPalette(ButtonVariant::Default);
-+    if (on) {
-+      const auto selected = Button::ButtonStateColors{
-+          .bg = colorSpecFromRole(ColorRole::Hover),
-+          .border = colorSpecFromRole(ColorRole::Primary),
-+          .label = colorSpecFromRole(ColorRole::Primary),
-+      };
-+      selectedPalette.borderWidth = Style::borderWidth;
-+      selectedPalette.normal = selected;
-+      selectedPalette.hover = selected;
-+      selectedPalette.pressed = selected;
-+      selectedPalette.selected = selected;
-+    }
-+    button.setCustomPalette(std::move(selectedPalette));
-     button.setSurfaceOpacity(on ? 1.0F : fillOpacity);
-     button.setEnabled(enabled);
-   }
---- a/src/shell/bar/widgets/workspaces_widget.cpp
-+++ b/src/shell/bar/widgets/workspaces_widget.cpp
-@@ -1512,6 +1512,9 @@
-     return isMinimal() ? m_urgentColor : readableColorForFill(m_urgentColor);
-   }
-   if (!isMinimal()) {
-+    if (workspaceUsesFocusedStyle(workspace, output)) {
-+      return colorSpecFromRole(ColorRole::Primary);
-+    }
-     return readableColorForFill(workspaceFillColor(workspace, output));
-   }
-   if (workspace.active) {
+@@ -2305 +2319,2 @@
+-  // inotify cannot observe). Cheap stat-only check; only rescans on real change.
++  // inotify cannot observe). Cheap stat-only check; only rescans on real
++  // change.
+@@ -2384 +2399,2 @@
+-  // The scene tree (and all nodes) is destroyed by PanelManager after onClose().
++  // The scene tree (and all nodes) is destroyed by PanelManager after
++  // onClose().
+@@ -2600,3 +2616,4 @@
+-      // Query default providers (empty prefix), plus prefixed providers that opt into global search.
+-      // Prefixed opt-in providers (e.g. Session) only contribute once the query is long enough,
+-      // so opening the launcher with no/short input does not flood it with their entries.
++      // Query default providers (empty prefix), plus prefixed providers that
++      // opt into global search. Prefixed opt-in providers (e.g. Session) only
++      // contribute once the query is long enough, so opening the launcher with
++      // no/short input does not flood it with their entries.
+--- a/src/ui/controls/slider.cpp
++++ b/src/ui/controls/slider.cpp
+@@ -290 +290 @@
+-  Color trackColor = resolved(ColorRole::Outline);
++  Color trackColor = resolved(ColorRole::Hover);
+@@ -292 +292 @@
+-  Color thumbColor = resolved(ColorRole::OnPrimary);
++  Color thumbColor = resolved(ColorRole::OnSurface);

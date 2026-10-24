@@ -108,19 +108,8 @@ function M.setup()
 		end,
 		hl = function(self)
 			local key = mode_colors[self.mode:sub(1, 1)] or "blue"
-			return { fg = key, bg = "bg", bold = true }
+			return { fg = key, bg = "bg", bold = true, underline = true, sp = key }
 		end,
-	}
-
-	-- Rounded mode capsule; the edge foreground follows the active mode.
-	local ModeBody = ViMode
-	local function mode_edge(self)
-		return { fg = mode_colors[self.mode:sub(1, 1)] or "blue", bg = "bg" }
-	end
-	ViMode = {
-		{ provider = "", hl = mode_edge },
-		ModeBody,
-		{ provider = "", hl = mode_edge },
 	}
 	ViMode.init = function(self)
 		self.mode = vim.fn.mode(1)
@@ -192,7 +181,16 @@ function M.setup()
 				return text.fit(vim.fn.fnamemodify(self.filename, ":t"), math.max(5, math.floor(vim.o.columns * 0.30)))
 			end
 			local path = vim.fn.fnamemodify(self.filename, ":~:.")
-			return text.fit(path, math.max(8, math.floor(vim.o.columns * 0.30)))
+			local width = math.max(8, math.floor(vim.o.columns * 0.30))
+			if vim.fn.strwidth(path) <= width then
+				return text.escape(path)
+			end
+			local suffix = "…/" .. vim.fn.fnamemodify(path, ":t")
+			local prefix_width = width - vim.fn.strwidth(suffix)
+			if prefix_width <= 0 then
+				return text.fit(vim.fn.fnamemodify(path, ":t"), width)
+			end
+			return text.escape(text.truncate(path, prefix_width, "") .. suffix)
 		end,
 		hl = { fg = "fg" },
 	}

@@ -19,6 +19,7 @@ let
   metadata = pkgs.writeText "desktop-contract.json" (
     builtins.toJSON {
       settings = home.programs.noctalia.settings;
+      hostName = host.networking.hostName;
       wallpaperAssets = map (item: {
         inherit (item) name;
         path = toString item.path;
@@ -83,6 +84,7 @@ pkgs.runCommand "interactive-session-config"
       pkgs.gawk
       pkgs.coreutils
       pkgs.imagemagick
+      pkgs.lua
     ];
   }
   ''
@@ -92,6 +94,8 @@ pkgs.runCommand "interactive-session-config"
       home.xdg.configFile."noctalia/config.toml".source
     } > "$out/noctalia.log" 2>&1 || { cat "$out/noctalia.log"; exit 1; }
     if grep -iE '\[WARN\]|warning:|\[ERROR\]|^WARN[[:space:]]|[1-9][0-9]* warning\(s\)' "$out/noctalia.log"; then exit 1; fi
+    ${pkgs.lib.getExe home.programs.noctalia.package} plugins lint ${./resources/noctalia-plugins} > "$out/plugins.log" 2>&1 || { cat "$out/plugins.log"; exit 1; }
+    lua ${./resources/test-conservation.lua} ${./resources/noctalia-plugins/legion-conservation/status.luau} > "$out/conservation.log"
     ${pkgs.lib.getExe home.wayland.windowManager.mango.package} -c ${
       home.xdg.configFile."mango/config.conf".source
     } -p > "$out/mango.log" 2>&1 || { cat "$out/mango.log"; exit 1; }
@@ -267,7 +271,26 @@ pkgs.runCommand "interactive-session-config"
     generated = tomllib.loads(Path(sys.argv[4]).read_text())
     expected = {
         ("shell", "launcher", "layout"): "full",
+        ("shell", "launcher", "width"): 560,
         ("shell", "launcher", "category_icons_only"): True,
+        ("shell", "app_icon_colorize"): False,
+        ("control_center", "sidebar"): "none",
+        ("control_center", "width"): 380,
+        ("notification", "width"): 320,
+        ("bar", "main", "thickness"): 30,
+        ("bar", "main", "radius"): 10,
+        ("bar", "main", "capsule"): False,
+        ("widget", "clock-date", "format"): "{:%m月%d日 周%a}",
+        ("widget", "clock-time", "format"): "{:%H:%M}",
+        ("widget", "clock-time", "font_weight"): 600,
+        ("widget", "workspaces", "style"): "minimal",
+        ("widget", "battery", "label_content"): "percent",
+        ("widget", "battery", "actions", "left"): "exec legion-conservation toggle",
+        ("widget", "tmelik/system-monitor:summary", "show_cpu_usage"): True,
+        ("widget", "tmelik/system-monitor:summary", "show_gpu_usage"): "off",
+        ("widget", "monitor-gpu", "stat"): "gpu_usage",
+        ("widget", "monitor-vram", "stat"): "gpu_vram",
+        ("widget", "monitor-memory", "stat"): "ram_pct",
         ("shell", "launcher", "default_view"): "pinned",
         ("shell", "launcher", "track_usage"): True,
         ("shell", "launcher", "sort_by_usage"): True,
@@ -282,8 +305,6 @@ pkgs.runCommand "interactive-session-config"
         ("shell", "panel", "border_color"): "outline",
         ("shell", "panel", "border_width"): 1,
         ("bar", "main", "show_tooltip"): True,
-        ("widget", "clock", "format"): "{:%m月%d日 周%a  %H:%M}",
-        ("widget", "workspaces", "style"): "regular",
         ("lockscreen_widgets", "widget", "lockscreen-login-box@eDP-1", "settings", "show_password_reveal"): True,
         ("lockscreen_widgets", "widget", "lockscreen-login-box@eDP-1", "settings", "input_radius"): 8.0,
     }
@@ -292,6 +313,17 @@ pkgs.runCommand "interactive-session-config"
             for key in keys:
                 root = root[key]
             assert root == value, (keys, root, value)
+    assert all(group["opacity"] == 0 for group in settings["bar"]["main"]["capsule_group"])
+    assert settings["bar"]["main"]["capsule_group"][2]["members"][0] == "fel/quill:status"
+    assert len(settings["control_center"]["shortcuts"]) == 6
+    enabled_plugins = settings["plugins"]["enabled"]
+    assert "tmelik/system-monitor" in enabled_plugins
+    assert "mindnbytes/nix-status" in enabled_plugins
+    assert "knyrps/nix-search" in enabled_plugins
+    assert "nix-dotfiles/legion-conservation" in enabled_plugins
+    for root in (settings, generated):
+        nix_status = root["plugin_settings"]["mindnbytes/nix-status"]
+        assert nix_status["nixos_configuration"] == m["hostName"], nix_status
     assert p["dark"]["mOutline"] == m["palette"]["border"]
     assert abs(settings["shell"]["corner_radius_scale"] - 4 / 3) < 1e-6
     assert settings["shell"]["corner_radius_scale"] == m["greeter"]["appearance"]["corner_radius_scale"]

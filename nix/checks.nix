@@ -30,6 +30,7 @@
         ../aspects/desktop/xorg-session/checks.nix
         ../aspects/dev/embedded/checks.nix
         ../aspects/dev/neovim/checks.nix
+        ../aspects/hardware/legion-laptop/checks.nix
         ../aspects/workspace/project-workbench/checks.nix
       ];
       featureChecks = builtins.foldl' (acc: path: acc // import path args) { } registry;

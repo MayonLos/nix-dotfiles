@@ -3,6 +3,8 @@
   avatar ? null,
   noctaliaIntegrations ? [ ],
   integrationTemplates ? { },
+  hostName,
+  flakePath,
 }:
 {
   config,
@@ -117,6 +119,8 @@ in
         tmuxp # tmux-provider (tmux itself lives in tmux.nix)
         evtest # bongocat keyboard reactivity; mayon already belongs to input
         libnotify # notify-send for desktop notification review
+        nix-search-tv # nix-search community launcher provider
+        fzf # nix-search community launcher provider
       ];
 
     };
@@ -186,7 +190,10 @@ in
             hostFacts
             ;
         })
-        // (import ./noctalia/plugins.nix { inherit inputs; })
+        // (import ./noctalia/plugins.nix {
+          inherit inputs pkgs hostName;
+          flakePath = if flakePath == null then "" else flakePath;
+        })
         // {
           shell = {
             lang = "zh-CN";
@@ -246,7 +253,7 @@ in
             launcher = {
               # v5.3's rebuilt full layout; `simple` retains the older compact UI.
               layout = "full";
-              width = 600;
+              width = 560;
               search_position = "top";
               default_view = "pinned";
               categories = true;
@@ -272,6 +279,11 @@ in
               # prefix remains available (an empty prefix restores that default).
               providers.calculator.global = false;
             };
+
+            # Preserve application-provided color icons in the launcher. The
+            # pinned Noctalia defaults this to false; set it explicitly so a
+            # prior user setting cannot grayscale the icon list.
+            app_icon_colorize = false;
 
             screen_corners = {
               enabled = true;
@@ -407,7 +419,7 @@ in
             show_actions = true;
             position = "top_right";
             layer = "overlay";
-            width = 380;
+            width = 320;
             offset_x = 16;
             offset_y = 64;
             max_visible = 3;
@@ -466,11 +478,11 @@ in
           dock.enabled = false;
 
           control_center = {
-            sidebar = "compact";
-            # Direct volume/network/etc. entry keeps an icon rail; Home retains
-            # its full labelled navigation and all tabs stay reachable.
+            # The local layout patch keeps Home at 380px without a sidebar.
+            sidebar = "none";
+            # Direct section entry keeps a compact icon rail for navigation.
             sidebar_section = "compact";
-            width = 600;
+            width = 380;
             show_shortcut_labels = true;
             circular_avatar = false;
             show_session_button = true;

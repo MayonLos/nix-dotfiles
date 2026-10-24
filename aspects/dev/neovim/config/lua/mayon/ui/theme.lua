@@ -39,18 +39,18 @@ local function overrides()
 	set("StatusLineNC", { fg = c.fg, bg = c.deep })
 	set("MayonProject", { fg = c.blue, bg = c.surface, bold = true })
 	set("MayonPosition", { fg = c.brightFg, bg = c.surface, bold = true })
-	set("MayonTabAccent", { fg = c.blue, bg = c.selection })
+	set("MayonTabAccent", { fg = c.blue, bg = c.bg })
 	set("MayonTabVisible", { fg = c.fg, bg = c.deep, bold = true })
 	set("MayonMuted", { fg = c.muted })
 	set("MayonDashboardBlue", { fg = c.blue, bold = true })
 	set("MayonDashboardMix", { fg = c.cyan, bold = true })
 	set("MayonDashboardCyan", { fg = c.cyan, bold = true })
 	set("MayonDashboardMuted", { fg = c.muted })
-	set("MayonModeNormal", { fg = c.bg, bg = c.blue, bold = true })
-	set("MayonModeInsert", { fg = c.bg, bg = c.green, bold = true })
-	set("MayonModeVisual", { fg = c.bg, bg = c.yellow, bold = true })
-	set("MayonModeReplace", { fg = c.bg, bg = c.red, bold = true })
-	set("MayonModeCommand", { fg = c.bg, bg = c.orange, bold = true })
+	set("MayonModeNormal", { fg = c.blue, bg = c.deep, bold = true, underline = true, sp = c.blue })
+	set("MayonModeInsert", { fg = c.green, bg = c.deep, bold = true, underline = true, sp = c.green })
+	set("MayonModeVisual", { fg = c.yellow, bg = c.deep, bold = true, underline = true, sp = c.yellow })
+	set("MayonModeReplace", { fg = c.red, bg = c.deep, bold = true, underline = true, sp = c.red })
+	set("MayonModeCommand", { fg = c.orange, bg = c.deep, bold = true, underline = true, sp = c.orange })
 	set("MayonStatusGit", { fg = c.cyan })
 	set("MayonStatusAdded", { fg = c.green })
 	set("MayonStatusChanged", { fg = c.orange })
@@ -65,30 +65,30 @@ local function overrides()
 	set("DiagnosticSignInfo", { fg = c.blue })
 	set("DiagnosticSignHint", { fg = c.cyan })
 	set("DiagnosticSignOk", { fg = c.green })
-	vim.api.nvim_set_hl(0, "NormalFloat", { fg = c.brightFg, bg = c.bg })
-	vim.api.nvim_set_hl(0, "FloatBorder", { fg = c.border, bg = c.bg })
-	vim.api.nvim_set_hl(0, "FloatTitle", { fg = c.blue, bg = c.bg, bold = true })
+	vim.api.nvim_set_hl(0, "NormalFloat", { fg = c.brightFg, bg = c.deep })
+	vim.api.nvim_set_hl(0, "FloatBorder", { fg = c.border, bg = c.deep })
+	vim.api.nvim_set_hl(0, "FloatTitle", { fg = c.blue, bg = c.deep, bold = true })
 	vim.api.nvim_set_hl(0, "MultiCursorCursor", { fg = c.bg, bg = c.cyan, bold = true })
 	vim.api.nvim_set_hl(0, "MultiCursorDisabledCursor", { fg = c.bg, bg = c.muted })
 	local match = get("MatchParen")
 	match.bold, match.underline = true, true
 	vim.api.nvim_set_hl(0, "MatchParen", match)
 	set("TabLine", { bg = c.deep, fg = c.fg })
-	set("TabLineSel", { bg = c.selection, fg = c.blue, bold = true, underline = true, sp = c.blue })
+	set("TabLineSel", { bg = c.bg, fg = c.brightFg, bold = true })
 	set("TabLineFill", { bg = c.deep, fg = c.fg })
 	set("TreesitterContext", { bg = c.surface })
 	set("TreesitterContextLineNumber", { bg = c.surface, fg = c.fg })
 	set("TreesitterContextSeparator", { fg = c.border, bg = c.surface })
-	set("Pmenu", { fg = c.brightFg, bg = c.bg })
+	set("Pmenu", { fg = c.brightFg, bg = c.deep })
 	set("PmenuSel", { fg = c.brightFg, bg = c.selection, bold = true })
-	set("PmenuKind", { fg = c.cyan, bg = c.bg })
+	set("PmenuKind", { fg = c.cyan, bg = c.deep })
 	set("PmenuKindSel", { fg = c.blue, bg = c.selection })
-	set("PmenuExtra", { fg = c.fg, bg = c.bg })
+	set("PmenuExtra", { fg = c.fg, bg = c.deep })
 	set("PmenuExtraSel", { fg = c.fg, bg = c.selection })
-	set("PmenuBorder", { fg = c.border, bg = c.bg })
+	set("PmenuBorder", { fg = c.border, bg = c.deep })
 	set("PmenuSbar", { bg = c.surface })
 	set("PmenuThumb", { bg = c.border })
-	set("PmenuMatch", { fg = c.cyan, bg = c.bg, bold = true })
+	set("PmenuMatch", { fg = c.cyan, bg = c.deep, bold = true })
 	set("PmenuMatchSel", { fg = c.blue, bg = c.selection, bold = true })
 	set("SnippetTabstopActive", { bg = c.selection, underline = true, sp = c.cyan })
 	set("LspInlineCompletion", { fg = c.muted, italic = true })
@@ -189,24 +189,29 @@ local function overrides()
 	set("MiniDiffOverChangeBuf", { link = "DiffText" })
 	set("MiniDiffOverContext", { link = "Normal" })
 	set("MiniDiffOverDelete", { link = "DiffDelete" })
-	set("MayonDiffHint", { fg = c.blue, bg = c.surface, bold = true })
+	set("MayonDiffHint", { fg = c.blue, bg = c.deep, bold = true })
 	set("ComplHint", { link = "LspInlineCompletion" })
 	set("ComplHintMore", { link = "LspInlineCompletion" })
 	set("MinuetVirtualText", { link = "LspInlineCompletion" })
+	set("Directory", { fg = c.blue, bold = true })
+	set("MayonPopup", { fg = c.brightFg, bg = c.deep })
+	set("MayonPopupBorder", { fg = c.border, bg = c.deep })
+	set("MayonPopupTitle", { fg = c.blue, bg = c.deep, bold = true })
+	set("MayonExplorerCursor", { fg = c.blue, bg = c.deep, bold = true })
 	local links = {
 		SoftFloatBorder = "FloatBorder",
-		WhichKeyNormal = "NormalFloat",
-		WhichKeyBorder = "FloatBorder",
-		SnacksInputNormal = "NormalFloat",
-		SnacksInputBorder = "FloatBorder",
-		SnacksPickerNormal = "NormalFloat",
-		SnacksPicker = "NormalFloat",
-		SnacksPickerList = "NormalFloat",
-		SnacksPickerBorder = "FloatBorder",
-		SnacksPickerTitle = "FloatTitle",
-		SnacksPickerInput = "NormalFloat",
-		SnacksPickerInputBorder = "FloatBorder",
-		SnacksPickerBoxBorder = "FloatBorder",
+		WhichKeyNormal = "MayonPopup",
+		WhichKeyBorder = "MayonPopupBorder",
+		SnacksInputNormal = "MayonPopup",
+		SnacksInputBorder = "MayonPopupBorder",
+		SnacksPickerNormal = "MayonPopup",
+		SnacksPicker = "MayonPopup",
+		SnacksPickerList = "MayonPopup",
+		SnacksPickerBorder = "MayonPopupBorder",
+		SnacksPickerTitle = "MayonPopupTitle",
+		SnacksPickerInput = "MayonPopup",
+		SnacksPickerInputBorder = "MayonPopupBorder",
+		SnacksPickerBoxBorder = "MayonPopupBorder",
 		SnacksPickerListCursorLine = "PmenuSel",
 		SnacksPickerPreviewCursorLine = "CursorLine",
 		SnacksPickerDirectory = "Directory",

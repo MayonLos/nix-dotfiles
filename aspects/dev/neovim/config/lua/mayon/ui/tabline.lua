@@ -58,6 +58,13 @@ function M.sidebar_width()
 				return width + 1
 			end
 		end
+		if vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "snacks_picker_list" then
+			local position = vim.api.nvim_win_get_position(win)
+			local width = vim.api.nvim_win_get_width(win)
+			if position[2] == 0 and width < vim.o.columns then
+				return width + 1
+			end
+		end
 	end
 	return 0
 end
@@ -254,7 +261,7 @@ function M.build()
 				return vim.api.nvim_get_option_value("modified", { buf = self.bufnr })
 			end,
 			provider = " ●",
-			hl = { fg = "bright" },
+			hl = { fg = "orange" },
 		},
 		{
 			condition = function(self)
@@ -330,7 +337,7 @@ function M.build()
 		end,
 		{
 			provider = function(self)
-				return self.is_active and "▎" or " "
+				return self.is_active and "▔" or " "
 			end,
 			hl = function(self)
 				return self.is_active and "MayonTabAccent" or "TabLine"
@@ -385,7 +392,10 @@ function M.build()
 			return vim.o.columns >= 90 or M.sidebar_width() > 0
 		end,
 		provider = function()
-			local name = vim.fn.fnamemodify(vim.fn.getcwd(), ":t")
+			local cwd = vim.fn.getcwd()
+			local file = vim.api.nvim_buf_get_name(M.active_buffer() or 0)
+			local root = vim.fs.root(file ~= "" and file or cwd, { ".git" }) or cwd
+			local name = vim.fn.fnamemodify(root, ":t")
 			local offset = M.sidebar_width()
 			if offset > 0 then
 				local raw_label = " 󰉋 " .. text.truncate(name, math.max(1, offset - 6)) .. " "

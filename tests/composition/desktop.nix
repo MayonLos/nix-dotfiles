@@ -206,7 +206,7 @@ let
       && selectedHome.programs.noctalia.settings.shell.font_family == palette.fonts.sans
       &&
         selectedHome.i18n.inputMethod.fcitx5.settings.addons.classicui.globalSection.Font
-        == "${palette.fonts.cjk} 13"
+        == "${palette.fonts.cjk} 10"
       &&
         selectedHome.i18n.inputMethod.fcitx5.settings.addons.classicui.globalSection."Vertical Candidate List"
         == "False"

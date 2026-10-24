@@ -1,4 +1,16 @@
-{ inputs }: {
+{
+  inputs,
+  pkgs,
+  flakePath,
+  hostName,
+}:
+let
+  communitySource = import ./community.nix {
+    inherit pkgs;
+    source = inputs.noctalia-plugins-community;
+  };
+in
+{
   # Immutable plugin sources are pinned by flake.lock and available
   # offline. Git sources fetch during startup; update them through Nix.
   plugins = {
@@ -16,10 +28,15 @@
       {
         name = "community";
         kind = "path";
-        # The pinned community-plugins now guards both of quill's
-        # nextDueInMs() return paths, so the former local patch for its
-        # index-service crash is gone.
-        location = "${inputs.noctalia-plugins-community}";
+        # Keep the official community source identity and every untouched
+        # plugin; build-time overlay copies only mango_layouts and nix-status.
+        location = "${communitySource}";
+        enabled = true;
+      }
+      {
+        name = "nix-dotfiles";
+        kind = "path";
+        location = "${../resources/noctalia-plugins}";
         enabled = true;
       }
     ];
@@ -41,6 +58,10 @@
       # Markdown notes, todos and /nt launcher entry; AI calls Go directly.
       "fel/quill"
       "gambled23/mangowm-keymode" # mmsg; shows the keymode SUPER,R enters
+      "tmelik/system-monitor"
+      "mindnbytes/nix-status"
+      "knyrps/nix-search"
+      "nix-dotfiles/legion-conservation"
 
       # Notes/todo plugins were consolidated into Quill. OCR is provided
       # by the native Print bindings; its plugin had no configured entry.
@@ -71,6 +92,10 @@
       ai_backend = "opencode-go";
       ai_model = "deepseek-v4.1-flash";
       ai_base_url = "https://opencode.ai/inference/go/openai/v1";
+    };
+    "mindnbytes/nix-status" = {
+      flake_dir = flakePath;
+      nixos_configuration = hostName;
     };
 
   };

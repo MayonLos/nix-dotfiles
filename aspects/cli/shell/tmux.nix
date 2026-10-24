@@ -38,7 +38,9 @@ let
 
     setw -g window-status-separator "#[fg=${colors.border}] · #[default]"
     setw -g window-status-format "#[fg=${colors.deep}]#[bg=${colors.deep}] #[fg=${colors.fg}]#I:#W#{window_flags} #[default]"
-    setw -g window-status-current-format "#[fg=${capColor}]#[bg=${colors.deep}]${roundLeft}#[fg=${colors.blue}]#[bg=${colors.selection}]#[bold] #I:#W#{window_flags} #[fg=${capColor}]#[bg=${colors.deep}]${roundRight}"
+    # Current window follows the desktop underline language: blue text on the
+    # deep status surface, with no filled capsule.
+    setw -g window-status-current-format "#[fg=${colors.blue},underscore,bold] #I:#W#{window_flags} #[default]"
 
     set -g status-right-length 64
     set -g status-right "#{?#{e|>=:#{client_width},80},#[fg=${colors.fg}]#{b;=24:pane_current_path} ,}#{?client_prefix,#[fg=${capColor}]#[bg=${colors.deep}]${roundLeft}#[fg=${colors.cyan}]#[bg=${colors.selection}]#[bold] 前缀 #[fg=${capColor}]#[bg=${colors.deep}]${roundRight},}#{?#{m/r:(copy|view)-mode,#{pane_mode}},#[fg=${capColor}]#[bg=${colors.deep}]${roundLeft}#[fg=${colors.yellow}]#[bg=${colors.selection}]#[bold] 复制 #[fg=${capColor}]#[bg=${colors.deep}]${roundRight},}#{?client_prefix,,#{?#{m/r:(copy|view)-mode,#{pane_mode}},,#{?window_zoomed_flag,#[fg=${capColor}]#[bg=${colors.deep}]${roundLeft}#[fg=${colors.blue}]#[bg=${colors.selection}]#[bold] 放大 #[fg=${capColor}]#[bg=${colors.deep}]${roundRight},}}}#{?#{e|>=:#{client_width},100}, #[fg=${colors.border}]│ #[fg=${colors.fg}]%m月%d日 #[fg=${colors.brightFg}]#[bold]%H:%M,} "

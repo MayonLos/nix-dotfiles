@@ -1,9 +1,8 @@
 { pkgs, palette }:
 let
   inherit (pkgs) lib;
-  # Variant A (user-chosen 2026-10-25): a deep panel with a hairline edge and a
-  # soft drop shadow drawn into the nine-slice image, and a borderless blue-tinted
-  # pill for the selected candidate. Index labels and comments are dimmed.
+  # Compact underlined candidate selection: a surface panel with a hairline
+  # edge and soft shadow, with no selected-row fill.
   hex = c: lib.fromHexString (lib.removePrefix "#" c);
   channel = c: shift: lib.mod (builtins.div (hex c) shift) 256;
   mix =
@@ -18,8 +17,8 @@ let
         if builtins.stringLength h == 1 then "0" + h else h;
     in
     "#" + ch 65536 + ch 256 + ch 1;
-  pill = mix palette.deep palette.blue 0.16;
   edge = mix palette.deep palette.border 0.45;
+  transparentBlack = palette.black + "00";
 
   # Shadow padding baked into panel.svg; ShadowMargin tells classicui which
   # part of the image is shadow rather than panel surface.
@@ -30,7 +29,7 @@ let
     Bottom = 14;
   };
   radius = 10;
-  pad = 4;
+  pad = 6;
   addEach = n: m: lib.mapAttrs (_: v: v + n) m;
   margin = x: y: {
     Left = x;
@@ -50,19 +49,20 @@ let
       Name = "onedark";
       Version = 3;
       Author = "mayon";
-      Description = "One Dark refined: soft pill selection, dimmed labels, drop shadow";
+      Description = "One Dark refined: underlined selection, muted labels, drop shadow";
       ScaleWithDPI = "True";
     };
     InputPanel = {
       NormalColor = palette.fg;
-      HighlightCandidateColor = palette.blue;
+      HighlightCandidateColor = palette.brightFg;
       HighlightColor = palette.brightFg;
-      HighlightBackgroundColor = palette.selection;
+      # Fcitx Color uses #RRGGBBAA; keep the fallback fill transparent.
+      HighlightBackgroundColor = transparentBlack;
       CandidateLabelColor = palette.muted;
       HighlightCandidateLabelColor = palette.blue;
       CandidateCommentColor = palette.muted;
-      HighlightCandidateCommentColor = palette.fg;
-      FullWidthHighlight = "True";
+      HighlightCandidateCommentColor = palette.muted;
+      FullWidthHighlight = "False";
       PageButtonAlignment = "Center";
     };
     "InputPanel/Background".Image = "panel.svg";
@@ -71,15 +71,22 @@ let
     "InputPanel/ShadowMargin" = shadow;
     "InputPanel/ContentMargin" = addEach pad shadow;
     "InputPanel/Highlight".Image = "highlight.svg";
-    "InputPanel/Highlight/Margin" = margin 8 8;
-    "InputPanel/TextMargin" = margin 8 5;
+    # Keep the 2px line in the fixed bottom slice and rounded caps in the
+    # fixed side slices; the transparent centre stretches around the text.
+    "InputPanel/Highlight/Margin" = {
+      Left = 9;
+      Right = 9;
+      Top = 1;
+      Bottom = 3;
+    };
+    "InputPanel/TextMargin" = margin 6 5;
     "InputPanel/PrevPage".Image = "prev.svg";
     "InputPanel/PrevPage/ClickMargin" = margin 6 6;
     "InputPanel/NextPage".Image = "next.svg";
     "InputPanel/NextPage/ClickMargin" = margin 6 6;
     Menu = {
       NormalColor = palette.fg;
-      HighlightCandidateColor = palette.blue;
+      HighlightCandidateColor = palette.brightFg;
       Spacing = 2;
     };
     "Menu/Background".Image = "panel.svg";
@@ -87,8 +94,13 @@ let
     "Menu/ShadowMargin" = shadow;
     "Menu/ContentMargin" = addEach pad shadow;
     "Menu/Highlight".Image = "highlight.svg";
-    "Menu/Highlight/Margin" = margin 10 10;
-    "Menu/TextMargin" = margin 12 7;
+    "Menu/Highlight/Margin" = {
+      Left = 9;
+      Right = 9;
+      Top = 1;
+      Bottom = 3;
+    };
+    "Menu/TextMargin" = margin 6 6;
     "Menu/Separator".Color = edge;
     "Menu/CheckBox".Image = "radio.svg";
     "Menu/SubMenu".Image = "arrow.svg";
@@ -102,18 +114,21 @@ let
         <filter id="s" x="-40%" y="-40%" width="180%" height="180%">
           <feGaussianBlur in="SourceAlpha" stdDeviation="4.5"/>
           <feOffset dy="3" result="b"/>
-          <feComponentTransfer><feFuncA type="linear" slope="0.55"/></feComponentTransfer>
+          <feFlood flood-color="${palette.black}" flood-opacity="0.55" result="ink"/>
+          <feComposite in="ink" in2="b" operator="in"/>
           <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
       </defs>
       <rect x="${toString shadow.Left}.5" y="${toString shadow.Top}.5"
-            width="${toString (W - shadow.Left - shadow.Right - 1)}" height="${toString (H - shadow.Top - shadow.Bottom - 1)}"
-            rx="${toString (radius - 0.5)}" fill="${palette.deep}" stroke="${edge}" filter="url(#s)"/>
+            width="${toString (W - shadow.Left - shadow.Right - 1)}" height="${
+              toString (H - shadow.Top - shadow.Bottom - 1)
+            }"
+            rx="${toString (radius - 0.5)}" fill="${palette.surface}" stroke="${edge}" filter="url(#s)"/>
     </svg>'';
   images = {
     "panel.svg" = panelSvg;
     "highlight.svg" =
-      ''<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect width="40" height="40" rx="7" fill="${pill}"/></svg>'';
+      ''<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16" viewBox="0 0 32 16"><rect x="8" y="13" width="16" height="2" rx="1" fill="${palette.blue}"/></svg>'';
     "prev.svg" = chevron "m12 4.5-5.5 5.5 5.5 5.5" palette.muted;
     "next.svg" = chevron "m8 4.5 5.5 5.5-5.5 5.5" palette.fg;
     "arrow.svg" = chevron "m8 4.5 5.5 5.5-5.5 5.5" palette.fg;

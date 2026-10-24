@@ -8,10 +8,12 @@ Outputs include Zsh, Starship, zoxide, Atuin, fzf/fzf-tab, Git/delta/lazygit, di
 
 Removing the feature removes its shell selection, generated shell files, tools, and runtime exports on activation. It preserves shell history, Git repositories, credentials, Atuin history, project files, and user-owned configuration/data unless separately edited by the user.
 
-Astra §8 supplies the two-line Starship prompt and tmux rounded-character capsules.
-The prompt shows short Git counts and numeric failures; identity appears for SSH
-or root sessions. tmux preserves `Ctrl+a` window/session operations and tmuxp
-layouts while adding smart-splits integration: pane-local `@pane-is-vim` routes
+Astra §8 supplies the two-line Starship prompt and tmux status line. Commands
+lasting at least 3 seconds show a compact `· 12s` duration marker; the active
+tmux window uses blue underlined text on the deep status surface. The prompt
+shows short Git counts and numeric failures; identity appears for SSH or root
+sessions. tmux preserves `Ctrl+a` window/session operations and tmuxp layouts
+while adding smart-splits integration: pane-local `@pane-is-vim` routes
 `Ctrl+h/j/k/l` to Neovim or pane navigation and `Alt+h/j/k/l` to Neovim or resize.
 Copy mode retains its native vi cursor/selection keys. `@rounded-caps off` selects a bracket fallback
 for terminals whose font cannot render Powerline round ends. Existing sessions
