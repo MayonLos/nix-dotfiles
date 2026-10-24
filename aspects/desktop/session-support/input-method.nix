@@ -30,6 +30,9 @@
         };
 
         addons.classicui.globalSection = {
+          # SNI must render the engine's subModeLabel (Rime 中/英), not a
+          # static input-rime icon. Noctalia pins this native Fcitx tray item.
+          PreferTextIcon = "True";
           Theme = "onedark";
           DarkTheme = "onedark";
           # Fcitx5 Classic UI parses this with Pango's font-description syntax;

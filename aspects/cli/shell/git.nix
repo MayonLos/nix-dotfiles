@@ -61,11 +61,9 @@ in
         theme = {
           activeBorderColor = [
             "cyan"
-            "bold"
           ];
           searchingActiveBorderColor = [
             "blue"
-            "bold"
           ];
           inactiveBorderColor = [ "default" ];
           optionsTextColor = [ "cyan" ];
@@ -83,15 +81,9 @@ in
             { }
           else
             {
-              activeBorderColor = [
-                palette.blue
-                "bold"
-              ];
-              searchingActiveBorderColor = [
-                palette.cyan
-                "bold"
-              ];
-              inactiveBorderColor = [ palette.border ];
+              activeBorderColor = [ palette.blue ];
+              searchingActiveBorderColor = [ palette.cyan ];
+              inactiveBorderColor = [ palette.surface ];
               optionsTextColor = [ palette.cyan ];
               selectedLineBgColor = [ palette.selection ];
               inactiveViewSelectedLineBgColor = [ palette.selection ];

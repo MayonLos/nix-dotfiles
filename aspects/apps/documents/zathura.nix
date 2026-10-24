@@ -42,17 +42,18 @@ in
       recolor-keephue = true;
       recolor-reverse-video = true;
 
-      # Keep the page counter, without a permanent scrollbar or long path.
+      # Keep the statusbar visible. Zathura's Tab binding opens the document
+      # index in its native index mode; guioptions has no persistent index flag.
       guioptions = "s";
-      font = "${if palette == null then "sans-serif" else palette.fonts.sans} 11";
+      statusbar-page-percent = true;
+      statusbar-basename = false;
+      window-title-basename = false;
+      font = "${if palette == null then "monospace" else palette.fonts.mono} 10";
       page-v-padding = 12;
       page-h-padding = 12;
       statusbar-h-padding = 12;
       statusbar-v-padding = 5;
-      statusbar-basename = true;
       statusbar-home-tilde = true;
-      window-title-basename = true;
-      statusbar-page-percent = false;
       incremental-search = true;
       selection-notification = false;
       scroll-step = 30;

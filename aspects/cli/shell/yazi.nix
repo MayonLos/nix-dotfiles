@@ -175,7 +175,7 @@ in
     theme = {
       mgr = {
         cwd = {
-          fg = colors.cyan;
+          fg = colors.blue;
         };
         find_keyword = {
           fg = colors.yellow;
@@ -249,6 +249,12 @@ in
       };
 
       indicator = {
+        # Yazi 26.5.6 exposes this as native indicator-bar padding. The left
+        # glyph marks the hovered row; its current style carries blue/selection.
+        padding = {
+          open = "▎";
+          close = "";
+        };
         parent = {
           inherit (colors) fg;
           bg = colors.selection;

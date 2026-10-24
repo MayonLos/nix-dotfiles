@@ -18,6 +18,11 @@ def replace(file, old, new, count=1):
 
 replace("elements/Menu.lua", "local font_color = item.active and fgt or bgt", "local font_color = bgt", 3)
 replace("elements/Menu.lua", "color = fg,\n\t\t\t\t\topacity = highlight_opacity * menu_opacity,", "color = config.color.selection,\n\t\t\t\t\topacity = highlight_opacity * menu_opacity,")
+replace(
+    "elements/Menu.lua",
+    "\t\t\tend\n\n\t\t\tlocal title_clip_bx = content_bx",
+    "\t\t\tend\n\t\t\tif is_selected then\n\t\t\t\tass:rect(content_rect.ax, item_ay, content_rect.ax + 2, item_by, {\n\t\t\t\t\tradius = 1, color = config.color.match, opacity = menu_opacity, clip = item_clip,\n\t\t\t\t})\n\t\t\tend\n\n\t\t\tlocal title_clip_bx = content_bx",
+)
 replace("elements/Button.lua", "local foreground = self.active and self.background or self.foreground", "local foreground = self.active and config.color.match or self.foreground")
 replace("elements/Button.lua", "local background = self.active and self.foreground or self.background", "local background = self.active and config.color.selection or self.background")
 replace("elements/Button.lua", "color = (self.active or not is_hover) and background or foreground,", "color = (self.active or is_hover) and config.color.selection or background,")

@@ -25,7 +25,9 @@
         ../aspects/apps/firefox/checks.nix
         ../aspects/apps/documents/checks.nix
         ../aspects/cli/shell/checks.nix
+        ../aspects/cli/herdr/checks.nix
         ../aspects/desktop/mango-session/checks.nix
+        ../aspects/desktop/greeter/checks.nix
         ../aspects/desktop/session-support/checks.nix
         ../aspects/desktop/xorg-session/checks.nix
         ../aspects/dev/embedded/checks.nix

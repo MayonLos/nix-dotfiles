@@ -78,13 +78,20 @@ placessidebar .view {
 
 placessidebar row:selected,
 .thunar .sidebar treeview.view:selected,
-.thunar .standard-view treeview.view:selected,
-.thunar .standard-view iconview.view:selected,
 .view:selected {
   color: @selected_fg_color;
   background-color: @selected_bg_color;
-  border: 1px solid {{ colors.onedark_blue.default.hex }};
   border-radius: 8px;
+  box-shadow: inset 2px 0 {{ colors.onedark_blue.default.hex }};
+}
+
+/* GtkTreeView has no per-cell CSS nodes; align the entire details view. */
+.thunar button.path-bar-button,
+.thunar entry,
+.thunar .standard-view treeview.view header button,
+.thunar .standard-view treeview.view,
+.thunar statusbar {
+  font-family: "Maple Mono NF CN", monospace;
 }
 
 treeview.view,

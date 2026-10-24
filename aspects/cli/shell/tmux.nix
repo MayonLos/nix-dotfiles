@@ -12,40 +12,37 @@ let
         surface = "colour8";
         selection = "colour8";
         fg = "colour7";
+        muted = "colour8";
         brightFg = "colour15";
         border = "colour8";
         blue = "colour4";
         cyan = "colour6";
+        purple = "colour5";
         yellow = "colour3";
       }
     else
       palette;
-  capColor = "#{?#{==:#{@rounded-caps},on},${colors.selection},${colors.fg}}";
-  roundLeft = "#{?#{==:#{@rounded-caps},on},,[}";
-  roundRight = "#{?#{==:#{@rounded-caps},on},,]}";
-
   tmuxTheme = ''
-    # Keep the status bar on the editor palette and render its capsule ends as
-    # Powerline characters; no status-line theme plugin is needed.
+    # Keep the status bar flat and quiet. The selected window uses a text
+    # underline, matching Kitty's active tab and the desktop bar indicator.
     set -g status on
     set -g status-position bottom
     set -g status-interval 30
     set -g status-style "bg=${colors.deep},fg=${colors.brightFg}"
-    set -g @rounded-caps 'on'
 
-    set -g status-left-length 30
-    set -g status-left " #[fg=${capColor}]#[bg=${colors.deep}]${roundLeft}#[fg=${colors.blue}]#[bg=${colors.selection}]#[bold] #S #[fg=${capColor}]#[bg=${colors.deep}]${roundRight}"
+    set -g status-left-length 24
+    set -g status-left " #[fg=${colors.blue},bold]#S #[fg=${colors.border}]│ #[default]"
 
-    setw -g window-status-separator "#[fg=${colors.border}] · #[default]"
-    setw -g window-status-format "#[fg=${colors.deep}]#[bg=${colors.deep}] #[fg=${colors.fg}]#I:#W#{window_flags} #[default]"
-    # Current window follows the desktop underline language: blue text on the
-    # deep status surface, with no filled capsule.
-    setw -g window-status-current-format "#[fg=${colors.blue},underscore,bold] #I:#W#{window_flags} #[default]"
+    setw -g window-status-separator "#[fg=${colors.border}]  #[default]"
+    setw -g window-status-format "#[fg=${colors.fg}]#I #W#{?window_zoomed_flag,#[fg=${colors.yellow}] Z,}#[default]"
+    setw -g window-status-current-format "#[fg=${colors.brightFg},us=${colors.blue},bold,underscore]#I #W#[nounderscore,nobold,us=default]#{?window_zoomed_flag,#[fg=${colors.yellow}]#[bold] Z,}#[default]"
 
+    # Keep style attributes separate inside conditionals: raw commas delimit
+    # tmux format arguments even when they occur inside a #[style] string.
     set -g status-right-length 64
-    set -g status-right "#{?#{e|>=:#{client_width},80},#[fg=${colors.fg}]#{b;=24:pane_current_path} ,}#{?client_prefix,#[fg=${capColor}]#[bg=${colors.deep}]${roundLeft}#[fg=${colors.cyan}]#[bg=${colors.selection}]#[bold] 前缀 #[fg=${capColor}]#[bg=${colors.deep}]${roundRight},}#{?#{m/r:(copy|view)-mode,#{pane_mode}},#[fg=${capColor}]#[bg=${colors.deep}]${roundLeft}#[fg=${colors.yellow}]#[bg=${colors.selection}]#[bold] 复制 #[fg=${capColor}]#[bg=${colors.deep}]${roundRight},}#{?client_prefix,,#{?#{m/r:(copy|view)-mode,#{pane_mode}},,#{?window_zoomed_flag,#[fg=${capColor}]#[bg=${colors.deep}]${roundLeft}#[fg=${colors.blue}]#[bg=${colors.selection}]#[bold] 放大 #[fg=${capColor}]#[bg=${colors.deep}]${roundRight},}}}#{?#{e|>=:#{client_width},100}, #[fg=${colors.border}]│ #[fg=${colors.fg}]%m月%d日 #[fg=${colors.brightFg}]#[bold]%H:%M,} "
+    set -g status-right "#{?#{e|>=:#{client_width},80},#[fg=${colors.muted}]#{b;=24:pane_current_path} #[default],}#{?client_prefix,#[fg=${colors.blue}]#[bg=${colors.surface}]#[bold] PREFIX #[default],}#{?#{m/r:(copy|view)-mode,#{pane_mode}},#[fg=${colors.yellow}]#[bg=${colors.surface}]#[bold] COPY #[default],}#{?client_prefix,,#{?#{m/r:(copy|view)-mode,#{pane_mode}},,#{?window_zoomed_flag,#[fg=${colors.purple}]#[bg=${colors.surface}]#[bold] ZOOM #[default],}}}#[fg=${colors.brightFg},bold]%H:%M#[default] "
 
-    set -g pane-border-style        "fg=${colors.border}"
+    set -g pane-border-style        "fg=${colors.surface}"
     set -g pane-active-border-style "fg=${colors.blue}"
     set -g message-style            "bg=${colors.surface},fg=${colors.brightFg}"
     set -g mode-style               "bg=${colors.selection},fg=${colors.brightFg}"
@@ -111,6 +108,10 @@ in
       set -sa terminal-overrides ",*256col*:Tc"
       set -sa terminal-overrides ",*:Smulx=\\E[4::%p1%dm"
       set -sa terminal-overrides ",*:Setulc=\\E[58::2::%p1%{65536}%/%d::%p1%{256}%/%{255}%&%d::%p1%{255}%&%d%;m"
+      # Declare support for underline styles so us= in the active-window
+      # format is honored by both Kitty clients and tmux's own TERM value.
+      set -as terminal-features ",xterm-kitty:usstyle"
+      set -as terminal-features ",tmux-256color:usstyle"
       # Passthrough for sixel/kitty graphics (used by yazi image preview)
       set -g allow-passthrough on
       set -ga update-environment TERM

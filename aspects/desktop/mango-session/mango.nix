@@ -115,7 +115,7 @@ in
       cursor_hide_on_keypress = 1;
       # Keep pointer discovery and activation semantics; typing still hides it.
       cursor_hide_timeout = 0;
-      focus_on_activate = 1;
+      focus_on_activate = 0;
       warp_cursor = 1;
 
       # Noctalia owns layer shadows/animations. Kitty and reading panels are
@@ -126,8 +126,7 @@ in
       layer_animations = 0;
       shadows = 1;
       layer_shadows = 0;
-      # Elevation belongs to floating tools/dialogs. Tiled documents use the
-      # existing border/focus colours instead of a shadow in every narrow gap.
+      # Only floating windows need elevation; focus is the native 2 px blue border.
       shadow_only_floating = 1;
       shadows_size = 10;
       shadows_blur = 20;
@@ -135,9 +134,9 @@ in
       shadows_position_y = 6;
       shadows_color = alphaColor palette.black "52";
 
-      # Comparing multiple documents should not change their text contrast.
-      # The accent border identifies focus without tinting the other clients.
-      dim_enable = 0;
+      # A light native dim overlay distinguishes inactive clients without transparency.
+      # Fullscreen is exempt upstream; 0.18.3 has no per-window no_dim rule.
+      dim_enable = 1;
       dim_focused_color = alphaColor palette.black "00";
       dim_unfocused_color = alphaColor palette.black "10";
 
@@ -146,12 +145,12 @@ in
       drop_color = "0x${lib.removePrefix "#" palette.blue}80";
       split_color = color palette.cyan;
       border_px = 2;
-      border_color = "${color palette.border}";
+      border_color = "${color palette.surface}";
       focus_color = "${color palette.blue}";
       urgent_color = "${color palette.red}";
-      scratchpad_color = "${color palette.purple}";
-      global_color = "${color palette.cyan}";
-      overlay_color = "${color palette.purple}";
+      scratchpad_color = "${color palette.blue}";
+      global_color = "${color palette.blue}";
+      overlay_color = "${color palette.blue}";
       maximized_screen_color = "${color palette.blue}";
       border_radius = 12;
       gap_inner_horizontal = 8;
@@ -174,19 +173,19 @@ in
       zoom_initial_ratio = 0.96;
       zoom_end_ratio = 0.98;
       animation_duration_move = 180;
-      animation_duration_open = 220;
-      animation_duration_tag = 220;
-      animation_duration_close = 140;
+      animation_duration_open = 180;
+      animation_duration_tag = 180;
+      animation_duration_close = 160;
       animation_duration_focus = 0;
-      # A smooth ease-out settles opens/moves quickly; short ease-in closes
-      # leave promptly. No overshoot or focus-only animation.
+      # One ease-out curve across opens/closes/moves/tags; no overshoot.
+      # Focus still responds immediately and reducedMotion disables animations.
       animation_curve_open = "0.16,1.0,0.3,1.0";
       animation_curve_move = "0.16,1.0,0.3,1.0";
       animation_curve_tag = "0.16,1.0,0.3,1.0";
-      animation_curve_close = "0.4,0.0,1.0,1.0";
+      animation_curve_close = "0.16,1.0,0.3,1.0";
       animation_curve_focus = "0.16,1.0,0.3,1.0";
       animation_curve_opacity_fade_in = "0.16,1.0,0.3,1.0";
-      animation_curve_opacity_fade_out = "0.4,0.0,1.0,1.0";
+      animation_curve_opacity_fade_out = "0.16,1.0,0.3,1.0";
       tag_animation_direction = 1;
 
       scroller_structs = 20;
@@ -245,12 +244,12 @@ in
       # deck_tab_mode stays at its default because deck is outside circle_layout.
       monocle_tab_mode = 1;
       tab_bar_height = 32;
-      tab_bar_decorate_font_desc = "${palette.fonts.sans} 10.5";
+      tab_bar_decorate_font_desc = "${palette.fonts.mono} 10.5";
       tab_bar_decorate_fg_color = "${color palette.fg}";
       tab_bar_decorate_bg_color = "${color palette.deep}";
       tab_bar_decorate_focus_fg_color = "${color palette.blue}";
       tab_bar_decorate_focus_bg_color = "${color palette.selection}";
-      tab_bar_decorate_border_color = "${color palette.border}";
+      tab_bar_decorate_border_color = "${color palette.surface}";
       tab_bar_decorate_border_width = 1;
       tab_bar_decorate_corner_radius = 8;
       tab_bar_decorate_padding_x = 8;
@@ -260,12 +259,12 @@ in
       group_bar_button_size = 16;
       group_bar_button_margin = 8;
       group_bar_button_color = color palette.red;
-      group_bar_decorate_font_desc = "${palette.fonts.sans} 10.5";
+      group_bar_decorate_font_desc = "${palette.fonts.mono} 10.5";
       group_bar_decorate_fg_color = "${color palette.fg}";
       group_bar_decorate_bg_color = "${color palette.deep}";
       group_bar_decorate_focus_fg_color = "${color palette.blue}";
       group_bar_decorate_focus_bg_color = "${color palette.selection}";
-      group_bar_decorate_border_color = "${color palette.border}";
+      group_bar_decorate_border_color = "${color palette.surface}";
       group_bar_decorate_border_width = 1;
       group_bar_decorate_corner_radius = 8;
       group_bar_decorate_padding_x = 8;
@@ -275,7 +274,7 @@ in
       jump_label_decorate_bg_color = "${color palette.deep}";
       jump_label_decorate_focus_fg_color = "${color palette.blue}";
       jump_label_decorate_focus_bg_color = "${color palette.selection}";
-      jump_label_decorate_border_color = "${color palette.border}";
+      jump_label_decorate_border_color = "${color palette.surface}";
       jump_label_decorate_border_width = 1;
       jump_label_decorate_corner_radius = 8;
       jump_label_decorate_padding_x = 8;
@@ -285,7 +284,7 @@ in
       # Use the same type, outline and focused blue as the monocle tab bar.
       title_message_bar_height = 48;
       title_message_bar_gap = 12;
-      title_message_bar_decorate_font_desc = "${palette.fonts.sans} 10.5";
+      title_message_bar_decorate_font_desc = "${palette.fonts.mono} 10.5";
       title_message_bar_decorate_fg_color = color palette.fg;
       title_message_bar_decorate_bg_color = color palette.deep;
       title_message_bar_decorate_focus_fg_color = color palette.blue;
@@ -332,38 +331,11 @@ in
         "layer_name:^noctalia-(screenshot-region|annotate)$,no_animation:1,no_blur:1,no_shadow:1"
       ];
 
-      # Exact app-id/title rules; leave transient-parent detection and size hints
-      # intact. Offsets are percentages of remaining space, not pixel positions.
-      window_rule = [
-        "is_floating:1,width:0.60,height:0.72,animation_type_open:fade,animation_type_close:fade,app_id:^swayimg$"
-        "is_floating:1,animation_type_open:fade,animation_type_close:fade,app_id:^thunar$,title:^(Rename|重命名)"
-        # Global means visible across this output's tags, not forced above
-        # fullscreen games. Super+Alt+G opts into overlay for the focused PiP.
-        "is_floating:1,is_global:1,is_open_silent:1,width:480,height:270,offset_x:85,offset_y:80,animation_type_open:fade,animation_type_close:fade,app_id:^[Ff]irefox$,title:^Picture-in-Picture$"
-        # blueman-manager, nm-connection-editor and org.gnome.Calculator were
-        # in this alternation and are installed nowhere -- not on PATH, not in
-        # any module. Template leftovers. Add an app_id back when the program
-        # that carries it actually arrives, not before: a rule that cannot
-        # match is indistinguishable from one that is broken.
-        "is_floating:1,width:0.62,height:0.68,animation_type_open:fade,animation_type_close:fade,app_id:^xdg-desktop-portal-gtk$"
-        # No polkit rule. This host runs no standalone polkit GUI agent --
-        # noctalia's built-in one is the only authentication agent (see
-        # noctalia.nix's `polkit_agent`), and it draws in the shell rather than
-        # opening a top-level window, so nothing can ever carry a `polkit-*` or
-        # `org.freedesktop.PolicyKit*` app_id here.
-        # `.Settings` was never an app_id. Measured with `mmsg get all-clients`
-        # while the window was open: it reports `dev.noctalia.Noctalia`, and the
-        # window came up tiled at 936x1010 instead of its requested floating
-        # geometry. Keep the observed id; sizes now follow each output.
-        "is_floating:1,width:0.68,height:0.82,animation_type_open:fade,animation_type_close:fade,app_id:^dev\\.noctalia\\.Noctalia$"
-        "vrr_only_fullscreen:1,no_radius:1,no_animation:1,app_id:^steam_app_"
-        # Kitty's own background is opaque. Keep client glyphs/content opaque
-        # too; focus dim is a separate compositor overlay. Include named tools.
-        "focused_opacity:1.0,unfocused_opacity:1.0,app_id:^(kitty|mayon-scratch|mayon-files|mayon-monitor)$"
-        "is_named_scratchpad:1,width:0.78,height:0.78,animation_type_open:fade,animation_type_close:fade,app_id:^mayon-scratch$"
-        "is_named_scratchpad:1,width:0.78,height:0.78,animation_type_open:fade,animation_type_close:fade,app_id:^mayon-files$"
-        "is_named_scratchpad:1,width:0.72,height:0.74,animation_type_open:fade,animation_type_close:fade,app_id:^mayon-monitor$"
-      ];
+      # Single rule owner. Keep app destinations opt-in to preserve current tags.
+      window_rule = import ./mango/window-rules.nix { inherit lib; };
+      # Mango 0.18.3 supports 0/1/2; 2 gates tearing to fullscreen.
+      # The rule table opts normal clients out and games in.
+      allow_tearing = 2;
 
       # Launches, Noctalia shell controls, tag navigation, and dwm-style
       # master-stack operations.

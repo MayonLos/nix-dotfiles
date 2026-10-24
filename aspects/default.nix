@@ -13,6 +13,7 @@ _: {
     ./hardware/legion-laptop
     ./cli/shell
     ./cli/terminal
+    ./cli/herdr
     ./dev/neovim
     ./dev/vscode
     ./dev/jetbrains

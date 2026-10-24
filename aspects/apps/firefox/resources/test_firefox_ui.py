@@ -109,6 +109,11 @@ class FirefoxUiTests(unittest.TestCase):
     def test_fallback_css_parses_as_two_stylesheets(self) -> None:
         self.assertFalse(css_parse_errors(self.chrome_css), css_parse_errors(self.chrome_css))
         self.assertFalse(css_parse_errors(self.content_css), css_parse_errors(self.content_css))
+
+    def test_managed_ui_uses_monospace_for_browser_chrome_paths(self) -> None:
+        self.assertIn('font-family: "Maple Mono NF CN", monospace', self.chrome_css)
+        self.assertIn("#urlbar-input", self.chrome_css)
+        self.assertIn(".tabbrowser-tab .tab-label", self.chrome_css)
         self.assertIn('url("about:home")', self.content_css)
         self.assertIn('url("about:newtab")', self.content_css)
         self.assertIn("width: min(100%, 560px) !important", self.content_css)

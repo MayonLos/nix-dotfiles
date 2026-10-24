@@ -10,6 +10,7 @@ let
     "SUPER,E,spawn,workspace-files"
     "SUPER,B,spawn,workspace-browser"
     "SUPER,Return,spawn,workspace-terminal"
+    "SUPER+ALT,H,spawn,herdr-terminal"
     # A unique app id distinguishes each tool from ordinary Kitty windows.
     # Title argument "none" means match by app id only.
     "SUPER+SHIFT,Return,toggle_named_scratchpad,mayon-scratch,none,${lib.getExe pkgs.kitty} --class=mayon-scratch"

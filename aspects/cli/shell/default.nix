@@ -1,6 +1,5 @@
 { den, ... }: {
   imports = [
-    ../../desktop/mango-session
     ../../appearance/appearance
     ../../workspace/workspace-task
   ];
@@ -8,7 +7,6 @@
   den.aspects = {
     tree-account-tool.user = { pkgs, ... }: { packages = [ pkgs.tree ]; };
     command-line = { host, user, ... }: {
-      noctaliaIntegrations = [ "btop" ];
       includes = [ den.aspects.workspace-task ];
       homeManager.imports = [
         (import ./zsh.nix {

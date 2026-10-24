@@ -12,6 +12,7 @@
     ];
     engineering-workbench.includes = with den.aspects; [
       command-line
+      herdr
       neovim
       vscode
       jetbrains

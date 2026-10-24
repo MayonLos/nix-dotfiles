@@ -54,7 +54,12 @@ sidebar-main {
 
 #urlbar-input,
 #searchbar input {
+  font-family: "Maple Mono NF CN", monospace !important;
   color: var(--tn-fg) !important;
+}
+
+.tabbrowser-tab .tab-label {
+  font-family: "Maple Mono NF CN", monospace !important;
 }
 
 #urlbar .urlbarView,

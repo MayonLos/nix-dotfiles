@@ -1,0 +1,16 @@
+--- a/src/client/shell/tabs.rs
++++ b/src/client/shell/tabs.rs
+@@ -101,9 +101,11 @@
+         }
+         let rect = Rect::new(x, area.y, width, 1);
+         let style = if tab.focused {
++            // UI v4: identify the focused tab with an underline, not a solid accent block.
+             let base = Style::default()
+-                .fg(panel_contrast_fg(palette))
+-                .bg(palette.accent);
++                .fg(palette.accent)
++                .bg(palette.panel_bg)
++                .add_modifier(Modifier::UNDERLINED);
+             if tab.custom_label {
+                 base.add_modifier(Modifier::BOLD)
+             } else {

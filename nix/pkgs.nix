@@ -49,6 +49,7 @@
               wayscrollshot = inputs.wayscrollshot.packages.${system}.default;
               inherit (inputs.llm-agents.packages.${system})
                 dsh
+                herdr
                 codex
                 claude-code
                 codex-acp

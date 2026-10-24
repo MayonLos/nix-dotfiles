@@ -1,0 +1,211 @@
+--- a/src/greeter/greeter_surface.h
++++ b/src/greeter/greeter_surface.h
+@@ -226,6 +226,11 @@
+   Label* m_schemeSelectLabel = nullptr;
+   Glyph* m_schemeSelectGlyph = nullptr;
+   InputArea* m_schemeSelectArea = nullptr;
++  // UI v4: decoration only; authentication and hit testing stay upstream.
++  RectNode* m_techFrame = nullptr;
++  RectNode* m_techUnderline = nullptr;
++  RectNode* m_techGlow = nullptr;
++  Label* m_techStatus = nullptr;
+   Input* m_passwordField = nullptr;
+   Button* m_loginButton = nullptr;
+   Button* m_backButton = nullptr;
+--- a/src/greeter/greeter_surface.cpp
++++ b/src/greeter/greeter_surface.cpp
+@@ -41,6 +41,8 @@
+ #include <cstdlib>
+ #include <cstring>
+ #include <filesystem>
++#include <fstream>
++#include <sys/utsname.h>
+ #include <linux/input-event-codes.h>
+ #include <nlohmann/json.hpp>
+ #include <pwd.h>
+@@ -51,6 +53,75 @@
+ 
+ namespace {
+   constexpr Logger kLog("greeter-surface");
++
++  // UI v4: Lenovo exposes conservation separately from standard battery limits.
++  int techConservationMode() {
++    int result = -1;
++    bool conflict = false;
++    std::error_code ec;
++    for (std::filesystem::directory_iterator it("/sys/bus/platform/drivers/ideapad_acpi", ec), end;
++         !ec && it != end; it.increment(ec)) {
++      std::string mode;
++      std::ifstream modeFile(it->path() / "conservation_mode");
++      std::getline(modeFile, mode);
++      if (mode != "0" && mode != "1") continue;
++      const int current = mode == "1" ? 1 : 0;
++      if (result != -1 && result != current) conflict = true;
++      result = current;
++    }
++    return ec || conflict ? -1 : result;
++  }
++
++  // UI v4: public machine telemetry only, cached to avoid frame-time sysfs IO.
++  std::string techMachineStatus() {
++    static std::string cached;
++    static auto refreshed = std::chrono::steady_clock::time_point{};
++    const auto now = std::chrono::steady_clock::now();
++    if (!cached.empty() && now - refreshed < std::chrono::seconds(5)) return cached;
++    refreshed = now;
++    utsname system{};
++    cached = uname(&system) == 0
++        ? std::string(system.nodename) + " · " + system.sysname + " " + system.release
++        : "system unavailable";
++    const int conservation = techConservationMode();
++    std::string care = conservation == 1 ? " · 养护开" : conservation == 0 ? " · 养护关" : " · 养护 --";
++    std::error_code ec;
++    for (std::filesystem::directory_iterator it("/sys/class/power_supply", ec), end;
++         !ec && it != end; it.increment(ec)) {
++      const auto& entry = *it;
++      std::string type, state;
++      std::ifstream(entry.path() / "type") >> type;
++      if (type != "Battery") continue;
++      // Conservation is independent of whether capacity can be read.
++      int capacity = -1, threshold = -1;
++      std::ifstream(entry.path() / "charge_control_end_threshold") >> threshold;
++      if (conservation < 0) care = threshold > 0 && threshold <= 80 ? " · 养护开"
++          : threshold > 80 && threshold <= 100 ? " · 养护关" : " · 养护 --";
++      std::ifstream(entry.path() / "capacity") >> capacity;
++      std::ifstream(entry.path() / "status") >> state;
++      if (capacity < 0 || capacity > 100) break;
++      cached += " · BAT " + std::to_string(capacity) + "% ";
++      for (int i = 0; i < 10; ++i) cached += i * 10 < capacity ? "▰" : "▱";
++      cached += " " + state;
++      break;
++    }
++    cached += care;
++    return cached;
++  }
++
++  RoundedRectStyle techGradient(float alpha, float radius = 1.0f, float softness = 1.0f) {
++    const auto blue = colorForRole(ColorRole::Primary, alpha);
++    const auto cyan = colorForRole(ColorRole::Secondary, alpha);
++    RoundedRectStyle style;
++    style.fillMode = FillMode::LinearGradient;
++    style.gradientDirection = GradientDirection::Horizontal;
++    style.gradientStops = {{{0.0f, blue}, {0.33f, lerpColor(blue, cyan, 0.33f)},
++                            {0.66f, lerpColor(blue, cyan, 0.66f)}, {1.0f, cyan}}};
++    style.radius = Radii(radius);
++    style.softness = softness;
++    return style;
++  }
++
+   constexpr float kHeaderUserIconBase = 64.0f;
+   constexpr float kHeaderAvatarBorderScale = 2.0f;
+ 
+@@ -316,9 +387,16 @@
+   m_panelDivider = divider.get();
+   m_root.addChild(std::move(divider));
+ 
++  // UI v4: a thin gradient frame behind the existing opaque login card.
++  auto techFrame = std::make_unique<RectNode>();
++  techFrame->setHitTestVisible(false);
++  techFrame->setZIndex(1);
++  m_techFrame = techFrame.get();
++  m_root.addChild(std::move(techFrame));
++
+   auto panel = std::make_unique<Box>();
+   m_loginPanel = panel.get();
+-  m_loginPanel->setZIndex(1);
++  m_loginPanel->setZIndex(2);
+   m_root.addChild(std::move(panel));
+ 
+   auto pwField = std::make_unique<Input>();
+@@ -330,6 +408,25 @@
+   m_passwordField = pwField.get();
+   m_passwordField->setZIndex(6);
+   m_root.addChild(std::move(pwField));
++
++  auto techGlow = std::make_unique<RectNode>();
++  techGlow->setZIndex(7);
++  techGlow->setHitTestVisible(false);
++  m_techGlow = techGlow.get();
++  m_root.addChild(std::move(techGlow));
++  auto techUnderline = std::make_unique<RectNode>();
++  techUnderline->setZIndex(8);
++  techUnderline->setHitTestVisible(false);
++  m_techUnderline = techUnderline.get();
++  m_root.addChild(std::move(techUnderline));
++  auto techStatus = std::make_unique<Label>();
++  techStatus->setFontSize(Style::scaled(11.0f));
++  techStatus->setColor(colorForRole(ColorRole::OnSurfaceVariant));
++  techStatus->setHitTestVisible(false);
++  techStatus->setZIndex(5);
++  m_techStatus = techStatus.get();
++  m_root.addChild(std::move(techStatus));
++
+ 
+   auto userBox = std::make_unique<Box>();
+   m_userSelectBox = userBox.get();
+@@ -1030,7 +1127,9 @@
+   const std::string date = m_clockEnabled ? formatLocalUnixTime(second, m_clockDateFormat) : std::string{};
+   const bool timeChanged = m_clockTimeLabel->setText(time);
+   const bool dateChanged = m_clockDateLabel->setText(date);
+-  return timeChanged || dateChanged;
++  const bool statusChanged = m_techStatus->setText(
++      (m_username.empty() ? std::string{} : m_username + "@") + techMachineStatus());
++  return timeChanged || dateChanged || statusChanged;
+ }
+ 
+ void GreeterSurface::syncScaledTypography() {
+@@ -1088,6 +1187,12 @@
+   const float sh = m_outputViewportActive ? m_viewportHeight : fullH;
+ 
+   m_root.setSize(fullW, fullH);
++  m_techStatus->setFontSize(Style::scaled(11.0f));
++  m_techStatus->setColor(colorForRole(ColorRole::OnSurfaceVariant));
++  m_techStatus->setMaxWidth(std::max(1.0f, sw - Style::scaled(180.0f)));
++  m_techStatus->measure(*renderer);
++  m_techStatus->setPosition(ox + Style::spaceLg(), oy + sh - m_techStatus->height() - Style::spaceLg());
++
+ 
+   if (m_letterbox != nullptr) {
+     m_letterbox->setVisible(m_outputViewportActive);
+@@ -1255,12 +1360,15 @@
+   if (m_panelDivider != nullptr)
+     m_panelDivider->setVisible(false);
+ 
++  m_techFrame->setPosition(panelX - 1.0f, panelY - 1.0f);
++  m_techFrame->setSize(panelWidth + 2.0f, panelHeight + 2.0f);
++  m_techFrame->setStyle(techGradient(0.45f, Style::scaledRadiusXl() + 1.0f));
+   m_loginPanel->setPosition((panelX), (panelY));
+   m_loginPanel->setSize(panelWidth, panelHeight);
+   m_loginPanel->setStyle(
+       RoundedRectStyle{
+-          .fill = colorForRole(ColorRole::SurfaceVariant),
+-          .border = colorForRole(ColorRole::Outline),
++          .fill = colorForRole(ColorRole::Surface),
++          .border = colorForRole(ColorRole::Surface),
+           .fillMode = FillMode::Solid,
+           .radius = Style::scaledRadiusXl(),
+           .softness = 1.0f,
+@@ -1333,6 +1441,8 @@
+   m_loginButton->setRadius(buttonRadius);
+   m_backButton->setRadius(buttonRadius);
+   m_passwordField->setVisible(showPasswordStep);
++  m_techUnderline->setVisible(showPasswordStep);
++  m_techGlow->setVisible(showPasswordStep);
+   m_loginButton->setVisible(showPasswordStep);
+   m_backButton->setVisible(showBackButton);
+   if (showPasswordStep) {
+@@ -1355,6 +1465,14 @@
+     m_passwordField->setSize(inputWidth, 0.0f);
+     m_passwordField->setPosition((contentLeft), (contentTop));
+     m_passwordField->layout(*renderer);
++    const float underlineY = contentTop + m_passwordField->height() - 2.0f;
++    m_techGlow->setPosition(contentLeft, underlineY - 3.0f);
++    m_techGlow->setSize(inputWidth, 8.0f);
++    m_techGlow->setStyle(techGradient(0.16f, 4.0f, 4.0f));
++    m_techUnderline->setPosition(contentLeft, underlineY);
++    m_techUnderline->setSize(inputWidth, 2.0f);
++    m_techUnderline->setStyle(techGradient(1.0f));
++
+ 
+     m_loginButton->setSize(buttonWidth, Style::controlHeight());
+     m_loginButton->setPosition((contentLeft + inputWidth + gap), (contentTop));

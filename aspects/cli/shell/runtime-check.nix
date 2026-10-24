@@ -17,7 +17,12 @@ let
       starship = "${home.programs.starship.package}/bin/starship";
       git = "${pkgs.git}/bin/git";
       tmux = "${pkgs.tmux}/bin/tmux";
-      tmuxCurrentFormat = "#[fg=${palette.blue},underscore,bold] #I:#W#{window_flags} #[default]";
+      tmuxCurrentFormat = "#[fg=${palette.brightFg},us=${palette.blue},bold,underscore]#I #W#[nounderscore,nobold,us=default]#{?window_zoomed_flag,#[fg=${palette.yellow}]#[bold] Z,}#[default]";
+      tmuxUnderlineColor = palette.blue;
+      terminfoDirs = [
+        "${pkgs.kitty.terminfo}/share/terminfo"
+        "${pkgs.ncurses}/share/terminfo"
+      ];
       btop = "${home.programs.btop.package}/bin/btop";
       yazi = "${home.programs.yazi.package}/bin/yazi";
       atuin = "${home.programs.atuin.package}/bin/atuin";
@@ -42,10 +47,10 @@ let
         raise RuntimeError("Invalid Kitty workspace settings")
     if opts.cursor.as_sharp != "${palette.brightFg}" or opts.selection_foreground.as_sharp != "${palette.brightFg}":
         raise RuntimeError("Invalid cursor/selection roles")
-    assert opts.tab_bar_style == "separator" and opts.tab_separator == " │ "
+    assert opts.tab_bar_style == "custom"
     assert opts.selection_background.as_sharp == "${palette.selection}"
-    assert opts.active_tab_background.as_sharp == "${palette.selection}"
-    assert opts.active_tab_foreground.as_sharp == "${palette.blue}"
+    assert opts.active_tab_background.as_sharp == "${palette.deep}"
+    assert opts.active_tab_foreground.as_sharp == "${palette.brightFg}"
     assert opts.inactive_tab_foreground.as_sharp == "${palette.fg}"
     assert opts.undercurl_style == "thick-sparse"
     assert opts.cursor_trail == ${if palette.reducedMotion or false then "0" else "1"}
@@ -53,6 +58,10 @@ let
     assert opts.cursor_trail_start_threshold == (4, 4)
     assert opts.cursor_trail_color.as_sharp == "${palette.blue}"
     assert tuple(opts.window_padding_width) == (12, 12, 12, 12)
+    import ast
+    tab_bar = open("${home.xdg.configFile."kitty/tab_bar.py".source}").read()
+    ast.parse(tab_bar)
+    assert "4:1;58:2::" in tab_bar and "${palette.blue}" in tab_bar
     expected = ${
       builtins.toJSON (
         {
@@ -76,6 +85,8 @@ let
 in
 assert !(home.xdg.configFile ? "kitty/mayon.conf");
 assert !(home.home.activation ? seedKittyConfig);
+assert
+  home.programs.btop.settings.color_theme == (if palette == null then "Default" else "One Dark");
 assert home.programs.delta.options.syntax-theme == home.programs.bat.config.theme;
 assert home.home.sessionVariables.BAT_THEME == home.programs.bat.config.theme;
 assert !home.programs.tealdeer.enableAutoUpdates;
@@ -122,12 +133,33 @@ pkgs.runCommand "command-line-runtime"
       home.xdg.configFile."fastfetch/config.jsonc".source
     } --pipe false > "$out/fastfetch.txt" 2> "$out/fastfetch.err"
     test ! -s "$out/fastfetch.err"
-    grep -F 'SYSTEM' "$out/fastfetch.txt"
-    grep -F 'HARDWARE' "$out/fastfetch.txt"
+    # The build sandbox has no os-release, compositor socket or GPU devices.
+    # Those modules remain dynamic and are checked visually after activation.
+    grep -F 'Kernel' "$out/fastfetch.txt"
+    grep -F 'Terminal' "$out/fastfetch.txt"
+    grep -F 'CPU' "$out/fastfetch.txt"
+    grep -F 'Memory' "$out/fastfetch.txt"
+    for key in OS Kernel WM Terminal CPU GPU Memory; do
+      grep -F '"key": "'"$key"'"' ${home.xdg.configFile."fastfetch/config.jsonc".source}
+    done
+    grep -F '"keyColor": "${palette.blue}"' ${home.xdg.configFile."fastfetch/config.jsonc".source}
+    grep -F '"format": "{#${palette.brightFg}}' ${home.xdg.configFile."fastfetch/config.jsonc".source}
     grep -F 'color_theme = "${home.programs.btop.settings.color_theme}"' ${
       home.xdg.configFile."btop/btop.conf".source
     }
-    grep -F '${palette.blue}' ${home.xdg.configFile."btop/themes/One Dark.theme".source}
+    grep -F 'rounded_corners = True' ${home.xdg.configFile."btop/btop.conf".source}
+    grep -F 'theme[cpu_start]="${palette.blue}"' ${
+      home.xdg.configFile."btop/themes/One Dark.theme".source
+    }
+    grep -F 'theme[cpu_end]="${palette.cyan}"' ${
+      home.xdg.configFile."btop/themes/One Dark.theme".source
+    }
+    grep -F 'theme[download_start]="${palette.blue}"' ${
+      home.xdg.configFile."btop/themes/One Dark.theme".source
+    }
+    grep -F 'theme[upload_end]="${palette.cyan}"' ${
+      home.xdg.configFile."btop/themes/One Dark.theme".source
+    }
     python3 - "$out/bat-sample.ansi" "$out/delta-sample.ansi" ${
       home.home.file."${home.xdg.configHome}/tealdeer/config.toml".source
     } <<'PY_CLI'
@@ -174,6 +206,8 @@ pkgs.runCommand "command-line-runtime"
       home.xdg.configFile."tmux/tmux.conf".source
     } new-session -d -s validate
     trap 'tmux -S "$TMPDIR/tmux.sock" kill-server || true' EXIT
+    tmux -S "$TMPDIR/tmux.sock" show-options -s terminal-features | grep -F 'xterm-kitty:usstyle'
+    tmux -S "$TMPDIR/tmux.sock" show-options -s terminal-features | grep -F 'tmux-256color:usstyle'
     tmux -S "$TMPDIR/tmux.sock" list-keys -T root > root.keys
     tmux -S "$TMPDIR/tmux.sock" list-keys -T prefix > prefix.keys
     if grep -E 'M-(z|n|p|Tab|[1-9])[[:space:]]' root.keys; then exit 1; fi
@@ -195,6 +229,7 @@ pkgs.runCommand "command-line-runtime"
     theme = tomllib.load(open(sys.argv[1], "rb"))
     assert theme["indicator"]["current"]["fg"] == "${palette.blue}"
     assert theme["indicator"]["current"]["bg"] == "${palette.selection}"
+    assert theme["indicator"]["padding"]["open"] == "▎"
     PY_YAZI
 
     mkdir -p spy '项目 with spaces'
