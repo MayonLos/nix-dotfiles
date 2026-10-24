@@ -50,7 +50,6 @@ in
       "8bury/mini-docker"
       "cleboost/jetbrains-provider"
       "dunarand/tmux-provider"
-      "noctalia/bongocat"
       "noctalia/translator"
       "radimous/prismlauncher-instances"
       "rxtsel/portctl"

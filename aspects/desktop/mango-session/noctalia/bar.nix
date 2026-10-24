@@ -3,8 +3,6 @@
   palette,
   reducedMotion,
   distroLogo,
-  pkgs,
-  hostFacts,
 }:
 {
   bar.main = {
@@ -91,8 +89,7 @@
           "brightness"
           "power_profile"
           "caffeine"
-        ]
-        ++ lib.optional (!reducedMotion) "noctalia/bongocat:cat";
+        ];
         # Infrequent tools stay out of the default bar and appear on hover.
         accordion = true;
         accordion_direction = "end";
@@ -269,15 +266,6 @@
       show_when_idle = false;
       color_1 = "primary";
       color_2 = "secondary";
-    };
-
-    "noctalia/bongocat:cat" = {
-      executable_path = "${pkgs.evtest}/bin/evtest";
-      input_devices = hostFacts.keyboardDevices;
-      audio_spectrum = !reducedMotion;
-      tappy_mode = !reducedMotion;
-      rave_mode = false;
-      use_mpris_filter = true;
     };
 
     network = {

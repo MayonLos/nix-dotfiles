@@ -199,7 +199,7 @@
 | mini-docker | 保留本机容器快操作；深度管理仍用 Docker CLI，不另添 Portainer 常驻服务。 |
 | JetBrains Provider | 保留项目入口；后续核对只显示仍安装的 IDEA/PyCharm/CLion，清理删除 IDE 的陈旧启动命令。 |
 | tmux Provider | 保留会话入口，tmuxp 是其依赖。 |
-| Bongocat | 保留用户选择的装饰；性能/功耗有疑问时实测动画和输入监听，不预设它无成本或严重耗电。 |
+| Bongocat | 2026-10-25 按用户要求移除（用处不大）；evtest 与 keyboardDevices 事实一并删除。 |
 | Prism Provider | 保留实例启动入口，与 Prism 本体互补。 |
 | Portctl | 保留端口检查与结束监听进程，不因有 btop 就视作完全重复。 |
 | Mango Layouts | 保留布局操作，仍依赖 mmsg/jq；不引入另一套并行布局脚本。 |

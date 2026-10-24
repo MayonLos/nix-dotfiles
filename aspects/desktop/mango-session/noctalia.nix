@@ -117,7 +117,6 @@ in
       # one specific plugin.
       packages = with pkgs; [
         tmuxp # tmux-provider (tmux itself lives in tmux.nix)
-        evtest # bongocat keyboard reactivity; mayon already belongs to input
         libnotify # notify-send for desktop notification review
         nix-search-tv # nix-search community launcher provider
         fzf # nix-search community launcher provider
@@ -186,8 +185,6 @@ in
             palette
             reducedMotion
             distroLogo
-            pkgs
-            hostFacts
             ;
         })
         // (import ./noctalia/plugins.nix {
