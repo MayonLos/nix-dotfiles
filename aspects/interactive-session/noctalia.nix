@@ -164,13 +164,16 @@ in
           shell = {
             lang = "zh-CN";
             font_family = palette.fonts.sans;
-            corner_radius_scale = 1.2;
+            corner_radius_scale = 4.0 / 3.0;
             # One outer outline, quieter cards, and distinct input boundaries.
             button_borders = false;
             card_borders = false;
             input_borders = true;
             popup_borders = true;
             popup_shadows = true;
+            # Panels still close on Escape/outside click; keep the surfaces clear
+            # of repeated close glyphs. Notifications remain dismissible by right-click.
+            show_close_buttons = false;
             # Native history owns collection and persistence; no parallel
             # cliphist watchers. The X11/Wayland bridge is a separate service.
             clipboard_enabled = true;
@@ -213,18 +216,20 @@ in
             };
 
             launcher = {
+              # v5.3's rebuilt full layout; `simple` retains the older compact UI.
               layout = "full";
               width = 680;
               search_position = "top";
               default_view = "recent";
               categories = true;
-              category_icons_only = false;
+              category_icons_only = true;
               show_icons = true;
               compact = false;
               # List rows retain long names and descriptions; provider search,
               # pinned apps, categories and desktop actions remain available.
               app_grid = false;
               show_app_actions = true;
+              track_usage = true;
               sort_by_usage = true;
               pinned = [
                 "kitty.desktop"
@@ -235,12 +240,7 @@ in
               # calculator-plus is removed. The built-in provider has no enable
               # switch; exclude it from ordinary search. Its explicit /calc
               # prefix remains available (an empty prefix restores that default).
-              providers = [
-                {
-                  name = "calculator";
-                  global = false;
-                }
-              ];
+              providers.calculator.global = false;
             };
 
             screen_corners = {
@@ -258,6 +258,8 @@ in
           theme = {
             mode = "dark";
             shell_mode = "follow";
+            # Shell theme changes must not rewrite GNOME's color-scheme preference.
+            sync_color_scheme = false;
             source = "custom";
             custom_palette = "One-Dark-Darker";
             pure_black_dark = false;
@@ -378,6 +380,7 @@ in
             offset_y = 62;
             max_visible = 3;
             border = true;
+            border_color = "outline";
             border_width = 1;
             background_opacity = 0.97;
             # Keep transient messages on the output currently being used.
@@ -390,6 +393,9 @@ in
             orientation = "horizontal";
             offset_y = 28;
             hide_delay_ms = 1400;
+            border = true;
+            border_color = "outline";
+            border_width = 1;
             background_opacity = 0.97;
             follow_focused_output = true;
           };
@@ -467,10 +473,11 @@ in
                 show_unlock_hint = true;
                 show_caps_lock = true;
                 show_keyboard_layout = true;
+                show_password_reveal = true;
                 background_color = "surface_variant";
                 background_opacity = 1.0;
                 background_radius = 16.0;
-                input_radius = 10.0;
+                input_radius = 8.0;
                 input_opacity = 1.0;
               };
             };

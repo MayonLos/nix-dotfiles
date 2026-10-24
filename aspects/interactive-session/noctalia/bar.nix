@@ -17,6 +17,7 @@
     background_opacity = 0.98;
     border = "outline";
     border_width = 1;
+    show_tooltip = true;
     radius = 12;
     margin_ends = 14;
     margin_edge = 8;
@@ -218,6 +219,8 @@
   };
 
   widget.workspaces = {
+    # Noctalia 5.3 draws app icons only in focus_hint (the active pill only).
+    # Keep regular numbered capsules so all nine workspace identities stay visible.
     style = "regular";
     label_source = "id";
     show_labels = true;

@@ -16,6 +16,7 @@ let
   metadata = pkgs.writeText "desktop-contract.json" (
     builtins.toJSON {
       settings = home.programs.noctalia.settings;
+      mango = home.wayland.windowManager.mango.settings;
       units = pkgs.lib.getAttrs [
         "noctalia"
         "fcitx5-daemon"
@@ -72,11 +73,14 @@ pkgs.runCommand "interactive-session-config"
     ${pkgs.lib.getExe home.programs.noctalia.package} config validate ${
       home.xdg.configFile."noctalia/config.toml".source
     } > "$out/noctalia.log" 2>&1 || { cat "$out/noctalia.log"; exit 1; }
-    if grep -iE '\[WARN\]|warning:|\[ERROR\]' "$out/noctalia.log"; then exit 1; fi
+    if grep -iE '\[WARN\]|warning:|\[ERROR\]|^WARN[[:space:]]|[1-9][0-9]* warning\(s\)' "$out/noctalia.log"; then exit 1; fi
     ${pkgs.lib.getExe home.wayland.windowManager.mango.package} -c ${
       home.xdg.configFile."mango/config.conf".source
     } -p > "$out/mango.log" 2>&1 || { cat "$out/mango.log"; exit 1; }
     if grep -iE 'conflict|unknown|invalid|error' "$out/mango.log"; then exit 1; fi
+    # Retain the actual generated inputs beside the pinned parser logs.
+    cp ${home.xdg.configFile."mango/config.conf".source} "$out/mango.conf"
+    cp ${home.xdg.configFile."noctalia/config.toml".source} "$out/noctalia.toml"
     export FONTCONFIG_FILE=${fontConfig}
     fc-match -f '%{family}\n' sans-serif | tee "$out/sans-family.txt"
     grep -Fx '${palette.fonts.sans}' "$out/sans-family.txt"
@@ -219,8 +223,10 @@ pkgs.runCommand "interactive-session-config"
     test ! -e "$users_link_root/AccountsService/icons/mayon"
     test ! -e "$fixture/real-users/mayon"
 
-    python3 - ${metadata} ${home.xdg.configFile."noctalia/palettes/One-Dark-Darker.json".source} <<'PY'
-    import json, re, sys
+    python3 - ${metadata} ${
+      home.xdg.configFile."noctalia/palettes/One-Dark-Darker.json".source
+    } "$out/mango.conf" "$out/noctalia.toml" <<'PY'
+    import json, re, sys, tomllib
     from pathlib import Path
     m = json.load(open(sys.argv[1]))
     p = json.load(open(sys.argv[2]))
@@ -238,6 +244,63 @@ pkgs.runCommand "interactive-session-config"
     colors(p)
     assert p["dark"]["mSurface"] == m["palette"]["bg"] == "#1f2329"
     settings = m["settings"]
+    # Check serialized settings too: validating the Nix attrset alone would
+    # miss a lost/renamed field during Home Manager's config generation.
+    generated = tomllib.loads(Path(sys.argv[4]).read_text())
+    expected = {
+        ("shell", "launcher", "layout"): "full",
+        ("shell", "launcher", "category_icons_only"): True,
+        ("shell", "launcher", "track_usage"): True,
+        ("shell", "launcher", "sort_by_usage"): True,
+        ("shell", "launcher", "providers", "calculator", "global"): False,
+        ("notification", "border_color"): "outline",
+        ("notification", "border_width"): 1,
+        ("osd", "border_color"): "outline",
+        ("osd", "border_width"): 1,
+        ("shell", "show_close_buttons"): False,
+        ("theme", "sync_color_scheme"): False,
+        ("shell", "panel", "border_color"): "outline",
+        ("shell", "panel", "border_width"): 1,
+        ("bar", "main", "show_tooltip"): True,
+        ("widget", "workspaces", "style"): "regular",
+        ("lockscreen_widgets", "widget", "lockscreen-login-box@eDP-1", "settings", "show_password_reveal"): True,
+        ("lockscreen_widgets", "widget", "lockscreen-login-box@eDP-1", "settings", "input_radius"): 8.0,
+    }
+    for keys, value in expected.items():
+        for root in (settings, generated):
+            for key in keys:
+                root = root[key]
+            assert root == value, (keys, root, value)
+    assert p["dark"]["mOutline"] == m["palette"]["border"]
+    assert abs(settings["shell"]["corner_radius_scale"] - 4 / 3) < 1e-6
+    assert settings["shell"]["corner_radius_scale"] == m["greeter"]["appearance"]["corner_radius_scale"]
+    mango = m["mango"]
+    # All 12 title_message_bar options must reach config.conf with the palette
+    # mapping, not just be accepted by a parser that tolerates defaults.
+    prefix = "title_message_bar_"
+    title = {"height": 48, "gap": 12, "decorate_font_desc": m["palette"]["fonts"]["sans"] + " 10",
+             "decorate_border_width": 1, "decorate_corner_radius": 8,
+             "decorate_padding_x": 8, "decorate_padding_y": 4}
+    for suffix, role in {"fg_color": "fg", "bg_color": "deep", "focus_fg_color": "black",
+                         "focus_bg_color": "blue", "border_color": "border"}.items():
+        title["decorate_" + suffix] = "0x" + m["palette"][role].removeprefix("#") + "ff"
+    conf = Path(sys.argv[3]).read_text()
+    parsed = {}
+    for line in conf.splitlines():
+        if "=" in line and not line.lstrip().startswith("#"):
+            key, value = line.split("=", 1)
+            parsed[key.strip()] = value.strip()
+    for suffix, value in title.items():
+        key = prefix + suffix
+        assert mango[key] == value, (key, mango[key], value)
+        assert parsed[key] == str(value), (key, parsed[key], value)
+    assert {key for key in parsed if key.startswith(prefix)} == {prefix + key for key in title}
+    for key, role, alpha in (("root_color", "bg", "ff"), ("drop_color", "blue", "80"), ("split_color", "cyan", "ff")):
+        value = "0x" + m["palette"][role].removeprefix("#") + alpha
+        assert mango[key] == parsed[key] == value, (key, value)
+    assert mango["blur"] == mango["blur_layer"] == mango["layer_shadows"] == mango["layer_animations"] == 0
+    assert settings["shell"]["panel"]["shadow"] and settings["bar"]["main"]["shadow"]
+    assert mango["jump_label_decorate_corner_radius"] == mango["tab_bar_decorate_corner_radius"] == 8
     boot = m["boot"]
     assert boot["timeout"] == 1 and boot["consoleMode"] == "max" and not boot["editor"]
     assert boot["initrdSystemd"] and not boot["initrdVerbose"]
