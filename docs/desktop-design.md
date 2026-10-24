@@ -1,29 +1,28 @@
 # One Dark 精修桌面
 
 现行视觉依据为 [Astra 设计稿](visual-design.md)，2026-10-24 用户确认。
-本轮实现与命令证据见[桌面视觉执行记录](history/visual-desktop-2026-10-24.md)。
+第十九轮科技版与壁纸回退见[本轮执行记录](history/ui-v4-2026-10-25.md)；早期实施见[桌面视觉执行记录](history/visual-desktop-2026-10-24.md)。
 仅修改声明并验证构建，没有激活系统或改写用户目录。旧轮次设计和测量有其时间范围，
 历史取舍见[第九轮记录](history/desktop-polish-2026-10-24.md)。
 
 颜色唯一来源是共享 [palette](../aspects/appearance/appearance/onedark.nix)：
 桌面 bg、卡片 surface、选择 selection；正文 brightFg、必要次级文字 fg，
 blue 标示焦点和短选中标签。无整块蓝色选中行。桌面字体 Inter，中文回退 Noto Sans CJK SC；
-Mango jump 标签使用 Maple Mono NF CN。配置接口与职责遵循[架构规范](architecture-design.md)
+Mango tab/group/title/jump 与科技版读数使用 Maple Mono NF CN。配置接口与职责遵循[架构规范](architecture-design.md)
 和[写入归属](config-ownership.md)。palette 文件与运行态主题选择统一名为 `onedark`。
 
 | 界面 | 实施目标（设计稿章节） |
 |---|---|
 | Noctalia 顶栏 | §3–4：40 高、8/16 外距、12 外圆角；组内 8 圆角、selection 活动工作区蓝字；中文日期，保留托盘/状态入口和低频插件 |
 | Launcher / 控制中心 | §5：680 全布局，pinned；控制中心 compact sidebar，浮动右上 offset12；本地源码主题适配将选中行与活动开关改为 selection 底、蓝色小标记，保持 Primary 蓝字语义 |
-| 通知 / OSD | §6：380 通知，16/64 定位，最多3条；OSD 底部32；均 .98 背景、1 outline；warning 是 normal 消息附文字/图标，critical 保留原生红边 |
-| 锁屏 / greeter | §6：共享静湾默认壁纸，中文日期；锁屏 compact 输入、不显示天气/媒体，blur .40、tint .48、淡入200ms；greeter 采用原生小方形蓝色登录按钮作为 C 类降级 |
-| Mango | §3、§7：2px 焦点蓝边、12 圆角，inner8/outer16；tab/group/title/jump 的 selection/blue；overview16/32；仅浮窗阴影 black/.32、offset0/6；正文不透明，无 dim，无 layer blur/shadow/animation |
-| 壁纸 | §11：四张构建期 SVG→PNG 2560×1600，更亮渐变与蓝青柔光；固定 URL/hash 的 Unsplash 夜景；原冷色002/005/008/009/011；用户 local/ 递归轮换 |
+| 通知 / OSD | §6：380 通知，16/64 定位，最多3条；OSD 底部32、20格分段细轨与等宽数值；均 .98 背景、1 outline；warning 是 normal 消息附文字/图标，critical 保留原生红边 |
+| 锁屏 / greeter | §6：共享 `wallpaper-005.png` 默认壁纸，中文日期；锁屏 compact 输入、不显示天气/媒体，blur .40、tint .48、淡入200ms；科技版认证下划线、等宽读数与原生会话选择，局部源码补丁见功能 README |
+| Mango | §3、§7：2px 焦点蓝边、12 圆角，inner8/outer16；tab/group/title/jump 的 selection/blue；overview16/32；焦点 blue/.22 柔光、非焦点 black/.32 阴影、offset0/0；正文不透明，无 dim，无 layer blur/shadow/animation |
+| 壁纸 | 恢复原冷色 `wallpaper-002/005/008/009/011.png` 五张轮换，默认桌面、锁屏与 greeter 共用 `wallpaper-005.png`；保留用户 `local/` 递归轮换，不生成图像也不下载照片 |
 | 可选 Xorg | 仅外观跟随，复用同一默认图；dwm/dmenu/Dunst/Picom 不增加新会话行为 |
 
-壁纸工厂、许可证与来源在 [资源目录](../aspects/appearance/appearance/resources/wallpaper/CREDITS.md)。
-`managed` 为只读内置壁纸软链，用户 `local/` 只在应用时缺失则创建；两者在同一父目录中，
-Noctalia 递归扫描跟随软链。锁屏使用当前壁纸；其声明默认与 greeter 同为静湾。锁定自动轮换也会在 shell 启动时随机选图，锁屏随桌面当前图。
+壁纸资源为仓库内既有图像，不再有构建期生成器或外部照片来源。`managed` 为只读内置壁纸软链，用户 `local/` 只在应用时缺失则创建；两者在同一父目录中，
+Noctalia 递归扫描跟随软链。锁屏使用当前壁纸；其声明默认与 greeter 同为 005。锁定自动轮换也会在 shell 启动时随机选图，锁屏随桌面当前图。
 
 Astra 的 S1–S3 阴影、面板行高/卡片尺寸、72px 锁屏时钟等部分值属于视觉目标；
 只使用锁定原生接口或明确的局部源码 patch，不虚构配置项。
@@ -39,13 +38,13 @@ Astra 的 S1–S3 阴影、面板行高/卡片尺寸、72px 锁屏时钟等部�
 
 | 消费者 | 实施目标与边界 |
 | --- | --- |
-| GTK 3 | 按 Astra §10 保留 `adw-gtk3-dark`；共享支持提供 palette 原色模板资产束，Noctalia 仍独占 CSS 与 import hook。Thunar 主面 bg、侧栏 deep、工具栏 surface；选中 selection/brightFg 加蓝细边，路径栏圆角 8、焦点蓝线 2；sidebar 宽度保留用户窗口状态 |
+| GTK 3 | 按 Astra §10 保留 `adw-gtk3-dark`；共享支持提供 palette 原色模板资产束，Noctalia 仍独占 CSS 与 import hook。Thunar 主面 bg、侧栏 deep、工具栏 surface；选中 selection 底与 2px 蓝色内侧标记，路径/表格/status 读数使用 Maple Mono；sidebar 宽度保留用户窗口状态 |
 | GTK 4 / libadwaita | 保留 `gtk4.theme = null` 与 prefer-dark，经同一 Noctalia 资产束提供原色；私有绘制与未暴露的控件几何遵循原生实现 |
 | Qt | qt6ct + Fusion，Window=bg、Base=deep、Button/AlternateBase=surface、正文 brightFg、Highlight=selection、HighlightedText=brightFg、Link=blue、PlaceholderText=fg；初始 seed 与 Noctalia runtime 模板一致，既有 GUI 偏好保留。QPalette 不负责圆角 |
-| Firefox | Astra §10：地址栏高 32、圆角 8、蓝焦点线 2；原生垂直标签高 36、间隔 4、中性选中底与蓝短标记。单一 seed/template hook 同时维护 userChrome/userContent 的标记块；新标签页原生搜索框约 560×48、最多一行 8 个常用入口，网站正文保持自身主题 |
+| Firefox | Astra §10：地址栏高 32、圆角 8、蓝焦点线 2；地址与标签读数使用 Maple Mono；原生垂直标签高 36、间隔 4、中性选中底与蓝短标记。单一 seed/template hook 同时维护 userChrome/userContent 的标记块；新标签页原生搜索框约 560×48、最多一行 8 个常用入口，网站正文保持自身主题 |
 | Fcitx5 | Astra §10：明确横排、每页 7 项、Pango 字号 13 pt，保留 Wayland/X11 DPI 修正；bg/brightFg，序号与注释 fg，高亮 selection/blue 加 1px 蓝边，外圆角 12、选项圆角 8，不增加 compositor 阴影 |
 | Swayimg / Fastfetch | Swayimg 信息使用不透明 brightFg/deep，图库 selection 底与 2px 蓝边；Fastfetch 由 CLI 分支负责 |
-| 文档、媒体与其他应用 | Zathura 与 Obsidian 改用 documents 拥有的 palette 原色模板，退出同名社区模板选择。Zathura 阅读底不透明，PDF recolor 默认关闭；Obsidian 只对其注册的 vault 接线同名 snippet。mpv/uosc 使用 brightFg 正文、中性选择面、蓝匹配标记，OSC 圆角 8；uosc 有限主题适配拆分进度/图标前景与选中底。Thunderbird 无既有自定义主题接线，保留原生暗色/GTK 支持。btop、VS Code、Yazi 由各自分支负责 |
+| 文档、媒体与其他应用 | Zathura 与 Obsidian 改用 documents 拥有的 palette 原色模板，退出同名社区模板选择。Zathura 阅读底不透明，PDF recolor 默认关闭，UI 等宽并显示页百分比；按 `Tab` 进入原生目录索引模式，无常驻目录侧栏；原生不支持左选中条与独立细进度线。Obsidian 只对其注册的 vault 接线同名 snippet。mpv/uosc 使用 brightFg 正文、中性选择面、蓝匹配标记与 2px 蓝色选中条，时间等宽、进度线 2px；uosc 不提供选中标记发光选项，采用平面蓝线。OSC 圆角 8。Thunderbird 无既有自定义主题接线，保留原生暗色/GTK 支持。btop、VS Code、Yazi 由各自分支负责 |
 
 鼠标使用 Bibata-Modern-Classic 24，应用图标保持 Papirus-Dark，文件夹采用 blue。
 外观只拥有 `fonts.sans = "Inter"`、`fonts.cjk = "Noto Sans CJK SC"`、

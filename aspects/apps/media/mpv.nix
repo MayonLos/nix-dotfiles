@@ -82,6 +82,7 @@ in
       animation_duration = if palette != null && (palette.reducedMotion or false) then 0 else 100;
       border_radius = 8;
       timeline_style = "line";
+      timeline_line_width = 2;
       timeline_size = 36;
       timeline_persistency = "paused";
       progress = "windowed";

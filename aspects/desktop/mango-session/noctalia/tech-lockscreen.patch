@@ -1,0 +1,253 @@
+--- a/src/shell/lockscreen/lock_surface.h
++++ b/src/shell/lockscreen/lock_surface.h
+@@ -37,6 +37,7 @@
+ class LockscreenTransitionCover;
+ class MprisService;
+ class Renderer;
++class RectNode;
+ class SessionActionRunner;
+ class WallpaperNode;
+ class WeatherService;
+@@ -187,6 +188,9 @@
+   Label* m_authLabel = nullptr;
+   Flex* m_loginContentRow = nullptr;
+   Input* m_passwordField = nullptr;
++  RectNode* m_passwordGlow = nullptr;
++  RectNode* m_passwordUnderline = nullptr;
++  Label* m_runtimeStatusLabel = nullptr;
+   Button* m_passwordRevealButton = nullptr;
+   Button* m_loginButton = nullptr;
+   Button* m_layoutChip = nullptr;
+--- a/src/shell/lockscreen/lock_surface.cpp
++++ b/src/shell/lockscreen/lock_surface.cpp
+@@ -12,6 +12,7 @@
+ #include "render/core/shared_texture_cache.h"
+ #include "render/render_context.h"
+ #include "render/scene/wallpaper_node.h"
++#include "render/scene/rect_node.h"
+ #include "shell/lockscreen/lockscreen_login_box.h"
+ #include "shell/lockscreen/lockscreen_session_actions.h"
+ #include "shell/lockscreen/lockscreen_widgets_host.h"
+@@ -35,9 +36,14 @@
+ #include <cmath>
+ #include <ctime>
+ #include <format>
++#include <filesystem>
++#include <fstream>
+ #include <memory>
+ #include <string_view>
+ #include <tuple>
++#include <pwd.h>
++#include <sys/utsname.h>
++#include <unistd.h>
+ #include <utility>
+ #include <wayland-client-core.h>
+ 
+@@ -152,6 +158,118 @@
+     return formatStrftime("%Y-%m-%d", tm);
+   }
+ 
++  [[nodiscard]] std::string readFirstLine(const std::filesystem::path& path) {
++    std::ifstream input(path);
++    std::string value;
++    std::getline(input, value);
++    return value;
++  }
++
++  // UI4: lockscreen palette-gradient password underline and cached runtime status.
++  [[nodiscard]] std::string lockscreenRuntimeStatus() {
++    using Clock = std::chrono::steady_clock;
++    static auto lastRead = Clock::time_point{};
++    static std::string cached;
++    const auto now = Clock::now();
++    if (!cached.empty() && now - lastRead < std::chrono::seconds{5}) {
++      return cached;
++    }
++    lastRead = now;
++
++    std::string username = "unknown";
++    if (const passwd* account = getpwuid(getuid()); account != nullptr && account->pw_name != nullptr) {
++      username = account->pw_name;
++    }
++    std::array<char, 256> host{};
++    if (gethostname(host.data(), host.size() - 1) != 0 || host.front() == '\0') {
++      host[0] = '?';
++    }
++    utsname system{};
++    const std::string kernel = uname(&system) == 0 ? system.release : "unknown";
++
++    std::string power = "power n/a";
++    std::string care = "养护 --";
++    std::optional<bool> conservationMode;
++    bool conflictingConservationModes = false;
++    std::error_code modeError;
++    const std::filesystem::path ideapadDevices{"/sys/bus/platform/drivers/ideapad_acpi"};
++    for (std::filesystem::directory_iterator it(ideapadDevices, modeError), end;
++         !modeError && it != end; it.increment(modeError)) {
++      const std::string mode = readFirstLine(it->path() / "conservation_mode");
++      if (mode != "0" && mode != "1") {
++        continue;
++      }
++      const bool enabled = mode == "1";
++      if (conservationMode.has_value() && *conservationMode != enabled) {
++        conflictingConservationModes = true;
++      } else {
++        conservationMode = enabled;
++      }
++    }
++    const bool haveConservationMode =
++        !modeError && conservationMode.has_value() && !conflictingConservationModes;
++    if (haveConservationMode) {
++      care = *conservationMode ? "养护 on" : "养护 off";
++    }
++
++    // UI4: ideapad_acpi conservation status precedes the standard battery limit fallback.
++    std::error_code error;
++    const std::filesystem::path supplies{"/sys/class/power_supply"};
++    for (std::filesystem::directory_iterator it(supplies, error), end; !error && it != end; it.increment(error)) {
++      const auto type = readFirstLine(it->path() / "type");
++      if (type != "Battery") {
++        continue;
++      }
++      const std::string chargeLimit = readFirstLine(it->path() / "charge_control_end_threshold");
++      if (!haveConservationMode && !chargeLimit.empty()) {
++        try {
++          const int limit = std::stoi(chargeLimit);
++          if (limit >= 1 && limit <= 100) {
++            care = limit <= 80 ? std::format("养护 ≤{}%", limit) : std::format("养护 off {}%", limit);
++          }
++        } catch (const std::exception&) {
++          care = "养护 --";
++        }
++      }
++
++      const std::string capacityText = readFirstLine(it->path() / "capacity");
++      const std::string state = readFirstLine(it->path() / "status");
++      try {
++        const int capacity = std::stoi(capacityText);
++        if (capacity < 0 || capacity > 100) {
++          throw std::invalid_argument("battery capacity out of range");
++        }
++        const int lit = (capacity + 9) / 10;
++        power = std::format("bat [{}{}] {}% {}", std::string(static_cast<std::size_t>(lit), '#'),
++                            std::string(static_cast<std::size_t>(10 - lit), '.'), capacity,
++                            state.empty() ? "state n/a" : state);
++      } catch (const std::exception&) {
++        power = "bat [..........] n/a";
++      }
++      break;
++    }
++    cached = std::format("{}@{} | Linux {} | {} | {}", username, host.data(), kernel, power, care);
++    return cached;
++  }
++
++  [[nodiscard]] RoundedRectStyle passwordAccentStyle(bool glow) {
++    const Color primary = resolveColorSpec(colorSpecFromRole(ColorRole::Primary));
++    const Color secondary = resolveColorSpec(colorSpecFromRole(ColorRole::Secondary));
++    const float alpha = glow ? 0.22F : 1.0F;
++    RoundedRectStyle style;
++    style.fillMode = FillMode::LinearGradient;
++    style.gradientDirection = GradientDirection::Horizontal;
++    style.gradientStops = {
++        GradientStop{0.0F, withAlpha(primary, alpha)},
++        GradientStop{0.34F, withAlpha(primary, alpha)},
++        GradientStop{0.66F, withAlpha(secondary, alpha)},
++        GradientStop{1.0F, withAlpha(secondary, alpha)},
++    };
++    style.softness = glow ? 2.0F : 1.0F;
++    style.radius = glow ? 3.0F : 1.0F;
++    return style;
++  }
++
+ } // namespace
+ 
+ LockSurface::LockSurface(WaylandConnection& connection, ConfigService* config) : Surface(connection), m_config(config) {
+@@ -199,6 +317,24 @@
+               .configure = [](Flex& flex) { flex.setZIndex(2); },
+           }
+       )
++  );
++
++  m_root.addChild(
++      ui::label({
++          .out = &m_runtimeStatusLabel,
++          .text = "",
++          .fontSize = Style::fontSizeCaption,
++          .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
++          .maxLines = 1,
++          .textAlign = TextAlign::Center,
++          .visible = false,
++          .configure = [](Label& label) {
++            label.setFontFamily("monospace");
++            label.setEllipsize(TextEllipsize::Middle);
++            label.setHitTestVisible(false);
++            label.setZIndex(5);
++          },
++      })
+   );
+ 
+   m_loginPanel->addChild(
+@@ -505,6 +641,19 @@
+       })
+   );
+ 
++  {
++    auto glow = std::make_unique<RectNode>();
++    m_passwordGlow = static_cast<RectNode*>(m_passwordField->addChild(std::move(glow)));
++    m_passwordGlow->setStyle(passwordAccentStyle(true));
++    m_passwordGlow->setZIndex(1);
++    m_passwordGlow->setHitTestVisible(false);
++    auto underline = std::make_unique<RectNode>();
++    m_passwordUnderline = static_cast<RectNode*>(m_passwordField->addChild(std::move(underline)));
++    m_passwordUnderline->setStyle(passwordAccentStyle(false));
++    m_passwordUnderline->setZIndex(2);
++    m_passwordUnderline->setHitTestVisible(false);
++  }
++
+   m_loginContentRow->addChild(
+       ui::button({
+           .out = &m_passwordRevealButton,
+@@ -1082,6 +1231,7 @@
+   m_backgroundLayer->setVisible(false);
+   m_widgetLayer->setVisible(false);
+   m_loginPanel->setVisible(false);
++  m_runtimeStatusLabel->setVisible(false);
+   m_authPanel->setVisible(false);
+   layoutTransitionCover();
+   syncTransitionCover();
+@@ -1218,6 +1368,7 @@
+     );
+     m_widgetLayer->setVisible(false);
+     m_loginPanel->setVisible(false);
++    m_runtimeStatusLabel->setVisible(false);
+     m_passwordField->setVisible(false);
+     if (m_passwordRevealButton != nullptr) {
+       m_passwordRevealButton->setVisible(false);
+@@ -1533,6 +1684,27 @@
+   }
+ 
+   m_loginPanel->arrange(renderer, LayoutRect{panelX, panelY, panelWidth, panelHeight});
++  if (m_passwordGlow != nullptr && m_passwordUnderline != nullptr && loginVisible) {
++    const float fieldWidth = m_passwordField->width();
++    const float fieldHeight = m_passwordField->height();
++    m_passwordGlow->setPosition(0.0F, std::max(0.0F, fieldHeight - 5.0F));
++    m_passwordGlow->setSize(fieldWidth, 8.0F);
++    m_passwordUnderline->setPosition(0.0F, std::max(0.0F, fieldHeight - 2.0F));
++    m_passwordUnderline->setSize(fieldWidth, 2.0F);
++  }
++  const bool showRuntimeStatus = m_locked && !m_blackout;
++  m_runtimeStatusLabel->setVisible(showRuntimeStatus);
++  if (showRuntimeStatus) {
++    m_runtimeStatusLabel->setText(lockscreenRuntimeStatus());
++    m_runtimeStatusLabel->setFontSize(captionSize);
++    m_runtimeStatusLabel->setMaxWidth(std::max(0.0F, sw - Style::spaceLg * 2.0F));
++    m_runtimeStatusLabel->measure(renderer);
++    const float statusHeight = std::max(captionSize, m_runtimeStatusLabel->height());
++    m_runtimeStatusLabel->arrange(
++        renderer,
++        LayoutRect{Style::spaceLg, sh - statusHeight - Style::spaceMd, sw - Style::spaceLg * 2.0F, statusHeight}
++    );
++  }
+ 
+   // Auth panel: sibling above/below the login box (flips below when near the top edge).
+   if (m_authPanel != nullptr && m_authLabel != nullptr) {

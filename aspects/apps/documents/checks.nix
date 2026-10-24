@@ -8,6 +8,7 @@ let
   templates = home.programs.noctalia.settings.theme.templates.user;
   zathura = templates.documents-zathura.input_path;
   obsidian = templates.documents-obsidian.input_path;
+  zathuraOptions = home.programs.zathura.options;
   python = pkgs.python3.withPackages (pythonPackages: [ pythonPackages.tinycss2 ]);
   paletteColors = builtins.filter (
     value: builtins.isString value && builtins.substring 0 1 value == "#"
@@ -22,7 +23,7 @@ in
       ''
         export PYTHONDONTWRITEBYTECODE=1
         ${python}/bin/python ${./resources}/test_obsidian_theme.py
-        ${python}/bin/python - ${zathura} ${obsidian} '${builtins.toJSON paletteColors}' <<'PY'
+        ${python}/bin/python - ${zathura} ${obsidian} '${builtins.toJSON paletteColors}' '${builtins.toJSON zathuraOptions}' <<'PY'
         import json
         import re
         import shlex
@@ -34,6 +35,11 @@ in
         zathura = Path(sys.argv[1]).read_text(encoding="utf-8")
         css = Path(sys.argv[2]).read_text(encoding="utf-8")
         palette_colors = set(json.loads(sys.argv[3]))
+        zathura_options = json.loads(sys.argv[4])
+        assert zathura_options["guioptions"] == "s"
+        assert zathura_options["statusbar-page-percent"] is True
+        assert zathura_options["statusbar-basename"] is False
+        assert "Maple Mono NF CN" in zathura_options["font"]
         expected_zathura = {
             "default-bg", "default-fg", "recolor-lightcolor", "recolor-darkcolor",
             "statusbar-bg", "statusbar-fg", "inputbar-bg", "inputbar-fg",

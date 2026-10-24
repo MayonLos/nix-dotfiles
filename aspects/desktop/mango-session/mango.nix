@@ -42,6 +42,7 @@ in
 
   wayland.windowManager.mango = {
     enable = true;
+    package = import ./package.nix { inherit inputs pkgs; };
 
     # Mango's systemd hook imports dynamic session variables and starts
     # mango-session.target. The static whitelist below is available to Mango's
@@ -126,14 +127,14 @@ in
       layer_animations = 0;
       shadows = 1;
       layer_shadows = 0;
-      # Elevation belongs to floating tools/dialogs. Tiled documents use the
-      # existing border/focus colours instead of a shadow in every narrow gap.
-      shadow_only_floating = 1;
+      # UI v4: subtle focused blue elevation also identifies tiled clients.
+      shadow_only_floating = 0;
       shadows_size = 10;
       shadows_blur = 20;
       shadows_position_x = 0;
-      shadows_position_y = 6;
+      shadows_position_y = 0;
       shadows_color = alphaColor palette.black "52";
+      focused_shadows_color = alphaColor palette.blue "38";
 
       # Comparing multiple documents should not change their text contrast.
       # The accent border identifies focus without tinting the other clients.
@@ -146,12 +147,12 @@ in
       drop_color = "0x${lib.removePrefix "#" palette.blue}80";
       split_color = color palette.cyan;
       border_px = 2;
-      border_color = "${color palette.border}";
+      border_color = "${color palette.surface}";
       focus_color = "${color palette.blue}";
       urgent_color = "${color palette.red}";
-      scratchpad_color = "${color palette.purple}";
-      global_color = "${color palette.cyan}";
-      overlay_color = "${color palette.purple}";
+      scratchpad_color = "${color palette.blue}";
+      global_color = "${color palette.blue}";
+      overlay_color = "${color palette.blue}";
       maximized_screen_color = "${color palette.blue}";
       border_radius = 12;
       gap_inner_horizontal = 8;
@@ -245,12 +246,12 @@ in
       # deck_tab_mode stays at its default because deck is outside circle_layout.
       monocle_tab_mode = 1;
       tab_bar_height = 32;
-      tab_bar_decorate_font_desc = "${palette.fonts.sans} 10.5";
+      tab_bar_decorate_font_desc = "${palette.fonts.mono} 10.5";
       tab_bar_decorate_fg_color = "${color palette.fg}";
       tab_bar_decorate_bg_color = "${color palette.deep}";
       tab_bar_decorate_focus_fg_color = "${color palette.blue}";
       tab_bar_decorate_focus_bg_color = "${color palette.selection}";
-      tab_bar_decorate_border_color = "${color palette.border}";
+      tab_bar_decorate_border_color = "${color palette.surface}";
       tab_bar_decorate_border_width = 1;
       tab_bar_decorate_corner_radius = 8;
       tab_bar_decorate_padding_x = 8;
@@ -260,12 +261,12 @@ in
       group_bar_button_size = 16;
       group_bar_button_margin = 8;
       group_bar_button_color = color palette.red;
-      group_bar_decorate_font_desc = "${palette.fonts.sans} 10.5";
+      group_bar_decorate_font_desc = "${palette.fonts.mono} 10.5";
       group_bar_decorate_fg_color = "${color palette.fg}";
       group_bar_decorate_bg_color = "${color palette.deep}";
       group_bar_decorate_focus_fg_color = "${color palette.blue}";
       group_bar_decorate_focus_bg_color = "${color palette.selection}";
-      group_bar_decorate_border_color = "${color palette.border}";
+      group_bar_decorate_border_color = "${color palette.surface}";
       group_bar_decorate_border_width = 1;
       group_bar_decorate_corner_radius = 8;
       group_bar_decorate_padding_x = 8;
@@ -275,7 +276,7 @@ in
       jump_label_decorate_bg_color = "${color palette.deep}";
       jump_label_decorate_focus_fg_color = "${color palette.blue}";
       jump_label_decorate_focus_bg_color = "${color palette.selection}";
-      jump_label_decorate_border_color = "${color palette.border}";
+      jump_label_decorate_border_color = "${color palette.surface}";
       jump_label_decorate_border_width = 1;
       jump_label_decorate_corner_radius = 8;
       jump_label_decorate_padding_x = 8;
@@ -285,7 +286,7 @@ in
       # Use the same type, outline and focused blue as the monocle tab bar.
       title_message_bar_height = 48;
       title_message_bar_gap = 12;
-      title_message_bar_decorate_font_desc = "${palette.fonts.sans} 10.5";
+      title_message_bar_decorate_font_desc = "${palette.fonts.mono} 10.5";
       title_message_bar_decorate_fg_color = color palette.fg;
       title_message_bar_decorate_bg_color = color palette.deep;
       title_message_bar_decorate_focus_fg_color = color palette.blue;

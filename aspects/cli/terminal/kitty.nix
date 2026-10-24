@@ -5,6 +5,7 @@ let
   ansiConfig = lib.concatStringsSep "\n" (
     lib.imap0 (index: color: "color${toString index} ${color}") ansi
   );
+  tabBar = import ./tab-bar.nix { inherit palette; };
 in
 {
   home.packages = [ pkgs.kitty ];
@@ -39,11 +40,10 @@ in
 
     # Match the editor's quiet tabs without adding a second project manager.
     tab_bar_min_tabs 2
-    tab_bar_style separator
-    tab_separator " │ "
+    tab_bar_style custom
     tab_title_template "{index}: {title}"
-    active_tab_foreground ${palette.blue}
-    active_tab_background ${palette.selection}
+    active_tab_foreground ${palette.brightFg}
+    active_tab_background ${palette.deep}
     active_tab_font_style bold
     inactive_tab_foreground ${palette.fg}
     inactive_tab_background ${palette.deep}
@@ -74,4 +74,6 @@ in
 
     ${ansiConfig}
   '';
+
+  xdg.configFile."kitty/tab_bar.py".text = tabBar;
 }

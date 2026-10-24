@@ -18,17 +18,20 @@ in
 
   services.displayManager.noctalia-greeter = {
     enable = true;
+    package = import ./package.nix { inherit inputs pkgs; };
     settings = {
       session.default = "Mango";
 
       appearance = {
         scheme = "Synced";
-        password_style = "random";
+        password_style = "default";
         theme_mode = "dark";
         # Match the shell's central authentication scene and rounded surfaces.
         corner_radius_scale = 4.0 / 3.0;
         hide_logo = true;
-        font_family = palette.fonts.sans;
+        # Greeter v1.7.0 only exposes one appearance font family; use the
+        # palette's monospace face so its clock and status readouts align.
+        font_family = palette.fonts.mono;
         scheme_selector_position = "hidden";
         power_buttons_position = "bottom-right";
         palette = {
@@ -60,6 +63,8 @@ in
         enabled = true;
         position = "above-panel";
         time_format = "{:%H:%M}";
+        time_font_size = 60;
+        date_font_size = 14;
         date_format = "%Y年%m月%d日 %A";
       };
 

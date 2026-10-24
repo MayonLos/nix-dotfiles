@@ -1,0 +1,94 @@
+--- a/src/shell/osd/osd_overlay.h
++++ b/src/shell/osd/osd_overlay.h
+@@ -17,6 +17,7 @@
+ class Glyph;
+ class Label;
+ class ProgressBar;
++class RectNode;
+ class RenderContext;
+ class WaylandConnection;
+ struct WaylandOutput;
+@@ -104,6 +105,7 @@
+     Glyph* glyph = nullptr;
+     Label* value = nullptr;
+     ProgressBar* progress = nullptr;
++    std::vector<RectNode*> progressTicks;
+     float progressValueMinWidth = 0.0F;
+     float rowBaseX = 0.0F;
+     float rowBaseY = 0.0F;
+--- a/src/shell/osd/osd_overlay.cpp
++++ b/src/shell/osd/osd_overlay.cpp
+@@ -10,7 +10,9 @@
+ #include "ipc/ipc_service.h"
+ #include "render/core/renderer.h"
+ #include "render/render_context.h"
++#include "render/core/render_styles.h"
+ #include "render/scene/node.h"
++#include "render/scene/rect_node.h"
+ #include "shell/surface/edge_inset.h"
+ #include "ui/builders.h"
+ #include "ui/palette.h"
+@@ -717,6 +719,8 @@
+   const float pad = cardPadding(s);
+   const float gap = innerGap(s);
+ 
++  // UI4: clear non-owning tick pointers before rebuilding their owning scene tree.
++  inst.progressTicks.clear();
+   inst.sceneRoot = ui::node({});
+   inst.sceneRoot->setSize(w, h);
+   inst.sceneRoot->setOpacity(1.0F);
+@@ -781,7 +785,10 @@
+       .maxWidth = vertical ? cw - pad * 2.0F : 0.0F,
+       .maxLines = 1,
+       .textAlign = vertical ? TextAlign::Center : TextAlign::End,
+-      .configure = [](Label& label) { label.setZIndex(1); },
++      .configure = [](Label& label) {
++        label.setFontFamily("monospace");
++        label.setZIndex(1);
++      },
+   });
+   // Reserve enough width for "100%" so the progress bar doesn't shrink at max values.
+   value->measure(renderer);
+@@ -800,6 +807,19 @@
+       .flexGrow = 1.0F,
+       .configure = [](ProgressBar& progressBar) { progressBar.setZIndex(1); },
+   });
++  // UI4: palette-surface separators create twenty compact ticks over the native bar.
++  for (int index = 1; index < 20; ++index) {
++    auto separator = std::make_unique<RectNode>();
++    auto* rawSeparator = separator.get();
++    RoundedRectStyle style;
++    style.fill = resolveColorSpec(colorSpecFromRole(ColorRole::Surface));
++    style.fillMode = FillMode::Solid;
++    separator->setStyle(style);
++    separator->setZIndex(2);
++    separator->setHitTestVisible(false);
++    inst.progress->addChild(std::move(separator));
++    inst.progressTicks.push_back(rawSeparator);
++  }
+ 
+   std::unique_ptr<Flex> row;
+   if (vertical) {
+@@ -871,6 +891,22 @@
+   inst.progress->setProgress(m_content.progress);
+   Renderer& renderer = inst.surface->renderTarget().renderer();
+   inst.row->layout(renderer);
++  // Children are positioned after Flex assigns the final native ProgressBar size.
++  const float tickW = vertical ? inst.progress->width() : inst.progress->width() / 20.0F;
++  const float tickH = vertical ? inst.progress->height() / 20.0F : inst.progress->height();
++  for (std::size_t index = 0; index < inst.progressTicks.size(); ++index) {
++    RectNode* tick = inst.progressTicks[index];
++    if (tick == nullptr) {
++      continue;
++    }
++    if (vertical) {
++      tick->setPosition(0.0F, tickH * static_cast<float>(index + 1) - 0.75F);
++      tick->setSize(tickW, 1.5F);
++    } else {
++      tick->setPosition(tickW * static_cast<float>(index + 1) - 0.75F, 0.0F);
++      tick->setSize(1.5F, tickH);
++    }
++  }
+   const float rowX = std::round((cw - inst.row->width()) * 0.5F);
+   const float rowY = std::round((ch - inst.row->height()) * 0.5F);
+   inst.rowBaseX = vertical ? rowX : cardPadding(s);

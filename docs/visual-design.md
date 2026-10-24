@@ -206,7 +206,7 @@ Kitty 从 `font_size=11.0` pt 开始（约 14.67 CSS px），不是把 15 直接
 
 ### 锁屏
 
-壁纸“静湾”的暗化版本；时钟在中心偏上，72 字号、中文日期 16；登录区在逻辑中心偏下，宽约 440，使用 **compact 密码行**。原生解锁提示是独立状态卡，位于输入行上方，不把它硬塞成自定义竖向头像表单。输入 40–44 高，radius 8、实底；认证失败保留尺寸，仅提示卡显示“密码不正确，请重试”。Caps Lock 显示文字；不因错误播放震动动画。媒体与天气在本方案不进入锁屏。
+壁纸 005 的暗化版本；时钟在中心偏上，72 字号、中文日期 16；登录区在逻辑中心偏下，宽约 440，使用 **compact 密码行**。原生解锁提示是独立状态卡，位于输入行上方，不把它硬塞成自定义竖向头像表单。输入 40–44 高，radius 8、实底；认证失败保留尺寸，仅提示卡显示“密码不正确，请重试”。Caps Lock 显示文字；不因错误播放震动动画。媒体与天气在本方案不进入锁屏。
 
 **依据 A**：`lockscreen_widgets.widget.<id>` 的 `type="clock"/"label"`、`cx/cy/box_width/box_height/settings.format/font_family`；login box `layout="compact"`、`background_color="surface"`、`background_opacity=1`、`background_radius=16`、`input_opacity=1`、`input_radius=8`、`show_unlock_hint=true`、`show_caps_lock=true`、`show_keyboard_layout=true`。login box 只可移动，不可任意 resize；图稿的宽高是原生近似。`lockscreen.blurred_desktop=false` 使用壁纸，blur .40 / tint .48。
 
@@ -295,16 +295,11 @@ diff 合成后的实测正文对比：8% green/red/blue 底分别约 10.70 / 11.
 
 **依据 A/B/C**：现有 Firefox `userChrome.css` 已处理 `#nav-bar/#urlbar-background/.tab-background/#tabbrowser-tabs[orient="vertical"]`；垂直标签用当前 Firefox 原生开关，不要求扩展。新标签页样式需单独 `userContent.css`，限定 `@-moz-document url("about:newtab"),url("about:home")`；`userChrome.css` 不能改网页内容。原生内容DOM随Firefox版本变化，间距/色值是主题目标，默认内容数量/开关先用浏览器设置；CSS选择器须在实施时检查。图稿没有承诺把时间/文案注入原生新标签页。
 
-## 11. 壁纸方向与场景
+## 11. 壁纸回退与用户目录
 
-四张均 2560 × 1600、sRGB、静态；无字、无徽标、无高光点。所有彩色覆盖最大 alpha .10，边缘留暗，中心与上缘为低细节区。配方、坐标、渐变 stop、噪声算法与种子见 [壁纸配方](../aspects/appearance/appearance/resources/wallpaper/RECIPE.md)。
+2026-10-25 按用户要求恢复仓库已有的冷色五张图：`wallpaper-002.png`、`wallpaper-005.png`、`wallpaper-008.png`、`wallpaper-009.png`、`wallpaper-011.png`。默认桌面、greeter 与锁屏资源为 005；锁屏的原生背景跟随桌面当前壁纸，轮换后会显示当前图片。四张新绘制图与外部照片不再进入资源工厂；不再有构建期图像生成器或配方。全部 `wallpaper-0xx.png` 原始文件均保留。
 
-1. **01 静湾**：深石墨底、右下三层缓慢弧面，蓝青低浓度光带；默认工作壁纸，顶部全暗。
-2. **02 层峦**：山脊形的三条宽缓 Bézier 面，深/表面交替；略带青色的远层，适合空桌面。
-3. **03 轨道**：右侧偏心大圆环，左侧留白；线宽极细、曲率大，不做科幻HUD。
-4. **04 夜纸**：几乎单色的竖向纸面渐变与稀疏斜线，最低视觉负担；锁屏和长时间阅读备选。
-
-**依据 A/B**：Noctalia wallpaper 服务可读取静态 PNG/JPEG；使用本地目录、固定路径、禁用主题自动取色。图稿 CSS 是构图近似；正式壁纸用 SVG 路径与确定性噪声栅格化为 PNG。未交付照片或生成式图像，不依赖 image API。
+`~/Pictures/Wallpapers/managed` 是只读内置集合，`local/` 继续归用户拥有。Noctalia 递归扫描共同父目录并跟随目录软链；移除功能不清理本地图像或历史。固定 One Dark 配色，不从壁纸自动提色。
 
 ## 12. 依据索引与验收交接
 
@@ -321,3 +316,22 @@ diff 合成后的实测正文对比：8% green/red/blue 底分别约 10.70 / 11.
 3. 白色网页放在顶栏/通知后验证透明最差情形；长中文通知和候选不裁切；输入法贴近光标并由原生避边。
 4. 原生A/B接口先落实；C类选中态差距必须单独记录，不把HTML CSS当成Noctalia配置。Noctalia禁用文本、首页壁纸tint、认证错误提示须实屏测量。
 5. 实机功耗与动画帧时间尚未测量；图稿中的模糊与阴影不构成性能承诺。
+
+## 13. 第十九轮科技版（2026-10-25）
+
+本节覆盖前文与本轮冲突的外观目标。唯一视觉依据为用户确认的 `ui4/term.html` / `term.png`、`ui4/sys2.html` / `sys2.png`；顶栏沿用 `ui3/bar2.html` 的下划指示，相关第十八轮变更由另一 worktree 实施。本轮不修改顶栏、launcher、控制中心、输入法主题和 Neovim。
+
+| 科技版令牌 | 表达方式 |
+|---|---|
+| 等宽读数 | Maple Mono NF CN；用于时钟、日期、路径、表头、时间/容量/百分比、模式徽标；中文正文保留可读字体 |
+| 渐变细描边 | blue → cyan，仅用于认证框下沿与必要边缘；颜色从 palette/主题角色传入，不增加源色 |
+| 发光下划线 | 认证输入底部细线配低透明度 blue 柔光；失败仍保留文字/错误状态 |
+| 分段刻度 | OSD 20 个细轨刻度，亮段 blue、轨道 selection，数值等宽；电量为独立分段读数，数据实时获取 |
+| 焦点外发光 | Mango 焦点蓝边 2px，blue alpha 约 22% 的柔和外发光；非焦点 surface 边与 black 柔和阴影 |
+| 下划指示 | Kitty/tmux/herdr 的活动标签使用终端 underline，保留中性背景；终端字符单元不等同于 CSS 2px 描边 |
+
+终端：Kitty 原生标题 renderer 外围加蓝下划；tmux 底部 session 蓝字、活动窗口下划，zoom 显示黄色 Z，prefix/copy/zoom 为蓝/黄/紫小徽标，非焦点 pane 只留 surface 分隔线。Starship 两行、目录蓝、分支紫、变更黄、耗时 muted、失败红提示符。Yazi selection 底与蓝标记，Lazygit 圆角细线面板，btop 原生细圆角与蓝青渐变。fastfetch 小 Nix 标志配平铺键值，键蓝色。herdr 是新增独立 agent 工作区，保留 tmux，入口为 `Super+Alt+H` 与 desktop launcher。
+
+系统界面：锁屏与 greeter 用等宽时钟/日期、蓝青底线和等宽状态；Mango tab/group/title 使用等宽字体；OSD 数值等宽、分段细轨。Thunar 与 Firefox 保留已有单一模板/seed，选择态 selection 底加左蓝条，路径和读数等宽；uosc 细进度线和蓝选中条。Zathura 以原生目录索引和数字页进度替代文件目录侧栏/独立进度线，uosc 采用平面线而无发光。
+
+补丁清单和上游升级处理在 [Mango session README](../aspects/desktop/mango-session/README.md)、[greeter README](../aspects/desktop/greeter/README.md)、[herdr README](../aspects/cli/herdr/README.md)。补丁应用和关键渲染锚点在构建期强制校验；不能用求值成功代替补丁构建或视觉验收。实际完成范围、命令结果和剩余实机项见 [第十九轮记录](history/ui-v4-2026-10-25.md)。

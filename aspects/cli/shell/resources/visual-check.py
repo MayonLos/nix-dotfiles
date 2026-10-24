@@ -124,12 +124,10 @@ try:
     tmux("send-keys", "-X", "cancel")
     tmux("resize-pane", "-Z")
     zoom = status()
-    assert "放大" in zoom, zoom
+    assert "缩放" in zoom, zoom
     tmux("resize-pane", "-Z")
-    tmux("set-option", "-g", "@rounded-caps", "off")
-    bracket = tmux("display-message", "-p", "#{E:status-left}")
-    assert "[" in bracket and "" not in bracket, bracket
-    tmux("set-option", "-g", "@rounded-caps", "on")
+    flat = tmux("display-message", "-p", "#{E:status-left}")
+    assert "" not in flat and "" not in flat, flat
     long_dir = repo / ("long-path-" + "x" * 90)
     long_dir.mkdir()
     tmux("new-window", "-n", "活动终端", "-c", str(long_dir))
@@ -140,10 +138,10 @@ try:
         settle()
         rendered = status()
         assert ("long-path-" in rendered) == (width >= 80), (width, rendered)
-        assert ("月" in rendered) == (width >= 100), (width, rendered)
+        assert re.search(r"\d{2}:\d{2}", rendered), rendered
         assert "x" * 30 not in rendered, (width, rendered)
         widths.append(f"{width}: {rendered}")
-    (out / "tmux-states.txt").write_text("\n".join([prefix, copy, zoom, bracket, *widths]))
+    (out / "tmux-states.txt").write_text("\n".join([prefix, copy, zoom, flat, *widths]))
 finally:
     client.terminate()
     client.wait(timeout=5)

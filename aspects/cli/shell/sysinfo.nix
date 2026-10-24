@@ -9,6 +9,7 @@ let
       {
         blue = "blue";
         cyan = "cyan";
+        red = "red";
         green = "green";
         yellow = "yellow";
         purple = "magenta";
@@ -18,17 +19,9 @@ let
       }
     else
       palette;
-  section = label: color: {
-    type = "custom";
-    format = "{#${color}}╭─ ${label} ─────────────────────────╮{#}";
-  };
-  sectionEnd = color: {
-    type = "custom";
-    format = "{#${color}}╰────────────────────────────────────╯{#}";
-  };
-  key = glyph: label: color: {
-    key = "${glyph} ${label}";
-    keyColor = color;
+  key = label: {
+    key = label;
+    keyColor = colors.blue;
   };
 in
 
@@ -53,99 +46,65 @@ in
           brightColor = false;
           separator = "  ";
           key = {
-            width = 12;
+            width = 8;
             paddingLeft = 1;
           };
           color = {
             output = colors.brightFg;
             separator = colors.border;
           };
-          bar = {
-            width = 8;
-            char = {
-              elapsed = "■";
-              total = "─";
-            };
-            color = {
-              total = colors.border;
-              inherit (colors) border;
-            };
-          };
         };
         modules = [
           {
             type = "title";
-            format = "{#${colors.purple}}{user-name}{#}{#${colors.border}}@{#}{#${colors.blue}}{host-name}{#}";
+            format = "{#${colors.brightFg}}{user-name}@{host-name}{#}";
           }
           "break"
-          (section "SYSTEM" colors.blue)
-          ((key "" "OS" colors.blue) // { type = "os"; })
-          ((key "" "Kernel" colors.cyan) // { type = "kernel"; })
-          ((key "" "Up" colors.green) // { type = "uptime"; })
-          ((key "󰏖" "Pkgs" colors.yellow) // { type = "packages"; })
-          ((key "" "WM" colors.purple) // { type = "wm"; })
+          ((key "系统") // { type = "os"; })
+          ((key "内核") // { type = "kernel"; })
+          ((key "桌面") // { type = "wm"; })
+          ((key "终端") // { type = "terminal"; })
+          ((key "CPU") // { type = "cpu"; })
           (
-            (key "󰍹" "Display" colors.blue)
-            // {
-              type = "display";
-              compactType = "original-with-refresh-rate";
-            }
-          )
-          (sectionEnd colors.blue)
-          "break"
-          (section "HARDWARE" colors.purple)
-          ((key "" "CPU" colors.cyan) // { type = "cpu"; })
-          (
-            (key "󰾲" "GPU" colors.green)
+            (key "GPU")
             // {
               type = "gpu";
               format = "{vendor} {name}";
             }
           )
           (
-            (key "" "Memory" colors.yellow)
+            (key "内存")
             // {
               type = "memory";
-              percent.type = 3;
             }
           )
-          (
-            (key "" "Disk" colors.yellow)
-            // {
-              type = "disk";
-              folders = "/";
-              percent.type = 3;
-            }
-          )
-          (
-            (key "" "Battery" colors.blue)
-            // {
-              type = "battery";
-              percent.type = 3;
-            }
-          )
-          (sectionEnd colors.purple)
-          "break"
           {
-            type = "colors";
-            symbol = "circle";
+            type = "custom";
+            format = lib.concatMapStringsSep " " (color: "{#${color}}██{#}") [
+              colors.red
+              colors.green
+              colors.yellow
+              colors.blue
+              colors.purple
+              colors.cyan
+            ];
           }
         ];
       };
     };
 
-    # The CLI uses the shared One Dark palette. HM remains the single
-    # btop.conf renderer; Noctalia integration only supplies its own theme.
+    # Home Manager is the sole btop.conf renderer, using the shared palette.
     btop = {
       enable = true;
       themes = lib.optionalAttrs (palette != null) {
         "One Dark" = import ./onedark-btop.nix { inherit palette; };
       };
       settings = {
-        # Noctalia may select its own theme for the desktop session.
+        # Keep btop on its generated palette theme as the sole config writer.
         color_theme = lib.mkDefault (if palette == null then "Default" else "One Dark");
         # Keep the terminal background consistent with other CLI tools.
         theme_background = false;
+        rounded_corners = true;
         vim_keys = true;
       };
     };

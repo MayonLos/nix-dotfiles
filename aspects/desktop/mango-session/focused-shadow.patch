@@ -1,0 +1,54 @@
+--- a/include/mango/config/parse.h
++++ b/include/mango/config/parse.h
+@@ -468,6 +468,7 @@
+ 	int32_t shadows_position_x;
+ 	int32_t shadows_position_y;
+ 	float shadowscolor[4];
++	float focused_shadowscolor[4];
+ 	int32_t dim_enable;
+ 	float dim_focused_color[4];
+ 	float dim_unfocused_color[4];
+--- a/src/config/option_defs.c
++++ b/src/config/option_defs.c
+@@ -974,6 +974,14 @@
+ 		} else {
+ 			convert_hex_to_rgba(config->shadowscolor, color);
+ 		}
++	} else if (strcmp(key, "focused_shadows_color") == 0) {
++		/* UI v4: focus elevation must follow focus, not every client. */
++		int64_t color = parse_color(value);
++		if (color == -1) {
++			mango_error(false, WLR_ERROR, "Invalid focused_shadows_color: %s\n", value);
++			return false;
++		}
++		convert_hex_to_rgba(config->focused_shadowscolor, color);
+ 	} else if (strcmp(key, "dim_enable") == 0) {
+ 		config->dim_enable = atoi(value);
+ 	} else if (strcmp(key, "dim_focused_color") == 0) {
+@@ -2561,6 +2569,8 @@
+ 	config.shadowscolor[1] = 0.0f;
+ 	config.shadowscolor[2] = 0.0f;
+ 	config.shadowscolor[3] = 1.0f;
++	memcpy(config.focused_shadowscolor, config.shadowscolor,
++		   sizeof(config.focused_shadowscolor));
+ 
+ 	config.dim_enable = 0;
+ 	config.dim_focused_color[0] = 0.0f;
+--- a/src/manage/client.c
++++ b/src/manage/client.c
+@@ -351,6 +351,15 @@
+ void client_set_state_colors(Client *c, const float border_color[4],
+ 							 const float dim_color[4]) {
+ 	client_set_border_color(c, border_color);
++
++	/* UI v4: also runs for focus animation, monitor changes and reloads. */
++	if (c->shadow) {
++		bool focused = server.selected_monitor &&
++			c->mon == server.selected_monitor && c == server.selected_monitor->sel;
++		wlr_scene_shadow_set_color(c->shadow,
++			focused ? config.focused_shadowscolor : config.shadowscolor);
++	}
++
+ 
+ 	if (c->dim_node) {
+ 		mango_dim_node_set_color(c->dim_node, dim_color);

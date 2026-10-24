@@ -44,14 +44,18 @@ let
     if palette == null then
       {
         directory = "bold blue";
+        branch = "magenta";
         foreground = "white";
+        muted = "bright-black";
         warning = "yellow";
         error = "red";
       }
     else
       {
         directory = "bold ${palette.blue}";
+        branch = palette.purple;
         foreground = palette.fg;
+        inherit (palette) muted;
         warning = palette.yellow;
         error = palette.red;
       };
@@ -173,13 +177,13 @@ in
           truncation_symbol = "…/";
           truncate_to_repo = true;
         };
-        git_branch.style = promptColors.foreground;
+        git_branch.style = promptColors.branch;
         git_branch.format = "[ $branch]($style) ";
         git_status = {
           style = promptColors.warning;
           format = "[($all_status$ahead_behind)]($style) ";
           stashed = "≡$count";
-          modified = "!$count";
+          modified = "~$count";
           staged = "+$count";
           untracked = "?$count";
           deleted = "×$count";
@@ -189,7 +193,7 @@ in
         cmd_duration = {
           min_time = 3000;
           format = "[· $duration]($style) ";
-          style = promptColors.foreground;
+          style = promptColors.muted;
         };
         nix_shell.style = promptColors.foreground;
         python.style = promptColors.foreground;

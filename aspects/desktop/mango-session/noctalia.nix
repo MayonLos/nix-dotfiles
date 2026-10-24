@@ -70,7 +70,29 @@ let
       config.systemd.user.sessionVariables;
 
   noctaliaPackage = pkgs.local.noctalia.overrideAttrs (old: {
-    patches = (old.patches or [ ]) ++ [ ./noctalia/astra-selection.patch ];
+    patches = (old.patches or [ ]) ++ [
+      ./noctalia/astra-selection.patch
+      ./noctalia/tech-lockscreen.patch
+      ./noctalia/tech-osd-segments.patch
+    ];
+    # Fail the source build if an upstream rename or patch drift removes the
+    # segmented OSD implementation instead of silently losing the appearance.
+    postPatch = (old.postPatch or "") + ''
+      grep -Fq 'UI4: lockscreen palette-gradient password underline and cached runtime status' src/shell/lockscreen/lock_surface.cpp
+      grep -Fq 'lockscreenRuntimeStatus()' src/shell/lockscreen/lock_surface.cpp
+      grep -Fq 'charge_control_end_threshold' src/shell/lockscreen/lock_surface.cpp
+      grep -Fq 'UI4: ideapad_acpi conservation status precedes the standard battery limit fallback' src/shell/lockscreen/lock_surface.cpp
+      grep -Fq 'm_passwordUnderline->setSize' src/shell/lockscreen/lock_surface.cpp
+      grep -Fq 'm_passwordGlow->setHitTestVisible(false)' src/shell/lockscreen/lock_surface.cpp
+      grep -Fq 'm_passwordUnderline->setHitTestVisible(false)' src/shell/lockscreen/lock_surface.cpp
+      grep -Fq 'label.setHitTestVisible(false)' src/shell/lockscreen/lock_surface.cpp
+      grep -Fq 'UI4: palette-surface separators create twenty compact ticks' src/shell/osd/osd_overlay.cpp
+      grep -Fq 'UI4: clear non-owning tick pointers before rebuilding their owning scene tree' src/shell/osd/osd_overlay.cpp
+      grep -Fq 'progressTicks' src/shell/osd/osd_overlay.h
+      grep -Fq 'progressTicks.size()' src/shell/osd/osd_overlay.cpp
+      grep -Fq 'separator->setHitTestVisible(false)' src/shell/osd/osd_overlay.cpp
+      grep -Fq 'setFontFamily("monospace")' src/shell/osd/osd_overlay.cpp
+    '';
   });
 
 in
@@ -499,6 +521,7 @@ in
             enabled = true;
             widget_order = [
               "lockscreen-widget-clock"
+              "lockscreen-widget-seconds"
               "lockscreen-widget-date"
               "lockscreen-login-box@${desktop.primaryOutput}"
             ];
@@ -512,6 +535,7 @@ in
                   layout = "compact";
                   show_media = false;
                   show_weather = false;
+                  # These are lock-screen power actions, not login-session choices.
                   show_session_buttons = false;
                   show_unlock_hint = true;
                   show_caps_lock = true;
@@ -533,11 +557,29 @@ in
                 box_height = 110.0;
                 settings = {
                   format = "{:%H:%M}";
-                  font_family = palette.fonts.sans;
+                  font_family = palette.fonts.mono;
                   center_text = true;
                   background = false;
                   color = "on_surface";
                   shadow = true;
+                };
+              };
+              # A separate, smaller clock keeps seconds visually subordinate
+              # while retaining the clock widget's native second-tick updates.
+              lockscreen-widget-seconds = {
+                type = "clock";
+                output = desktop.primaryOutput;
+                cx = logicalWidth / 2 + 128;
+                cy = logicalHeight * 0.24 + 17;
+                box_width = 48.0;
+                box_height = 42.0;
+                settings = {
+                  format = "{:%S}";
+                  font_family = palette.fonts.mono;
+                  center_text = true;
+                  background = false;
+                  color = "outline";
+                  shadow = false;
                 };
               };
               lockscreen-widget-date = {
@@ -549,7 +591,7 @@ in
                 box_height = 32.0;
                 settings = {
                   format = "{:%Y年%m月%d日  %A}";
-                  font_family = palette.fonts.sans;
+                  font_family = palette.fonts.mono;
                   center_text = true;
                   background = false;
                   color = "on_surface";

@@ -38,7 +38,6 @@
             slurp
             libdecor
           ];
-          programs.btop.settings.color_theme = lib.mkIf (builtins.elem "btop" integrations.ids) "noctalia";
         };
       provides.${host.name}.includes = [ den.aspects.interactive-session-host ];
     };

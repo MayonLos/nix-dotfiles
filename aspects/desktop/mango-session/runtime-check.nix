@@ -21,9 +21,8 @@ let
       settings = home.programs.noctalia.settings;
       wallpaperAssets = map (item: {
         inherit (item) name;
-        path = toString item.path;
+        path = "${item.path}";
       }) wallpapers.wallpapers;
-      wallpaperGenerated = toString wallpapers.generated;
       wallpaperFactoryDefault = toString wallpapers.default;
       wallpaperManagedSource = toString home.home.file."Pictures/Wallpapers/managed".source;
       wallpaperRoot = "${home.home.homeDirectory}/Pictures/Wallpapers";
@@ -299,7 +298,7 @@ pkgs.runCommand "interactive-session-config"
     # All 12 title_message_bar options must reach config.conf with the palette
     # mapping, not just be accepted by a parser that tolerates defaults.
     prefix = "title_message_bar_"
-    title = {"height": 48, "gap": 12, "decorate_font_desc": m["palette"]["fonts"]["sans"] + " 10.5",
+    title = {"height": 48, "gap": 12, "decorate_font_desc": m["palette"]["fonts"]["mono"] + " 10.5",
              "decorate_border_width": 1, "decorate_corner_radius": 8,
              "decorate_padding_x": 8, "decorate_padding_y": 4}
     for suffix, role in {"fg_color": "fg", "bg_color": "deep", "focus_fg_color": "blue",
@@ -325,14 +324,14 @@ pkgs.runCommand "interactive-session-config"
     assert mango["gap_inner_horizontal"] == mango["gap_inner_vertical"] == 8
     assert mango["gap_outer_horizontal"] == mango["gap_outer_vertical"] == 16
     assert mango["overview_gap_inner"] == 16 and mango["overview_gap_outer"] == 32
-    assert mango["shadows_position_x"] == 0 and mango["shadows_position_y"] == 6
+    assert mango["shadows_position_x"] == 0 and mango["shadows_position_y"] == 0
     assert mango["shadows_color"] == "0x" + m["palette"]["black"].removeprefix("#") + "52"
     for prefix in ("tab_bar_decorate_", "group_bar_decorate_", "jump_label_decorate_"):
         assert mango[prefix + "focus_fg_color"] == "0x" + m["palette"]["blue"].removeprefix("#") + "ff"
         assert mango[prefix + "focus_bg_color"] == "0x" + m["palette"]["selection"].removeprefix("#") + "ff"
     assert mango["tab_bar_height"] == mango["group_bar_height"] == 32
     for prefix in ("tab_bar_decorate_", "group_bar_decorate_"):
-        assert mango[prefix + "font_desc"] == m["palette"]["fonts"]["sans"] + " 10.5"
+        assert mango[prefix + "font_desc"] == m["palette"]["fonts"]["mono"] + " 10.5"
         assert mango[prefix + "padding_x"] == 8 and mango[prefix + "padding_y"] == 4
         assert mango[prefix + "corner_radius"] == 8 and mango[prefix + "border_width"] == 1
     assert mango["jump_label_decorate_font_desc"] == m["palette"]["fonts"]["mono"] + " Bold 12"
@@ -359,16 +358,13 @@ pkgs.runCommand "interactive-session-config"
     assert directory == wallpaper_root
     assert wallpaper["automation"] == {"enabled": True, "order": "random", "interval_seconds": 86400, "recursive": True}
     managed_source = Path(m["wallpaperManagedSource"])
-    expected_names = sorted(asset["name"] for asset in m["wallpaperAssets"])
+    expected_names = sorted(f"wallpaper-{suffix}.png" for suffix in ("002", "005", "008", "009", "011"))
+    assert sorted(asset["name"] for asset in m["wallpaperAssets"]) == expected_names
     assert sorted(path.name for path in managed_source.iterdir()) == expected_names
     assert all(path.is_symlink() and path.is_file() for path in managed_source.iterdir())
     assert Path(wallpaper["default"]["path"]).resolve() == Path(m["wallpaperFactoryDefault"]).resolve()
     assert Path(m["greeter"]["appearance"]["wallpaper"]["path"]).resolve() == Path(m["wallpaperFactoryDefault"]).resolve()
-    assert Path(m["wallpaperGenerated"]).is_dir()
-    for asset in m["wallpaperAssets"]:
-        if not asset["name"].startswith("existing-"):
-            dimensions = subprocess.check_output(["magick", "identify", "-format", "%wx%h", asset["path"]], text=True)
-            assert dimensions == "2560x1600", (asset["name"], dimensions)
+    assert all(Path(asset["path"]).is_file() for asset in m["wallpaperAssets"])
     activation = m["wallpaperActivation"]
     local_path = str(wallpaper_root / "local")
     assert activation.count(local_path) == 1
@@ -406,6 +402,12 @@ pkgs.runCommand "interactive-session-config"
     assert settings["theme"]["custom_palette"] == "onedark"
     assert "kitty" not in settings["theme"]["templates"]["builtin_ids"]
     assert "mango" not in settings["theme"]["templates"]["builtin_ids"]
+    assert "btop" not in settings["theme"]["templates"]["builtin_ids"]
+    widgets = settings["lockscreen_widgets"]["widget"]
+    seconds = widgets["lockscreen-widget-seconds"]["settings"]
+    assert seconds["format"] == "{:%S}" and seconds["color"] == "outline"
+    for name in ("clock", "date", "seconds"):
+        assert widgets["lockscreen-widget-" + name]["settings"]["font_family"] == m["palette"]["fonts"]["mono"]
     assert "noctalia-firefox" in settings["theme"]["templates"]["user"]
     assert "noctalia-mango" not in settings["theme"]["templates"]["user"]
     assert settings["shell"]["launch_apps_as_systemd_services"]

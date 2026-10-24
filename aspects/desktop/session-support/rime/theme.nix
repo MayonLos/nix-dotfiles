@@ -107,7 +107,9 @@ let
         </filter>
       </defs>
       <rect x="${toString shadow.Left}.5" y="${toString shadow.Top}.5"
-            width="${toString (W - shadow.Left - shadow.Right - 1)}" height="${toString (H - shadow.Top - shadow.Bottom - 1)}"
+            width="${toString (W - shadow.Left - shadow.Right - 1)}" height="${
+              toString (H - shadow.Top - shadow.Bottom - 1)
+            }"
             rx="${toString (radius - 0.5)}" fill="${palette.deep}" stroke="${edge}" filter="url(#s)"/>
     </svg>'';
   images = {
