@@ -46,6 +46,8 @@ let
 
           default = {
             nixos = {
+              # Reuse the fixture pipeline package set, including unfree opt-ins.
+              nixpkgs.pkgs = pkgs;
               system.stateVersion = "26.05";
               boot.loader.grub.enable = false;
               fileSystems."/" = {

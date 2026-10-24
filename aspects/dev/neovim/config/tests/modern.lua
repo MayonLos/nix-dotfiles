@@ -208,39 +208,4 @@ assert(read(trash_file) == "recoverable", "Oil deletion did not leave a recovera
 assert(oil_config.lsp_file_methods.enabled == false, "Oil must not send duplicate LSP rename edits")
 vim.fn.delete(dir, "rf")
 
--- Initialize the real locked DAP integrations with the Nix-generated tool
--- paths. This checks the optional-plugin config callback as well as adapters.
-local generated = require("mayon.generated")
-local tools = assert(generated.tools, "generated Nix tool map is missing")
-for _, name in ipairs({ "lldb_dap", "debugpy_python" }) do
-	local path = assert(tools[name], "Nix did not inject " .. name)
-	assert(vim.fn.executable(path) == 1, name .. " is not executable: " .. path)
-end
-vim.cmd.packadd("nvim-dap")
-local debug_spec = require("mayon.plugins.debug")[1]
-assert(type(debug_spec.after) == "function", "DAP lazy spec must provide a setup callback")
-debug_spec.after()
-local dap = require("dap")
-assert(dap.adapters.lldb.command == tools.lldb_dap, "LLDB adapter must use the Nix path")
-assert(dap.adapters.python.command == tools.debugpy_python, "Python adapter must use the Nix path")
-assert(dap.adapters.python.args[1] == "-m" and dap.adapters.python.args[2] == "debugpy.adapter")
-for _, ft in ipairs({ "c", "cpp", "rust" }) do
-	assert(dap.configurations[ft][1].type == "lldb", ft .. " DAP config is missing")
-end
-assert(dap.configurations.python[1].type == "python", "Python DAP config is missing")
-assert(type(dap.configurations.python[1].pythonPath) == "function", "Python launch must resolve a project interpreter")
-for _, key in ipairs({ "<F5>", "<F10>", "<F11>", "<F12>", " db", " dv" }) do
-	assert(vim.fn.maparg(key, "n") ~= "", "DAP key is not mapped: " .. key)
-end
-
--- Loading the task spec runs Overseer's setup and registers CMake tasks;
--- Overseer itself discovers its bundled make/just/npm providers on runtimepath.
-vim.cmd.packadd("overseer.nvim")
-local task_spec = require("mayon.plugins.tasks")[1]
-assert(type(task_spec.after) == "function", "task lazy spec must provide a setup callback")
-task_spec.after()
-for _, key in ipairs({ " rr", " rt", " ra", " rc" }) do
-	assert(vim.fn.maparg(key, "n") ~= "", "task key is not mapped: " .. key)
-end
-
-print("modern Oil, DAP, and task integration checks passed")
+print("modern Oil and file safety integration checks passed")

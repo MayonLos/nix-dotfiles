@@ -1,4 +1,8 @@
-{ pkgs, home }:
+{
+  pkgs,
+  home,
+  palette,
+}:
 let
   python = pkgs.python3.withPackages (p: [ p.pyyaml ]);
   rime = builtins.head (
@@ -6,6 +10,11 @@ let
   );
   inherit (rime) engine;
   theme = home.xdg.dataFile."fcitx5/themes/One-Dark-Darker".source;
+  paletteMetadata = pkgs.writeText "rime-theme-palette.json" (
+    builtins.toJSON {
+      inherit (palette) blue selection muted;
+    }
+  );
   files = [
     "default.custom.yaml"
     "rime_ice.custom.yaml"
@@ -47,8 +56,8 @@ pkgs.runCommand "rime-technical-runtime"
     grep -F 'loading gram db: ${rime}/share/rime-data/wanxiang-lts-zh-hans.gram' "$out/deploy.log"
     grep -F 'found double array image of size' "$out/deploy.log"
     if grep -Ei 'error|failed|cannot|could not' "$out/deploy.log"; then exit 1; fi
-    python3 - "$TMPDIR/rime" ${theme} <<'PY'
-    import configparser, pathlib, sys, yaml
+    python3 - "$TMPDIR/rime" ${theme} ${paletteMetadata} <<'PY'
+    import configparser, json, pathlib, sys, yaml
     user = pathlib.Path(sys.argv[1])
     schema = yaml.safe_load((user / "build/rime_ice.schema.yaml").read_text())
     translator = schema["translator"]
@@ -63,13 +72,31 @@ pkgs.runCommand "rime-technical-runtime"
     default = yaml.safe_load((user / "build/default.yaml").read_text())
     assert default["menu"]["page_size"] == 7
     theme = pathlib.Path(sys.argv[2])
+    palette = json.loads(pathlib.Path(sys.argv[3]).read_text())
     panel = configparser.ConfigParser()
     panel.read(theme / "theme.conf")
-    assert panel["InputPanel"]["highlightcolor"] == panel["InputPanel"]["highlightcandidatecolor"]
+    # These are the public roles in the One Dark Darker palette consumed here.
+    assert panel["InputPanel"]["highlightcandidatecolor"] == palette["blue"]
+    assert panel["InputPanel"]["highlightbackgroundcolor"] == palette["selection"]
+    assert panel["InputPanel"]["candidatelabelcolor"] == palette["muted"]
+    assert panel["InputPanel"]["candidatecommentcolor"] == palette["muted"]
+    assert panel["InputPanel"]["fullwidthhighlight"] == "False"
+    assert panel["InputPanel/Background/Margin"]["left"] == "12"
+    assert panel["InputPanel/ContentMargin"]["left"] == "8"
+    assert panel["InputPanel/TextMargin"]["left"] == "12"
+    assert panel["InputPanel/PrevPage/ClickMargin"]["top"] == "6"
+    assert panel["InputPanel/NextPage/ClickMargin"]["top"] == "6"
     images = [s["image"] for s in panel.values() if "image" in s]
     assert len(images) == 8
     assert set(images) == {"panel.svg", "highlight.svg", "prev.svg", "next.svg", "radio.svg", "arrow.svg"}
     assert all((theme / image).is_file() for image in images)
+    selected = (theme / "highlight.svg").read_text()
+    assert 'rx="7.5"' in selected
+    assert f'fill="{palette["selection"]}"' in selected
+    assert f'stroke="{palette["blue"]}"' in selected
+    for name in ("prev.svg", "next.svg"):
+        icon = (theme / name).read_text()
+        assert 'width="20" height="20"' in icon and 'stroke-width="2"' in icon
     assert schema["reduce_english_filter"]["mode"] == "all"
     assert translator["always_show_comments"] and translator["spelling_hints"] == 8
     assert (user / "rime_ice.userdb").is_dir()

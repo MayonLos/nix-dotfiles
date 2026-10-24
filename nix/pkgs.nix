@@ -31,12 +31,14 @@
             inherit (u) xdg-desktop-portal-wlr;
           })
           (_: _: {
-            # Stable lacks JDK 26; QQ/WeChat track newer official Linux releases.
+            # Explicit exceptions to stable; each consumer uses this shared instance.
             unstable = {
               # New official QQ release and its compatibility fixes.
               inherit (u) qq;
               # Stable still has the older official Linux client.
               inherit (u) wechat;
+              # Stable CodeCompanion 19.13 lacks the ACP fixes in 19.27; v20 needs a separate migration.
+              codecompanion-nvim = u.vimPlugins.codecompanion-nvim;
               # JDK 26 is absent from stable 26.05.
               jdk26 = u.javaPackages.compiler.temurin-bin.jdk-26;
             };
@@ -49,6 +51,8 @@
                 dsh
                 codex
                 claude-code
+                codex-acp
+                claude-agent-acp
                 grok
                 grok-bot
                 ;

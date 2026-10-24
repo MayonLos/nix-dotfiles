@@ -290,10 +290,18 @@ contextual suggestions，同音/同形候选上限为 4/2。锁定 nixpkgs 将 L
 学习写入仍是原有 `rime_ice.userdb`；不接管个人短语、同步或历史。
 
 候选框借鉴 [Catppuccin Fcitx5](https://github.com/catppuccin/fcitx5) 的 SVG nine-slice
-方式：12px 外圆角、1px 边线、8px 高亮圆角，选中项 blue/black，正文 foregroundStrong。
-背景切片边距为 12，内容边距 6，文字边距横 10/纵 5；没有新增 compositor 阴影。
-SVG 由同一 palette 生成，图标不再依赖 default-dark PNG。构建检查解析 INI、核对所有
-Image 路径并渲染 SVG；实际 150% 缩放下的文字位置与圆角仍需现场观察。
+方式：横排、字号 13、12px 外圆角和 1px 边线；选中项用 palette.selection 底色、蓝字
+与 8px 圆角细蓝描边。序号和注释用 muted 色，正文用 foregroundStrong。背景切片边距为
+12，内容边距 8，文字边距横 12/纵 8；翻页箭头改为 20px 图标并扩大点击边距。Fcitx5
+5.1.19 classicui 源码有 `EnableBlur`、`BlurMargin` 和 `ShadowMargin` 字段，但 blur 明确
+针对 KWin，`ShadowMargin` 只参与 XCB 定位/屏幕边界计算；Mango 没有可依赖的 classicui
+阴影实现，所以保留清晰边线而不声明无效阴影或模糊。SVG 由同一 palette 生成，构建检查
+解析 INI、核对颜色/边距和 Image 路径并渲染 SVG；实际 150% 缩放下的文字位置与圆角仍需
+现场观察。
+
+微信目前直接安装官方 Linux 包，不再使用 XCB/Fcitx launcher wrapper。主机实测该 wrapper
+没有解决中文输入问题，因此输入法问题保持待办；不将之前 wrapper 的构建检查当作实机成功，
+也不修改微信用户数据。候选框主题的构建验证与实际 DPI、点击和输入体验分别记录。
 
 CLI 中 bat 与 delta 共用从 palette 生成的 `One Dark Darker.tmTheme`，语法色参考
 [onedark.nvim](https://github.com/navarasu/onedark.nvim) 的 darker 作用域。

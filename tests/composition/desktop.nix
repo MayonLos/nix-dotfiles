@@ -206,7 +206,10 @@ let
       && selectedHome.programs.noctalia.settings.shell.font_family == palette.fonts.sans
       &&
         selectedHome.i18n.inputMethod.fcitx5.settings.addons.classicui.globalSection.Font
-        == "${palette.fonts.cjk} 10"
+        == "${palette.fonts.cjk} 13"
+      &&
+        selectedHome.i18n.inputMethod.fcitx5.settings.addons.classicui.globalSection."Vertical Candidate List"
+        == "False"
       && selectedHome.home.pointerCursor.name == palette.cursor.name
       && selectedHome.home.pointerCursor.size == palette.cursor.size
       &&
@@ -373,7 +376,7 @@ pkgs.runCommand "den-interactive-session-composition" { nativeBuildInputs = [ pk
   cp ${report} "$out/results.json"
   run() { "$@"; }
   source ${qtSeed}
-  python3 - "$XDG_CONFIG_HOME/qt6ct/colors/noctalia.conf" <<'PY_QT'
+  python3 - "$XDG_CONFIG_HOME/qt6ct/colors/noctalia.conf" '${palette.bg}' <<'PY_QT'
   import configparser, re, sys
   from pathlib import Path
   path = Path(sys.argv[1])
@@ -382,7 +385,7 @@ pkgs.runCommand "den-interactive-session-composition" { nativeBuildInputs = [ pk
   for group in ("active_colors", "disabled_colors", "inactive_colors"):
       colors = [value.strip() for value in palette["ColorScheme"][group].split(",")]
       assert len(colors) == 22 and all(re.fullmatch(r"#[0-9a-fA-F]{6}", value) for value in colors)
-  assert "#1f2329" in palette["ColorScheme"]["active_colors"]
+  assert sys.argv[2] in palette["ColorScheme"]["active_colors"]
   path.write_text("existing GUI-owned palette\n")
   PY_QT
   source ${qtSeed}

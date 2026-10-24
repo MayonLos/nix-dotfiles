@@ -188,12 +188,12 @@ function M.setup()
 		mtime_baselines[path] = mtime(path)
 	end
 
-	vim.keymap.set("n", "<leader>ps", load_current_session, { desc = "Restore session for this directory" })
-	vim.keymap.set("n", "<leader>pl", load_last_session, { desc = "Restore last session" })
+	vim.keymap.set("n", "<leader>ps", load_current_session, { desc = "恢复当前目录会话" })
+	vim.keymap.set("n", "<leader>pl", load_last_session, { desc = "恢复上次会话" })
 	vim.keymap.set("n", "<leader>pd", function()
 		save_disabled = true
 		notify("automatic save disabled for this instance")
-	end, { desc = "Do not save this session" })
+	end, { desc = "禁用当前会话保存" })
 
 	vim.api.nvim_create_autocmd("DirChanged", { callback = snapshot_current_session })
 	vim.api.nvim_create_autocmd("VimLeavePre", { callback = save_session })

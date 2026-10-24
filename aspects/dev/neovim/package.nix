@@ -2,6 +2,7 @@
   pkgs,
   palette,
   contributions,
+  acpAdapters ? { },
 }:
 
 let
@@ -13,9 +14,15 @@ let
       inherit palette;
       ansi = import ../../appearance/appearance/ansi.nix palette;
       tools = {
+        copilot = "${pkgs.copilot-language-server}/bin/copilot-language-server";
         sqlite3 = "${pkgs.lib.getLib pkgs.sqlite}/lib/libsqlite3.so";
-        lldb_dap = "${pkgs.llvmPackages.lldb}/bin/lldb-dap";
-        debugpy_python = "${pkgs.python3.withPackages (ps: [ ps.debugpy ])}/bin/python3";
+        codex_acp = acpAdapters.codex or "";
+        claude_acp = acpAdapters.claude or "";
+      };
+      versions = {
+        codecompanion = pkgs.unstable.codecompanion-nvim.version;
+        copilot = pkgs.copilot-language-server.version;
+        codediff = pkgs.vimPlugins.codediff-nvim.version;
       };
       plugin_dependencies = pluginSet.dependencyMap;
       languages = { inherit (languages) servers formatters linters; };
@@ -30,12 +37,17 @@ let
   pluginSet = import ./plugins.nix { inherit pkgs; };
   editorTools = with pkgs; [
     file
+    curl
     tree-sitter
     fd
     ripgrep
     lazygit
     yazi
     trash-cli
+    nodejs
+    tmux
+    procps
+    lsof
     wl-clipboard
   ];
 

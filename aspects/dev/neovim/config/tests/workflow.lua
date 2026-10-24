@@ -99,7 +99,10 @@ assert(vim.b.completion == false, "completion remained enabled for a large file"
 assert(vim.wo.foldmethod == "manual", "Tree-sitter overrode the large-file fold guard")
 assert(not vim.treesitter.highlighter.active[vim.api.nvim_get_current_buf()], "large file started highlighting")
 vim.cmd.colorscheme("onedark-darker")
-assert(vim.api.nvim_get_hl(0, { name = "Normal", link = false }).bg == 0x1f2329)
+assert(
+	vim.api.nvim_get_hl(0, { name = "Normal", link = false }).bg
+		== tonumber(require("mayon.generated").palette.bg:sub(2), 16)
+)
 -- Surface colours must survive a theme reload after plugins have registered
 -- their highlight groups. Text overlays must not punch holes in selected rows.
 local function hl(name)
@@ -109,27 +112,15 @@ for _, name in ipairs({
 	"NormalFloat",
 	"FloatBorder",
 	"FloatTitle",
-	"BlinkCmpMenu",
-	"BlinkCmpMenuBorder",
-	"BlinkCmpDoc",
-	"NoiceCmdlinePopup",
-	"NoiceCmdlinePopupBorder",
+	"Pmenu",
+	"PmenuBorder",
 	"SnacksPickerList",
 }) do
 	assert(hl(name).bg == hl("Normal").bg, name .. " has a disconnected background")
 end
-assert(hl("BlinkCmpMenuSelection").bg == hl("PmenuSel").bg, "completion selection has two surfaces")
-for _, name in ipairs({ "BlinkCmpKindValue", "BlinkCmpLabel", "BlinkCmpLabelDetail", "BlinkCmpSource" }) do
-	assert(hl(name).bg == nil, name .. " masks the selected row")
-end
-for _, name in ipairs({
-	"BlinkCmpLabelDetail",
-	"BlinkCmpLabelDescription",
-	"BlinkCmpSource",
-	"RenderMarkdownH5",
-	"RenderMarkdownH6",
-}) do
-	assert(hl(name).fg == hl("Normal").fg, name .. " uses low-contrast muted text for reading content")
+assert(hl("PmenuSel").bg == tonumber(require("mayon.generated").palette.selection:sub(2), 16))
+for _, name in ipairs({ "RenderMarkdownH5", "RenderMarkdownH6" }) do
+	assert(hl(name).fg == hl("Normal").fg)
 end
 -- A literal percent and multibyte names must render as text, never statusline
 -- directives, at narrow widths as well as in the full workspace rail.

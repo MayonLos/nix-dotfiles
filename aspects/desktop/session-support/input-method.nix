@@ -32,8 +32,8 @@
         addons.classicui.globalSection = {
           Theme = "One-Dark-Darker";
           DarkTheme = "One-Dark-Darker";
-          Font = "${palette.fonts.cjk} 10";
-          "Vertical Candidate List" = "True";
+          Font = "${palette.fonts.cjk} 13";
+          "Vertical Candidate List" = "False";
 
           # Wayland already scales classicui through wp_fractional_scale_v1.
           # Do not force 144 DPI there: it would multiply the scale twice.

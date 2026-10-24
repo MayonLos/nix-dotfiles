@@ -41,9 +41,6 @@ local function overrides()
 	set("DiagnosticSignInfo", { fg = c.blue })
 	set("DiagnosticSignHint", { fg = c.cyan })
 	set("DiagnosticSignOk", { fg = c.green })
-	set("DapBreakpoint", { fg = c.red, bold = true })
-	set("DapBreakpointCondition", { fg = c.orange, bold = true })
-	set("DapBreakpointRejected", { fg = c.muted })
 	vim.api.nvim_set_hl(0, "NormalFloat", { fg = c.fg, bg = c.bg })
 	vim.api.nvim_set_hl(0, "FloatBorder", { fg = c.border, bg = c.bg })
 	vim.api.nvim_set_hl(0, "FloatTitle", { fg = c.blue, bg = c.bg, bold = true })
@@ -60,18 +57,15 @@ local function overrides()
 	set("TreesitterContextSeparator", { fg = c.border, bg = c.surface })
 	set("Pmenu", { fg = c.fg, bg = c.bg })
 	set("PmenuSel", { fg = c.brightFg, bg = c.selection, bold = true })
-	set("BlinkCmpMenuSelection", { fg = c.brightFg, bg = c.selection, bold = true })
-	set("BlinkCmpDocSeparator", { fg = c.border, bg = c.bg })
-	set("BlinkCmpSignatureActiveParameter", { fg = c.cyan, bg = c.bg, underline = true })
-	set("BlinkCmpSignatureHelpActiveParameter", { fg = c.cyan, bg = c.bg, underline = true })
-	set("BlinkCmpLabel", { fg = c.brightFg })
-	set("BlinkCmpLabelMatch", { fg = c.cyan, bold = true })
-	-- Completion details and sources carry useful reading context; reserve muted
-	-- text for inactive chrome and decoration.
-	set("BlinkCmpLabelDetail", { fg = c.fg })
-	set("BlinkCmpLabelDescription", { fg = c.fg })
-	set("BlinkCmpSource", { fg = c.fg, italic = true })
-	set("BlinkCmpGhostText", { fg = c.border, italic = true })
+	set("PmenuKind", { fg = c.cyan, bg = c.bg })
+	set("PmenuKindSel", { fg = c.cyan, bg = c.selection })
+	set("PmenuExtra", { fg = c.muted, bg = c.bg })
+	set("PmenuExtraSel", { fg = c.fg, bg = c.selection })
+	set("PmenuBorder", { fg = c.border, bg = c.bg })
+	set("PmenuMatch", { fg = c.cyan, bold = true })
+	set("PmenuMatchSel", { fg = c.cyan, bg = c.selection, bold = true })
+	set("SnippetTabstopActive", { bg = c.selection, underline = true, sp = c.cyan })
+	set("LspInlineCompletion", { fg = c.muted, italic = true })
 	for level, color in ipairs({ c.blue, c.cyan, c.fg, c.fg, c.fg, c.fg }) do
 		set("RenderMarkdownH" .. level, { fg = color, bold = true })
 		-- Render-markdown owns the icon/background; Tree-sitter owns heading text.
@@ -155,79 +149,24 @@ local function overrides()
 	set("SatelliteGitSignsAdd", { fg = c.green })
 	set("SatelliteGitSignsChange", { fg = c.orange })
 	set("SatelliteGitSignsDelete", { fg = c.red })
-	set("NvimDapVirtualText", { fg = c.muted, bg = c.surface })
-	set("NvimDapVirtualTextChanged", { fg = c.orange, bg = c.surface })
-	set("NvimDapVirtualTextError", { fg = c.red, bg = c.surface })
-	set("NvimDapVirtualTextInfo", { fg = c.blue, bg = c.surface })
-	set("NvimDapViewFloat", { fg = c.orange })
-	set("NvimDapViewMissingData", { fg = c.red })
-	set("NvimDapViewFileName", { fg = c.cyan, bold = true })
-	set("NvimDapViewLineNumber", { fg = c.muted })
-	set("NvimDapViewSeparator", { fg = c.border })
-	set("NvimDapViewThread", { fg = c.blue })
-	set("NvimDapViewThreadStopped", { fg = c.yellow, bold = true })
-	set("NvimDapViewThreadError", { fg = c.red, bold = true })
-	set("NvimDapViewFrameCurrent", { fg = c.yellow, bg = c.selection, bold = true })
-	set("NvimDapViewExceptionFilterEnabled", { fg = c.green })
-	set("NvimDapViewExceptionFilterDisabled", { fg = c.red })
-	set("NvimDapViewTab", { fg = c.muted, bg = c.bg })
-	set("NvimDapViewTabSelected", { fg = c.brightFg, bg = c.surface, bold = true })
-	set("NvimDapViewTabFill", { fg = c.muted, bg = c.bg })
-	set("NvimDapViewControlNC", { fg = c.muted })
-	set("NvimDapViewControlPlay", { fg = c.green })
-	set("NvimDapViewControlPause", { fg = c.yellow })
-	set("NvimDapViewControlStepInto", { fg = c.blue })
-	set("NvimDapViewControlStepOut", { fg = c.blue })
-	set("NvimDapViewControlStepOver", { fg = c.blue })
-	set("NvimDapViewControlStepBack", { fg = c.blue })
-	set("NvimDapViewControlRunLast", { fg = c.cyan })
-	set("NvimDapViewControlTerminate", { fg = c.red })
-	set("NvimDapViewControlDisconnect", { fg = c.red })
-	set("NvimDapViewWatchExpr", { fg = c.cyan })
-	set("NvimDapViewWatchError", { fg = c.red })
-	set("NvimDapViewWatchUpdated", { fg = c.yellow })
-	set("NvimDapViewBoolean", { fg = c.purple })
-	set("NvimDapViewBooleanDim", { fg = c.purple, blend = 30 })
-	set("NvimDapViewString", { fg = c.green })
-	set("NvimDapViewStringDim", { fg = c.green, blend = 30 })
-	set("NvimDapViewNumber", { fg = c.orange })
-	set("NvimDapViewNumberDim", { fg = c.orange, blend = 30 })
-	set("NvimDapViewFloat", { fg = c.orange })
-	set("NvimDapViewFloatDim", { fg = c.orange, blend = 30 })
-	set("NvimDapViewFunction", { fg = c.blue })
-	set("NvimDapViewFunctionDim", { fg = c.blue, blend = 30 })
-	set("NvimDapViewConstant", { fg = c.cyan })
-	set("NvimDapViewConstantDim", { fg = c.cyan, blend = 30 })
-	set("NvimDapViewVirtualText", { fg = c.muted })
-	set("NvimDapViewVirtualTextUpdated", { fg = c.orange, blend = 30 })
-	set("OverseerPENDING", { fg = c.muted })
-	set("OverseerRUNNING", { fg = c.blue, bold = true })
-	set("OverseerSUCCESS", { fg = c.green })
-	set("OverseerCANCELED", { fg = c.orange })
-	set("OverseerFAILURE", { fg = c.red, bold = true })
-	set("OverseerTask", { fg = c.fg })
-	set("OverseerTaskBorder", { fg = c.border })
-	set("OverseerOutput", { fg = c.fg })
-	set("OverseerComponent", { fg = c.muted })
-	set("OverseerField", { fg = c.cyan })
+	-- Native Claude/codediff and MiniDiff overlays share the palette.
+	set("DiffAdd", { bg = c.selection, fg = c.green })
+	set("DiffChange", { bg = c.surface })
+	set("DiffText", { bg = c.selection, fg = c.blue, bold = true })
+	set("DiffDelete", { bg = c.surface, fg = c.red })
+	set("MiniDiffOverAdd", { link = "DiffAdd" })
+	set("MiniDiffOverChange", { link = "DiffChange" })
+	set("MiniDiffOverChangeBuf", { link = "DiffText" })
+	set("MiniDiffOverContext", { link = "Normal" })
+	set("MiniDiffOverDelete", { link = "DiffDelete" })
+	set("MayonDiffHint", { fg = c.blue, bg = c.surface, bold = true })
+	set("ComplHint", { link = "LspInlineCompletion" })
+	set("ComplHintMore", { link = "LspInlineCompletion" })
+	set("MinuetVirtualText", { link = "LspInlineCompletion" })
 	local links = {
 		SoftFloatBorder = "FloatBorder",
 		WhichKeyNormal = "NormalFloat",
 		WhichKeyBorder = "FloatBorder",
-		BlinkCmpMenu = "Pmenu",
-		BlinkCmpMenuBorder = "FloatBorder",
-		BlinkCmpMenuSelection = "PmenuSel",
-		BlinkCmpDoc = "NormalFloat",
-		BlinkCmpDocBorder = "FloatBorder",
-		BlinkCmpSignatureHelp = "NormalFloat",
-		BlinkCmpSignatureHelpBorder = "FloatBorder",
-		NoiceCmdlinePopup = "NormalFloat",
-		NoiceCmdlinePopupBorder = "FloatBorder",
-		NoiceCmdlinePopupTitle = "FloatTitle",
-		NoicePopup = "NormalFloat",
-		NoicePopupBorder = "FloatBorder",
-		NoiceConfirm = "NormalFloat",
-		NoiceConfirmBorder = "FloatBorder",
 		SnacksInputNormal = "NormalFloat",
 		SnacksInputBorder = "FloatBorder",
 		SnacksPickerNormal = "NormalFloat",
@@ -294,16 +233,10 @@ local function overrides()
 	set("TinyInlineDiagnosticVirtualTextArrow", { fg = c.cyan, bg = c.bg })
 	set("TinyInlineDiagnosticVirtualTextArrowCursorLine", { fg = c.cyan, bg = c.selection })
 	set("TinyInlineDiagnosticVirtualTextArrowNoBg", { fg = c.cyan, bg = "NONE" })
-	for name in pairs(vim.api.nvim_get_hl(0, {})) do
-		if name:match("^NoiceCmdlinePopupBorder") then
-			links[name] = "FloatBorder"
-		end
-	end
 	for name, target in pairs(links) do
 		vim.api.nvim_set_hl(0, name, { link = target })
 	end
 	for name, color in pairs({
-		NoiceCmdlinePopup = c.fg,
 		SnacksDashboardNormal = c.fg,
 		SnacksDashboardHeader = c.blue,
 		SnacksDashboardFooter = c.muted,

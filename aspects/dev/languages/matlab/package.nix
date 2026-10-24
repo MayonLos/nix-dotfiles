@@ -342,7 +342,7 @@ let
   # The flags below are the fallback, not the configuration. A client that
   # advertises workspace/configuration -- nvim does -- makes the server discard
   # every CLI argument and read its settings over LSP instead
-  # (ConfigurationManager.ts:150). aspects/editing/neovim/config/lua/mayon/lsp/servers.lua carries the
+  # (ConfigurationManager.ts:150). aspects/dev/neovim/config/lua/mayon/lsp/servers.lua carries the
   # values that actually apply there; these are what a client without that
   # capability gets, and they are kept in step deliberately.
   #

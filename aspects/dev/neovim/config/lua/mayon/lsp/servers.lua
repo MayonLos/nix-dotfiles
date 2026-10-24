@@ -110,13 +110,7 @@ end
 function M.setup()
 	vim.filetype.add({ extension = { mdx = "markdown" } })
 
-	local capabilities = vim.lsp.protocol.make_client_capabilities()
-	local ok, blink = pcall(require, "blink.cmp")
-	if ok and type(blink.get_lsp_capabilities) == "function" then
-		capabilities = blink.get_lsp_capabilities(capabilities)
-	end
-
-	vim.lsp.config("*", { capabilities = capabilities })
+	vim.lsp.config("*", { capabilities = vim.lsp.protocol.make_client_capabilities() })
 	for name, config in pairs(servers) do
 		vim.lsp.config(name, config)
 	end

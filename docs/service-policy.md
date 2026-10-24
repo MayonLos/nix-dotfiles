@@ -28,7 +28,7 @@
 
 ## 环境、文件与授权
 
-Noctalia/Mango 只消费 [白名单投影](../aspects/desktop/mango-session/session-environment.nix) 的安全静态值；动态 DISPLAY/WAYLAND 由 Mango 导入。不是所有 `home.sessionVariables` 都进入 user manager，更不将 secret 复制进去。Docker 的动态运行时 socket 值由所选账号 environment.d 提供，首次应用需完整重登录以刷新旧 manager。
+Noctalia/Mango 只消费 [白名单投影](../aspects/desktop/mango-session/session-environment.nix) 的安全静态值；动态 DISPLAY/WAYLAND 由 Mango 导入。AI workbench 将两个 ACP adapter 的静态可执行路径同源声明为 shell 与 systemd 会话变量，Mango/Noctalia 通过该白名单转交给桌面启动的编辑器。不是所有 `home.sessionVariables` 都进入 user manager，更不将 secret 复制进去。Docker 的动态运行时 socket 值由所选账号 environment.d 提供，首次应用需完整重登录以刷新旧 manager。
 
 [写入归属](config-ownership.md) 规定声明文件、应用 mutable 设置、历史/缓存/模型与 runtime secret 的边界。Noctalia sidecar 交接不覆盖整个 state；GTK/Qt/Firefox 模板、Kitty/Mango 单 renderer 及逐字段 patch 的实际 apply/undo 仍需应用后验证。用户组按 binding，host udev/portal/PAM 是共享支持；USB `uaccess` 按活动 seat，并不提供按 Den binding 的 USB 隔离。
 

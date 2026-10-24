@@ -24,6 +24,11 @@ let
         "xrdb-merge"
       ] home.systemd.user.services;
       environment = home.systemd.user.sessionVariables;
+      shellEnvironment = home.home.sessionVariables;
+      acpEnvironment = {
+        NVIM_CODEX_ACP = "${pkgs.local.codex-acp}/bin/codex-acp";
+        NVIM_CLAUDE_ACP = "${pkgs.local.claude-agent-acp}/bin/claude-agent-acp";
+      };
       sharedTargets = home.nixDotfiles.graphicalSessionTargets;
       greeter = host.services.displayManager.noctalia-greeter.settings;
       boot = {
@@ -226,7 +231,7 @@ pkgs.runCommand "interactive-session-config"
     python3 - ${metadata} ${
       home.xdg.configFile."noctalia/palettes/One-Dark-Darker.json".source
     } "$out/mango.conf" "$out/noctalia.toml" <<'PY'
-    import json, re, sys, tomllib
+    import json, os, re, sys, tomllib
     from pathlib import Path
     m = json.load(open(sys.argv[1]))
     p = json.load(open(sys.argv[2]))
@@ -242,7 +247,7 @@ pkgs.runCommand "interactive-session-config"
             if isinstance(value, dict): colors(value)
             else: assert re.fullmatch(r"#[0-9a-fA-F]{6}", value), value
     colors(p)
-    assert p["dark"]["mSurface"] == m["palette"]["bg"] == "#1f2329"
+    assert p["dark"]["mSurface"] == m["palette"]["bg"]
     settings = m["settings"]
     # Check serialized settings too: validating the Nix attrset alone would
     # miss a lost/renamed field during Home Manager's config generation.
@@ -339,8 +344,12 @@ pkgs.runCommand "interactive-session-config"
     assert noctalia["Service"]["ExecStartPre"]
     env = dict(value.split("=", 1) for value in noctalia["Service"]["Environment"])
     assert env["QT_QPA_PLATFORMTHEME"] == "qt6ct" and env["XMODIFIERS"] == "@im=fcitx"
+    mango_env = dict(value.split(",", 1) for value in mango["env"])
+    for name, path in m["acpEnvironment"].items():
+        assert m["shellEnvironment"][name] == m["environment"][name] == env[name] == mango_env[name] == path
+        assert path.startswith("/nix/store/") and os.access(path, os.X_OK), (name, path)
     assert not any("KEY" in key or "TOKEN" in key or "SECRET" in key for key in env)
-    assert m["greeter"]["appearance"]["palette"]["surface"] == "#1f2329"
+    assert m["greeter"]["appearance"]["palette"]["surface"] == m["palette"]["bg"]
     assert m["greeter"]["output"]["scales"] == "eDP-1:1.5"
     PY
   ''

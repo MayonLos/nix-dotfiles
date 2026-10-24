@@ -35,7 +35,7 @@ let
   # That half was verified under niri, whose portal setup served
   # org.gnome.Mutter.ScreenCast. It does NOT carry over to mango: mango is
   # plain wlroots with no Mutter interface, so screen capture goes through
-  # xdg-desktop-portal-wlr instead (aspects/interactive-session/host/portal.nix). The
+  # xdg-desktop-portal-wlr instead (aspects/desktop/mango-session/host/portal.nix). The
   # LD_LIBRARY_PATH wrap below is about QQ's own dlopen and is unaffected by
   # which portal backend serves the request.
   #
@@ -97,11 +97,8 @@ in
     # that hook). Conference, camera/audio and capture still need a real call.
     pkgs.wemeet
 
-    # unstable: the official Linux build is 4.1.13.26 here, while stable is
-    # still 4.1.1.4. nixpkgs wraps its AppImage in an FHS environment and
-    # installs wechat.desktop. Unlike the UOS launcher, this wrapper adds no
-    # QT_QPA_PLATFORM, IM-module remapping or Wayland flags, so the official
-    # build uses its own backend and input-method detection.
+    # Input-method support in the official WeChat build remains unresolved;
+    # track the follow-up in docs/neovim-rebuild-execution.md.
     pkgs.unstable.wechat
   ];
 }

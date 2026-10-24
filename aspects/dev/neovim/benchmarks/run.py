@@ -16,7 +16,7 @@ repo = Path(__file__).resolve().parents[4]
 nvim, luals, emmy, output = sys.argv[1:]
 output = Path(output).resolve()
 output.mkdir(parents=True, exist_ok=False)
-workspace = repo / 'aspects/editing/neovim/config'
+workspace = repo / 'aspects/dev/neovim/config'
 state = repo / '.team/r10' / (output.name + '-state')
 state.mkdir(parents=True, exist_ok=False)
 

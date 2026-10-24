@@ -1,12 +1,11 @@
 -- Real optional-plugin setup, dashboard rendering, picker routing and folds.
 vim.api.nvim_exec_autocmds("User", { pattern = "MayonVeryLazy" })
-require("lz.n").trigger_load({ "codecompanion.nvim", "diffview.nvim", "grug-far.nvim", "trouble.nvim", "yazi.nvim" })
+require("lz.n").trigger_load({ "codecompanion.nvim", "codediff.nvim", "grug-far.nvim", "trouble.nvim", "yazi.nvim" })
 vim.wait(80)
 assert(not vim.g.mayon_load_error, vim.g.mayon_load_error)
-assert(package.loaded.codecompanion and package.loaded.diffview and package.loaded.noice)
+assert(package.loaded.codecompanion and package.loaded.codediff and package.loaded["vim._core.ui2"])
 local cc = require("codecompanion.config").config
 assert(cc.interactions.chat.adapter == "deepseek")
-assert(cc.interactions.cli.agents.codex.cmd == "codex" and cc.interactions.cli.agents.grok.cmd == "grok")
 assert(cc.extensions.history.enabled)
 
 local snacks = require("snacks")
@@ -71,32 +70,46 @@ snacks.picker = setmetatable({}, {
 		end
 	end,
 })
-for _, key in ipairs({ "ff", "fg", "fb", "fr", "fh", "f.", "fp", "fs", "fS", "fd", "fk", "f:", "f/", "g/", "gl", "gL" }) do
-	local mapping = vim.fn.maparg(" " .. key, "n", false, true)
-	assert(type(mapping.callback) == "function", "missing picker entry: " .. key)
+local picker_mappings = {
+	{ "<leader><leader>", "smart" },
+	{ "<leader>/", "grep" },
+	{ "<leader>,", "buffers" },
+	{ "<leader>fr", "recent" },
+	{ "<leader>fp", "projects" },
+	{ "<leader>ss", "lsp_symbols" },
+	{ "<leader>sS", "lsp_workspace_symbols" },
+	{ "<leader>sh", "help" },
+	{ "<leader>sk", "keymaps" },
+	{ "<leader>sd", "diagnostics" },
+	{ "<leader>sc", "command_history" },
+	{ "<leader>s.", "resume" },
+}
+for _, spec in ipairs(picker_mappings) do
+	local mapping = vim.fn.maparg(spec[1], "n", false, true)
+	assert(type(mapping.callback) == "function", "missing picker entry: " .. spec[1])
 	mapping.callback()
 end
+local config_picker = vim.fn.maparg("<leader>fc", "n", false, true)
+assert(type(config_picker.callback) == "function", "missing config file picker")
+config_picker.callback()
 snacks.picker = real_picker
 for _, source in ipairs({
-	"files",
+	"smart",
 	"grep",
 	"buffers",
 	"recent",
-	"help",
-	"lines",
 	"projects",
 	"lsp_symbols",
 	"lsp_workspace_symbols",
+	"help",
 	"diagnostics",
 	"keymaps",
 	"command_history",
 	"resume",
-	"git_status",
-	"git_log",
-	"git_branches",
 }) do
 	assert(seen[source], source)
 end
+assert(seen.files, "config picker must use the files source")
 local picker = snacks.picker.files({ cwd = vim.env.NVIM_CONFIG_DIR, show_delay = 0 })
 assert(
 	vim.wait(2000, function()
@@ -126,13 +139,11 @@ for _, group in ipairs({
 	"MayonDashboardBlue",
 	"MayonDashboardCyan",
 	"OilDir",
-	"NvimDapViewTabSelected",
 	"RainbowDelimiterBlue",
 	"InclineNormal",
 	"SatelliteBar",
 	"TinyInlineDiagnosticVirtualTextError",
 	"TodoFgTODO",
-	"OverseerRUNNING",
 }) do
 	local hl = vim.api.nvim_get_hl(0, { name = group, link = false })
 	assert(next(hl), "missing theme group: " .. group)

@@ -1,123 +1,148 @@
-local M = {}
+vim.api.nvim_create_user_command("AICompletion", function(args)
+	local completion = require("mayon.features.ai_completion")
+	if args.args == "" then
+		completion.cycle()
+	else
+		completion.set(args.args)
+	end
+end, {
+	nargs = "?",
+	complete = function()
+		return { "copilot", "deepseek", "off" }
+	end,
+	desc = "切换 AI 补全提供者",
+})
 
-local function visual_prompt(alias, description, prompt)
+local function prompt(alias, description, instruction)
 	return {
 		interaction = "chat",
 		description = description,
-		opts = {
-			is_slash_cmd = true,
-			alias = alias,
-			modes = { "v" },
-			auto_submit = true,
-			stop_context_insertion = true,
-		},
+		opts = { alias = alias, is_slash_cmd = true, auto_submit = false },
 		prompts = {
 			{
 				role = "user",
 				content = function(context)
-					local code = require("codecompanion.helpers.code").get_code(context.start_line, context.end_line)
-					return string.format(prompt .. "\n\n```%s\n%s\n```", context.filetype, context.filetype, code)
+					if context.is_visual then
+						local code =
+							require("codecompanion.helpers.code").get_code(context.start_line, context.end_line)
+						return instruction .. "\n\n```" .. context.filetype .. "\n" .. code .. "\n```\n#{diagnostics}"
+					end
+					return instruction .. "\n\n#{buffer} #{diagnostics}"
 				end,
 			},
 		},
 	}
 end
-
-local function setup()
-	require("lz.n").trigger_load("blink.cmp")
+local function acp_path(name)
+	local tools = require("mayon.generated").tools
+	local path = name == "codex" and (vim.env.NVIM_CODEX_ACP or tools.codex_acp)
+		or (vim.env.NVIM_CLAUDE_ACP or tools.claude_acp)
+	assert(
+		path and path:sub(1, 1) == "/" and vim.fn.executable(path) == 1,
+		"ACP 可执行路径不可用：请启用 ai-workbench 并重新登录会话"
+	)
+	return path
+end
+local function companion()
 	require("mayon.config.loader").pack("codecompanion-history.nvim")
-	-- DeepSeek uses CodeCompanion's built-in adapter. The CLI agent names map
-	-- directly to the installed codex and grok executables.
+	require("mayon.config.loader").pack("mini.diff")
 	require("codecompanion").setup({
-		interactions = {
-			chat = {
-				adapter = "deepseek",
-				opts = { completion_provider = "blink" },
-				keymaps = {
-					send = { modes = { n = "<CR>", i = "<C-s>" } },
-					regenerate = { modes = { n = "<leader>ar" } },
-				},
+		adapters = {
+			acp = {
+				codex = function()
+					return require("codecompanion.adapters").extend("codex", {
+						commands = { default = { acp_path("codex") } },
+						defaults = { auth_method = "chatgpt" },
+					})
+				end,
+				claude_code = function()
+					return require("codecompanion.adapters").extend("claude_code", {
+						commands = { default = { acp_path("claude") }, yolo = { acp_path("claude"), "--yolo" } },
+					})
+				end,
 			},
+		},
+		interactions = {
+			chat = { adapter = "deepseek", opts = { completion_provider = "default" } },
 			inline = { adapter = "deepseek" },
 			cmd = { adapter = "deepseek" },
-			cli = {
-				agent = "codex",
-				agents = {
-					codex = { cmd = "codex" },
-					grok = { cmd = "grok" },
-				},
-			},
 		},
 		display = {
 			chat = {
 				window = {
-					layout = "vertical",
+					layout = vim.o.columns < 120 and "float" or "vertical",
 					position = "right",
-					width = 0.42,
+					width = 0.38,
 					opts = {
 						number = false,
 						relativenumber = false,
 						signcolumn = "no",
 						foldcolumn = "0",
-						statuscolumn = "",
-						cursorline = false,
-						fillchars = "eob: ",
-						winhighlight = "Normal:NormalFloat,EndOfBuffer:NormalFloat,SignColumn:NormalFloat",
+						winhighlight = "Normal:NormalFloat,EndOfBuffer:NormalFloat",
 					},
 				},
-				separator = "─",
-				show_header_separator = false,
 				show_settings = false,
-				show_token_count = true,
 				start_in_insert_mode = false,
-				fold_context = true,
-				fold_reasoning = true,
-				icons = { chat_context = "󰈙 ", chat_fold = " " },
 			},
 		},
 		opts = { language = "Chinese" },
 		prompt_library = {
-			["中文 Code Review"] = visual_prompt(
-				"review",
-				"用中文审查选中的代码",
-				"请用中文审查以下 %s 代码，指出潜在 bug、可读性与性能问题，并给出改进建议："
+			["解释报错"] = prompt(
+				"errors",
+				"用中文解释报错并给出最小修复",
+				"请用中文解释诊断的根因，结合当前文件给出最小修复与验证步骤。"
 			),
-			["中文重构"] = visual_prompt(
-				"refactor",
-				"重构选中代码并用中文说明",
-				"请重构以下 %s 代码：保持行为不变，提升可读性与健壮性。先用中文说明改了什么、为什么，再给出完整代码："
-			),
-			["实现+测试工作流"] = {
+			["为选区写测试"] = {
 				interaction = "chat",
-				description = "实现 → 写测试 → 跑测试并修复 (agentic)",
-				opts = { is_workflow = true },
+				description = "为选区编写测试（中文说明）",
+				opts = { alias = "tests", is_slash_cmd = true, auto_submit = false, modes = { "v" } },
 				prompts = {
 					{
-						{
-							role = "user",
-							opts = { auto_submit = false },
-							content = "你是结对编程助手。请用 @{insert_edit_into_file} 直接修改文件来实现下面的需求；动手前先简要说明思路。需求：",
-						},
-					},
-					{
-						{
-							role = "user",
-							opts = { auto_submit = true },
-							content = "现在为上面的实现编写单元测试，覆盖正常与边界情况，并用 @{insert_edit_into_file} 写入对应的测试文件。",
-						},
-					},
-					{
-						{
-							role = "user",
-							opts = { auto_submit = true },
-							content = "用 @{run_command} 编译并运行测试。若有失败，分析原因、用 @{insert_edit_into_file} 修复后重新运行，直到全部通过。",
-						},
+						role = "user",
+						content = function(context)
+							local code =
+								require("codecompanion.helpers.code").get_code(context.start_line, context.end_line)
+							return "请为以下代码编写正常、边界与失败用例，复用项目现有测试框架，用中文解释覆盖范围：\n```"
+								.. context.filetype
+								.. "\n"
+								.. code
+								.. "\n```"
+						end,
 					},
 				},
 			},
+			["生成提交信息"] = {
+				interaction = "chat",
+				description = "根据 Git diff 起草中文提交信息",
+				opts = { alias = "commit", is_slash_cmd = true, auto_submit = false },
+				prompts = {
+					{
+						role = "user",
+						content = function()
+							local result = vim.system({ "git", "diff", "--no-ext-diff", "--cached" }, { text = true })
+								:wait()
+							if result.code == 0 and result.stdout == "" then
+								result = vim.system({ "git", "diff", "--no-ext-diff" }, { text = true }):wait()
+							end
+							return "请根据以下 diff 起草简洁中文提交信息（只起草）：\n```diff\n"
+								.. (result.stdout or "")
+								.. "\n```"
+						end,
+					},
+				},
+			},
+			["中文重构"] = prompt(
+				"refactor",
+				"保持行为的重构建议",
+				"请重构所选代码（无选区时参考当前文件），保持行为不变，用中文解释理由与风险。"
+			),
+			["添加注释"] = prompt(
+				"comments",
+				"为代码添加必要的中文注释",
+				"请为所选代码（无选区时参考当前文件）添加必要的中文注释，重点解释意图与约束，避免复述实现。"
+			),
 		},
 		extensions = {
-			-- Keep titles local: generating one would make an extra model request.
 			history = {
 				enabled = true,
 				opts = {
@@ -125,80 +150,205 @@ local function setup()
 					auto_generate_title = false,
 					continue_last_chat = false,
 					keymap = "gh",
-					save_chat_keymap = "<leader>as",
+					save_chat_keymap = "<localleader>h",
 				},
 			},
 		},
 	})
-
+	require("mayon.features.cc_minidiff").setup()
 	require("mayon.features.cc_inline_indicator").setup()
-	vim.api.nvim_create_autocmd("FileType", {
-		group = vim.api.nvim_create_augroup("MayonCodeCompanionCli", { clear = true }),
-		pattern = "codecompanion_cli",
-		callback = function(args)
+end
+local function claude()
+	require("claudecode").setup({
+		auto_start = true,
+		track_selection = true,
+		focus_after_send = false,
+		terminal = {
+			provider = "snacks",
+			split_side = "right",
+			split_width_percentage = 0.36,
+			snacks_win_opts = {
+				position = vim.o.columns < 120 and "float" or "right",
+				border = "rounded",
+				title = " Claude Code ",
+				bo = { filetype = "claudecode" },
+				wo = { winhighlight = "Normal:NormalFloat,WinBar:FloatTitle" },
+			},
+		},
+		diff_opts = {
+			layout = "vertical",
+			open_in_new_tab = true,
+			hide_terminal_in_new_tab = true,
+			keep_terminal_focus = false,
+		},
+	})
+	-- The pinned plugin has no public connection User event. Poll only after
+	-- loading Claude, and redraw only on a connection transition.
+	local connected = require("claudecode").is_claude_connected()
+	local timer = assert(vim.uv.new_timer())
+	timer:start(
+		500,
+		500,
+		vim.schedule_wrap(function()
+			local current = require("claudecode").is_claude_connected()
+			if current ~= connected then
+				connected = current
+				vim.api.nvim_exec_autocmds("User", { pattern = "MayonAIStatus", modeline = false })
+				vim.cmd.redrawstatus()
+			end
+		end)
+	)
+	vim.api.nvim_create_autocmd("VimLeavePre", {
+		once = true,
+		callback = function()
+			timer:stop()
+			timer:close()
+		end,
+	})
+
+	vim.api.nvim_create_autocmd({ "BufWinEnter", "WinEnter" }, {
+		group = vim.api.nvim_create_augroup("MayonClaudeReview", { clear = true }),
+		callback = function(ev)
 			vim.schedule(function()
-				for _, win in ipairs(vim.fn.win_findbuf(args.buf)) do
-					vim.wo[win].number = false
-					vim.wo[win].relativenumber = false
-					vim.wo[win].signcolumn = "no"
-					vim.wo[win].foldcolumn = "0"
+				if not vim.api.nvim_buf_is_valid(ev.buf) or not vim.b[ev.buf].claudecode_diff_tab_name then
+					return
+				end
+				vim.keymap.set(
+					"n",
+					"<localleader>a",
+					"<cmd>ClaudeCodeDiffAccept<cr>",
+					{ buffer = ev.buf, desc = "接受 Claude 当前文件修改" }
+				)
+				vim.keymap.set(
+					"n",
+					"<localleader>r",
+					"<cmd>ClaudeCodeDiffDeny<cr>",
+					{ buffer = ev.buf, desc = "拒绝 Claude 当前文件修改" }
+				)
+				for _, win in ipairs(vim.fn.win_findbuf(ev.buf)) do
+					vim.wo[win].winbar =
+						"%#MayonDiffHint# Claude 审阅 · ,a / ␣aA 接受 · ,r / ␣aD 拒绝 · 可先编辑建议 "
 				end
 			end)
 		end,
 	})
-
-	local function map(mode, lhs, rhs, desc, opts)
-		opts = opts or {}
-		opts.desc = desc
-		vim.keymap.set(mode, lhs, rhs, opts)
-	end
-	local nv = { "n", "v" }
-	map(nv, "<leader>aa", "<cmd>CodeCompanionChat Toggle<cr>", "CodeCompanion: toggle chat")
-	map(nv, "<leader>ap", "<cmd>CodeCompanionActions<cr>", "CodeCompanion: action palette")
-	map("v", "<leader>av", "<cmd>CodeCompanionChat Add<cr>", "CodeCompanion: add selection to chat")
-	map("n", "<leader>ai", "<cmd>CodeCompanion<cr>", "CodeCompanion: inline assistant")
-	map("v", "<leader>ai", ":CodeCompanion<cr>", "CodeCompanion: inline assistant (selection)")
-	map("n", "<leader>at", "<cmd>CodeCompanionCLI<cr>", "CodeCompanion: CLI (default agent)")
-	map("n", "<leader>ah", function()
-		require("codecompanion").extensions.history.browse_chats()
-	end, "CodeCompanion: chat history")
-	map(nv, "<leader>acp", function()
-		require("codecompanion").cli({ prompt = true })
-	end, "CLI agent: prompt (selection-aware)")
-	map(nv, "<leader>aca", function()
-		require("codecompanion").cli("#{this}", { focus = false })
-	end, "CLI agent: add buffer/selection as context")
-	map("n", "<leader>acd", function()
-		require("codecompanion").cli("#{diagnostics} 请修复这些问题", { focus = false, submit = true })
-	end, "CLI agent: fix LSP diagnostics")
-	map("n", "<leader>act", function()
-		require("codecompanion").cli(
-			"#{terminal} 这是终端输出，请帮我修复",
-			{ focus = false, submit = true }
-		)
-	end, "CLI agent: fix terminal output")
-	map("n", "<leader>ax", ":CodeCompanionCmd ", "CodeCompanion: generate command", { silent = false })
-	map("n", "<leader>aT", ":CodeCompanionCLI agent=", "CodeCompanion: CLI (pick agent)", { silent = false })
 end
-
+local function sidekick()
+	require("sidekick").setup({
+		nes = {
+			enabled = function(buf)
+				return require("mayon.features.ai_completion").provider == "copilot"
+					and require("mayon.features.ai_completion").allowed(buf)
+			end,
+		},
+		cli = {
+			mux = { enabled = false },
+			win = {
+				layout = vim.o.columns < 120 and "float" or "right",
+				split = { width = 60 },
+				nav = function(dir)
+					local name = ({ h = "left", j = "down", k = "up", l = "right" })[dir]
+					require("lz.n").trigger_load("smart-splits.nvim")
+					require("smart-splits")["move_cursor_" .. name]()
+				end,
+			},
+		},
+	})
+	-- 2.3.0 deep-merges defaults and has no disable flag per tool. Replace the
+	-- public tools table after setup so Claude has exactly one terminal owner.
+	require("sidekick.config").cli.tools = { codex = { cmd = { "codex" } }, grok = { cmd = { "grok" } } }
+end
+local function cc_prompt(name)
+	require("lz.n").trigger_load("codecompanion.nvim")
+	require("codecompanion").prompt(name)
+end
+local function send(message)
+	require("lz.n").trigger_load("sidekick.nvim")
+	require("sidekick.cli").send({ msg = message, focus = false })
+end
+local function map(lhs, rhs, desc, mode)
+	return { lhs, rhs, desc = desc, mode = mode or "n" }
+end
 return {
 	{
-		"codecompanion.nvim",
-		cmd = { "CodeCompanion", "CodeCompanionChat", "CodeCompanionCLI", "CodeCompanionActions", "CodeCompanionCmd" },
-		keys = {
-			{ "<leader>aa", mode = { "n", "v" } },
-			{ "<leader>ap", mode = { "n", "v" } },
-			{ "<leader>av", mode = "v" },
-			{ "<leader>ai", mode = { "n", "v" } },
-			"<leader>at",
-			"<leader>ah",
-			{ "<leader>acp", mode = { "n", "v" } },
-			{ "<leader>aca", mode = { "n", "v" } },
-			"<leader>acd",
-			"<leader>act",
-			"<leader>ax",
-			"<leader>aT",
+		"claudecode.nvim",
+		cmd = {
+			"ClaudeCode",
+			"ClaudeCodeStart",
+			"ClaudeCodeStop",
+			"ClaudeCodeSend",
+			"ClaudeCodeAdd",
+			"ClaudeCodeDiffAccept",
+			"ClaudeCodeDiffDeny",
 		},
-		after = setup,
+		keys = {
+			map("<leader>ac", "<cmd>ClaudeCode<cr>", "切换 Claude Code"),
+			map("<leader>as", ":ClaudeCodeSend<cr>", "发送选区到 Claude", "v"),
+			map("<leader>aA", "<cmd>ClaudeCodeDiffAccept<cr>", "接受 Claude 当前修改"),
+			map("<leader>aD", "<cmd>ClaudeCodeDiffDeny<cr>", "拒绝 Claude 当前修改"),
+		},
+		after = claude,
+	},
+	{
+		"sidekick.nvim",
+		cmd = "Sidekick",
+		keys = {
+			map("<leader>ax", function()
+				require("sidekick.cli").toggle({ name = "codex", focus = true })
+			end, "切换 Codex CLI"),
+			map("<leader>ag", function()
+				require("sidekick.cli").toggle({ name = "grok", focus = true })
+			end, "切换 Grok CLI"),
+			map("<leader>af", function()
+				send("{file}")
+			end, "发送文件到当前 CLI"),
+			map("<leader>av", function()
+				send("{selection}")
+			end, "发送选区到当前 CLI", "v"),
+			map("<leader>aE", function()
+				send("{diagnostics}")
+			end, "发送诊断到当前 CLI"),
+			map("<leader>aG", function()
+				local result = vim.system({ "git", "diff", "--no-ext-diff" }, { text = true }):wait()
+				if result.code == 0 then
+					send("请审阅以下 Git diff：\n" .. result.stdout)
+				end
+			end, "发送 Git diff 到当前 CLI"),
+			map("<Tab>", function()
+				if not require("sidekick").nes_jump_or_apply() then
+					vim.api.nvim_feedkeys(vim.keycode("<Tab>"), "n", false)
+				end
+			end, "跳到或应用 Copilot 下一编辑"),
+		},
+		after = sidekick,
+	},
+	{
+		"codecompanion.nvim",
+		cmd = { "CodeCompanion", "CodeCompanionChat", "CodeCompanionActions", "CodeCompanionCmd" },
+		keys = {
+			map("<leader>ad", "<cmd>CodeCompanionChat Toggle<cr>", "DeepSeek 对话", { "n", "v" }),
+			map("<leader>ai", ":CodeCompanion<cr>", "DeepSeek 内联改写", { "n", "v" }),
+			map("<leader>ae", function()
+				cc_prompt("解释报错")
+			end, "解释诊断"),
+			map("<leader>at", function()
+				cc_prompt("为选区写测试")
+			end, "为选区写测试", "v"),
+			map("<leader>am", function()
+				cc_prompt("生成提交信息")
+			end, "起草提交信息"),
+			map("<leader>ap", "<cmd>CodeCompanionActions<cr>", "中文提示词库", { "n", "v" }),
+			map("<leader>ah", function()
+				require("codecompanion").extensions.history.browse_chats()
+			end, "浏览 AI 对话历史"),
+		},
+		after = companion,
+	},
+	{
+		"minuet-ai.nvim",
+		cmd = "Minuet",
+		after = function()
+			require("mayon.features.ai_completion").minuet_setup()
+		end,
 	},
 }

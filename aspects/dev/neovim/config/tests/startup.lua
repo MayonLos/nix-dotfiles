@@ -2,7 +2,10 @@
 assert(vim.v.errmsg == "", vim.v.errmsg)
 assert(vim.g.mayon_config_loaded)
 assert(vim.g.colors_name == "onedark-darker")
-assert(vim.api.nvim_get_hl(0, { name = "Normal", link = false }).bg == 0x1f2329)
+assert(
+	vim.api.nvim_get_hl(0, { name = "Normal", link = false }).bg
+		== tonumber(require("mayon.generated").palette.bg:sub(2), 16)
+)
 assert(vim.wo.number and vim.wo.relativenumber and vim.wo.cursorline and vim.wo.wrap)
 assert(vim.o.laststatus == 3 and vim.o.showtabline == 2)
 for _, provider in ipairs({ "python3", "ruby", "node", "perl" }) do
@@ -11,10 +14,9 @@ end
 for _, name in ipairs({
 	"CodeCompanion",
 	"CodeCompanionChat",
-	"CodeCompanionCLI",
 	"Oil",
 	"GrugFar",
-	"DiffviewOpen",
+	"CodeDiff",
 	"Trouble",
 	"Urls",
 	"UrlsBuffer",
@@ -22,24 +24,26 @@ for _, name in ipairs({
 }) do
 	assert(vim.fn.exists(":" .. name) == 2, "missing command: " .. name)
 end
-for _, module in ipairs({ "codecompanion", "diffview", "lazydev", "noice", "oil", "dap", "overseer" }) do
+for _, module in ipairs({
+	"codecompanion",
+	"codediff",
+	"lazydev",
+	"oil",
+	"claudecode",
+	"sidekick",
+	"copilot",
+	"minuet",
+	"edgy",
+	"smart-splits",
+}) do
 	assert(not package.loaded[module], module .. " was eagerly loaded")
 end
 assert(vim.fn.exists(":FzfLua") == 0 and not package.loaded.ufo)
 vim.api.nvim_exec_autocmds("BufReadPre", {})
 require("lz.n").trigger_load("nvim-treesitter")
-local blink = require("blink.cmp")
-assert(vim.deep_equal(require("blink.cmp.config").sources.default, { "lsp", "path", "snippets", "buffer" }))
-assert(blink.get_lsp_capabilities().textDocument.completion.completionItem.snippetSupport)
-local selection = require("blink.cmp.config").completion.list.selection
--- Blink wraps mode-specific values in functions during setup.
-local function value(option)
-	if type(option) == "function" then
-		return option({})
-	end
-	return option
-end
-assert(value(selection.preselect) == false and value(selection.auto_insert) == false)
+assert(not package.loaded["blink.cmp"] and not package.loaded.copilot)
+assert(vim.opt.completeopt:get() and vim.tbl_contains(vim.opt.completeopt:get(), "noselect"))
+assert(package.loaded["vim._core.ui2"])
 assert(vim.tbl_count(require("mayon.lsp.servers").servers) == 17)
 for _, lang in ipairs({ "lua", "nix", "javascript", "tsx", "cpp", "matlab", "latex", "markdown", "markdown_inline" }) do
 	assert(pcall(vim.treesitter.language.add, lang), "missing parser: " .. lang)

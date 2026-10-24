@@ -3,12 +3,16 @@ let
   contributions =
     builtins.attrValues
       (import ../languages/contract.nix { inherit (pkgs) lib; }).defaults;
+  acpAdapters = {
+    codex = "${pkgs.local.codex-acp}/bin/codex-acp";
+    claude = "${pkgs.local.claude-agent-acp}/bin/claude-agent-acp";
+  };
   neovim = import ./package.nix {
-    inherit pkgs contributions;
+    inherit pkgs contributions acpAdapters;
     palette = appearance;
   };
   reduced = import ./package.nix {
-    inherit pkgs contributions;
+    inherit pkgs contributions acpAdapters;
     palette = appearance // {
       reducedMotion = true;
     };
@@ -43,7 +47,7 @@ in
             export NVIM_APPNAME=nvim
             unset VIMINIT
             mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"
-            for test in startup completion integration workflow fileops lua_workspace modern interface; do
+            for test in startup completion integration workflow fileops lua_workspace modern interface ai native codediff; do
               export NVIM_TEST_FILE="${neovim.configDir}/tests/$test.lua"
               ${neovim.normal}/bin/nvim --headless -c 'luafile ${neovim.configDir}/tests/run.lua'
             done

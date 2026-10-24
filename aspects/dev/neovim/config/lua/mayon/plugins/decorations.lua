@@ -1,8 +1,3 @@
-local function motion_reduced()
-	local ok, generated = pcall(require, "mayon.generated")
-	return ok and generated.palette and generated.palette.reducedMotion == true
-end
-
 return {
 	{
 		"rainbow-delimiters.nvim",
@@ -24,7 +19,7 @@ return {
 		"nvim-colorizer.lua",
 		event = { "BufReadPost", "BufNewFile" },
 		after = function()
-			require("colorizer").setup({ filetypes = { "css", "html", "lua", "nix" } })
+			require("colorizer").setup({ filetypes = { "lua", "nix" } })
 		end,
 	},
 	{
@@ -69,24 +64,6 @@ return {
 					end
 					return { { " " .. name .. " ", group = "InclineNormal" } }
 				end,
-			})
-		end,
-	},
-	{
-		"smear-cursor.nvim",
-		event = "User MayonVeryLazy",
-		after = function()
-			if motion_reduced() then
-				return
-			end
-			require("smear_cursor").setup({
-				smear_between_buffers = false,
-				smear_between_neighbor_lines = true,
-				smear_insert_mode = false,
-				stiffness = 0.55,
-				trailing_stiffness = 0.45,
-				distance_stop_animating = 0.35,
-				time_interval = 17,
 			})
 		end,
 	},

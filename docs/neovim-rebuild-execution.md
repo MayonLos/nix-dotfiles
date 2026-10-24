@@ -1,148 +1,160 @@
-# Neovim 第六轮完全重构
+# Neovim AI 重构（2026-10-24）
 
-2026-10-24 第十轮后续：Python 使用 basedpyright，新增 Taplo；启动页字形、渐变与路径展示已修正。Lua LSP 对比与本轮构建证据见[软件替换记录](history/software-swap-2026-10-24.md)。下文此前的首文件实测保留原版本语境。
+本轮以 `nvim-ai` / `cdbe549` 隔离 worktree 为基线，完整替换键位与 AI 工作流。
+配置尚未应用，不执行 sudo、nixos-rebuild 或 Git commit/push；合并冲突可由主代理暂存以标记解决。此前构建路径、性能样本、
+检查结果和实机待验项记录于[本轮历史](history/nvim-ai-2026-10-24.md)。
+完整新键位及旧→新对照见[工作流键位表](workflow-design.md#neovim-键位)。
 
-状态：2026-10-24，重构已实现并完成构建与隔离验证；本轮**尚未应用**，没有执行 `sudo`、
-`nixos-rebuild`、Git stage/commit/push 或系统切换。完整 health 仍有两个明确限制，见下文。
-此前实施与应用记录及本轮执行细节见[历史归档](history/neovim-rebuild-2026-10-24.md)。
+## AI 三层与补全
 
-用户授权完整重做 Neovim，可调整功能与交互。实现保持 Nix 固定插件、Den 生成的语言和
-palette 数据，以及 One Dark Darker（`#1f2329`）；Mango 仍为桌面默认。Home Manager
-配置随 NixOS 重建，没有独立 switch。
+1. **claudecode.nvim** 是 Claude Code 的 IDE 协议入口：跟踪当前文件、打开文件和选区；
+   `<Space>ac` 由插件自己的 Snacks 终端启动 Claude，宽屏右侧固定，窄屏浮动。
+   `<Space>as` 发送可视选区。Claude 的 `openDiff` 会在独立标签页打开左右原生 diff，
+   隐藏终端并聚焦建议，配色与 codediff/mini.diff 统一。顶部显示接受/拒绝提示；
+   在建议缓冲区用 `,a` / `<Space>aA` 接受，`,r` / `<Space>aD` 拒绝，可先手动编辑建议。
+   每次审阅对应一个文件提案，不是逐 hunk 批准。锁定 0.3.0 的接受命令返回 `FILE_SAVED`
+   与编辑后的文本给 CLI，由 CLI 写入目标文件；CLI 随后 `close_tab` 清理视图。
+   拒绝返回 `DIFF_REJECTED`，不会写源文件。未保存的原文件会被上游拒绝打开 diff。
+2. **sidekick.nvim** 管理 Codex/Grok 原生 TUI；`<Space>ax/ag` 切换工具，
+   `<Space>af/av/aE/aG` 将文件/选区/诊断/Git diff 交给当前会话。
+   没有活跃会话时选择工具。发送只插入上下文，不自动提交。Claude 从工具表移除，避免第二终端。
+   CLI 退出后的改动通过 watch/checktime 刷新，保留缓冲区未保存保护。
+   NES 与原生 inline completion 共享单个 `copilot` LSP：sidekick 2.3 按客户端名发现它，
+   直接调用 `textDocument/copilotInlineEdit`。普通模式 `Tab` 跳到/应用下一编辑，
+   没有建议时透传 Tab；插入模式 Tab 由独立幽灵文本模块处理。
+3. **CodeCompanion 19.27** 默认 DeepSeek HTTP 对话与内联改写；中文 prompt library 包含解释报错、
+   为选区写测试、提交信息草稿、重构与注释。历史扩展保持原目录、自动本地保存、不额外请求标题。
+   对话中 `ga` 切换 adapter，可选 `codex` / `claude_code` ACP；这与 CLI 的原生 TUI 是不同入口。
+   ACP 使用 llm-agents 的 `codex-acp` 2.2.2 / `claude-agent-acp` 0.95.0，不运行 npx。
+   独立 flake 包由 `nix/outputs.nix` 注入绝对路径；HM 消费 ai-workbench 的公开会话变量
+   `NVIM_CODEX_ACP` / `NVIM_CLAUDE_ACP`，应用后需新登录会话。无有效路径时报错。
 
-## 架构与加载
+用户在 tmux 自己启动 Claude 时，先在 Neovim 执行 `:ClaudeCodeStart`（只启动 IDE 服务），
+再在 Claude 执行 `/ide` 选中这个 Neovim。无需打开插件终端；状态栏 `C●` 表示连接、
+`C○` 表示已加载但未连接、`C·` 表示尚未加载。状态栏同时显示 CLI 会话名、补全提供者、请求中。
 
-`config/init.lua` 只调用 bootstrap。配置分为 `mayon.config`（选项、键位、自动命令与
-加载器）、`mayon.plugins`（按领域返回 lz.n specs）、`mayon.ui`、`mayon.features` 和
-`mayon.lsp`。Nix 固定插件及完整依赖闭包；启动插件为 One Dark、Heirline、Snacks、lz.n
-和 nvim-web-devicons。其余插件与传递依赖列为 optional，由生成的依赖图在 lz.n 命中
-`event`、`cmd`、`keys` 或 `ft` 后按序 `packadd`。不在运行时下载插件。
+**AI 只提供灰色行内幽灵文本**，不进入菜单。Copilot 使用 Neovim 0.12.4 原生
+`vim.lsp.inline_completion`，Nix 注入 stable `copilot-language-server` 1.495.0 的绝对路径，
+不使用 npm。首次打开普通文件，等待 Copilot LSP attach 后执行 `:LspCopilotSignIn`，按浏览器
+设备码流程登录；退出登录用 `:LspCopilotSignOut`。这两个 buffer-local 命令来自锁定 lspconfig
+的 `lsp/copilot.lua`。认证由服务器在运行时管理，不读取或迁移既有凭据。
+`␣au` / `␣ua` 或 `:AICompletion copilot|deepseek|off` 三态切换。DeepSeek 使用 Minuet
+virtualtext 前端，仅读 `DEEPSEEK_API_KEY`，不写入 Nix/store；使用 FIM beta/completions。
+无 Key 显示说明；不会自动切到付费兜底。切换后丢弃晚到 DeepSeek 响应并关闭其他引擎与 NES。
+菜单打开时隐藏幽灵文本。插入 `Tab` 接受整条建议；`Ctrl+→` / `Alt+l` 接受一个词，
+`Alt+]` / `Alt+[` 轮换，`Esc` / `Ctrl+]` 拒绝。Tab 无建议时跳原生片段，再回退缩进。
 
-普通 picker、项目树、dashboard、LazyGit 与图片入口共用 Snacks。保留 nvim-navic，状态栏
-只在宽屏使用其符号；导航模块按 `LspAttach` 懒加载并主动连接已附着客户端，因为 lz.n
-不会重放无 augroup 的已发生事件。`fzf-lua` 已删除。`nvim-ufo` 已删除，折叠改由 Neovim
-0.12 原生 LSP `foldingRange` 优先、Tree-sitter 回退，折叠文本显示首行和行数；`zR/zM/zc/zo`
-使用原生操作。
+**从 blink 换到原生补全**是因为用户只需要基本 LSP，AI 已独立，不再需要多源合并、
+额外的菜单框架和 Rust fuzzy 库。LspAttach 用 `vim.lsp.completion.enable` autotrigger，
+kind 图标复用 kinds、detail 截短；`menuone,noselect,popup,fuzzy` 保持不预选。
+0.12.4 文档明确 nearest 与 fuzzy 同时存在时无效，因此保留 fuzzy，不叠加 nearest。
+菜单高宽受限，Pmenu 系列接 palette；pumborder/winborder 均 rounded，原生 popup 显示文档，
+该版本没有 completepopup 选项。`Ctrl+y` / Enter 显式确认所选项，Enter 未选择时换行；
+`Ctrl+n/p` 上下，`Ctrl+e` 关闭，`Ctrl+Space` 请求 LSP。C++ 自有 JSON 片段通过 complete 的
+F/completefunc 源进入候选，用 `vim.snippet.expand` 展开；可 `Ctrl+x Ctrl+u` 专门触发。
+路径补全保持 `Ctrl+x Ctrl+f`。命令行 `wildoptions=pum,fuzzy`，Tab 触发；不额外自动弹菜单。
+lazydev 继续给 LuaLS 注入 workspace library，不再配置菜单 source。
 
-锁定 Neovim 0.12.4 已将旧 `vim._extui` 迁至 `vim._core.ui2`。其 runtime 文档仍明确标为
-experimental；公开选项控制消息路由、窗口高度和超时，`check_targets()` 将命令行创建为
-`relative=laststatus`、`col=0`、全宽且无边框，没有居中圆角弹框的公开几何配置。实现该布局
-需要改写私有窗口行为，因此本轮保留 Noice，由 `User MayonVeryLazy` 或其命令懒加载。命令框继续位于底部居中，消息由 Noice 接管并延后初始化。LSP、格式化、
-lint、Treesitter、Blink、Flash、文本对象、多光标、surround、autopairs、Markdown、Trouble、
-Diffview、CodeCompanion、会话、草稿、URL、公式预览、C++ snippets 和项目 PATH 保留；AI、
-语言服务及编辑器扩展按领域懒加载。
+CodeCompanion 19.27 仍未提供旧 `display.diff.provider` 选项。`cc_minidiff.lua` 对其
+`helpers.show_diff` 的 inline 分支做小型兼容桥：mini.diff 叠加预览，`,a` 接受保留未保存内容，
+`,r` 拒绝还原，禁止同一 buffer 重叠审阅，恢复原局部键位。其他 CodeCompanion diff 沿用上游。
+Gitsigns 单独拥有 Git sign 列；mini.diff 只在内联审阅时用行号/overlay，不启动 Git source。
+升级 CodeCompanion/Minuet 时要复核两个回调桥，相关行为测试会执行真实 MiniDiff/Claude diff。
 
-新增插件为 `lz.n`、`oil.nvim`、`yazi.nvim`、`nvim-dap`、`nvim-dap-view`、
-`nvim-dap-virtual-text`、`overseer.nvim`、`todo-comments.nvim`、`rainbow-delimiters.nvim`、
-`nvim-colorizer.lua`、`tiny-inline-diagnostic.nvim`、`satellite.nvim`、`incline.nvim` 和
-`smear-cursor.nvim`。删除 `fzf-lua` 与 `nvim-ufo`，并移除不再需要的传递依赖。
+## 插件与加载
 
-```text
-lua/mayon/
-  config/    bootstrap、options、keymaps、autocmds、loader
-  plugins/   按领域返回 lz.n spec 列表
-  ui/        theme、dashboard、statusline、tabline、breadcrumbs、icons、noice、text
-  features/  fileops、oil、folds、sessions、scratch、urls、math_preview、AI/补全小组件
-  lsp/       原生 LSP 配置、服务器适配、进度与项目 PATH
-```
+删除 nvim-dap、dap-view、dap-virtual-text、Nix 的 LLDB/debugpy 注入和全部调试键；
+删除 overseer 与任务模板，用项目终端/AI CLI 跑项目任务；删除 smear-cursor，避免与 Kitty
+cursor_trail 重复。最新原生替换见下表；文件安全和用户状态保留。
+claudecode、sidekick、Minuet、mini.diff、edgy、smart-splits 与 codediff 来自锁定 stable。
+Home Manager 与独立 flake 包均通过 `pkgs.unstable.codecompanion-nvim` 使用 CodeCompanion
+19.27.0；该包名在 `nix/pkgs.nix` 的 unstable 白名单中登记。原因是 stable 19.13 缺少后续修复与 ACP
+改进，v20 有破坏性变更，待 nixpkgs 收录后另行迁移。其 Plenary runtime 依赖保持 stable，
+避免混入第二个 LuaJIT；锁定 history 扩展保持原版本，真实 setup 与存储兼容性由 checks 验证。
 
-## 文件安全与用户数据
+保留 lz.n 按事件/命令/键位加载。五个启动插件仍为 lz.n、One Dark、Heirline、Snacks、devicons；
+CodeCompanion/Claude 按命令或按键，Minuet 手动切换后加载；Copilot 配置随 LSP 初始化，
+服务器按普通文件 attach。Edgy/smart-splits 由 MayonVeryLazy 或方向键加载。
+空启动性能预算为三次独立 HOME/XDG 的 NVIM STARTED 中位数 ≤30ms，样本见历史。
 
-Snacks Explorer 提供侧栏，Oil 通过 `-` 打开可编辑父目录缓冲，Yazi 通过 `<leader>fy` 打开
-浮窗。Oil 使用回收站删除并保留简单编辑确认；fileops 接管本地创建、移动、复制和删除的
-安全检查。目标存在、是符号链接或冲突时拒绝创建/覆盖；文件复制走自有 exclusive-copy，
-避免锁定 Oil 源码 `undo-copy` 路径的潜在覆盖问题。回收站只允许安全移回，永久 purge 被
-拒绝；Oil 的 LSP 文件操作关闭，以免与 fileops 重复应用 workspace edit。普通文件源 undo 不会随创建、移动、复制或删除迁移或删除；复制失败时保留已创建的部分目标，便于检查，不自动清除它们。
+## 原生能力替换表
 
-undo、会话、草稿、AI 对话历史、shada、项目、模型、凭据及其他 Neovim 用户数据保留原路径
-与格式，不因配置重排而清理或转换。配置重组不代表数据迁移。
+依据是锁定 0.12.4 runtime 的 doc/news.txt、doc/lsp.txt、doc/options.txt 及 pack/dist/opt，
+[上游原生 LSP 文档](https://neovim.io/doc/user/lsp/)只作背景，实际版本 API 以本机源码为准。
 
-## 键位
+| 替换前 | 替换后 | 行为与边界 |
+|---|---|---|
+| blink.cmp 与 AI source | 原生 LSP 菜单 + 独立幽灵文本 | 少量 LSP 需求；片段/路径走原生；无 AI 菜单项 |
+| copilot.lua / copilot-lsp | inline_completion + Nix Copilot server | 同一个 client 供 Sidekick NES 使用 |
+| Noice / nui | `vim._core.ui2.enable()` | 实验接口；消息 pager 为 buffer，命令行实时高亮；通知仍 Snacks |
+| 自写 LSP progress 聚合 | Progress + `vim.ui.progress_status()` / busy | 状态栏读取原生摘要 |
+| 无撤销树入口 | `packadd nvim.undotree` + `:Undotree` | `␣su` 按需加载，原 undo 数据保留 |
+| Flash 的 S 语法选择 | 原生 an/in、节点移动、Treesitter select | LSP selectionRange fallback；Flash 只用 s 跳转 |
+| 手动 LSP 扩展 | 原生 CodeLens/linked editing/on-type/document color | 按 supports_method；`␣uL` 按需打开 CodeLens |
+| colorizer 包含 CSS/HTML | LSP 处理支持的 document color | colorizer 只负责 Lua/Nix，避免重复覆盖 |
+| 单一诊断列表 | 原生 workspace_diagnostics | `␣xw` 收集工作区诊断，Trouble 入口仍保留 |
+| 无原生 restart/目录比较入口 | `:restart` / `:DiffTool` | `␣qr` / `␣gT`；关闭迁到 `␣qq` 避免 leader 前缀冲突 |
+| 默认字符 diff | `diffopt+=inline:word` | 原生 Claude diff 与其它 diff 保持统一配色 |
+| 自维护 Git fork | codediff 2.45.0 + libvscode_diff | Nix 构建原生库，禁止在线安装 |
 
-which-key 分组标签统一为英文：Files、Search、Git、Code、Debug、Run、AI、UI、Diagnostics、
-Windows、Buffers；LSP、Sessions、Docs、Multiple cursors 和 CLI agents 继续保留。
+ui2 headless 是否可用与构建测试结果见历史，不把实验接口写成稳定保证。
+CodeLens 默认关闭按需显示；0.12.4 自动 CodeLens 晚到响应在删除 buffer 后可触发无效 buffer
+redraw，隔离测试已复现，故不在 attach 时自动请求。linked editing、on-type formatting 与颜色
+仅在服务器声明支持时启用；签名帮助在 `(` / `,` 后请求。注释已用原生 gc，无额外注释插件；
+插件仍由 Nix 管理，不使用 vim.pack。
 
-| 键位 | 行为 |
-|---|---|
-| `<leader>ff` / `fg` / `fb` / `fr` / `fh` | Snacks 文件、grep、buffers、最近文件、帮助 picker；原入口保留 |
-| `<leader>fs` / `fS` / `fd` / `fk` | 文档符号、工作区符号、诊断、键位 picker |
-| `<leader>f:` / `f/` / `fp` / `f.` | 命令历史、恢复上次 picker、项目、当前 buffer 行 |
-| `<leader>fy` / `-` / `<leader>e` | Yazi 浮窗 / Oil 父目录编辑缓冲 / Snacks Explorer 侧栏 |
-| `<leader>gg` | Snacks LazyGit，保留 Git 入口 |
-| `<leader>st` / `<leader>xt`；`[t` / `]t` | Snacks Todo grep / 上一个、下一个 TODO |
-| `<leader>sr` | GrugFar 搜索替换，仍保留入口 |
-| `<F5>` / `<F10>` / `<F11>` / `<F12>` | DAP 继续 / 跨过 / 进入 / 跳出 |
-| `<leader>db` / `dB` / `dc` | 切换断点 / 条件断点 / 启动或继续 |
-| `<leader>di` / `do` / `dO` | 进入 / 跨过 / 跳出 |
-| `<leader>dr` / `dl` / `dt` / `dv` | REPL / 上次调试 / 终止 / 调试视图 |
-| `<leader>rr` / `rt` / `ra` / `rc` | 选择任务 / 任务列表 / 任务动作 / CMake 构建 |
-| `<leader>rn` | 保留 LSP 符号重命名；`<leader>fR` 用于文件重命名 |
-| `zK` | 原自定义上下文入口改为原生 `zo` 打开折叠 |
+## Git 审阅与 codediff
 
 `<leader>` 的文件搜索、grep、buffers、最近文件、符号、诊断、Git、帮助、keymaps、命令历史、
 项目和 picker 恢复现统一使用 Snacks；此前 fzf-lua 同功能入口迁移到 Snacks，常用 `ff/fg`
 等键位保持。新键和保留键的当前完整定义以
 [`navigation.lua`](../aspects/dev/neovim/config/lua/mayon/plugins/navigation.lua)、
 [`keymaps.lua`](../aspects/dev/neovim/config/lua/mayon/config/keymaps.lua) 与领域插件为准。
+`␣gd` 打开工作区，`␣gf` 当前文件历史，`␣gD` 输入提交/分支比较，`␣gC` 当前文件冲突；
+`␣gT` 使用 Neovim 自带 DiffTool 比较目录。CodeDiff 同时支持行级与字符级高亮、并排与内联，
+审阅本地、暂存、提交或远程 PR 的已获取 refs，以及文件历史和冲突逐块解决。
+PR refs 需先由外部 Git 获取，不会替用户执行联网 checkout。界面 `t` 切换布局，实际键位见
+`:h codediff-keymaps`；保留 Gitsigns 的 hunk 暂存/还原与 LazyGit。
+Explorer 左侧 30 列、树形图标与 Edgy 文件树相同；独立 Git 审阅 tab 的窗口仍由 codediff 管理。
+字符增删与原生 diff/Claude 使用同一 palette；Claude 继续用 `,a/,r` 接受/拒绝整文件提案，
+codediff 的工作区视图只审阅已有文件变化，不等同 Claude 协议接受。
 
-| 旧入口 / 行为 | 本轮行为 |
-|---|---|
-| fzf-lua 的 `ff/fg/fb/fr/fh` 等搜索入口 | 绑定不变，底层统一换成 Snacks picker |
-| 原 `zK` 自定义折叠上下文 | `zK` 明确映射到原生 `zo` |
-| 原 `<leader>rn` 符号重命名 | 保留；文件重命名单独使用 `<leader>fR` |
-| 没有 Oil/Yazi 的专用导航键 | 新增 `-`、`<leader>fy`；`<leader>e` 继续打开 Explorer |
-| 尚无统一的 DAP/任务入口 | 新增 F 键、`<leader>d*` 与 `<leader>r*` 工作流 |
+已复核保留：heirline（API 稳定且自写状态/标签栏成熟）、nvim-autopairs（blink.pairs 尚年轻）、
+surround、edgy、trouble、todo-comments、flash 跳转、multicursor、oil、yazi、grug-far、conform、
+nvim-lint、render-markdown、rainbow-delimiters 和限定 filetypes 的 colorizer。
+这些保留项未作行为重写。此前保留 blink/Noice 的结论已被最新用户需求覆盖。
 
-## 外观与功能扩展
+## 布局、语言与状态
 
-One Dark Darker 和 Den palette 仍是唯一颜色来源。状态栏按 120/80/40 列收缩，包含模式、
-Git、相对路径、诊断、LSP、AI、文件类型、非 UTF-8 编码和位置；标签栏保留重名消歧、CJK
-截断、未保存标记和关闭行为。折叠、标记列、浮窗和新插件的高亮由集中 theme adapter 管理。
+Edgy 左 Explorer，右 Claude/CodeCompanion/sidekick，下 Trouble、quickfix 与普通终端；
+小窗口不固定左右侧栏，AI 创建时用浮窗。统一标题、圆角浮窗和 palette 面板/diff 高亮。
+Ctrl+h/j/k/l 用 smart-splits 穿过 Neovim 与 tmux 面板，Alt+h/j/k/l 调整大小。
+本轮未修改超出写入范围的 tmux 配置，主代理需合入历史文件中的 tmux 片段。
+真实 tmux、TTY Alt/Tab、窗口缩放和美观仍需实机验收。
 
-dashboard 使用蓝青 MAYON 标题、文件/搜索/项目/会话/配置快捷入口及配置初始化时长（从 bootstrap 计时，不冒充进程总启动时间）。Oil/Yazi、
-LazyGit/Diffview、DAP（lldb-dap 与 Python debugpy 路径来自 Nix 注入）、Overseer、
-todo-comments、rainbow-delimiters、Colorizer、tiny-inline-diagnostic、Satellite 与 Incline
-按触发条件加载。smear-cursor 在 reducedMotion 为假时启用，关闭插入动画和跨 buffer 拖尾，
-保留克制的相邻行动画。Kitty 是否闪烁尚未实机确认，不能据猜测宣称已验证；若实机出现问题，
-再禁用这一动画模块。Incline 单窗口隐藏；Colorizer 仅作用于 CSS/HTML/Lua/Nix。
+原生 LSP、basedpyright、Taplo、Treesitter、flash、多光标、surround、Oil/Yazi、Snacks、Markdown、
+公式预览、会话/草稿/URL、Heirline、which-key、Satellite、tiny-inline-diagnostic、TODO、
+rainbow、colorizer 和 gitsigns 保留。语言工具与 parser 仍由原有契约生成。
+undo、会话、草稿、shada 和 AI 历史保持原路径及格式，不转换或清除用户数据。
+Oil 继续回收站删除、独占复制、拒绝覆盖或符号链接目标；不清理普通源文件 undo。
 
-## 验证与性能
+## 验证边界
 
-本轮没有修改 `flake.lock`。`git diff --check`、`nix fmt`、锁定 StyLua 检查、
-`nix flake check --no-build --no-write-lock-file` 均实际执行；后者只证明求值。
-完整 flake check 已构建当前 x86_64-linux 的全部 18 个命名 checks，包括 Neovim、treefmt、
-editing-composition 和系统/桌面组合。普通 Neovim、`neovim-dev` 和 NixOS toplevel 也已构建，
-没有执行激活。命令、源码快照边界和最终 store 路径记录在历史文件。
+检查含原有 startup/completion/integration/workflow/fileops/lua_workspace/modern/interface、六语言首文件、
+真实 CSS 未保存诊断、normal/dev/reduced wrapper 与故意失败 runner；新增 AI 加载、ACP 可执行路径、
+补全切换、多 buffer/晚到响应、真实 mini.diff 接受/拒绝、Claude 协议 diff 接受/拒绝与键位 API 扫描。
+`nvim_get_keymap` 只能看到最终有效映射，重复扫描不证明初始化期间没有覆盖；另检查 leader 叶节点前缀冲突。
 
-`checks.neovim` 实际执行 startup、completion、integration、workflow、fileops、lua_workspace、
-modern、interface、五语言首次打开、真实 CSS 未保存诊断、三种 wrapper 及故意失败 runner。
-覆盖 optional 启动隔离和触发、Snacks picker 入口与真实 finder、dashboard 渲染、LSP/TS 折叠、
-Oil 的真实回收站/dirty/覆盖/symlink/只读目录/copy 防递归/源 undo 保护、DAP 适配器路径、
-全部插件 setup、重载主题和 40/60/80/100/120/180 列 UI。
-Lua/C++/Python/Markdown/Nix 首文件分别实际附着 LuaLS/clangd/pyright/marksman/nixd；
-Treesitter、Navic、格式化和诊断模块加载无错误。Markdown 没有配置外部 formatter，继续使用
-既有通用空白整理。AI 未进行联网模型请求，DAP 未执行真实项目调试。
+求值、构建、隔离 headless 与实机验证分开记录。不把 mock 回调或协议 fixture 当成联网模型请求、
+Claude CLI 实际写盘或 GUI 美观的证明。实际 health、构建命令与限制见本轮历史。
 
-最终启动样本（最终普通包，三次独立 HOME/XDG，旧/新交替运行）：
+## 待办
 
-| 包 | 三次 NVIM STARTED（ms） | 中位数（ms） |
-|---|---|---:|
-| 旧普通包 | 75.766 / 74.574 / 75.159 | 75.159 |
-| 最终普通包 | 26.364 / 26.363 / 26.147 | 26.363 |
+- 微信输入法问题待解决：主代理实测 XCB/Fcitx wrapper 无效，本轮撤销为直接安装 wechat；
+  问题挂起，不改用户数据。上一轮 wrapper 构建记录保留作历史，不能视为实机成功。
+- 应用后验收 Copilot 登录、灰色建议/逐词/候选/菜单互斥、Sidekick NES；DeepSeek 实际 FIM；
+  codediff 暂存/提交/PR/冲突、ui2 真实 TUI 命令行/pager、restart 保留 UI、窄屏和 Alt 按键。
 
-中位数降低约 64.9%，满足 ≤35ms 的验收目标。首次开发包样本 24.742 / 23.845 /
-23.897ms（中位数 23.897ms）只保留为过程记录，不与最终普通包混作一组。
-
-Lua 小项目的 `--startuptime` 为 **126.048 ms**（NVIM STARTED）；独立 LspAttach 探针从
-`--cmd` 执行点计为 **112.757 ms**。两者起点不同，attach 在启动期间已发生，不将其误写为
-启动之后额外等待该时长。该记录是小 fixture 的一次样本。
-
-这是同机有限样例；没有清空操作系统文件缓存，不代表所有工程或真实界面性能。
-
-完整 headless `:checkhealth` 初始化 UI 生命周期和所有可选插件后仍有 **2 ERROR**：
-缺少可选 Mermaid 渲染命令 `mmdc`；无物理终端的 headless 会话无法协商 Kitty 图形协议。
-因此**未达到完整 health 零 ERROR 验收**。单独排除 Snacks 的可选媒体检查后，其余已加载
-插件和核心 LSP/provider/Tree-sitter 检查为 0 ERROR；该分项结果不替代完整扫描。
-warning 还包括未安装的可选任务工具、缺少项目模板、mini.icons 提示（已用 devicons）和版本提示。
-公式的实际显示、Kitty 图像能力、smear-cursor、dashboard/分屏 Incline、补全/命令框与
-40/80/120 列实际观感仍待实机视觉验收。构建、headless 与小 fixture 不能替代这些检查。
+Home Manager 与独立 `neovim` / `neovim-dev` 输出现均通过
+`pkgs.unstable.codecompanion-nvim` 选择 CodeCompanion 19.27.0。独立输出的 ACP adapter 路径由
+`nix/outputs.nix` 注入；功能检查由 `aspects/dev/neovim/checks.nix` 负责。

@@ -1,0 +1,201 @@
+-- Integration against the real pinned plugins, without model requests.
+local load = require("lz.n").trigger_load
+load({
+	"claudecode.nvim",
+	"sidekick.nvim",
+	"codecompanion.nvim",
+	"minuet-ai.nvim",
+	"edgy.nvim",
+	"smart-splits.nvim",
+})
+vim.wait(100)
+assert(not vim.g.mayon_load_error, vim.g.mayon_load_error)
+assert(require("mayon.generated").versions.codecompanion == "19.27.0", "CodeCompanion version drift")
+assert(not package.loaded.copilot and not package.loaded["blink.cmp"])
+local cc = require("codecompanion.config").config
+assert(cc.interactions.chat.adapter == "deepseek" and cc.interactions.inline.adapter == "deepseek")
+for _, name in ipairs({ "codex", "claude_code" }) do
+	local adapter = cc.adapters.acp[name]()
+	local path = adapter.commands.default[1]
+	assert(path:sub(1, 11) == "/nix/store/", "ACP adapter is not Nix-injected: " .. path)
+	assert(vim.fn.executable(path) == 1, "missing ACP executable: " .. path)
+	assert(not path:find("npx", 1, true))
+end
+assert(cc.extensions.history.enabled)
+assert(require("codecompanion").version() == "19.27.0", "loaded CodeCompanion version drift")
+local chat = require("codecompanion.interactions.chat").new({
+	adapter = "deepseek",
+	buffer_context = require("codecompanion.utils.context").get(),
+	auto_submit = false,
+	messages = {
+		{ role = "user", content = "round13 local history fixture" },
+		{ role = "llm", content = "round13 local fixture reply" },
+	},
+})
+vim.wait(30) -- Let history process its scheduled ChatCreated hook before close.
+chat.opts.save_id = "round13-local-fixture"
+chat.opts.title = "round13 local fixture"
+local history = require("codecompanion").extensions.history
+history.save_chat(chat)
+local saved = history.load_chat(chat.opts.save_id)
+assert(
+	saved and saved.adapter == "deepseek" and saved.title == chat.opts.title,
+	"history save/load is incompatible with CodeCompanion 19.27"
+)
+assert(vim.iter(saved.messages):any(function(message)
+	return type(message.content) == "string" and message.content:find("round13 local history fixture", 1, true) ~= nil
+end))
+chat:close()
+
+assert(require("sidekick.config").cli.tools.claude == nil, "Claude must have one terminal owner")
+assert(require("sidekick.config").cli.tools.codex and require("sidekick.config").cli.tools.grok)
+local completion = require("mayon.features.ai_completion")
+local existing = vim.api.nvim_create_buf(true, false)
+assert(completion.set("deepseek") == "deepseek" and vim.g.sidekick_nes == false)
+assert(vim.b[existing].minuet_virtual_text_auto_trigger, "existing buffer missed DeepSeek auto trigger")
+local delivered = 0
+local pending_response = completion.guard(function()
+	delivered = delivered + 1
+end)
+pending_response({ "current" })
+assert(delivered == 1)
+completion.set("off")
+pending_response({ "stale" })
+assert(delivered == 1, "late DeepSeek response survived provider switch")
+-- The same backend wrapper used in production, with a deferred local transport.
+completion.set("deepseek")
+local original_key = vim.env.DEEPSEEK_API_KEY
+vim.env.DEEPSEEK_API_KEY = "local-fixture-unused-by-transport"
+local transport_callback
+local wrapped = completion.wrap_backend(function(_, callback)
+	transport_callback = callback
+end)
+wrapped({}, function()
+	delivered = delivered + 1
+end)
+transport_callback({ "first" })
+assert(delivered == 2)
+completion.set("off")
+transport_callback({ "late-second" })
+assert(delivered == 2, "backend wiring bypassed provider guard")
+vim.env.DEEPSEEK_API_KEY = original_key
+vim.api.nvim_exec_autocmds("User", { pattern = "MinuetRequestStartedPre", data = { n_requests = 2 } })
+vim.api.nvim_exec_autocmds("User", { pattern = "MinuetRequestFinished" })
+assert(completion.pending == 1, "parallel FIM request cleared busy state early")
+vim.api.nvim_exec_autocmds("User", { pattern = "MinuetRequestFinished" })
+assert(completion.pending == 0)
+completion.busy = true
+assert(completion.set("off") == "off" and not completion.accept() and not completion.busy)
+assert(completion.set("copilot") == "copilot" and vim.g.sidekick_nes == true)
+assert(not pcall(completion.set, "invalid"))
+completion.set("off")
+assert(require("minuet").config.provider == "openai_fim_compatible")
+assert(require("minuet").config.provider_options.openai_fim_compatible.api_key == "DEEPSEEK_API_KEY")
+for _, key in ipairs({
+	" ac",
+	" as",
+	" aA",
+	" aD",
+	" ax",
+	" ag",
+	" ad",
+	" ai",
+	" af",
+	" ae",
+	" at",
+	" am",
+	" ap",
+	" au",
+}) do
+	local mode = (key == " as" or key == " at") and "x" or "n"
+	assert(vim.fn.maparg(key, mode) ~= "", "missing AI key: " .. key)
+end
+for _, key in ipairs({ "<C-h>", "<C-j>", "<C-k>", "<C-l>", "<M-h>", "<M-j>", "<M-k>", "<M-l>" }) do
+	assert(vim.fn.maparg(key, "n") ~= "", "missing smart split key: " .. key)
+end
+-- Real mini.diff bridge: edits remain unsaved, reject restores the buffer;
+-- accepting keeps editable content and restores any pre-existing local maps.
+local buf = vim.api.nvim_create_buf(true, false)
+vim.api.nvim_set_current_buf(buf)
+vim.bo.filetype = "lua"
+vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "return 1" })
+local accepted, rejected = 0, 0
+local args = {
+	bufnr = buf,
+	ft = "lua",
+	inline = true,
+	diff_id = 7,
+	from_lines = { "return 1" },
+	to_lines = { "return 2" },
+	keymaps = {
+		on_accept = function()
+			accepted = accepted + 1
+		end,
+		on_reject = function()
+			rejected = rejected + 1
+		end,
+	},
+}
+local helpers = require("codecompanion.helpers")
+helpers.show_diff(args)
+assert(vim.api.nvim_buf_get_lines(buf, 0, -1, false)[1] == "return 2")
+assert(not pcall(helpers.show_diff, args), "overlapping inline review was allowed")
+vim.fn.maparg(",r", "n", false, true).callback()
+assert(rejected == 1 and vim.api.nvim_buf_get_lines(buf, 0, -1, false)[1] == "return 1")
+helpers.show_diff(args)
+vim.fn.maparg(",a", "n", false, true).callback()
+assert(accepted == 1 and vim.api.nvim_buf_get_lines(buf, 0, -1, false)[1] == "return 2")
+assert(vim.bo.modified and not vim.b.mayon_inline_review)
+vim.bo.modified = false
+-- Real native Claude diff: accept/reject via its public commands, no CLI.
+local path = vim.fn.tempname() .. ".lua"
+vim.fn.writefile({ "return 1" }, path)
+vim.cmd.edit(path)
+local diff = require("claudecode.diff")
+local function review(title, decision)
+	local resolved
+	diff._setup_blocking_diff(
+		{ old_file_path = path, new_file_path = path, new_file_contents = "return 3\n", tab_name = title },
+		function(result)
+			resolved = result
+		end
+	)
+	vim.wait(50)
+	assert(vim.b.claudecode_diff_tab_name == title)
+	assert(vim.fn.maparg(",a", "n") ~= "" and vim.fn.maparg(",r", "n") ~= "")
+	assert(vim.wo.winbar:find("Claude", 1, true), "diff lacks its review hint")
+	vim.cmd(decision)
+	assert(resolved, "Claude diff did not resolve")
+	diff.close_diff_by_tab_name(title)
+	return resolved
+end
+review("fixture-deny", "ClaudeCodeDiffDeny")
+assert(vim.fn.readfile(path)[1] == "return 1", "reject wrote Claude changes")
+local response = review("fixture-accept", "ClaudeCodeDiffAccept")
+assert(
+	response.content[1].text == "FILE_SAVED" and response.content[2].text == "return 3\n",
+	"accept did not return edited content to Claude"
+)
+-- The protocol returns content to the CLI; the CLI writes the target file.
+assert(vim.fn.readfile(path)[1] == "return 1", "protocol test unexpectedly wrote the source file")
+vim.fn.delete(path)
+require("claudecode").stop()
+-- Runtime API scan: unique mappings per mode and no leaf-prefix conflict in
+-- our leader namespace (the API exposes only final effective mappings).
+for _, mode in ipairs({ "n", "x", "i", "t" }) do
+	local seen, leader = {}, {}
+	for _, mapping in ipairs(vim.api.nvim_get_keymap(mode)) do
+		assert(not seen[mapping.lhs], "duplicate mapping: " .. mode .. ":" .. mapping.lhs)
+		seen[mapping.lhs] = true
+		if mapping.lhs:sub(1, 1) == " " then
+			leader[#leader + 1] = mapping.lhs
+		end
+	end
+	table.sort(leader)
+	for i = 1, #leader - 1 do
+		assert(leader[i + 1]:sub(1, #leader[i]) ~= leader[i], "leader leaf-prefix conflict: " .. leader[i])
+	end
+	print("keymaps " .. mode .. ": " .. vim.tbl_count(seen) .. ", duplicate/prefix conflicts=0")
+end
+assert(vim.v.errmsg == "", vim.v.errmsg)
+print("AI adapters, provider switching, inline and Claude accept/reject, layouts and keys passed")
