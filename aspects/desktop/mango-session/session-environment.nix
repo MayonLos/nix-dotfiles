@@ -10,6 +10,8 @@ lib.filterAttrs (
       "GLFW_IM_MODULE"
       "SDL_IM_MODULE"
       "XMODIFIERS"
+      "XCURSOR_THEME"
+      "XCURSOR_SIZE"
       "JAVA_HOME"
       "TERMINAL"
       "EDITOR"

@@ -121,7 +121,7 @@ Noctalia 只开放 `shell.shadow.direction="down"` 与 `alpha=0.32`、组件 sha
 
 ### 模糊与透明
 
-- Mango 默认 `blur=0`、`blur_layer=0`：正文不透明，无需持续模糊。`focused_opacity=unfocused_opacity=1`、`dim_enable=0`，非焦点代码仍可阅读。
+- Mango 默认 `blur=0`、`blur_layer=0`：正文不透明，无需持续模糊。`focused_opacity=unfocused_opacity=1`、`dim_enable=1`、black alpha `0x10`（6.3%）轻微压暗非焦点窗口。全屏原生豁免；锁定 0.18.3 没有 PiP 单独豁免，见第二十一轮记录。
 - Noctalia `[backdrop]` 是给合成器 overview/backdrop 模式使用的壁纸副本，不是普通面板背后的通用模糊；Mango 本案设 `backdrop.enabled=false`，不假定支持 niri 的 backdrop 规则。面板本体 `shell.panel.transparency_mode="solid"`。锁屏独立 `lockscreen.blur_intensity=0.40`、`tint_intensity=0.48`。这些为 0–1 原生强度，**不等价于 Gaussian px**；HTML 背景近似 blur 16 px。
 - 如果今后明确需要透明客户端，可试 Mango `blur_params_radius=4`、`blur_params_num_passes=2`、`blur_params_noise=0.01`、brightness/contrast/saturation 均 1、`blur_optimized=1`，但本案默认不启用。锁屏模糊由 Noctalia 自身完成。
 
@@ -149,8 +149,8 @@ Kitty 从 `font_size=11.0` pt 开始（约 14.67 CSS px），不是把 15 直接
 |---|---|---|
 | hover / press | 100 / 80 ms；ease-out | CSS 可设；Noctalia 保留原生 fast 100 ms |
 | 浮层出现 / 消失 | 180 / 120 ms；`(.16,1,.3,1)` / `(.4,0,1,1)` | Noctalia 只用 `shell.animation.speed=1`、原生 normal 200 ms，不伪称可逐项设曲线 |
-| 窗口打开 / 关闭 | 220 / 140 ms；同上 | Mango `animation_duration_open/close`、`animation_curve_open/close` |
-| 移动 / tag | 180 / 220 ms | `animation_duration_move/tag`、对应 curve |
+| 窗口打开 / 关闭 | 180 / 160 ms；同一 ease-out | Mango `animation_duration_open/close`、`animation_curve_open/close` |
+| 移动 / tag | 180 / 180 ms | `animation_duration_move/tag`、对应 curve |
 | 焦点 | 0 ms | `animation_duration_focus=0`；边线立即响应 |
 | 轻缩放 | open 0.96 → 1；close 1 → 0.98 | `animation_type_open/close=zoom`、`zoom_initial_ratio/zoom_end_ratio` |
 | 锁屏背景 | fade 200 ms | `lockscreen.transition=["fade"]`、`transition_duration=200` |
@@ -159,9 +159,9 @@ Kitty 从 `font_size=11.0` pt 开始（约 14.67 CSS px），不是把 15 直接
 
 ## 4. Noctalia 顶栏
 
-采用 §1 的30逻辑像素紧凑栏。左侧依次为启动器、分隔线、1–9 工作区、分隔线、布局（图标+平铺文字）、Quill、播放中的媒体与频谱。mangowm-keymode 仅非默认模式出现。
+采用 §1 的30逻辑像素紧凑栏。左侧依次为启动器、分隔线、1–9 工作区、分隔线、布局（图标+Tile 等原生英文）、Quill、播放中的媒体与频谱。mangowm-keymode 仅非默认模式出现。
 
-中部为中文日期和 Maple Mono 粗体时间。右侧为社区 system-monitor 的 CPU%，悬停展开 GPU/内存；插件不能直接展开时用 accordion 组合。随后为社区 nix-status（❄+当前世代，点开查看世代与输入更新）、仅占用时出现的内置 privacy、网络/蓝牙/音量百分比、输入法、电池百分比与绿色“养护”、通知及 Nix 控制中心入口。
+中部为中文日期和 Maple Mono 粗体时间。右侧为社区 system-monitor 的 CPU%，悬停展开 GPU/内存；插件不能直接展开时用 accordion 组合。随后为社区 nix-status（❄+当前世代，点开查看世代与输入更新）、仅占用时出现的内置 privacy、网络/蓝牙/音量百分比、常显 Fcitx 原生托盘状态图标、电池原生几何图形与百分比与绿色“养护”、通知及 Nix 控制中心入口。
 
 mini-docker、portctl、ip-monitor、tray、亮度、电源模式等低频项放入可展开组；亮度、电源模式在控制中心也保留入口，默认不让所有图标占满顶栏。不启用任何 AI 额度/用量组件。nix-search 启用 nixpkgs/NixOS/HM 查询，声明 `nix-search-tv` 与 fzf 运行依赖。
 
@@ -205,14 +205,14 @@ mini-docker、portctl、ip-monitor、tray、亮度、电源模式等低频项放
 
 ## 7. Mango 窗口系统
 
-- 窗口外框 2 px，普通 border、焦点 blue、urgent red，圆角 12。内间距 8、外间距 16。`no_radius_when_single=0`，单窗口保留边界；不对非活动窗口加暗膜。
+- 窗口外框 2 px，普通 border、焦点 blue、urgent red，圆角 12。内间距 8、外间距 16。`no_radius_when_single=0`，单窗口保留边界；非活动窗口使用第二十一轮的约 6.3% 原生 dim。
 - 普通 Kitty/Neovim 不加合成器常驻假标题栏，窗口身份通过应用标签、终端标题和切换器显示。图稿标签行属于 Kitty/Neovim；不是 Mango 普遍提供的传统标题栏。
-- monocle auto tab / group bar 高 32，圆角 8，padding x8/y4，字 Inter 10.5 pt。普通 deep/fg，选中 selection/blue，未保存标记 brightFg。装饰边线 1 border；关闭按钮默认不显示。
+- monocle auto tab / group bar 高 32，圆角 8，padding x8/y4，字 Maple Mono NF CN 10.5 pt。普通 deep/fg，选中 selection/blue，未保存标记 brightFg。装饰边线 1 border；关闭按钮默认不显示。
 - `title_message_bar` 用于 overcircle 和 switcher，标题+app-id 两行，高 48、与预览 gap12，padding 8/4、radius8；focus selection/blue，长标题截断，app-id 次级 fg。标准 overview 不承诺每张卡都带这块条。
 - jump label：Maple Mono NF CN Bold 12 pt，约 32–40 高，padding8/4、radius8、1 border；默认 deep/brightFg，focus selection/blue。
 - overview inner gap16、outer32，显示实际客户端缩略图，焦点 2 blue，保留原生命中逻辑。不得承诺可配置固定三列、固定缩略图大小、实时毛玻璃或搜索框。
 
-**依据 A**：`borderpx`、`border_radius`、`border_color/focus_color/urgent_color`、`gappih/gappiv/gappoh/gappov`；`tab_bar_height`、`group_bar_height` 与各自 `*_decorate_{fg_color,bg_color,focus_fg_color,focus_bg_color,border_color,border_width,corner_radius,padding_x,padding_y,font_desc}`；`title_message_bar_height/gap` 和同族 decorate 字段；`jump_label_decorate_*`；`overview_gap_inner/outer`。颜色采用 `0xRRGGBBAA`，例如焦点 `0x61afefff`，不是 ARGB。
+**依据 A**：`border_px`、`border_radius`、`border_color/focus_color/urgent_color`、`gap_inner_horizontal/vertical`、`gap_outer_horizontal/vertical`；`tab_bar_height`、`group_bar_height` 与各自 `*_decorate_{fg_color,bg_color,focus_fg_color,focus_bg_color,border_color,border_width,corner_radius,padding_x,padding_y,font_desc}`；`title_message_bar_height/gap` 和同族 decorate 字段；`jump_label_decorate_*`；`overview_gap_inner/outer`。颜色采用 `0xRRGGBBAA`，例如焦点 `0x61afefff`，不是 ARGB。
 
 ## 8. Kitty、tmux 与 Starship
 
@@ -308,7 +308,7 @@ diff 合成后的实测正文对比：8% green/red/blue 底分别约 10.70 / 11.
 | 渐变细描边 | blue → cyan，仅用于认证框下沿与必要边缘；颜色从 palette/主题角色传入，不增加源色 |
 | 发光下划线 | 认证输入底部细线配低透明度 blue 柔光；失败仍保留文字/错误状态 |
 | 分段刻度 | OSD 20 个细轨刻度，亮段 blue、轨道 selection，数值等宽；电量为独立分段读数，数据实时获取 |
-| 焦点外发光 | Mango 焦点蓝边 2px，blue alpha 约 22% 的柔和外发光；非焦点 surface 边与 black 柔和阴影 |
+| 焦点辨识（第二十一轮修订） | Mango 原生焦点蓝边 2px；非焦点约 6.3% black dim；仅浮动窗口 black 柔和阴影，无焦点外发光 |
 | 下划指示 | Kitty/tmux/herdr 的活动标签使用终端 underline，保留中性背景；终端字符单元不等同于 CSS 2px 描边 |
 
 终端：Kitty 原生标题 renderer 外围加蓝下划；tmux 底部 session 蓝字、活动窗口下划，zoom 显示黄色 Z，prefix/copy/zoom 为蓝/黄/紫小徽标，非焦点 pane 只留 surface 分隔线。Starship 两行、目录蓝、分支紫、变更黄、耗时 muted、失败红提示符。Yazi selection 底与蓝标记，Lazygit 圆角细线面板，btop 原生细圆角与蓝青渐变。fastfetch 小 Nix 标志配平铺键值，键蓝色。herdr 是新增独立 agent 工作区，保留 tmux，入口为 `Super+Alt+H` 与 desktop launcher。
@@ -316,3 +316,13 @@ diff 合成后的实测正文对比：8% green/red/blue 底分别约 10.70 / 11.
 系统界面：锁屏与 greeter 用等宽时钟/日期、蓝青底线和等宽状态；Mango tab/group/title 使用等宽字体；OSD 数值等宽、分段细轨。Thunar 与 Firefox 保留已有单一模板/seed，选择态 selection 底加左蓝条，路径和读数等宽；uosc 细进度线和蓝选中条。Zathura 以原生目录索引和数字页进度替代文件目录侧栏/独立进度线，uosc 采用平面线而无发光。
 
 补丁清单和上游升级处理在 [Mango session README](../aspects/desktop/mango-session/README.md)、[greeter README](../aspects/desktop/greeter/README.md)、[herdr README](../aspects/cli/herdr/README.md)。补丁应用和关键渲染锚点在构建期强制校验；不能用求值成功代替补丁构建或视觉验收。实际完成范围、命令结果和剩余实机项见 [第十九轮记录](history/ui-v4-2026-10-25.md)。
+
+## 12. 第二十一轮 A：桌面细节修订
+
+移除焦点外发光与 Mango 局部包覆盖，直接使用锁定上游 0.18.3。普通浮动窗黑影继续使用 §3 参数；开/移/tag 180 ms、关 160 ms，统一 `(.16,1,.3,1)`，焦点 0 ms，reducedMotion 仍关闭动效。native dim 不改变客户端透明度，alpha 0x10；全屏豁免由上游实现，浮动 PiP 无单独豁免接口。
+
+窗口规则单一归属为 [window-rules.nix](../aspects/desktop/mango-session/mango/window-rules.nix)，行为及大小表见 [Mango README](../aspects/desktop/mango-session/README.md#window-rules)。默认保留手动工作区习惯，浏览器 2 / 通讯 4 是显式 opt-in。普通窗口仍可正常取得焦点；通知/共享工具浮窗按应用和标题静默打开，activation 请求只提示 urgent。
+
+电池使用 Noctalia 原生 graphic，规避 Tabler 小字形歧义；移除 XKB 键盘布局组件，仅常显 Fcitx 托盘图标，其他托盘项收进 drawer。技术布局名 Tile/Scroller/Monocle 等、fastfetch 标准键和 tmux PREFIX/COPY/ZOOM 使用英文，中文日期和说明保留。Bibata Modern Classic 24 复用共享配置，在 1.5 缩放下名义 36 device px；安全环境补齐 XCURSOR_THEME/SIZE 到 systemd 和 Mango 启动的 Qt/Kitty 客户端，不改 GTK/Qt/icon 文件。
+
+实施证据、标签对照、隔离截图及待验项见 [第二十一轮 A 记录](history/ui-r21a-2026-10-25.md)。

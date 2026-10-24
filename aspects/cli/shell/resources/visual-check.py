@@ -27,6 +27,7 @@ def run(*args, **kwargs):
 env = os.environ.copy()
 # TUI fixtures must not reach the real desktop clipboard or session bus.
 env.update(DISPLAY="", WAYLAND_DISPLAY="", DBUS_SESSION_BUS_ADDRESS="unix:path=" + os.environ["TMPDIR"] + "/no-session-bus")
+env["TERMINFO_DIRS"] = os.pathsep.join(settings["terminfoDirs"])
 for name in ("SSH_CONNECTION", "SSH_CLIENT", "SSH_TTY", "IN_NIX_SHELL"):
     env.pop(name, None)
 env["PATH"] = str(pathlib.Path(settings["git"]).parent) + os.pathsep + env["PATH"]
@@ -101,8 +102,62 @@ def status():
     return tmux("display-message", "-p", "#{E:status-right}")
 
 
+def check_terminal_usstyle(term):
+    session = "usstyle-" + term
+    tmux("new-session", "-d", "-s", session, "-n", "Focused", "sleep", "30")
+    client_master, client_slave = pty.openpty()
+    fcntl.ioctl(client_slave, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 100, 0, 0))
+    client_env = env | {"TERM": term, "TMUX": "", "TMUX_PANE": ""}
+    terminal_client = subprocess.Popen(
+        [settings["tmux"], "-S", socket, "attach-session", "-t", session],
+        stdin=client_slave, stdout=client_slave, stderr=client_slave, env=client_env,
+    )
+    os.close(client_slave)
+    captured = bytearray()
+    try:
+        deadline = time.monotonic() + 2
+        features = None
+        red, green, blue = bytes.fromhex(settings["tmuxUnderlineColor"].removeprefix("#"))
+        blue_underline = b"\x1b[58:2:" + b":".join(str(value).encode() for value in (red, green, blue)) + b"m"
+        while time.monotonic() < deadline:
+            if select.select([client_master], [], [], 0.05)[0]:
+                try:
+                    captured.extend(os.read(client_master, 65536))
+                except OSError:
+                    break
+            clients = tmux("list-clients", "-F", "#{client_pid}|#{client_termname}|#{client_termfeatures}")
+            for row in clients.splitlines():
+                pid, client_term, client_features = row.split("|", 2)
+                if pid == str(terminal_client.pid):
+                    assert client_term == term, (term, row)
+                    features = client_features.split(",")
+                    break
+            if features is None and terminal_client.poll() is not None:
+                break
+            if features is not None and blue_underline in captured:
+                break
+        assert features is not None, (
+            term,
+            "attached tmux client not found",
+            f"returncode={terminal_client.poll()}",
+            f"captured={bytes(captured)!r}",
+        )
+        assert "usstyle" in features, (term, features)
+        assert blue_underline in captured, (term, blue_underline, bytes(captured))
+        return f"{term}: usstyle negotiated; blue SGR underline {blue_underline!r}"
+    finally:
+        terminal_client.terminate()
+        terminal_client.wait(timeout=5)
+        os.close(client_master)
+        tmux("kill-session", "-t", session)
+
+
 try:
     settle()
+    underline_results = [
+        check_terminal_usstyle("xterm-kitty"),
+        check_terminal_usstyle("tmux-256color"),
+    ]
     active_format = tmux("show-window-option", "-gv", "window-status-current-format")
     assert active_format == settings["tmuxCurrentFormat"], active_format
     assert "underscore" in active_format and "#[bg=" not in active_format, active_format
@@ -123,22 +178,22 @@ try:
     assert int(tmux("display-message", "-p", "#{pane_width}")) == int(before) + 3
     press(b"\x01")
     prefix = status()
-    assert "前缀" in prefix, prefix
+    assert "PREFIX" in prefix, prefix
     tmux("switch-client", "-T", "root")
     settle()
     tmux("copy-mode")
     copy = status()
-    assert "复制" in copy, copy
+    assert "COPY" in copy, copy
     tmux("send-keys", "-X", "cancel")
     tmux("resize-pane", "-Z")
     zoom = status()
-    assert "缩放" in zoom, zoom
+    assert "ZOOM" in zoom, zoom
     tmux("resize-pane", "-Z")
     flat = tmux("display-message", "-p", "#{E:status-left}")
     assert "" not in flat and "" not in flat, flat
     long_dir = repo / ("long-path-" + "x" * 90)
     long_dir.mkdir()
-    tmux("new-window", "-n", "活动终端", "-c", str(long_dir))
+    tmux("new-window", "-n", "Terminal", "-c", str(long_dir))
     widths = []
     for width in (79, 80, 99, 100, 120):
         fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack("HHHH", 32, width, 0, 0))
@@ -149,7 +204,7 @@ try:
         assert re.search(r"\d{2}:\d{2}", rendered), rendered
         assert "x" * 30 not in rendered, (width, rendered)
         widths.append(f"{width}: {rendered}")
-    (out / "tmux-states.txt").write_text("\n".join([prefix, copy, zoom, flat, *widths]))
+    (out / "tmux-states.txt").write_text("\n".join([*underline_results, prefix, copy, zoom, flat, *widths]))
 finally:
     client.terminate()
     client.wait(timeout=5)

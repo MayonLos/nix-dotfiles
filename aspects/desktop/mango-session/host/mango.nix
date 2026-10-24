@@ -1,11 +1,10 @@
-{ inputs, pkgs, ... }:
+{ inputs, ... }:
 
 {
   imports = [ inputs.mango.nixosModules.mango ];
 
   programs.mango = {
     enable = true;
-    package = import ../package.nix { inherit inputs pkgs; };
   };
 
   # mango's module turns on services.graphical-desktop, and

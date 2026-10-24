@@ -12,9 +12,11 @@ Astra §8 supplies the two-line Starship prompt. It shows the directory in blue,
 the Git branch in purple, compact change counts, failures, and muted command
 duration; identity appears for SSH or root sessions. tmux preserves `Ctrl+a`
 window/session operations and tmuxp layouts while adding a flat status line,
-blue underlined active window, conditional blue/yellow/purple prefix/copy/zoom
-badges, and a blue active-pane edge with subdued inactive dividers. Zoomed
-windows show a yellow `Z` marker.
+blue underlined active window, conditional blue/yellow/purple `PREFIX`, `COPY`,
+and `ZOOM` badges, and a blue active-pane edge with subdued inactive dividers.
+tmux declares underline-style support for `xterm-kitty` and `tmux-256color`, so
+the blue underline color works for Kitty clients and inside tmux. Zoomed windows
+show a yellow `Z` marker.
 Its smart-splits integration routes `Ctrl+h/j/k/l` to Neovim or pane navigation
 and `Alt+h/j/k/l` to Neovim or resize. Copy mode retains its native vi
 cursor/selection keys.

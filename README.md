@@ -50,7 +50,7 @@ nix build --no-link --no-write-lock-file .#nixosConfigurations.nixos-btw.config.
 
 ## 桌面与工作方式
 
-Mango 管窗口、显示器、工作区和 Super 系列快捷键；Noctalia 提供面板、通知、启动器、控制中心与桌面剪贴板历史。固定主题为 One Dark，背景 `#1e2228`，壁纸不参与自动取色。完整按键以当前 [Mango 配置](aspects/desktop/mango-session/mango.nix) 为准。终端内 tmux 使用 `Ctrl+a` 前缀；配置见 [tmux](aspects/cli/shell/tmux.nix)。
+Mango 管窗口、显示器、工作区和 Super 系列快捷键；Noctalia 提供面板、通知、启动器、控制中心与桌面剪贴板历史。固定主题为 One Dark，背景 `#1e2228`，壁纸不参与自动取色。完整按键以当前 [Mango 配置](aspects/desktop/mango-session/mango.nix) 为准。窗口规则集中在 [单一规则表](aspects/desktop/mango-session/mango/window-rules.nix)，覆盖 PiP、对话框、工具窗与游戏/通讯例外；用途和可调工作区默认见 [Mango README](aspects/desktop/mango-session/README.md#window-rules)。第二十一轮使用上游 Mango、2 px 蓝边与轻微非焦点 dim，顶栏常显 Fcitx 原生状态图标。终端内 tmux 使用 `Ctrl+a` 前缀；配置见 [tmux](aspects/cli/shell/tmux.nix)。
 
 `workspace-project list` 列出显式绑定的项目；`workspace-task -- 命令 参数` 在命令运行期间阻止普通睡眠请求。项目工具链由项目自己的 flake 和 `.envrc` 管理，工作台不会创建项目目录或运行历史命令。剪贴板、会话服务与可变状态的唯一写入者见 [配置归属](docs/config-ownership.md) 和 [服务策略](docs/service-policy.md)。
 

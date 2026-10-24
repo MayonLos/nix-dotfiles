@@ -42,7 +42,6 @@ in
 
   wayland.windowManager.mango = {
     enable = true;
-    package = import ./package.nix { inherit inputs pkgs; };
 
     # Mango's systemd hook imports dynamic session variables and starts
     # mango-session.target. The static whitelist below is available to Mango's
@@ -116,7 +115,7 @@ in
       cursor_hide_on_keypress = 1;
       # Keep pointer discovery and activation semantics; typing still hides it.
       cursor_hide_timeout = 0;
-      focus_on_activate = 1;
+      focus_on_activate = 0;
       warp_cursor = 1;
 
       # Noctalia owns layer shadows/animations. Kitty and reading panels are
@@ -127,18 +126,17 @@ in
       layer_animations = 0;
       shadows = 1;
       layer_shadows = 0;
-      # UI v4: subtle focused blue elevation also identifies tiled clients.
-      shadow_only_floating = 0;
+      # Only floating windows need elevation; focus is the native 2 px blue border.
+      shadow_only_floating = 1;
       shadows_size = 10;
       shadows_blur = 20;
       shadows_position_x = 0;
-      shadows_position_y = 0;
+      shadows_position_y = 6;
       shadows_color = alphaColor palette.black "52";
-      focused_shadows_color = alphaColor palette.blue "38";
 
-      # Comparing multiple documents should not change their text contrast.
-      # The accent border identifies focus without tinting the other clients.
-      dim_enable = 0;
+      # A light native dim overlay distinguishes inactive clients without transparency.
+      # Fullscreen is exempt upstream; 0.18.3 has no per-window no_dim rule.
+      dim_enable = 1;
       dim_focused_color = alphaColor palette.black "00";
       dim_unfocused_color = alphaColor palette.black "10";
 
@@ -175,19 +173,19 @@ in
       zoom_initial_ratio = 0.96;
       zoom_end_ratio = 0.98;
       animation_duration_move = 180;
-      animation_duration_open = 220;
-      animation_duration_tag = 220;
-      animation_duration_close = 140;
+      animation_duration_open = 180;
+      animation_duration_tag = 180;
+      animation_duration_close = 160;
       animation_duration_focus = 0;
-      # A smooth ease-out settles opens/moves quickly; short ease-in closes
-      # leave promptly. No overshoot or focus-only animation.
+      # One ease-out curve across opens/closes/moves/tags; no overshoot.
+      # Focus still responds immediately and reducedMotion disables animations.
       animation_curve_open = "0.16,1.0,0.3,1.0";
       animation_curve_move = "0.16,1.0,0.3,1.0";
       animation_curve_tag = "0.16,1.0,0.3,1.0";
-      animation_curve_close = "0.4,0.0,1.0,1.0";
+      animation_curve_close = "0.16,1.0,0.3,1.0";
       animation_curve_focus = "0.16,1.0,0.3,1.0";
       animation_curve_opacity_fade_in = "0.16,1.0,0.3,1.0";
-      animation_curve_opacity_fade_out = "0.4,0.0,1.0,1.0";
+      animation_curve_opacity_fade_out = "0.16,1.0,0.3,1.0";
       tag_animation_direction = 1;
 
       scroller_structs = 20;
@@ -333,38 +331,11 @@ in
         "layer_name:^noctalia-(screenshot-region|annotate)$,no_animation:1,no_blur:1,no_shadow:1"
       ];
 
-      # Exact app-id/title rules; leave transient-parent detection and size hints
-      # intact. Offsets are percentages of remaining space, not pixel positions.
-      window_rule = [
-        "is_floating:1,width:0.60,height:0.72,animation_type_open:fade,animation_type_close:fade,app_id:^swayimg$"
-        "is_floating:1,animation_type_open:fade,animation_type_close:fade,app_id:^thunar$,title:^(Rename|重命名)"
-        # Global means visible across this output's tags, not forced above
-        # fullscreen games. Super+Alt+G opts into overlay for the focused PiP.
-        "is_floating:1,is_global:1,is_open_silent:1,width:480,height:270,offset_x:85,offset_y:80,animation_type_open:fade,animation_type_close:fade,app_id:^[Ff]irefox$,title:^Picture-in-Picture$"
-        # blueman-manager, nm-connection-editor and org.gnome.Calculator were
-        # in this alternation and are installed nowhere -- not on PATH, not in
-        # any module. Template leftovers. Add an app_id back when the program
-        # that carries it actually arrives, not before: a rule that cannot
-        # match is indistinguishable from one that is broken.
-        "is_floating:1,width:0.62,height:0.68,animation_type_open:fade,animation_type_close:fade,app_id:^xdg-desktop-portal-gtk$"
-        # No polkit rule. This host runs no standalone polkit GUI agent --
-        # noctalia's built-in one is the only authentication agent (see
-        # noctalia.nix's `polkit_agent`), and it draws in the shell rather than
-        # opening a top-level window, so nothing can ever carry a `polkit-*` or
-        # `org.freedesktop.PolicyKit*` app_id here.
-        # `.Settings` was never an app_id. Measured with `mmsg get all-clients`
-        # while the window was open: it reports `dev.noctalia.Noctalia`, and the
-        # window came up tiled at 936x1010 instead of its requested floating
-        # geometry. Keep the observed id; sizes now follow each output.
-        "is_floating:1,width:0.68,height:0.82,animation_type_open:fade,animation_type_close:fade,app_id:^dev\\.noctalia\\.Noctalia$"
-        "vrr_only_fullscreen:1,no_radius:1,no_animation:1,app_id:^steam_app_"
-        # Kitty's own background is opaque. Keep client glyphs/content opaque
-        # too; focus dim is a separate compositor overlay. Include named tools.
-        "focused_opacity:1.0,unfocused_opacity:1.0,app_id:^(kitty|mayon-scratch|mayon-files|mayon-monitor)$"
-        "is_named_scratchpad:1,width:0.78,height:0.78,animation_type_open:fade,animation_type_close:fade,app_id:^mayon-scratch$"
-        "is_named_scratchpad:1,width:0.78,height:0.78,animation_type_open:fade,animation_type_close:fade,app_id:^mayon-files$"
-        "is_named_scratchpad:1,width:0.72,height:0.74,animation_type_open:fade,animation_type_close:fade,app_id:^mayon-monitor$"
-      ];
+      # Single rule owner. Keep app destinations opt-in to preserve current tags.
+      window_rule = import ./mango/window-rules.nix { inherit lib; };
+      # Mango 0.18.3 supports 0/1/2; 2 gates tearing to fullscreen.
+      # The rule table opts normal clients out and games in.
+      allow_tearing = 2;
 
       # Launches, Noctalia shell controls, tag navigation, and dwm-style
       # master-stack operations.

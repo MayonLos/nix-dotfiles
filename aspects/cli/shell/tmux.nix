@@ -40,7 +40,7 @@ let
     # Keep style attributes separate inside conditionals: raw commas delimit
     # tmux format arguments even when they occur inside a #[style] string.
     set -g status-right-length 64
-    set -g status-right "#{?#{e|>=:#{client_width},80},#[fg=${colors.muted}]#{b;=24:pane_current_path} #[default],}#{?client_prefix,#[fg=${colors.blue}]#[bg=${colors.surface}]#[bold] 前缀 #[default],}#{?#{m/r:(copy|view)-mode,#{pane_mode}},#[fg=${colors.yellow}]#[bg=${colors.surface}]#[bold] 复制 #[default],}#{?client_prefix,,#{?#{m/r:(copy|view)-mode,#{pane_mode}},,#{?window_zoomed_flag,#[fg=${colors.purple}]#[bg=${colors.surface}]#[bold] 缩放 #[default],}}}#[fg=${colors.brightFg},bold]%H:%M#[default] "
+    set -g status-right "#{?#{e|>=:#{client_width},80},#[fg=${colors.muted}]#{b;=24:pane_current_path} #[default],}#{?client_prefix,#[fg=${colors.blue}]#[bg=${colors.surface}]#[bold] PREFIX #[default],}#{?#{m/r:(copy|view)-mode,#{pane_mode}},#[fg=${colors.yellow}]#[bg=${colors.surface}]#[bold] COPY #[default],}#{?client_prefix,,#{?#{m/r:(copy|view)-mode,#{pane_mode}},,#{?window_zoomed_flag,#[fg=${colors.purple}]#[bg=${colors.surface}]#[bold] ZOOM #[default],}}}#[fg=${colors.brightFg},bold]%H:%M#[default] "
 
     set -g pane-border-style        "fg=${colors.surface}"
     set -g pane-active-border-style "fg=${colors.blue}"
@@ -108,6 +108,10 @@ in
       set -sa terminal-overrides ",*256col*:Tc"
       set -sa terminal-overrides ",*:Smulx=\\E[4::%p1%dm"
       set -sa terminal-overrides ",*:Setulc=\\E[58::2::%p1%{65536}%/%d::%p1%{256}%/%{255}%&%d::%p1%{255}%&%d%;m"
+      # Declare support for underline styles so us= in the active-window
+      # format is honored by both Kitty clients and tmux's own TERM value.
+      set -as terminal-features ",xterm-kitty:usstyle"
+      set -as terminal-features ",tmux-256color:usstyle"
       # Passthrough for sixel/kitty graphics (used by yazi image preview)
       set -g allow-passthrough on
       set -ga update-environment TERM

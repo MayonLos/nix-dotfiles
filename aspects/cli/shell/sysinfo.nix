@@ -60,10 +60,10 @@ in
             format = "{#${colors.brightFg}}{user-name}@{host-name}{#}";
           }
           "break"
-          ((key "系统") // { type = "os"; })
-          ((key "内核") // { type = "kernel"; })
-          ((key "桌面") // { type = "wm"; })
-          ((key "终端") // { type = "terminal"; })
+          ((key "OS") // { type = "os"; })
+          ((key "Kernel") // { type = "kernel"; })
+          ((key "WM") // { type = "wm"; })
+          ((key "Terminal") // { type = "terminal"; })
           ((key "CPU") // { type = "cpu"; })
           (
             (key "GPU")
@@ -73,7 +73,7 @@ in
             }
           )
           (
-            (key "内存")
+            (key "Memory")
             // {
               type = "memory";
             }

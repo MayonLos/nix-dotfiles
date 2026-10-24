@@ -37,6 +37,7 @@ let
       ] home.systemd.user.services;
       environment = home.systemd.user.sessionVariables;
       shellEnvironment = home.home.sessionVariables;
+      fcitxClassicUI = home.i18n.inputMethod.fcitx5.settings.addons.classicui.globalSection;
       acpEnvironment = {
         NVIM_CODEX_ACP = "${pkgs.local.codex-acp}/bin/codex-acp";
         NVIM_CLAUDE_ACP = "${pkgs.local.claude-agent-acp}/bin/claude-agent-acp";
@@ -75,6 +76,7 @@ let
   homeAvatarActivation = pkgs.writeText "seed-mayon-avatar.sh" home.home.activation.seedMayonAvatar.data;
   hostAvatarActivation = pkgs.writeText "accountsservice-mayon-avatar.sh" host.system.activationScripts.mayonAccountsServiceAvatar.text;
 in
+assert home.wayland.windowManager.mango.package == host.programs.mango.package;
 pkgs.runCommand "interactive-session-config"
   {
     nativeBuildInputs = [
@@ -102,6 +104,7 @@ pkgs.runCommand "interactive-session-config"
     # Retain the actual generated inputs beside the pinned parser logs.
     cp ${home.xdg.configFile."mango/config.conf".source} "$out/mango.conf"
     cp ${home.xdg.configFile."noctalia/config.toml".source} "$out/noctalia.toml"
+    python3 ${./resources/window-rules-check.py} "$out/mango.conf"
     export FONTCONFIG_FILE=${fontConfig}
     fc-match -f '%{family}\n' sans-serif | tee "$out/sans-family.txt"
     grep -Fx '${palette.fonts.sans}' "$out/sans-family.txt"
@@ -284,6 +287,9 @@ pkgs.runCommand "interactive-session-config"
         ("widget", "clock-time", "font_weight"): 600,
         ("widget", "workspaces", "style"): "minimal",
         ("widget", "battery", "label_content"): "percent",
+        ("widget", "battery", "display_mode"): "graphic",
+        ("widget", "tray", "drawer"): True,
+        ("widget", "tray", "pinned"): ["fcitx"],
         ("widget", "battery", "actions", "left"): "exec legion-conservation toggle",
         ("widget", "tmelik/system-monitor:summary", "show_cpu_usage"): True,
         ("widget", "tmelik/system-monitor:summary", "show_gpu_usage"): "off",
@@ -353,11 +359,26 @@ pkgs.runCommand "interactive-session-config"
     assert mango["blur"] == mango["blur_layer"] == mango["layer_shadows"] == mango["layer_animations"] == 0
     assert settings["shell"]["panel"]["shadow"] and settings["bar"]["main"]["shadow"]
     assert mango["border_px"] == 2 and mango["border_radius"] == 12
+    assert mango["focus_color"] == "0x" + m["palette"]["blue"].removeprefix("#") + "ff"
     assert mango["gap_inner_horizontal"] == mango["gap_inner_vertical"] == 8
     assert mango["gap_outer_horizontal"] == mango["gap_outer_vertical"] == 16
     assert mango["overview_gap_inner"] == 16 and mango["overview_gap_outer"] == 32
-    assert mango["shadows_position_x"] == 0 and mango["shadows_position_y"] == 0
+    assert mango["shadows_position_x"] == 0 and mango["shadows_position_y"] == 6
     assert mango["shadows_color"] == "0x" + m["palette"]["black"].removeprefix("#") + "52"
+    assert mango["shadow_only_floating"] == 1 and "focused_shadows_color" not in mango
+    assert mango["dim_enable"] == 1
+    assert mango["dim_focused_color"] == "0x" + m["palette"]["black"].removeprefix("#") + "00"
+    assert mango["dim_unfocused_color"] == "0x" + m["palette"]["black"].removeprefix("#") + "10"
+    assert mango["focus_on_activate"] == 0
+    assert mango["allow_tearing"] == 2
+    assert mango["animations"] == (0 if m["palette"]["reducedMotion"] else 1)
+    for event in ("open", "close", "move", "tag"):
+        assert 150 <= mango["animation_duration_" + event] <= 200
+        assert mango["animation_curve_" + event] == "0.16,1.0,0.3,1.0"
+    assert m["fcitxClassicUI"]["PreferTextIcon"] == "True"
+    assert "keyboard_layout" not in [member for group in settings["bar"]["main"]["capsule_group"] for member in group["members"]]
+    assert m["environment"]["XCURSOR_THEME"] == m["palette"]["cursor"]["name"]
+    assert m["environment"]["XCURSOR_SIZE"] == str(m["palette"]["cursor"]["size"])
     for prefix in ("tab_bar_decorate_", "group_bar_decorate_", "jump_label_decorate_"):
         assert mango[prefix + "focus_fg_color"] == "0x" + m["palette"]["blue"].removeprefix("#") + "ff"
         assert mango[prefix + "focus_bg_color"] == "0x" + m["palette"]["selection"].removeprefix("#") + "ff"

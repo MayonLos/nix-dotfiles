@@ -85,7 +85,6 @@
           "8bury/mini-docker:mini-docker"
           "rxtsel/portctl:indicator"
           "3ri4ng0ld/ip-monitor:widget"
-          "tray"
           "brightness"
           "power_profile"
           "caffeine"
@@ -115,7 +114,7 @@
           "network"
           "bluetooth"
           "volume"
-          "keyboard_layout"
+          "tray"
           "battery"
           "nix-dotfiles/legion-conservation:status"
           "notifications"
@@ -214,11 +213,11 @@
       custom_image_colorize = false;
     };
     volume.show_label = true;
-    keyboard_layout = {
-      show_glyph = false;
-      show_label = true;
-      display = "short";
-      hide_when_single_layout = false;
+    # Fcitx's SNI pixmap uses the engine subModeLabel (Rime 中/英).
+    # keyboard_layout reads XKB / SNI tooltip names, which cannot convey that.
+    tray = {
+      drawer = true;
+      pinned = [ "fcitx" ];
     };
     privacy = {
       hide_inactive = true;
@@ -238,6 +237,9 @@
     "ezequiel/mango_layouts:btn".show_text = true;
 
     battery = {
+      # Use Noctalia's native battery drawing instead of the Tabler glyph;
+      # this remains unmistakably a battery at the compact 30px bar height.
+      display_mode = "graphic";
       warning_color = palette.yellow;
       label_content = "percent";
       show_label = true;

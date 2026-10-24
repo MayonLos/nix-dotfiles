@@ -9,7 +9,7 @@
 | 功能或路径 | 当前声明的唯一 owner / renderer | 可变状态与边界 |
 |---|---|---|
 | 外观数据 `host.appearance`、`user.appearance` | `aspects/appearance/appearance/onedark.nix` 提供 One Dark 精修语义颜色、字体、光标、图标主题和 `reducedMotion` 偏好；`aspects/appearance/appearance/contract.nix` 定义 host/user schema。 | 数据本身不安装应用或选择功能。当前 host 与 mayon 分别绑定同一 palette；动效偏好是声明式输入，不另写 GUI state。 |
-| `~/.config/mango/config.conf`、Mango 快捷键说明 | 选择 `interactive-session` 后，`aspects/desktop/mango-session/mango.nix` 接线私有的 `mango/keybinds.nix`，配合锁定 Mango HM module 渲染完整配置；`~/.local/share/mango/keybindings.txt` 也由该 aspect 生成。 | Noctalia 不生成 Mango 主题片段，也不写入或 include `noctalia-colors.conf`。配置为声明式输出；Mango 会话实际加载与快捷键手感仍待应用后核验。 |
+| `~/.config/mango/config.conf`、Mango 快捷键说明 | 选择 `interactive-session` 后，`aspects/desktop/mango-session/mango.nix` 接线私有的 `mango/keybinds.nix` 和唯一窗口规则表 `mango/window-rules.nix`，配合锁定 Mango HM module 渲染完整配置；`~/.local/share/mango/keybindings.txt` 也由该 aspect 生成。 | Noctalia 不生成 Mango 主题片段，也不写入或 include `noctalia-colors.conf`。配置为声明式输出；Mango 会话实际加载与快捷键手感仍待应用后核验。 |
 | dwm / Xorg 配置与会话 | `xorg-session` 拥有 Nix 构建的 dwm、`~/.local/share/nix-dotfiles/xorg-session`、Picom/Dunst、dmenu wrapper 配置和 Xorg 专属 units；宿主安装唯一的 `xorg-dwm.desktop`。 | j4 的应用使用频次属于用户状态，保留而不托管；不托管用户 `.xinitrc`；不安装第二份未配置 dwm。runtime PID 记录只在当前用户的私有 runtime 目录，退出清除。详见 [Xorg 记录](xorg-desktop-execution.md)。 |
 | CopyQ 数据与 X11 认证 | CopyQ 历史、应用账户及 `.Xauthority` 由应用/Xorg 管理；Nix 只启动会话服务。 | 不复制、输出、写入 store 或清除这些用户数据；不把构建当成共享通话验收。 |
 | `~/.config/kitty/kitty.conf` | `aspects/cli/terminal/kitty.nix` 是唯一 HM renderer，生成完整 One Dark 配置和 ANSI 色。 | Noctalia Kitty builtin/template 不再启用。不存在由 Nix stub 与 Noctalia 主题文件拼装的当前声明。真实 Kitty parser / 主题应用情况需在新 generation 中复核。 |

@@ -11,3 +11,7 @@ Rime-specific source and packaging live under `rime/`; `rime-checks.nix` and the
 Removing shared support removes its settings, host services, group contribution, and Noctalia asset-bundle environment contribution after activation. It preserves input-method dictionaries/history and user GTK/Qt application data. Session-owned targets disappear with their consuming session features.
 
 `checks.nix` is the public test hook for the Rime runtime check and the shared visual configuration check, taking the standard check arguments as needed. Private class and resource modules are not public imports.
+
+Pointer configuration remains owned by the existing HM `home.pointerCursor` declaration: Bibata Modern Classic, 24 logical pixels, GTK and Xresources enabled. `environment.nix` reads that declaration's name/size and mirrors `XCURSOR_THEME`/`XCURSOR_SIZE` into systemd user services as well as shell sessions. Mango forwards those safe values and Xorg sources HM's session variables, so Qt/Kitty receive the same cursor without another theme writer.
+
+ClassicUI sets `PreferTextIcon=True` so Fcitx's native StatusNotifier pixmap uses the engine submode label (Rime Chinese/English), rather than a static named icon. Noctalia pins that existing Fcitx item; shared support adds no second status daemon or input-method writer.

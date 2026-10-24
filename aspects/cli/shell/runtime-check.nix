@@ -18,6 +18,11 @@ let
       git = "${pkgs.git}/bin/git";
       tmux = "${pkgs.tmux}/bin/tmux";
       tmuxCurrentFormat = "#[fg=${palette.brightFg},us=${palette.blue},bold,underscore]#I #W#[nounderscore,nobold,us=default]#{?window_zoomed_flag,#[fg=${palette.yellow}]#[bold] Z,}#[default]";
+      tmuxUnderlineColor = palette.blue;
+      terminfoDirs = [
+        "${pkgs.kitty.terminfo}/share/terminfo"
+        "${pkgs.ncurses}/share/terminfo"
+      ];
       btop = "${home.programs.btop.package}/bin/btop";
       yazi = "${home.programs.yazi.package}/bin/yazi";
       atuin = "${home.programs.atuin.package}/bin/atuin";
@@ -130,10 +135,13 @@ pkgs.runCommand "command-line-runtime"
     test ! -s "$out/fastfetch.err"
     # The build sandbox has no os-release, compositor socket or GPU devices.
     # Those modules remain dynamic and are checked visually after activation.
-    grep -F '内核' "$out/fastfetch.txt"
-    grep -F '终端' "$out/fastfetch.txt"
+    grep -F 'Kernel' "$out/fastfetch.txt"
+    grep -F 'Terminal' "$out/fastfetch.txt"
     grep -F 'CPU' "$out/fastfetch.txt"
-    grep -F '内存' "$out/fastfetch.txt"
+    grep -F 'Memory' "$out/fastfetch.txt"
+    for key in OS Kernel WM Terminal CPU GPU Memory; do
+      grep -F '"key": "'"$key"'"' ${home.xdg.configFile."fastfetch/config.jsonc".source}
+    done
     grep -F '"keyColor": "${palette.blue}"' ${home.xdg.configFile."fastfetch/config.jsonc".source}
     grep -F '"format": "{#${palette.brightFg}}' ${home.xdg.configFile."fastfetch/config.jsonc".source}
     grep -F 'color_theme = "${home.programs.btop.settings.color_theme}"' ${
@@ -198,6 +206,8 @@ pkgs.runCommand "command-line-runtime"
       home.xdg.configFile."tmux/tmux.conf".source
     } new-session -d -s validate
     trap 'tmux -S "$TMPDIR/tmux.sock" kill-server || true' EXIT
+    tmux -S "$TMPDIR/tmux.sock" show-options -s terminal-features | grep -F 'xterm-kitty:usstyle'
+    tmux -S "$TMPDIR/tmux.sock" show-options -s terminal-features | grep -F 'tmux-256color:usstyle'
     tmux -S "$TMPDIR/tmux.sock" list-keys -T root > root.keys
     tmux -S "$TMPDIR/tmux.sock" list-keys -T prefix > prefix.keys
     if grep -E 'M-(z|n|p|Tab|[1-9])[[:space:]]' root.keys; then exit 1; fi

@@ -11,9 +11,4 @@
     host = nixos;
     palette = appearance;
   };
-  mango-focused-shadow = import ./focus-check.nix {
-    inherit pkgs home;
-    host = nixos;
-    palette = appearance;
-  };
 }
