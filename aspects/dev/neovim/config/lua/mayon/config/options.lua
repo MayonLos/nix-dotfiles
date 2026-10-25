@@ -74,6 +74,8 @@ function M.setup()
 	for name, value in pairs(options) do
 		vim.opt[name] = value
 	end
+	-- Hide native insert-completion status messages such as "match 1 of 2".
+	vim.opt.shortmess:append("c")
 	if vim.env.SSH_CONNECTION or vim.env.SSH_TTY then
 		vim.g.clipboard = "osc52"
 	elseif vim.env.WAYLAND_DISPLAY and vim.fn.executable("wl-copy") == 1 then
