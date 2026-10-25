@@ -23,10 +23,9 @@ let
     onedark_purple = palette.purple;
   };
   noctaliaAssets = import ./resources.nix {
-    inherit pkgs;
+    inherit pkgs palette;
     package = config.programs.noctalia.package;
   };
-  papirus = pkgs.papirus-icon-theme.override { color = palette.iconFolderColor; };
 in
 lib.mkMerge [
   {
@@ -50,7 +49,7 @@ lib.mkMerge [
         name = palette.fonts.sans;
         size = 11;
       };
-      # GTK4/libadwaita stays unthemed → reads Noctalia's generated ~/.config/gtk-4.0/gtk.css
+      # Keep libadwaita geometry; Noctalia supplies semantic GTK4 colors.
       gtk4.theme = null;
       theme = {
         # adw-gtk3-dark is the GTK3 theme Noctalia's gtk template is designed to recolor
@@ -61,15 +60,9 @@ lib.mkMerge [
       };
       iconTheme = {
         name = desktop.iconTheme;
-        package = papirus.overrideAttrs (old: {
-          postInstall = (old.postInstall or "") + ''
-            for theme in "$out"/share/icons/Papirus*; do
-              [ -d "$theme" ] || continue
-              ${pkgs.bash}/bin/bash ${./resources/gtk/recolor-papirus-folders.sh} "$theme" ${lib.escapeShellArg palette.blue}
-              ${pkgs.gtk3}/bin/gtk-update-icon-cache --force "$theme"
-            done
-          '';
-        });
+        # The default upstream blue variant installs exactly Tela-circle-dark.
+        # Explicit --color blue produces a different theme name.
+        package = pkgs.tela-circle-icon-theme;
       };
       gtk3.extraConfig.gtk-enable-animations = !(palette.reducedMotion or false);
       gtk4.extraConfig.gtk-enable-animations = !(palette.reducedMotion or false);
@@ -78,6 +71,7 @@ lib.mkMerge [
     dconf.settings = {
       "org/gnome/desktop/interface" = {
         color-scheme = "prefer-dark";
+        icon-theme = desktop.iconTheme;
         enable-animations = !(palette.reducedMotion or false);
       };
     };

@@ -4,45 +4,45 @@
  */
 @import url("noctalia-extensions.css");
 
-@define-color accent_color {{ colors.onedark_blue.default.hex }};
-@define-color accent_bg_color {{ colors.onedark_selection.default.hex }};
-@define-color accent_fg_color {{ colors.onedark_blue.default.hex }};
-@define-color destructive_bg_color {{ colors.onedark_red.default.hex }};
-@define-color destructive_fg_color {{ colors.onedark_black.default.hex }};
-@define-color error_bg_color {{ colors.onedark_red.default.hex }};
-@define-color error_fg_color {{ colors.onedark_black.default.hex }};
+@define-color accent_color {{ colors.onedark_blue_value.default.hex }};
+@define-color accent_bg_color {{ colors.onedark_selection_value.default.hex }};
+@define-color accent_fg_color {{ colors.onedark_blue_value.default.hex }};
+@define-color destructive_bg_color {{ colors.onedark_red_value.default.hex }};
+@define-color destructive_fg_color {{ colors.onedark_black_value.default.hex }};
+@define-color error_bg_color {{ colors.onedark_red_value.default.hex }};
+@define-color error_fg_color {{ colors.onedark_black_value.default.hex }};
 
-@define-color window_bg_color {{ colors.onedark_bg.default.hex }};
-@define-color window_fg_color {{ colors.onedark_bright_fg.default.hex }};
-@define-color view_bg_color {{ colors.onedark_bg.default.hex }};
-@define-color view_fg_color {{ colors.onedark_bright_fg.default.hex }};
-@define-color headerbar_bg_color {{ colors.onedark_surface.default.hex }};
-@define-color headerbar_fg_color {{ colors.onedark_bright_fg.default.hex }};
-@define-color headerbar_backdrop_color {{ colors.onedark_bg.default.hex }};
-@define-color popover_bg_color {{ colors.onedark_surface.default.hex }};
-@define-color popover_fg_color {{ colors.onedark_bright_fg.default.hex }};
-@define-color card_bg_color {{ colors.onedark_surface.default.hex }};
-@define-color card_fg_color {{ colors.onedark_bright_fg.default.hex }};
-@define-color dialog_bg_color {{ colors.onedark_bg.default.hex }};
-@define-color dialog_fg_color {{ colors.onedark_bright_fg.default.hex }};
-@define-color sidebar_bg_color {{ colors.onedark_deep.default.hex }};
-@define-color sidebar_fg_color {{ colors.onedark_bright_fg.default.hex }};
-@define-color sidebar_backdrop_color {{ colors.onedark_deep.default.hex }};
-@define-color sidebar_border_color {{ colors.onedark_border.default.hex }};
-@define-color secondary_sidebar_bg_color {{ colors.onedark_deep.default.hex }};
-@define-color secondary_sidebar_fg_color {{ colors.onedark_bright_fg.default.hex }};
+@define-color window_bg_color {{ colors.onedark_bg_value.default.hex }};
+@define-color window_fg_color {{ colors.onedark_bright_fg_value.default.hex }};
+@define-color view_bg_color {{ colors.onedark_bg_value.default.hex }};
+@define-color view_fg_color {{ colors.onedark_bright_fg_value.default.hex }};
+@define-color headerbar_bg_color {{ colors.onedark_surface_value.default.hex }};
+@define-color headerbar_fg_color {{ colors.onedark_bright_fg_value.default.hex }};
+@define-color headerbar_backdrop_color {{ colors.onedark_bg_value.default.hex }};
+@define-color popover_bg_color {{ colors.onedark_surface_value.default.hex }};
+@define-color popover_fg_color {{ colors.onedark_bright_fg_value.default.hex }};
+@define-color card_bg_color {{ colors.onedark_surface_value.default.hex }};
+@define-color card_fg_color {{ colors.onedark_bright_fg_value.default.hex }};
+@define-color dialog_bg_color {{ colors.onedark_bg_value.default.hex }};
+@define-color dialog_fg_color {{ colors.onedark_bright_fg_value.default.hex }};
+@define-color sidebar_bg_color {{ colors.onedark_deep_value.default.hex }};
+@define-color sidebar_fg_color {{ colors.onedark_bright_fg_value.default.hex }};
+@define-color sidebar_backdrop_color {{ colors.onedark_deep_value.default.hex }};
+@define-color sidebar_border_color {{ colors.onedark_border_value.default.hex }};
+@define-color secondary_sidebar_bg_color {{ colors.onedark_deep_value.default.hex }};
+@define-color secondary_sidebar_fg_color {{ colors.onedark_bright_fg_value.default.hex }};
 
-@define-color theme_bg_color {{ colors.onedark_bg.default.hex }};
-@define-color theme_fg_color {{ colors.onedark_bright_fg.default.hex }};
-@define-color theme_base_color {{ colors.onedark_deep.default.hex }};
-@define-color theme_text_color {{ colors.onedark_bright_fg.default.hex }};
-@define-color selected_bg_color {{ colors.onedark_selection.default.hex }};
-@define-color selected_fg_color {{ colors.onedark_bright_fg.default.hex }};
-@define-color theme_selected_bg_color {{ colors.onedark_selection.default.hex }};
-@define-color theme_selected_fg_color {{ colors.onedark_bright_fg.default.hex }};
-@define-color theme_unfocused_selected_bg_color {{ colors.onedark_selection.default.hex }};
-@define-color theme_unfocused_selected_fg_color {{ colors.onedark_bright_fg.default.hex }};
-@define-color borders {{ colors.onedark_border.default.hex }};
+@define-color theme_bg_color {{ colors.onedark_bg_value.default.hex }};
+@define-color theme_fg_color {{ colors.onedark_bright_fg_value.default.hex }};
+@define-color theme_base_color {{ colors.onedark_deep_value.default.hex }};
+@define-color theme_text_color {{ colors.onedark_bright_fg_value.default.hex }};
+@define-color selected_bg_color {{ colors.onedark_selection_value.default.hex }};
+@define-color selected_fg_color {{ colors.onedark_bright_fg_value.default.hex }};
+@define-color theme_selected_bg_color {{ colors.onedark_selection_value.default.hex }};
+@define-color theme_selected_fg_color {{ colors.onedark_bright_fg_value.default.hex }};
+@define-color theme_unfocused_selected_bg_color {{ colors.onedark_selection_value.default.hex }};
+@define-color theme_unfocused_selected_fg_color {{ colors.onedark_bright_fg_value.default.hex }};
+@define-color borders {{ colors.onedark_border_value.default.hex }};
 
 headerbar,
 .titlebar {
@@ -84,7 +84,7 @@ treeview.view:selected,
 .view:selected {
   color: @selected_fg_color;
   background-color: @selected_bg_color;
-  border: 1px solid {{ colors.onedark_blue.default.hex }};
+  border: 1px solid {{ colors.onedark_blue_value.default.hex }};
   border-radius: 8px;
 }
 
@@ -102,5 +102,36 @@ spinbutton entry {
 entry:focus,
 searchentry:focus,
 spinbutton entry:focus {
-  border-color: {{ colors.onedark_blue.default.hex }};
+  border-color: {{ colors.onedark_blue_value.default.hex }};
+}
+
+/* libadwaita 1.9 also consumes CSS custom properties. Keep its native geometry. */
+:root {
+  --window-bg-color: {{ colors.onedark_bg_value.default.hex }};
+  --window-fg-color: {{ colors.onedark_bright_fg_value.default.hex }};
+  --view-bg-color: {{ colors.onedark_bg_value.default.hex }};
+  --view-fg-color: {{ colors.onedark_bright_fg_value.default.hex }};
+  --headerbar-bg-color: {{ colors.onedark_surface_value.default.hex }};
+  --headerbar-fg-color: {{ colors.onedark_bright_fg_value.default.hex }};
+  --headerbar-backdrop-color: {{ colors.onedark_bg_value.default.hex }};
+  --sidebar-bg-color: {{ colors.onedark_deep_value.default.hex }};
+  --sidebar-fg-color: {{ colors.onedark_bright_fg_value.default.hex }};
+  --sidebar-backdrop-color: {{ colors.onedark_deep_value.default.hex }};
+  --secondary-sidebar-bg-color: {{ colors.onedark_deep_value.default.hex }};
+  --card-bg-color: {{ colors.onedark_surface_value.default.hex }};
+  --card-fg-color: {{ colors.onedark_bright_fg_value.default.hex }};
+  --dialog-bg-color: {{ colors.onedark_bg_value.default.hex }};
+  --dialog-fg-color: {{ colors.onedark_bright_fg_value.default.hex }};
+  --popover-bg-color: {{ colors.onedark_surface_value.default.hex }};
+  --popover-fg-color: {{ colors.onedark_bright_fg_value.default.hex }};
+  --accent-bg-color: {{ colors.onedark_selection_value.default.hex }};
+  --accent-color: {{ colors.onedark_blue_value.default.hex }};
+  --accent-fg-color: {{ colors.onedark_bright_fg_value.default.hex }};
+  --border-color: {{ colors.onedark_border_value.default.hex }};
+}
+
+window button.suggested-action {
+  background: @selected_bg_color;
+  color: @selected_fg_color;
+  box-shadow: inset 0 -2px {{ colors.onedark_blue_value.default.hex }};
 }

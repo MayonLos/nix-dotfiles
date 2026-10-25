@@ -66,8 +66,8 @@ in
     enable = true;
     package = pkgs.dunst;
     iconTheme = {
-      package = pkgs.papirus-icon-theme.override { color = palette.iconFolderColor; };
-      name = palette.iconTheme;
+      package = config.gtk.iconTheme.package;
+      name = config.gtk.iconTheme.name;
       size = "32x32";
     };
     settings = {
@@ -97,7 +97,7 @@ in
         ellipsize = "end";
         min_icon_size = 24;
         max_icon_size = 32;
-        icon_theme = palette.iconTheme;
+        icon_theme = config.gtk.iconTheme.name;
         enable_recursive_icon_lookup = true;
         progress_bar = true;
         progress_bar_height = 4;

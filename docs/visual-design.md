@@ -280,9 +280,11 @@ edge由现有palette的border与deep混色得到，不增加第二套颜色来�
 
 ### GTK / Qt（Thunar 为代表）
 
-正文 brightFg，主面 bg，侧栏 deep，工具栏 surface。工具栏约40高，按钮32、内边距8，列表行约32，sidebar目标176–208宽；选中行 selection + brightFg，图标/细边 blue；hover selection。路径栏圆角8、focus blue2。文件列表中文14/22，大小/日期 fg；图标16–20，文件夹保留已有 Papirus 风格。
+第二十一轮 B 确认 **adw-gtk3-dark 重做 + Tela-circle-dark 默认蓝色图标**。正文 brightFg，主面 bg，Thunar 侧栏/工具栏 deep，路径容器 surface；侧栏选中 selection + 2px blue 左标，当前路径段蓝色下划。路径圆角8、等宽12px；表头小号等宽11px，状态读数等宽11px，文件列表保留 sans 13px。工具栏最小40高，控件边缘细线；侧栏宽度、zoom 与窗口尺寸保留用户状态，不强制覆盖。
 
-**依据 A/B/C**：GTK3 保留 adw-gtk3-dark，通过现有 Noctalia GTK模板或主题 CSS 接口统一 `theme_bg_color/theme_fg_color/selected_bg_color/selected_fg_color` 等；CSS 局部控制 selection、entry、headerbar，Thunar 自身侧栏宽度是用户窗口状态。GTK4/libadwaita 的不暴露部分以其原生尺寸为准，不宣称能对所有应用强制圆角。Qt6ct 已用 Fusion，QPalette `Window/Base/AlternateBase/Button=bg/deep/surface`、`Text/WindowText/ButtonText=brightFg`、`Highlight=selection`、`HighlightedText=brightFg`、`Link=blue`、`PlaceholderText=fg`。QPalette 不负责控件圆角和内边距；Qt 保留 Fusion 形状，只有外窗口 Mango 半径12。Qt5、私有绘制应用同色近似，不能承诺统一CSS覆盖。
+**依据与能力边界**：GTK3 由 Noctalia 现有模板生命周期独占生成 CSS，Thunar 4.20 侧栏使用真实 `.shortcuts-pane`。选中文件图标用透明计算背景配合 selection 渐变层，避开其原生 Cairo 乘色造成的变黑。GtkTreeView 无逐 cell CSS node，因此细节列表使用整行 selection 底，蓝标只画在侧栏；GTK3 无文本大写转换，保留原生表头。GTK4/libadwaita 保留原生几何，补齐语义色与 CSS custom properties；应用私有绘制仍需分别验收。
+
+Qt6ct 使用 Fusion，QPalette `Window/Base/AlternateBase/Button=bg/deep/surface`、`Text/WindowText/ButtonText=brightFg`、`Highlight=selection`、`HighlightedText=brightFg`、`Link=blue`。HM QSS 补充圆角输入/按钮、蓝色焦点与 tab 下划；GUI 配置仍是可变文件，通过缺失 seed 和有限默认值迁移接入。自定义 Qt stylesheets 保留，私有控件/Qt Quick/Qt5 不承诺完全一致。GTK/Qt builtin asset 在构建期固定为共享 One Dark 原色，避免依赖 Noctalia builtin engine 不会注入的 custom colors；原 builtin IDs/import/apply/undo 生命周期保留。Firefox user 模板仍读取 `_value` 原色，避免 Material 色阶。正式实现与验证见[执行记录](history/ui-r21b-2026-10-25.md)。
 
 ### Firefox
 

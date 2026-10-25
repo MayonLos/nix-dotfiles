@@ -212,6 +212,9 @@ let
       && selectedHome.home.pointerCursor.name == palette.cursor.name
       && selectedHome.home.pointerCursor.size == palette.cursor.size
       && xorgAliceHome.services.dunst.iconTheme.name == palette.iconTheme
+      &&
+        xorgAliceHome.services.dunst.iconTheme.package.outPath
+        == xorgAliceHome.gtk.iconTheme.package.outPath
       && selectedHome.gtk.iconTheme.name == palette.iconTheme
       && xorgAliceHome.home.pointerCursor.name == palette.cursor.name;
 
@@ -401,8 +404,8 @@ pkgs.runCommand "den-interactive-session-composition" { nativeBuildInputs = [ pk
   QT_OLD
   source ${qtFontMigration}
   cp "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf" "$out/qt-font-migrated.conf"
-  grep -Fx 'general=${palette.fonts.sans},11,-1,5,400,0,0,0,0,0' "$out/qt-font-migrated.conf"
-  grep -Fx 'fixed=${palette.fonts.mono},11,-1,5,400,0,0,0,0,0' "$out/qt-font-migrated.conf"
+  grep -Fx 'general="${palette.fonts.sans},11,-1,5,50,0,0,0,0,0"' "$out/qt-font-migrated.conf"
+  grep -Fx 'fixed="${palette.fonts.mono},11,-1,5,50,0,0,0,0,0"' "$out/qt-font-migrated.conf"
   grep -Fx 'style=CustomStyle' "$out/qt-font-migrated.conf"
   grep -Fx 'value=keep me' "$out/qt-font-migrated.conf"
   source ${qtFontMigration}

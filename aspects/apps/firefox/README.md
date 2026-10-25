@@ -11,3 +11,5 @@ Removing the feature removes its package, policies, URL handler, and activation.
 `resources/test_firefox_ui.py FALLBACK_CSS` parses both generated stylesheets and exercises the seed and Noctalia hook against an isolated temporary Firefox profile. It never opens or changes the real profile. The public check obtains `FALLBACK_CSS` from the seed command in Home Manager activation data, so the fixture checks the exact palette output used by the configured system.
 
 Firefox 158 keeps the search handoff placeholder inside its shadow tree at native opacity 0.54. Its final contrast is about 4.05:1 on the surface background even when the public text token uses brightFg; the public host variables do not expose opacity. Palette text contrast does not certify that native placeholder.
+
+Custom Noctalia colors use `onedark_*_value` for exact palette values. In the locked 5.3 engine, `blend=false` disables harmonization but the unsuffixed color still becomes a Material tonal role. The public fixture now renders with the actual offline engine and compares that result with the seed, so Firefox follows GTK/Qt's exact One Dark colors without changing profile ownership.
