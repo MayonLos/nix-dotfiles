@@ -81,6 +81,9 @@ let
       ./noctalia/hud-battery.patch
       ./noctalia/hud-controls-tooltips.patch
       ./noctalia/hud-sysmon.patch
+      ./noctalia/hud-balanced.patch
+      ./noctalia/hud-nix-badge.patch
+      ./noctalia/hud-drawer-clearance.patch
     ];
     # Fail the source build if an upstream rename or patch drift removes the
     # segmented OSD implementation instead of silently losing the appearance.
@@ -94,7 +97,15 @@ let
       grep -Fq 'HUD27: native faded separator' src/shell/bar/widgets/spacer_widget.cpp
       grep -Fq 'minimum_visible' src/shell/bar/widgets/workspaces_widget_definition.cpp
       grep -Fq 'HUD27: keep the first N labels' src/shell/bar/widgets/workspaces_widget.cpp
-      grep -Fq 'HUD27: profile icon + real mode name' src/shell/bar/widgets/power_profile_widget.cpp
+      grep -Fq 'HUD27b: mode name belongs in the tooltip' src/shell/bar/widgets/power_profile_widget.cpp
+      grep -Fq 'rootNode->setSize(m_glyph->width(), m_glyph->height())' src/shell/bar/widgets/power_profile_widget.cpp
+      grep -Fq 'panel.summary = available ? profile' src/shell/bar/widgets/power_profile_widget.cpp
+      grep -Fq 'kHudCenterClearance = 24.0F' src/shell/bar/bar.cpp
+      grep -Fq 'instance.hudMonitoringCompact || instance.startSection->width() > startSlotMain' src/shell/bar/bar.cpp
+      grep -Fq 'HUD27b: a single bounded second pass' src/shell/bar/bar.cpp
+      grep -Fq 'setDrawerCompact(false)' src/shell/bar/bar.cpp
+      grep -Fq 'setDrawerCompact(true)' src/shell/bar/bar.cpp
+      grep -Fq 'm_compactDot->setVisible(m_drawerCompact)' src/shell/bar/widgets/sysmon_widget.cpp
       grep -Fq 'HUD27: display panel uses friendly metadata' src/shell/bar/widgets/brightness_widget.cpp
       grep -Fq 'display.friendlyName' src/system/brightness_service.cpp
       grep -Fq 'out->refreshMilliHz = refresh' src/wayland/wayland_connection.cpp
@@ -116,7 +127,22 @@ let
       grep -Fq 'gpu_only_nvidia' src/config/schema/config_schema.cpp
       grep -Fq 'pollCfg.gpuOnlyNvidia' src/system/system_monitor_service.cpp
       grep -Fq 'm_graph->setColor(m_highlightColor)' src/shell/bar/widgets/sysmon_widget.cpp
-      grep -Fq 'CountdownRingNode' src/shell/bar/widgets/sysmon_widget.cpp
+      grep -Fq 'HUD27b: external percentages reserve' src/shell/bar/widgets/battery_widget.cpp
+      grep -Fq '{"setBadge", luau_setBadge}' src/scripting/plugin_bindings.cpp
+      grep -Fq '{"setMinWidth", luau_setMinWidth}' src/scripting/plugin_bindings.cpp
+      grep -Fq 'dest.badge = src.badge' src/scripting/script_runtime.cpp
+      grep -Fq 'dest.minWidth = src.minWidth' src/scripting/script_runtime.cpp
+      grep -Fq 'm_badge->setPosition' src/shell/bar/widgets/plugin_widget.cpp
+      grep -Fq 'luaSetBadge(false)' src/shell/bar/widgets/plugin_widget.cpp
+      grep -Fq '.participatesInLayout = false' src/shell/bar/widgets/plugin_widget.cpp
+      grep -Fq 'temperature_hide_below'  src/shell/bar/widgets/sysmon_widget_definition.cpp
+      grep -Fq 'HUD27b: CPU alert is hidden below 80; orange at 80, red at 90.' src/shell/bar/widgets/sysmon_widget.cpp
+      grep -Fq 'currentStats.cpuTempC.value_or(0.0) >= m_temperatureHideBelow' src/shell/bar/widgets/sysmon_widget.cpp
+      grep -Fq 'addMetric(SysmonStat::GpuVram, "VRAM"' src/shell/bar/widgets/sysmon_widget.cpp
+      grep -Fq 'addMetric(SysmonStat::GpuTemp, "独显温度"' src/shell/bar/widgets/sysmon_widget.cpp
+      grep -Fq 'HUD27b: SYSTEM owns live GPU temperature and VRAM' src/shell/bar/widgets/sysmon_widget.cpp
+      grep -Fq 'HUD27b: fixed-width value boxes' src/shell/bar/widgets/sysmon_widget.cpp
+      grep -Fq 'CountdownRingNode'  src/shell/bar/widgets/sysmon_widget.cpp
       grep -Fq 'UI4: lockscreen palette-gradient password underline and cached runtime status' src/shell/lockscreen/lock_surface.cpp
       grep -Fq 'lockscreenRuntimeStatus()' src/shell/lockscreen/lock_surface.cpp
       grep -Fq 'charge_control_end_threshold' src/shell/lockscreen/lock_surface.cpp

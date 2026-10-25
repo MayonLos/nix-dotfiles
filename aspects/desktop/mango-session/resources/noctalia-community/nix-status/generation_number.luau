@@ -16,32 +16,16 @@ local function fromMatchingLinks(output: string): string?
     return newestLabel
 end
 
-local function statusText(
-    generation: string?,
-    updateState: string,
-    generationState: string,
-    systemTargetState: string
-): string
-    local markers = {}
-    if generationState == "different" then
-        table.insert(markers, "↺")
-    end
-    if updateState == "updates" or updateState == "checking" then
-        table.insert(markers, "↻")
-    elseif updateState == "current" then
-        table.insert(markers, "✓")
-    elseif updateState == "error" then
-        table.insert(markers, "!")
-    else
-        table.insert(markers, "·")
-    end
-    if systemTargetState == "different" then
-        table.insert(markers, "⇧")
-    end
-    return (generation or "") .. table.concat(markers, "")
+local function statusText(generation: string?): string
+    return generation or ""
+end
+
+local function hasInputUpdates(updateState: string): boolean
+    return updateState == "updates"
 end
 
 return {
     fromMatchingLinks = fromMatchingLinks,
     statusText = statusText,
+    hasInputUpdates = hasInputUpdates,
 }

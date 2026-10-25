@@ -15,9 +15,9 @@ let
     show_glyph = false;
     visualization = "none";
     font_family = palette.fonts.mono;
-    font_scale = 0.93;
+    font_scale = 0.86;
     color = palette.brightFg;
-    label_min_width = 30;
+    label_min_width = 28;
     highlight_color = palette.blue;
   };
 in
@@ -44,7 +44,7 @@ in
     capsule_opacity = 1.0;
     capsule_fill = "surface_variant";
     capsule_radius = 6;
-    capsule_thickness = 0.73;
+    capsule_thickness = 0.67;
     font_family = palette.fonts.sans;
     font_weight = 500;
     font_scale = 0.93;
@@ -57,14 +57,14 @@ in
       "gambled23/mangowm-keymode:mangowm-keymode"
       "ezequiel/mango_layouts:btn"
       "group:tools"
+      "gap-monitor"
+      "group:monitor"
+      "monitor-gpu"
     ];
     center = [ "group:time" ];
     end = [
-      "group:monitor"
-      "separator-nix"
       "mindnbytes/nix-status:status"
-      "separator-system"
-      "privacy"
+      "gap-system"
       "group:system"
       "separator-control"
       "control-center"
@@ -99,7 +99,7 @@ in
         opacity = 0.06;
         border = "${palette.blue}40";
         border_width = 1;
-        padding = 6.0;
+        padding = 4.0;
         widget_spacing = 9;
       }
       {
@@ -108,12 +108,13 @@ in
           "monitor-cpu"
           "monitor-memory"
           "monitor-temp"
-          "monitor-gpu"
-          "monitor-vram"
         ];
-        opacity = 0.0;
+        fill = "on_surface";
+        opacity = 0.04;
+        border = "${palette.fg}1f";
+        border_width = 1;
         accordion = false;
-        padding = 4.0;
+        padding = 6.0;
         widget_spacing = 10;
       }
       {
@@ -129,7 +130,7 @@ in
         opacity = 0.0;
         accordion = false;
         padding = 4.0;
-        widget_spacing = 10;
+        widget_spacing = 13;
       }
     ];
   };
@@ -142,8 +143,14 @@ in
     };
     separator-workspaces = separator;
     separator-layout = separator;
-    separator-nix = separator;
-    separator-system = separator;
+    gap-monitor = {
+      type = "spacer";
+      length = 4; # Native section spacing keeps visible group gaps near 14px.
+    };
+    gap-system = {
+      type = "spacer";
+      length = 4;
+    };
     separator-control = separator;
     clock-dot = {
       type = "spacer";
@@ -157,22 +164,25 @@ in
       visualization = "ring";
       highlight_color = palette.green;
     };
-    monitor-temp = (monitor "cpu_temp" "TEMP") // {
+    monitor-temp = (monitor "cpu_temp" "") // {
+      temperature_hide_below = 80;
+      hide_unavailable = true;
       color = palette.orange;
       highlight_color = palette.orange;
       label_min_width = 26;
     };
     monitor-gpu = (monitor "gpu_usage" "GPU") // {
       hide_unavailable = true;
-      show_gpu_temperature = true;
+      show_gpu_temperature = false;
+      capsule = true;
+      capsule_fill = "on_surface";
+      capsule_opacity = 0.04;
+      capsule_border = "${palette.fg}1f";
+      capsule_border_width = 1;
+      capsule_padding = 6.0;
       color = palette.orange;
       highlight_color = palette.orange;
-      label_min_width = 0;
-    };
-    monitor-vram = (monitor "gpu_vram" "VRAM") // {
-      hide_unavailable = true;
-      color = palette.cyan;
-      highlight_color = palette.cyan;
+      label_min_width = 28;
     };
     "control-center" = {
       custom_image = distroLogo;
@@ -180,7 +190,7 @@ in
       icon_color = palette.blue;
     };
     volume = {
-      show_label = true;
+      show_label = false;
       font_family = palette.fonts.mono;
       color = palette.brightFg;
       icon_color = palette.fg;
@@ -189,12 +199,12 @@ in
       drawer = true;
       pinned = [ "fcitx" ];
     };
-    privacy.hide_inactive = true;
     "fel/quill:status" = {
       hide_when_empty = false;
       show_label = false;
       icon_color = palette.blue;
     };
+    "rxtsel/portctl:indicator".font_scale = 0.80;
     "8bury/mini-docker:mini-docker" = {
       inactive_color = "on_surface_variant";
       active_color = "secondary";
@@ -223,11 +233,14 @@ in
     };
     brightness = {
       show_label = true;
+      font_scale = 0.80;
       icon_color = palette.yellow;
       font_family = palette.fonts.mono;
       color = palette.brightFg;
     };
-    power_profile.icon_color = palette.green;
+    power_profile = {
+      icon_color = palette.green;
+    };
     caffeine.icon_color = palette.muted;
     battery = {
       display_mode = "graphic";

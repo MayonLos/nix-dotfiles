@@ -1,0 +1,160 @@
+--- a/src/shell/bar/widgets/sysmon_widget.h
++++ b/src/shell/bar/widgets/sysmon_widget.h
+@@ -67,6 +67,7 @@
+     bool showValue = true;
+     // HUD27: omit unavailable values from layout while retaining their sampling source.
+     bool hideUnavailable = false;
++    double temperatureHideBelow = 0.0;
+     bool showGpuTemperature = false;
+     int labelMinWidth = 0;
+     bool showUnits = true;
+@@ -117,6 +118,7 @@
+   bool m_showGlyph;
+   bool m_showValue;
+   bool m_hideUnavailable;
++  double m_temperatureHideBelow;
+   bool m_showGpuTemperature;
+   float m_labelMinWidth = 0.0F;
+   std::string m_diskPath;
+--- a/src/shell/bar/widgets/sysmon_widget.cpp
++++ b/src/shell/bar/widgets/sysmon_widget.cpp
+@@ -102,9 +102,6 @@
+     return kActivityOnset + (1.0 - kActivityOnset) * t;
+   }
+ 
+-  bool needsGpuTemp(SysmonStat stat) { return stat == SysmonStat::GpuTemp; }
+-  bool needsGpuUsage(SysmonStat stat) { return stat == SysmonStat::GpuUsage; }
+-  bool needsGpuVram(SysmonStat stat) { return stat == SysmonStat::GpuVram || stat == SysmonStat::GpuVramUsed; }
+ 
+   bool isDiskStat(SysmonStat stat) {
+     return stat == SysmonStat::DiskUsedPct
+@@ -141,6 +138,7 @@
+     : m_monitor(monitor), m_stat(options.stat), m_visualization(options.visualization),
+       m_highlightColor(options.highlightColor), m_configService(configService), m_showGlyph(options.showGlyph),
+       m_showValue(options.showValue), m_hideUnavailable(options.hideUnavailable),
++      m_temperatureHideBelow(options.temperatureHideBelow),
+       m_showGpuTemperature(options.showGpuTemperature), m_labelMinWidth(static_cast<float>(options.labelMinWidth)),
+       m_diskPath(FileUtils::expandUserPath(options.diskPath).string()),
+       m_networkInterface(std::move(options.networkInterface)), m_networkSpeedUnit(options.networkSpeedUnit),
+@@ -153,15 +151,10 @@
+   if (m_monitor != nullptr) {
+     // HUD27: SYSTEM tooltip includes CPU temperature for every sysmon widget instance.
+     m_monitor->retainCpuTemp();
+-    if (needsGpuTemp(m_stat) || m_showGpuTemperature) {
+-      m_monitor->retainGpuTemp();
+-    }
+-    if (needsGpuUsage(m_stat)) {
+-      m_monitor->retainGpuUsage();
+-    }
+-    if (needsGpuVram(m_stat)) {
+-      m_monitor->retainGpuVram();
+-    }
++    // HUD27b: SYSTEM owns live GPU temperature and VRAM even without bar values.
++    m_monitor->retainGpuTemp();
++    m_monitor->retainGpuUsage();
++    m_monitor->retainGpuVram();
+     if (isDiskStat(m_stat) && !m_diskPath.empty()) {
+       m_monitor->retainDiskPath(m_diskPath);
+     }
+@@ -171,15 +164,10 @@
+ SysmonWidget::~SysmonWidget() {
+   if (m_monitor != nullptr) {
+     m_monitor->releaseCpuTemp();
+-    if (needsGpuTemp(m_stat) || m_showGpuTemperature) {
+-      m_monitor->releaseGpuTemp();
+-    }
+-    if (needsGpuUsage(m_stat)) {
+-      m_monitor->releaseGpuUsage();
+-    }
+-    if (needsGpuVram(m_stat)) {
+-      m_monitor->releaseGpuVram();
+-    }
++    // HUD27b: SYSTEM owns live GPU temperature and VRAM even without bar values.
++    m_monitor->releaseGpuTemp();
++    m_monitor->releaseGpuUsage();
++    m_monitor->releaseGpuVram();
+     if (isDiskStat(m_stat) && !m_diskPath.empty()) {
+       m_monitor->releaseDiskPath(m_diskPath);
+     }
+@@ -349,6 +337,10 @@
+ }
+ 
+ Color SysmonWidget::currentValueColor(ColorSpec baseColor) {
++  // HUD27b: CPU alert is hidden below 80; orange at 80, red at 90.
++  if (m_stat == SysmonStat::CpuTemp && m_temperatureHideBelow > 0.0) {
++    return currentGradientValue() >= 90.0 ? colorForRole(ColorRole::Error) : rgbHex(0xD19A66);
++  }
+   const Color base = resolveColorSpec(baseColor);
+   const Color highlight = resolveColorSpec(m_highlightColor);
+   const auto [activityThreshold, criticalThreshold] = currentThresholds();
+@@ -564,14 +556,14 @@
+   syncVisualPalette();
+   syncIdentity(renderer);
+ 
+-  const float gap = Style::spaceXs * m_contentScale;
++  const float gap = 5.0F * m_contentScale;
+   const LayoutSize identitySize = layoutIdentityGroup(gap);
+   const bool hasIdentity = m_identityGroup != nullptr;
+   const float baseSize = Style::fontSizeBody * m_contentScale;
+ 
+   if (m_label != nullptr) {
+-    // TextAlign is logical (End is the left edge in RTL); keep values physically right-aligned in both directions.
+-    const TextAlign rightAlign = Style::rtl() ? TextAlign::Start : TextAlign::End;
++    // HUD27b: fixed-width value boxes grow away from their labels, keeping the 5px label/value gap.
++    const TextAlign rightAlign = Style::rtl() ? TextAlign::End : TextAlign::Start;
+     m_label->setTextAlign(isVerticalBar ? TextAlign::Center : rightAlign);
+     if (orientationChanged || m_lastRawValue.empty()) {
+       syncLabelText(m_lastRawValue.empty() ? formatValue() : m_lastRawValue);
+@@ -615,7 +607,7 @@
+     visualizationNode = m_ringTrack->parent();
+   } else if (m_visualization == SysmonVisualization::Graph && m_chartBg != nullptr) {
+     visualizationW =
+-        isVerticalBar ? std::min(34.0F * m_contentScale, std::max(1.0F, containerWidth)) : 34.0F * m_contentScale;
++        isVerticalBar ? std::min(28.0F * m_contentScale, std::max(1.0F, containerWidth)) : 28.0F * m_contentScale;
+     visualizationH = hasIdentity ? identitySize.height : std::round(baseSize * 1.2F);
+     m_chartBg->setSize(visualizationW, visualizationH);
+     if (m_graph != nullptr) {
+@@ -728,7 +720,9 @@
+   const SystemStats currentStats = m_monitor != nullptr ? m_monitor->latest() : SystemStats{};
+   const bool hasLiveValue = m_monitor != nullptr && m_monitor->isRunning()
+       && statAvailableForTooltip(m_stat, currentStats) && formatValueFor(m_stat, currentStats).has_value();
+-  const bool shown = !m_hideUnavailable || hasLiveValue;
++  const bool temperatureShown = m_stat != SysmonStat::CpuTemp || m_temperatureHideBelow <= 0.0
++      || (hasLiveValue && currentStats.cpuTempC.value_or(0.0) >= m_temperatureHideBelow);
++  const bool shown = (!m_hideUnavailable || hasLiveValue) && temperatureShown;
+   if (auto* rootNode = root(); rootNode != nullptr) {
+     rootNode->setVisible(shown);
+     rootNode->setParticipatesInLayout(shown);
+@@ -1181,6 +1175,10 @@
+   addMetric(SysmonStat::RamUsed, "内存");
+   addMetric(SysmonStat::RamPct, "占用", fixedColorSpec(rgbHex(0x98C379)));
+   addMetric(SysmonStat::SwapPct, "Swap");
++  // HUD27b: metrics moved off the bar remain in the shared SYSTEM panel.
++  addMetric(SysmonStat::GpuVram, "VRAM", colorSpecFromRole(ColorRole::Secondary));
++  addMetric(SysmonStat::GpuVramUsed, "显存");
++  addMetric(SysmonStat::GpuTemp, "独显温度", fixedColorSpec(rgbHex(0xD19A66)));
+   addMetric(SysmonStat::NetRx, "↓", colorSpecFromRole(ColorRole::Secondary));
+   addMetric(SysmonStat::NetTx, "↑", fixedColorSpec(rgbHex(0xE5C07B)));
+   const bool gpuOnline = stats.gpuUsagePercent.has_value() || stats.gpuTempC.has_value()
+--- a/src/shell/bar/widgets/sysmon_widget_definition.cpp
++++ b/src/shell/bar/widgets/sysmon_widget_definition.cpp
+@@ -193,6 +193,7 @@
+           }),
+           // HUD27: keep the sampler retained, but exclude unavailable widgets from flex layout.
+           field<&Options::hideUnavailable>({.key = "hide_unavailable"}),
++          field<&Options::temperatureHideBelow>({.key = "temperature_hide_below", .minValue = 0.0, .maxValue = 120.0}),
+           field<&Options::showGpuTemperature>({.key = "show_gpu_temperature"}),
+           field<&Options::showUnits>({
+               .key = "label_show_units",
+--- a/src/shell/bar/widgets/battery_widget.cpp
++++ b/src/shell/bar/widgets/battery_widget.cpp
+@@ -260,7 +260,8 @@
+       m_overlayLabel->setFontFamily("monospace");
+     }
+     m_overlayLabel->setFontWeight(fontWeight);
+-    m_overlayLabel->setMinWidth(0.0F);
++    // HUD27b: external percentages reserve four monospaced characters through 100%.
++    m_overlayLabel->setMinWidth(outsideHorizontal ? 32.0F * scale : 0.0F);
+     m_overlayLabel->setFontSize(fontSize);
+     m_overlayLabel->measure(renderer);
+     const float available = bodyW - 2.0F * labelPadding;
