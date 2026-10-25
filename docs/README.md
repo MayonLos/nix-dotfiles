@@ -9,6 +9,7 @@ generation、store 路径和样本数据只对应当时提交，与当前源码�
 |---|---|
 | [architecture-design.md](architecture-design.md) | Den 实体、aspect/bundle/inventory 边界 |
 | [operations.md](operations.md) | 求值、构建、应用、回滚、清理与实机验证层级 |
+| [agent-workflow.md](agent-workflow.md) | 多代理工作流：主代理设计审核、执行代理（Codex/DeepSeek 等）实现与隔离验证 |
 | [config-ownership.md](config-ownership.md) | 配置文件、可变状态与秘密的写入归属 |
 | [service-policy.md](service-policy.md) | 后台服务的 session 边界与所有权 |
 | [workflow-design.md](workflow-design.md) | 快捷键、tmux、项目工作台与长任务 |

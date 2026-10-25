@@ -72,3 +72,5 @@ nix build --no-link --no-write-lock-file .#nixosConfigurations.nixos-btw.config.
 每个子任务说明目标、绝对路径、可写范围、已知事实和验收标准。并行写任务分配不重叠文件；需改同一文件或独立 CLI 执行时使用隔离 worktree。子代理不得回滚他人改动、stage、commit 或 push；主代理审阅证据和 diff 后集成。结论须说明改动路径、实际验证与限制。
 
 无需把 Codex 包装成外部 `codex exec`，不依赖家目录委托脚本。其他引擎仅在用户明确要求时使用，并单独确认上下文、权限及隔离范围。
+
+用户要求“主代理设计审核、外部执行代理实现”时（例如 Claude 或 DeepSeek 作为主代理驱动 `codex exec`），按 [多代理工作流](docs/agent-workflow.md) 执行：预览先行、brief 模板、隔离 worktree、内存监控、隔离视觉验证、同会话续跑、集成与实机核对。
