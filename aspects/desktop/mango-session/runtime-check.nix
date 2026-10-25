@@ -20,6 +20,10 @@ let
     builtins.toJSON {
       settings = home.programs.noctalia.settings;
       hostName = host.networking.hostName;
+      noctaliaPatches = map (path: {
+        name = builtins.baseNameOf path;
+        content = builtins.readFile path;
+      }) home.programs.noctalia.package.patches;
       wallpaperAssets = map (item: {
         inherit (item) name;
         path = "${item.path}";
@@ -268,6 +272,9 @@ pkgs.runCommand "interactive-session-config"
     colors(p)
     assert p["dark"]["mSurface"] == m["palette"]["bg"]
     settings = m["settings"]
+    patches = {patch["name"]: patch["content"] for patch in m["noctaliaPatches"]}
+    for name, marker in {"hud-bar.patch": "HUD27: native faded separator", "hud-tooltips.patch": "TooltipPanel", "hud-sysmon.patch": "hide_unavailable", "hud-controls-tooltips.patch": "TooltipPanel", "hud-battery.patch": "label_outside"}.items():
+        assert name in patches and marker in patches[name], (name, patches.keys())
     # Check serialized settings too: validating the Nix attrset alone would
     # miss a lost/renamed field during Home Manager's config generation.
     generated = tomllib.loads(Path(sys.argv[4]).read_text())
@@ -288,11 +295,22 @@ pkgs.runCommand "interactive-session-config"
         ("widget", "workspaces", "style"): "minimal",
         ("widget", "battery", "label_content"): "percent",
         ("widget", "battery", "display_mode"): "graphic",
+        ("widget", "battery", "label_outside"): True,
         ("widget", "tray", "drawer"): True,
         ("widget", "tray", "pinned"): ["fcitx"],
         ("widget", "battery", "actions", "left"): "exec legion-conservation toggle",
-        ("widget", "tmelik/system-monitor:summary", "show_cpu_usage"): True,
-        ("widget", "tmelik/system-monitor:summary", "show_gpu_usage"): "off",
+        ("widget", "monitor-cpu", "visualization"): "graph",
+        ("widget", "monitor-memory", "visualization"): "ring",
+        ("widget", "monitor-temp", "stat"): "cpu_temp",
+        ("widget", "monitor-gpu", "hide_unavailable"): True,
+        ("widget", "monitor-gpu", "show_gpu_temperature"): True,
+        ("widget", "monitor-vram", "hide_unavailable"): True,
+        ("widget", "workspaces", "hide_when_empty"): True,
+        ("widget", "workspaces", "minimum_visible"): 5,
+        ("system", "monitor", "gpu_poll_seconds"): 2.0,
+        ("system", "monitor", "gpu_only_nvidia"): True,
+        ("widget", "separator-nix", "decoration"): "separator",
+        ("widget", "clock-dot", "decoration"): "dot",
         ("widget", "monitor-gpu", "stat"): "gpu_usage",
         ("widget", "monitor-vram", "stat"): "gpu_vram",
         ("widget", "monitor-memory", "stat"): "ram_pct",
@@ -318,11 +336,17 @@ pkgs.runCommand "interactive-session-config"
             for key in keys:
                 root = root[key]
             assert root == value, (keys, root, value)
-    assert all(group["opacity"] == 0 for group in settings["bar"]["main"]["capsule_group"])
-    assert settings["bar"]["main"]["capsule_group"][2]["members"][0] == "fel/quill:status"
+    groups = {group["id"]: group for group in settings["bar"]["main"]["capsule_group"]}
+    assert all(group["opacity"] == 0 for name, group in groups.items() if name != "tools")
+    assert groups["tools"]["members"] == ["fel/quill:status", "8bury/mini-docker:mini-docker", "rxtsel/portctl:indicator", "brightness", "power_profile", "caffeine"]
+    assert groups["tools"]["accordion"] and groups["tools"]["border_width"] == 1
+    assert not groups["monitor"]["accordion"]
+    assert groups["monitor"]["members"] == ["monitor-cpu", "monitor-memory", "monitor-temp", "monitor-gpu", "monitor-vram"]
+    assert not any(w.get("text") == "│" for w in settings["widget"].values())
+    assert all(settings["widget"][name]["type"] == "spacer" for name in settings["widget"] if name.startswith("separator-"))
     assert len(settings["control_center"]["shortcuts"]) == 6
     enabled_plugins = settings["plugins"]["enabled"]
-    assert "tmelik/system-monitor" in enabled_plugins
+    assert "tmelik/system-monitor" not in enabled_plugins
     assert "mindnbytes/nix-status" in enabled_plugins
     assert "knyrps/nix-search" in enabled_plugins
     assert "nix-dotfiles/legion-conservation" in enabled_plugins
