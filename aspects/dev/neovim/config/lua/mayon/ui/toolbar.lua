@@ -67,7 +67,7 @@ function M.render()
 		left = left .. button(2, " " .. esc(branch) .. " ", "MayonTopMuted")
 		used = used + vim.fn.strdisplaywidth(branch) + 2
 	end
-	left = left .. "%#MayonTopHint# │ "
+	left = left .. "%#MayonTopMuted# │ "
 	used = used + 3
 	local budget = math.max(1, vim.o.columns - used - 2)
 	local entries, active_index = {}, 1
