@@ -1,6 +1,67 @@
-{ pkgs, lib, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 
 let
+  terminal = config.home.sessionVariables.TERMINAL;
+  terminalLauncher = pkgs.writeShellApplication {
+    name = "thunar-open-terminal";
+    runtimeInputs = [ pkgs.coreutils ];
+    text = ''
+      target="''${1:-$PWD}"
+      if [ -d "$target" ]; then directory="$target"; else directory="$(dirname -- "$target")"; fi
+      exec ${terminal} --directory="$directory"
+    '';
+  };
+  neovimAction = pkgs.writeShellApplication {
+    name = "thunar-open-neovim";
+    runtimeInputs = [ pkgs.coreutils ];
+    text = ''
+      [ "$#" -gt 0 ] || exit 2
+      target="$1"
+      if [ -d "$target" ]; then directory="$target"; else directory="$(dirname -- "$target")"; fi
+      exec ${terminal} --directory="$directory" -e ${config.home.sessionVariables.EDITOR} "$@"
+    '';
+  };
+  herdrAction = pkgs.writeShellApplication {
+    name = "thunar-open-herdr";
+    runtimeInputs = [
+      pkgs.kitty
+      pkgs.local.herdr
+    ];
+    text = ''
+      [ "$#" -eq 1 ] && [ -d "$1" ] || exit 2
+      exec ${pkgs.kitty}/bin/kitty --directory="$1" --class=mayon-herdr --title=herdr ${pkgs.local.herdr}/bin/herdr
+    '';
+  };
+  lazygitAction = pkgs.writeShellApplication {
+    name = "thunar-open-lazygit";
+    runtimeInputs = [
+      pkgs.kitty
+      pkgs.lazygit
+    ];
+    text = ''
+      [ "$#" -eq 1 ] && [ -d "$1" ] || exit 2
+      exec ${pkgs.kitty}/bin/kitty --directory="$1" -e ${pkgs.lazygit}/bin/lazygit
+    '';
+  };
+  setWallpaper = pkgs.writeShellApplication {
+    name = "thunar-set-wallpaper";
+    runtimeInputs = [
+      pkgs.feh
+      config.programs.noctalia.package
+    ];
+    text = ''
+      [ "$#" -eq 1 ] && [ -f "$1" ] || exit 2
+      case "''${XDG_CURRENT_DESKTOP:-}" in
+        *dwm*) exec feh --bg-fill "$1" ;;
+        *) exec ${config.programs.noctalia.package}/bin/noctalia msg wallpaper-set "$1" ;;
+      esac
+    '';
+  };
   failFunction = appName: message: ''
     fail() {
       notify-send --app-name=${appName} --icon=dialog-error "${message}" "$1"
@@ -64,17 +125,18 @@ let
         png="$tmp"
       fi
 
-      # Both clipboards get written:
-      #   wl-copy -> native Wayland clients (QQ, Firefox and Typora)
-      #   xclip   -> XWayland clients (wechat-uos pins QT_QPA_PLATFORM=xcb)
-      # Mango does *not* synchronise the two selections (measured 2026-09-15,
-      # see the desktop-mango skill) -- interactive-session/clipboard.nix bridges them with watchers. Writing both sides directly here makes this action independent of
-      # that bridge, of selection ownership, and of focus timing.
-      #
-      # Both commands slurp stdin into memory before forking off to serve the
-      # selection, so the temp file can go away immediately afterwards.
-      wl-copy --type image/png <"$png"
-      xclip -selection clipboard -t image/png -i <"$png"
+      # Only call clipboard tools for displays which exist. wl-copy exits
+      # unsuccessfully in a pure Xorg session; xclip has the symmetric issue.
+      copied=0
+      if [ -n "''${WAYLAND_DISPLAY:-}" ]; then
+        wl-copy --type image/png <"$png"
+        copied=1
+      fi
+      if [ -n "''${DISPLAY:-}" ]; then
+        xclip -selection clipboard -t image/png -i <"$png"
+        copied=1
+      fi
+      [ "$copied" -eq 1 ] || fail "No Wayland or X11 display is available"
 
       [ -z "$tmp" ] || rm -f "$tmp"
 
@@ -101,8 +163,16 @@ let
     text = ''
       [ "$#" -ge 1 ] || exit 1
       payload="$(printf '%s\n' "$@")"
-      printf '%s' "$payload" | wl-copy --type text/plain
-      printf '%s' "$payload" | xclip -selection clipboard -t text/plain -i
+      copied=0
+      if [ -n "''${WAYLAND_DISPLAY:-}" ]; then
+        printf '%s' "$payload" | wl-copy --type text/plain
+        copied=1
+      fi
+      if [ -n "''${DISPLAY:-}" ]; then
+        printf '%s' "$payload" | xclip -selection clipboard -t text/plain -i
+        copied=1
+      fi
+      [ "$copied" -eq 1 ] || exit 1
       if [ "$#" -eq 1 ]; then
         notify-send --app-name=copy-path --icon=edit-copy "Copied path" "$1"
       else
@@ -127,7 +197,10 @@ let
       ${normalizeDestination}
       normalize_destination "$1"
 
-      types="$(wl-paste --list-types 2>/dev/null || true)"
+      types=""
+      if [ -n "''${WAYLAND_DISPLAY:-}" ]; then
+        types="$(wl-paste --list-types 2>/dev/null || true)"
+      fi
       if printf '%s\n' "$types" | grep -qx 'image/png'; then
         mime="image/png"
         source="wayland"
@@ -135,7 +208,7 @@ let
         mime="$(printf '%s\n' "$types" | grep '^image/' | head -n 1 || true)"
         source="wayland"
       fi
-      if [ -z "$mime" ]; then
+      if [ -z "$mime" ] && [ -n "''${DISPLAY:-}" ]; then
         types="$(xclip -selection clipboard -t TARGETS -o 2>/dev/null || true)"
         if printf '%s\n' "$types" | grep -qx 'image/png'; then
           mime="image/png"
@@ -180,18 +253,21 @@ let
       coreutils
     ];
     text = ''
-            ${failFunction "paste-symlink" "Paste link failed"}
+      ${failFunction "paste-symlink" "Paste link failed"}
 
-            ${normalizeDestination}
-            normalize_destination "$1"
+      ${normalizeDestination}
+      normalize_destination "$1"
 
-            uris="$(wl-paste --type text/uri-list 2>/dev/null || true)"
-            if [ -z "$uris" ]; then
-              uris="$(xclip -selection clipboard -t text/uri-list -o 2>/dev/null || true)"
-            fi
-            [ -n "$uris" ] || fail "Clipboard has no files"
+      uris=""
+      if [ -n "''${WAYLAND_DISPLAY:-}" ]; then
+        uris="$(wl-paste --type text/uri-list 2>/dev/null || true)"
+      fi
+      if [ -z "$uris" ] && [ -n "''${DISPLAY:-}" ]; then
+        uris="$(xclip -selection clipboard -t text/uri-list -o 2>/dev/null || true)"
+      fi
+      [ -n "$uris" ] || fail "Clipboard has no files"
 
-            count="$(PASTE_URIS="$uris" python3 - "$dest" <<'PY'
+      count="$(PASTE_URIS="$uris" python3 - "$dest" <<'PY'
       import os
       import sys
       import urllib.parse
@@ -218,8 +294,8 @@ let
           sys.exit(1)
       print(made)
       PY
-            )" || fail "No clipboard file could be linked"
-            notify-send --app-name=paste-symlink --icon=insert-link "Created links" "$count"
+      )" || fail "No clipboard file could be linked"
+      notify-send --app-name=paste-symlink --icon=insert-link "Created links" "$count"
     '';
   };
 in
@@ -230,6 +306,10 @@ in
       copyPath
       pasteClipboardImage
       pasteSymlink
+      neovimAction
+      herdrAction
+      lazygitAction
+      setWallpaper
     ];
 
     # uca.xml used to be Thunar's own file (mode 600); home-manager owns it now.
@@ -237,73 +317,122 @@ in
     # new actions go here instead. backupFileExtension = "backup" in
     # inventory/hosts/nixos-btw/default.nix preserves the old file as uca.xml.backup.
     #
-    # "Open Terminal Here" is pre-existing and pairs with thunar-terminal.nix
-    # (helpers.rc -> ~/.local/bin/thunar-open-terminal -> kitty). Don't drop it.
+    # "Open Terminal Here" calls the workspace terminal launcher with the
+    # selected item's containing directory. The terminal itself comes from the
+    # shared default-tools contract.
     file.".config/Thunar/uca.xml".text = ''
-      <?xml version="1.0" encoding="UTF-8"?>
-      <actions>
-      <action>
-      	<icon>utilities-terminal</icon>
-      	<name>Open Terminal Here</name>
-      	<submenu></submenu>
-      	<unique-id>1777390765336062-1</unique-id>
-      	<command>exo-open --working-directory %f --launch TerminalEmulator</command>
-      	<description>Example for a custom action</description>
-      	<range></range>
-      	<patterns>*</patterns>
-      	<startup-notify/>
-      	<directories/>
-      </action>
-      <action>
-      	<icon>edit-copy</icon>
-      	<name>Copy as Image</name>
-      	<submenu></submenu>
-      	<unique-id>${copyImageId}</unique-id>
-      	<command>${copyImage}/bin/copy-image %f</command>
-      	<description>Put the image data itself on the clipboard (Wayland + X11), not the file path</description>
-      	<range>1</range>
-      	<patterns>*</patterns>
-      	<image-files/>
-      </action>
-      <action>
-      	<icon>edit-copy</icon>
-      	<name>Copy Path</name>
-      	<submenu></submenu>
-      	<unique-id>copy-path-1</unique-id>
-      	<command>${copyPath}/bin/copy-path %F</command>
-      	<description>Copy the selected paths as text to Wayland and X11 clipboards</description>
-      	<range>*</range>
-      	<patterns>*</patterns>
-      	<directories/>
-      	<audio-files/>
-      	<image-files/>
-      	<other-files/>
-      	<text-files/>
-      	<video-files/>
-      </action>
-      <action>
-      	<icon>insert-image</icon>
-      	<name>Paste Clipboard Image</name>
-      	<submenu></submenu>
-      	<unique-id>paste-clipboard-image-1</unique-id>
-      	<command>${pasteClipboardImage}/bin/paste-clipboard-image %f</command>
-      	<description>Save the clipboard image into this folder as a PNG</description>
-      	<range>*</range>
-      	<patterns>*</patterns>
-      	<directories/>
-      </action>
-      <action>
-      	<icon>insert-link</icon>
-      	<name>Paste as Link</name>
-      	<submenu></submenu>
-      	<unique-id>paste-symlink-1</unique-id>
-      	<command>${pasteSymlink}/bin/paste-symlink %f</command>
-      	<description>Symlink clipboard files into this folder</description>
-      	<range>*</range>
-      	<patterns>*</patterns>
-      	<directories/>
-      </action>
-      </actions>
+        <actions>
+        <action>
+          <icon>utilities-terminal</icon>
+          <name>Open Terminal Here</name>
+          <submenu></submenu>
+          <unique-id>1777390765336062-1</unique-id>
+         <command>${terminalLauncher}/bin/thunar-open-terminal %f</command>
+      <description>Open the selected item's directory in the configured terminal</description>
+          <range></range>
+          <patterns>*</patterns>
+          <startup-notify/>
+          <directories/>
+        </action>
+        <action>
+         <icon>accessories-text-editor</icon>
+         <name>Open in Neovim</name>
+         <submenu></submenu>
+         <unique-id>open-neovim-here-1</unique-id>
+         <command>${neovimAction}/bin/thunar-open-neovim %F</command>
+         <description>Open selected files in Neovim in this directory</description>
+         <range>*</range>
+         <patterns>*</patterns>
+         <directories/>
+         <audio-files/>
+         <image-files/>
+         <other-files/>
+         <text-files/>
+         <video-files/>
+        </action>
+        <action>
+         <icon>utilities-terminal</icon>
+         <name>Open herdr Here</name>
+         <submenu></submenu>
+         <unique-id>open-herdr-here-1</unique-id>
+         <command>${herdrAction}/bin/thunar-open-herdr %f</command>
+         <description>Open a herdr workspace in this directory</description>
+         <range>*</range>
+         <patterns>*</patterns>
+         <directories/>
+        </action>
+        <action>
+         <icon>utilities-terminal</icon>
+         <name>Open lazygit Here</name>
+         <submenu></submenu>
+         <unique-id>open-lazygit-here-1</unique-id>
+         <command>${lazygitAction}/bin/thunar-open-lazygit %f</command>
+         <description>Open lazygit in this directory</description>
+         <range>*</range>
+         <patterns>*</patterns>
+         <directories/>
+        </action>
+        <action>
+         <icon>preferences-desktop-wallpaper</icon>
+         <name>Set as Wallpaper</name>
+         <submenu></submenu>
+         <unique-id>set-as-wallpaper-1</unique-id>
+         <command>${setWallpaper}/bin/thunar-set-wallpaper %f</command>
+         <description>Set the selected image as the current session wallpaper</description>
+         <range>1</range>
+         <patterns>*</patterns>
+         <image-files/>
+        </action>
+        <action>
+          <icon>edit-copy</icon>
+          <name>Copy as Image</name>
+          <submenu></submenu>
+          <unique-id>${copyImageId}</unique-id>
+          <command>${copyImage}/bin/copy-image %f</command>
+          <description>Put the image data itself on the clipboard (Wayland + X11), not the file path</description>
+          <range>1</range>
+          <patterns>*</patterns>
+          <image-files/>
+        </action>
+        <action>
+          <icon>edit-copy</icon>
+          <name>Copy Path</name>
+          <submenu></submenu>
+          <unique-id>copy-path-1</unique-id>
+          <command>${copyPath}/bin/copy-path %F</command>
+          <description>Copy the selected paths as text to Wayland and X11 clipboards</description>
+          <range>*</range>
+          <patterns>*</patterns>
+          <directories/>
+          <audio-files/>
+          <image-files/>
+          <other-files/>
+          <text-files/>
+          <video-files/>
+        </action>
+        <action>
+          <icon>insert-image</icon>
+          <name>Paste Clipboard Image</name>
+          <submenu></submenu>
+          <unique-id>paste-clipboard-image-1</unique-id>
+          <command>${pasteClipboardImage}/bin/paste-clipboard-image %f</command>
+          <description>Save the clipboard image into this folder as a PNG</description>
+          <range>*</range>
+          <patterns>*</patterns>
+          <directories/>
+        </action>
+        <action>
+          <icon>insert-link</icon>
+          <name>Paste as Link</name>
+          <submenu></submenu>
+          <unique-id>paste-symlink-1</unique-id>
+          <command>${pasteSymlink}/bin/paste-symlink %f</command>
+          <description>Symlink clipboard files into this folder</description>
+          <range>*</range>
+          <patterns>*</patterns>
+          <directories/>
+        </action>
+        </actions>
     '';
 
     # accels.scm is rewritten by Thunar itself on exit, so it cannot be a

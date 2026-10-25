@@ -30,7 +30,7 @@ in
 lib.mkMerge [
   {
     home.pointerCursor = {
-      package = pkgs.bibata-cursors;
+      package = pkgs.phinger-cursors;
       name = desktop.cursor.name;
       size = desktop.cursor.size;
       gtk.enable = true;
@@ -63,6 +63,33 @@ lib.mkMerge [
         # The default upstream blue variant installs exactly Tela-circle-dark.
         # Explicit --color blue produces a different theme name.
         package = pkgs.tela-circle-icon-theme;
+      };
+      # adw-gtk3 has no GTK2 resources. Legacy applications need an actual
+      # GTK2 engine before the shared color roles can take effect.
+      gtk2 = {
+        theme = {
+          name = "Adwaita-dark";
+          package = pkgs.gnome-themes-extra;
+        };
+        extraConfig = ''
+          style "nix-dotfiles-one-dark" {
+            bg[NORMAL] = "${palette.bg}"
+            bg[ACTIVE] = "${palette.surface}"
+            bg[PRELIGHT] = "${palette.surface}"
+            bg[SELECTED] = "${palette.selection}"
+            bg[INSENSITIVE] = "${palette.bg}"
+            fg[NORMAL] = "${palette.brightFg}"
+            fg[ACTIVE] = "${palette.brightFg}"
+            fg[PRELIGHT] = "${palette.brightFg}"
+            fg[SELECTED] = "${palette.brightFg}"
+            fg[INSENSITIVE] = "${palette.muted}"
+            base[NORMAL] = "${palette.deep}"
+            base[SELECTED] = "${palette.selection}"
+            text[NORMAL] = "${palette.brightFg}"
+            text[SELECTED] = "${palette.brightFg}"
+          }
+          class "*" style "nix-dotfiles-one-dark"
+        '';
       };
       gtk3.extraConfig.gtk-enable-animations = !(palette.reducedMotion or false);
       gtk4.extraConfig.gtk-enable-animations = !(palette.reducedMotion or false);

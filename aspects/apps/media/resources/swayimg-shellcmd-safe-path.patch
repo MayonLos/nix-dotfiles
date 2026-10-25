@@ -1,0 +1,62 @@
+--- a/src/shellcmd.c
++++ b/src/shellcmd.c
+@@ -211,11 +211,29 @@
+     return rc;
+ }
+ 
++/** Append path as one safely quoted POSIX shell word. */
++static bool append_shell_quoted(const char* path, char** cmd)
++{
++    if (!str_append("'", 1, cmd)) {
++        return false;
++    }
++    for (const char* it = path; *it; ++it) {
++        if (*it == '\'') {
++            if (!str_append("'\\''", 0, cmd)) {
++                return false;
++            }
++        } else if (!str_append(it, 1, cmd)) {
++            return false;
++        }
++    }
++    return str_append("'", 1, cmd) != NULL;
++}
++
+ char* shellcmd_expr(const char* expr, const char* path)
+ {
+     char* cmd;
+ 
+-    // reserve buffer for command
++    // reserve the unescaped size; str_append grows it as needed for %q
+     cmd = malloc(strlen(expr) + strlen(path) + 1);
+     if (!cmd) {
+         return NULL;
+@@ -226,12 +244,26 @@
+     while (expr && *expr) {
+         if (*expr == '%') {
+             ++expr;
++            if (*expr == 'q') {
++                if (!append_shell_quoted(path, &cmd)) {
++                    free(cmd);
++                    return NULL;
++                }
++                ++expr;
++                continue;
++            }
+             if (*expr != '%') {
+-                str_append(path, 0, &cmd); // replace % with path
++                if (!str_append(path, 0, &cmd)) { // preserve legacy % substitution
++                    free(cmd);
++                    return NULL;
++                }
+                 continue;
+             }
+         }
+-        str_append(expr, 1, &cmd);
++        if (!str_append(expr, 1, &cmd)) {
++            free(cmd);
++            return NULL;
++        }
+         ++expr;
+     }
+ 

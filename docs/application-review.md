@@ -1,6 +1,6 @@
 # 保留应用逐项评估与补充候选
 
-核对日期：2026-10-18；2026-10-24 更新已确认的软件替换，验证见[第十轮记录](history/software-swap-2026-10-24.md)。当前功能已迁入 Den，本文保留软件决定，新的构建及未应用边界见[实施记录](history/den-execution.md)。本文先记录选型提案；随后用户确认的 pamixer、cliphist、pavucontrol 精简，以及 Xarchiver、Okular 新增已修改配置，验证状态见[重构执行计划](history/refactor-plan.md)。软件选型阶段已结束；其余条件推荐未纳入本轮，也未切换系统。
+核对日期：2026-10-18；2026-10-24 更新已确认的软件替换，验证见[第十轮记录](history/software-swap-2026-10-24.md)。当前功能已迁入 Den，本文保留软件决定，新的构建及未应用边界见[实施记录](history/den-execution.md)。本文先记录选型提案；随后用户确认的 pamixer、cliphist、pavucontrol 精简已修改配置。2026-10-25 第二十六轮确认 File Roller 替换 Xarchiver、移除 Okular（PDF 默认 Zathura，批注使用 Zotero 内置阅读器），并让 OnlyOffice 与 LibreOffice 并存（MS Office 格式默认 OnlyOffice，ODF 默认 LibreOffice）。本轮实现、审计和待现场验证见[第二十六轮应用层记录](history/apps-r26-2026-10-25.md)。软件选型阶段已结束；其余条件推荐未纳入本轮。
 
 依据包括当前工作树、`flake.lock`、已取得的锁定源码、官方文档，以及项目 issue 中的具体兼容案例。范围是用户直接使用的应用、桌面插件和工具组，不逐个罗列传递依赖。仓库没有声明某项，不代表用户在运行时没有手动安装或使用其他方案。没有做应用间的内存、功耗、速度基准测试；不据语言或界面技术推断谁一定更轻。
 
@@ -11,8 +11,8 @@
 | 高 | 数据备份 | 若没有仓库之外的备份，先设计 Restic；本地/SSH 且偏好 GUI 可比较 Borg + Vorta。选一套，不叠加多个引擎。 |
 | 高 | 密码管理 | 若尚无统一密码库，选 KeePassXC 或 Bitwarden；已有外部方案则接入即可。 |
 | 高 | Zotero Connector | 已使用 Zotero 和 Firefox，适合补齐浏览器论文/网页采集；先核对是否已经手动安装。 |
-| 已定新增 | Xarchiver | 已添加归档 GUI，并补 Thunar 插件固定 helper 查找路径。 |
-| 已定新增 | Okular | 已添加 GUI 阅读/批注入口；PDF 默认仍保留 Zathura，可从打开方式选择 Okular。 |
+| 已定归档 | File Roller | GTK4 归档 GUI，Thunar TAP 固定其可执行路径；替换旧 Xarchiver。 |
+| 已移除 | Okular | 用户决定不安装；PDF 默认 Zathura，PDF 批注使用 Zotero 内置阅读器。 |
 | 已修改 | `cliphist` | 删除两个 watcher，日常历史统一使用 Noctalia；保留旧数据库和 X11↔Wayland 剪贴板桥。 |
 | 已修改 | `pamixer` | 移除无消费者的安装声明；音量键继续走 Noctalia。 |
 | 已修改 | `pavucontrol` | 移除安装声明与浮窗规则；Noctalia 覆盖日常混音，高级声卡 profile/端口操作使用已有 wpctl/pw-cli。 |
@@ -68,11 +68,11 @@
 | OBS Studio | 保留，比较捕获源 | 已配 wlrobs 与 obs-vkcapture。可在 Mango 上比较原生 PipeWire 与 wlrobs 的画面、帧率和卡顿，再决定是否移除插件；游戏捕获也需单独验证。 |
 | Kdenlive | 暂留，用户考虑中 | 如果没有剪辑需求，删除比换另一套剪辑软件更合理。若只是裁剪/转码，可先用现有 FFmpeg；要时间线编辑则保留。Resolve 不是更轻更省事的默认替代。 |
 | Thunderbird | 保留 | 邮件、日历、联系人集中入口；网页邮箱会改变离线和多账户流程，没有明确替换收益。 |
-| LibreOffice | 保留 | ODF 与常用办公文档。若经常收到排版复杂的 OOXML，可拿真实文件试 ONLYOFFICE；不能仅凭“原生 OOXML”宣称兼容性普遍更好。 |
+| LibreOffice + OnlyOffice | 并存 | OnlyOffice 默认打开 DOC/DOCX、XLS/XLSX、PPT/PPTX；LibreOffice 默认打开 ODT/ODS/ODP。两套程序都在这九类文件的“打开方式”中。复杂文档仍应使用真实文件检查排版，不能仅凭格式支持宣称兼容性普遍更好。 |
 | Zotero | 保留，优先补 Connector | 文献库和论文注释已有一体化流程；浏览器扩展可减少手动录入。不要用普通文件同步器同步正在使用的数据目录。 |
 | Obsidian | 保留 | 本地 Markdown 知识库、链接和检索有明确角色；无需为减少应用数量直接并入单文档编辑器。 |
 | Typora | 已移除声明 | 用户确认删除包与受管主题；Markdown 默认 Obsidian，CLI 编辑仍遵循 default-tools。Typora 配置、文档与历史保留。 |
-| Zathura | 保留 | 键盘式 PDF 阅读与 SyncTeX；有手写或通用批注需求再补 Okular/Xournal++，而非强行换阅读器。 |
+| Zathura | 保留 | 键盘式 PDF 阅读与 SyncTeX；PDF 批注使用 Zotero 内置阅读器。若另有手写批注需求，再评估 Xournal++，不安装 Okular。 |
 | Quill | 保留 | 面板快记、todo 与主笔记库分工。先明确哪些内容应长期进入 Obsidian，避免同一事项在两处维护。 |
 | Musicfox | 保留 | 网易云终端入口；不承担通用本地音乐库，无需因为已有 mpv 就删除。 |
 | FFmpeg | 保留 | 视频/音频转换、截取和工作流后端；OBS 自带库不等于 shell 有可用命令。 |
@@ -246,13 +246,13 @@
 | **KeePassXC 或 Bitwarden** | 跨网站/设备统一密码库、浏览器填充 | KeePassXC 是本地 KDBX，自选同步和备份；Bitwarden 更偏账号同步。Secret Service 和 sops 分别服务应用/部署秘密，不能视作密码库已完整覆盖。 | 桌面应用 + Firefox 扩展；凭据不进入仓库。先不自建 Vaultwarden。 |
 | **Zotero Connector** | 浏览器一键收集网页、论文元数据/附件 | 当前仅声明 Dark Reader；可能已手动安装。增量维护小，实际导入仍看站点支持。 | Firefox 扩展声明，保留 Zotero 本体。 |
 | uBlock Origin（条件） | Firefox 的广告/内容过滤；尚未使用同类方案时值得补 | 未在仓库扩展清单声明，不代表运行时没有安装。Clash 的整机代理与浏览器内容过滤分工不同；少数站点需单独放行，不盲目叠加大量过滤列表。 | Firefox 扩展；与密码库扩展、Connector 一并整理。 |
-| **Xarchiver（已确认新增）** | 浏览压缩包、选择性解压，与 Thunar archive plugin 配合 | 已添加安装声明。锁定插件将 helper 查找目录编译进自身输出，已用局部 override 安装 xarchiver.tap 并固定 GUI 可执行路径；菜单实际操作仍需应用后验证。 | 桌面文件工具能力；不换 Thunar。 |
+| **File Roller（第二十六轮替换）** | 浏览压缩包、选择性解压，与 Thunar archive plugin 配合 | 使用 GTK4 版本，TAP 指向包的绝对可执行路径；不再安装 Xarchiver。 | 桌面文件工具能力；保留 Thunar。 |
 | Syncthing（条件） | 第二台电脑间同步文档/Obsidian 等普通文件 | 同步会传播修改/删除，不能替代备份。不要同步正在使用的 Zotero 数据目录、VM 磁盘或任意应用数据库；Zotero 使用自己的同步方案。 | 设备逐个启用，明确目录，避免整个 home。 |
 | rclone（条件） | 已有网盘/对象存储，需要批量传输或接入备份目的地 | 云端 API、授权和挂载行为需要维护；没有具体云服务需求就暂不装。 | 需要的主机/用户角色，非默认常驻挂载。 |
 | VSCode Remote-SSH（条件） | 后续服务器上的图形编辑/调试 | 服务端组件及系统要求需核对，NixOS 目标也需验证动态库兼容。现有 `kitten ssh` 解决终端接入，不等于远程 IDE。 | VSCode 扩展与目标主机分别配置。 |
 | Tailscale（条件） | 多台设备跨网络互联，需要方便地访问 SSH/服务 | 引入账户、控制面和 ACL 管理；只有一台本机时价值有限。Headscale 自建控制面以后有真实需求再选，不同时铺开。 | host 选择网络角色，不复制桌面配置。 |
 | fwupd（条件） | 支持 LVFS 的设备固件更新 | 先核对具体设备是否支持。现有 redistributable firmware 是驱动固件分发，不等于 BIOS/设备更新服务。 | 硬件能力；不预设 Lenovo 全部设备可更新。 |
-| Okular（已确认新增） | 通用 PDF 阅读、批注与 GUI 导航 | 已加入 PDF 的可选打开方式；不改变 Zathura 默认，不取代 Zotero 文献库。Xournal++ 未选，本轮不添加。 | 阅读能力；不恢复已删除 PDF Arranger。 |
+| Okular（第二十六轮移除） | 用户决定移除；PDF 默认仍为 Zathura，批注使用 Zotero 内置阅读器 | 删除包与 MIME association；Zotero 当前锁定版本 9.0.6。 | 不删除 PDF 或应用数据。 |
 | Crosspipe（条件） | 可视化 PipeWire 节点连接，例如复杂录音/直播路由 | 日常音量已有 Noctalia，排障可用 wpctl/pw-cli。锁定 nixpkgs 已移除 Helvum 包别名，不照旧推荐它；Crosspipe 仍需验证实际路由。 | 桌面音频工具，按需打开。 |
 | EasyEffects（条件） | 明确需要麦克风 EQ、降噪、压缩或输出处理 | 已有 PipeWire echo-cancel，不能称麦克风处理全空白。效果链增加调试和处理成本，没有需求先不加。 | 用户级音效能力，避免双重处理。 |
 | Heroic（条件） | 确实有 Epic/GOG/Amazon 游戏 | 商店登录和 Wine/游戏兼容另需维护，Steam/Prism 用户不自动需要。 | 游戏桌面角色。 |
@@ -262,11 +262,11 @@
 
 官方依据：[Restic](https://restic.readthedocs.io/en/stable/010_introduction.html)、[Borg](https://borgbackup.readthedocs.io/en/stable/)、[KeePassXC](https://keepassxc.org/docs/KeePassXC_GettingStarted)、[Bitwarden 同步](https://bitwarden.com/help/vault-sync/)、[Bitwarden 扩展](https://bitwarden.com/help/getting-started-browserext/)、[Connector](https://www.zotero.org/support/connector)、[uBlock Origin](https://github.com/gorhill/uBlock)、[Xarchiver](https://github.com/ib/xarchiver)、[Syncthing FAQ](https://docs.syncthing.net/users/faq.html)、[Zotero 数据目录限制](https://www.zotero.org/support/kb/data_directory_in_cloud_storage_folder)、[rclone](https://rclone.org/)、[Tailscale](https://tailscale.com/docs/concepts/what-is-tailscale)、[LVFS/fwupd](https://fwupd.org/)、[Okular](https://apps.kde.org/okular/)、[Xournal++](https://xournalpp.github.io/)、[Crosspipe](https://github.com/dp0sk/crosspipe)、[EasyEffects](https://github.com/wwmm/easyeffects)、[Heroic](https://github.com/Heroic-Games-Launcher/HeroicGamesLauncher)、[darktable](https://www.darktable.org/)。
 
-当前 stable 锁定集合中已只读求值确认可用的候选包括 Restic 0.18.1、Borg 1.4.4、Vorta 0.11.0、Syncthing 2.1.3、KeePassXC 2.7.12、Bitwarden Desktop 2026.8.0、Xarchiver 0.5.4.26、Tailscale 1.98.10、fwupd 2.1.4、rclone 1.75.1、Okular 26.04.3、Xournal++ 1.3.4、Crosspipe 0.1.1、EasyEffects 8.2.4、Heroic 2.22.1。**属性/版本可求值不等于构建、运行和桌面集成已经通过**；在线最新文档也不能替代锁定版本验证。
+早期选型时只读求值过的候选包版本包括 Restic 0.18.1、Borg 1.4.4、Vorta 0.11.0、Syncthing 2.1.3、KeePassXC 2.7.12、Bitwarden Desktop 2026.8.0、Xarchiver 0.5.4.26、Tailscale 1.98.10、fwupd 2.1.4、rclone 1.75.1、Okular 26.04.3、Xournal++ 1.3.4、Crosspipe 0.1.1、EasyEffects 8.2.4、Heroic 2.22.1；这是候选版本记录，不代表当前安装清单。**属性/版本可求值不等于构建、运行和桌面集成已经通过**；在线最新文档也不能替代锁定版本验证。
 
 ## 后续执行顺序与验收
 
-1. 软件选型已结束，新增 Xarchiver、Okular。备份、密码库、Connector 及其他条件项以后有实际需求再纳入，不继续阻塞 Neovim 迁移。
+1. 软件选型已结束；第二十六轮改为 File Roller、移除 Okular，并确认 OnlyOffice / LibreOffice 按格式分工并存。该轮验证见[应用层记录](history/apps-r26-2026-10-25.md)。备份、密码库、Connector 及其他条件项以后有实际需求再纳入，不继续阻塞 Neovim 迁移。
 2. `pamixer`、重复 `cliphist` 和 `pavucontrol` 已按用户确认精简配置；验证状态单列在执行计划。不顺带删截图/OCR、剪贴板桥或用户历史。
 3. 先删无用，再原生替换；Neovim Lua + Nix 入口现已接入。先前 Heirline/Navic 原生替代已被用户后续重建要求覆盖；现恢复成熟界面插件与公式预览，OneDark 继续固定，主题选择器不恢复。完整 LaTeX 保留。当前状态见[重建记录](neovim-rebuild-execution.md)，性能结论需独立测量。
 4. 在 Den 重构中，把桌面、开发、游戏、备份和服务器能力组合起来；实际主机只启用需要的能力，不把笔记本应用全集给服务器。

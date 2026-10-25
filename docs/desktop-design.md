@@ -46,10 +46,10 @@ Astra 的 S1–S3 阴影、面板行高/卡片尺寸、72px 锁屏时钟等部�
 | Swayimg / Fastfetch | Swayimg 信息使用不透明 brightFg/deep，图库 selection 底与 2px 蓝边；Fastfetch 由 CLI 分支负责 |
 | 文档、媒体与其他应用 | Zathura 与 Obsidian 改用 documents 拥有的 palette 原色模板，退出同名社区模板选择。Zathura 阅读底不透明，PDF recolor 默认关闭，UI 等宽并显示页百分比；按 `Tab` 进入原生目录索引模式，无常驻目录侧栏；原生不支持左选中条与独立细进度线。Obsidian 只对其注册的 vault 接线同名 snippet。mpv/uosc 使用 brightFg 正文、中性选择面、蓝匹配标记与 2px 蓝色选中条，时间等宽、进度线 2px；uosc 不提供选中标记发光选项，采用平面蓝线。OSC 圆角 8。Thunderbird 无既有自定义主题接线，保留原生暗色/GTK 支持。btop、VS Code、Yazi 由各自分支负责 |
 
-鼠标使用 Bibata-Modern-Classic 24，应用图标保持 Papirus-Dark，文件夹采用 blue。
+鼠标使用 phinger-cursors-light 32，应用图标保持 Tela-circle-dark，文件夹采用 blue。
 外观只拥有 `fonts.sans = "Inter"`、`fonts.cjk = "Noto Sans CJK SC"`、
 `fonts.mono = "Maple Mono NF CN"`、`iconFolderColor = "blue"` 等公共数据；GTK 与 Dunst
-各自消费 Papirus blue 变体；GTK 对文件夹主色另由 palette.blue 派生重着色，保留 Papirus 图形层次。Dunst 的图标接线由桌面分支负责。
+GTK、Qt 和 Dunst 共用 Tela-circle-dark 默认蓝色图标；不再对 Papirus 做重着色。Dunst 从公开 GTK option 复用相同的名称和包。
 GTK、面板、控制中心、Mango 装饰、greeter、锁屏、Swayimg 与 Zathura 界面均用 Inter；
 Qt 新配置使用相同字体，既有配置只迁移精确匹配旧仓库完整字体默认值的字段，其他 GUI 偏好保留；
 中文优先的 Fcitx 候选和 mpv 字幕用 `fonts.cjk`，mpv OSD 用 `fonts.mono`。

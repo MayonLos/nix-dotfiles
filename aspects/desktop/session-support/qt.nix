@@ -6,6 +6,7 @@
   ...
 }:
 {
+  imports = [ (import ./kde.nix { inherit palette; }) ];
   xdg.configFile."qt6ct/qss/one-dark.qss".source =
     let
       cssTemplate = builtins.readFile ./resources/qt/one-dark.qss.template;
@@ -60,7 +61,7 @@
         color_scheme_path=${colorScheme}
         custom_palette=true
         icon_theme=${desktop.iconTheme}
-        standard_dialogs=default
+        standard_dialogs=xdgdesktopportal
         style=Fusion
 
         # Ten-field QFont serialization uses the legacy normal weight 50.

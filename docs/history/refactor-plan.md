@@ -6,7 +6,7 @@ Neovim 后续已按用户新要求再次重建：旧 Nixvim 只作效果参考�
 Heirline/Navic、Markdown 等成熟组件重新接入。下文“20 插件”“手写主题”“原生替代”和
 对应测试文件均是先前阶段快照；当前设计与验收以[重建记录](../neovim-rebuild-execution.md)为准。
 
-软件选型已结束：保留 VS Code、IDEA/PyCharm/CLion、原生 Lua Neovim、Mango/Noctalia、Kitty/tmux 及下文确定的全部软件。新增 Xarchiver/Okular，未选择的条件推荐不纳入本轮。完整功能已迁入 `aspects/`，inventory 只接真实笔记本，旧兼容入口与测试子 flake 已移除。没有 switch/test、部署服务器或删除用户数据；运行态仍可能来自旧 generation。
+软件选型已结束：保留 VS Code、IDEA/PyCharm/CLion、原生 Lua Neovim、Mango/Noctalia、Kitty/tmux 及下文确定的全部软件。早期新增 Xarchiver/Okular；第二十六轮已由 File Roller 替换 Xarchiver、移除 Okular，并确认 OnlyOffice/LibreOffice 按格式并存，见[应用层记录](apps-r26-2026-10-25.md)。未选择的条件推荐不纳入本轮。完整功能已迁入 `aspects/`，inventory 只接真实笔记本，旧兼容入口与测试子 flake 已移除。没有 switch/test、部署服务器或删除用户数据；运行态仍可能来自旧 generation。
 
 ## Neovim Lua + Nix 入口迁移（2026-10-18）
 

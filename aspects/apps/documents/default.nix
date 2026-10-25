@@ -12,6 +12,7 @@
         ...
       }:
       let
+        onlyofficePackage = import ./package.nix { inherit pkgs; };
         hasPalette = user.appearance != null;
         templates =
           if hasPalette then
@@ -43,20 +44,75 @@
             };
         xdg.mimeApps = {
           enable = true;
-          associations.added."application/pdf" = [ "org.kde.okular.desktop" ];
+          associations.added = {
+            "application/msword" = [
+              "onlyoffice-desktopeditors.desktop"
+              "writer.desktop"
+            ];
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document" = [
+              "onlyoffice-desktopeditors.desktop"
+              "writer.desktop"
+            ];
+            "application/vnd.ms-excel" = [
+              "onlyoffice-desktopeditors.desktop"
+              "calc.desktop"
+            ];
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" = [
+              "onlyoffice-desktopeditors.desktop"
+              "calc.desktop"
+            ];
+            "application/vnd.ms-powerpoint" = [
+              "onlyoffice-desktopeditors.desktop"
+              "impress.desktop"
+            ];
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation" = [
+              "onlyoffice-desktopeditors.desktop"
+              "impress.desktop"
+            ];
+            "application/vnd.oasis.opendocument.text" = [
+              "onlyoffice-desktopeditors.desktop"
+              "writer.desktop"
+            ];
+            "application/vnd.oasis.opendocument.spreadsheet" = [
+              "onlyoffice-desktopeditors.desktop"
+              "calc.desktop"
+            ];
+            "application/vnd.oasis.opendocument.presentation" = [
+              "onlyoffice-desktopeditors.desktop"
+              "impress.desktop"
+            ];
+          };
           defaultApplications = {
             "application/pdf" = [ "org.pwmt.zathura-pdf-mupdf.desktop" ];
+            "application/msword" = [ "onlyoffice-desktopeditors.desktop" ];
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document" = [
+              "onlyoffice-desktopeditors.desktop"
+            ];
+            "application/vnd.ms-excel" = [ "onlyoffice-desktopeditors.desktop" ];
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" = [
+              "onlyoffice-desktopeditors.desktop"
+            ];
+            "application/vnd.ms-powerpoint" = [ "onlyoffice-desktopeditors.desktop" ];
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation" = [
+              "onlyoffice-desktopeditors.desktop"
+            ];
+            "application/vnd.oasis.opendocument.text" = [ "writer.desktop" ];
+            "application/vnd.oasis.opendocument.spreadsheet" = [ "calc.desktop" ];
+            "application/vnd.oasis.opendocument.presentation" = [ "impress.desktop" ];
             # Documents owns this narrow exception to the generic text editor
             # binding: Markdown opens in the installed document application.
             # force: The documents selection overrides the generic text MIME default for Markdown.
             "text/markdown" = lib.mkForce [ "obsidian.desktop" ];
           };
         };
+        home.activation.seedOnlyOfficeDesktopTheme = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+          run ${pkgs.python3}/bin/python ${./resources/seed-onlyoffice-config.py} "${config.xdg.configHome}/onlyoffice/DesktopEditors.conf"
+        '';
         home.packages = with pkgs; [
           obsidian
           zotero
-          kdePackages.okular
           libreoffice-qt
+          onlyofficePackage
           hunspell
           hunspellDicts.en_US
           hyphenDicts.en_US

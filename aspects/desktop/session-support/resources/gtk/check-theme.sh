@@ -49,6 +49,7 @@ seed=configparser.ConfigParser();seed.read(out/'qt6ct/seed.conf')
 assert seed['Appearance']['style']=='Fusion'
 assert seed['Appearance']['icon_theme']==p['iconTheme']
 assert seed['Appearance']['custom_palette']=='true'
+assert seed['Appearance']['standard_dialogs']=='xdgdesktopportal'
 assert seed['Interface']['stylesheets'].endswith('/qt6ct/qss/one-dark.qss')
 PY
 # A real Qt QSettings reader verifies list encoding after the actual activation.
@@ -88,10 +89,17 @@ stylesheets="/custom/with,comma.qss", /custom/other.qss
 keep=untouched
 CONF
 source "$QT_MIGRATION"
+grep -Fx 'standard_dialogs=xdgdesktopportal' "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf"
 ./qt-settings "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf" "/custom/with,comma.qss" /custom/other.qss "$XDG_CONFIG_HOME/qt6ct/qss/one-dark.qss"
 grep -Fx "icon_theme=$ICON_NAME" "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf"
 grep -Fx 'keep=untouched' "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf"
 cp "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf" "$out/qt6ct/migrated.conf"
+source "$QT_MIGRATION"
+cmp "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf" "$out/qt6ct/migrated.conf"
+
+# A GUI choice from an older generation is a managed portal field; preserve
+# its neighbours while changing it on existing accounts too.
+sed -i 's/^standard_dialogs=.*/standard_dialogs=default/' "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf"
 source "$QT_MIGRATION"
 cmp "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf" "$out/qt6ct/migrated.conf"
 
