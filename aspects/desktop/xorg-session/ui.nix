@@ -111,6 +111,18 @@ let
     '';
   };
 
+  # Override package desktop IDs declaratively; CLI helpers remain available.
+  hiddenRofiEntries = lib.genAttrs [ "rofi" "rofi-theme-selector" ] (
+    name:
+    pkgs.writeText "${name}.desktop" ''
+      [Desktop Entry]
+      Type=Application
+      Name=${if name == "rofi" then "Rofi" else "Rofi Theme Selector"}
+      Exec=${pkgs.rofi}/bin/${name}${lib.optionalString (name == "rofi") " -show drun"}
+      NoDisplay=true
+    ''
+  );
+
   statusProgram = pkgs.writeText "xorg-status.py" (builtins.readFile ./resources/status.py);
   status = pkgs.writeShellApplication {
     name = "xorg-status";
@@ -293,10 +305,15 @@ in
     };
   };
 
-  xdg.configFile = {
-    "rofi/launcher.rasi".source = launcherTheme;
-    "rofi/power.rasi".source = powerTheme;
-    "rofi/power-icons".source = powerIcons;
+  xdg = {
+    configFile = {
+      "rofi/launcher.rasi".source = launcherTheme;
+      "rofi/power.rasi".source = powerTheme;
+      "rofi/power-icons".source = powerIcons;
+    };
+    dataFile = lib.mapAttrs' (
+      name: source: lib.nameValuePair "applications/${name}.desktop" { inherit source; }
+    ) hiddenRofiEntries;
   };
 
   home.packages = [

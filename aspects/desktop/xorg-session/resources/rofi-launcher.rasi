@@ -34,7 +34,7 @@ inputbar {
 }
 prompt { text-color: @blue; }
 textbox-search { str: "❯"; text-color: @blue; expand: false; }
-entry { text-color: @bright; placeholder: "搜索应用或输入命令"; placeholder-color: @muted; }
+entry { text-color: @bright; placeholder: "搜索"; placeholder-color: @muted; hide-cursor-on-empty: true; cursor-width: 1px; }
 mode-switcher { enabled: true; expand: false; width: 360px; spacing: 2px; }
 button {
     font: "Maple Mono NF CN 9";

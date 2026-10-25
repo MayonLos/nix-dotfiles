@@ -36,6 +36,7 @@ assert m["xorgConfig"].count('Screen "Screen-modesetting[0]"') == 1
 # Production themes, rule data and generated keymap are the test inputs too.
 launcher_theme = Path(programs["launcherTheme"]).read_text()
 power_theme = Path(programs["powerTheme"]).read_text()
+assert 'placeholder: "搜索"' in launcher_theme and "hide-cursor-on-empty: true" in launcher_theme
 assert "width: 840px" in launcher_theme, "560 logical px must scale to 840 pixels at DPI 144"
 assert palette["deep"] in launcher_theme and palette["blue"] in launcher_theme
 assert "columns: 5" in power_theme
@@ -330,9 +331,21 @@ try:
         "[Desktop Entry]\nType=Application\nName=Kitty\nIcon=kitty\nTerminal=false\n"
         f'Exec={sys.executable} {probe} {marker} "中文 文件" "a;b"\n'
     )
-    for desktop_name, display_name, icon in [("qq", "QQ", "qq"), ("wemeet", "腾讯会议", "wemeet"), ("wechat", "微信", "wechat")]:
+    qq_entry = configparser.ConfigParser(interpolation=None)
+    qq_entry.read(programs["qqDesktop"])
+    qq_icon = Path(qq_entry["Desktop Entry"]["Icon"])
+    assert qq_icon.is_absolute() and qq_icon.is_file(), "QQ package icon fallback must exist independently of the selected theme"
+    assert qq_icon.read_bytes().startswith(b"\x89PNG\r\n\x1a\n"), "QQ desktop Icon is not its packaged PNG"
+    (output / "qq-icon-source.txt").write_text(str(qq_icon) + "\n")
+    for name, source in programs["hiddenDesktopEntries"].items():
+        entry = configparser.ConfigParser(interpolation=None)
+        entry.read(source)
+        assert entry.getboolean("Desktop Entry", "NoDisplay"), name
+        shutil.copyfile(source, applications / (name + ".desktop"))
+    for desktop_name, display_name, icon in [("qq", "QQ", str(qq_icon)), ("wemeet", "腾讯会议", "wemeet"), ("wechat", "微信", "wechat")]:
+        identity = ' "qq"' if desktop_name == "qq" else ""
         (applications / f"{desktop_name}.desktop").write_text(
-            f'[Desktop Entry]\nType=Application\nName={display_name}\nIcon={icon}\nTerminal=false\nExec={sys.executable} {probe} {marker} "中文 文件" "a;b"\n'
+            f'[Desktop Entry]\nType=Application\nName={display_name}\nIcon={icon}\nTerminal=false\nExec={sys.executable} {probe} {marker} "中文 文件" "a;b"{identity}\n'
         )
     launcher_env = dict(os.environ, XDG_DATA_HOME=str(fixture_data), XDG_DATA_DIRS=str(fixture_data / "secondary") + ":" + os.environ["XDG_DATA_DIRS"], XDG_CURRENT_DESKTOP="dwm")
     (fixture_data / "secondary").mkdir(exist_ok=True)
@@ -345,11 +358,15 @@ try:
     assert abs(launcher_geometry["Absolute upper-left X"] + launcher_geometry["Width"] / 2 - 1280) < 15, launcher_geometry
     time.sleep(0.8)  # map precedes Rofi/icon-worker and compositor first paint
     import_root(output / "launcher.png")
+    # Real input must replace the placeholder and retain an ordinary caret.
+    subprocess.run([programs["xdotool"], "type", "--clearmodifiers", "QQ"], check=True)
+    time.sleep(1.0)
+    import_root(output / "launcher-typed.png")
     subprocess.run([programs["xdotool"], "key", "--clearmodifiers", "Return"], check=True)
     launcher_code = launcher.wait(timeout=5)
     assert launcher_code == 0, f"Rofi launcher failed: {launcher_code}"
     eventually(marker.exists, "safe fixture desktop Exec was not launched")
-    assert json.loads(marker.read_text()) == ["中文 文件", "a;b"]
+    assert json.loads(marker.read_text()) == ["中文 文件", "a;b", "qq"], "QQ search must launch only the safe QQ fixture"
 
     # Windows mode must use Rofi's native EWMH activation across tags.
     cross_tag = window("Cross-tag Windows probe", "XorgFixture")

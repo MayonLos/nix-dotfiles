@@ -69,6 +69,10 @@ let
       status = "${status}/bin/xorg-status";
       statusScript = ./resources/status.py;
       lock = "${lock}/bin/xorg-lock";
+      qqDesktop = "${qq}/share/applications/qq.desktop";
+      hiddenDesktopEntries = pkgs.lib.genAttrs [ "rofi" "rofi-theme-selector" ] (
+        name: home.xdg.dataFile."applications/${name}.desktop".source
+      );
       rofi = "${pkgs.rofi}/bin/rofi";
       rofiConfig = home.home.file.${home.programs.rofi.configPath}.source;
       launcherTheme = home.xdg.configFile."rofi/launcher.rasi".source;

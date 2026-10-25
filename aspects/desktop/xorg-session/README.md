@@ -27,7 +27,10 @@ Other Nix files and resources are private.
   sole binding/rule tables; the built package installs copies under `share/dwm`.
 - Rofi 2.0 owns Apps / Run / Windows / Clipboard, desktop controls and the five
   power tiles. Rasi takes device pixels, fonts take points; geometry scales once
-  from host DPI. Colors come from appearance. No dmenu or j4 package remains.
+  from host DPI. Colors come from appearance. Empty input shows a short search
+  hint with its caret hidden. Managed NoDisplay desktop overrides hide Rofi's
+  own launcher/theme-selector entries; they do not affect CLI commands or history.
+  No dmenu or j4 package remains.
 - Picom 13 owns 10 logical px corners, soft shadows, 6% inactive dim and <=100ms
   fades. Games/fullscreen/lock exclude effects; reduced motion disables fades.
   dwm owns the 2 logical px blue X border.
@@ -52,7 +55,8 @@ Other Nix files and resources are private.
   and new outputs to its right, disable disconnected outputs, and let dwm
   redistribute clients. No output names/EDIDs are hard-coded or profiles saved.
 
-HM owns `rofi/{config,launcher,power}.rasi` and `rofi/power-icons`, Picom/Dunst configuration, the
+HM owns `rofi/{config,launcher,power}.rasi`, `rofi/power-icons`, the two
+NoDisplay entries under `applications/rofi*.desktop`, Picom/Dunst configuration, the
 supervisor data entry, helper commands and Xorg user units. Runtime files under
 `$XDG_RUNTIME_DIR/nix-dotfiles-xorg` belong only to this session; the wallpaper
 cache under `$XDG_CACHE_HOME/nix-dotfiles/xorg-lock` is generated runtime data.
