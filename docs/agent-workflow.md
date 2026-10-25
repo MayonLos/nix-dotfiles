@@ -72,20 +72,24 @@
 
 ### Codex
 
+运行目录放在仓库内被 Git 忽略的 `.work/run-<日期>/`（**不要放 `/tmp`**：`/tmp` 是 tmpfs，重启即清空）。
+
 ```sh
-S=<会话临时目录>
-cd <工作树> && (setsid nohup codex exec -c 'service_tier="fast"' -C <工作树> \
-  -o $S/codex-final-N.md - < $S/codex-brief-N.md > $S/codex-N.log 2>&1 & echo $! > $S/codex-N.pid)
+S=/home/mayon/nix-dotfiles/.work/run-<日期>
+cd <工作树> && setsid -f codex exec -c 'service_tier="default"' [-m <模型>] -C <工作树> \
+  -o $S/codex-final-N.md - < $S/codex-brief-N.md > $S/codex-N.log 2>&1
 grep -a -m1 "session id" $S/codex-N.log           # 记下会话 ID
 # 同一会话续跑（追加任务、修问题、被中断后恢复）：
-codex exec -c 'service_tier="fast"' resume <session-id> -o $S/codex-final-N.md - < $S/codex-brief-Nb.md
+cd <工作树> && codex exec -c 'service_tier="default"' resume <session-id> -o $S/codex-final-N.md - < $S/codex-brief-Nb.md
 ```
 
-- `service_tier="fast"`：fast 模式（用户已在 `~/.codex/config.toml` 设为默认）。
+- 服务档位：`~/.codex/config.toml` 全局写着 `service_tier = "fast"`（用户不希望改该文件）。用户要求暂不用 fast，命令行一律 `-c 'service_tier="default"'` 覆盖；`"flex"` 会被服务端拒绝（`Unsupported service_tier: flex`）。
+- 模型：默认 `gpt-6.1-sol`；用户点名时用 `-m gpt-6-astra`（Neovim 自主精修轮使用）。
+- 额度用尽时日志出现 `You've hit your usage limit`，额度通常 1–2 小时内重置：等待后 `resume` 同一会话，不要换引擎。
 - 非 Git 目录需加 `--skip-git-repo-check`。
 - 日志丢失时，会话 ID 可在 `~/.codex/sessions/<年>/<月>/<日>/rollout-*.jsonl` 中按 `"cwd":"<工作树>"` 找回。
-- 遇到 “model at capacity” 一类错误：等待后 `resume` 同一会话。
-- 自动衔接：写一个后台脚本等待当前 PID 退出，再 `resume` 下一份 brief；需要中途改计划时先停掉衔接脚本，再停执行代理，避免误触发。
+- 执行代理在 `codex exec` 中途提问不会等待回答：把答复写成续跑 brief，等它本段结束后 `resume`（可用后台脚本等 `events.log` 中出现新的 `[N EXIT]` 再自动续跑）。
+- 现成脚本：`.work/run-2026-10-25/fns.sh` 提供 `run <名> <目录> <brief> <codex 参数...>`，内含额度用尽每 20 分钟重试、内存冻结、事件写入 `events.log`；`launch.sh`、`run-*.sh` 是调用示例。
 
 ### 其他代理（如 DeepSeek 驱动的 CLI 代理）
 
@@ -122,7 +126,7 @@ echo "[rN EXIT] final=$(test -s $S/codex-final-N.md && echo yes || echo no)"
 
 ## 7. 临时文件与持久化
 
-- 设计稿、brief、截图放在会话临时目录（`/tmp/...`）。**重启会清空 `/tmp`**，所以每次写 brief/设计稿后同步一份到仓库内被 Git 忽略的 `.work/<备份目录>/`，并写一份 `RESUME.txt`（各轮会话 ID、当前阶段）。
+- 设计稿、brief、截图、执行代理日志直接放仓库内被 Git 忽略的 `.work/`（如 `.work/run-<日期>/`、`.work/<轮次>/shots/`），不要放 `/tmp`（重启清空）。维护一份交接文件（各轮会话 ID、工作树、阶段、待决事项）。
 - 用户要重启/重新登录前：停掉衔接脚本 → 结束执行代理的 nix 子进程 → 结束执行代理 → 备份临时目录。恢复后从备份还原到原路径，再 `resume`。
 
 ## 8. 隔离视觉验证（不碰用户会话）
@@ -153,12 +157,17 @@ systemctl --user restart noctalia.service fcitx5-daemon.service   # 外观/输�
 - **Kitty 与 Neovim 背景**：Kitty 背景与 Neovim `Normal` 背景不同会在四周出现色框；用 OSC 11 同步背景并在退出时恢复，tmux 需 `allow-passthrough on`。
 - **KDE/Qt 应用**：不读 qt6ct 配色时会出现浅色菜单与无图标，需要 `kdeglobals` 配色与图标主题；文件对话框统一走 xdg-desktop-portal。
 - **补丁型美化**（Mango、Noctalia 源码补丁）有维护成本；每个补丁必须配构建期检查，上游升级时失败而不是静默退化。用户不需要的效果（如焦点外发光）宁可删除。
+- **zsh 陷阱**：交互 shell 是 zsh，`$var` 不按空格拆分（kill 多个 PID 用数组或 bash 脚本）；`pkill -f`/`pgrep -f` 的模式会匹配到自己的命令行，可能杀掉当前 shell。
+- **Home Manager 激活失败 “would be clobbered by backing up”**：目标文件旁已有 `*.backup`。先查看两份内容，把旧 `.backup` 改名加时间戳（不删除），再重新 switch。
+- **Noctalia 服务起不来（start-limit-hit / “Noctalia is still running”）**：有不在服务 cgroup 下的手动启动实例；`kill -TERM` 该 PID → `systemctl --user reset-failed noctalia.service` → `start`。
+- **sudo**：执行代理不得 sudo；主代理应用配置需用户提供密码或用户自己执行 `! sudo nixos-rebuild switch --flake .#nixos-btw`。不要把密码写进任何文件或记忆。
+- **独显**：用户经常主动给 NVIDIA 独显断电，`nvidia-smi` 报 No devices 属正常；顶栏 GPU 项应隐藏而不是显示 “--”。
 - **用户偏好**：不喜欢高饱和整块蓝底、紫粉配色、Tokyo Night；喜欢 One Dark、下划指示、现代简洁；界面不要太大（输出缩放 1.5）；复杂的 IDE 式布局（Islands、工具条）不受欢迎，倾向简洁的顶栏 + 按需侧栏。
 
 ## 11. 交接给另一个模型时
 
 给新模型的第一条消息只需：
 
-> 按 `docs/agent-workflow.md` 的流程工作：你是主代理，负责设计、写 brief、监控、审核、集成；实现交给执行代理（Codex fast 模式或 <其他代理>）。当前进度见 `.work/<备份目录>/RESUME.txt`。
+> 按 `docs/agent-workflow.md` 的流程工作：你是主代理，负责设计、写 brief、监控、审核、集成；实现交给执行代理。当前进度见 `.work/HANDOFF.md`。
 
-并告知：当前在跑的会话 ID、未合并的分支/工作树、待用户决定的事项。
+`.work/HANDOFF.md` 必须写明：在跑的会话 ID 与工作树、未合并分支、每轮下一步、待用户决定的事项、已知限制。Codex 作为主代理时，实现可交给原生子代理或继续用 `codex exec` 后台执行代理（两者都按本文约束）。
