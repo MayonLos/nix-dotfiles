@@ -1,16 +1,26 @@
 local M = {}
+local max_window_width = 118
+
+function M.geometry(columns)
+	columns = math.max(1, columns or vim.o.columns)
+	local width = math.max(1, math.min(max_window_width, columns - 2, math.floor(columns * 0.69)))
+	local col = math.floor((columns - width) / 2)
+	local layout_columns = width >= 70 and 4 or width >= 50 and 3 or width >= 32 and 2 or 1
+	local column_width = math.max(1, math.floor(width / layout_columns - 2))
+	return { width = width, col = col, column_width = column_width, columns = layout_columns }
+end
 
 local function apply_highlights()
 	local c = require("mayon.generated").palette
-	vim.api.nvim_set_hl(0, "WhichKey", { fg = c.blue, bg = c.deep, bold = true })
-	vim.api.nvim_set_hl(0, "WhichKeyDesc", { fg = c.fg, bg = c.deep })
-	vim.api.nvim_set_hl(0, "WhichKeyGroup", { fg = c.muted, bg = c.deep })
-	vim.api.nvim_set_hl(0, "WhichKeySeparator", { fg = c.muted, bg = c.deep })
-	vim.api.nvim_set_hl(0, "WhichKeyTitle", { fg = c.muted, bg = c.deep, bold = true })
-	vim.api.nvim_set_hl(0, "WhichKeyNormal", { fg = c.fg, bg = c.deep })
-	vim.api.nvim_set_hl(0, "WhichKeyIcon", { fg = c.blue, bg = c.deep })
+	vim.api.nvim_set_hl(0, "WhichKey", { fg = c.blue, bg = c.bg, bold = true })
+	vim.api.nvim_set_hl(0, "WhichKeyDesc", { fg = c.fg, bg = c.bg })
+	vim.api.nvim_set_hl(0, "WhichKeyGroup", { fg = c.muted, bg = c.bg })
+	vim.api.nvim_set_hl(0, "WhichKeySeparator", { fg = c.muted, bg = c.bg })
+	vim.api.nvim_set_hl(0, "WhichKeyTitle", { fg = c.muted, bg = c.bg, bold = true })
+	vim.api.nvim_set_hl(0, "WhichKeyNormal", { fg = c.fg, bg = c.bg })
+	vim.api.nvim_set_hl(0, "WhichKeyIcon", { fg = c.blue, bg = c.bg })
 	local edge = require("mayon.ui.theme").float_edge()
-	vim.api.nvim_set_hl(0, "WhichKeyBorder", { fg = edge, bg = c.deep })
+	vim.api.nvim_set_hl(0, "WhichKeyBorder", { fg = edge, bg = c.bg })
 end
 
 local groups = {
@@ -112,8 +122,11 @@ local function install_title()
 	end
 	local render = view.show
 	view.show = function(...)
-		local width = math.max(16, math.floor((math.floor(vim.o.columns * 0.96) - 10) / 4))
-		require("which-key.config").options.layout.width = { min = width, max = width }
+		local geometry = M.geometry(vim.o.columns)
+		local options = require("which-key.config").options
+		options.win.width = geometry.width
+		options.win.col = geometry.col
+		options.layout.width = { min = geometry.column_width, max = geometry.column_width }
 		local result = render(...)
 		local popup = view.view
 		local win = popup and popup.win
@@ -145,8 +158,8 @@ function M.config()
 		win = {
 			border = "rounded",
 			row = -1,
-			col = 0.02,
-			width = 0.96,
+			col = M.geometry().col,
+			width = M.geometry().width,
 			height = { min = 4, max = 10 },
 			padding = { 0, 1 },
 			title = true,
@@ -154,10 +167,7 @@ function M.config()
 			wo = { winblend = 0 },
 		},
 		layout = {
-			width = {
-				min = math.max(16, math.floor((math.floor(vim.o.columns * 0.96) - 10) / 4)),
-				max = math.max(16, math.floor((math.floor(vim.o.columns * 0.96) - 10) / 4)),
-			},
+			width = { min = M.geometry().column_width, max = M.geometry().column_width },
 			spacing = 2,
 		},
 		plugins = {
@@ -179,12 +189,14 @@ function M.config()
 end
 
 function M.setup()
-	apply_highlights()
+	local group = vim.api.nvim_create_augroup("MayonWhichKeyPalette", { clear = true })
 	vim.api.nvim_create_autocmd("ColorScheme", {
-		group = vim.api.nvim_create_augroup("MayonWhichKeyPalette", { clear = true }),
-		callback = apply_highlights,
+		group = group,
+		callback = vim.schedule_wrap(apply_highlights),
 	})
 	require("which-key").setup(M.config())
+	apply_highlights()
+	vim.schedule(apply_highlights)
 	install_title()
 end
 

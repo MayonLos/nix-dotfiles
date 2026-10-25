@@ -6,12 +6,10 @@ assert(color_options.render == "virtual" and color_options.virtual_symbol == "â–
 local early_palette = require("mayon.generated").palette
 local early_normal_nc = vim.api.nvim_get_hl(0, { name = "NormalNC", link = false })
 assert(
-	early_normal_nc.bg == tonumber(require("mayon.ui.theme").blend("#000000", early_palette.bg, 0.06):sub(2), 16),
-	"inactive editor surfaces should be only subtly darker than the active editor"
-)
-assert(
-	early_normal_nc.bg ~= tonumber(early_palette.bg:sub(2), 16),
-	"inactive editor surface must visibly differ from the active editor"
+	early_normal_nc.bg == tonumber(early_palette.bg:sub(2), 16)
+		and early_normal_nc.fg == tonumber(early_palette.fg:sub(2), 16)
+		and early_normal_nc.fg ~= tonumber(early_palette.brightFg:sub(2), 16),
+	"inactive editor text should be dimmer on the shared editor surface"
 )
 assert(color_options.enable_named_colors == false, "named colors must not recolor prose/comments")
 assert(color_options.enable_hex and color_options.enable_rgb and color_options.enable_var_usage)
@@ -312,7 +310,6 @@ for _, group in ipairs({
 	"MayonDashboardMuted",
 	"MayonTabPill",
 	"MayonTopProject",
-	"MayonTopHint",
 	"OilDir",
 	"RainbowDelimiterBlue",
 	"InclineNormal",
@@ -336,7 +333,7 @@ local palette = require("mayon.generated").palette
 for _, group in ipairs({ "FloatTitle", "MayonPopupTitle" }) do
 	local title = vim.api.nvim_get_hl(0, { name = group, link = false })
 	assert(title.fg == tonumber(palette.muted:sub(2), 16), "floating titles should use muted text: " .. group)
-	assert(title.bg == tonumber(palette.deep:sub(2), 16) and not title.bold, "floating title style mismatch: " .. group)
+	assert(title.bg == tonumber(palette.bg:sub(2), 16) and not title.bold, "floating title style mismatch: " .. group)
 end
 local tiny_error = vim.api.nvim_get_hl(0, { name = "TinyInlineDiagnosticVirtualTextError", link = false })
 assert(
