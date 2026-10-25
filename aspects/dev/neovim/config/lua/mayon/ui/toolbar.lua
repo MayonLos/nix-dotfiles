@@ -19,8 +19,6 @@ function M.click(id, _, mouse)
 			require("snacks").picker.projects()
 		elseif id == 2 then
 			require("snacks").picker.git_branches()
-		elseif id == 3 then
-			require("mayon.ui.search").open()
 		elseif id == 4 then
 			require("snacks").picker.buffers()
 		end
@@ -39,7 +37,6 @@ local function highlights()
 	vim.api.nvim_set_hl(0, "MayonTabReadonlyInactive", { fg = p.dim, bg = p.deep })
 	vim.api.nvim_set_hl(0, "MayonTopProject", { fg = p.brightFg, bg = p.deep, bold = true })
 	vim.api.nvim_set_hl(0, "MayonTopMuted", { fg = p.muted, bg = p.deep })
-	vim.api.nvim_set_hl(0, "MayonTopHint", { fg = p.dim, bg = p.deep })
 	icon_groups = {}
 end
 local function icon_group(source, active)
@@ -72,8 +69,7 @@ function M.render()
 	end
 	left = left .. "%#MayonTopHint# │ "
 	used = used + 3
-	local hint = vim.o.columns >= 90 and " ␣␣ 搜索 " or ""
-	local budget = math.max(1, vim.o.columns - used - vim.fn.strdisplaywidth(hint) - 2)
+	local budget = math.max(1, vim.o.columns - used - 2)
 	local entries, active_index = {}, 1
 	for index, buf in ipairs(buffers) do
 		local icon, hl = require("mayon.ui.icons").get(vim.api.nvim_buf_get_name(buf))
@@ -120,7 +116,7 @@ function M.render()
 		return "%" .. (100000 + entry.buf) .. "@v:lua.MayonToolbarClick@" .. core .. "%X"
 	end
 	if #entries == 0 then
-		return left .. "%#TabLineFill#%=" .. button(3, hint, "MayonTopHint")
+		return left .. "%#TabLineFill#%="
 	end
 	-- Always keep the active buffer visible. Reserve enough room for the exact
 	-- hidden count, then spend remaining cells on nearby tabs.
@@ -171,7 +167,7 @@ function M.render()
 	if hidden > 0 then
 		left = left .. button(4, " +" .. hidden .. " ", "MayonTopMuted")
 	end
-	return left .. "%#TabLineFill#%=" .. button(3, hint, "MayonTopHint")
+	return left .. "%#TabLineFill#%="
 end
 function M.setup()
 	if M.ready then

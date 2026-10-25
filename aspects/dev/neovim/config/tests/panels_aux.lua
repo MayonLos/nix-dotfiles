@@ -4,13 +4,16 @@ if not package.loaded["which-key"] then
 	vim.wait(50)
 end
 
+require("mayon.ui.whichkey").setup()
+vim.wait(20)
 local whichkey = require("mayon.ui.whichkey").config()
 assert(whichkey.win.border == "rounded", "which-key should share the rounded float border")
 assert(whichkey.win.row == -1 and whichkey.win.height.max == 10, "which-key should be anchored to the bottom")
 assert(
-	whichkey.win.width == 0.96
-		and whichkey.layout.width.min == math.max(16, math.floor((math.floor(vim.o.columns * 0.96) - 10) / 4)),
-	"which-key should form four readable columns"
+	whichkey.win.width == require("mayon.ui.whichkey").geometry(vim.o.columns).width
+		and whichkey.win.col == require("mayon.ui.whichkey").geometry(vim.o.columns).col
+		and whichkey.layout.width.min == require("mayon.ui.whichkey").geometry(vim.o.columns).column_width,
+	"which-key should form responsive columns"
 )
 assert(
 	whichkey.icons.mappings and whichkey.icons.colors == false and whichkey.icons.separator == " ",
@@ -18,11 +21,25 @@ assert(
 )
 assert(whichkey.win.title == true, "which-key should derive the title from the active prefix")
 assert(not require("mayon.generated").palette.edge, "panel colors must derive edge from the palette border")
-local group_hls = {
-	WhichKey = require("mayon.generated").palette.blue,
-	WhichKeyGroup = require("mayon.generated").palette.muted,
-}
-assert(group_hls.WhichKey ~= group_hls.WhichKeyGroup, "which-key keys and group labels need distinct colors")
+local palette = require("mayon.generated").palette
+for _, name in ipairs({
+	"WhichKey",
+	"WhichKeyDesc",
+	"WhichKeyGroup",
+	"WhichKeySeparator",
+	"WhichKeyTitle",
+	"WhichKeyNormal",
+	"WhichKeyIcon",
+	"WhichKeyBorder",
+}) do
+	local hl = vim.api.nvim_get_hl(0, { name = name, link = false })
+	assert(hl.bg == tonumber(palette.bg:sub(2), 16), "which-key surface must match One Dark: " .. name)
+end
+assert(
+	vim.api.nvim_get_hl(0, { name = "WhichKey", link = false }).fg
+		~= vim.api.nvim_get_hl(0, { name = "WhichKeyGroup", link = false }).fg,
+	"which-key keys and group labels need distinct foreground colors"
+)
 
 local wk = require("which-key")
 assert(wk.did_setup, "which-key setup must finish before exercising its public show API")
@@ -52,14 +69,15 @@ wk_view.show = function(...)
 			end
 		end
 		for row, spans in pairs(columns) do
-			if #spans == 4 then
+			local expected_columns = require("mayon.ui.whichkey").geometry(vim.o.columns).columns
+			if #spans == expected_columns then
 				table.sort(spans)
 				local line = vim.api.nvim_buf_get_lines(wk_buf, row, row + 1, false)[1]
 				local first = vim.fn.strdisplaywidth(line:sub(1, spans[1]))
 				local second = vim.fn.strdisplaywidth(line:sub(1, spans[2]))
 				assert(
-					second - first >= math.floor(vim.api.nvim_win_get_width(wk_win) / 4) - 3,
-					"which-key columns should occupy equal quarters"
+					second - first >= math.floor(vim.api.nvim_win_get_width(wk_win) / expected_columns) - 3,
+					"which-key columns should be evenly spaced"
 				)
 			end
 		end

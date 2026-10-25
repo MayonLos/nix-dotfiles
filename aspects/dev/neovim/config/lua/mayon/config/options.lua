@@ -13,6 +13,8 @@ function M.setup()
 	end
 	local options = {
 		clipboard = "unnamedplus",
+		-- UI2 hides its command surface while idle and opens it for input/messages.
+		cmdheight = 0,
 		-- 0.12.4: nearest has no effect with fuzzy; retain fuzzy sorting.
 		completeopt = "menuone,noselect,popup,fuzzy",
 		completeitemalign = "kind,abbr,menu",

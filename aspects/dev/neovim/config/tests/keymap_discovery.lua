@@ -71,7 +71,21 @@ vim.wait(100)
 local config = whichkey.config()
 assert(config.win.border == "rounded" and config.win.row == -1, "which-key must keep its bottom rounded card")
 assert(config.win.title == true, "which-key should derive its title from the active prefix")
-assert(config.win.width == 0.96 and config.layout.spacing == 2, "which-key must retain the four-column strip layout")
+local geometry = whichkey.geometry
+local wide = geometry(1706)
+local normal = geometry(195)
+local medium = geometry(160)
+local narrow = geometry(80)
+local small = geometry(50)
+local tiny = geometry(40)
+assert(wide.width == 118 and wide.col == 794 and wide.columns == 4, "which-key should cap and center its wide layout")
+assert(normal.width == 118 and normal.col == 38, "which-key should stay centered at the usual window size")
+assert(medium.width == 110 and medium.col == 25, "which-key should scale with medium windows")
+assert(narrow.width == 55 and narrow.col == 12 and narrow.columns == 3, "which-key should adapt narrow layouts")
+assert(small.width == 34 and small.col == 8 and small.columns == 2, "which-key should reduce columns on small windows")
+assert(tiny.width == 27 and tiny.col == 6 and tiny.columns == 1, "which-key should use one column on tiny windows")
+assert(config.win.width == geometry(vim.o.columns).width)
+assert(config.win.col == geometry(vim.o.columns).col and config.layout.spacing == 2)
 assert(config.win.height.min == 4 and config.win.height.max == 10, "which-key height should remain compact")
 assert(type(config.delay) == "function", "which-key delay should be explicit and context-aware")
 assert(
@@ -127,6 +141,19 @@ end
 local palette = require("mayon.generated").palette
 local icon_hl = vim.api.nvim_get_hl(0, { name = "WhichKeyIcon", link = false })
 assert(icon_hl.fg == tonumber(palette.blue:sub(2), 16), "all group icons should share the One Dark blue")
+for _, name in ipairs({
+	"WhichKey",
+	"WhichKeyDesc",
+	"WhichKeyGroup",
+	"WhichKeySeparator",
+	"WhichKeyTitle",
+	"WhichKeyNormal",
+	"WhichKeyIcon",
+	"WhichKeyBorder",
+}) do
+	local hl = vim.api.nvim_get_hl(0, { name = name, link = false })
+	assert(hl.bg == tonumber(palette.bg:sub(2), 16), "which-key surface must match One Dark: " .. name)
+end
 
 -- Descriptions are short English action labels. Inspect all modes after lazy
 -- plugin keymaps and the synthetic LSP attachment have been registered. The
