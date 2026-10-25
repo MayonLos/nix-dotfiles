@@ -64,7 +64,7 @@ local function arm_renamed_write(buf, path)
 		id = api.nvim_create_autocmd("BufWriteCmd", {
 			buffer = buf,
 			nested = true,
-			desc = "Safely write a buffer after native file rename",
+			desc = "Save Buffer after Rename",
 			callback = function()
 				if api.nvim_buf_get_name(buf) ~= path then
 					reject_write("Buffer path changed again; rename it through the file operation before saving.")

@@ -127,7 +127,7 @@ function M.setup()
 	protect_trash_adapter()
 	vim.keymap.set("n", "-", function()
 		oil.open()
-	end, { desc = "Open parent directory in Oil" })
+	end, { desc = "Browse Parent Directory" })
 	did_setup = true
 end
 

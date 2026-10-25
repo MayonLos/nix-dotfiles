@@ -44,6 +44,6 @@ function M.setup()
 	})
 	vim.keymap.set("n", "zK", function()
 		vim.cmd.normal({ "zo", bang = true })
-	end, { desc = "Open folded context (native)" })
+	end, { desc = "Open Folded Context" })
 end
 return M

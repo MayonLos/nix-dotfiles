@@ -16,10 +16,10 @@ for _, keymap in ipairs(vim.api.nvim_get_keymap("n")) do
 	end
 end
 for _, desc in ipairs({
-	"查看撤销历史",
-	"重启 Neovim 并保留界面",
-	"收集工作区诊断",
-	"切换代码透镜",
+	"Show Undo History",
+	"Restart Neovim",
+	"Collect Project Diagnostics",
+	"Toggle Code Lens",
 }) do
 	assert(global_maps[desc], "missing native feature mapping: " .. desc)
 end

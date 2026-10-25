@@ -403,6 +403,14 @@ function M.setup()
 		update = { "ModeChanged", "BufEnter", "CursorHold", "User" },
 	}
 
+	local Debug = {
+		provider = function()
+			local debug = package.loaded["mayon.features.debug"]
+			return debug and debug.state ~= "" and ("  " .. debug.state .. " ") or ""
+		end,
+		hl = { fg = "gray" },
+	}
+
 	local DefaultStatusline = {
 		ViMode,
 		{ provider = " · ", hl = { fg = "accent" } },
@@ -410,6 +418,7 @@ function M.setup()
 		Git,
 		Align,
 		Recording,
+		Debug,
 		SearchCount,
 		Diagnostics,
 		{ flexible = 1, LSPActive, {} },
@@ -445,13 +454,21 @@ function M.setup()
 					end
 					return " Files & search "
 				end
-				local names = { help = "Help", qf = "Quickfix", terminal = "Terminal", grug_far = "Search & replace" }
+				local names = {
+					help = "Help",
+					qf = "Quickfix",
+					terminal = "Terminal",
+					grug_far = "Search & replace",
+					["dap-view"] = "Debug",
+					["dap-repl"] = "Debug REPL",
+				}
 				local name = names[ft] or names[vim.bo.buftype] or (ft ~= "" and ft:gsub("_", " ") or "Tools")
 				return " " .. text.fit(name, 28) .. " "
 			end,
 			hl = { fg = "fg", bold = true },
 		},
 		Align,
+		Debug,
 		Ruler,
 	}
 

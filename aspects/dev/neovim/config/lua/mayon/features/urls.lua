@@ -319,9 +319,9 @@ end
 function M.setup()
 	vim.api.nvim_create_user_command("Urls", function(cmd)
 		urls.pick_dir(cmd.args)
-	end, { nargs = "?", complete = "dir", desc = "Pick a URL from a directory" })
+	end, { nargs = "?", complete = "dir", desc = "Pick URL from Directory" })
 
-	vim.api.nvim_create_user_command("UrlsBuffer", urls.pick_buffer, { desc = "Pick a URL from this buffer" })
+	vim.api.nvim_create_user_command("UrlsBuffer", urls.pick_buffer, { desc = "Pick URL from Buffer" })
 end
 
 return M

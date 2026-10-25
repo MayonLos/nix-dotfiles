@@ -42,10 +42,10 @@ local function setup()
 
 	vim.api.nvim_create_user_command("FormatDisable", function()
 		vim.g.disable_autoformat = true
-	end, { desc = "关闭保存时格式化" })
+	end, { desc = "Disable Format on Save" })
 	vim.api.nvim_create_user_command("FormatEnable", function()
 		vim.g.disable_autoformat = false
-	end, { desc = "启用保存时格式化" })
+	end, { desc = "Enable Format on Save" })
 end
 
 return {

@@ -10,7 +10,7 @@ end, {
 	complete = function()
 		return { "copilot", "deepseek", "off" }
 	end,
-	desc = "切换 AI 补全提供者",
+	desc = "Cycle AI Completion",
 })
 
 local function prompt(alias, description, instruction)
@@ -244,13 +244,13 @@ local function claude()
 					"n",
 					"<localleader>a",
 					"<cmd>ClaudeCodeDiffAccept<cr>",
-					{ buffer = ev.buf, desc = "接受 Claude 当前文件修改" }
+					{ buffer = ev.buf, desc = "Accept Claude File Changes" }
 				)
 				vim.keymap.set(
 					"n",
 					"<localleader>r",
 					"<cmd>ClaudeCodeDiffDeny<cr>",
-					{ buffer = ev.buf, desc = "拒绝 Claude 当前文件修改" }
+					{ buffer = ev.buf, desc = "Reject Claude File Changes" }
 				)
 				require("mayon.ui.ai_panels").style_diff(ev.buf)
 			end)
@@ -345,14 +345,14 @@ return {
 				if not notify_cli_missing("claude", "Claude Code") then
 					vim.cmd("ClaudeCode")
 				end
-			end, "切换 Claude Code"),
+			end, "Toggle Claude Code"),
 			map("<leader>as", function()
 				if not notify_cli_missing("claude", "Claude Code") then
 					vim.cmd("ClaudeCodeSend")
 				end
-			end, "发送选区到 Claude", "v"),
-			map("<leader>aA", "<cmd>ClaudeCodeDiffAccept<cr>", "接受 Claude 当前修改"),
-			map("<leader>aD", "<cmd>ClaudeCodeDiffDeny<cr>", "拒绝 Claude 当前修改"),
+			end, "Send Selection to Claude", "v"),
+			map("<leader>aA", "<cmd>ClaudeCodeDiffAccept<cr>", "Accept Claude Changes"),
+			map("<leader>aD", "<cmd>ClaudeCodeDiffDeny<cr>", "Reject Claude Changes"),
 		},
 		after = claude,
 	},
@@ -362,30 +362,30 @@ return {
 		keys = {
 			map("<leader>ax", function()
 				toggle_cli("codex")
-			end, "切换 Codex CLI"),
+			end, "Toggle Codex CLI"),
 			map("<leader>ag", function()
 				toggle_cli("grok")
-			end, "切换 Grok CLI"),
+			end, "Toggle Grok CLI"),
 			map("<leader>af", function()
 				send("{file}")
-			end, "发送文件到当前 CLI"),
+			end, "Send File to AI CLI"),
 			map("<leader>av", function()
 				send("{selection}")
-			end, "发送选区到当前 CLI", "v"),
+			end, "Send Selection to AI CLI", "v"),
 			map("<leader>aE", function()
 				send("{diagnostics}")
-			end, "发送诊断到当前 CLI"),
+			end, "Send Diagnostics to AI CLI"),
 			map("<leader>aG", function()
 				local result = vim.system({ "git", "diff", "--no-ext-diff" }, { text = true }):wait()
 				if result.code == 0 then
 					send("请审阅以下 Git diff：\n" .. result.stdout)
 				end
-			end, "发送 Git diff 到当前 CLI"),
+			end, "Send Git Diff to AI CLI"),
 			map("<Tab>", function()
 				if not require("sidekick").nes_jump_or_apply() then
 					vim.api.nvim_feedkeys(vim.keycode("<Tab>"), "n", false)
 				end
-			end, "跳到或应用 Copilot 下一编辑"),
+			end, "Apply Next Copilot Edit"),
 		},
 		after = sidekick,
 	},
@@ -398,26 +398,26 @@ return {
 					require("lz.n").trigger_load("codecompanion.nvim")
 					vim.cmd("CodeCompanionChat Toggle")
 				end
-			end, "DeepSeek 对话", { "n", "v" }),
+			end, "Open DeepSeek Chat", { "n", "v" }),
 			map("<leader>ai", function()
 				if require("mayon.features.ai_completion").require_deepseek_key() then
 					require("lz.n").trigger_load("codecompanion.nvim")
 					vim.cmd.CodeCompanion()
 				end
-			end, "DeepSeek 内联改写", { "n", "v" }),
+			end, "Review Inline Edit", { "n", "v" }),
 			map("<leader>ae", function()
 				cc_prompt("解释报错")
-			end, "解释诊断"),
+			end, "Explain Diagnostics"),
 			map("<leader>at", function()
 				cc_prompt("为选区写测试")
-			end, "为选区写测试", "v"),
+			end, "Write Tests for Selection", "v"),
 			map("<leader>am", function()
 				cc_prompt("生成提交信息")
-			end, "起草提交信息"),
-			map("<leader>ap", "<cmd>CodeCompanionActions<cr>", "中文提示词库", { "n", "v" }),
+			end, "Draft Commit Message"),
+			map("<leader>ap", "<cmd>CodeCompanionActions<cr>", "Browse Prompt Library", { "n", "v" }),
 			map("<leader>ah", function()
 				require("codecompanion").extensions.history.browse_chats()
-			end, "浏览 AI 对话历史"),
+			end, "Browse Chat History"),
 		},
 		after = companion,
 	},

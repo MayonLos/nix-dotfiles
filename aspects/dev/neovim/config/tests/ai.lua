@@ -255,7 +255,7 @@ vim.notify = function(message)
 end
 local chat_key = vim.fn.maparg(" ad", "n", false, true)
 assert(
-	type(chat_key.callback) == "function" and chat_key.desc == "DeepSeek 对话",
+	type(chat_key.callback) == "function" and chat_key.desc == "Open DeepSeek Chat",
 	"DeepSeek mapping is not the guarded action"
 )
 local missing_key = require("mayon.features.ai_completion").require_deepseek_key()

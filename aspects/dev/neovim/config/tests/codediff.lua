@@ -17,7 +17,7 @@ assert(
 assert(git_config.signs.delete.text == "▎" and git_config.signs.topdelete.text == "▎")
 assert(git_config.current_line_blame == false, "Git blame must start disabled")
 local blame_toggle = vim.fn.maparg(" gb", "n", false, true)
-assert(blame_toggle.callback and blame_toggle.desc == "切换当前行 Git blame", "<leader>gb must toggle blame")
+assert(blame_toggle.callback and blame_toggle.desc == "Toggle Line Blame", "<leader>gb must toggle blame")
 local blame_toggles = 0
 local toggle_blame = gitsigns.toggle_current_line_blame
 gitsigns.toggle_current_line_blame = function()
@@ -28,11 +28,11 @@ gitsigns.toggle_current_line_blame = toggle_blame
 assert(blame_toggles == 1, "<leader>gb did not call the blame toggle")
 
 for _, spec in ipairs({
-	{ "<leader>gd", "审阅工作区 Git 改动" },
-	{ "<leader>gf", "查看当前文件历史" },
-	{ "<leader>gD", "与提交或分支比较" },
-	{ "<leader>gC", "打开当前文件冲突审阅" },
-	{ "<leader>gT", "比较两个目录（Neovim 原生）" },
+	{ "<leader>gd", "Review Workspace Diff" },
+	{ "<leader>gf", "Show File History" },
+	{ "<leader>gD", "Compare with Revision" },
+	{ "<leader>gC", "Review File Conflicts" },
+	{ "<leader>gT", "Compare Directories" },
 }) do
 	local lhs = spec[1]:gsub("<leader>", vim.g.mapleader)
 	local mapping = vim.fn.maparg(lhs, "n", false, true)

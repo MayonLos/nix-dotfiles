@@ -15,30 +15,93 @@ end
 return {
 	{
 		"nvim-dap",
+		cmd = { "DapContinue", "DapToggleBreakpoint", "DapViewToggle", "DebugLuaListen" },
 		keys = {
-			{ "<leader>dc", debug_action("continue"), desc = "Debug · continue / attach" },
-			{ "<leader>db", debug_action("toggle_breakpoint"), desc = "Debug · breakpoint" },
-			{ "<leader>dn", debug_action("step_over"), desc = "Debug · step over" },
-			{ "<leader>di", debug_action("step_into"), desc = "Debug · step into" },
-			{ "<leader>do", debug_action("step_out"), desc = "Debug · step out" },
-			{ "<leader>dq", debug_action("disconnect"), desc = "Debug · disconnect" },
+			{ "<leader>dc", debug_action("continue"), desc = "Continue debugging" },
+			{ "<F5>", debug_action("continue"), desc = "Continue debugging" },
+			{ "<leader>db", debug_action("toggle_breakpoint"), desc = "Toggle breakpoint" },
+			{ "<F9>", debug_action("toggle_breakpoint"), desc = "Toggle breakpoint" },
+			{ "<leader>dn", debug_action("step_over"), desc = "Step over" },
+			{ "<F10>", debug_action("step_over"), desc = "Step over" },
+			{ "<leader>di", debug_action("step_into"), desc = "Step into" },
+			{ "<F11>", debug_action("step_into"), desc = "Step into" },
+			{ "<leader>do", debug_action("step_out"), desc = "Step out" },
+			{ "<S-F11>", debug_action("step_out"), desc = "Step out" },
+			{ "<leader>dq", debug_action("disconnect"), desc = "Disconnect debugger" },
+			{ "<leader>dt", debug_action("terminate"), desc = "Terminate debugging" },
+			{ "<S-F5>", debug_action("terminate"), desc = "Terminate debugging" },
+			{ "<leader>dC", debug_action("run_to_cursor"), desc = "Run to cursor" },
+			{ "<leader>dR", debug_action("restart"), desc = "Restart debugging" },
+			{ "<leader>dl", debug_action("run_last"), desc = "Run last configuration" },
+			{ "<leader>dX", debug_action("clear_breakpoints"), desc = "Clear breakpoints" },
+			{ "<leader>dp", debug_action("pause"), desc = "Pause debugging" },
+			{
+				"<leader>dB",
+				function()
+					require("mayon.features.debug").breakpoint("condition")
+				end,
+				desc = "Set conditional breakpoint",
+			},
+			{
+				"<leader>dL",
+				function()
+					require("mayon.features.debug").breakpoint("log")
+				end,
+				desc = "Set logpoint",
+			},
+			{
+				"<leader>ds",
+				function()
+					require("mayon.features.debug").select()
+				end,
+				desc = "Select configuration",
+			},
+			{
+				"<leader>du",
+				function()
+					require("dap-view").toggle()
+				end,
+				desc = "Toggle debug panel",
+			},
 			{
 				"<leader>dr",
 				function()
-					require("dap").repl.toggle()
+					require("dap-view").open()
+					require("dap-view").jump_to_view("repl")
 				end,
-				desc = "Debug · REPL",
+				desc = "Open debug REPL",
 			},
 			{
 				"<leader>dh",
 				function()
-					require("dap.ui.widgets").hover()
+					require("dap.ui.widgets").hover(nil, { border = "rounded" })
 				end,
-				desc = "Debug · value",
+				desc = "Inspect value",
+			},
+			{
+				"<leader>de",
+				function()
+					require("dap-view").add_expr()
+				end,
+				desc = "Add watch expression",
+			},
+			{
+				"<leader>dj",
+				function()
+					require("mayon.features.java_debug").test_nearest_method()
+				end,
+				desc = "Debug nearest Java test",
+			},
+			{
+				"<leader>dJ",
+				function()
+					require("mayon.features.java_debug").test_class()
+				end,
+				desc = "Debug Java test class",
 			},
 		},
 		after = function()
-			require("mayon.features.embedded").setup_dap()
+			require("mayon.features.debug").setup()
 		end,
 	},
 	{
@@ -60,20 +123,20 @@ return {
 		"todo-comments.nvim",
 		event = { "BufReadPost", "BufNewFile" },
 		keys = {
-			{ "<leader>xt", todo_picker, desc = "查找 TODO 注释" },
+			{ "<leader>xt", todo_picker, desc = "Find TODO comments" },
 			{
 				"]t",
 				function()
 					require("todo-comments").jump_next()
 				end,
-				desc = "下一个 TODO",
+				desc = "Jump to next TODO",
 			},
 			{
 				"[t",
 				function()
 					require("todo-comments").jump_prev()
 				end,
-				desc = "上一个 TODO",
+				desc = "Jump to previous TODO",
 			},
 		},
 		after = function()

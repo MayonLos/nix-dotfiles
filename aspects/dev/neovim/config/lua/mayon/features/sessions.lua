@@ -238,12 +238,12 @@ function M.setup()
 		end)
 	end
 
-	vim.keymap.set("n", "<leader>ps", load_current_session, { desc = "恢复当前目录会话" })
-	vim.keymap.set("n", "<leader>pl", load_last_session, { desc = "恢复上次会话" })
+	vim.keymap.set("n", "<leader>ps", load_current_session, { desc = "Load Project Session" })
+	vim.keymap.set("n", "<leader>pl", load_last_session, { desc = "Load Last Session" })
 	vim.keymap.set("n", "<leader>pd", function()
 		save_disabled = true
 		notify("automatic save disabled for this instance")
-	end, { desc = "禁用当前会话保存" })
+	end, { desc = "Pause Session Saving" })
 
 	vim.api.nvim_create_autocmd("DirChanged", { callback = snapshot_current_session })
 	vim.api.nvim_create_autocmd("VimLeavePre", {

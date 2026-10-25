@@ -12,7 +12,11 @@ assert(
 		and whichkey.layout.width.min == math.max(16, math.floor((math.floor(vim.o.columns * 0.96) - 10) / 4)),
 	"which-key should form four readable columns"
 )
-assert(not whichkey.icons.mappings and whichkey.icons.separator == " ", "which-key mappings should use text labels")
+assert(
+	whichkey.icons.mappings and whichkey.icons.colors == false and whichkey.icons.separator == " ",
+	"which-key mappings should use unified-color icons and text labels"
+)
+assert(whichkey.win.title == true, "which-key should derive the title from the active prefix")
 assert(not require("mayon.generated").palette.edge, "panel colors must derive edge from the palette border")
 local group_hls = {
 	WhichKey = require("mayon.generated").palette.blue,
@@ -31,8 +35,9 @@ wk_view.show = function(...)
 	local result = original_show(...)
 	local view = wk_view.view
 	if view and view.win and vim.api.nvim_win_is_valid(view.win) then
-		vim.g.MayonWhichKeyTitleVisible = vim.inspect(vim.api.nvim_win_get_config(view.win).title)
-			:find("␣ LEADER", 1, true) ~= nil
+		local active_node = require("which-key.state").state.node
+		local expected_title = require("which-key.view").trail(active_node, { title = true })
+		vim.g.MayonWhichKeyTitleVisible = vim.deep_equal(vim.api.nvim_win_get_config(view.win).title, expected_title)
 		local wk_win = view.win
 		local wk_buf = vim.api.nvim_win_get_buf(wk_win)
 		assert(
@@ -77,7 +82,7 @@ wk.show({ keys = "<leader>", mode = "n", delay = 0 })
 state.step = original_step
 wk_view.show = original_show
 assert(vim.g.MayonWhichKeyColumnsAligned, "which-key columns did not render")
-assert(vim.g.MayonWhichKeyTitleVisible, "public which-key.show() did not render the centered LEADER title")
+assert(vim.g.MayonWhichKeyTitleVisible, "public which-key.show() title must match its active prefix trail")
 
 local panel = require("mayon.features.diagnostic_panel")
 local trouble = panel.troubleOptions()
