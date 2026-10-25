@@ -90,10 +90,10 @@ function M.setup()
 		vim.b[buf].mayon_inline_review = true
 		vim.keymap.set("n", ",a", function()
 			resolve(true)
-		end, { buffer = buf, desc = "接受 AI 内联改写" })
+		end, { buffer = buf, desc = "Accept Inline Edit" })
 		vim.keymap.set("n", ",r", function()
 			resolve(false)
-		end, { buffer = buf, desc = "拒绝 AI 内联改写" })
+		end, { buffer = buf, desc = "Reject Inline Edit" })
 		return ui
 	end
 end

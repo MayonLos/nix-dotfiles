@@ -108,22 +108,22 @@ local function attach(event)
 	if not client then
 		return
 	end
-	map(bufnr, "gd", vim.lsp.buf.definition, "跳到定义")
+	map(bufnr, "gd", vim.lsp.buf.definition, "Jump to Definition")
 	map(bufnr, "grr", function()
 		Snacks.picker.lsp_references()
-	end, "查找引用 · preview")
+	end, "Find References Preview")
 	map(bufnr, "gK", function()
 		require("mayon.ui.floats").signature()
-	end, "查看函数签名")
-	map(bufnr, "gD", vim.lsp.buf.declaration, "跳到声明")
-	map(bufnr, "grt", vim.lsp.buf.type_definition, "跳到类型定义")
-	map(bufnr, "gi", vim.lsp.buf.implementation, "跳到实现")
+	end, "Show Signature Help")
+	map(bufnr, "gD", vim.lsp.buf.declaration, "Jump to Declaration")
+	map(bufnr, "grt", vim.lsp.buf.type_definition, "Jump to Type Definition")
+	map(bufnr, "gi", vim.lsp.buf.implementation, "Jump to Implementation")
 	map(bufnr, "K", function()
 		local opts = require("mayon.ui.floats").options("hover")
 		opts.title_pos = "center"
 		vim.lsp.buf.hover(opts)
-	end, "查看悬浮文档")
-	map(bufnr, "grx", vim.lsp.codelens.run, "运行代码透镜")
+	end, "Show Hover Documentation")
+	map(bufnr, "grx", vim.lsp.codelens.run, "Run Code Lens")
 	local function supports(method)
 		return client:supports_method(method, bufnr)
 	end
@@ -174,7 +174,7 @@ local function diagnostics()
 	vim.keymap.set("n", "<leader>ll", function()
 		local all = vim.diagnostic.config().virtual_lines == true
 		vim.diagnostic.config({ virtual_lines = all and { current_line = true } or true })
-	end, { desc = "切换诊断虚拟行", silent = true })
+	end, { desc = "Toggle Diagnostic Lines", silent = true })
 	vim.keymap.set("n", "<leader>lr", function()
 		local bufnr = vim.api.nvim_get_current_buf()
 		local ft = vim.bo[bufnr].filetype
@@ -184,7 +184,7 @@ local function diagnostics()
 		vim.defer_fn(function()
 			vim.api.nvim_exec_autocmds("FileType", { pattern = ft })
 		end, 500)
-	end, { desc = "重启语言服务", silent = true })
+	end, { desc = "Restart Language Server", silent = true })
 end
 
 function M.setup()
@@ -201,8 +201,8 @@ function M.setup()
 	progress()
 	vim.keymap.set("n", "<leader>uL", function()
 		vim.lsp.codelens.enable(not vim.lsp.codelens.is_enabled({ bufnr = 0 }), { bufnr = 0 })
-	end, { desc = "切换代码透镜", silent = true })
-	vim.keymap.set("n", "<leader>ch", source_header, { desc = "切换源文件与头文件", silent = true })
+	end, { desc = "Toggle Code Lens", silent = true })
+	vim.keymap.set("n", "<leader>ch", source_header, { desc = "Switch Source and Header", silent = true })
 end
 
 return M

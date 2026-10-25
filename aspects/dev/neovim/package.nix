@@ -14,6 +14,7 @@ let
     lua = pkgs.luajit;
   };
   languages = (import ../languages/contract.nix { inherit (pkgs) lib; }).collect contributions;
+  debugTools = import ./debug-tools.nix { inherit pkgs; };
   dataRuntime = pkgs.writeTextDir "lua/mayon/generated.lua" (
     "return "
     + pkgs.lib.generators.toLua { } {
@@ -21,13 +22,13 @@ let
       nix_options = nixOptions;
       parser_runtime = pluginSet.parserRuntime;
       ansi = import ../../appearance/appearance/ansi.nix palette;
-      tools = {
+      tools = debugTools.tools // {
         copilot = "${pkgs.copilot-language-server}/bin/copilot-language-server";
         sqlite3 = "${pkgs.lib.getLib pkgs.sqlite}/lib/libsqlite3.so";
         codex_acp = acpAdapters.codex or "";
         claude_acp = acpAdapters.claude or "";
       };
-      versions = {
+      versions = debugTools.versions // {
         codecompanion = pkgs.unstable.codecompanion-nvim.version;
         copilot = pkgs.copilot-language-server.version;
         codediff = pkgs.vimPlugins.codediff-nvim.version;

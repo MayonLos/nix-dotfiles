@@ -23,15 +23,15 @@ function M.setup()
 		vim.keymap.set("n", "<leader>" .. lhs, function()
 			sessions()[method]()
 		end, {
-			desc = ({ ps = "恢复当前目录会话", pl = "恢复上次会话", pd = "禁用当前会话保存" })[lhs],
+			desc = ({ ps = "Load Project Session", pl = "Load Last Session", pd = "Pause Session Saving" })[lhs],
 		})
 	end
 	vim.api.nvim_create_user_command("Urls", function(cmd)
 		require("mayon.features.urls").pick_dir(cmd.args)
-	end, { nargs = "?", complete = "dir", desc = "Pick a URL from a directory" })
+	end, { nargs = "?", complete = "dir", desc = "Pick URL from Directory" })
 	vim.api.nvim_create_user_command("UrlsBuffer", function()
 		require("mayon.features.urls").pick_buffer()
-	end, { desc = "Pick a URL from this buffer" })
+	end, { desc = "Pick URL from Buffer" })
 	require("mayon.features.scratch").setup()
 	-- Formula handling is only initialized in relevant documents.
 	vim.api.nvim_create_autocmd("FileType", {

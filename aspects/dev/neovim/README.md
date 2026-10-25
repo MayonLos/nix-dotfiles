@@ -42,16 +42,17 @@ Leader is Space; localleader is comma. `Space ?` opens the global which-key view
 | `Space ca`, `Space cr`, `Space cf` | LSP action / rename / format |
 | `gd`, `gi`, `grr`, `K`, `gK` | Definition / implementation / references picker / hover / signature |
 | `[d`, `]d`, `Space ch` | Previous/next diagnostic / C/C++ header-source switch |
-| `Space dc`, `Space db`, `Space dq` | Debug continue/remote attach / breakpoint / disconnect |
+| `Space ds` | Select a launch, attach, or Java test configuration |
+| `Space dc`, `Space db`, `Space dq` | Continue / toggle breakpoint / disconnect |
 | `Space dn`, `Space di`, `Space do` | Debug step over / into / out |
-| `Space dr`, `Space dh` | Debug REPL / value hover |
+| `Space du`, `Space dr`, `Space dh`, `Space de` | Toggle panel / open REPL / inspect value / add watch |
 | `,ll`, `,lv`, `,lc` | TeX build / forward search / clean |
 | `:TexlabToggleBuildOnSave` | Optional build on save |
 | `Space uz`, `Space uh` | Zen / inlay hints |
 | `Space ps`, `Space pl`, `Space pd` | Project session / last session / disable saving |
 | Ctrl-h/j/k/l; Alt-h/j/k/l | Move / resize splits, integrated with tmux |
 
-The `f/s/c/g/r/d/a/x` groups consistently mean Files/Search/Code/Git/Run/Debug/AI/Lists. A rounded bottom which-key card exposes their descriptions; `Space ?` opens it immediately. Git hunk and AI completion cycling each have one mapping owner.
+Which-key uses English groups for Search, Git, LSP, Debug, AI, Terminal, UI, Files, Project, Run, List, Multicursor, Code, Buffers, Quit and Notes. Its rounded bottom card uses four columns, shows `+N` for the number of mappings inside a collapsed group, and derives its title from the active prefix. Normal prompts wait 200 ms; plugin prompts show immediately. `Space ?` opens the global map list. Native operator/motion hints, `g`/`z`, bracket, window, mark/register and `@` hints are enabled; undescribed mappings are hidden. Git hunk and AI completion cycling each have one mapping owner.
 
 Tasks discover justfile recipes, Make targets, package.json scripts and flake apps. Task execution is explicit, opens a bottom terminal and remembers the last selection. Commands are rediscovered and validated before execution.
 
@@ -73,7 +74,53 @@ All packaged parser/query directories are on runtimepath before a file is opened
 
 C/C++ projects own `compile_commands.json` (normally at the root or `build/`; use a project `.clangd` `CompileFlags.CompilationDatabase` for other locations). clangd keeps the database's `--target`, `--sysroot` and include flags. The editor adds a constrained `--query-driver` allowlist for available `arm-none-eabi-gcc/g++` PATH aliases and their real paths, plus `~/.local/share/mp157-sdk/sysroots/*/usr/bin/arm-ostl-linux*/arm-ostl-linux*-gcc/g++` when that SDK exists. It neither installs nor rewrites an SDK. Launch Neovim from the SDK/devshell environment when the compiler needs its environment.
 
-`Space dc` lazily loads nvim-dap and asks for a local firmware ELF and `host:port` (default `localhost:3333`). It uses host `gdb --interpreter=dap`, because the packaged ARM GDB lacks Python/DAP; the host must provide GDB with DAP support and the target architecture. Start OpenOCD or gdbserver separately. Cancelled prompts or invalid target ports abort; no target connection starts during editor setup. `Space rs` asks for an existing `/dev/tty*` or `/dev/serial/by-id/*` character device and baud rate, then runs `tio` as argv in a bottom terminal. It never guesses or opens a device automatically. GDB/tio are supplied by the embedded environment rather than duplicated in the editor package.
+`Space rs` asks for an existing `/dev/tty*` or `/dev/serial/by-id/*` character device and baud rate, then runs `tio` as argv in a bottom terminal. It never guesses or opens a device automatically. tio is supplied by the embedded environment; the editor package pins GDB itself.
+
+The macro prefix `@` has a dedicated dynamic hint: nonempty letter registers and `@@`; native marks/registers presets cover `'`, `"`, and `<C-r>`. The macro hint does not execute or replace a macro until a register is chosen.
+
+## Debugging
+
+nvim-dap is lazy-loaded on the first Debug action. The editor package injects tool paths from [debug-tools.nix](debug-tools.nix): host GDB with Python/DAP support, codelldb, Python with debugpy, the JDK and jdtls, and the Microsoft Java debug/test bundles. A checked GDB data-directory patch makes remote DAP disconnect detach without asking GDB to kill the target. This does not install or alter system SDKs. Versions and exact executable paths are exposed through the generated config metadata.
+
+Select a configuration with `Space ds`; the list is selected by the current filetype.
+
+| Language | Launch | Attach / test |
+|---|---|---|
+| C/C++ | Host GDB DAP asks for an executable or firmware ELF | Local process picker, or the STM32/MP157 remote entries below |
+| Rust | codelldb asks for the executable | codelldb process picker |
+| Python | Runs the current file with project `.venv`/`venv`, then `$VIRTUAL_ENV`, then packaged Python | Attach asks for a debugpy port (default `5678`); start debugpy yourself |
+| Lua | Runs the current script in a separate headless Neovim with temporary `osv` | Attach to `127.0.0.1:8086`; `:DebugLuaListen` explicitly starts `osv` in the current editor |
+| Java | Selects jdtls-provided main-class configs after DAP is loaded | `Space dj` runs the nearest Java test; `Space dJ` runs the test class |
+
+The C/C++ remote configurations ask for an ELF and a host:port, defaulting to `127.0.0.1:3333` for STM32/OpenOCD and `192.168.7.1:2345` for MP157 gdbserver. Start OpenOCD or gdbserver yourself, then select and confirm the attach configuration. Neovim does not start a target server, connect during startup, or flash firmware automatically.
+
+For MP157 shared-library symbols, use the GDB REPL (`Space dr`) with `set sysroot <existing target sysroot>` and, when source paths differ, `set substitute-path <build prefix> <local source>`. The SDK path depends on the installed SDK; inspect its target sysroot instead of assuming the SDK root is a sysroot. These are native GDB commands, not cppdbg `setupCommands`; the GDB DAP adapter does not consume that cppdbg field.
+
+Opening a Java project starts jdtls with the packaged, filtered Microsoft debug/test JAR bundles. Each jdtls project gets its own hashed workspace under Neovim's cache directory; opening Java alone does not load the DAP feature or nvim-jdtls DAP integration.
+
+The DAP view has seven sections: Variables/scopes, Watches, Breakpoints, Stack, Threads, REPL and Console. It auto-toggles with a debug session and can be toggled explicitly with `Space du`; `Space dr` opens its REPL and `Space de` adds a watch expression. Stack rows show frame, source and line; press Enter to focus a frame. Virtual text is compact, end-of-line, muted by default, and highlights changed values. The workspace statusline shows `Running` or `Stopped` while a session is active.
+
+| Debug key | Action |
+|---|---|
+| `Space dc`, F5 | Continue debugging |
+| `Space db`, F9 | Toggle breakpoint |
+| `Space dn`, F10 | Step over |
+| `Space di`, F11 | Step into |
+| `Space do`, Shift-F11 | Step out |
+| `Space dq` | Disconnect debugger |
+| `Space dt`, Shift-F5 | Terminate debugging |
+| `Space dC` | Run to cursor |
+| `Space dR` | Restart debugging |
+| `Space dl` | Run last configuration |
+| `Space dX` | Clear breakpoints |
+| `Space dp` | Pause debugging |
+| `Space dB`, `Space dL` | Set conditional breakpoint / logpoint |
+| `Space ds` | Select configuration |
+| `Space du`, `Space dr` | Toggle debug panel / open debug REPL |
+| `Space dh`, `Space de` | Inspect value / add watch expression |
+| `Space dj`, `Space dJ` | Debug nearest Java test / test class |
+
+All which-key labels and F-key descriptions are English action phrases. The same mappings are discoverable under the Debug group.
 
 OpenComputers Lua projects can copy the optional [LuaLS template](templates/opencomputers.luarc.json) into their own root as `.luarc.json`; it declares only OpenComputers runtime globals. The template is documented in [the templates guide](templates/README.md). No project file is installed or edited by this feature. In CodeCompanion, a visible `AGENTS.md` rule reference is rendered as the muted `已加载规则：AGENTS.md` label; the rule context and metadata remain intact for the request pipeline.
 

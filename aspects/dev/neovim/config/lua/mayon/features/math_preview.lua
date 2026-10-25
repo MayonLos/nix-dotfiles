@@ -290,7 +290,7 @@ function M.setup()
 
 	vim.keymap.set("n", "<leader>mp", function()
 		update()
-	end, { desc = "Math preview (refresh)" })
+	end, { desc = "Refresh Math Preview" })
 end
 
 return M

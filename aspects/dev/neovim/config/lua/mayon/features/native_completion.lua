@@ -100,10 +100,10 @@ function M.setup()
 		if vim.lsp.completion then
 			vim.lsp.completion.get()
 		end
-	end, { desc = "Trigger native LSP completion" })
+	end, { desc = "Trigger Native Completion" })
 	vim.keymap.set("i", "<C-y>", function()
 		return "<C-y>"
-	end, { expr = true, desc = "Accept selected completion" })
+	end, { expr = true, desc = "Accept Completion" })
 	vim.keymap.set("i", "<CR>", function()
 		local visible = vim.fn.pumvisible() == 1
 		local selected = vim.fn.complete_info({ "selected" }).selected
@@ -112,44 +112,44 @@ function M.setup()
 		end
 		local pairs = package.loaded["nvim-autopairs"]
 		return pairs and pairs.autopairs_cr() or M.enter(visible, selected)
-	end, { expr = true, desc = "Accept selected completion or insert newline" })
+	end, { expr = true, desc = "Accept Completion or Newline" })
 	vim.keymap.set("i", "<Tab>", function()
 		return M.tab()
-	end, { expr = true, desc = "Accept AI completion, jump snippet, or indent" })
+	end, { expr = true, desc = "Accept AI, Expand, or Indent" })
 	local function accept_word()
 		if require("mayon.features.ai_completion").accept_word() then
 			return ""
 		end
 		return vim.api.nvim_replace_termcodes("<C-Right>", true, false, true)
 	end
-	vim.keymap.set("i", "<C-Right>", accept_word, { expr = true, desc = "Accept one AI completion word" })
-	vim.keymap.set("i", "<M-l>", accept_word, { expr = true, desc = "Accept one AI completion word" })
+	vim.keymap.set("i", "<C-Right>", accept_word, { expr = true, desc = "Accept AI Word" })
+	vim.keymap.set("i", "<M-l>", accept_word, { expr = true, desc = "Accept AI Word" })
 	vim.keymap.set("i", "<M-]>", function()
 		require("mayon.features.ai_completion").step("next")
 		return ""
-	end, { expr = true, desc = "Next AI completion candidate" })
+	end, { expr = true, desc = "Show Next AI Completion" })
 	vim.keymap.set("i", "<M-[>", function()
 		require("mayon.features.ai_completion").step("prev")
 		return ""
-	end, { expr = true, desc = "Previous AI completion candidate" })
+	end, { expr = true, desc = "Show Prev AI Completion" })
 	vim.keymap.set("i", "<C-]>", function()
 		if require("mayon.features.ai_completion").dismiss() then
 			return ""
 		end
 		return vim.api.nvim_replace_termcodes("<C-]>", true, false, true)
-	end, { expr = true, desc = "Dismiss AI completion" })
+	end, { expr = true, desc = "Dismiss AI Completion" })
 	vim.keymap.set("i", "<Esc>", function()
 		if require("mayon.features.ai_completion").dismiss() then
 			return ""
 		end
 		return vim.api.nvim_replace_termcodes("<Esc>", true, false, true)
-	end, { expr = true, desc = "Dismiss AI completion or leave insert mode" })
+	end, { expr = true, desc = "Dismiss Completion or Exit" })
 	vim.keymap.set("i", "<S-Tab>", function()
 		if vim.snippet.active({ direction = -1 }) then
 			return "<Cmd>lua vim.snippet.jump(-1)<CR>"
 		end
 		return "<C-d>"
-	end, { expr = true, desc = "Jump backward in snippet or dedent" })
+	end, { expr = true, desc = "Jump Back or Dedent" })
 end
 
 function M.tab()

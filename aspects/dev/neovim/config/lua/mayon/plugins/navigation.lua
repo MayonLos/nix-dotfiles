@@ -6,8 +6,8 @@ local function pick(source, opts)
 end
 
 for _, spec in ipairs({
-	{ "<leader>fr", "recent", "最近打开的文件" },
-	{ "<leader>fp", "projects", "查找项目" },
+	{ "<leader>fr", "recent", "Find Recent Files" },
+	{ "<leader>fp", "projects", "Find Projects" },
 }) do
 	vim.keymap.set("n", spec[1], pick(spec[2]), { desc = spec[3] })
 end
@@ -16,7 +16,7 @@ return {
 	{
 		"oil.nvim",
 		cmd = "Oil",
-		keys = { { "-", desc = "编辑父目录" } },
+		keys = { { "-", desc = "Browse Parent Directory" } },
 		after = function()
 			require("mayon.features.oil").setup()
 		end,
@@ -29,7 +29,7 @@ return {
 				function()
 					require("yazi").yazi()
 				end,
-				desc = "打开 Yazi 文件管理器",
+				desc = "Open Yazi File Manager",
 			},
 		},
 		after = function()

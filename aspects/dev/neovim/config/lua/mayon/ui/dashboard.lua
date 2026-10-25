@@ -161,23 +161,28 @@ local function rule_section()
 end
 
 local actions = {
-	{ key = "f", icon = "⌕", desc = "查找文件", action = ":lua Snacks.picker.files()" },
-	{ key = "g", icon = "⌗", desc = "全文搜索", action = ":lua Snacks.picker.grep()" },
-	{ key = "r", icon = "◷", desc = "最近文件", action = ":lua Snacks.picker.recent()" },
+	{ key = "f", icon = "⌕", desc = "Find Files", action = ":lua Snacks.picker.files()" },
+	{ key = "g", icon = "⌗", desc = "Search Text", action = ":lua Snacks.picker.grep()" },
+	{ key = "r", icon = "◷", desc = "Find Recent Files", action = ":lua Snacks.picker.recent()" },
 	{
 		key = "s",
 		icon = "↶",
-		desc = "恢复会话",
+		desc = "Load Session",
 		action = function()
 			local sessions = require("mayon.features.sessions")
 			sessions.setup()
 			sessions.last()
 		end,
 	},
-	{ key = "p", icon = "▣", desc = "项目列表", action = ":lua Snacks.picker.projects()" },
-	{ key = "a", icon = "✳", desc = "Claude Code", action = ":ClaudeCode" },
-	{ key = "n", icon = "+", desc = "新建文件", action = ":ene | startinsert" },
-	{ key = "c", icon = "⚙", desc = "配置", action = ":lua Snacks.picker.files({cwd = vim.env.NVIM_CONFIG_DIR})" },
+	{ key = "p", icon = "▣", desc = "Find Projects", action = ":lua Snacks.picker.projects()" },
+	{ key = "a", icon = "✳", desc = "Open Claude Code", action = ":ClaudeCode" },
+	{ key = "n", icon = "+", desc = "Create File", action = ":ene | startinsert" },
+	{
+		key = "c",
+		icon = "⚙",
+		desc = "Open Neovim Config",
+		action = ":lua Snacks.picker.files({cwd = vim.env.NVIM_CONFIG_DIR})",
+	},
 }
 
 local function menu_cell(action)
@@ -553,7 +558,7 @@ function M.config()
 		},
 		preset = {
 			keys = {
-				{ key = "q", desc = "退出", action = ":qa" },
+				{ key = "q", desc = "Quit Neovim", action = ":qa" },
 			},
 		},
 		sections = {

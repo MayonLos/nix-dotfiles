@@ -137,28 +137,28 @@ local function setup_smart_splits()
 	local splits = require("smart-splits")
 	splits.setup({ at_edge = "stop" })
 	for _, spec in ipairs({
-		{ "<C-h>", splits.move_cursor_left, "移到左侧窗口或 tmux 面板" },
-		{ "<C-j>", splits.move_cursor_down, "移到下方窗口或 tmux 面板" },
-		{ "<C-k>", splits.move_cursor_up, "移到上方窗口或 tmux 面板" },
-		{ "<C-l>", splits.move_cursor_right, "移到右侧窗口或 tmux 面板" },
-		{ "<A-h>", splits.resize_left, "向左调整窗口大小" },
-		{ "<A-j>", splits.resize_down, "向下调整窗口大小" },
-		{ "<A-k>", splits.resize_up, "向上调整窗口大小" },
-		{ "<A-l>", splits.resize_right, "向右调整窗口大小" },
+		{ "<C-h>", splits.move_cursor_left, "Focus Left Window or Tmux" },
+		{ "<C-j>", splits.move_cursor_down, "Focus Lower Window or Tmux" },
+		{ "<C-k>", splits.move_cursor_up, "Focus Upper Window or Tmux" },
+		{ "<C-l>", splits.move_cursor_right, "Focus Right Window or Tmux" },
+		{ "<A-h>", splits.resize_left, "Resize Window Left" },
+		{ "<A-j>", splits.resize_down, "Resize Window Down" },
+		{ "<A-k>", splits.resize_up, "Resize Window Up" },
+		{ "<A-l>", splits.resize_right, "Resize Window Right" },
 	}) do
 		vim.keymap.set("n", spec[1], spec[2], { desc = spec[3], silent = true })
 	end
 end
 
 local smart_split_keys = {
-	{ "<C-h>", desc = "移到左侧窗口或 tmux 面板" },
-	{ "<C-j>", desc = "移到下方窗口或 tmux 面板" },
-	{ "<C-k>", desc = "移到上方窗口或 tmux 面板" },
-	{ "<C-l>", desc = "移到右侧窗口或 tmux 面板" },
-	{ "<A-h>", desc = "向左调整窗口大小" },
-	{ "<A-j>", desc = "向下调整窗口大小" },
-	{ "<A-k>", desc = "向上调整窗口大小" },
-	{ "<A-l>", desc = "向右调整窗口大小" },
+	{ "<C-h>", desc = "Focus Left Window or Tmux" },
+	{ "<C-j>", desc = "Focus Lower Window or Tmux" },
+	{ "<C-k>", desc = "Focus Upper Window or Tmux" },
+	{ "<C-l>", desc = "Focus Right Window or Tmux" },
+	{ "<A-h>", desc = "Resize Window Left" },
+	{ "<A-j>", desc = "Resize Window Down" },
+	{ "<A-k>", desc = "Resize Window Up" },
+	{ "<A-l>", desc = "Resize Window Right" },
 }
 
 return {

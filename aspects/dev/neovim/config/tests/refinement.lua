@@ -133,9 +133,9 @@ local function mapping(lhs, mode)
 end
 
 for lhs, description in pairs({
-	["<leader>ff"] = "查找文件",
-	["<leader>sn"] = "通知历史",
-	["<leader>rs"] = "打开串口终端",
+	["<leader>ff"] = "Find Files",
+	["<leader>sn"] = "Show Notifications",
+	["<leader>rs"] = "Open Serial Terminal",
 }) do
 	local entry = mapping(lhs)
 	assert(type(entry.callback) == "function" and entry.desc == description, "missing described mapping: " .. lhs)
@@ -151,23 +151,28 @@ for _, spec in ipairs(which_key.spec) do
 	end
 end
 for prefix, label in pairs({
-	["<leader>f"] = "文件",
-	["<leader>s"] = "搜索",
-	["<leader>r"] = "Run / 串口",
+	["<leader>f"] = "Files",
+	["<leader>s"] = "Search",
+	["<leader>r"] = "Run",
 	["<leader>d"] = "Debug",
 }) do
 	assert(groups[prefix] == label, "which-key group missing for " .. prefix)
 end
 
--- Load DAP lazily and verify its public commands and discoverable descriptions.
+-- Load DAP lazily against the real tools dev package and verify its public
+-- commands and discoverable descriptions.
 require("lz.n").trigger_load("nvim-dap")
+assert(
+	package.loaded["dap-view"] and package.loaded["nvim-dap-virtual-text"],
+	"DAP UI plugins did not load from the dev closure"
+)
 local commands = vim.api.nvim_get_commands({})
 assert(commands.DapContinue and commands.DapToggleBreakpoint, "nvim-dap public commands did not load")
 for lhs, description in pairs({
-	["<leader>dc"] = "Debug · continue / attach",
-	["<leader>db"] = "Debug · breakpoint",
-	["<leader>dn"] = "Debug · step over",
-	["<leader>dq"] = "Debug · disconnect",
+	["<leader>dc"] = "Continue debugging",
+	["<leader>db"] = "Toggle breakpoint",
+	["<leader>dn"] = "Step over",
+	["<leader>dq"] = "Disconnect debugger",
 }) do
 	local entry = mapping(lhs)
 	assert(type(entry.callback) == "function" and entry.desc == description, "missing DAP mapping: " .. lhs)
@@ -199,8 +204,8 @@ local local_maps = {}
 for _, entry in ipairs(vim.api.nvim_buf_get_keymap(buffer, "n")) do
 	local_maps[entry.lhs] = entry
 end
-assert(local_maps.grr and local_maps.grr.desc == "查找引用 · preview", "LspAttach should install described grr")
-assert(local_maps.gK and local_maps.gK.desc == "查看函数签名", "LspAttach should install described gK")
+assert(local_maps.grr and local_maps.grr.desc == "Find References Preview", "LspAttach should install described grr")
+assert(local_maps.gK and local_maps.gK.desc == "Show Signature Help", "LspAttach should install described gK")
 assert(not local_maps.gr, "LspAttach must not consume the gr prefix")
 
 -- Accept one word from a local Copilot-shaped snippet fixture. Stub only the

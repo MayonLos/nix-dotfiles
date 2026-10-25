@@ -1,0 +1,25 @@
+--- a/python/gdb/dap/server.py
++++ b/python/gdb/dap/server.py
+@@ -610,11 +610,22 @@
+     exec_and_log("kill")
+ 
+ 
++@in_gdb_thread
++def _detach_inferior():
++    # Shutting down GDB is not equivalent to detaching a remote inferior:
++    # gdbserver may kill it when the transport simply disappears.
++    # Preserve the DAP disconnect contract when terminateDebuggee is false.
++    if gdb.selected_inferior().pid:
++        exec_and_log("detach")
++
++
+ @request("disconnect", on_dap_thread=True, expect_stopped=False)
+ @capability("supportTerminateDebuggee")
+ def disconnect(*, terminateDebuggee: bool = False, **args):
+     if terminateDebuggee:
+         send_gdb_with_response("kill")
++    else:
++        send_gdb_with_response(_detach_inferior)
+     _server.shutdown()
+ 
+ 

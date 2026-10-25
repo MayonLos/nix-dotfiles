@@ -62,14 +62,14 @@ local lines = table.concat(rendered, "\n")
 assert(lines:find("mayon.nvim", 1, true), "dashboard title did not render")
 assert(lines:find("━━━", 1, true), "dashboard blue rule did not render")
 for _, label in ipairs({
-	"查找文件",
-	"全文搜索",
-	"最近文件",
-	"恢复会话",
-	"项目列表",
-	"Claude Code",
-	"新建文件",
-	"配置",
+	"Find Files",
+	"Search Text",
+	"Find Recent Files",
+	"Load Session",
+	"Find Projects",
+	"Open Claude Code",
+	"Create File",
+	"Open Neovim Config",
 }) do
 	assert(lines:find(label, 1, true), "dashboard action missing: " .. label)
 end
@@ -78,7 +78,7 @@ for _, key in ipairs({ "f", "g", "r", "s", "p", "a", "n", "c" }) do
 end
 local paired_actions = false
 for _, line in ipairs(rendered) do
-	if line:find("查找文件", 1, true) and line:find("全文搜索", 1, true) then
+	if line:find("Find Files", 1, true) and line:find("Search Text", 1, true) then
 		paired_actions = true
 	end
 end

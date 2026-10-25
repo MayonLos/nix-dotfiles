@@ -312,14 +312,14 @@ for _, keymap in ipairs(vim.api.nvim_buf_get_keymap(bufnr, "n")) do
 	maps[keymap.desc] = true
 end
 for _, desc in ipairs({
-	"跳到定义",
-	"跳到声明",
-	"跳到类型定义",
-	"跳到实现",
-	"查看悬浮文档",
-	"运行代码透镜",
-	"查找引用 · preview",
-	"查看函数签名",
+	"Jump to Definition",
+	"Jump to Declaration",
+	"Jump to Type Definition",
+	"Jump to Implementation",
+	"Show Hover Documentation",
+	"Run Code Lens",
+	"Find References Preview",
+	"Show Signature Help",
 }) do
 	assert(maps[desc], "missing LspAttach map " .. desc)
 end
@@ -331,17 +331,17 @@ for _, keymap in ipairs(vim.api.nvim_get_keymap("n")) do
 	end
 end
 assert(
-	global_maps["重命名符号"] and global_maps["执行代码动作"],
+	global_maps["Rename Symbol"] and global_maps["Apply Code Action"],
 	"code actions and rename must have one global owner"
 )
 assert(
-	not maps["重命名符号"] and not maps["执行代码动作"],
+	not maps["Rename Symbol"] and not maps["Apply Code Action"],
 	"LspAttach must not shadow global rename/action maps"
 )
 for _, lhs in ipairs({ "gra", "gri", "grn", "grr", "grt", "grx" }) do
 	assert(global_maps[lhs], "native global LSP map was removed: " .. lhs)
 end
-assert(global_maps["切换源文件与头文件"], "source/header map should remain global")
+assert(global_maps["Switch Source and Header"], "source/header map should remain global")
 assert(global_maps[" ch"], "clangd source/header shortcut should be <leader>ch")
 assert(not vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr }), "LspAttach should keep inlay hints disabled")
 

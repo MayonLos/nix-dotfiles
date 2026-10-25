@@ -8,8 +8,45 @@ local function apply_highlights()
 	vim.api.nvim_set_hl(0, "WhichKeySeparator", { fg = c.muted, bg = c.deep })
 	vim.api.nvim_set_hl(0, "WhichKeyTitle", { fg = c.muted, bg = c.deep, bold = true })
 	vim.api.nvim_set_hl(0, "WhichKeyNormal", { fg = c.fg, bg = c.deep })
+	vim.api.nvim_set_hl(0, "WhichKeyIcon", { fg = c.blue, bg = c.deep })
 	local edge = require("mayon.ui.theme").float_edge()
 	vim.api.nvim_set_hl(0, "WhichKeyBorder", { fg = edge, bg = c.deep })
+end
+
+local groups = {
+	{ "<leader>s", "Search", "󰍉" },
+	{ "<leader>g", "Git", "󰊢" },
+	{ "<leader>l", "LSP", "󰒋" },
+	{ "<leader>d", "Debug", "󰃤" },
+	{ "<leader>a", "AI", "󰧑" },
+	{ "<leader>t", "Terminal", "" },
+	{ "<leader>u", "UI", "󰙵" },
+	{ "<leader>f", "Files", "󰈔" },
+	{ "<leader>p", "Project", "󰉋" },
+	{ "<leader>r", "Run", "󰑮" },
+	{ "<leader>x", "List", "󰈙" },
+	{ "<leader>m", "Multicursor", "󰗧", { "n", "x" } },
+	{ "<leader>c", "Code", "󰅩" },
+	{ "<leader>b", "Buffers", "󰈙" },
+	{ "<leader>q", "Quit", "󰗼" },
+	{ "<leader>n", "Notes", "󰎞" },
+}
+
+local function group_spec()
+	local spec = {
+		{ "<leader><leader>", desc = "Find Files and Text" },
+		{ "<leader>/", desc = "Search Text" },
+		{ "<leader>,", desc = "Switch Buffers" },
+	}
+	for _, group in ipairs(groups) do
+		spec[#spec + 1] = {
+			group[1],
+			group = group[2],
+			icon = { icon = group[3], hl = "WhichKeyIcon" },
+			mode = group[4],
+		}
+	end
+	return spec
 end
 
 -- The native renderer packs each box to its content width. Pad between its
@@ -57,6 +94,22 @@ local function install_title()
 		return
 	end
 	view._mayon_title = true
+	-- The pinned renderer exposes the actual filtered subtree count. Keep
+	-- labels short while making the size of each collapsed group explicit.
+	local item = view.item
+	view.item = function(node, opts)
+		local result = item(node, opts)
+		if
+			result.group
+			and node.desc
+			and node:count() > 0
+			and not node:can_expand()
+			and not (opts and opts.group == false)
+		then
+			result.desc = result.desc .. " +" .. node:count()
+		end
+		return result
+	end
 	local render = view.show
 	view.show = function(...)
 		local width = math.max(16, math.floor((math.floor(vim.o.columns * 0.96) - 10) / 4))
@@ -68,7 +121,6 @@ local function install_title()
 			local buf = vim.api.nvim_win_get_buf(win)
 			if vim.bo[buf].filetype == "wk" then
 				spread_columns(win)
-				vim.api.nvim_win_set_config(win, { title = " ␣ LEADER ", title_pos = "center" })
 			end
 		end
 		return result
@@ -77,25 +129,16 @@ end
 
 function M.config()
 	return {
-		spec = {
-			{ "<leader>f", group = "文件" },
-			{ "<leader>r", group = "Run / 串口" },
-			{ "<leader>d", group = "Debug" },
-			{ "<leader>q", group = "关闭 / 重启" },
-			{ "<leader>s", group = "搜索" },
-			{ "<leader>g", group = "Git" },
-			{ "<leader>c", group = "代码" },
-			{ "<leader>a", group = "AI" },
-			{ "<leader>x", group = "列表" },
-			{ "<leader>u", group = "界面" },
-			{ "<leader>t", group = "终端" },
-			{ "<leader>p", group = "项目与会话" },
-			{ "<leader>b", group = "缓冲区" },
-			{ "<leader>l", group = "语言服务" },
-			{ "<leader>m", group = "多光标", mode = { "n", "x" } },
-			{ "<leader>n", group = "文档" },
-		},
-		icons = { mappings = false, colors = false, separator = " " },
+		spec = group_spec(),
+		delay = function(ctx)
+			return ctx.plugin and 0 or 200
+		end,
+		filter = function(mapping)
+			return type(mapping.desc) == "string" and mapping.desc ~= ""
+		end,
+		sort = { "local", "group", "manual", "alphanum", "mod" },
+		expand = 0,
+		icons = { mappings = true, colors = false, separator = " ", group = "" },
 		replace = { desc = { { "^%+", "+" } } },
 		show_help = false,
 		show_keys = false,
@@ -106,7 +149,7 @@ function M.config()
 			width = 0.96,
 			height = { min = 4, max = 10 },
 			padding = { 0, 1 },
-			title = " ␣ LEADER ",
+			title = true,
 			title_pos = "center",
 			wo = { winblend = 0 },
 		},
@@ -116,6 +159,21 @@ function M.config()
 				max = math.max(16, math.floor((math.floor(vim.o.columns * 0.96) - 10) / 4)),
 			},
 			spacing = 2,
+		},
+		plugins = {
+			mayon_macros = true,
+			marks = true,
+			registers = true,
+			spelling = { enabled = true },
+			presets = {
+				operators = true,
+				motions = true,
+				text_objects = true,
+				windows = true,
+				nav = true,
+				z = true,
+				g = true,
+			},
 		},
 	}
 end

@@ -45,6 +45,10 @@ let
     vimPlugins.lazydev-nvim
     vimPlugins.nvim-lint
     vimPlugins.nvim-dap
+    vimPlugins.nvim-dap-view
+    vimPlugins.nvim-dap-virtual-text
+    vimPlugins.one-small-step-for-vimkind
+    vimPlugins.nvim-jdtls
     (vimPlugins.dropbar-nvim.overrideAttrs (old: {
       # Use 0.12's public highlight namespace rather than its deprecated alias.
       postPatch = (old.postPatch or "") + ''

@@ -59,59 +59,7 @@ local clangd = embedded.configure_clangd({ cmd = { "clangd", "--background-index
 assert(clangd.cmd[1] == "clangd" and clangd.cmd[2] == "--background-index")
 assert(clangd.cmd[3]:match("^%-%-query%-driver="), "clangd command should receive the SDK-only driver allowlist")
 
-local dap = embedded.dap_configuration({
-	gdb = "/nix/store/host-gdb/bin/gdb",
-	target = "127.0.0.1:3333",
-})
-assert(dap.adapter.type == "executable" and dap.adapter.command == "/nix/store/host-gdb/bin/gdb")
-assert(vim.tbl_contains(dap.adapter.args, "--interpreter=dap"), "DAP must use host GDB's DAP interpreter")
-assert(#dap.configurations.c == 1 and #dap.configurations.cpp == 1)
-for _, filetype in ipairs({ "c", "cpp" }) do
-	local config = dap.configurations[filetype][1]
-	assert(config.request == "attach" and config.target == "127.0.0.1:3333")
-	assert(type(config.program) == "function", "remote GDB needs the local firmware ELF for symbols")
-end
-
 local input = vim.ui.input
-local schedule = vim.schedule
-local abort = {}
-local cancellable = embedded.dap_configuration({ abort = abort })
-local requested_input
-vim.ui.input = function(options, callback)
-	requested_input = { options = options, callback = callback }
-end
-vim.schedule = function(callback)
-	callback()
-end
-local function resolve_dap_prompt(prompt, response)
-	local result
-	local dap_run_co = coroutine.create(function()
-		result = coroutine.yield()
-	end)
-	assert(coroutine.resume(dap_run_co))
-	local prompt_co = prompt()
-	assert(coroutine.status(prompt_co) == "suspended", "DAP prompt must return a suspended coroutine")
-	assert(coroutine.resume(prompt_co, dap_run_co))
-	assert(requested_input and type(requested_input.callback) == "function", "DAP prompt should use vim.ui.input")
-	local input_options = requested_input.options
-	local callback = requested_input.callback
-	requested_input = nil
-	callback(response)
-	assert(coroutine.status(dap_run_co) == "dead", "DAP prompt must resume nvim-dap's run coroutine")
-	return result, input_options
-end
-local config = cancellable.configurations.c[1]
-assert(resolve_dap_prompt(config.target, nil) == abort, "canceling remote target should abort the DAP session")
-assert(resolve_dap_prompt(config.target, "localhost:0") == abort, "port zero should abort the DAP session")
-assert(resolve_dap_prompt(config.target, "localhost:65536") == abort, "out-of-range port should abort the DAP session")
-local target, target_options = resolve_dap_prompt(config.target, "127.0.0.1:3333")
-assert(target == "127.0.0.1:3333" and target_options.title == "GDB remote · target")
-assert(resolve_dap_prompt(config.program, nil) == abort, "canceling ELF selection should abort the DAP session")
-local program, program_options = resolve_dap_prompt(config.program, "/tmp/firmware.elf")
-assert(program == "/tmp/firmware.elf" and program_options.completion == "file")
-vim.ui.input = input
-vim.schedule = schedule
-
 local executable = vim.fn.executable
 local fs_stat = vim.uv.fs_stat
 local jobstart = vim.fn.jobstart
@@ -164,4 +112,4 @@ vim.fn.executable = executable
 vim.uv.fs_stat = fs_stat
 vim.fn.jobstart = jobstart
 vim.fn.delete(sdk_root, "rf")
-print("Embedded clangd, host-GDB DAP and explicit serial fixtures passed")
+print("Embedded clangd and explicit serial fixtures passed")

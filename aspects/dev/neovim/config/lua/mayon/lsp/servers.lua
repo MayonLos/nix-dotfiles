@@ -255,6 +255,20 @@ if servers.clangd then
 	embedded.configure_clangd(servers.clangd)
 end
 
+if servers.jdtls then
+	servers.jdtls.cmd = function(dispatchers, config)
+		local workspace = vim.fn.stdpath("cache") .. "/jdtls/" .. vim.fn.sha256(config.root_dir or vim.fn.getcwd())
+		vim.fn.mkdir(workspace, "p")
+		return vim.lsp.rpc.start(
+			{ require("mayon.generated").tools.jdtls, "-data", workspace },
+			dispatchers,
+			{ cwd = config.root_dir }
+		)
+	end
+	servers.jdtls.root_markers = { { "pom.xml", "build.gradle", "settings.gradle", ".project", ".classpath" }, ".git" }
+	servers.jdtls = require("mayon.features.java_debug").configure(servers.jdtls)
+end
+
 local optional_servers = {
 	rust_analyzer = {
 		cmd = { "rust-analyzer" },
@@ -352,14 +366,14 @@ function M.setup()
 	end
 	vim.api.nvim_create_user_command("TexlabBuild", function()
 		texlab_request("TexlabBuild")
-	end, { desc = "Compile the current LaTeX project" })
+	end, { desc = "Build LaTeX Project" })
 	vim.api.nvim_create_user_command("TexlabForwardSearch", function()
 		local params = vim.lsp.util.make_position_params(0, "utf-16")
 		texlab_request("TexlabForwardSearch", params)
-	end, { desc = "SyncTeX forward search in Zathura" })
+	end, { desc = "Search Forward with SyncTeX" })
 	vim.api.nvim_create_user_command("TexlabClean", function()
 		texlab_request("TexlabClean")
-	end, { desc = "Remove LaTeX auxiliary files" })
+	end, { desc = "Clean LaTeX Files" })
 	vim.api.nvim_create_user_command("TexlabToggleBuildOnSave", function()
 		local config = vim.lsp.config.texlab
 		local build = vim.tbl_get(config, "settings", "texlab", "build")
@@ -368,10 +382,10 @@ function M.setup()
 		for _, client in ipairs(vim.lsp.get_clients({ name = "texlab" })) do
 			client:notify("workspace/didChangeConfiguration", { settings = config.settings })
 		end
-	end, { desc = "Toggle LaTeX build on save" })
-	vim.keymap.set("n", ",ll", "<cmd>TexlabBuild<cr>", { desc = "编译 LaTeX", silent = true })
-	vim.keymap.set("n", ",lv", "<cmd>TexlabForwardSearch<cr>", { desc = "Zathura SyncTeX 正向搜索", silent = true })
-	vim.keymap.set("n", ",lc", "<cmd>TexlabClean<cr>", { desc = "清理 LaTeX 辅助文件", silent = true })
+	end, { desc = "Toggle Build on Save" })
+	vim.keymap.set("n", ",ll", "<cmd>TexlabBuild<cr>", { desc = "Build LaTeX Project", silent = true })
+	vim.keymap.set("n", ",lv", "<cmd>TexlabForwardSearch<cr>", { desc = "Search Forward with SyncTeX", silent = true })
+	vim.keymap.set("n", ",lc", "<cmd>TexlabClean<cr>", { desc = "Clean LaTeX Files", silent = true })
 end
 
 M.servers = servers
