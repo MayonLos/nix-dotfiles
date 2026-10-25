@@ -83,6 +83,29 @@ let
         --replace-fail "${pkgs.unstable.qq}/bin/qq" "$out/bin/qq"
     '';
   };
+  # WeChat 4.1.13.26 bundles Qt: its non-portal IBus context requires an
+  # ibus-daemon executable even when Fcitx serves IBus. Portal mode skips that
+  # discovery check and uses Fcitx5's existing org.freedesktop.portal.IBus.
+  # Verified with actual Chinese input in Mango; keep these app-local.
+  wechatLauncher = pkgs.writeShellScript "wechat-ime-launcher" ''
+    export QT_QPA_PLATFORM=xcb
+    export QT_IM_MODULE=ibus
+    export IBUS_USE_PORTAL=1
+    exec ${pkgs.unstable.wechat}/bin/wechat "$@"
+  '';
+  wechat = pkgs.symlinkJoin {
+    name = "wechat-with-fcitx-ibus";
+    paths = [ pkgs.unstable.wechat ];
+    postBuild = ''
+      rm "$out/bin/wechat"
+      cp ${wechatLauncher} "$out/bin/wechat"
+      # Pin the desktop entry to this wrapper; preserve %U and all metadata.
+      rm "$out/share/applications/wechat.desktop"
+      substitute ${pkgs.unstable.wechat}/share/applications/wechat.desktop \
+        "$out/share/applications/wechat.desktop" \
+        --replace-fail "Exec=wechat " "Exec=$out/bin/wechat "
+    '';
+  };
 in
 {
   # Both from unstable — these chase upstream closely and stable lags.
@@ -97,8 +120,7 @@ in
     # that hook). Conference, camera/audio and capture still need a real call.
     pkgs.wemeet
 
-    # Input-method support in the official WeChat build remains unresolved;
-    # track the follow-up in docs/neovim-rebuild-execution.md.
-    pkgs.unstable.wechat
+    # App-local XCB + Fcitx5 IBus portal; see the feature README.
+    wechat
   ];
 }
