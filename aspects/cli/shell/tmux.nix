@@ -112,8 +112,9 @@ in
       # format is honored by both Kitty clients and tmux's own TERM value.
       set -as terminal-features ",xterm-kitty:usstyle"
       set -as terminal-features ",tmux-256color:usstyle"
-      # Passthrough for sixel/kitty graphics (used by yazi image preview)
+      # Passthrough for graphics and Neovim OSC 11 background sync/restore
       set -g allow-passthrough on
+      set -g set-clipboard on
       set -ga update-environment TERM
       set -ga update-environment TERM_PROGRAM
 

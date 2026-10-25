@@ -48,15 +48,15 @@ function M.setup()
 	-- Statusline providers parse %, and byte counts mismeasure Chinese names.
 	local mode_colors = {
 		n = "blue",
-		i = "cyan",
-		v = "yellow",
-		V = "yellow",
-		["\22"] = "yellow",
-		c = "blue",
+		i = "green",
+		v = "purple",
+		V = "purple",
+		["\22"] = "purple",
+		c = "diag_warn",
 		s = "yellow",
 		S = "yellow",
 		["\19"] = "yellow",
-		R = "yellow",
+		R = "red",
 		r = "cyan",
 		["!"] = "yellow",
 		t = "cyan",
@@ -177,19 +177,45 @@ function M.setup()
 			if self.filename == "" then
 				return "[No Name]"
 			end
-			return text.fit(vim.fn.fnamemodify(self.filename, ":t"), math.max(5, math.floor(vim.o.columns * 0.30)))
+			return text.fit(vim.fn.fnamemodify(self.filename, ":~:."), math.max(5, math.floor(vim.o.columns * 0.35)))
 		end,
 		hl = { fg = "fg" },
 	}
-	local CompactFileName = {
-		provider = function()
-			local filename = vim.api.nvim_buf_get_name(0)
-			if filename == "" then
-				return "[No Name]"
-			end
-			return text.fit(vim.fn.fnamemodify(filename, ":t"), vim.o.columns < 50 and 4 or 6)
+	local FileIcon = {
+		init = function(self)
+			self.file_icon, self.file_icon_hl = require("mayon.ui.icons").get(self.filename)
 		end,
-		hl = { fg = "fg" },
+		provider = function(self)
+			return self.file_icon
+		end,
+		hl = function(self)
+			return self.file_icon_hl
+		end,
+	}
+	local CompactFileName = {
+		init = function(self)
+			self.filename = vim.api.nvim_buf_get_name(0)
+		end,
+		{
+			init = function(self)
+				self.file_icon, self.file_icon_hl = require("mayon.ui.icons").get(self.filename)
+			end,
+			provider = function(self)
+				return self.file_icon
+			end,
+			hl = function(self)
+				return self.file_icon_hl
+			end,
+		},
+		{
+			provider = function(self)
+				if self.filename == "" then
+					return "[No Name]"
+				end
+				return text.fit(vim.fn.fnamemodify(self.filename, ":t"), vim.o.columns < 50 and 4 or 6)
+			end,
+			hl = { fg = "fg" },
+		},
 	}
 	local FileFlags = {
 		{
@@ -207,7 +233,7 @@ function M.setup()
 			hl = { fg = "orange" },
 		},
 	}
-	FileNameBlock = utils.insert(FileNameBlock, FileName, { provider = "%<" })
+	FileNameBlock = utils.insert(FileNameBlock, FileIcon, FileName, { provider = "%<" })
 
 	local function diag_icon(severity)
 		return ({
@@ -328,10 +354,16 @@ function M.setup()
 	})
 	local Encoding = {
 		condition = function()
-			return vim.o.columns >= 80 and vim.bo.fileencoding ~= "" and vim.bo.fileencoding:lower() ~= "utf-8"
+			return vim.o.columns >= 140
 		end,
 		provider = function()
-			return vim.bo.fileencoding:upper() .. " "
+			return (vim.bo.fileformat == "dos" and "CRLF" or "LF")
+				.. "  "
+				.. (vim.bo.fileencoding ~= "" and vim.bo.fileencoding:upper() or "UTF-8")
+				.. "  "
+				.. (vim.bo.expandtab and "Spaces " or "Tabs ")
+				.. vim.bo.shiftwidth
+				.. " "
 		end,
 		hl = { fg = "gray" },
 	}
@@ -408,7 +440,6 @@ function M.setup()
 	local DefaultStatusline = {
 		ViMode,
 		Space,
-		{ flexible = 2, Git, {} },
 		-- Drop optional context before Neovim truncates diagnostics on narrow UIs.
 		{ flexible = 3, FileNameBlock, CompactFileName, {} },
 		-- Buffer state stays visible when the flexible filename contracts.
@@ -421,8 +452,19 @@ function M.setup()
 		{ flexible = 1, LSPActive, {} },
 		CodeCompanion,
 		{ flexible = 5, AI, {} },
-		Encoding,
 		Ruler,
+		Encoding,
+		{ flexible = 2, Git, {} },
+		{
+			provider = " 󰂚 ",
+			hl = { fg = "gray" },
+			on_click = {
+				callback = function()
+					require("snacks").notifier.show_history()
+				end,
+				name = "mayon_notifications",
+			},
+		},
 	}
 
 	local SpecialStatusline = {
@@ -442,6 +484,9 @@ function M.setup()
 						for _, part in ipairs({ "list", "input", "preview" }) do
 							local pane = picker[part]
 							if pane and pane.win and pane.win.win == vim.api.nvim_get_current_win() then
+								if picker.opts.source == "explorer" then
+									return " explorer "
+								end
 								local title = picker.opts.title or picker.opts.source or "Search"
 								return " " .. text.fit(title:gsub("_", " "):gsub("^%l", string.upper), 28) .. " "
 							end
@@ -521,7 +566,8 @@ function M.setup()
 		DefaultStatusline,
 	}
 
-	heirline.setup({ statusline = StatusLines, tabline = require("mayon.ui.tabline").build() })
+	heirline.setup({ statusline = StatusLines })
+	require("mayon.ui.toolbar").setup()
 	heirline.load_colors(setup_colors())
 
 	vim.api.nvim_create_autocmd("ColorScheme", {

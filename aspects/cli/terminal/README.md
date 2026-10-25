@@ -4,7 +4,11 @@ Installs Kitty and renders its configuration from `user.appearance`, including t
 
 Owned files are `default.nix`, `kitty.nix`, and `tab-bar.nix`, all private. Outputs are the Kitty package, `kitty/kitty.conf`, and `kitty/tab_bar.py`. Removing the aspect removes those declarations in the next generation; Kitty scrollback files and other user data remain intact.
 
-The Astra §8 reading surface is opaque `deep` with `brightFg` text and 12 padding.
+The Astra §8 reading surface is opaque `deep` with `brightFg` text and 4-point padding.
+The character grid is anchored at the top left; fractional-scale remainder strips
+use neighboring cell backgrounds. Neovim temporarily synchronizes the terminal
+background with its Normal highlight through OSC 11, including tmux passthrough,
+and restores the previous background on suspend/exit.
 Tabs stay on the `deep` background; the active tab uses a blue underline and
 inactive titles use `fg`. Cursor, selection, underline and ANSI colors consume
 the same palette. The underline uses Kitty's custom Python tab-bar renderer

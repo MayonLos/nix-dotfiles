@@ -2,6 +2,19 @@
 local M = { provider = "copilot", busy = false, epoch = 0, pending = 0 }
 local choices = { "copilot", "deepseek", "off" }
 local warned = {}
+function M.require_deepseek_key()
+	if type(vim.env.DEEPSEEK_API_KEY) == "string" and vim.env.DEEPSEEK_API_KEY ~= "" then
+		return true
+	end
+	vim.notify(
+		"DeepSeek 需要环境变量 DEEPSEEK_API_KEY；请在终端配置后重启 Neovim",
+		vim.log.levels.WARN,
+		{
+			title = "AI 助手",
+		}
+	)
+	return false
+end
 local function redraw()
 	vim.cmd.redrawstatus()
 end

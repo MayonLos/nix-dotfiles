@@ -1,7 +1,17 @@
 local M = {}
 
 local function setup()
-	require("gitsigns").setup({})
+	require("gitsigns").setup({
+		signs = {
+			add = { text = "▎" },
+			change = { text = "▎" },
+			delete = { text = "▎" },
+			topdelete = { text = "▎" },
+			changedelete = { text = "▎" },
+			untracked = { text = "▎" },
+		},
+		current_line_blame = false,
+	})
 	local function map(mode, lhs, callback, desc)
 		vim.keymap.set(mode, lhs, callback, { desc = desc })
 	end
@@ -34,8 +44,8 @@ local function setup()
 		gs.preview_hunk_inline()
 	end, "预览修改块")
 	map("n", "<leader>gb", function()
-		gs.blame_line({ full = true })
-	end, "查看当前行责任人")
+		gs.toggle_current_line_blame()
+	end, "切换当前行 Git blame")
 	map("n", "<leader>gq", function()
 		gs.setqflist("all")
 	end, "所有修改块加入快速修复列表")
@@ -118,6 +128,18 @@ return {
 				callback = function()
 					require("mayon.ui.theme").refresh()
 				end,
+			})
+		end,
+	},
+	{
+		"neogit",
+		cmd = "Neogit",
+		after = function()
+			require("neogit").setup({
+				kind = "floating",
+				commit_editor = { kind = "floating" },
+				log_view = { kind = "floating" },
+				popup = { kind = "floating" },
 			})
 		end,
 	},

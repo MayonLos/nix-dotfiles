@@ -65,9 +65,33 @@ function M.setup()
 	vim.g.mapleader = " "
 	vim.g.maplocalleader = ","
 
+	for key, action in pairs({
+		["<A-1>"] = "project",
+		["<A-2>"] = "commit",
+		["<A-7>"] = "structure",
+		["<A-F12>"] = "terminal",
+	}) do
+		map("n", key, function()
+			require("mayon.ui.workspace").action(action)
+		end, "工具窗口 · " .. action)
+	end
+	map("n", "<leader>?", function()
+		require("lz.n").trigger_load("which-key.nvim")
+		require("which-key").show({ global = true })
+	end, "键位速查")
+	map("n", "<leader>;", function()
+		require("lz.n").trigger_load("dropbar.nvim")
+		require("dropbar.api").pick()
+	end, "Dropbar 面包屑")
+	map("n", "<leader>rt", function()
+		require("mayon.features.tasks").pick()
+	end, "选择 Run 任务")
+	map("n", "<leader>rr", function()
+		require("mayon.features.tasks").run_last()
+	end, "运行上次任务")
 	-- Top-level navigation and safe file actions.
 	map("n", "<leader><leader>", function()
-		Snacks.picker.smart()
+		require("mayon.ui.search").open()
 	end, "智能查找文件")
 	map("n", "<leader>/", function()
 		Snacks.picker.grep()
@@ -140,8 +164,7 @@ function M.setup()
 		require("conform").format({ async = true, lsp_format = "fallback" })
 	end, "格式化当前文件")
 	map("n", "<leader>co", function()
-		require("lz.n").trigger_load("trouble.nvim")
-		vim.cmd("Trouble symbols toggle focus=false")
+		require("mayon.ui.workspace").action("structure")
 	end, "打开代码大纲")
 	map("n", "<leader>ci", function()
 		vim.lsp.buf.incoming_calls()

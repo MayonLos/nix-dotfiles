@@ -33,6 +33,8 @@
           (_: _: {
             # Explicit exceptions to stable; each consumer uses this shared instance.
             unstable = {
+              # unstable: Neovim 0.12.6 fixes TUI/runtime issues after stable 0.12.4.
+              inherit (u) neovim-unwrapped;
               # New official QQ release and its compatibility fixes.
               inherit (u) qq;
               # Stable still has the older official Linux client.

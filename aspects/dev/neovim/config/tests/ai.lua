@@ -14,6 +14,7 @@ assert(require("mayon.generated").versions.codecompanion == "19.27.0", "CodeComp
 assert(not package.loaded.copilot and not package.loaded["blink.cmp"])
 local cc = require("codecompanion.config").config
 assert(cc.interactions.chat.adapter == "deepseek" and cc.interactions.inline.adapter == "deepseek")
+assert(cc.interactions.chat.keymaps.regenerate.modes.n == "<localleader>r", "chat regenerate shadows LSP gr prefixes")
 for _, name in ipairs({ "codex", "claude_code" }) do
 	local adapter = cc.adapters.acp[name]()
 	local path = adapter.commands.default[1]
@@ -49,6 +50,12 @@ chat:close()
 
 assert(require("sidekick.config").cli.tools.claude == nil, "Claude must have one terminal owner")
 assert(require("sidekick.config").cli.tools.codex and require("sidekick.config").cli.tools.grok)
+local mini_diff = require("mini.diff")
+assert(
+	mini_diff.config.view.style == "number",
+	"MiniDiff must keep its CC inline review markers out of the sign gutter"
+)
+assert(mini_diff.config.source.name == "manual", "MiniDiff must not attach as a Git change owner")
 local completion = require("mayon.features.ai_completion")
 local existing = vim.api.nvim_create_buf(true, false)
 assert(completion.set("deepseek") == "deepseek" and vim.g.sidekick_nes == false)
@@ -110,6 +117,24 @@ for _, key in ipairs({
 	local mode = (key == " as" or key == " at") and "x" or "n"
 	assert(vim.fn.maparg(key, mode) ~= "", "missing AI key: " .. key)
 end
+-- Provider commands remain available offline and explain missing credentials
+-- without opening an interaction or making a network request.
+local key_before = vim.env.DEEPSEEK_API_KEY
+vim.env.DEEPSEEK_API_KEY = ""
+local notices = {}
+local notify = vim.notify
+vim.notify = function(message)
+	notices[#notices + 1] = tostring(message)
+end
+local chat_key = vim.fn.maparg(" ad", "n", false, true)
+assert(
+	type(chat_key.callback) == "function" and chat_key.desc == "DeepSeek 对话",
+	"DeepSeek mapping is not the guarded action"
+)
+local missing_key = require("mayon.features.ai_completion").require_deepseek_key()
+vim.notify = notify
+vim.env.DEEPSEEK_API_KEY = key_before
+assert(not missing_key and #notices == 1 and notices[1]:find("DEEPSEEK_API_KEY", 1, true))
 for _, key in ipairs({ "<C-h>", "<C-j>", "<C-k>", "<C-l>", "<M-h>", "<M-j>", "<M-k>", "<M-l>" }) do
 	assert(vim.fn.maparg(key, "n") ~= "", "missing smart split key: " .. key)
 end

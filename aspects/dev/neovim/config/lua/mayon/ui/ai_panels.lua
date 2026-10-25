@@ -4,17 +4,18 @@ local ns = api.nvim_create_namespace("MayonAIPanels")
 local setup_done = false
 
 local groups = {
-	MayonAIPanel = { fg = "brightFg", bg = "deep" },
-	MayonAIPanelMuted = { fg = "muted", bg = "deep" },
-	MayonAIConnected = { fg = "green", bg = "deep" },
-	MayonAIRemoved = { fg = "red", bg = "deep" },
-	MayonAIDisconnected = { fg = "dim", bg = "deep" },
-	MayonAIActive = { fg = "brightFg", bg = "deep", underline = true, sp = "blue" },
-	MayonAIInactive = { fg = "muted", bg = "deep" },
-	MayonAIUser = { fg = "muted", bg = "deep", italic = true },
-	MayonAIAssistant = { fg = "muted", bg = "deep", bold = true },
-	MayonAIUserRail = { fg = "dim", bg = "deep" },
-	MayonAITool = { fg = "cyan", bg = "deep" },
+	MayonAIPanel = { fg = "brightFg", bg = "bg" },
+	MayonAIPanelMuted = { fg = "muted", bg = "bg" },
+	MayonAIConnected = { fg = "green", bg = "bg" },
+	MayonAIConfigured = { fg = "blue", bg = "bg" },
+	MayonAIRemoved = { fg = "red", bg = "bg" },
+	MayonAIDisconnected = { fg = "dim", bg = "bg" },
+	MayonAIActive = { fg = "brightFg", bg = "bg", underline = true, sp = "blue" },
+	MayonAIInactive = { fg = "muted", bg = "bg" },
+	MayonAIUser = { fg = "muted", bg = "bg", italic = true },
+	MayonAIAssistant = { fg = "muted", bg = "bg", bold = true },
+	MayonAIUserRail = { fg = "dim", bg = "bg" },
+	MayonAITool = { fg = "cyan", bg = "bg" },
 	MayonAICode = { fg = "fg", bg = "bg" },
 	MayonAIAdd = { fg = "green", bg = "bg" },
 	MayonAIDelete = { fg = "red", bg = "bg" },
@@ -29,7 +30,7 @@ local function hl()
 			if value == "edge" then
 				resolved[key] = edge
 			elseif value == "dim" then
-				resolved[key] = require("mayon.ui.theme").blend(palette.muted, palette.deep, 0.45)
+				resolved[key] = require("mayon.ui.theme").blend(palette.muted, palette.bg, 0.45)
 			elseif type(value) == "string" and palette[value] then
 				resolved[key] = palette[value]
 			end
@@ -39,39 +40,39 @@ local function hl()
 	api.nvim_set_hl(
 		0,
 		"MayonAIAdd",
-		{ fg = palette.brightFg, bg = require("mayon.ui.theme").blend(palette.green, palette.deep, 0.08) }
+		{ fg = palette.brightFg, bg = require("mayon.ui.theme").blend(palette.green, palette.bg, 0.08) }
 	)
 	api.nvim_set_hl(
 		0,
 		"MayonAIDelete",
-		{ fg = palette.brightFg, bg = require("mayon.ui.theme").blend(palette.red, palette.deep, 0.08) }
+		{ fg = palette.brightFg, bg = require("mayon.ui.theme").blend(palette.red, palette.bg, 0.08) }
 	)
 	api.nvim_set_hl(
 		0,
 		"MayonAIDiffAddText",
-		{ fg = palette.brightFg, bg = require("mayon.ui.theme").blend(palette.green, palette.deep, 0.12), bold = true }
+		{ fg = palette.brightFg, bg = require("mayon.ui.theme").blend(palette.green, palette.bg, 0.12), bold = true }
 	)
 	api.nvim_set_hl(
 		0,
 		"MayonAIDiffDeleteText",
-		{ fg = palette.brightFg, bg = require("mayon.ui.theme").blend(palette.red, palette.deep, 0.12), bold = true }
+		{ fg = palette.brightFg, bg = require("mayon.ui.theme").blend(palette.red, palette.bg, 0.12), bold = true }
 	)
 	api.nvim_set_hl(0, "NormalFloat", { fg = palette.brightFg, bg = palette.deep })
 	api.nvim_set_hl(0, "FloatBorder", { fg = edge, bg = palette.deep })
 	api.nvim_set_hl(0, "FloatTitle", { fg = palette.brightFg, bg = palette.deep })
-	api.nvim_set_hl(0, "CodeCompanionChatHeader", { fg = palette.muted, bg = palette.deep, bold = true })
-	api.nvim_set_hl(0, "CodeCompanionChatSeparator", { fg = edge, bg = palette.deep })
-	api.nvim_set_hl(0, "CodeCompanionChatTool", { fg = palette.cyan, bg = palette.deep })
-	api.nvim_set_hl(0, "CodeCompanionChatToolGroup", { fg = palette.cyan, bg = palette.deep })
-	api.nvim_set_hl(0, "CodeCompanionChatToolText", { fg = palette.fg, bg = palette.deep })
-	api.nvim_set_hl(0, "CodeCompanionVirtualText", { fg = palette.purple, bg = palette.deep, italic = true })
+	api.nvim_set_hl(0, "CodeCompanionChatHeader", { fg = palette.muted, bg = palette.bg, bold = true })
+	api.nvim_set_hl(0, "CodeCompanionChatSeparator", { fg = edge, bg = palette.bg })
+	api.nvim_set_hl(0, "CodeCompanionChatTool", { fg = palette.cyan, bg = palette.bg })
+	api.nvim_set_hl(0, "CodeCompanionChatToolGroup", { fg = palette.cyan, bg = palette.bg })
+	api.nvim_set_hl(0, "CodeCompanionChatToolText", { fg = palette.fg, bg = palette.bg })
+	api.nvim_set_hl(0, "CodeCompanionVirtualText", { fg = palette.purple, bg = palette.bg, italic = true })
 	api.nvim_set_hl(0, "CodeCompanionDiffAdd", {
 		fg = palette.green,
-		bg = require("mayon.ui.theme").blend(palette.green, palette.deep, 0.12),
+		bg = require("mayon.ui.theme").blend(palette.green, palette.bg, 0.12),
 	})
 	api.nvim_set_hl(0, "CodeCompanionDiffDelete", {
 		fg = palette.red,
-		bg = require("mayon.ui.theme").blend(palette.red, palette.deep, 0.12),
+		bg = require("mayon.ui.theme").blend(palette.red, palette.bg, 0.12),
 	})
 end
 
@@ -211,7 +212,8 @@ local function decorate_chat(buf)
 	end
 	for _, win in ipairs(vim.fn.win_findbuf(buf)) do
 		vim.wo[win].signcolumn = "yes:1"
-		vim.wo[win].winhighlight = "Normal:NormalFloat,EndOfBuffer:NormalFloat,SignColumn:NormalFloat,WinBar:EdgyWinBar"
+		vim.wo[win].winhighlight =
+			"Normal:MayonAIPanel,EndOfBuffer:MayonAIPanel,SignColumn:MayonAIPanel,WinBar:EdgyWinBar"
 		vim.wo[win].fillchars = "eob: "
 		vim.wo[win].winbar = "%!v:lua.require'mayon.ui.ai_panels'.winbar()"
 	end
@@ -247,10 +249,12 @@ local function provider(buf)
 		end
 		local connected = false
 		local ok, claude = pcall(require, "claudecode")
-		if ok then
-			connected = claude.is_claude_connected()
+		if ok and type(claude.is_claude_connected) == "function" then
+			local connected_ok, value = pcall(claude.is_claude_connected)
+			connected = connected_ok and value == true
 		end
-		return "Claude", connected and "已连接" or "未连接", connected
+		local model = vim.env.ANTHROPIC_MODEL or "Claude Code"
+		return "Claude", (connected and "已连接" or "未连接") .. " · " .. model, connected
 	elseif ft == "sidekick_terminal" or ft == "sidekick" or cmd:find("codex", 1, true) then
 		local tool = vim.b[buf].sidekick_cli
 		local name = type(tool) == "table" and tool.name or tool
@@ -269,7 +273,9 @@ local function provider(buf)
 			end
 			status = attached and "已连接" or "已启动"
 		end
-		return tostring(name):lower() == "codex" and "Codex" or tostring(name), status, status == "已连接"
+		local label = tostring(name):lower() == "codex" and "Codex" or tostring(name)
+		local model = vim.env.CODEX_MODEL or "Codex CLI"
+		return label, status .. " · " .. model, status == "已连接"
 	elseif ft == "codecompanion" then
 		local ok, chat = pcall(function()
 			local last = require("codecompanion").last_chat()
@@ -287,9 +293,39 @@ local function provider(buf)
 				end
 			end
 		end
-		return name, model ~= "" and (model .. " · ^S 发送") or "就绪 · ^S 发送", true
+		local configured = vim.env.DEEPSEEK_API_KEY ~= nil and vim.env.DEEPSEEK_API_KEY ~= ""
+		model = model ~= "" and model or vim.env.DEEPSEEK_MODEL or "deepseek-v4-flash"
+		return name,
+			(configured and "已配置" or "未配置密钥") .. " · " .. model .. " · ^S 发送",
+			configured,
+			"configured"
 	end
 	return nil, "", false
+end
+
+local function provider_state(label)
+	if label == "Claude" then
+		local ok, claude = pcall(require, "claudecode")
+		local connected = false
+		if ok and type(claude.is_claude_connected) == "function" then
+			local connected_ok, value = pcall(claude.is_claude_connected)
+			connected = connected_ok and value == true
+		end
+		return connected and "connected" or "offline"
+	elseif label == "Codex" then
+		local ok, sessions = pcall(function()
+			return require("sidekick.status").cli()
+		end)
+		if ok then
+			for _, session in ipairs(sessions or {}) do
+				if tostring(session.tool):lower() == "codex" then
+					return "connected"
+				end
+			end
+		end
+		return "offline"
+	end
+	return vim.env.DEEPSEEK_API_KEY ~= nil and vim.env.DEEPSEEK_API_KEY ~= "" and "configured" or "offline"
 end
 
 function M.winbar(buf)
@@ -297,20 +333,22 @@ function M.winbar(buf)
 	if not api.nvim_buf_is_valid(buf) then
 		return ""
 	end
-	local name, status, connected = provider(buf)
+	local name, status = provider(buf)
 	if not name then
 		return ""
 	end
-	local dot = connected and "%#MayonAIConnected#●%*" or "%#MayonAIDisconnected#●%*"
+	local states = { connected = "MayonAIConnected", configured = "MayonAIConfigured", offline = "MayonAIDisconnected" }
 	local active = name:lower():find("claude", 1, true) and "Claude"
 		or name:lower():find("codex", 1, true) and "Codex"
 		or name:lower():find("deepseek", 1, true) and "DeepSeek"
 	active = active or statusline_text(name)
 	local tabs = {}
 	for _, label in ipairs({ "Claude", "Codex", "DeepSeek" }) do
-		tabs[#tabs + 1] = (label == active and "%#MayonAIActive# " or "%#MayonAIInactive# ") .. label .. " %*"
+		local tab_state = provider_state(label)
+		local dot = "%#" .. states[tab_state] .. "#●%*"
+		tabs[#tabs + 1] = dot .. (label == active and "%#MayonAIActive# " or "%#MayonAIInactive# ") .. label .. " %*"
 	end
-	return dot .. " " .. table.concat(tabs, "") .. "%=%#MayonAIPanelMuted#" .. statusline_text(status) .. " %*"
+	return table.concat(tabs, " ") .. "%=%#MayonAIPanelMuted#" .. statusline_text(status) .. " %*"
 end
 
 function M.diff_winbar(buf)

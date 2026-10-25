@@ -7,6 +7,13 @@ local function setup()
 	end
 
 	require("conform").setup({
+		formatters = {
+			latexindent = {
+				command = "latexindent",
+				args = { "-s", "-g", "/dev/null", "-" },
+				stdin = true,
+			},
+		},
 		formatters_by_ft = vim.tbl_extend("force", vim.deepcopy(require("mayon.generated").languages.formatters), {
 			["_"] = { "squeeze_blanks", "trim_whitespace", "trim_newlines" },
 		}),

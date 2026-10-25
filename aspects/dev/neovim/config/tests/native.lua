@@ -1,5 +1,5 @@
 local runtime = vim.env.VIMRUNTIME
-assert(runtime:find("neovim%-unwrapped%-0%.12%.4"), "native feature checks target the locked Neovim 0.12.4 runtime")
+assert(runtime:find("neovim%-unwrapped%-0%.12%.6"), "native feature checks target the locked Neovim 0.12.6 runtime")
 assert(package.loaded["vim._core.ui2"], "bootstrap should enable native ui2")
 assert(type(vim.ui.progress_status) == "function")
 assert(type(vim.lsp.codelens.enable) == "function")

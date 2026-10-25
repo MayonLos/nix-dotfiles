@@ -57,7 +57,9 @@ let
     assert opts.cursor_trail_decay == (0.08, 0.16)
     assert opts.cursor_trail_start_threshold == (4, 4)
     assert opts.cursor_trail_color.as_sharp == "${palette.blue}"
-    assert tuple(opts.window_padding_width) == (12, 12, 12, 12)
+    assert tuple(opts.window_padding_width) == (4, 4, 4, 4)
+    assert opts.placement_strategy == "top-left"
+    assert opts.padding_fill_strategy == "neighboring_cell"
     import ast
     tab_bar = open("${home.xdg.configFile."kitty/tab_bar.py".source}").read()
     ast.parse(tab_bar)
@@ -208,6 +210,7 @@ pkgs.runCommand "command-line-runtime"
     trap 'tmux -S "$TMPDIR/tmux.sock" kill-server || true' EXIT
     tmux -S "$TMPDIR/tmux.sock" show-options -s terminal-features | grep -F 'xterm-kitty:usstyle'
     tmux -S "$TMPDIR/tmux.sock" show-options -s terminal-features | grep -F 'tmux-256color:usstyle'
+    test "$(tmux -S "$TMPDIR/tmux.sock" show-options -gv allow-passthrough)" = on
     tmux -S "$TMPDIR/tmux.sock" list-keys -T root > root.keys
     tmux -S "$TMPDIR/tmux.sock" list-keys -T prefix > prefix.keys
     if grep -E 'M-(z|n|p|Tab|[1-9])[[:space:]]' root.keys; then exit 1; fi

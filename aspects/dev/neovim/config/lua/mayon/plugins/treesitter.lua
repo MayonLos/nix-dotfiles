@@ -21,10 +21,7 @@ local function setup()
 		require("mayon.features.folds").apply(buf)
 		local ft = vim.bo[buf].filetype
 		local lang = vim.treesitter.language.get_lang(ft) or ft
-		-- Keep LaTeX highlighting off to preserve the existing math-rendering boundary.
-		if lang ~= "latex" then
-			pcall(vim.treesitter.start, buf, lang)
-		end
+		pcall(vim.treesitter.start, buf, lang)
 	end
 	vim.api.nvim_create_autocmd("FileType", { group = group, callback = attach })
 	-- FileType can precede the first BufReadPost, before this handler exists.

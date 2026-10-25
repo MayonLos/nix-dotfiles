@@ -4,6 +4,11 @@ local panels = require("mayon.ui.ai_panels")
 local original_diff_add = vim.api.nvim_get_hl(0, { name = "DiffAdd" })
 local original_diff_delete = vim.api.nvim_get_hl(0, { name = "DiffDelete" })
 panels.setup()
+local ai_surface = vim.api.nvim_get_hl(0, { name = "MayonAIPanel", link = false })
+assert(
+	ai_surface.bg == tonumber(require("mayon.generated").palette.bg:sub(2), 16),
+	"AI panel islands should use the editor surface color"
+)
 assert(
 	vim.deep_equal(original_diff_add, vim.api.nvim_get_hl(0, { name = "DiffAdd" })),
 	"AI setup must not recolor global DiffAdd"
@@ -35,6 +40,10 @@ assert(transcript:find("## YOU", 1, true), "user fixture heading should use uppe
 assert(transcript:find("## DEEPSEEK", 1, true), "assistant fixture heading should show adapter")
 local chat_win = vim.fn.win_findbuf(chat_buf)[1]
 assert(chat_win, "CodeCompanion fixture must be visible in a window")
+assert(
+	vim.wo[chat_win].winhighlight:find("Normal:MayonAIPanel", 1, true),
+	"CodeCompanion should render as an editor island"
+)
 local previous_win = vim.api.nvim_get_current_win()
 vim.g.statusline_winid = chat_win
 assert(panels.winbar():find("deepseek%-v4%-flash"), "chat winbar should use the statusline window's resolved model")
@@ -43,6 +52,12 @@ vim.api.nvim_set_current_win(previous_win)
 local marks = vim.api.nvim_buf_get_extmarks(chat_buf, -1, 0, -1, { details = true })
 assert(#marks > 0, "CodeCompanion fixture should have panel decorations")
 assert(panels.winbar(chat_buf):find("DeepSeek", 1, true), "chat panel should identify its adapter")
+if not vim.env.DEEPSEEK_API_KEY or vim.env.DEEPSEEK_API_KEY == "" then
+	assert(
+		panels.winbar(chat_buf):find("未配置密钥", 1, true),
+		"unconfigured providers must not show as connected"
+	)
+end
 
 local terminal_buf = panels.open_fixture("terminal")
 assert(vim.bo[terminal_buf].buftype == "terminal", "terminal fixture must use Neovim's terminal buffer")

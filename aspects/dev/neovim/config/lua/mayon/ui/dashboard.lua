@@ -9,6 +9,7 @@ local menu_width = 34
 local menu_gap = 4
 local menu_rows = {}
 local active_dashboard
+local render_context
 local menu_ns = vim.api.nvim_create_namespace("MayonDashboardMenu")
 
 local function palette()
@@ -48,7 +49,7 @@ local function install_dashboard_palette()
 end
 
 local function display_width(value)
-	return vim.fn.strdisplaywidth(value)
+	return vim.api.nvim_strwidth(value)
 end
 
 local function fit_left(value, width)
@@ -117,6 +118,9 @@ local function git_branch(root)
 end
 
 local function project_context()
+	if render_context then
+		return unpack(render_context)
+	end
 	local root = current_root()
 	local home = (vim.uv.os_get_passwd() or {}).homedir or vim.env.HOME or ""
 	local shown = root
@@ -241,10 +245,28 @@ local function recent_section()
 	return rows
 end
 
-local function projects_section()
+local project_rows = setmetatable({}, { __mode = "k" })
+local project_pending = setmetatable({}, { __mode = "k" })
+local function projects_section(dashboard)
 	local rows = { group_heading("PROJECTS") }
-	local projects = Snacks.dashboard.sections.projects({ limit = 3, pick = false, session = false })
-	for _, item in ipairs(projects) do
+	if not project_rows[dashboard] and not project_pending[dashboard] then
+		project_pending[dashboard] = true
+		-- Recent files and their icons belong to frame one. Project discovery
+		-- walks history and ancestors, so let the first dashboard frame render.
+		vim.schedule(function()
+			project_rows[dashboard] = Snacks.dashboard.sections.projects({ limit = 3, pick = false, session = false })
+			project_pending[dashboard] = nil
+			if
+				dashboard.win
+				and dashboard.buf
+				and vim.api.nvim_win_is_valid(dashboard.win)
+				and vim.api.nvim_win_get_buf(dashboard.win) == dashboard.buf
+			then
+				dashboard:update()
+			end
+		end)
+	end
+	for _, item in ipairs(project_rows[dashboard] or {}) do
 		item.indent = 2
 		rows[#rows + 1] = item
 	end
@@ -316,9 +338,9 @@ local function dashboard_icon(item)
 	if item.icon == "directory" then
 		return { "▸ ", hl = "MayonDashboardBlue", width = 2 }
 	end
-	-- Recent files intentionally have no icon: a failed icon lookup must never
-	-- expose Snacks' category names (“file” / “directory”) as visible text.
-	return { "  ", hl = "MayonDashboardMuted", width = 2 }
+	-- Missing icons remain blank rather than exposing Snacks' category labels.
+	local icon, highlight = require("mayon.ui.icons").get(item.file)
+	return { icon, hl = highlight, width = vim.fn.strdisplaywidth(icon) }
 end
 
 local function startup_footer()
@@ -356,6 +378,7 @@ local function install_selection()
 				not dashboard
 				or not vim.api.nvim_buf_is_valid(dashboard.buf)
 				or not vim.api.nvim_win_is_valid(dashboard.win)
+				or vim.api.nvim_win_get_buf(dashboard.win) ~= dashboard.buf
 			then
 				return
 			end
@@ -521,13 +544,15 @@ function M.config()
 		sections = {
 			function(dashboard)
 				active_dashboard = dashboard
+				render_context = nil
+				render_context = { project_context() }
 				content_width = math.max(24, math.min(72, dashboard._size.width - 4))
 				menu_width = math.floor((content_width - menu_gap) / 2)
 				dashboard.opts.width = content_width
 				menu_rows = {}
 				local result = { title_section(), rule_section() }
 				vim.list_extend(result, menu_section())
-				local recent, projects = recent_section(), projects_section()
+				local recent, projects = recent_section(), projects_section(dashboard)
 				vim.list_extend(result, recent)
 				vim.list_extend(result, projects)
 				-- Leave the footer near the bottom, independently of history length.

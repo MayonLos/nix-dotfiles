@@ -153,6 +153,7 @@ local function attach(event)
 end
 
 local function diagnostics()
+	require("mayon.ui.icons").diagnostics()
 	vim.diagnostic.config({
 		virtual_text = false,
 		virtual_lines = false,
@@ -197,7 +198,7 @@ function M.setup()
 	vim.keymap.set("n", "<leader>uL", function()
 		vim.lsp.codelens.enable(not vim.lsp.codelens.is_enabled({ bufnr = 0 }), { bufnr = 0 })
 	end, { desc = "切换代码透镜", silent = true })
-	vim.keymap.set("n", "<leader>lh", source_header, { desc = "切换源文件与头文件", silent = true })
+	vim.keymap.set("n", "<leader>ch", source_header, { desc = "切换源文件与头文件", silent = true })
 end
 
 return M

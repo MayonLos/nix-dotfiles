@@ -31,13 +31,6 @@ return {
 		end,
 	},
 	{
-		"nvim-navic",
-		event = "LspAttach",
-		after = function()
-			require("mayon.ui.breadcrumbs").setup()
-		end,
-	},
-	{
 		"trouble.nvim",
 		cmd = "Trouble",
 		after = function()

@@ -3,15 +3,23 @@
   palette,
   contributions,
   acpAdapters ? { },
+  nixOptions ? null,
 }:
 
 let
   sourceConfig = ./config;
+  # Keep stable plugins' Lua packages on one LuaJIT ABI/environment. This only
+  # selects the wrapper's Lua dependency set, preserving the upstream editor.
+  editor = pkgs.unstable.neovim-unwrapped // {
+    lua = pkgs.luajit;
+  };
   languages = (import ../languages/contract.nix { inherit (pkgs) lib; }).collect contributions;
   dataRuntime = pkgs.writeTextDir "lua/mayon/generated.lua" (
     "return "
     + pkgs.lib.generators.toLua { } {
       inherit palette;
+      nix_options = nixOptions;
+      parser_runtime = pluginSet.parserRuntime;
       ansi = import ../../appearance/appearance/ansi.nix palette;
       tools = {
         copilot = "${pkgs.copilot-language-server}/bin/copilot-language-server";
@@ -56,7 +64,7 @@ let
     file:close()
     LUA
     MAYON_THEME_PLUGIN=${pkgs.vimPlugins.onedark-nvim} MAYON_THEME_CONFIG="$out" \
-      ${pkgs.neovim-unwrapped}/bin/nvim --headless -u NONE -i NONE -n \
+      ${pkgs.unstable.neovim-unwrapped}/bin/nvim --headless -u NONE -i NONE -n \
       -c "luafile $TMPDIR/compile.lua" -c 'qa!'
     test -s "$out/lua/mayon/generated_highlights.lua"
 
@@ -76,11 +84,12 @@ let
     procps
     lsof
     wl-clipboard
+    sqlite
   ];
 
   mkNeovim =
     { development }:
-    pkgs.wrapNeovimUnstable pkgs.neovim-unwrapped {
+    pkgs.wrapNeovimUnstable editor {
       extraName = if development then "-dev" else "";
 
       inherit (pluginSet) plugins;
@@ -91,6 +100,7 @@ let
       luaRcContent = ''
         local config_dir = vim.env.NVIM_CONFIG_DIR or "${configPath}"
         vim.opt.runtimepath:prepend("${dataRuntime}")
+        vim.opt.runtimepath:append(require("mayon.generated").parser_runtime)
         vim.opt.runtimepath:prepend(config_dir)
         vim.opt.runtimepath:append(config_dir .. "/after")
         dofile(config_dir .. "/init.lua")
@@ -117,6 +127,12 @@ let
             ]
         )
         ++ [
+          # 0.12 probes OSC 11 + DSR before --cmd/user config and blocks the
+          # first frame. This editor fixes dark/truecolor explicitly and owns
+          # a non-blocking OSC 11 lifecycle, so the native probe is redundant.
+          "--set-default"
+          "NVIM_NOTTYFAST"
+          "1"
           "--prefix"
           "PATH"
           ":"

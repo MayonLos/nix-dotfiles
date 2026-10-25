@@ -1,3 +1,31 @@
+-- Decorations are lazy in production; load their cold-start specs and verify
+-- the locked plugin options rather than relying on a manually opened session.
+require("lz.n").trigger_load({ "nvim-highlight-colors", "tiny-inline-diagnostic.nvim", "tiny-glimmer.nvim" })
+local color_options = require("mayon.ui.extras").color_options()
+assert(color_options.render == "virtual" and color_options.virtual_symbol == "■")
+local early_palette = require("mayon.generated").palette
+local early_normal_nc = vim.api.nvim_get_hl(0, { name = "NormalNC", link = false })
+assert(
+	early_normal_nc.bg
+		== tonumber(require("mayon.ui.theme").blend(early_palette.deep, early_palette.bg, 0.42):sub(2), 16),
+	"startup inactive editor islands should sit between deep and the active editor surface"
+)
+assert(color_options.enable_named_colors == false, "named colors must not recolor prose/comments")
+assert(color_options.enable_hex and color_options.enable_rgb and color_options.enable_var_usage)
+assert(color_options.enable_tailwind, "Tailwind utility colors should receive swatches")
+assert(not package.loaded.colorizer, "the background-colorizer plugin should be removed")
+local inline_diagnostic = require("tiny-inline-diagnostic")
+assert(inline_diagnostic.config.preset == "modern", "inline diagnostics should use the capsule preset")
+assert(inline_diagnostic.config.signs.arrow == "", "inline diagnostics should omit the large arrow")
+assert(inline_diagnostic.config.signs.left == "" and inline_diagnostic.config.signs.right == "")
+assert(inline_diagnostic.config.options.show_code == false)
+assert(inline_diagnostic.config.options.show_all_diags_on_cursorline)
+local motion = require("mayon.ui.motion").config()
+assert(motion.overwrite.yank.enabled and motion.overwrite.paste.enabled)
+assert(motion.overwrite.search.enabled and motion.overwrite.undo.enabled and motion.overwrite.redo.enabled)
+assert(motion.animations.fade.max_duration <= 300 and motion.animations.reverse_fade.max_duration <= 300)
+assert(motion.enabled == not require("mayon.ui.motion").reduced_motion())
+
 -- Real optional-plugin setup, dashboard rendering, picker routing and folds.
 vim.api.nvim_exec_autocmds("User", { pattern = "MayonVeryLazy" })
 require("lz.n").trigger_load({ "codecompanion.nvim", "codediff.nvim", "grug-far.nvim", "trouble.nvim", "yazi.nvim" })
@@ -94,7 +122,14 @@ local file_segments = dashboard_config.formats.file({ file = recent_file }, { wi
 assert(vim.trim(file_segments[1][1]) == "recent-note.txt", "recent file should lead with its filename")
 assert(file_segments[3].hl == "MayonDashboardMuted", "recent file parent path should be muted")
 assert(file_segments[3][1]:find(vim.fn.fnamemodify(vim.fs.dirname(recent_file), ":t"), 1, true))
-assert(dashboard_config.formats.icon({ icon = "file" })[1] == "  ", "recent files should not use fallible icon lookup")
+local dashboard_file_icon = dashboard_config.formats.icon({ icon = "file", file = recent_file })
+local expected_dashboard_icon = require("mayon.ui.icons").get(recent_file)
+assert(
+	dashboard_file_icon[1] == expected_dashboard_icon
+		and dashboard_file_icon[1] ~= "  "
+		and dashboard_file_icon.hl:match("^DevIcon"),
+	"recent files should display their colored devicon"
+)
 assert(
 	dashboard_config.formats.icon({ icon = "directory" })[1] == "▸ ",
 	"project directories should use the blue arrow"
@@ -175,6 +210,10 @@ vim.v.oldfiles = oldfiles
 local real_picker = snacks.picker
 local seen = {}
 snacks.picker = setmetatable({}, {
+	__call = function(_, opts)
+		assert(vim.tbl_contains(opts.multi, "files") and vim.tbl_contains(opts.multi, "keymaps"))
+		seen.everywhere = true
+	end,
 	__index = function(_, source)
 		return function()
 			seen[source] = true
@@ -182,7 +221,7 @@ snacks.picker = setmetatable({}, {
 	end,
 })
 local picker_mappings = {
-	{ "<leader><leader>", "smart" },
+	{ "<leader><leader>", "everywhere" },
 	{ "<leader>/", "grep" },
 	{ "<leader>,", "buffers" },
 	{ "<leader>fr", "recent" },
@@ -205,7 +244,7 @@ assert(type(config_picker.callback) == "function", "missing config file picker")
 config_picker.callback()
 snacks.picker = real_picker
 for _, source in ipairs({
-	"smart",
+	"everywhere",
 	"grep",
 	"buffers",
 	"recent",
@@ -255,10 +294,17 @@ assert(vim.fn.foldtextresult(1):find("lines", 1, true), "fold summary lacks line
 vim.cmd.normal({ "zR", bang = true })
 assert(vim.fn.foldclosed(1) == -1)
 vim.fn.delete(file)
-vim.cmd.colorscheme("onedark")
 for _, group in ipairs({
 	"MayonDashboardBlue",
 	"MayonDashboardMuted",
+	"MayonFrame",
+	"MayonIsland",
+	"MiniMapNormal",
+	"MiniMapSymbolLine",
+	"MiniMapSymbolCount",
+	"MiniMapSymbolView",
+	"MayonToolbar",
+	"MayonToolRail",
 	"OilDir",
 	"RainbowDelimiterBlue",
 	"InclineNormal",
@@ -279,20 +325,44 @@ for _, group in ipairs({
 	assert(next(hl), "missing theme group: " .. group)
 end
 local palette = require("mayon.generated").palette
-for _, name in ipairs({
-	"TinyInlineDiagnosticVirtualTextError",
-	"TinyInlineDiagnosticVirtualTextErrorCursorLine",
-	"TinyInlineInvDiagnosticVirtualTextErrorNoBg",
-}) do
-	assert(
-		vim.api.nvim_get_hl(0, { name = name, link = false }).fg == tonumber(palette.brightFg:sub(2), 16),
-		"diagnostic body must remain brightFg after colorscheme reload: " .. name
-	)
-end
+local tiny_error = vim.api.nvim_get_hl(0, { name = "TinyInlineDiagnosticVirtualTextError", link = false })
+assert(
+	tiny_error.fg == tonumber(require("mayon.ui.theme").blend(palette.red, palette.fg, 0.58):sub(2), 16)
+		and tiny_error.bg == tonumber(require("mayon.ui.theme").blend(palette.red, palette.bg, 0.12):sub(2), 16),
+	"diagnostic capsule should use a soft severity tint and readable severity text"
+)
+local cursor_error = vim.api.nvim_get_hl(0, { name = "TinyInlineDiagnosticVirtualTextErrorCursorLine", link = false })
+assert(cursor_error.fg == tiny_error.fg and cursor_error.bg == tiny_error.bg)
+local no_bg = vim.api.nvim_get_hl(0, { name = "TinyInlineInvDiagnosticVirtualTextErrorNoBg", link = false })
+assert(no_bg.fg == tonumber(palette.muted:sub(2), 16))
 local inline = vim.api.nvim_get_hl(0, { name = "LspInlineCompletion", link = false })
 assert(inline.fg == tonumber(palette.muted:sub(2), 16) and inline.italic, "AI ghost text must use muted italic")
 local normal = vim.api.nvim_get_hl(0, { name = "Normal", link = false })
 assert(normal.bg == tonumber(palette.bg:sub(2), 16), "editor surface must use generated bg")
+assert(require("mayon.ui.theme").frame_color() == "#090a0c", "frame color should be derived from palette black")
+assert(
+	vim.api.nvim_get_hl(0, { name = "MiniMapNormal", link = false }).fg
+		== tonumber(require("mayon.ui.theme").blend(palette.muted, palette.bg, 0.30):sub(2), 16),
+	"mini.map base glyphs should be muted against the editor island"
+)
+assert(
+	vim.api.nvim_get_hl(0, { name = "MiniMapSymbolView", link = false }).bg
+		== tonumber(require("mayon.ui.theme").blend(palette.blue, palette.bg, 0.12):sub(2), 16),
+	"mini.map viewport should use a restrained blue tint"
+)
+assert(require("mayon.ui.theme").mode_highlight("i") == "MayonModeBlockInsert")
+assert(require("mayon.ui.theme").mode_highlight("v") == "MayonModeBlockVisual")
+local current_win = vim.api.nvim_get_current_win()
+vim.cmd.vsplit()
+assert(
+	vim.wo[current_win].winhighlight:find("CursorLine:NormalNC", 1, true),
+	"inactive document windows should hide the current-line highlight"
+)
+vim.cmd.close()
+assert(
+	not vim.wo[current_win].winhighlight:find("CursorLine:NormalNC", 1, true),
+	"the focused editor should restore its current-line highlight"
+)
 assert(not package.loaded.satellite, "the removed satellite UI must stay unloaded")
 assert(vim.v.errmsg == "", vim.v.errmsg)
 print("Lazy setup, dashboard, unified pickers, folds and palette groups passed")

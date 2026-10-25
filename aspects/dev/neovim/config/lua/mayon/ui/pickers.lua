@@ -154,7 +154,9 @@ end
 
 local function grep_format(item, picker)
 	if item.mayon_header then
+		local icon, icon_hl = require("mayon.ui.icons").get(item.file)
 		return {
+			{ icon, icon_hl },
 			{ vim.fn.fnamemodify(item.file, ":~:."), "SnacksPickerFile" },
 			{
 				col = 0,
@@ -176,6 +178,11 @@ local function grep_format(item, picker)
 end
 
 function M.configure(opts)
+	if opts.title and opts.title:find("Search Everywhere", 1, true) then
+		opts.mayon_label = opts.title
+	end
+	-- Keep native Snacks formatters on the same colored, configured devicon set.
+	require("mayon.ui.icons").ensure()
 	if opts.source == "explorer" then
 		opts.prompt = "❯ "
 		return opts
@@ -185,14 +192,19 @@ function M.configure(opts)
 	opts.formatters = vim.tbl_deep_extend("force", opts.formatters or {}, { file = { filename_first = true } })
 	if opts.source == "files" or opts.source == "recent" then
 		opts.format = function(item, picker)
-			local name = vim.fn.fnamemodify(item.file or item.text, ":t")
-			local parent = vim.fn.fnamemodify(item.file or item.text, ":h")
+			local path = item.file or item.text
+			local name = vim.fn.fnamemodify(path, ":t")
+			local icon, icon_hl = require("mayon.ui.icons").get(path)
+			local icon_width = vim.fn.strdisplaywidth(icon)
+			local parent = vim.fn.fnamemodify(path, ":h")
 			parent = vim.fs.relpath(picker:cwd(), parent) or vim.fn.fnamemodify(parent, ":~")
-			local width = math.max(8, picker.list.win:dim().width - 4)
+			local width = math.max(8, picker.list.win:dim().width - 4 - icon_width)
 			local text = require("mayon.ui.text")
 			name = text.truncate(name, math.max(8, math.floor(width * 0.65)))
-			parent = text.truncate(parent, math.max(1, width - vim.fn.strdisplaywidth(name) - 2))
+			local parent_width = math.max(1, width - vim.fn.strdisplaywidth(name) - 2)
+			parent = text.truncate(parent, parent_width)
 			return {
+				{ icon, icon_hl },
 				{ name, "SnacksPickerFile" },
 				{ col = 0, virt_text = { { parent, "SnacksPickerDir" } }, virt_text_pos = "right_align" },
 			}

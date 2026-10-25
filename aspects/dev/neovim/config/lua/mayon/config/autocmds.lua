@@ -1,6 +1,7 @@
 local M = {}
 
 function M.setup()
+	require("mayon.ui.terminal").setup()
 	local group = vim.api.nvim_create_augroup("MayonCore", { clear = true })
 	vim.api.nvim_create_autocmd("BufReadPost", {
 		group = group,
@@ -41,10 +42,11 @@ function M.setup()
 			end)
 		end,
 	})
-	vim.api.nvim_create_autocmd("TextYankPost", {
+	vim.api.nvim_create_autocmd("FileType", {
 		group = group,
-		callback = function()
-			vim.hl.on_yank({ timeout = 200 })
+		callback = function(ev)
+			vim.bo[ev.buf].spelllang = "en,cjk"
+			vim.wo.spell = vim.tbl_contains({ "markdown", "gitcommit", "tex" }, ev.match)
 		end,
 	})
 end

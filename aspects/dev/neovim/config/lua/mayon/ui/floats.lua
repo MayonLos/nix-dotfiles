@@ -39,7 +39,8 @@ function M.setup()
 		opts = vim.tbl_extend("keep", opts or {}, { border = "rounded", max_width = 64, max_height = 18 })
 		local kind = opts.focus_id == "textDocument/hover" and "hover"
 			or opts.focus_id == "textDocument/signatureHelp" and "signature"
-		if kind and not opts.title then
+		if not opts.title then
+			kind = kind or (opts.focus_id == "vim.diagnostic.open_float" and "diagnostic") or "details"
 			opts.title = " " .. kind .. " · " .. server() .. " "
 			opts.title_pos = "left"
 		end

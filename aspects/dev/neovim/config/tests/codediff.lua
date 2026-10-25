@@ -1,6 +1,31 @@
 local git_specs = require("mayon.plugins.git")
 vim.g.mapleader = " "
 require("lz.n").trigger_load("gitsigns.nvim")
+assert(
+	vim.wait(1000, function()
+		return vim.fn.maparg(" gb", "n") ~= ""
+	end),
+	"gitsigns setup did not install its mappings"
+)
+
+local gitsigns = require("gitsigns")
+local git_config = require("gitsigns.config").config
+assert(
+	git_config.signs.add.text == "▎" and git_config.signs.change.text == "▎",
+	vim.inspect({ add = git_config.signs.add, change = git_config.signs.change })
+)
+assert(git_config.signs.delete.text == "▎" and git_config.signs.topdelete.text == "▎")
+assert(git_config.current_line_blame == false, "Git blame must start disabled")
+local blame_toggle = vim.fn.maparg(" gb", "n", false, true)
+assert(blame_toggle.callback and blame_toggle.desc == "切换当前行 Git blame", "<leader>gb must toggle blame")
+local blame_toggles = 0
+local toggle_blame = gitsigns.toggle_current_line_blame
+gitsigns.toggle_current_line_blame = function()
+	blame_toggles = blame_toggles + 1
+end
+blame_toggle.callback()
+gitsigns.toggle_current_line_blame = toggle_blame
+assert(blame_toggles == 1, "<leader>gb did not call the blame toggle")
 
 for _, spec in ipairs({
 	{ "<leader>gd", "审阅工作区 Git 改动" },
@@ -49,16 +74,37 @@ assert(vim.fn.filereadable(package_root .. "/libvscode_diff.so") == 1, "Nix pack
 local function git(args, cwd)
 	local result = vim.system(vim.list_extend({ "git", "-C", cwd }, args), { text = true }):wait()
 	assert(result.code == 0, result.stderr)
+	return vim.trim(result.stdout)
 end
 
 local repo = vim.fn.tempname()
 vim.fn.mkdir(repo, "p")
-git({ "init", "-q" }, repo)
-git({ "config", "user.name", "Codediff Test" }, repo)
-git({ "config", "user.email", "codediff@example.invalid" }, repo)
+git({ "init", "--initial-branch=main", "-q" }, repo)
+local blob_result = vim.system(
+	{ "git", "-C", repo, "hash-object", "-w", "--stdin" },
+	{ text = true, stdin = "before\nsame\n" }
+)
+	:wait()
+assert(blob_result.code == 0, blob_result.stderr)
+local tree_result = vim.system(
+	{ "git", "-C", repo, "mktree" },
+	{ text = true, stdin = "100644 blob " .. vim.trim(blob_result.stdout) .. "\treview.txt\n" }
+):wait()
+assert(tree_result.code == 0, tree_result.stderr)
+local commit_result = vim.system({ "git", "-C", repo, "commit-tree", vim.trim(tree_result.stdout), "-m", "fixture" }, {
+	text = true,
+	env = {
+		GIT_AUTHOR_NAME = "CodeDiff Test",
+		GIT_AUTHOR_EMAIL = "codediff@example.invalid",
+		GIT_COMMITTER_NAME = "CodeDiff Test",
+		GIT_COMMITTER_EMAIL = "codediff@example.invalid",
+	},
+})
+local commit = commit_result:wait()
+assert(commit.code == 0, commit.stderr)
+git({ "update-ref", "refs/heads/main", vim.trim(commit.stdout) }, repo)
+git({ "update-index", "--add", "--cacheinfo", "100644," .. vim.trim(blob_result.stdout) .. ",review.txt" }, repo)
 vim.fn.writefile({ "before", "same" }, repo .. "/review.txt")
-git({ "add", "review.txt" }, repo)
-git({ "commit", "-qm", "fixture" }, repo)
 vim.fn.writefile({ "after", "same" }, repo .. "/review.txt")
 
 local opened

@@ -67,7 +67,12 @@ function M.setup()
 	vim.api.nvim_create_autocmd("UIEnter", {
 		once = true,
 		callback = function()
-			vim.schedule(statusline)
+			vim.schedule(function()
+				statusline()
+				require("mayon.ui.workspace").setup()
+				local s = sessions()
+				s.auto_restore()
+			end)
 		end,
 	})
 	vim.g.mayon_config_loaded = true

@@ -2,6 +2,7 @@
 -- editor surfaces without maintaining a second syntax theme.
 local M = {}
 local configured = false
+local surface_winhighlight = {}
 
 local function blend(foreground, background, alpha)
 	local function channel(hex, offset)
@@ -17,17 +18,27 @@ end
 
 M.blend = blend
 
+function M.frame_color()
+	local palette = require("mayon.generated").palette
+	return blend(palette.deep, "#000000", 0.36)
+end
+
 local function overrides()
 	local function get(name)
 		return vim.api.nvim_get_hl(0, { name = name, link = false })
 	end
 	local c = require("mayon.generated").palette
 	local edge = blend(c.border, c.deep, 0.28)
+	local frame = M.frame_color()
 	local function set(name, values)
 		vim.api.nvim_set_hl(0, name, values)
 	end
 	set("Normal", { fg = c.brightFg, bg = c.bg })
-	set("NormalNC", { fg = c.brightFg, bg = c.bg })
+	set("NormalNC", { fg = c.fg, bg = blend(c.deep, c.bg, 0.42) })
+	set("MiniMapNormal", { fg = blend(c.muted, c.bg, 0.30), bg = c.bg })
+	set("MiniMapSymbolLine", { fg = blend(c.muted, c.bg, 0.34), bg = c.bg })
+	set("MiniMapSymbolCount", { fg = blend(c.muted, c.bg, 0.38), bg = c.bg })
+	set("MiniMapSymbolView", { fg = c.blue, bg = blend(c.blue, c.bg, 0.12) })
 	set("Visual", { fg = c.brightFg, bg = c.selection })
 	set("VisualNOS", { fg = c.brightFg, bg = c.selection })
 	set("LineNr", { fg = c.muted, bg = c.bg })
@@ -35,7 +46,15 @@ local function overrides()
 	set("CursorLine", { bg = blend(c.blue, c.bg, 0.035) })
 	set("CursorLineSign", { bg = c.bg })
 	set("SignColumn", { bg = c.bg })
-	set("WinSeparator", { fg = edge, bg = c.deep })
+	set("WinSeparator", { fg = frame, bg = frame })
+	set("MayonFrame", { fg = frame, bg = frame })
+	set("MayonIsland", { fg = c.fg, bg = c.bg })
+	set("MayonToolbar", { fg = c.fg, bg = c.deep })
+	set("MayonToolbarHint", { fg = c.muted, bg = c.deep })
+	set("MayonRun", { fg = c.green, bg = c.selection, bold = true })
+	set("MayonModified", { fg = c.orange, bg = c.deep, bold = true })
+	set("MayonToolRail", { fg = c.muted, bg = c.deep })
+	set("MayonToolRailActive", { fg = c.blue, bg = c.selection, bold = true })
 	set("StatusLine", { fg = c.fg, bg = c.deep })
 	set("StatusLineNC", { fg = c.fg, bg = c.deep })
 	set("MayonDashboardMode", { fg = c.blue, bg = c.selection, bold = true })
@@ -53,6 +72,13 @@ local function overrides()
 	set("MayonModeVisual", { fg = c.yellow, bg = c.deep, bold = true, underline = true, sp = c.yellow })
 	set("MayonModeReplace", { fg = c.red, bg = c.deep, bold = true, underline = true, sp = c.red })
 	set("MayonModeCommand", { fg = c.orange, bg = c.deep, bold = true, underline = true, sp = c.orange })
+	set("MayonModeBlockNormal", { fg = c.blue, bg = c.selection, bold = true })
+	set("MayonModeBlockInsert", { fg = c.green, bg = c.selection, bold = true })
+	set("MayonModeBlockVisual", { fg = c.purple, bg = c.selection, bold = true })
+	set("MayonModeBlockReplace", { fg = c.red, bg = c.selection, bold = true })
+	set("MayonModeBlockCommand", { fg = c.yellow, bg = c.selection, bold = true })
+	set("MayonFoldText", { fg = c.fg, bg = c.surface })
+	set("MayonFoldCount", { fg = c.muted, bg = c.surface })
 	set("MayonStatusGit", { fg = c.cyan })
 	set("MayonStatusAdded", { fg = c.green })
 	set("MayonStatusChanged", { fg = c.orange })
@@ -374,12 +400,14 @@ local function overrides()
 	}
 	set("TinyInlineDiagnosticVirtualTextBg", { bg = c.bg })
 	for name, color in pairs(tiny_colors) do
-		set("TinyInlineDiagnosticVirtualText" .. name, { fg = c.brightFg, bg = c.surface })
-		set("TinyInlineDiagnosticVirtualText" .. name .. "CursorLine", { fg = c.brightFg, bg = c.selection })
-		set("TinyInlineDiagnosticVirtualText" .. name .. "NoBg", { fg = color, bg = "NONE" })
+		local text = blend(color, c.fg, 0.58)
+		local capsule = blend(color, c.bg, 0.12)
+		set("TinyInlineDiagnosticVirtualText" .. name, { fg = text, bg = capsule })
+		set("TinyInlineDiagnosticVirtualText" .. name .. "CursorLine", { fg = text, bg = capsule })
+		set("TinyInlineDiagnosticVirtualText" .. name .. "NoBg", { fg = c.muted, bg = "NONE" })
 		set("TinyInlineInvDiagnosticVirtualText" .. name, { fg = c.bg, bg = color })
 		set("TinyInlineInvDiagnosticVirtualText" .. name .. "CursorLine", { fg = c.bg, bg = color })
-		set("TinyInlineInvDiagnosticVirtualText" .. name .. "NoBg", { fg = c.brightFg, bg = "NONE" })
+		set("TinyInlineInvDiagnosticVirtualText" .. name .. "NoBg", { fg = c.muted, bg = "NONE" })
 		for mixed_name, mixed_color in pairs(tiny_colors) do
 			set("TinyInlineDiagnosticVirtualText" .. name .. "Mix" .. mixed_name, {
 				fg = color,
@@ -387,9 +415,9 @@ local function overrides()
 			})
 		end
 	end
-	set("TinyInlineDiagnosticVirtualTextArrow", { fg = c.cyan, bg = c.bg })
-	set("TinyInlineDiagnosticVirtualTextArrowCursorLine", { fg = c.cyan, bg = c.selection })
-	set("TinyInlineDiagnosticVirtualTextArrowNoBg", { fg = c.cyan, bg = "NONE" })
+	set("TinyInlineDiagnosticVirtualTextArrow", { fg = c.muted, bg = "NONE" })
+	set("TinyInlineDiagnosticVirtualTextArrowCursorLine", { fg = c.muted, bg = "NONE" })
+	set("TinyInlineDiagnosticVirtualTextArrowNoBg", { fg = c.muted, bg = "NONE" })
 	for name, target in pairs(links) do
 		vim.api.nvim_set_hl(0, name, { link = target })
 	end
@@ -401,6 +429,95 @@ local function overrides()
 		SnacksDashboardTitle = c.blue,
 	}) do
 		vim.api.nvim_set_hl(0, name, { fg = color, bg = c.bg })
+	end
+end
+
+local mode_groups = {
+	n = "MayonModeBlockNormal",
+	i = "MayonModeBlockInsert",
+	v = "MayonModeBlockVisual",
+	V = "MayonModeBlockVisual",
+	["\22"] = "MayonModeBlockVisual",
+	R = "MayonModeBlockReplace",
+	r = "MayonModeBlockReplace",
+	c = "MayonModeBlockCommand",
+}
+
+local function apply_mode()
+	local mode = vim.fn.mode(1)
+	local initial = mode:sub(1, 1)
+	local group = mode_groups[mode] or mode_groups[initial] or mode_groups.n
+	local color = vim.api.nvim_get_hl(0, { name = group, link = false }).fg
+	if color then
+		vim.api.nvim_set_hl(0, "CursorLineNr", {
+			fg = color,
+			bg = blend(require("mayon.generated").palette.blue, require("mayon.generated").palette.bg, 0.035),
+			bold = true,
+		})
+	end
+end
+
+function M.mode_highlight(mode)
+	local initial = tostring(mode or "n"):sub(1, 1)
+	return mode_groups[mode] or mode_groups[initial] or mode_groups.n
+end
+
+local function active_document(win)
+	if not vim.api.nvim_win_is_valid(win) then
+		return false
+	end
+	local buf = vim.api.nvim_win_get_buf(win)
+	return vim.bo[buf].buftype == "" and not vim.b[buf].snacks_dashboard
+end
+
+local function clean_document_mapping(mapping)
+	local kept = {}
+	for entry in mapping:gmatch("[^,]+") do
+		local source, target = entry:match("^([^:]+):(.+)$")
+		local stale = target
+			and (
+				target:match("^SnacksDashboard")
+				or ((source == "Normal" or source == "NormalNC") and target == "NormalFloat")
+				or (source == "WinBar" and target == "MayonPanelTitle")
+				or (source == "WinSeparator" and target == "FloatBorder")
+				or (source == "CursorLine" and target == "PmenuSel")
+			)
+		if not stale then
+			kept[#kept + 1] = entry
+		end
+	end
+	return table.concat(kept, ",")
+end
+
+local function set_cursorline_mapping(win, inactive)
+	if not active_document(win) then
+		return
+	end
+	local current = vim.wo[win].winhighlight
+	if vim.api.nvim_win_get_config(win).relative == "" then
+		current = clean_document_mapping(current)
+		vim.wo[win].winhighlight = current
+		if surface_winhighlight[win] then
+			surface_winhighlight[win] = clean_document_mapping(surface_winhighlight[win])
+		end
+	end
+	if inactive then
+		if surface_winhighlight[win] then
+			return
+		end
+		surface_winhighlight[win] = current
+		local kept = {}
+		for entry in current:gmatch("[^,]+") do
+			if not entry:match("^CursorLine:") and not entry:match("^CursorLineNr:") then
+				kept[#kept + 1] = entry
+			end
+		end
+		kept[#kept + 1] = "CursorLine:NormalNC"
+		kept[#kept + 1] = "CursorLineNr:LineNr"
+		vim.wo[win].winhighlight = table.concat(kept, ",")
+	elseif surface_winhighlight[win] then
+		vim.wo[win].winhighlight = surface_winhighlight[win]
+		surface_winhighlight[win] = nil
 	end
 end
 
@@ -477,6 +594,28 @@ end
 
 function M.setup()
 	vim.cmd.colorscheme("onedark")
+	local group = vim.api.nvim_create_augroup("MayonActiveSurface", { clear = true })
+	vim.api.nvim_create_autocmd("WinLeave", {
+		group = group,
+		callback = function()
+			set_cursorline_mapping(vim.api.nvim_get_current_win(), true)
+		end,
+	})
+	vim.api.nvim_create_autocmd({ "WinEnter", "BufWinEnter" }, {
+		group = group,
+		callback = function()
+			set_cursorline_mapping(vim.api.nvim_get_current_win(), false)
+			apply_mode()
+		end,
+	})
+	vim.api.nvim_create_autocmd("ModeChanged", { group = group, callback = apply_mode })
+	vim.api.nvim_create_autocmd("WinClosed", {
+		group = group,
+		callback = function(ev)
+			surface_winhighlight[tonumber(ev.match)] = nil
+		end,
+	})
+	apply_mode()
 end
 
 M.refresh = overrides

@@ -133,4 +133,13 @@ function M.setup()
 	install_borderless_title()
 end
 
+function M.show_all()
+	local ok, which_key = pcall(require, "which-key")
+	if not ok then
+		return false
+	end
+	which_key.show({ keys = "<leader>", mode = "n", delay = 0 })
+	return true
+end
+
 return M

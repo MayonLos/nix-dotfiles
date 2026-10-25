@@ -37,7 +37,7 @@ function M.setup()
 		-- Keep native Progress events for the statusline, without ui2 messages.
 		messagesopt = "hit-enter,history:500,progress:",
 		list = true,
-		listchars = { tab = "» ", trail = "·", nbsp = "␣" },
+		listchars = { tab = "  ", trail = "·", nbsp = "␣" },
 		number = true,
 		-- Absolute numbers match the preview and keep line references stable.
 		relativenumber = false,
@@ -49,7 +49,7 @@ function M.setup()
 		smoothscroll = true,
 		linebreak = true,
 		showtabline = 2,
-		signcolumn = "yes",
+		signcolumn = "yes:2",
 		smartcase = true,
 		smartindent = true,
 		softtabstop = 4,
@@ -70,9 +70,27 @@ function M.setup()
 	for name, value in pairs(options) do
 		vim.opt[name] = value
 	end
+	if vim.env.SSH_CONNECTION or vim.env.SSH_TTY then
+		vim.g.clipboard = "osc52"
+	elseif vim.env.WAYLAND_DISPLAY and vim.fn.executable("wl-copy") == 1 then
+		vim.g.clipboard = {
+			name = "Wayland",
+			copy = { ["+"] = "wl-copy --type text/plain", ["*"] = "wl-copy --primary --type text/plain" },
+			paste = { ["+"] = "wl-paste --no-newline", ["*"] = "wl-paste --primary --no-newline" },
+			cache_enabled = 0,
+		}
+	end
 	vim.opt.diffopt:remove("inline:char")
 	vim.opt.diffopt:append("inline:word")
-	vim.opt.fillchars:append({ vert = "│", vertleft = "│", vertright = "│", verthoriz = "│" })
+	vim.opt.fillchars:append({
+		vert = " ",
+		vertleft = " ",
+		vertright = " ",
+		verthoriz = " ",
+		horiz = " ",
+		horizup = " ",
+		horizdown = " ",
+	})
 	-- Register the extra extension before the first read/new-file detection.
 	vim.api.nvim_create_autocmd({ "BufReadPre", "BufNewFile" }, {
 		once = true,

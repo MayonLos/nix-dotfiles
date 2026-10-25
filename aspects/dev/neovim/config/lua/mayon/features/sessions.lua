@@ -7,7 +7,10 @@ function M.setup()
 	end
 	ready = true
 	local session_dir = vim.fn.stdpath("state") .. "/sessions"
-	local session_options = "buffers,curdir,tabpages,winsize,folds"
+	-- Keep ordinary file windows and their layout. The buffer list is filtered
+	-- for the duration of mksession below so plugin-owned panes never leak into
+	-- a project session.
+	local session_options = "curdir,tabpages,winsize,folds"
 	local mtime_baselines = {}
 	local save_disabled = false
 
@@ -150,12 +153,12 @@ function M.setup()
 		load_session(newest_path)
 	end
 
-	local function save_session()
-		if save_disabled or #vim.api.nvim_list_uis() == 0 then
-			return
+	local function save_session_impl(force)
+		if save_disabled or (#vim.api.nvim_list_uis() == 0 and not force) then
+			return false
 		end
 		if not has_file_buffer() or has_modified_buffer() then
-			return
+			return false
 		end
 
 		local path = current_session_path()
@@ -166,31 +169,73 @@ function M.setup()
 		end
 		if mtime(path) ~= baseline then
 			notify("save skipped because this session changed in another Neovim instance", vim.log.levels.WARN)
-			return
+			return false
 		end
 
 		vim.fn.mkdir(session_dir, "p")
 		local temp_path = path .. ".tmp." .. vim.fn.getpid() .. "." .. tostring(vim.uv.hrtime())
+		local listed = {}
+		for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+			if vim.api.nvim_buf_is_loaded(buf) then
+				local filetype = vim.bo[buf].filetype
+				local special = vim.bo[buf].buftype ~= ""
+					or filetype:match("^snacks_")
+					or filetype:match("^codecompanion")
+					or filetype:match("^claudecode")
+					or vim.b[buf].snacks_picker
+					or vim.b[buf].snacks_terminal
+				if special and vim.bo[buf].buflisted then
+					listed[buf] = true
+					vim.bo[buf].buflisted = false
+				end
+			end
+		end
 		local ok, err = pcall(vim.cmd, "mksession! " .. vim.fn.fnameescape(temp_path))
+		for buf in pairs(listed) do
+			if vim.api.nvim_buf_is_valid(buf) then
+				vim.bo[buf].buflisted = true
+			end
+		end
 		if not ok then
 			vim.uv.fs_unlink(temp_path)
 			notify("could not save session: " .. tostring(err), vim.log.levels.ERROR)
-			return
+			return false
 		end
 
 		-- Check again after writing, immediately before the atomic replacement.
 		if mtime(path) ~= baseline then
 			vim.uv.fs_unlink(temp_path)
 			notify("save skipped because this session changed in another Neovim instance", vim.log.levels.WARN)
-			return
+			return false
 		end
 		local renamed, rename_err = vim.uv.fs_rename(temp_path, path)
 		if not renamed then
 			vim.uv.fs_unlink(temp_path)
 			notify("could not replace session file: " .. tostring(rename_err), vim.log.levels.ERROR)
-			return
+			return false
 		end
 		mtime_baselines[path] = mtime(path)
+		return true
+	end
+
+	-- workspace.schedule recreates the native tool tabs on BufEnter/WinEnter.
+	-- Keep those callbacks from racing mksession or a session source, and
+	-- restore the caller's prior state even when Vim reports an error.
+	local function with_session_guard(callback)
+		local previous = vim.g.mayon_session_saving
+		vim.g.mayon_session_saving = true
+		local ok, result = xpcall(callback, debug.traceback)
+		vim.g.mayon_session_saving = previous
+		if not ok then
+			error(result)
+		end
+		return result
+	end
+
+	local function save_session(force)
+		return with_session_guard(function()
+			return save_session_impl(force)
+		end)
 	end
 
 	vim.keymap.set("n", "<leader>ps", load_current_session, { desc = "恢复当前目录会话" })
@@ -201,9 +246,61 @@ function M.setup()
 	end, { desc = "禁用当前会话保存" })
 
 	vim.api.nvim_create_autocmd("DirChanged", { callback = snapshot_current_session })
-	vim.api.nvim_create_autocmd("VimLeavePre", { callback = save_session })
+	vim.api.nvim_create_autocmd("VimLeavePre", {
+		callback = function()
+			save_session()
+		end,
+	})
 	M.load = load_current_session
 	M.last = load_last_session
+	M.save = save_session
+	M.path = current_session_path
+	M.auto_restore = function()
+		if vim.fn.argc() > 0 then
+			return false
+		end
+		local buf = vim.api.nvim_get_current_buf()
+		local dashboard = vim.bo[buf].filetype == "snacks_dashboard"
+		if
+			(not dashboard and vim.bo[buf].buftype ~= "")
+			or vim.api.nvim_buf_get_name(buf) ~= ""
+			or vim.bo[buf].modified
+		then
+			return false
+		end
+		local cwd, branch = vim.fn.getcwd(), current_branch(vim.fn.getcwd())
+		local candidates = { session_path(cwd, branch), legacy_session_path(cwd, branch) }
+		if branch and branch ~= "" and branch ~= "main" and branch ~= "master" then
+			table.insert(candidates, session_path(cwd, nil))
+			table.insert(candidates, legacy_session_path(cwd, nil))
+		end
+		local has_session = false
+		for _, path in ipairs(candidates) do
+			if vim.fn.filereadable(path) == 1 then
+				has_session = true
+				break
+			end
+		end
+		if not has_session then
+			return false
+		end
+		return with_session_guard(function()
+			if dashboard then
+				-- Snacks dashboards are unlisted nofile buffers. Replace the visible
+				-- dashboard before sourcing the project windows so it cannot survive
+				-- as an extra tab in the restored session.
+				local scratch = vim.api.nvim_create_buf(false, true)
+				vim.api.nvim_win_set_buf(0, scratch)
+				-- Switching away can let the dashboard plugin dispose of its buffer
+				-- synchronously (or from a scheduled cleanup). Never delete a stale id.
+				if vim.api.nvim_buf_is_valid(buf) then
+					vim.api.nvim_buf_delete(buf, { force = true })
+				end
+			end
+			load_current_session()
+			return true
+		end)
+	end
 	M.disable = function()
 		save_disabled = true
 		notify("automatic save disabled for this instance")

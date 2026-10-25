@@ -68,3 +68,44 @@ TUI不能混用HTML的30px字标和11px分组字号，也不能绘制任意2px�
 最终实际 HM 包测量：headless 新进程20次/预热5次，中位数 21.309ms（20.166–21.755ms）；200×52 tmux 首帧20次/预热3次，中位数 27.953ms（23.563–32.424ms）。两项中位数均≤30ms。四个真实最近文件/一个项目的隔离历史，保留OS/store缓存，没有清空页缓存；不包含终端模拟器字体栅格化。电源 balanced、ACAD online=1；headless负载 ['1.50', '1.33', '1.47'] → ['1.50', '1.33', '1.47']；tmux负载 ['1.50', '1.33', '1.47'] → ['1.38', '1.31', '1.46']。原始样本在 `startup-phase2/report.json` 与 `startup-tmux-phase2/report.json`。
 
 最终28张图均用上表实际 HM 包重新拍摄，`live_config=false`，probe 的 error/load_error 为空；补全跨页、Explorer浮动搜索和 Claude diffoff 断言通过。图集 `iter-final-index.html`，清单/包路径/每张 PNG、HTML、ANSI SHA256 为 `iter-final-manifest.json`。最终构建后核对84个 Neovim 源文件哈希与快照一致；此后只补录本文中的结果。一次已被新源码取代的构建被主动中断，日志 `.superseded` 保留；不把中断当成功。
+
+## 第二十二轮：真实 Kitty 全屏观感
+
+本轮仅负责 Neovim、Kitty 与相关 shell 检查/文档；没有修改 GTK/Qt 主题或另一个 worktree。用户原始截图为 scratchpad `r22/9.png`、`10.png`。上一轮的 tmux→HTML 截图没有覆盖终端内边距与字符网格余数，本轮改用真正的 Kitty Wayland 客户端与 grim 截屏。
+
+- Kitty padding 从12改为4 pt，字符网格靠左上，fractional-scale 余数条使用相邻单元格背景。Neovim 通过 `nvim_ui_send` 在 TUI 进入/配色切换时用 OSC 11 同步 Normal，查询并保留原终端背景；挂起/退出恢复，恢复运行重新同步。tmux 使用转义后的 `DCS tmux; … ST`；保留 `allow-passthrough on` 并增加运行时断言。无回答时回退 OSC 111；迟到查询回复仍保留原色。外部 GUI UI 与 headless 不发送控制序列。
+- Explorer 40列、每层2列缩进，文件名按实际cell预算裁切，只有超宽才中间省略并保留扩展名；文件使用彩色 devicons。Dashboard最近文件、picker/grep标题、tabline、statusline同样恢复图标；Explorer聚焦时状态栏统一 `explorer`。
+- Tab缩进不显示 `»`；保留行尾空白提示。colorizer 关闭命名颜色，只在Lua/Nix解析hex/rgb。诊断使用minimal预设、muted文字及与当前行相同的底色，无箭头/彩色方括号；gutter为小圆点。
+- 第二轮真实截图揭示29条 `accessing undefined variable` 的实际来源是 **luacheck W113**，状态栏中的lua_ls不能证明诊断来源。LuaLS声明vim/Snacks并由lazydev按需提供插件库；luacheck只在store配置和仓库Neovim源码目录声明这两个运行时全局，普通Lua项目仍报告未知全局。测试对实际Lua源码等待LuaLS扫描完成，并用故意拼错的全局作为阳性对照；真实luacheck检查math_preview和普通项目。
+
+隔离环境：独立HOME/XDG、`/tmp/nvim-r22-runtime-1000`、独立Wayland socket，`WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_RENDERER=pixman`。Sway输出2560×1600、scale1.5，Kitty以fullscreen运行，使用构建出的HM Neovim包及HM Kitty配置；保留11pt Maple Mono NF CN。只通过Neovim RPC/API设置场景，未在用户Wayland会话开窗口、发送按键或重启服务。
+
+截图、原始probe、隔离脚本及构建日志均位于 `/tmp/claude-1000/-home-mayon-nix-dotfiles/13f9340b-d643-4d3f-bd2f-97266d0e2965/scratchpad/r22/`。过滤快照只复制Git跟踪文件和显式新增的terminal.lua，清单与SHA256一并保存；没有用工作树 `path:.` 导入忽略目录或运行时秘密。
+
+| 轮次 | 真实截图发现 | 修正 |
+|---|---|---|
+| 1，iter1 | 基线复现12pt外围框、文件无图标、深层截断、Tab箭头与29条警告 | padding/OSC同步、40列Explorer与文件图标、不可见Tab、minimal诊断与LuaLS配置 |
+| 2，iter2 | picker自定义formatter仍无图标；29条警告实际来自luacheck；诊断仍有可见底块 | picker/grep显式图标、按配置源码范围注入luacheck全局、诊断muted与当前行同底 |
+| 3，iter3 | 图标/误报修复生效；最长Explorer名称最后一字仍硬切，formatter少算原生leading space和statuscolumn的总占位 | 补齐两个保留cell，增加深层长文件名实际可视宽度断言，再用最终包重拍 |
+
+最终性能核验额外发现：直接Kitty启动中位数43.393ms，tmux27.363ms，headless12.064ms；没有把直接Kitty结果当作≤30通过。锁定Neovim 0.12.4的`options.txt`（`ttyfast`/`NVIM_NOTTYFAST`）和`lua/vim/_core/defaults.lua`表明，配置前的OSC11+DSR探测会同步等待；实测日志该段独占25–32ms。wrapper因此仅对编辑器进程设置`NVIM_NOTTYFAST=1`，由已有固定dark/truecolor与异步OSC11接管，native Progress仍保留。tmux查询使用原生OSC11让回复路由回pane；设置/恢复颜色才使用DCS透传。先前样本完整保存在`startup-before-probe-fix/`，后续使用新wrapper重新测量。
+
+最后进一步把`icons.ensure()`中附带的诊断初始化移到LSP入口，启动页取图标不再加载`vim.diagnostic`；LSP检查断言WARN标记仍为`•`。关闭同步探测后、尚未拆分图标/诊断的真实4条recent样本为Kitty30.779ms，保留在`startup-before-icon-split/`，没有将其当作通过。
+
+最终实际HM包为 `/nix/store/bgi86x1nmdlcbil1cs0r0rq3wjnpi9qd-neovim-0.12.4`，toplevel为 `/nix/store/af3a4h4fkccarg2vg87sv8bzcvy9n2pj-nixos-system-nixos-btw-26.05.20261021.da6dc0e`。包内config与工作树运行源码逐文件一致；wrapper没有使用live config覆盖。
+
+| 最终启动测量 | 20次中位数 | 范围 |
+|---|---|---|
+| headless新进程 | 12.204ms | 11.643–12.844ms |
+| 真实Kitty内Neovim首帧 | 29.263ms | 18.996–41.035ms |
+| 真实Kitty→tmux内Neovim首帧 | 26.467ms | 22.307–33.012ms |
+
+每项另有5次预热。`--startuptime`取headless的NVIM STARTED、TUI的first screen update；不包含终端模拟器进程整体启动/字体栅格化耗时。最终脚本在VimEnter注入4条公开路径的内存历史，并逐次RPC确认recent、dashboard、devicons与无启动错误；不读取用户历史。早期Shada准备不能可靠提供这些记录，已改用可断言的内存fixture，不把早期空历史样本当最终成绩。保留OS/store缓存、未清页缓存；ACAD=1、platform_profile=performance，负载3.76/3.23/2.28→6.20/3.92/2.56。三个中位数均≤30ms，不能据此声称每个样本都≤30ms。原始日志与probe为`startup-final/report.json`及同目录逐次日志。
+
+最终6张截图为`iter-final-{dashboard,editor,explorer,picker,diagnostic,tmux}.png`，图集`iter-final-index.html`、SHA256与包/配置清单`iter-final-manifest.json`。Sway输出mode确为2560×1600、scale1.5；逻辑高度取整为1066，grim原始PNG为2560×1599，没有补像素或缩放图片。Neovim实际为195×52，tmux保留一行自身状态栏后为195×51。图中的诊断是显式本地fixture，普通math_preview没有原29条误报；不宣称整个仓库其他Lua功能也无诊断。Maple Mono NF CN 7.9已核对Lua/Nix/Python/Markdown/目录字形覆盖及实际渲染，无需symbol_map补丁。
+
+四份`lifecycle-complete-{direct,custom-direct,tmux-default,tmux-custom}.json`记录真实配色切换、挂起/恢复/退出：Neovim运行为#1e2228，默认shell恢复#181b20，自定义shell恢复#253341；tmux在隔离交互shell中停留约1秒再fg恢复。没有使用用户会话按键或进程。隔离Copilot未登录，不把状态栏提供者标识视为认证成功；没有提交模型请求。
+
+验证：`git diff --check`、`nix fmt --no-write-lock-file`、过滤快照上的`nix flake check --no-build --no-write-lock-file`均通过；全部28个checks、独立Neovim、实际HM包与Kitty/tmux配置、toplevel通过同一条串行`nix build --impure --no-link --no-write-lock-file --print-out-paths --max-jobs 1 --cores 4 --expr …`。清单为`check-names.json`，完整参数/退出码为`verification.json`，输出路径在`all-checks-toplevel.log`。保留首次decorations断言误放入--clean LSP测试而失败的`build-iter3.log`；已移到完整UI测试，之后所有最终检查通过。已有未知flake输出denful提示仍不影响退出码。
+
+未运行sudo、rebuild/test/switch、Git暂存/提交/推送或flake update；没有改用户数据、GTK/Qt主题或另一个worktree。共享main中其他代理的Firefox改动保留，不计入本轮实现。Mango实际激活后的窗口边距、日常字体观感与真实登录状态仍由用户后续应用配置后验收；本轮构建与无头图形验证不是已应用声明。

@@ -1,13 +1,17 @@
 { den, ... }: {
   imports = [ ../../appearance/appearance ];
   den.aspects = {
-    neovim = { user, ... }: {
+    neovim = { user, host, ... }: {
       homeManager =
         { pkgs, editorLanguages, ... }:
         let
           editor = import ./package.nix {
             inherit pkgs;
             palette = user.appearance;
+            nixOptions = {
+              flake = user.flakePath;
+              host = host.name;
+            };
             contributions = editorLanguages;
           };
         in

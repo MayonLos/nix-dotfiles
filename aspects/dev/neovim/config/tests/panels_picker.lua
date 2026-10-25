@@ -8,6 +8,29 @@ assert(files.layout.layout.title == "{title}", "picker layout should keep a clea
 assert(files.win.list.wo.cursorline and files.win.preview.wo.cursorline)
 assert(files.win.list.wo.winhighlight:find("SnacksPickerListCursorLine", 1, true))
 assert(files.win.preview.wo.winhighlight:find("SnacksPickerPreviewCursorLine", 1, true))
+local long_path = "/tmp/workspace/" .. string.rep("long-parent-name/", 5) .. "math_preview.lua"
+local file_picker = {
+	list = { win = {
+		dim = function()
+			return { width = 60 }
+		end,
+	} },
+	cwd = function()
+		return "/tmp/workspace"
+	end,
+}
+local file_row = files.format({ file = long_path }, file_picker)
+local expected_file_icon = require("mayon.ui.icons").get(long_path)
+assert(
+	file_row[1][1] == expected_file_icon and file_row[1][2]:match("^DevIcon"),
+	"file picker rows should display colored devicons"
+)
+assert(file_row[2][1] == "math_preview.lua", "long parent paths must preserve the filename budget")
+assert(file_row[3].virt_text_pos == "right_align", "file parent path should stay aligned at the right edge")
+assert(
+	vim.fn.strdisplaywidth(file_row[3].virt_text[1][1]) <= 36,
+	"long parent paths should truncate within their reserved width"
+)
 
 local grep = pickers.configure({ source = "grep" })
 assert(type(grep.sort) == "function", "grep results should be grouped by file and line")
@@ -52,9 +75,10 @@ local picker_fixture = {
 first.line, first.pos, first.positions = "first match", { 2 }, { 1 }
 local header = { file = "a.nix", mayon_header = true, mayon_count = 2 }
 local first_group = grep.format(header, picker_fixture)
-assert(first_group[1][1]:find("a.nix", 1, true))
-assert(first_group[2].virt_text_pos == "right_align")
-assert(first_group[2].virt_text[1][1] == "2")
+assert(first_group[1][1] ~= "  " and first_group[1][2]:match("^DevIcon"))
+assert(first_group[2][1]:find("a.nix", 1, true))
+assert(first_group[3].virt_text_pos == "right_align")
+assert(first_group[3].virt_text[1][1] == "2")
 local following_match = grep.format(next_line, picker_fixture)
 assert(following_match[1][2] == "SnacksPickerRow")
 assert(grep.sort(header, first), "real file header must sort before its matches")

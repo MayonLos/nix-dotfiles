@@ -13,12 +13,22 @@ lsp.setup()
 require("mayon.config.keymaps").setup()
 
 local configs = require("mayon.lsp.servers").servers
-assert(vim.tbl_count(configs) == 17, "expected all 17 LSP servers")
+assert(vim.tbl_count(configs) == 18, "expected all generated LSP servers, including Ruff")
+local available_optional = require("mayon.lsp.servers").available_optional
+assert(vim.tbl_count(available_optional(function()
+	return 0
+end)) == 0, "Rust and Go servers must stay disabled when absent from PATH")
+local available_from_path = available_optional(function()
+	return 1
+end)
+assert(available_from_path.rust_analyzer and available_from_path.gopls, "Rust and Go should enable when available")
 assert(vim.bo.filetype == "", "test expects an empty current buffer")
 assert(vim.diagnostic.config().virtual_text == false)
 assert(vim.diagnostic.config().virtual_lines == false)
 assert(vim.diagnostic.config().severity_sort == true)
+assert(vim.diagnostic.config().signs.text[vim.diagnostic.severity.WARN] == "•", "LSP must install the quiet gutter")
 assert(not vim.lsp.inlay_hint.is_enabled({ bufnr = 0 }), "inlay hints should default to off")
+
 local inlay_toggle = vim.fn.maparg("<leader>uh", "n", false, true)
 assert(type(inlay_toggle.callback) == "function", "inlay hint toggle mapping is missing")
 inlay_toggle.callback()
@@ -48,9 +58,17 @@ vim.lsp.config.basedpyright.before_init(nil, basedpyright_config)
 assert(basedpyright_config.settings.python.pythonPath == basedpyright_python, "project .venv should take priority")
 vim.env.VIRTUAL_ENV = old_virtual_env
 assert(vim.lsp.config.basedpyright.cmd[1] == "basedpyright-langserver")
-assert(vim.lsp.config.basedpyright.settings.basedpyright.analysis.typeCheckingMode == "basic")
+assert(vim.lsp.config.basedpyright.settings.basedpyright.analysis.typeCheckingMode == "standard")
+assert(
+	vim.lsp.config.basedpyright.settings.basedpyright.analysis.diagnosticSeverityOverrides.reportUnusedImport == "none"
+)
 assert(vim.lsp.config.basedpyright.root_markers[1] == "pyrightconfig.json")
 assert(vim.lsp.config.basedpyright.root_markers[2] == "pyproject.toml")
+assert(vim.lsp.config.ruff.cmd[1] == "ruff" and vim.lsp.config.ruff.cmd[2] == "server")
+assert(vim.lsp.config.ruff.init_options.settings.lineLength == 100)
+assert(vim.tbl_contains(vim.lsp.config.ruff.init_options.settings.lint.ignore, "F821"))
+assert(not vim.tbl_contains(require("mayon.generated").languages.linters.python or {}, "ruff"))
+assert(vim.tbl_contains(require("mayon.generated").languages.formatters.python, "ruff_format"))
 assert(vim.lsp.config.taplo.cmd[1] == "taplo" and vim.lsp.config.taplo.cmd[2] == "lsp")
 assert(vim.lsp.config.taplo.filetypes[1] == "toml")
 
@@ -66,6 +84,149 @@ assert(
 	vim.deep_equal(vim.lsp.config["*"].capabilities, vim.lsp.protocol.make_client_capabilities()),
 	"LSP servers should use native Neovim capabilities"
 )
+
+local nixd_before_init = vim.lsp.config.nixd.before_init
+local generated_nix_options = require("mayon.generated").nix_options or {}
+local nixd_options_for_repository = require("mayon.lsp.servers")._nixd_options_for_repository
+local nixd_test_root = vim.fn.tempname()
+vim.fn.mkdir(nixd_test_root, "p")
+local nixd_config = { root_dir = generated_nix_options.flake or nixd_test_root, settings = {} }
+nixd_options_for_repository(nixd_config, generated_nix_options)
+if generated_nix_options.flake and generated_nix_options.host then
+	local flake_expr = string.format("(builtins.getFlake %q)", generated_nix_options.flake)
+	assert(
+		nixd_config.settings.nixd.options.nixos.expr
+			== flake_expr .. ".nixosConfigurations." .. generated_nix_options.host .. ".options"
+	)
+	assert(nixd_config.settings.nixd.options.home_manager.expr:find("home%-manager.users.type.getSubOptions"))
+	assert(
+		nixd_config.settings.nixd.nixpkgs.expr
+			== flake_expr .. ".nixosConfigurations." .. generated_nix_options.host .. ".pkgs"
+	)
+elseif generated_nix_options.flake then
+	assert(nixd_config.settings.nixd.nixpkgs.expr:find("inputs.nixpkgs", 1, true))
+	assert(not nixd_config.settings.nixd.options, "standalone installs without a host must not inherit host options")
+else
+	assert(not nixd_config.settings.nixd, "missing host binding must leave generic nixd settings untouched")
+end
+local other_project_nixd = { root_dir = "/workspace/other-project", settings = {} }
+nixd_options_for_repository(other_project_nixd, generated_nix_options.flake and generated_nix_options or {
+	flake = nixd_test_root,
+	host = "nixos-btw",
+})
+assert(not other_project_nixd.settings.nixd, "host-specific nixd options must not leak into other projects")
+local local_options = { flake = nixd_test_root, host = "nixos-btw" }
+local local_nixd = { root_dir = nixd_test_root, settings = {} }
+nixd_options_for_repository(local_nixd, local_options)
+local local_flake_expr = string.format("(builtins.getFlake %q)", nixd_test_root)
+assert(
+	local_nixd.settings.nixd.options.nixos.expr == local_flake_expr .. ".nixosConfigurations.nixos-btw.options",
+	"repository-local nixd options should point to the selected NixOS host"
+)
+assert(
+	local_nixd.settings.nixd.options.home_manager.expr
+		== local_flake_expr .. ".nixosConfigurations.nixos-btw.options.home-manager.users.type.getSubOptions []",
+	"repository-local nixd options should expose Home Manager module options"
+)
+
+assert(vim.lsp.config.texlab.settings.texlab.build.onSave == false, "LaTeX save-build should be opt-in")
+assert(vim.lsp.config.texlab.settings.texlab.forwardSearch.executable == "zathura")
+local texlab_runtime = { settings = vim.deepcopy(vim.lsp.config.texlab.settings) }
+vim.lsp.config.texlab.before_init(nil, texlab_runtime)
+local texlab_args = texlab_runtime.settings.texlab.forwardSearch.args
+assert(vim.tbl_contains(texlab_args, "--synctex-editor-command"), "Zathura needs a reverse SyncTeX command")
+local reverse_command = texlab_args[vim.fn.index(texlab_args, "--synctex-editor-command") + 2]
+assert(reverse_command:find("--server", 1, true) and reverse_command:find("--remote-expr", 1, true))
+assert(reverse_command:find("%%{line}") and reverse_command:find("%%{input}"), "Zathura placeholders must be preserved")
+assert(
+	reverse_command:find("_A%[1%]") and reverse_command:find("_A%[2%]"),
+	"reverse SyncTeX should read both array args"
+)
+assert(reverse_command:find("return true", 1, true), "reverse SyncTeX luaeval must be one valid expression")
+assert(reverse_command:find(vim.v.progpath, 1, true), "reverse SyncTeX must use the current Neovim executable")
+if vim.v.servername ~= "" then
+	assert(reverse_command:find(vim.v.servername, 1, true), "reverse SyncTeX must target this Neovim instance")
+end
+assert(vim.fn.executable(vim.v.progpath) == 1, "SyncTeX RPC regression needs the current Neovim executable")
+local sync_file = vim.fn.tempname() .. " SyncTeX source.tex"
+vim.fn.writefile({ "one", "two", "three", "four" }, sync_file)
+local original_buf = vim.api.nvim_get_current_buf()
+local hold_buf = vim.api.nvim_create_buf(true, false)
+local hold_file = vim.fn.tempname() .. " SyncTeX hold.txt"
+vim.api.nvim_buf_set_name(hold_buf, hold_file)
+vim.api.nvim_set_current_buf(hold_buf)
+local rpc_command = reverse_command:gsub("%%{input}", sync_file):gsub("%%{line}", "3")
+local remote_exit, remote_stdout, remote_stderr
+local remote_job = vim.fn.jobstart({ "sh", "-c", rpc_command }, {
+	stdout_buffered = true,
+	stderr_buffered = true,
+	on_stdout = function(_, data)
+		remote_stdout = data
+	end,
+	on_stderr = function(_, data)
+		remote_stderr = data
+	end,
+	on_exit = function(_, code)
+		remote_exit = code
+	end,
+})
+assert(remote_job > 0, "could not start isolated nvim --remote-expr client")
+assert(
+	vim.wait(10000, function()
+		return remote_exit ~= nil
+	end, 10),
+	"nvim --remote-expr client timed out"
+)
+assert(remote_exit == 0, "nvim --remote-expr failed: " .. vim.inspect({ remote_exit, remote_stdout, remote_stderr }))
+local sync_buf = vim.api.nvim_get_current_buf()
+assert(vim.api.nvim_buf_get_name(sync_buf) == sync_file, "SyncTeX RPC should open a source path containing spaces")
+assert(vim.api.nvim_win_get_cursor(0)[1] == 3, "SyncTeX RPC should jump to the requested line")
+vim.api.nvim_set_current_buf(original_buf)
+vim.api.nvim_buf_delete(sync_buf, { force = true })
+vim.api.nvim_buf_delete(hold_buf, { force = true })
+vim.fn.delete(sync_file)
+vim.fn.delete(hold_file)
+
+local folds = require("mayon.features.folds")
+local fold_buf = vim.api.nvim_create_buf(true, false)
+vim.api.nvim_buf_set_lines(fold_buf, 0, -1, false, {
+	"  local function example()",
+	"    local value = 1",
+	"    return value",
+	"  end",
+	"outside",
+})
+vim.api.nvim_set_current_buf(fold_buf)
+vim.wo.foldmethod = "manual"
+vim.wo.foldenable = true
+vim.wo.foldtext = "v:lua.require'mayon.features.folds'.text()"
+vim.cmd.normal({ "zf2j", bang = true })
+assert(vim.fn.foldclosed(1) == 1, "fold summary test must exercise a closed fold")
+local rendered_fold = vim.fn.foldtextresult(1)
+assert(rendered_fold:find("local function example", 1, true), "foldtextresult should render the fold header")
+assert(rendered_fold:find("… 3 lines", 1, true), "foldtextresult should render its capsule line count")
+assert(not rendered_fold:find("%#", 1, true), "foldtextresult must not expose highlight markup literally")
+vim.api.nvim_set_current_buf(original_buf)
+vim.api.nvim_buf_delete(fold_buf, { force = true })
+assert(vim.lsp.config.clangd.cmd[2] == "--background-index")
+for _, flag in ipairs({
+	"--clang-tidy",
+	"--header-insertion=never",
+	"--completion-style=detailed",
+	"--function-arg-placeholders=0",
+}) do
+	assert(vim.tbl_contains(vim.lsp.config.clangd.cmd, flag), "clangd is missing " .. flag)
+end
+for _, command in ipairs({ "TexlabBuild", "TexlabForwardSearch", "TexlabClean", "TexlabToggleBuildOnSave" }) do
+	assert(vim.api.nvim_get_commands({})[command], "missing public LaTeX command: " .. command)
+end
+vim.cmd.TexlabToggleBuildOnSave()
+assert(vim.lsp.config.texlab.settings.texlab.build.onSave, "LaTeX save-build toggle should enable compilation")
+vim.cmd.TexlabToggleBuildOnSave()
+assert(not vim.lsp.config.texlab.settings.texlab.build.onSave, "LaTeX save-build toggle should disable compilation")
+for _, lhs in ipairs({ ",ll", ",lv", ",lc" }) do
+	assert(vim.fn.maparg(lhs, "n") ~= "", "missing LaTeX localleader mapping " .. lhs)
+end
 
 local bufnr = vim.api.nvim_get_current_buf()
 local get_client_by_id = vim.lsp.get_client_by_id
@@ -109,6 +270,7 @@ for _, lhs in ipairs({ "gra", "gri", "grn", "grr", "grt", "grx" }) do
 	assert(global_maps[lhs], "native global LSP map was removed: " .. lhs)
 end
 assert(global_maps["切换源文件与头文件"], "source/header map should remain global")
+assert(global_maps[" ch"], "clangd source/header shortcut should be <leader>ch")
 assert(not vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr }), "LspAttach should keep inlay hints disabled")
 
 local ns = vim.api.nvim_create_namespace("lsp-migration-test")
@@ -118,6 +280,31 @@ vim.diagnostic.set(
 	{ { lnum = 0, col = 0, message = "unsaved test diagnostic", severity = vim.diagnostic.severity.ERROR } }
 )
 assert(#vim.diagnostic.get(bufnr, { namespace = ns }) == 1, "diagnostics should be visible before saving")
+
+local switch_mapping = vim.fn.maparg(" ch", "n", false, true)
+assert(type(switch_mapping.callback) == "function", "<leader>ch should invoke clangd source/header switching")
+local switched_header = vim.fn.tempname() .. ".h"
+vim.fn.writefile({ "// clangd switch target" }, switched_header)
+local original_get_clients = vim.lsp.get_clients
+vim.lsp.get_clients = function(opts)
+	if opts and opts.name == "clangd" then
+		return {
+			{
+				name = "clangd",
+				request = function(_, method, _, callback)
+					assert(method == "textDocument/switchSourceHeader")
+					callback(nil, vim.uri_from_fname(switched_header))
+					return true
+				end,
+			},
+		}
+	end
+	return original_get_clients(opts)
+end
+switch_mapping.callback()
+vim.lsp.get_clients = original_get_clients
+assert(vim.api.nvim_buf_get_name(0) == switched_header, "clangd shortcut should edit the returned header")
+vim.api.nvim_set_current_buf(bufnr)
 
 if vim.env.NVIM_LSP_INTEGRATION == "1" then
 	local project = vim.fn.tempname()

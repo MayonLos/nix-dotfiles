@@ -1,4 +1,6 @@
 assert(vim.g.mayon_config_loaded and vim.g.colors_name == "onedark")
+assert(vim.env.NVIM_NOTTYFAST == "1" and not vim.o.ttyfast, "wrapper must skip the blocking early terminal probe")
+assert(vim.o.background == "dark" and vim.o.termguicolors, "editor must explicitly configure dark/truecolor")
 local mode = assert(vim.env.NVIM_CHECK_MODE)
 if mode ~= "dev" then
 	assert(package.loaded["mayon.generated_highlights"], "packaged editor must use its compiled theme")

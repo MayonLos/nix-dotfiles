@@ -239,6 +239,17 @@ function M.build()
 			hl = { fg = "orange" },
 		},
 	}
+	local TablineFileIcon = {
+		init = function(self)
+			self.file_icon, self.file_icon_hl = require("mayon.ui.icons").get(self.filename)
+		end,
+		provider = function(self)
+			return self.file_icon
+		end,
+		hl = function(self)
+			return self.file_icon_hl
+		end,
+	}
 
 	local function close_buffer(bufnr)
 		require("snacks").bufdelete({ buf = bufnr })
@@ -270,6 +281,7 @@ function M.build()
 			name = "heirline_tabline_buffer_callback",
 		},
 		{ provider = " " },
+		TablineFileIcon,
 		TablineFileName,
 		TablineFileFlags,
 	}

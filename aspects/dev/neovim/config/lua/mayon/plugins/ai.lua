@@ -43,6 +43,17 @@ local function acp_path(name)
 	)
 	return path
 end
+local function notify_cli_missing(name, label)
+	if vim.fn.executable(name) == 1 then
+		return false
+	end
+	vim.notify(
+		label .. " 命令不在 PATH 中；请先安装或启用对应环境",
+		vim.log.levels.WARN,
+		{ title = "AI 助手" }
+	)
+	return true
+end
 local function companion()
 	require("mayon.config.loader").pack("codecompanion-history.nvim")
 	require("mayon.config.loader").pack("mini.diff")
@@ -66,6 +77,7 @@ local function companion()
 		interactions = {
 			chat = {
 				adapter = "deepseek",
+				keymaps = { regenerate = { modes = { n = "<localleader>r" } } },
 				roles = {
 					user = "YOU",
 					llm = function(adapter)
@@ -271,12 +283,46 @@ local function sidekick()
 	require("sidekick.config").cli.tools = { codex = { cmd = { "codex" } }, grok = { cmd = { "grok" } } }
 end
 local function cc_prompt(name)
+	if not require("mayon.features.ai_completion").require_deepseek_key() then
+		return false
+	end
 	require("lz.n").trigger_load("codecompanion.nvim")
 	require("codecompanion").prompt(name)
+	return true
 end
 local function send(message)
-	require("lz.n").trigger_load("sidekick.nvim")
-	require("sidekick.cli").send({ msg = message, focus = false })
+	if vim.fn.executable("codex") ~= 1 and vim.fn.executable("grok") ~= 1 then
+		vim.notify(
+			"未找到 Codex 或 Grok 命令；请先将 CLI 加入 PATH",
+			vim.log.levels.WARN,
+			{ title = "Sidekick" }
+		)
+		return false
+	end
+	local ok, err = pcall(function()
+		require("lz.n").trigger_load("sidekick.nvim")
+		require("sidekick.cli").send({ msg = message, focus = false })
+	end)
+	if not ok then
+		vim.notify("无法发送到 Sidekick：" .. tostring(err), vim.log.levels.WARN, { title = "Sidekick" })
+	end
+	return ok
+end
+local function toggle_cli(name)
+	if vim.fn.executable(name) ~= 1 then
+		vim.notify(name .. " 不在 PATH 中；请先安装或启用对应开发环境", vim.log.levels.WARN, {
+			title = "Sidekick",
+		})
+		return false
+	end
+	local ok, err = pcall(function()
+		require("lz.n").trigger_load("sidekick.nvim")
+		require("sidekick.cli").toggle({ name = name, focus = true })
+	end)
+	if not ok then
+		vim.notify("无法启动 " .. name .. "：" .. tostring(err), vim.log.levels.WARN, { title = "Sidekick" })
+	end
+	return ok
 end
 local function map(lhs, rhs, desc, mode)
 	return { lhs, rhs, desc = desc, mode = mode or "n" }
@@ -294,8 +340,16 @@ return {
 			"ClaudeCodeDiffDeny",
 		},
 		keys = {
-			map("<leader>ac", "<cmd>ClaudeCode<cr>", "切换 Claude Code"),
-			map("<leader>as", ":ClaudeCodeSend<cr>", "发送选区到 Claude", "v"),
+			map("<leader>ac", function()
+				if not notify_cli_missing("claude", "Claude Code") then
+					vim.cmd("ClaudeCode")
+				end
+			end, "切换 Claude Code"),
+			map("<leader>as", function()
+				if not notify_cli_missing("claude", "Claude Code") then
+					vim.cmd("ClaudeCodeSend")
+				end
+			end, "发送选区到 Claude", "v"),
 			map("<leader>aA", "<cmd>ClaudeCodeDiffAccept<cr>", "接受 Claude 当前修改"),
 			map("<leader>aD", "<cmd>ClaudeCodeDiffDeny<cr>", "拒绝 Claude 当前修改"),
 		},
@@ -306,10 +360,10 @@ return {
 		cmd = "Sidekick",
 		keys = {
 			map("<leader>ax", function()
-				require("sidekick.cli").toggle({ name = "codex", focus = true })
+				toggle_cli("codex")
 			end, "切换 Codex CLI"),
 			map("<leader>ag", function()
-				require("sidekick.cli").toggle({ name = "grok", focus = true })
+				toggle_cli("grok")
 			end, "切换 Grok CLI"),
 			map("<leader>af", function()
 				send("{file}")
@@ -338,8 +392,18 @@ return {
 		"codecompanion.nvim",
 		cmd = { "CodeCompanion", "CodeCompanionChat", "CodeCompanionActions", "CodeCompanionCmd" },
 		keys = {
-			map("<leader>ad", "<cmd>CodeCompanionChat Toggle<cr>", "DeepSeek 对话", { "n", "v" }),
-			map("<leader>ai", ":CodeCompanion<cr>", "DeepSeek 内联改写", { "n", "v" }),
+			map("<leader>ad", function()
+				if require("mayon.features.ai_completion").require_deepseek_key() then
+					require("lz.n").trigger_load("codecompanion.nvim")
+					vim.cmd("CodeCompanionChat Toggle")
+				end
+			end, "DeepSeek 对话", { "n", "v" }),
+			map("<leader>ai", function()
+				if require("mayon.features.ai_completion").require_deepseek_key() then
+					require("lz.n").trigger_load("codecompanion.nvim")
+					vim.cmd.CodeCompanion()
+				end
+			end, "DeepSeek 内联改写", { "n", "v" }),
 			map("<leader>ae", function()
 				cc_prompt("解释报错")
 			end, "解释诊断"),

@@ -33,6 +33,8 @@ in
           pkgs.marksman
           pkgs.nixd
           pkgs.nixfmt
+          pkgs.texlab
+          pkgs.texliveFull
           pkgs.ruff
           pkgs.lua54Packages.luacheck
         ];
@@ -47,18 +49,18 @@ in
             export NVIM_APPNAME=nvim
             unset VIMINIT
             mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"
-            for test in startup completion integration workflow fileops lua_workspace modern interface ai native codediff panels_picker panels_ai panels_aux panels_surface; do
+            for test in overhaul startup completion integration workflow fileops lua_workspace modern interface ai native codediff panels_picker panels_ai panels_aux panels_surface; do
               export NVIM_TEST_FILE="${neovim.configDir}/tests/$test.lua"
               ${neovim.normal}/bin/nvim --headless -c 'luafile ${neovim.configDir}/tests/run.lua'
             done
             export NVIM_TEST_FILE="${neovim.configDir}/tests/samples.lua"
-            for sample in lua cpp python toml markdown nix; do
+            for sample in lua cpp python toml markdown nix tex rust go; do
               NVIM_SAMPLE="$sample" ${neovim.normal}/bin/nvim --headless -c 'luafile ${neovim.configDir}/tests/run.lua'
             done
             export NVIM_LSP_INTEGRATION=1
             for test in lsp; do
               export NVIM_TEST_FILE="${neovim.configDir}/tests/$test.lua"
-              ${neovim.normal}/bin/nvim --clean --headless \
+              ${neovim.normal}/bin/nvim --headless \
                 -c 'luafile ${neovim.configDir}/tests/run.lua'
             done
             export NVIM_TEST_FILE="${neovim.configDir}/tests/wrapper.lua"

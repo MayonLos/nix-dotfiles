@@ -7,6 +7,9 @@
           "clangd"
           "--background-index"
           "--clang-tidy"
+          "--header-insertion=never"
+          "--completion-style=detailed"
+          "--function-arg-placeholders=0"
         ];
         filetypes = [
           "c"
@@ -95,11 +98,25 @@
           ".git"
         ];
       };
+      servers.ruff = {
+        cmd = [
+          "ruff"
+          "server"
+        ];
+        filetypes = [ "python" ];
+        root_markers = [
+          "pyproject.toml"
+          "ruff.toml"
+          ".ruff.toml"
+          ".git"
+        ];
+      };
       formatters.python = [
         "ruff_organize_imports"
         "ruff_format"
       ];
-      linters.python = [ "ruff" ];
+      # Ruff's LSP owns Python diagnostics and organize-imports actions, so
+      # do not register an overlapping nvim-lint source for this filetype.
     };
   };
   java = {

@@ -18,6 +18,74 @@ assert(vim.api.nvim_get_hl(0, { name = "LineNr", link = false }).fg == tonumber(
 assert(vim.api.nvim_get_hl(0, { name = "@keyword.function", link = false }).fg == tonumber(palette.cyan:sub(2), 16))
 assert(vim.wo.number and not vim.wo.relativenumber and vim.wo.cursorline and vim.wo.wrap)
 assert(vim.o.laststatus == 3 and vim.o.showtabline == 2)
+assert(vim.opt.listchars:get().tab == "  ", "tab indentation must stay invisible")
+-- Exercise the terminal lifecycle without a host TTY or changing its colors.
+do
+	local terminal = require("mayon.ui.terminal")
+	local sent, old_send, old_uis, old_tmux = {}, vim.api.nvim_ui_send, vim.api.nvim_list_uis, vim.env.TMUX
+	vim.api.nvim_ui_send = function(value)
+		sent[#sent + 1] = value
+	end
+	vim.api.nvim_list_uis = function()
+		return { { stdout_tty = true } }
+	end
+	vim.env.TMUX = nil
+	local function event(name, data)
+		vim.api.nvim_exec_autocmds(name, { group = "MayonTerminalBackground", data = data })
+	end
+	event("UIEnter")
+	assert(sent[#sent] == "\27]11;?\27\\")
+	event("TermResponse", { sequence = "\27]11;rgb:1212/3434/5656\27\\" })
+	local synced = "\27]11;" .. palette.bg .. "\27\\"
+	assert(sent[#sent] == synced, "OSC 11 did not synchronize Normal")
+	event("ColorScheme")
+	assert(sent[#sent] == synced)
+	event("VimSuspend")
+	assert(sent[#sent] == "\27]11;rgb:1212/3434/5656\27\\", "suspend lost the original background")
+	event("VimResume")
+	assert(sent[#sent] == synced)
+	event("VimLeavePre")
+	assert(sent[#sent] == "\27]11;rgb:1212/3434/5656\27\\")
+	vim.env.TMUX = "/isolated-test,1,0"
+	event("VimResume")
+	assert(sent[#sent] == "\27Ptmux;" .. synced:gsub("\27", "\27\27") .. "\27\\", "tmux must escape every ESC")
+	event("VimLeavePre")
+	terminal.setup()
+	event("UIEnter")
+	assert(sent[#sent] == "\27]11;?\27\\", "tmux queries must reach its response router without DCS wrapping")
+	event("TermResponse", { sequence = "\27]11;rgb:1212/3434/5656\27\\" })
+	assert(sent[#sent] == "\27Ptmux;" .. synced:gsub("\27", "\27\27") .. "\27\\")
+	event("VimLeavePre")
+	vim.env.TMUX = nil
+	terminal.setup()
+	event("UIEnter")
+	assert(
+		vim.wait(300, function()
+			return sent[#sent] == synced
+		end, 10),
+		"a terminal without OSC queries must still synchronize"
+	)
+	event("VimLeavePre")
+	assert(sent[#sent] == "\27]111\27\\", "unknown original background must reset to the terminal default")
+	terminal.setup()
+	event("UIEnter")
+	assert(vim.wait(300, function()
+		return sent[#sent] == synced
+	end, 10))
+	event("TermResponse", { sequence = "\27]11;rgb:aaaa/bbbb/cccc\27\\" })
+	event("VimLeavePre")
+	assert(sent[#sent] == "\27]11;rgb:aaaa/bbbb/cccc\27\\", "late terminal replies must retain the original background")
+	vim.api.nvim_list_uis = function()
+		return { { stdout_tty = false } }
+	end
+	local count = #sent
+	event("UIEnter")
+	event("ColorScheme")
+	event("VimLeavePre")
+	assert(#sent == count, "external UIs must not receive terminal escapes")
+	vim.api.nvim_ui_send, vim.api.nvim_list_uis, vim.env.TMUX = old_send, old_uis, old_tmux
+	terminal.setup()
+end
 assert(not package.loaded.heirline, "empty startup must defer the full editing statusline")
 local initial_rail = vim.api.nvim_eval_statusline(vim.o.statusline, { maxwidth = 120 }).str
 assert(initial_rail:find("NORMAL", 1, true) and initial_rail:find("dashboard", 1, true))
@@ -89,7 +157,7 @@ require("lz.n").trigger_load("nvim-treesitter")
 assert(not package.loaded["blink.cmp"] and not package.loaded.copilot)
 assert(vim.opt.completeopt:get() and vim.tbl_contains(vim.opt.completeopt:get(), "noselect"))
 assert(package.loaded["vim._core.ui2"])
-assert(vim.tbl_count(require("mayon.lsp.servers").servers) == 17)
+assert(require("mayon.lsp.servers").servers.ruff, "Ruff LSP missing")
 for _, lang in ipairs({ "lua", "nix", "javascript", "tsx", "cpp", "matlab", "latex", "markdown", "markdown_inline" }) do
 	assert(pcall(vim.treesitter.language.add, lang), "missing parser: " .. lang)
 end

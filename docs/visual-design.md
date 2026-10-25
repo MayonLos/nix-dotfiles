@@ -20,7 +20,7 @@ HTML 的 `html{zoom:1.5}` 只负责预览放大，CSS 数值均是逻辑像素�
 | 启动器 | 宽 560，保留彩色应用图标 | 选中极淡底+左侧 2 px blue 竖条 |
 | 控制中心 | 可见宽 380，用户卡、3×2 开关、细轨滑块、媒体卡 | 激活 blue 文字/下划+极淡底；不铺高饱和蓝色 |
 | 通知 | 宽 320 | 细边、正文 brightFg，错误用图标/边线 |
-| Explorer | 单一左栏约30列，git root/cwd | 项目标题大写；目录 blue；当前 selection+左蓝条，git 字母右对齐 |
+| Explorer | 单一左栏40列，git root/cwd | 项目标题大写；目录 blue；当前 selection+左蓝条，git 字母右对齐 |
 | 标签栏 | 左侧项目区与 Explorer 等宽 | 当前 bg+顶部细蓝线，未保存 orange 点；TUI 精度以字符单元为限 |
 | 状态栏 | 单行，模式/分支/变更/文件/诊断/LSP/AI/位置 | 模式 blue 文字与柔和底；保持正文可读 |
 | 补全/picker/which-key/AI | deep 底、细边、圆字符边框 | 选中极淡底+blue 前景/左标记；Claude Code 标题和差异使用既有 provider 能力 |
@@ -218,7 +218,7 @@ mini-docker、portctl、ip-monitor、tray、亮度、电源模式等低频项放
 
 ### Kitty
 
-编辑和终端正文统一 deep，这一档比 shell bg 深，但仍属于同一 One Dark。默认背景不透明 `1.0`；与本方案可读性门槛一致，不推荐 0.85 的“玻璃终端”。窗口 padding 12，`hide_window_decorations=yes`。光标 brightFg，beam 1.5；选区 selection / brightFg。终端默认前景 brightFg（12.33），ANSI 7 保留 fg；ANSI 0–7 依次 black/red/green/yellow/blue/purple/cyan/fg，8=border，9–14 不加饱和或提亮，15=brightFg。
+终端正文使用 deep，Neovim 编辑面使用 bg，通过 OSC 11 保持外围底色一致，仍属于同一 One Dark。默认背景不透明 `1.0`；与本方案可读性门槛一致，不推荐 0.85 的“玻璃终端”。窗口 padding 4 pt，字符网格 top-left，余数条使用 neighboring_cell；Neovim 进入/切换配色用 OSC 11 同步 Normal 背景，退出/挂起恢复（tmux DCS 透传）。`hide_window_decorations=yes`。光标 brightFg，beam 1.5；选区 selection / brightFg。终端默认前景 brightFg（12.33），ANSI 7 保留 fg；ANSI 0–7 依次 black/red/green/yellow/blue/purple/cyan/fg，8=border，9–14 不加饱和或提亮，15=brightFg。
 
 标签栏只在 ≥2 标签时出现；目标一行字符高，左右各 1 cell，选中 selection/blue、普通 deep/fg，取消斜切撞色。可用 `tab_bar_style="separator"`、`tab_separator=" │ "`；若必须做圆端可写 `custom` tab draw，但图稿不把 CSS 圆角算成原生能力。无独立自绘标题行。
 
@@ -244,11 +244,11 @@ mini-docker、portctl、ip-monitor、tray、亮度、电源模式等低频项放
 |---|---|---|
 | 正文 | bg/brightFg；Maple 等宽；绝对行号 muted、当前 brightFg；当前行 blue/bg 3.5% 淡底；无折叠箭头 | `Normal/NormalNC/LineNr/CursorLineNr/SignColumn`；`zc/zo` 保留；相对行号默认关，仍可手动切换 |
 | 语法 | 关键字 cyan、函数 blue、字符串 green、数字 orange、注释 fg、标点/变量 brightFg | palette 与 Treesitter；选区 brightFg/selection |
-| Explorer | 左30列、deep底、细edge分隔；仅一次大写muted根标题；▸/▾与蓝目录图标、缩进、fg名称；无树线 | Snacks 自有布局，标题随根目录变；当前文件selection+左蓝条；git字母右对齐；无诊断挤占文件名；长名省略保留扩展名 |
-| 标签栏 | deep；活动bg/brightFg、蓝色指示；orange未保存点；无×、文件总数和devicon | 用真实蓝下划线属性替代图稿顶部2px线，禁止漂浮的overline字符；根标题不重复 |
+| Explorer | 左40列、deep底、细edge分隔；仅一次大写muted根标题；▸/▾与蓝目录图标、缩进、fg名称；无树线 | Snacks 自有布局，标题随根目录变；当前文件selection+左蓝条；git字母右对齐；无诊断挤占文件名；2列缩进、彩色文件图标；只有超宽长名才中间省略并保留扩展名 |
+| 标签栏 | deep；活动bg/brightFg、蓝色指示；orange未保存点；彩色文件devicon；无×和文件总数 | 用真实蓝下划线属性替代图稿顶部2px线，禁止漂浮的overline字符；根标题不重复 |
 | 状态栏 | NORMAL selection底+blue粗体，模式变色；purple分支、green/yellow Git计数、仅文件名；右侧▲诊断、单个主LSP、AI · Copilot、surface位置块 | 不列Copilot LSP，不显示分支符/连接圆点；未保存/只读用`[+]`/`RO`保留安全信息；原生进度与请求状态保留 |
 | 启动页 | 一行mayon.nvim、蓝点、muted项目/分支；72列内容、左48列蓝线段；两列8动作；键帽surface/muted，选中selection+左蓝条+blue键；RECENT/PROJECTS muted、路径右对齐、文件名brightFg | CJK不插字距；同窗bg；底部插件数量/配置耗时/版本/Copilot提供者；状态栏仅NORMAL dashboard与q退出；单字号终端不能混用HTML的30px字标/11px标题 |
-| 行内提示与滚动标记 | 参数名默认关，␣uh开启；无右侧Satellite标记；仅当前作用域一条淡缩进线；无自动顶部粘性上下文 | 行号/位置与实际文件一致，不伪造预览的217:28/64%示例数字 |
+| 行内提示与滚动标记 | 参数名默认关，␣uh开启；Tab缩进不可见，仅提示行尾空白；诊断为muted文字、小圆点，无箭头/彩色方括号；无右侧Satellite标记；仅当前作用域一条淡缩进线；无自动顶部粘性上下文 | 行号/位置与实际文件一致，不伪造预览的217:28/64%示例数字 |
 | 浮窗与补全 | deep/brightFg，细edge边；kind紫、类型元数据muted；最多8项、左右留白 | 原生菜单及圆字符边界；类型列按原生菜单对齐，无CSS像素半径/阴影 |
 | AI侧栏与diff | deep、细边、Claude Code标题；原生纵向diff、增删palette混色、接受/拒绝winbar | 锁定插件无独立HTML卡片或内联按钮renderer；不把截图中的假想卡片当作已实现功能 |
 
@@ -260,7 +260,7 @@ edge由现有palette的border与deep混色得到，不增加第二套颜色来�
 
 | 界面 | 规则与行为 |
 |---|---|
-| Snacks picker | 文件、grep、符号、buffers、recent、help、keymaps、diagnostics 共享居中 deep 浮层、细 edge、来源/范围/计数标题、blue ❯ 与匹配、selection/左蓝条；文件名与路径分列、预览当前行淡蓝。Explorer 的 `i` 搜索使用同一居中浮层及根目录范围，原30列导航侧栏保留。 |
+| Snacks picker | 文件、grep、符号、buffers、recent、help、keymaps、diagnostics 共享居中 deep 浮层、细 edge、来源/范围/计数标题、blue ❯ 与匹配、selection/左蓝条；文件名与路径分列、预览当前行淡蓝。Explorer 的 `i` 搜索使用同一居中浮层及根目录范围，原40列导航侧栏保留。 |
 | grep 分组 | 文件标题与计数是实际列表行，包含首个命中的原生路径/位置，Enter 打开首个命中；正文行号 dim。收集一次 rg 返回后按文件分组，保持原生异步取消与导航，避免虚拟行破坏滚动索引。 |
 | AI | 右侧约38% deep 面板；winbar 显示提供者、活动下划线、真实可用状态/模型。CodeCompanion 用户灰 rail、muted 大写角色、cyan 工具摘要、淡红绿代码行、原生紫输入提示与 Ctrl-S；Claude diff 文件/计数/接受拒绝提示。CLI 内部 TUI 由 CLI 自己绘制。 |
 | 通知 | 右上 deep、brightFg 标题、muted 正文；级别仅用于左侧细 rail，无大图标。 |

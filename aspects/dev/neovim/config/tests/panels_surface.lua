@@ -27,7 +27,7 @@ assert(
 	ctx.opts.border[8][1] == "▎" and ctx.opts.title == nil,
 	"notification should use a level rail without a large icon"
 )
-assert(vim.api.nvim_buf_get_lines(b, 0, 1, false)[1] == "Saved")
+assert(vim.api.nvim_buf_get_lines(b, 0, 1, false)[1] == "Saved · WARN")
 vim.api.nvim_buf_delete(b, { force = true })
 local c = require("mayon.generated").palette
 assert(
@@ -50,3 +50,31 @@ assert(terminal_win and vim.api.nvim_win_is_valid(terminal_win))
 assert(vim.api.nvim_win_get_config(terminal_win).relative ~= "", "Edgy swallowed the terminal float")
 assert(vim.api.nvim_win_get_config(terminal_win).border, "terminal float lost its border")
 terminal:close()
+
+local extras = require("mayon.ui.extras")
+local surface_buf = vim.api.nvim_create_buf(false, true)
+vim.api.nvim_buf_set_name(surface_buf, "/tmp/surface-help.txt")
+vim.bo[surface_buf].filetype = "help"
+local surface_win = vim.api.nvim_open_win(surface_buf, false, {
+	relative = "editor",
+	row = 1,
+	col = 2,
+	width = 30,
+	height = 2,
+	style = "minimal",
+	border = "none",
+})
+extras.style_float(surface_win)
+local surface_config = vim.api.nvim_win_get_config(surface_win)
+assert(vim.inspect(surface_config.border):find("╭", 1, true), "secondary floats should use rounded borders")
+assert(
+	vim.inspect(surface_config.title):find("Help · surface-help.txt", 1, true),
+	"secondary float should carry title and source: " .. vim.inspect(surface_config.title)
+)
+assert(vim.wo[surface_win].winhighlight:find("NormalFloat", 1, true))
+vim.api.nvim_win_close(surface_win, true)
+vim.api.nvim_buf_delete(surface_buf, { force = true })
+local old_hlsearch = vim.o.hlsearch
+vim.o.hlsearch = false
+assert(extras.searchcount() == "", "search count should stay hidden when search highlighting is off")
+vim.o.hlsearch = old_hlsearch

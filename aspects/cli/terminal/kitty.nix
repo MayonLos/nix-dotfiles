@@ -55,7 +55,11 @@ in
     wheel_scroll_multiplier 5.0
 
     hide_window_decorations yes
-    window_padding_width 12
+    # Leave a small breathing space; Neovim synchronizes OSC 11 to Normal.
+    window_padding_width 4
+    placement_strategy top-left
+    # Match the sidebar/statusline cells at fractional-scale grid remainders.
+    padding_fill_strategy neighboring_cell
     # Ask before closing a window with a running foreground task.
     confirm_os_window_close -1
     enable_audio_bell no

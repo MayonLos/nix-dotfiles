@@ -1,14 +1,14 @@
 /* Firefox browser chrome follows Noctalia's active palette. */
 :root {
-  --tn-bg: {{ colors.onedark_bg.default.hex }};
-  --tn-surface: {{ colors.onedark_surface.default.hex }};
-  --tn-bg-dark: {{ colors.onedark_deep.default.hex }};
-  --tn-bg-highlight: {{ colors.onedark_selection.default.hex }};
-  --tn-fg: {{ colors.onedark_bright_fg.default.hex }};
-  --tn-muted: {{ colors.onedark_fg.default.hex }};
-  --tn-blue: {{ colors.onedark_blue.default.hex }};
-  --tn-cyan: {{ colors.onedark_cyan.default.hex }};
-  --tn-purple: {{ colors.onedark_purple.default.hex }};
+  --tn-bg: {{ colors.onedark_bg_value.default.hex }};
+  --tn-surface: {{ colors.onedark_surface_value.default.hex }};
+  --tn-bg-dark: {{ colors.onedark_deep_value.default.hex }};
+  --tn-bg-highlight: {{ colors.onedark_selection_value.default.hex }};
+  --tn-fg: {{ colors.onedark_bright_fg_value.default.hex }};
+  --tn-muted: {{ colors.onedark_fg_value.default.hex }};
+  --tn-blue: {{ colors.onedark_blue_value.default.hex }};
+  --tn-cyan: {{ colors.onedark_cyan_value.default.hex }};
+  --tn-purple: {{ colors.onedark_purple_value.default.hex }};
   --tab-inline-padding: 6px !important;
   --tab-inner-inline-margin: 4px !important;
   --urlbar-height: 32px !important;
@@ -274,12 +274,12 @@ panel::part(content) {
 @-moz-document url("about:home"), url("about:newtab") {
   :root {
     color-scheme: dark !important;
-    --tn-bg: {{ colors.onedark_bg.default.hex }};
-    --tn-surface: {{ colors.onedark_surface.default.hex }};
-    --tn-bg-highlight: {{ colors.onedark_selection.default.hex }};
-    --tn-fg: {{ colors.onedark_bright_fg.default.hex }};
-    --tn-muted: {{ colors.onedark_fg.default.hex }};
-    --tn-blue: {{ colors.onedark_blue.default.hex }};
+    --tn-bg: {{ colors.onedark_bg_value.default.hex }};
+    --tn-surface: {{ colors.onedark_surface_value.default.hex }};
+    --tn-bg-highlight: {{ colors.onedark_selection_value.default.hex }};
+    --tn-fg: {{ colors.onedark_bright_fg_value.default.hex }};
+    --tn-muted: {{ colors.onedark_fg_value.default.hex }};
+    --tn-blue: {{ colors.onedark_blue_value.default.hex }};
   }
 
   :root,

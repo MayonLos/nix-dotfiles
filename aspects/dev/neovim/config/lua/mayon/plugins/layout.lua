@@ -26,10 +26,11 @@ local function is_ai_terminal(buf)
 end
 
 local function setup_edgy()
+	require("mayon.ui.bottom").setup()
 	vim.opt.laststatus = 3
 	vim.opt.splitkeep = "screen"
 	local palette = require("mayon.generated").palette
-	vim.api.nvim_set_hl(0, "EdgyNormal", { fg = palette.brightFg, bg = palette.deep })
+	vim.api.nvim_set_hl(0, "EdgyNormal", { fg = palette.brightFg, bg = palette.bg })
 	vim.api.nvim_set_hl(0, "EdgyWinBar", { fg = palette.blue, bg = palette.deep, bold = true })
 	local ai_winbar = "%!v:lua.require'mayon.ui.ai_panels'.winbar()"
 	require("edgy").setup({
@@ -96,13 +97,13 @@ local function setup_edgy()
 				ft = "trouble",
 				title = "诊断",
 				size = { height = 12 },
-				wo = { winbar = "%!v:lua.MayonTroubleTitle()" },
+				wo = { winbar = "%!v:lua.require'mayon.ui.bottom'.render()" },
 			},
 			{
 				ft = "qf",
 				title = "快速修复",
 				size = { height = 10 },
-				wo = { winbar = "%!v:lua.MayonQuickfixTitle()" },
+				wo = { winbar = "%!v:lua.require'mayon.ui.bottom'.render()" },
 			},
 			{
 				ft = "snacks_terminal",
@@ -111,6 +112,7 @@ local function setup_edgy()
 					return not is_ai_terminal(buf) and vim.api.nvim_win_get_config(win).relative == ""
 				end,
 				size = { height = 14 },
+				wo = { winbar = "%!v:lua.require'mayon.ui.bottom'.render()" },
 			},
 		},
 		options = {
@@ -166,6 +168,70 @@ local smart_split_keys = {
 }
 
 return {
+	{
+		"dropbar.nvim",
+		event = { "BufReadPost", "BufNewFile" },
+		after = function()
+			require("mayon.ui.breadcrumbs").setup()
+		end,
+	},
+	{
+		"aerial.nvim",
+		cmd = { "AerialToggle", "AerialOpen", "AerialClose" },
+		after = function()
+			require("aerial").setup({
+				layout = { default_direction = "left", min_width = 28 },
+				attach_mode = "global",
+				show_guides = false,
+				filter_kind = false,
+			})
+		end,
+	},
+	{
+		"mini.map",
+		event = "User MayonVeryLazy",
+		after = function()
+			local map = require("mini.map")
+			map.setup({
+				window = { width = 8, winblend = 0, show_integration_count = false },
+				integrations = { map.gen_integration.builtin_search(), map.gen_integration.diagnostic() },
+			})
+			vim.g.mayon_map_enabled = true
+			local function refresh()
+				if vim.fn.getcmdwintype() ~= "" then
+					return
+				end
+				if not vim.g.mayon_map_enabled or vim.o.columns < 160 or vim.bo.filetype == "bigfile" then
+					map.close()
+					return
+				end
+				local editor = require("mayon.ui.workspace").editor()
+				if not editor then
+					return
+				end
+				vim.api.nvim_win_call(editor, function()
+					map.open()
+				end)
+				local w = map.current.win_data[vim.api.nvim_get_current_tabpage()]
+				if w and vim.api.nvim_win_is_valid(w) then
+					local pos = vim.api.nvim_win_get_position(editor)
+					vim.api.nvim_win_set_config(w, {
+						relative = "editor",
+						anchor = "NE",
+						row = pos[1] + 1,
+						col = pos[2] + vim.api.nvim_win_get_width(editor),
+						height = math.max(1, vim.api.nvim_win_get_height(editor) - 1),
+					})
+				end
+			end
+			vim.api.nvim_create_autocmd({ "BufEnter", "VimResized", "WinResized" }, { callback = refresh })
+			vim.keymap.set("n", "<leader>um", function()
+				vim.g.mayon_map_enabled = not vim.g.mayon_map_enabled
+				refresh()
+			end, { desc = "切换 mini.map" })
+			refresh()
+		end,
+	},
 	{ "edgy.nvim", event = "User MayonVeryLazy", after = setup_edgy },
 	{
 		"smart-splits.nvim",

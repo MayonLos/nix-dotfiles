@@ -1,7 +1,18 @@
 local M = {}
 function M.text()
 	local first = vim.fn.getline(vim.v.foldstart):gsub("^%s+", "")
-	return "  " .. first .. "  ⋯ " .. (vim.v.foldend - vim.v.foldstart + 1) .. " lines "
+	local count = vim.v.foldend - vim.v.foldstart + 1
+	local summary = "  … " .. count .. " lines "
+	local foldcolumn = tonumber(vim.wo.foldcolumn) or 0
+	local width = math.max(1, vim.api.nvim_win_get_width(0) - foldcolumn - 4)
+	local budget = math.max(1, width - vim.fn.strdisplaywidth(summary))
+	if vim.fn.strdisplaywidth(first) > budget then
+		first = vim.fn.strcharpart(first, 0, budget - 1) .. "…"
+	end
+	return {
+		{ "  " .. first, "MayonFoldText" },
+		{ summary, "MayonFoldCount" },
+	}
 end
 function M.apply(buf)
 	if vim.bo[buf].filetype == "bigfile" or vim.bo[buf].buftype ~= "" then
