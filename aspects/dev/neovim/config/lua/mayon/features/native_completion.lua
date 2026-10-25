@@ -5,6 +5,7 @@ local snippet_prefixes
 local auto_timers = {}
 local auto_trigger_delay = 100
 local buffer_epochs = {}
+local auto_completion_suppressed = {}
 local cancel_request_guards = setmetatable({}, { __mode = "k" })
 
 local function guard_completed_cancellation(client)
@@ -107,6 +108,12 @@ local function stop_auto_timer(buf)
 	end
 end
 
+local function suppress_auto_completion(buf)
+	stop_auto_timer(buf)
+	invalidate_buffer(buf)
+	auto_completion_suppressed[buf] = true
+end
+
 local function in_comment(buf, row, col)
 	if col <= 0 then
 		return false
@@ -125,6 +132,9 @@ end
 
 local function auto_completion_allowed(buf)
 	if not vim.api.nvim_buf_is_valid(buf) or not vim.api.nvim_buf_is_loaded(buf) then
+		return false
+	end
+	if auto_completion_suppressed[buf] then
 		return false
 	end
 	if vim.bo[buf].buftype ~= "" or vim.bo[buf].filetype == "bigfile" then
@@ -244,14 +254,15 @@ local function expand_completed_snippet()
 end
 
 function M.setup()
+	auto_completion_suppressed = {}
 	while next(auto_timers) do
 		local buf = next(auto_timers)
 		stop_auto_timer(buf)
 	end
-	-- The completion menu is a compact, borderless surface. Its columns inherit
-	-- PmenuKind (blue) and PmenuExtra (muted) from the One Dark palette.
-	vim.o.pumborder = "none"
+	-- The completion menu uses the shared rounded One Dark completion surface.
+	vim.o.pumborder = "rounded"
 	vim.o.pumblend = 0
+	require("mayon.features.completion_ui").setup()
 	local group = vim.api.nvim_create_augroup("MayonNativeCompletion", { clear = true })
 	local function configure_cpp(buf)
 		vim.bo[buf].completefunc = "v:lua.require'mayon.features.native_completion'.snippet_complete"
@@ -280,6 +291,12 @@ function M.setup()
 			schedule_auto_completion(ev.buf)
 		end,
 	})
+	vim.api.nvim_create_autocmd("InsertCharPre", {
+		group = group,
+		callback = function(ev)
+			auto_completion_suppressed[ev.buf] = nil
+		end,
+	})
 	vim.api.nvim_create_autocmd("CursorMovedI", {
 		group = group,
 		callback = function(ev)
@@ -291,6 +308,7 @@ function M.setup()
 		callback = function(ev)
 			stop_auto_timer(ev.buf)
 			invalidate_buffer(ev.buf)
+			auto_completion_suppressed[ev.buf] = nil
 			if ev.event == "BufWipeout" then
 				buffer_epochs[ev.buf] = nil
 			end
@@ -298,7 +316,11 @@ function M.setup()
 	})
 
 	vim.keymap.set("i", "<C-Space>", function()
+		if vim.fn.pumvisible() == 1 then
+			return
+		end
 		local buf = vim.api.nvim_get_current_buf()
+		auto_completion_suppressed[buf] = nil
 		stop_auto_timer(buf)
 		invalidate_buffer(buf)
 		if vim.lsp.completion then
@@ -316,10 +338,10 @@ function M.setup()
 		end
 		local pairs = package.loaded["nvim-autopairs"]
 		return pairs and pairs.autopairs_cr() or M.enter(visible, selected)
-	end, { expr = true, desc = "Accept Completion or Newline" })
+	end, { expr = true, desc = "Accept Completion or Insert Newline" })
 	vim.keymap.set("i", "<Tab>", function()
 		return M.tab()
-	end, { expr = true, desc = "Accept AI, Expand, or Indent" })
+	end, { expr = true, desc = "Accept Completion, Jump Snippet, or AI" })
 	local function accept_word()
 		if require("mayon.features.ai_completion").accept_word() then
 			return ""
@@ -343,11 +365,15 @@ function M.setup()
 		return vim.api.nvim_replace_termcodes("<C-]>", true, false, true)
 	end, { expr = true, desc = "Dismiss AI Completion" })
 	vim.keymap.set("i", "<Esc>", function()
+		if vim.fn.pumvisible() == 1 then
+			suppress_auto_completion(vim.api.nvim_get_current_buf())
+			return "<C-e>"
+		end
 		if require("mayon.features.ai_completion").dismiss() then
 			return ""
 		end
 		return vim.api.nvim_replace_termcodes("<Esc>", true, false, true)
-	end, { expr = true, desc = "Dismiss Completion or Exit" })
+	end, { expr = true, nowait = true, desc = "Close Completion or Exit Insert" })
 	vim.keymap.set("i", "<S-Tab>", function()
 		if vim.snippet.active({ direction = -1 }) then
 			return "<Cmd>lua vim.snippet.jump(-1)<CR>"
@@ -357,12 +383,15 @@ function M.setup()
 end
 
 function M.tab()
-	local ai = require("mayon.features.ai_completion")
-	if vim.fn.pumvisible() == 0 and ai.accept() then
-		return ""
+	if vim.fn.pumvisible() == 1 then
+		local selected = vim.fn.complete_info({ "selected" }).selected
+		return selected ~= nil and selected >= 0 and "<C-y>" or "<C-n><C-y>"
 	end
 	if vim.snippet.active({ direction = 1 }) then
 		return "<Cmd>lua vim.snippet.jump(1)<CR>"
+	end
+	if require("mayon.features.ai_completion").accept() then
+		return ""
 	end
 	return "<Tab>"
 end
@@ -376,14 +405,27 @@ end
 
 local kind_names = vim.lsp.protocol.CompletionItemKind
 local kind_icons = require("mayon.kinds")
+local function truncate_display_width(text, max_width)
+	if vim.fn.strdisplaywidth(text) <= max_width then
+		return text
+	end
+	local prefix = ""
+	for count = 1, vim.fn.strchars(text) do
+		local candidate = vim.fn.strcharpart(text, 0, count)
+		if vim.fn.strdisplaywidth(candidate .. "…") > max_width then
+			break
+		end
+		prefix = candidate
+	end
+	return prefix .. "…"
+end
+
 function M.convert(item)
 	local kind = kind_names[item.kind] or "Text"
 	local detail = item.detail and vim.trim(item.detail:gsub("\n.*", "")) or ""
-	if #detail > 48 then
-		detail = detail:sub(1, 45) .. "…"
-	end
+	detail = truncate_display_width(detail, 48)
 	return {
-		abbr = item.label:gsub("%b()", ""),
+		abbr = item.label,
 		kind = kind_icons[kind] or "",
 		menu = detail ~= "" and detail or kind,
 	}

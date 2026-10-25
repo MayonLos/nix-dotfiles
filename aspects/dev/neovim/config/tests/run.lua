@@ -5,6 +5,7 @@ local ok, err = xpcall(function()
 	local test = assert(vim.env.NVIM_TEST_FILE, "NVIM_TEST_FILE is required")
 	if
 		test:match("/completion.lua$")
+		or test:match("/completion_ui.lua$")
 		or test:match("/lua_workspace.lua$")
 		or test:match("/integration.lua$")
 		or test:match("/native.lua$")

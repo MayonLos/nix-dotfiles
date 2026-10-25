@@ -8,7 +8,7 @@ if vim.env.NVIM_EXPECTED_CONFIG_DIR then
 	)
 end
 completion.setup()
-assert(vim.o.pumborder == "none" and vim.o.pumblend == 0, "native completion should use an opaque borderless menu")
+assert(vim.o.pumborder == "rounded" and vim.o.pumblend == 0, "completion should use an opaque rounded menu")
 
 local maps = vim.api.nvim_get_keymap("i")
 local found = {}
@@ -35,6 +35,7 @@ local old_accept = ai.accept
 local old_dismiss = ai.dismiss
 local old_active, old_jump = vim.snippet.active, vim.snippet.jump
 local old_pumvisible = vim.fn.pumvisible
+local old_complete_info = vim.fn.complete_info
 local calls = {}
 ai.accept = function()
 	calls.ai = (calls.ai or 0) + 1
@@ -47,18 +48,31 @@ end
 vim.snippet.jump = function(direction)
 	calls.jump = direction
 end
-assert(found.tab.callback() == "", "Tab should consume an available AI completion")
-assert(calls.ai == 1 and not calls.snippet_check, "AI acceptance must outrank snippet navigation")
+assert(
+	found.tab.callback() == "<Cmd>lua vim.snippet.jump(1)<CR>",
+	"an active snippet should take Tab before AI completion"
+)
+assert(not calls.ai and calls.snippet_check == 1, "snippet navigation must outrank AI acceptance")
+
+vim.snippet.active = function()
+	return false
+end
+assert(found.tab.callback() == "", "Tab should consume AI completion when no menu or snippet is active")
+assert(calls.ai == 1, "menu-closed Tab should attempt AI acceptance")
 
 ai.accept = function()
 	calls.ai = calls.ai + 1
 	return false
 end
+vim.snippet.active = function()
+	calls.snippet_check = calls.snippet_check + 1
+	return true
+end
 assert(
 	found.tab.callback() == "<Cmd>lua vim.snippet.jump(1)<CR>",
 	"Tab should defer an active snippet jump until after its expression mapping"
 )
-assert(calls.snippet_check == 1, "snippet navigation should follow AI acceptance")
+assert(calls.ai == 1 and calls.snippet_check == 2, "snippet navigation should bypass AI acceptance")
 assert(
 	found.shift_tab.callback() == "<Cmd>lua vim.snippet.jump(-1)<CR>",
 	"Shift-Tab should defer reverse snippet navigation"
@@ -67,12 +81,29 @@ assert(
 vim.fn.pumvisible = function()
 	return 1
 end
-local previous_ai_calls = calls.ai
+local previous_ai_calls, previous_snippet_checks = calls.ai, calls.snippet_check
+vim.fn.complete_info = function()
+	return { selected = 0 }
+end
+assert(found.tab.callback() == "<C-y>", "Tab in the native popup should accept the selected candidate")
+vim.fn.complete_info = function()
+	return { selected = -1 }
+end
 assert(
-	found.tab.callback() == "<Cmd>lua vim.snippet.jump(1)<CR>",
-	"Tab in the native popup should preserve snippet navigation"
+	found.tab.callback() == "<C-n><C-y>",
+	"Tab in an unselected native popup should select and accept its first candidate"
 )
 assert(calls.ai == previous_ai_calls, "Tab in the native popup must not accept an AI suggestion")
+assert(calls.snippet_check == previous_snippet_checks, "Tab in the native popup must not jump a snippet")
+vim.fn.complete_info = old_complete_info
+
+local previous_dismiss_calls = calls.dismiss or 0
+ai.dismiss = function()
+	calls.dismiss = (calls.dismiss or 0) + 1
+	return true
+end
+assert(found.escape.callback() == "<C-e>", "Esc should close the native menu and remain in insert mode")
+assert((calls.dismiss or 0) == previous_dismiss_calls, "Esc should close the menu before dismissing AI")
 vim.fn.pumvisible = old_pumvisible
 ai.dismiss = function()
 	return true
@@ -152,6 +183,14 @@ assert(
 	"LSP completion should put its kind icon in the leading column"
 )
 assert(converted.menu == "std::vector<T>", "LSP completion should include concise detail")
+local overload = completion.convert({
+	label = "operator()(int)",
+	kind = vim.lsp.protocol.CompletionItemKind.Function,
+	detail = string.rep("界", 30),
+})
+assert(overload.abbr == "operator()(int)", "completion formatting must preserve overload signatures")
+assert(vim.fn.strdisplaywidth(overload.menu) <= 48, "completion detail should fit the display-width limit")
+assert(overload.menu:sub(-3) == "…", "truncated UTF-8 completion detail should end at a valid ellipsis")
 
 ai.accept = old_accept
 io.stdout:write("Native LSP completion, Tab priority, Enter noselect, and C++ snippets passed\n")
@@ -159,6 +198,62 @@ io.stdout:write("Native LSP completion, Tab priority, Enter noselect, and C++ sn
 -- InsertEnter also loads autopairs: test the final effective mapping, including
 -- selected and unselected popup items, rather than only the mapping callback.
 vim.snippet.stop()
+vim.cmd.stopinsert()
+vim.api.nvim_buf_set_lines(0, 0, -1, false, { "" })
+vim.api.nvim_win_set_cursor(0, { 1, 0 })
+vim.api.nvim_feedkeys(
+	vim.keycode(
+		'ia<Cmd>lua vim.fn.complete(1, {"abc", "abd"}); vim.g.completion_menu_open_before_tab = vim.fn.pumvisible()<CR><Tab><Esc>'
+	),
+	"xt",
+	false
+)
+assert(vim.g.completion_menu_open_before_tab == 1, "Tab test should begin with the completion menu open")
+assert(
+	vim.api.nvim_get_current_line() == "abc",
+	"Tab should select and accept the first candidate when the completion menu has no selection; line="
+		.. vim.inspect(vim.api.nvim_get_current_line())
+		.. ", mode="
+		.. vim.inspect(vim.api.nvim_get_mode())
+)
+
+vim.api.nvim_buf_set_lines(0, 0, -1, false, { "" })
+vim.api.nvim_win_set_cursor(0, { 1, 0 })
+vim.api.nvim_feedkeys(
+	vim.keycode(
+		'ia<Cmd>lua vim.fn.complete(1, {"abc", "abd"}); vim.g.completion_menu_open_before_escape = vim.fn.pumvisible()<CR><C-e>'
+	),
+	"xt",
+	false
+)
+assert(vim.g.completion_menu_open_before_escape == 1, "Esc test should begin with the completion menu open")
+assert(vim.fn.pumvisible() == 0, "Esc should close the completion menu")
+vim.api.nvim_feedkeys(vim.keycode("<Esc>"), "xt", false)
+
+vim.api.nvim_buf_set_lines(0, 0, -1, false, { "" })
+vim.api.nvim_win_set_cursor(0, { 1, 0 })
+local original_completion_get = vim.lsp.completion.get
+local completion_get_calls = 0
+vim.lsp.completion.get = function(...)
+	completion_get_calls = completion_get_calls + 1
+	return original_completion_get(...)
+end
+vim.api.nvim_feedkeys(
+	vim.keycode(
+		'ia<Cmd>lua vim.fn.complete(1, {"abc", "abd"}); vim.g.manual_pum_open = vim.fn.pumvisible()<CR><C-n><Cmd>lua vim.g.manual_pum_selected_before = vim.fn.complete_info({"selected"}).selected<CR><C-Space><Cmd>lua vim.g.manual_pum_open_after = vim.fn.pumvisible(); vim.g.manual_pum_selected_after = vim.fn.complete_info({"selected"}).selected<CR><Esc>'
+	),
+	"xt",
+	false
+)
+vim.lsp.completion.get = original_completion_get
+assert(vim.g.manual_pum_open == 1, "manual refresh regression should open a native PUM")
+assert(completion_get_calls == 0, "Ctrl-Space must not start a second native request while a PUM is open")
+assert(vim.g.manual_pum_open_after == 1, "Ctrl-Space should preserve an open native PUM")
+assert(
+	vim.g.manual_pum_selected_after == vim.g.manual_pum_selected_before,
+	"Ctrl-Space should preserve the current PUM selection"
+)
+
 vim.api.nvim_buf_set_lines(0, 0, -1, false, { "" })
 vim.api.nvim_win_set_cursor(0, { 1, 0 })
 vim.api.nvim_feedkeys(vim.keycode('ia<Cmd>lua vim.fn.complete(1, {"abc", "abd"})<CR><C-n><CR><Esc>'), "xt", false)
@@ -476,6 +571,66 @@ local requests_before_escape = #fixture_requests
 vim.api.nvim_feedkeys(vim.keycode("ive<Esc>"), "xt", false)
 vim.wait(150)
 assert(#fixture_requests == requests_before_escape, "Escape should cancel a pending automatic completion timer")
+vim.api.nvim_buf_set_lines(completion_buf, 0, -1, false, { "" })
+vim.api.nvim_win_set_cursor(0, { 1, 0 })
+vim.api.nvim_feedkeys(
+	vim.keycode(
+		'ia<Cmd>lua vim.fn.complete(1, {"vector", "vector2"}); vim.g.escape_pum_open = vim.fn.pumvisible()<CR><C-n><Cmd>lua vim.g.escape_pum_selected = vim.fn.complete_info({"selected"}).selected<CR><Esc>'
+	),
+	"xt",
+	false
+)
+assert(vim.g.escape_pum_open == 1, "Escape regression should open a real native completion menu")
+assert(vim.g.escape_pum_selected >= 0, "Escape regression should select a real native PUM item")
+assert(vim.fn.pumvisible() == 0, "the first Escape should close the selected native menu")
+local requests_before_pum_escape = #vim.tbl_filter(function(request)
+	return request.method == "textDocument/completion"
+end, fixture_requests)
+vim.api.nvim_buf_set_lines(completion_buf, 0, -1, false, { "ve" })
+vim.api.nvim_win_set_cursor(0, { 1, 2 })
+local original_get_mode = vim.api.nvim_get_mode
+vim.api.nvim_get_mode = function()
+	return { mode = "i", blocking = false }
+end
+vim.api.nvim_exec_autocmds("TextChangedI", { buffer = completion_buf })
+vim.wait(200)
+vim.api.nvim_get_mode = original_get_mode
+assert(vim.fn.pumvisible() == 0, "the first Escape should close the selected native menu")
+assert(
+	#vim.tbl_filter(function(request)
+			return request.method == "textDocument/completion"
+		end, fixture_requests) == requests_before_pum_escape,
+	"PUM rollback TextChangedI must not issue another automatic completion request"
+)
+-- Ctrl-Space remains an explicit way to resume after Escape.
+local original_completion_get_after_escape = vim.lsp.completion.get
+local manual_release_calls = 0
+vim.lsp.completion.get = function()
+	manual_release_calls = manual_release_calls + 1
+end
+vim.api.nvim_set_current_buf(completion_buf)
+found.manual.callback()
+vim.lsp.completion.get = original_completion_get_after_escape
+assert(manual_release_calls == 1, "manual Ctrl-Space should remain available after dismissing a popup")
+-- Re-arm suppression and dispatch the input event that releases it; the next
+-- explicit trigger must still be usable.
+vim.fn.pumvisible = function()
+	return 1
+end
+assert(found.escape.callback() == "<C-e>", "Escape should arm suppression for the input-release test")
+vim.fn.pumvisible = function()
+	return 0
+end
+vim.api.nvim_exec_autocmds("InsertCharPre", { buffer = completion_buf })
+vim.api.nvim_exec_autocmds("InsertLeave", { buffer = completion_buf })
+vim.fn.pumvisible = function()
+	return 0
+end
+assert(
+	found.escape.callback() == vim.api.nvim_replace_termcodes("<Esc>", true, false, true),
+	"the second Escape should retain its Insert-mode exit behavior"
+)
+vim.fn.pumvisible = old_pumvisible
 vim.api.nvim_buf_set_lines(completion_buf, 0, -1, false, { "" })
 vim.api.nvim_win_set_cursor(0, { 1, 0 })
 local manual_menu_opened = false

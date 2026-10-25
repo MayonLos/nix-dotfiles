@@ -68,7 +68,7 @@ assert(calls.linked and calls.linked[1] and calls.linked[2].client_id == -2)
 assert(calls.on_type and calls.on_type[1] and calls.on_type[2].client_id == -2)
 assert(calls.color and calls.color[1] and calls.color[2].bufnr == buf)
 assert(calls.completion and calls.completion[1] == -2 and calls.completion[2] == buf)
-assert(#vim.api.nvim_get_autocmds({ group = "MayonSignatureHelp" .. buf, event = "InsertCharPre" }) > 0)
+assert(vim.fn.maparg("gK", "n", false, true).callback, "manual signature help must remain available")
 lsp.get_client_by_id = originals.get_client
 lsp.codelens.enable = originals.codelens
 lsp.linked_editing_range.enable = originals.linked
@@ -190,7 +190,7 @@ vim.cmd.packadd("nvim.difftool")
 assert(vim.fn.exists(":Undotree") == 2 and vim.fn.exists(":DiffTool") == 2)
 assert(vim.fn.exists(":restart") == 2)
 assert(vim.tbl_contains(vim.opt.diffopt:get(), "inline:word"))
-assert(vim.o.pumborder == "none" and vim.o.pumheight <= 10)
+assert(vim.o.pumborder == "rounded" and vim.o.pumheight <= 10)
 local muted = tonumber(require("mayon.generated").palette.muted:sub(2), 16)
 for _, name in ipairs({ "ComplHint", "ComplHintMore", "MinuetVirtualText" }) do
 	assert(vim.api.nvim_get_hl(0, { name = name, link = false }).fg == muted)

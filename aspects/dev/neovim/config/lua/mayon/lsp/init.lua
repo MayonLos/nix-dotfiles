@@ -142,24 +142,6 @@ local function attach(event)
 	if supports("textDocument/completion") then
 		require("mayon.features.native_completion").attach(client, bufnr)
 	end
-	if supports("textDocument/signatureHelp") then
-		local group = vim.api.nvim_create_augroup("MayonSignatureHelp" .. bufnr, { clear = true })
-		vim.api.nvim_create_autocmd("InsertCharPre", {
-			group = group,
-			buffer = bufnr,
-			callback = function()
-				if vim.v.char == "(" or vim.v.char == "," then
-					vim.schedule(function()
-						if vim.api.nvim_buf_is_valid(bufnr) and vim.api.nvim_get_current_buf() == bufnr then
-							local opts = require("mayon.ui.floats").options("signature")
-							opts.title_pos = "center"
-							vim.lsp.buf.signature_help(opts)
-						end
-					end)
-				end
-			end,
-		})
-	end
 end
 
 local function diagnostics()

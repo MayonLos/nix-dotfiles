@@ -1,6 +1,7 @@
 vim.api.nvim_exec_autocmds("User", { pattern = "MayonVeryLazy" })
 local floats = require("mayon.ui.floats")
 floats.setup()
+require("mayon.features.completion_ui").setup()
 require("lz.n").trigger_load("neogit")
 local palette = require("mayon.generated").palette
 local neogit_border = vim.api.nvim_get_hl(0, { name = "NeogitFloatBorder", link = false })
@@ -84,6 +85,10 @@ local docs_win = vim.api.nvim_open_win(
 	{ relative = "editor", row = 3, col = 2, width = 40, height = 5, style = "minimal" }
 )
 local original_complete_info = vim.fn.complete_info
+local original_pumvisible = vim.fn.pumvisible
+vim.fn.pumvisible = function()
+	return 1
+end
 vim.fn.complete_info = function()
 	return { preview_winid = docs_win, selected = -1, items = {} }
 end
@@ -95,6 +100,7 @@ assert(
 	"completion Markdown should use the same document renderer as hover"
 )
 vim.fn.complete_info = original_complete_info
+vim.fn.pumvisible = original_pumvisible
 assert(
 	vim.deep_equal(vim.api.nvim_buf_get_lines(docs, 0, -1, false), docs_lines),
 	"completion document styling changed its text"
@@ -159,8 +165,8 @@ assert(
 local indent = require("snacks").config.indent
 assert(indent.indent.enabled and indent.animate.enabled == false, "quiet indent guide should be static")
 assert(indent.scope.only_current)
-local rail = vim.api.nvim_get_autocmds({ group = "MayonCompletionDocs", event = "CompleteChanged" })
-assert(#rail == 2, "completion documentation and selected row must both be styled")
+local docs_events = vim.api.nvim_get_autocmds({ group = "MayonCompletionUI", event = "CompleteChanged" })
+assert(#docs_events == 1, "native completion documentation must have a single presentation owner")
 
 assert(require("snacks").config.lazygit.configure == false, "lazygit CLI palette belongs to the CLI feature")
 for _, name in ipairs({ "input", "terminal", "lazygit" }) do
