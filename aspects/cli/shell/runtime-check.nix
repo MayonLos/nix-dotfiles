@@ -254,11 +254,12 @@ pkgs.runCommand "command-line-runtime"
     assert result['cwd'] == os.getcwd()
     assert result['args'] == ['space path', '$(touch injected)', '"quoted"', ""]
     PY
-    ${pkgs.runtimeShell} ${home.home.file.".local/bin/thunar-open-terminal".source} 'literal $HOME'
+    mkdir 'literal $HOME'
+    ${home.home.path}/bin/thunar-open-terminal "$PWD/"'literal $HOME'
     python3 - "$CAPTURE" <<'PY'
     import json, os, sys
     with open(sys.argv[1]) as source: result = json.load(source)
-    assert result == {'cwd': os.getcwd(), 'args': ['literal $HOME']}
+    assert result == {'cwd': os.getcwd(), 'args': ['--directory=' + os.path.join(os.getcwd(), 'literal $HOME')]}
     PY
     for desktop in code firefox thunar; do
       test -f ${home.home.path}/share/applications/$desktop.desktop || test -f ${systemPath}/share/applications/$desktop.desktop

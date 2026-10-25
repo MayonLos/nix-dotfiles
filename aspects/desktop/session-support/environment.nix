@@ -1,4 +1,9 @@
-{ config, lib, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
 
@@ -12,6 +17,15 @@ let
     # Qt apps started outside the compositor (systemd user units, desktop launchers)
     # need this too; qt.nix seeds the qt6ct palette.
     QT_QPA_PLATFORMTHEME = "qt6ct";
+    # Installing qt6ct alone does not add its QPA plugin to other Qt apps.
+    # Their wrappers prefix their own plugin directories and retain this one.
+    QT_PLUGIN_PATH = "${pkgs.qt6Packages.qt6ct}/${pkgs.qt6Packages.qtbase.qtPluginPrefix}";
+    # GTK3/4's native chooser integration delegates to the shared FileChooser
+    # portal. Session backends explicitly route that interface to GTK.
+    GTK_USE_PORTAL = "1";
+    # Search root, not its 2.10.0/engines subdirectory: GTK3 must resolve its
+    # own ABI directory and never see GTK2 engines as unversioned modules.
+    GTK_PATH = "${config.gtk.gtk2.theme.package}/lib/gtk-2.0";
     # The HM fcitx5 module writes these to home.sessionVariables only, which
     # interactive shells and the compositor pick up but systemd-launched desktop apps
     # do not (verified: systemd.user.sessionVariables had none). Same values,

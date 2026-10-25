@@ -76,7 +76,7 @@ in
       cursor = {
         theme = palette.cursor.name;
         size = palette.cursor.size;
-        path = pkgs.bibata-cursors;
+        path = pkgs.phinger-cursors;
       };
     };
   };
@@ -98,7 +98,7 @@ in
   # Greeter runs before the user session, so these assets must be in the
   # system closure and discoverable without relying on a user's Home Manager.
   environment.systemPackages = [
-    pkgs.bibata-cursors
+    pkgs.phinger-cursors
     pkgs.inter
     pkgs.noto-fonts-cjk-sans
   ];

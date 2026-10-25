@@ -66,7 +66,7 @@ let
     export LD_LIBRARY_PATH="${
       lib.makeLibraryPath [ pkgs.pipewire ]
     }''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-    exec ${pkgs.unstable.qq}/bin/qq "--ozone-platform=$backend" "$@"
+    exec ${pkgs.unstable.qq}/bin/qq "--ozone-platform=$backend" --xdg-portal-required-version=3 "$@"
   '';
   qq = pkgs.symlinkJoin {
     name = "qq-with-pipewire";

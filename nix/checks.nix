@@ -24,6 +24,9 @@
       registry = [
         ../aspects/apps/firefox/checks.nix
         ../aspects/apps/documents/checks.nix
+        ../aspects/apps/communication/checks.nix
+        ../aspects/apps/file-manager/checks.nix
+        ../aspects/apps/media/checks.nix
         ../aspects/cli/shell/checks.nix
         ../aspects/cli/herdr/checks.nix
         ../aspects/desktop/mango-session/checks.nix

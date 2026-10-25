@@ -1,18 +1,25 @@
-{ config, ... }:
+{ config, pkgs, ... }:
 
 let
-  terminalLauncher = "${config.home.homeDirectory}/.local/bin/thunar-open-terminal";
-in
-{
-  home.file.".local/bin/thunar-open-terminal" = {
-    executable = true;
+  terminal = config.home.sessionVariables.TERMINAL;
+  terminalLauncher = pkgs.writeShellApplication {
+    name = "thunar-open-terminal";
+    runtimeInputs = [ pkgs.coreutils ];
     text = ''
-      #!/usr/bin/env sh
-      exec ${config.home.sessionVariables.TERMINAL} "$@"
+      target="''${1:-$PWD}"
+      if [ -d "$target" ]; then
+        directory="$target"
+      else
+        directory="$(dirname -- "$target")"
+      fi
+      exec ${terminal} --directory="$directory"
     '';
   };
+in
+{
+  home.packages = [ terminalLauncher ];
 
   home.file.".config/xfce4/helpers.rc".text = ''
-    TerminalEmulator=${terminalLauncher}
+    TerminalEmulator=${terminalLauncher}/bin/thunar-open-terminal
   '';
 }

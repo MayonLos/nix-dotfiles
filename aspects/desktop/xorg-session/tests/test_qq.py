@@ -24,5 +24,5 @@ with tempfile.TemporaryDirectory() as directory:
     for session, wayland, expected in [("wayland", "wayland-1", "wayland"), ("x11", "stale-wayland", "x11"), ("x11", "", "x11")]:
         env = dict(os.environ, XDG_SESSION_TYPE=session, WAYLAND_DISPLAY=wayland)
         result = subprocess.check_output([str(wrapper), *args], text=True, env=env)
-        assert json.loads(result) == [f"--ozone-platform={expected}", *args]
+        assert json.loads(result) == [f"--ozone-platform={expected}", "--xdg-portal-required-version=3", *args]
         print(f"{session}: backend={expected}, argv preserved")

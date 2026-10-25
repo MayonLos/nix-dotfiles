@@ -111,6 +111,36 @@ def encode_qt_string_list(items: list[str]) -> str:
     return ", ".join(escape(item) for item in items)
 
 
+def portal_dialogs(text: str, newline: str) -> str:
+    """Own only Appearance/standard_dialogs, including existing GUI configs."""
+    lines = text.splitlines(keepends=True)
+    section = ""
+    insertion = None
+    found = False
+    output = []
+    for line in lines:
+        match = re.fullmatch(r"\[([^]]+)\]", line.strip())
+        if match:
+            section = match.group(1)
+            if section == "Appearance":
+                insertion = len(output) + 1
+        if section == "Appearance" and line.partition("=")[0].strip() == "standard_dialogs":
+            ending = "\r\n" if line.endswith("\r\n") else "\n" if line.endswith("\n") else ""
+            line = "standard_dialogs=xdgdesktopportal" + ending
+            found = True
+        output.append(line)
+    if not found:
+        if insertion is None:
+            if output and not output[-1].endswith(("\r", "\n")):
+                output[-1] += newline
+            output.extend([f"[Appearance]{newline}", f"standard_dialogs=xdgdesktopportal{newline}"])
+        else:
+            if not output[insertion - 1].endswith(("\r", "\n")):
+                output[insertion - 1] += newline
+            output.insert(insertion, f"standard_dialogs=xdgdesktopportal{newline}")
+    return "".join(output)
+
+
 def main() -> None:
     if len(sys.argv) == 3 and sys.argv[1] == "--safe-destination":
         sys.exit(0 if safe_destination(Path(sys.argv[2])) else 1)
@@ -180,7 +210,7 @@ def main() -> None:
             output[interface_insert - 1] += newline
         output.insert(interface_insert, f"stylesheets={stylesheet}{newline}")
 
-    result = "".join(output).encode("utf-8")
+    result = portal_dialogs("".join(output), newline).encode("utf-8")
     if result != raw:
         path.write_bytes(result)
 

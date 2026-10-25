@@ -59,6 +59,7 @@
           };
           extraPrefs = ''
             lockPref("extensions.activeThemeID", "firefox-compact-dark@mozilla.org");
+            lockPref("widget.use-xdg-desktop-portal.file-picker", 1);
           '';
         };
         firefoxChrome = pkgs.writeText "firefox-userChrome-fallback.css" (

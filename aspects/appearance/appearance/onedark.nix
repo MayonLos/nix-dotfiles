@@ -10,8 +10,8 @@
     serif = "Noto Serif CJK SC";
   };
   cursor = {
-    name = "Bibata-Modern-Classic";
-    size = 24;
+    name = "phinger-cursors-light";
+    size = 32;
   };
   iconTheme = "Tela-circle-dark";
   iconFolderColor = "blue";

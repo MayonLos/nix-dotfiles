@@ -337,6 +337,6 @@ Qt6ct 使用 Fusion，QPalette `Window/Base/AlternateBase/Button=bg/deep/surface
 
 窗口规则单一归属为 [window-rules.nix](../aspects/desktop/mango-session/mango/window-rules.nix)，行为及大小表见 [Mango README](../aspects/desktop/mango-session/README.md#window-rules)。默认保留手动工作区习惯，浏览器 2 / 通讯 4 是显式 opt-in。普通窗口仍可正常取得焦点；通知/共享工具浮窗按应用和标题静默打开，activation 请求只提示 urgent。
 
-电池使用 Noctalia 原生 graphic，规避 Tabler 小字形歧义；移除 XKB 键盘布局组件，仅常显 Fcitx 托盘图标，其他托盘项收进 drawer。技术布局名 Tile/Scroller/Monocle 等、fastfetch 标准键和 tmux PREFIX/COPY/ZOOM 使用英文，中文日期和说明保留。Bibata Modern Classic 24 复用共享配置，在 1.5 缩放下名义 36 device px；安全环境补齐 XCURSOR_THEME/SIZE 到 systemd 和 Mango 启动的 Qt/Kitty 客户端，不改 GTK/Qt/icon 文件。
+电池使用 Noctalia 原生 graphic，规避 Tabler 小字形歧义；移除 XKB 键盘布局组件，仅常显 Fcitx 托盘图标，其他托盘项收进 drawer。技术布局名 Tile/Scroller/Monocle 等、fastfetch 标准键和 tmux PREFIX/COPY/ZOOM 使用英文，中文日期和说明保留。phinger-cursors-light 32 复用共享配置，在 1.5 缩放下名义 48 device px；安全环境补齐 XCURSOR_THEME/SIZE 到 systemd 和 Mango 启动的 Qt/Kitty 客户端，不改 GTK/Qt/icon 文件。
 
 实施证据、标签对照、隔离截图及待验项见 [第二十一轮 A 记录](history/ui-r21a-2026-10-25.md)。

@@ -78,7 +78,7 @@ Noctalia 设置、portal 文件选择及 Swayimg 使用相对输出尺寸；Thun
 | 滚动截图 | `Shift+Print` | wayscrollshot |
 | 区域 / 全桌面 OCR | `Super+Print` / `Super+Shift+Print` | 英文+简体中文；取消选区安静退出，失败有提示 |
 | 截图文件位置 | 应用保存动作 | 显示真实目标路径；用户已选路径不被激活脚本重置 |
-| 打开 / 看图 | MIME 默认 | Thunar；图片 Swayimg；PDF Zathura 默认、Okular 可选；文本图形默认 VS Code，CLI 默认 Neovim |
+| 打开 / 看图 | MIME 默认 | Thunar；图片 Swayimg；PDF Zathura 默认、批注用 Zotero 内置阅读器；文本图形默认 VS Code，CLI 默认 Neovim |
 
 保留 Thunar 的“在此打开终端”“复制为图片”“复制路径”“粘贴剪贴板图片”“粘贴为链接”。文件 URI、路径文字、图片像素是三种不同用途，不能为了减少代码把它们合并成一种复制。迁移终端入口时保持当前文件夹作为 cwd，路径包含空格/中文/引号仍正常，不经拼接 shell 字符串。当前实现见 [文件动作](../aspects/apps/file-manager/thunar-actions.nix)、[终端入口](../aspects/apps/file-manager/thunar-terminal.nix)、[截图](../aspects/desktop/mango-session/screenshot.nix)。
 
