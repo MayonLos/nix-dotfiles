@@ -1,0 +1,78 @@
+QWidget {
+  color: @BRIGHT_FG@;
+}
+
+QDialog, QMainWindow { background: @BG@; }
+
+QPushButton, QToolButton, QComboBox, QSpinBox, QDoubleSpinBox {
+  color: @BRIGHT_FG@;
+  background: @SURFACE@;
+  border: 1px solid @SELECTION@;
+  border-radius: 7px;
+  padding: 5px 10px;
+  min-height: 20px;
+}
+QPushButton:hover, QToolButton:hover, QComboBox:hover { background: @SELECTION@; }
+QPushButton:pressed, QToolButton:pressed { background: @DEEP@; color: @BLUE@; }
+QPushButton:focus, QToolButton:focus, QComboBox:focus, QSpinBox:focus,
+QDoubleSpinBox:focus, QLineEdit:focus { border-color: @BLUE@; }
+QPushButton:default { border-color: @BLUE@; }
+
+QLineEdit, QTextEdit, QPlainTextEdit {
+  color: @BRIGHT_FG@;
+  background: @DEEP@;
+  border: 1px solid @SELECTION@;
+  border-radius: 7px;
+  padding: 6px 8px;
+  selection-background-color: @SELECTION@;
+  selection-color: @BRIGHT_FG@;
+}
+
+QAbstractItemView {
+  color: @BRIGHT_FG@;
+  background: @DEEP@;
+  alternate-background-color: @BG@;
+  border: 1px solid @SELECTION@;
+  selection-background-color: @SELECTION@;
+  selection-color: @BRIGHT_FG@;
+  outline: 0;
+}
+QAbstractItemView::item { padding: 5px; border-left: 2px solid transparent; }
+QAbstractItemView::item:selected { background: @SELECTION@; border-left-color: @BLUE@; }
+
+QTabWidget::pane { border: 1px solid @SELECTION@; background: @BG@; }
+QTabBar::tab {
+  color: @FG@;
+  background: @DEEP@;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 7px 12px;
+}
+QTabBar::tab:selected { color: @BRIGHT_FG@; background: @BG@; border-bottom-color: @BLUE@; }
+QTabBar::tab:hover { background: @SURFACE@; }
+
+QHeaderView::section {
+  color: @FG@;
+  background: @DEEP@;
+  border: 0;
+  border-bottom: 1px solid @SELECTION@;
+  padding: 7px;
+  font-family: "@FONT_MONO@";
+  font-size: 11px;
+}
+QGroupBox { background: @BG@; border: 1px solid @SELECTION@; border-radius: 8px; margin-top: 14px; padding: 12px 8px 8px; }
+QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 4px; color: @FG@; }
+
+QMenu { color: @BRIGHT_FG@; background: @SURFACE@; border: 1px solid @SELECTION@; padding: 5px; }
+QMenu::item { padding: 6px 22px; }
+QMenu::item:selected { background: @SELECTION@; }
+
+QScrollBar:vertical { background: @DEEP@; width: 8px; margin: 0; }
+QScrollBar:horizontal { background: @DEEP@; height: 8px; margin: 0; }
+QScrollBar::handle:vertical, QScrollBar::handle:horizontal { background: @SELECTION@; min-width: 24px; min-height: 24px; }
+QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; }
+
+QProgressBar { color: @BRIGHT_FG@; background: @DEEP@; border: 0; text-align: center; }
+QProgressBar::chunk { background: @SELECTION@; border-bottom: 2px solid @BLUE@; }
+QStatusBar { background: @DEEP@; font-family: "@FONT_MONO@"; font-size: 11px; }
+QToolTip { color: @BRIGHT_FG@; background: @SURFACE@; border: 1px solid @SELECTION@; padding: 5px; }

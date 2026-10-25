@@ -13,7 +13,7 @@
     name = "Bibata-Modern-Classic";
     size = 24;
   };
-  iconTheme = "Papirus-Dark";
+  iconTheme = "Tela-circle-dark";
   iconFolderColor = "blue";
   black = "#0e1013";
   bg = "#1e2228";

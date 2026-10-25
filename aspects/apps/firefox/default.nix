@@ -64,15 +64,15 @@
         firefoxChrome = pkgs.writeText "firefox-userChrome-fallback.css" (
           builtins.replaceStrings
             [
-              "{{ colors.onedark_bg.default.hex }}"
-              "{{ colors.onedark_surface.default.hex }}"
-              "{{ colors.onedark_deep.default.hex }}"
-              "{{ colors.onedark_selection.default.hex }}"
-              "{{ colors.onedark_bright_fg.default.hex }}"
-              "{{ colors.onedark_fg.default.hex }}"
-              "{{ colors.onedark_blue.default.hex }}"
-              "{{ colors.onedark_cyan.default.hex }}"
-              "{{ colors.onedark_purple.default.hex }}"
+              "{{ colors.onedark_bg_value.default.hex }}"
+              "{{ colors.onedark_surface_value.default.hex }}"
+              "{{ colors.onedark_deep_value.default.hex }}"
+              "{{ colors.onedark_selection_value.default.hex }}"
+              "{{ colors.onedark_bright_fg_value.default.hex }}"
+              "{{ colors.onedark_fg_value.default.hex }}"
+              "{{ colors.onedark_blue_value.default.hex }}"
+              "{{ colors.onedark_cyan_value.default.hex }}"
+              "{{ colors.onedark_purple_value.default.hex }}"
             ]
             [
               user.appearance.bg
