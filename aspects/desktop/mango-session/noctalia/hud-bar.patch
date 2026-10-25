@@ -1,0 +1,298 @@
+--- a/src/shell/bar/bar.cpp
++++ b/src/shell/bar/bar.cpp
+@@ -42,0 +43,18 @@
++
++  // HUD27: near-black palette backdrop and a fading blue-to-cyan upper edge.
++  void hudBackground(RoundedRectStyle& style, float opacity) {
++    const auto base = colorForRole(ColorRole::Shadow, opacity);
++    style.fillMode = FillMode::LinearGradient;
++    style.gradientDirection = GradientDirection::Vertical;
++    style.gradientStops = {{{0.0F, lerpColor(base, colorForRole(ColorRole::Surface, opacity), 0.18F)},
++                            {0.4F, base}, {0.8F, base}, {1.0F, base}}};
++  }
++  RoundedRectStyle hudLineStyle(float alpha) {
++    RoundedRectStyle style;
++    style.fillMode = FillMode::LinearGradient;
++    const auto blue = colorForRole(ColorRole::Primary);
++    const auto cyan = colorForRole(ColorRole::Secondary);
++    style.gradientStops = {{{0.0F, withAlpha(blue, 0.0F)}, {0.38F, withAlpha(blue, alpha)},
++                            {0.62F, withAlpha(cyan, alpha)}, {1.0F, withAlpha(cyan, 0.0F)}}};
++    return style;
++  }
+@@ -1153,0 +1172,3 @@
++        if (run.accordion) {
++          bg->setOpacity(run.accordionProgress);
++        }
+@@ -3207,0 +3229 @@
++  hudBackground(style, instance.barConfig.backgroundOpacity);
+@@ -3208,0 +3231,6 @@
++  if (instance.hudLine != nullptr) instance.hudLine->setStyle(hudLineStyle(0.8F));
++  if (instance.hudGlow != nullptr) {
++    auto glowStyle = hudLineStyle(0.12F);
++    glowStyle.softness = 3.0F;
++    instance.hudGlow->setStyle(glowStyle);
++  }
+@@ -3429,0 +3458,4 @@
++    instance.hudGlow = static_cast<Box*>(instance.slideRoot->addChild(ui::box()));
++    instance.hudLine = static_cast<Box*>(instance.slideRoot->addChild(ui::box()));
++    instance.hudGlow->setHitTestVisible(false);
++    instance.hudLine->setHitTestVisible(false);
+@@ -3535 +3567 @@
+-    const RoundedRectStyle bgStyle{
++    RoundedRectStyle bgStyle{
+@@ -3544,0 +3577 @@
++    hudBackground(bgStyle, instance.barConfig.backgroundOpacity);
+@@ -3545,0 +3579,12 @@
++    if (instance.hudLine != nullptr && instance.hudGlow != nullptr) {
++      instance.hudLine->setVisible(!isVertical);
++      instance.hudGlow->setVisible(!isVertical);
++      instance.hudLine->setStyle(hudLineStyle(0.8F));
++      auto glowStyle = hudLineStyle(0.12F);
++      glowStyle.softness = 3.0F;
++      instance.hudGlow->setStyle(glowStyle);
++      instance.hudLine->setPosition(barAreaX + barAreaW * 0.12F, barAreaY);
++      instance.hudLine->setSize(barAreaW * 0.76F, 1.0F);
++      instance.hudGlow->setPosition(barAreaX + barAreaW * 0.12F, barAreaY);
++      instance.hudGlow->setSize(barAreaW * 0.76F, 3.0F);
++    }
+--- a/src/shell/bar/bar_instance.h
++++ b/src/shell/bar/bar_instance.h
+@@ -91,0 +92,2 @@
++  Box* hudLine = nullptr;
++  Box* hudGlow = nullptr;
+--- a/src/shell/bar/widgets/brightness_widget.cpp
++++ b/src/shell/bar/widgets/brightness_widget.cpp
+@@ -13,0 +14 @@
++#include <format>
+@@ -121 +122,4 @@
+-  if (m_haveLastState && available == m_lastAvailable) {
++  const std::string metadata = display == nullptr ? "" : display->friendlyName + display->id
++      + std::to_string(display->physicalWidth) + "x" + std::to_string(display->physicalHeight)
++      + "@" + std::to_string(display->refreshMilliHz);
++  if (m_haveLastState && available == m_lastAvailable && metadata == m_lastMetadata) {
+@@ -126,0 +131 @@
++  m_lastMetadata = metadata;
+@@ -169,4 +174,10 @@
+-    std::vector<TooltipRow> rows;
+-    rows.push_back({i18n::tr("bar.widgets.brightness.brightness"), std::to_string(pct) + "%"});
+-    if (!display->label.empty()) {
+-      rows.push_back({i18n::tr("bar.widgets.brightness.display"), display->label});
++    // HUD27: display panel uses friendly metadata, never the raw EDID description.
++    TooltipPanel panel;
++    panel.title = "DISPLAY";
++    panel.summary = display->id;
++    panel.rows.push_back({.key = "亮度", .value = std::to_string(pct) + "%",
++                          .progress = brightness, .color = widgetIconColorOr(colorSpecFromRole(ColorRole::Primary))});
++    panel.metrics.push_back({.key = "屏幕", .value = display->friendlyName.empty() ? "显示器" : display->friendlyName});
++    std::string mode = std::format("{}×{}", display->physicalWidth, display->physicalHeight);
++    if (display->refreshMilliHz > 0) {
++      mode += std::format("@{:.0f}", display->refreshMilliHz / 1000.0);
+@@ -174 +185,2 @@
+-    static_cast<InputArea*>(rootNode)->setTooltip(std::move(rows));
++    panel.metrics.push_back({.key = "模式", .value = mode});
++    static_cast<InputArea*>(rootNode)->setTooltip(std::move(panel));
+--- a/src/shell/bar/widgets/brightness_widget.h
++++ b/src/shell/bar/widgets/brightness_widget.h
+@@ -3,0 +4 @@
++#include <string>
+@@ -35,0 +37 @@
++  std::string m_lastMetadata;
+--- a/src/shell/bar/widgets/launcher_widget.cpp
++++ b/src/shell/bar/widgets/launcher_widget.cpp
+@@ -45,0 +46 @@
++    m_glyph->setShadow(colorSpecFromRole(ColorRole::Primary, 0.25F), 0.0F, 0.0F);
+@@ -49 +50,2 @@
+-    node->setSize(m_glyph->width(), m_glyph->height());
++    m_glyph->setPosition(6.0F, 0.0F);
++    node->setSize(m_glyph->width() + 12.0F, m_glyph->height());
+--- a/src/shell/bar/widgets/notification_widget.cpp
++++ b/src/shell/bar/widgets/notification_widget.cpp
+@@ -35 +35 @@
+-          .fill = colorSpecFromRole(ColorRole::Primary),
++          .fill = colorSpecFromRole(ColorRole::Error),
+--- a/src/shell/bar/widgets/power_profile_widget.cpp
++++ b/src/shell/bar/widgets/power_profile_widget.cpp
+@@ -10,0 +11 @@
++#include <algorithm>
+@@ -26,0 +28,3 @@
++  // HUD27: profile icon + real mode name, keeping native click cycling.
++  area->addChild(ui::label({.out = &m_label, .fontSize = 11.5F * fontScale(),
++                           .fontFamily = "monospace", .color = colorSpecFromRole(ColorRole::OnSurfaceVariant)}));
+@@ -44 +48,7 @@
+-  rootNode->setSize(m_glyph->width(), m_glyph->height());
++  m_label->setText(m_available ? m_lastProfile : "unavailable");
++  m_label->setFontSize(11.5F * fontScale());
++  m_label->measure(renderer);
++  const float h = std::max(m_glyph->height(), m_label->height());
++  m_glyph->setPosition(0.0F, (h - m_glyph->height()) * 0.5F);
++  m_label->setPosition(m_glyph->width() + 4.0F, (h - m_label->height()) * 0.5F);
++  rootNode->setSize(m_label->x() + m_label->width(), h);
+--- a/src/shell/bar/widgets/power_profile_widget.h
++++ b/src/shell/bar/widgets/power_profile_widget.h
+@@ -7,0 +8 @@
++class Label;
+@@ -24,0 +26 @@
++  Label* m_label = nullptr;
+--- a/src/shell/bar/widgets/spacer_widget.cpp
++++ b/src/shell/bar/widgets/spacer_widget.cpp
+@@ -4,0 +5,2 @@
++#include "ui/controls/box.h"
++#include <algorithm>
+@@ -7 +9 @@
+-    : m_fixedLength(static_cast<float>(options.length)), m_verticalBar(verticalBar) {}
++    : m_fixedLength(static_cast<float>(options.length)), m_verticalBar(verticalBar), m_decoration(options.decoration) {}
+@@ -12,0 +15,6 @@
++  if (m_decoration != SpacerDecoration::None) {
++    m_glow = static_cast<Box*>(spacer->addChild(ui::box({.fill = clearColorSpec()})));
++    m_glow->setHitTestVisible(false);
++    m_ink = static_cast<Box*>(spacer->addChild(ui::box({.fill = clearColorSpec()})));
++    m_ink->setHitTestVisible(false);
++  }
+@@ -19 +27,27 @@
+-    root()->setSize(m_verticalBar ? 0.0F : length, m_verticalBar ? length : 0.0F);
++    // HUD27: native faded separator / luminous clock dot, independent of fonts.
++    const bool dot = m_decoration == SpacerDecoration::Dot;
++    const float cross = m_decoration == SpacerDecoration::None ? 0.0F : (dot ? 5.0F : 14.0F) * m_contentScale;
++    root()->setSize(m_verticalBar ? cross : length, m_verticalBar ? length : cross);
++    if (m_ink != nullptr) {
++      const float inkW = dot ? 3.0F : (m_verticalBar ? cross : 1.0F);
++      const float inkH = dot ? 3.0F : (m_verticalBar ? 1.0F : cross);
++      RoundedRectStyle style;
++      style.radius = dot ? 1.5F : 0.0F;
++      style.fill = colorForRole(ColorRole::Primary);
++      if (!dot) {
++        style.fillMode = FillMode::LinearGradient;
++        style.gradientDirection = m_verticalBar ? GradientDirection::Horizontal : GradientDirection::Vertical;
++        const auto color = colorForRole(ColorRole::OnSurface);
++        style.gradientStops = {{{0.0F, withAlpha(color, 0.0F)}, {0.45F, withAlpha(color, 0.28F)},
++                                {0.55F, withAlpha(color, 0.28F)}, {1.0F, withAlpha(color, 0.0F)}}};
++      }
++      m_ink->setStyle(style);
++      m_ink->setPosition((root()->width() - inkW) * 0.5F, (root()->height() - inkH) * 0.5F);
++      m_ink->setSize(inkW, inkH);
++      m_glow->setVisible(dot);
++      m_glow->setFill(colorSpecFromRole(ColorRole::Primary, 0.18F));
++      m_glow->setRadius(3.0F);
++      m_glow->setSoftness(3.0F);
++      m_glow->setPosition((root()->width() - 6.0F) * 0.5F, (root()->height() - 6.0F) * 0.5F);
++      m_glow->setSize(6.0F, 6.0F);
++    }
+--- a/src/shell/bar/widgets/spacer_widget.h
++++ b/src/shell/bar/widgets/spacer_widget.h
+@@ -3,0 +4,4 @@
++
++class Box;
++
++enum class SpacerDecoration { None, Separator, Dot };
+@@ -8,0 +13 @@
++    SpacerDecoration decoration = SpacerDecoration::None;
+@@ -21,0 +27,3 @@
++  SpacerDecoration m_decoration;
++  Box* m_ink = nullptr;
++  Box* m_glow = nullptr;
+--- a/src/shell/bar/widgets/spacer_widget_definition.cpp
++++ b/src/shell/bar/widgets/spacer_widget_definition.cpp
+@@ -10,0 +11,8 @@
++              field<&Options::decoration>({
++                  .key = "decoration",
++                  .choices = {
++                      {.value = SpacerDecoration::None, .configValue = "none"},
++                      {.value = SpacerDecoration::Separator, .configValue = "separator"},
++                      {.value = SpacerDecoration::Dot, .configValue = "dot"},
++                  },
++              }),
+--- a/src/shell/bar/widgets/workspaces_widget.cpp
++++ b/src/shell/bar/widgets/workspaces_widget.cpp
+@@ -77 +77 @@
+-      m_hideWhenEmpty(options.hideWhenEmpty), m_showAllOutputs(options.showAllOutputs), m_pillScale(options.pillScale),
++      m_hideWhenEmpty(options.hideWhenEmpty), m_minimumVisible(options.minimumVisible), m_showAllOutputs(options.showAllOutputs), m_pillScale(options.pillScale),
+@@ -107 +107,4 @@
+-  return m_hideWhenEmpty && isEmptyWorkspace(workspace);
++  // HUD27: keep the first N labels while filtering later empty workspaces.
++  const auto id = numericWorkspaceId(workspace);
++  const bool pinned = id.has_value() && *id >= 1 && *id <= static_cast<std::size_t>(m_minimumVisible);
++  return m_hideWhenEmpty && !pinned && isEmptyWorkspace(workspace);
+@@ -159,0 +163,3 @@
++  }
++  if (item.accentGlow != nullptr) {
++    item.accentGlow->setVisible(item.visualWorkspace.active);
+@@ -231,0 +238,21 @@
++  // HUD27: materialize pinned numeric labels on dynamic-workspace compositors too.
++  if (m_minimumVisible > 0 && !m_showAllOutputs && !current.empty()) {
++    for (int index = 1; index <= m_minimumVisible; ++index) {
++      const bool exists = std::ranges::any_of(current, [index](const WorkspaceState& state) {
++        return numericWorkspaceId(state.workspace) == static_cast<std::size_t>(index);
++      });
++      if (!exists) {
++        Workspace pinned;
++        pinned.id = std::to_string(index);
++        pinned.name = pinned.id;
++        pinned.index = static_cast<std::uint32_t>(index);
++        current.push_back({.workspace = std::move(pinned), .output = m_output});
++      }
++    }
++    std::ranges::stable_sort(current, [](const WorkspaceState& left, const WorkspaceState& right) {
++      const auto l = numericWorkspaceId(left.workspace);
++      const auto r = numericWorkspaceId(right.workspace);
++      return l.has_value() && (!r.has_value() || *l < *r);
++    });
++  }
++
+@@ -239,2 +266,2 @@
+-      !current.empty() && (!m_hideWhenEmpty || std::ranges::any_of(current, [](const WorkspaceState& state) {
+-        return !isEmptyWorkspace(state.workspace);
++      !current.empty() && (!m_hideWhenEmpty || std::ranges::any_of(current, [this](const WorkspaceState& state) {
++        return !isWorkspaceHidden(state.workspace);
+@@ -612,0 +640,6 @@
++      item.accentGlow = static_cast<Box*>(area->addChild(ui::box({
++          .fill = colorSpecFromRole(ColorRole::Primary, 0.16F), .radius = 3.0F,
++          .visible = false,
++      })));
++      item.accentGlow->setSoftness(3.0F);
++      item.accentGlow->setHitTestVisible(false);
+@@ -714,0 +748,2 @@
++    // HUD27: initialize rebuilt marks before the next state-change retarget.
++    applyItemVisualStyle(item);
+@@ -1170,0 +1206,4 @@
++    if (it.accentGlow != nullptr) {
++      it.accentGlow->setPosition(it.accent->x() - 2.0F, it.accent->y() - 1.0F);
++      it.accentGlow->setSize(it.accent->width() + 4.0F, it.accent->height() + 2.0F);
++    }
+--- a/src/shell/bar/widgets/workspaces_widget.h
++++ b/src/shell/bar/widgets/workspaces_widget.h
+@@ -49,0 +50 @@
++    int minimumVisible = 0;
+@@ -126,0 +128 @@
++    Box* accentGlow = nullptr;
+@@ -177,0 +180 @@
++  int m_minimumVisible = 0;
+--- a/src/shell/bar/widgets/workspaces_widget_definition.cpp
++++ b/src/shell/bar/widgets/workspaces_widget_definition.cpp
+@@ -42,0 +43 @@
++              field<&Options::minimumVisible>({.key = "minimum_visible", .minValue = 0.0, .maxValue = 99.0}),
+--- a/src/system/brightness_service.cpp
++++ b/src/system/brightness_service.cpp
+@@ -246,0 +247,7 @@
++    // HUD27: manufacturer + display kind; never surface raw EDID or serial values.
++    auto make = output.make.empty() ? display.label.substr(0, display.label.find(' ')) : output.make;
++    if (make.starts_with("0x") || make.size() > 24 || make == output.connectorName) make.clear();
++    const bool internal = output.connectorName.starts_with("eDP") || output.connectorName.starts_with("LVDS")
++                       || output.connectorName.starts_with("DSI");
++    display.friendlyName = (make.empty() ? "" : make + " ") + (internal ? "内置屏" : "外接屏");
++    display.refreshMilliHz = output.refreshMilliHz;
+--- a/src/system/brightness_service.h
++++ b/src/system/brightness_service.h
+@@ -18,0 +19,2 @@
++  std::int32_t refreshMilliHz = 0;
++  std::string friendlyName;
+--- a/src/wayland/wayland_connection.cpp
++++ b/src/wayland/wayland_connection.cpp
+@@ -145 +145 @@
+-  void outputMode(void* data, wl_output* wlOut, uint32_t flags, int32_t w, int32_t h, int32_t /*refresh*/) {
++  void outputMode(void* data, wl_output* wlOut, uint32_t flags, int32_t w, int32_t h, int32_t refresh) {
+@@ -151,0 +152 @@
++      out->refreshMilliHz = refresh;
+--- a/src/wayland/wayland_connection.h
++++ b/src/wayland/wayland_connection.h
+@@ -77,0 +78 @@
++  std::int32_t refreshMilliHz = 0; // HUD27: current wl_output mode refresh

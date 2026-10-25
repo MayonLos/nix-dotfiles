@@ -1,5 +1,4 @@
 local contracts = require("./lib/contracts.luau")
-local statusIcon = require("./lib/status_icon.luau")
 local generationNumberHelper = require("./generation_number.luau")
 
 type UpdateStatus = contracts.UpdateStatus
@@ -58,17 +57,16 @@ show = function()
     local generationState = generationStatus and generationStatus.state or "checking"
     local systemTargetState = systemTargetStatus and systemTargetStatus.state or "checking"
 
-    statusIcon.show(noctalia, barWidget, updateState)
-
-    local markers = {}
-    if generationState == "different" then
-        table.insert(markers, "↻")
-    end
-    if systemTargetState == "different" then
-        table.insert(markers, "⇧")
-    end
-    local text = currentGenerationNumber or ""
-    barWidget.setText(text .. table.concat(markers, ""))
+    -- Keep generation and input-update state in one compact blue label.
+    -- The details panel retains the full error/update status information.
+    barWidget.setGlyph("snowflake")
+    barWidget.setGlyphColor("primary", "script")
+    barWidget.setText(generationNumberHelper.statusText(
+        currentGenerationNumber,
+        updateState,
+        generationState,
+        systemTargetState
+    ))
 
     local tooltip = { "NixOS" }
     if currentGenerationNumber ~= nil then

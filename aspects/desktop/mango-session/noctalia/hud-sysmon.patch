@@ -1,0 +1,398 @@
+--- a/src/shell/bar/widgets/sysmon_widget.h
++++ b/src/shell/bar/widgets/sysmon_widget.h
+@@ -7,0 +8 @@
++#include "render/scene/countdown_ring_node.h"
+@@ -48 +49 @@
+-enum class SysmonVisualization { Graph, Gauge, None };
++enum class SysmonVisualization { Graph, Gauge, Ring, None };
+@@ -66,0 +68,3 @@
++    // HUD27: omit unavailable values from layout while retaining their sampling source.
++    bool hideUnavailable = false;
++    bool showGpuTemperature = false;
+@@ -103 +107 @@
+-  [[nodiscard]] std::vector<TooltipRow> buildTooltipRows(const std::string& currentValue) const;
++  [[nodiscard]] TooltipPanel buildSystemTooltip() const;
+@@ -114,0 +119,2 @@
++  bool m_hideUnavailable;
++  bool m_showGpuTemperature;
+@@ -148,0 +155,2 @@
++  CountdownRingNode* m_ringTrack = nullptr;
++  CountdownRingNode* m_ringFill = nullptr;
+--- a/src/shell/bar/widgets/sysmon_widget.cpp
++++ b/src/shell/bar/widgets/sysmon_widget.cpp
+@@ -7,0 +8 @@
++#include "system/distro_info.h"
+@@ -68 +69 @@
+-  constexpr float kGraphLineWidth = 0.75F;
++  constexpr float kGraphLineWidth = 1.25F;
+@@ -104 +104,0 @@
+-  bool needsCpuTemp(SysmonStat stat) { return stat == SysmonStat::CpuTemp; }
+@@ -116,7 +115,0 @@
+-  constexpr std::array<SysmonStat, 16> kTooltipStats{
+-      SysmonStat::CpuUsage,    SysmonStat::CpuTemp,  SysmonStat::CpuFreq,     SysmonStat::GpuTemp,
+-      SysmonStat::GpuUsage,    SysmonStat::GpuVram,  SysmonStat::GpuVramUsed, SysmonStat::RamUsed,
+-      SysmonStat::RamPct,      SysmonStat::SwapPct,  SysmonStat::DiskUsedPct, SysmonStat::DiskUsed,
+-      SysmonStat::DiskFreePct, SysmonStat::DiskFree, SysmonStat::NetRx,       SysmonStat::NetTx,
+-  };
+-
+@@ -145,36 +137,0 @@
+-  std::string statDisplayName(SysmonStat stat) {
+-    switch (stat) {
+-    case SysmonStat::CpuUsage:
+-      return i18n::tr("bar.widgets.sysmon.cpu");
+-    case SysmonStat::CpuTemp:
+-      return i18n::tr("bar.widgets.sysmon.cpu-temp");
+-    case SysmonStat::CpuFreq:
+-      return i18n::tr("bar.widgets.sysmon.cpu-freq");
+-    case SysmonStat::GpuTemp:
+-      return i18n::tr("bar.widgets.sysmon.gpu-temp");
+-    case SysmonStat::GpuUsage:
+-      return i18n::tr("bar.widgets.sysmon.gpu-usage");
+-    case SysmonStat::GpuVram:
+-    case SysmonStat::GpuVramUsed:
+-      return i18n::tr("bar.widgets.sysmon.gpu-vram");
+-    case SysmonStat::RamUsed:
+-    case SysmonStat::RamPct:
+-      return i18n::tr("bar.widgets.sysmon.ram");
+-    case SysmonStat::SwapPct:
+-      return i18n::tr("bar.widgets.sysmon.swap");
+-    case SysmonStat::DiskUsedPct:
+-      return i18n::tr("bar.widgets.sysmon.disk-used-pct");
+-    case SysmonStat::DiskUsed:
+-      return i18n::tr("bar.widgets.sysmon.disk-used");
+-    case SysmonStat::DiskFreePct:
+-      return i18n::tr("bar.widgets.sysmon.disk-free-pct");
+-    case SysmonStat::DiskFree:
+-      return i18n::tr("bar.widgets.sysmon.disk-free");
+-    case SysmonStat::NetRx:
+-      return i18n::tr("bar.widgets.sysmon.download");
+-    case SysmonStat::NetTx:
+-      return i18n::tr("bar.widgets.sysmon.upload");
+-    }
+-    return i18n::tr("bar.widgets.sysmon.system");
+-  }
+-
+@@ -186 +143,2 @@
+-      m_showValue(options.showValue), m_labelMinWidth(static_cast<float>(options.labelMinWidth)),
++      m_showValue(options.showValue), m_hideUnavailable(options.hideUnavailable),
++      m_showGpuTemperature(options.showGpuTemperature), m_labelMinWidth(static_cast<float>(options.labelMinWidth)),
+@@ -196,4 +154,3 @@
+-    if (needsCpuTemp(m_stat)) {
+-      m_monitor->retainCpuTemp();
+-    }
+-    if (needsGpuTemp(m_stat)) {
++    // HUD27: SYSTEM tooltip includes CPU temperature for every sysmon widget instance.
++    m_monitor->retainCpuTemp();
++    if (needsGpuTemp(m_stat) || m_showGpuTemperature) {
+@@ -216,4 +173,2 @@
+-    if (needsCpuTemp(m_stat)) {
+-      m_monitor->releaseCpuTemp();
+-    }
+-    if (needsGpuTemp(m_stat)) {
++    m_monitor->releaseCpuTemp();
++    if (needsGpuTemp(m_stat) || m_showGpuTemperature) {
+@@ -254,2 +209,2 @@
+-        .fontSize = Style::fontSizeBody * fontScale(),
+-        .fontWeight = labelFontWeight(),
++        .fontSize = Style::fontSizeCaption * 0.87F * fontScale(),
++        .fontWeight = FontWeight::Medium,
+@@ -257 +212 @@
+-        .color = widgetIconColorOr(colorSpecFromRole(ColorRole::OnSurface)),
++        .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
+@@ -293,0 +249,7 @@
++  if (m_visualization == SysmonVisualization::Ring) {
++    // HUD27: stack two native ring nodes to draw a quiet track and RAM progress without a label.
++    auto ring = ui::box({.fill = clearColorSpec()});
++    m_ringTrack = static_cast<CountdownRingNode*>(ring->addChild(std::make_unique<CountdownRingNode>()));
++    m_ringFill = static_cast<CountdownRingNode*>(ring->addChild(std::make_unique<CountdownRingNode>()));
++    graphOrGaugeNode = std::move(ring);
++  }
+@@ -301 +263 @@
+-        .fontFamily = labelFontFamily(),
++        .fontFamily = "monospace",
+@@ -342 +304 @@
+-    bgStyle.fill = colorForRole(ColorRole::SurfaceVariant);
++    bgStyle.fill = clearColor();
+@@ -348 +310 @@
+-    m_graph->setColor(currentValueColor(widgetForegroundOr(colorSpecFromRole(ColorRole::OnSurface))));
++    m_graph->setColor(m_highlightColor);
+@@ -352,0 +315,6 @@
++  }
++  if (m_ringTrack != nullptr && m_ringFill != nullptr) {
++    Color track = resolveColorSpec(widgetForegroundOr(colorSpecFromRole(ColorRole::OnSurface)));
++    track.a *= 0.3F;
++    m_ringTrack->setColor(track);
++    m_ringFill->setColor(resolveColorSpec(m_highlightColor));
+@@ -367 +335 @@
+-    m_customLabel->setColor(iconColor);
++    m_customLabel->setColor(resolveColorSpec(colorSpecFromRole(ColorRole::OnSurfaceVariant)));
+@@ -373 +341 @@
+-    m_graph->setColor(valueColor);
++    m_graph->setColor(m_highlightColor);
+@@ -376,0 +345,3 @@
++  }
++  if (m_ringFill != nullptr) {
++    m_ringFill->setColor(resolveColorSpec(m_highlightColor));
+@@ -399 +370 @@
+-    m_customLabel->setFontSize((m_isVerticalBar ? Style::fontSizeCaption : Style::fontSizeBody) * fontScale());
++    m_customLabel->setFontSize(Style::fontSizeCaption * 0.87F * fontScale());
+@@ -607,0 +579 @@
++    m_label->setFontFamily("monospace");
+@@ -632,0 +605,11 @@
++  } else if (m_visualization == SysmonVisualization::Ring && m_ringTrack != nullptr && m_ringFill != nullptr) {
++    visualizationW = std::round(baseSize * 1.05F);
++    visualizationH = visualizationW;
++    m_ringTrack->setPosition(0.0F, 0.0F);
++    m_ringFill->setPosition(0.0F, 0.0F);
++    m_ringTrack->setSize(visualizationW, visualizationH);
++    m_ringFill->setSize(visualizationW, visualizationH);
++    m_ringTrack->parent()->setSize(visualizationW, visualizationH);
++    m_ringTrack->setThickness(std::max(2.0F, roundf(baseSize * 0.12F)));
++    m_ringFill->setThickness(std::max(2.0F, roundf(baseSize * 0.12F)));
++    visualizationNode = m_ringTrack->parent();
+@@ -635 +618 @@
+-        isVerticalBar ? std::min(50.0F * m_contentScale, std::max(1.0F, containerWidth)) : 50.0F * m_contentScale;
++        isVerticalBar ? std::min(34.0F * m_contentScale, std::max(1.0F, containerWidth)) : 34.0F * m_contentScale;
+@@ -730,0 +714,5 @@
++  if (m_ringFill != nullptr) {
++    m_ringTrack->setProgress(1.0F);
++    m_ringFill->setProgress(static_cast<float>(currentNormalized()));
++    syncValueColor();
++  }
+@@ -738,0 +727,14 @@
++  // HUD27: hide unavailable metrics in both paint and flex layout while sampling remains retained.
++  const SystemStats currentStats = m_monitor != nullptr ? m_monitor->latest() : SystemStats{};
++  const bool hasLiveValue = m_monitor != nullptr && m_monitor->isRunning()
++      && statAvailableForTooltip(m_stat, currentStats) && formatValueFor(m_stat, currentStats).has_value();
++  const bool shown = !m_hideUnavailable || hasLiveValue;
++  if (auto* rootNode = root(); rootNode != nullptr) {
++    rootNode->setVisible(shown);
++    rootNode->setParticipatesInLayout(shown);
++    if (outerNode() != nullptr) {
++      outerNode()->setVisible(shown);
++      outerNode()->setParticipatesInLayout(shown);
++      if (!shown) outerNode()->setSize(0.0F, 0.0F);
++    }
++  }
+@@ -741,0 +744 @@
++    m_label->setFontFamily("monospace");
+@@ -749 +752 @@
+-    static_cast<InputArea*>(rootNode)->setTooltip(buildTooltipRows(value));
++    static_cast<InputArea*>(rootNode)->setTooltip(buildSystemTooltip());
+@@ -753,0 +757,4 @@
++    return;
++  }
++  if (m_visualization == SysmonVisualization::Ring) {
++    if (m_ringFill != nullptr) m_ringFill->setProgress(static_cast<float>(currentNormalized()));
+@@ -997 +1004,3 @@
+-  return formatValueFor(m_stat, m_monitor->latest()).value_or("--");
++  auto value = formatValueFor(m_stat, m_monitor->latest()).value_or("--");
++  if ((m_stat == SysmonStat::CpuTemp || m_stat == SysmonStat::GpuTemp) && value.ends_with("C")) value.pop_back();
++  return value;
+@@ -1046,0 +1056,3 @@
++      if (m_showGpuTemperature && stats.gpuTempC.has_value()) {
++        return std::format("{:.0F}% · {:.0F}°", *stats.gpuUsagePercent, *stats.gpuTempC);
++      }
+@@ -1144,16 +1156,18 @@
+-std::vector<TooltipRow> SysmonWidget::buildTooltipRows(const std::string& currentValue) const {
+-  std::vector<TooltipRow> rows;
+-  rows.push_back({statDisplayName(m_stat), currentValue});
+-
+-  if (m_monitor == nullptr || !m_monitor->isRunning()) {
+-    return rows;
+-  }
+-
+-  const SystemStats stats = m_monitor->latest();
+-  for (const SysmonStat stat : kTooltipStats) {
+-    if (stat == m_stat) {
+-      continue;
+-    }
+-    if (!statAvailableForTooltip(stat, stats)) {
+-      continue;
+-    }
++TooltipPanel SysmonWidget::buildSystemTooltip() const {
++  // HUD27: all sysmon widgets share one SYSTEM panel with a CPU history graph and metric grid.
++  const SystemStats stats = m_monitor != nullptr && m_monitor->isRunning() ? m_monitor->latest() : SystemStats{};
++  TooltipPanel panel;
++  panel.title = "SYSTEM";
++  if (const auto uptime = systemUptime(); uptime.has_value()) {
++    const auto totalMinutes = std::chrono::duration_cast<std::chrono::minutes>(*uptime).count();
++    const auto days = totalMinutes / (24 * 60);
++    const auto hours = (totalMinutes / 60) % 24;
++    const auto minutes = totalMinutes % 60;
++    panel.summary = days > 0 ? std::format("↑ {}d {}h{}m", days, hours, minutes) : std::format("↑ {}h{}m", hours, minutes);
++  } else {
++    panel.summary = "UPTIME · --";
++  }
++
++  const auto addMetric = [this, &panel, &stats](SysmonStat stat, std::string_view key,
++                            std::optional<ColorSpec> color = std::nullopt) {
++    if (!statAvailableForTooltip(stat, stats)) return;
+@@ -1161,5 +1175,24 @@
+-      rows.push_back({statDisplayName(stat), std::move(*value)});
+-    }
+-  }
+-
+-  return rows;
++      panel.metrics.push_back(TooltipMetric{.key = std::string(key), .value = std::move(*value), .color = color});
++    }
++  };
++  addMetric(SysmonStat::CpuUsage, "CPU");
++  addMetric(SysmonStat::CpuFreq, "频率");
++  addMetric(SysmonStat::CpuTemp, "温度", fixedColorSpec(rgbHex(0xD19A66)));
++  addMetric(SysmonStat::RamUsed, "内存");
++  addMetric(SysmonStat::RamPct, "占用", fixedColorSpec(rgbHex(0x98C379)));
++  addMetric(SysmonStat::SwapPct, "Swap");
++  addMetric(SysmonStat::NetRx, "↓", colorSpecFromRole(ColorRole::Secondary));
++  addMetric(SysmonStat::NetTx, "↑", fixedColorSpec(rgbHex(0xE5C07B)));
++  const bool gpuOnline = stats.gpuUsagePercent.has_value() || stats.gpuTempC.has_value()
++      || (stats.gpuVramUsedBytes.has_value() && stats.gpuVramTotalBytes.has_value());
++  panel.metrics.push_back(TooltipMetric{.key = "独显", .value = gpuOnline ? formatValueFor(SysmonStat::GpuUsage, stats).value_or("在线") : "不可用"});
++
++  if (m_monitor != nullptr && m_monitor->isRunning()) {
++    const auto history = m_monitor->history(24);
++    panel.history.reserve(history.size());
++    for (const auto& sample : history) {
++      panel.history.push_back(static_cast<float>(sample.cpuUsagePercent / 100.0));
++    }
++
++  }
++  return panel;
+--- a/src/shell/bar/widgets/sysmon_widget_definition.cpp
++++ b/src/shell/bar/widgets/sysmon_widget_definition.cpp
+@@ -11 +11 @@
+-  static const settings::WidgetSettingVisibility hasVisualization{"visualization", {"gauge", "graph"}};
++  static const settings::WidgetSettingVisibility hasVisualization{"visualization", {"gauge", "graph", "ring"}};
+@@ -169,0 +170,6 @@
++                          // HUD27: compact circular meter for RAM percent.
++                          .value = SysmonVisualization::Ring,
++                          .configValue = "ring",
++                          .labelKey = "settings.widgets.options.gauge",
++                      },
++                      {
+@@ -187,0 +194,3 @@
++          // HUD27: keep the sampler retained, but exclude unavailable widgets from flex layout.
++          field<&Options::hideUnavailable>({.key = "hide_unavailable"}),
++          field<&Options::showGpuTemperature>({.key = "show_gpu_temperature"}),
+--- a/src/system/system_monitor_service.cpp
++++ b/src/system/system_monitor_service.cpp
+@@ -868,0 +869 @@
++    // HUD27: NVML can fail while the PCI function is runtime-suspended; retry on the next poll.
+@@ -870 +871 @@
+-      return false;
++      m_state = State::Uninitialized;
+@@ -1443 +1444,13 @@
+-        if (pollGpuTemp) {
++        const bool unavailable = nvidiaDisplayState == NvidiaDisplayDeviceState::InactiveOnly
++            || (pollCfg.gpuOnlyNvidia && nvidiaDisplayState != NvidiaDisplayDeviceState::Active);
++        if (unavailable) {
++          // HUD27: do not fall back to the integrated GPU while the NVIDIA dGPU is powered down.
++          // Drop NVML handles so they cannot hold the card awake; the next active poll recreates them.
++          releaseGpuReaders();
++          std::scoped_lock lock{m_statsMutex};
++          m_latest.gpuTempC.reset();
++          m_latest.gpuUsagePercent.reset();
++          m_latest.gpuVramUsedBytes.reset();
++          m_latest.gpuVramTotalBytes.reset();
++        }
++        if (pollGpuTemp && !unavailable) {
+@@ -1455,3 +1468 @@
+-          if (gpuTemp.tempC.has_value()) {
+-            m_latest.gpuTempC = gpuTemp.tempC;
+-          }
++          m_latest.gpuTempC = gpuTemp.tempC;
+@@ -1459 +1470 @@
+-        if (pollGpuUsage) {
++        if (pollGpuUsage && !unavailable) {
+@@ -1472,3 +1483 @@
+-          if (gpuUsage.percent.has_value()) {
+-            m_latest.gpuUsagePercent = gpuUsage.percent;
+-          }
++          m_latest.gpuUsagePercent = gpuUsage.percent;
+@@ -1476 +1485 @@
+-        if (pollGpuVram) {
++        if (pollGpuVram && !unavailable) {
+@@ -1488,0 +1498 @@
++          std::scoped_lock lock{m_statsMutex};
+@@ -1490 +1499,0 @@
+-            std::scoped_lock lock{m_statsMutex};
+@@ -1492,0 +1502,3 @@
++          } else {
++            m_latest.gpuVramUsedBytes.reset();
++            m_latest.gpuVramTotalBytes.reset();
+@@ -1494,0 +1507,4 @@
++      }
++      // HUD27: short NVIDIA-only sampling sessions never pin an otherwise idle card awake.
++      if (pollCfg.gpuOnlyNvidia) {
++        releaseGpuReaders();
+@@ -1703,24 +1719,2 @@
+-  case NvidiaDisplayDeviceState::InactiveOnly: {
+-    AmdRsmiReader& amdRsmiReader = ensureAmdRsmiReader();
+-    if (const auto amdRsmi = amdRsmiReader.readTempSensor(); amdRsmi.has_value()) {
+-      return GpuTempData{
+-          .tempC = amdRsmi->tempC, .source = amdRsmi->source, .detail = "NVML skipped; using ROCm SMI edge temperature"
+-      };
+-    }
+-    if (amdRsmiReader.ready()) {
+-      return GpuTempData{
+-          .tempC = std::nullopt, .source = {}, .detail = "NVML skipped; ROCm SMI temperature unavailable"
+-      };
+-    }
+-    if (const auto amdSysfs = readAmdGpuSysfsTempSensor(); amdSysfs.has_value()) {
+-      return GpuTempData{
+-          .tempC = amdSysfs->tempC, .source = amdSysfs->source, .detail = "NVML skipped; using amdgpu sysfs temp1_input"
+-      };
+-    }
+-    const GpuHwmonProbe hwmon = readGpuHwmonTempSensor();
+-    return GpuTempData{
+-        .tempC = hwmon.reading.has_value() ? std::optional<double>{hwmon.reading->tempC} : std::nullopt,
+-        .source = hwmon.reading.has_value() ? hwmon.reading->source : std::string{},
+-        .detail = "NVML skipped; NVIDIA display device is runtime-suspended"
+-    };
+-  }
++  case NvidiaDisplayDeviceState::InactiveOnly:
++    return GpuTempData{.detail = "NVIDIA display device is runtime-suspended"};
+@@ -1777,14 +1771,2 @@
+-  case NvidiaDisplayDeviceState::InactiveOnly: {
+-    AmdRsmiReader& amdRsmiReader = ensureAmdRsmiReader();
+-    if (const auto rsmi = amdRsmiReader.readUsage(); rsmi.has_value()) {
+-      return GpuUsageData{.percent = rsmi->percent, .source = rsmi->source};
+-    }
+-    if (amdRsmiReader.ready()) {
+-      return GpuUsageData{};
+-    }
+-    if (const auto sysfs = readAmdGpuSysfsUsage(); sysfs.has_value()) {
+-      return GpuUsageData{.percent = sysfs->percent, .source = sysfs->source};
+-    }
+-    // An Optimus laptop with the discrete GPU asleep renders on the Intel integrated GPU.
+-    return readIntelGpuUsageData();
+-  }
++  case NvidiaDisplayDeviceState::InactiveOnly:
++    return GpuUsageData{};
+@@ -1849,16 +1831,2 @@
+-  case NvidiaDisplayDeviceState::InactiveOnly: {
+-    std::optional<GpuVramReading> combined = readAmdGpuVram();
+-    if (!combined.has_value()) {
+-      if (const auto intel = readIntelGpuVram(); intel.has_value()) {
+-        combined = GpuVramReading{
+-            .usedBytes = intel->usedBytes, .totalBytes = intel->totalBytes, .source = intel->source, .isNvidia = false
+-        };
+-      }
+-    }
+-    if (!combined.has_value() || !hasUsableVram(*combined)) {
+-      return std::nullopt;
+-    }
+-    return GpuVramData{
+-        .usedBytes = combined->usedBytes, .totalBytes = combined->totalBytes, .source = combined->source
+-    };
+-  }
++  case NvidiaDisplayDeviceState::InactiveOnly:
++    return std::nullopt;
+--- a/src/config/config_types.h
++++ b/src/config/config_types.h
+@@ -1482,0 +1483 @@
++    bool gpuOnlyNvidia = false; // HUD27: optional dedicated NVIDIA metrics, including PCI removal
+--- a/src/config/schema/config_schema.cpp
++++ b/src/config/schema/config_schema.cpp
+@@ -159,0 +160 @@
++          field(&SystemConfig::MonitorConfig::gpuOnlyNvidia, "gpu_only_nvidia"),

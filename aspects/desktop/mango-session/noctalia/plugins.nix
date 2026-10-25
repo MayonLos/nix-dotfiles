@@ -29,7 +29,7 @@ in
         name = "community";
         kind = "path";
         # Keep the official community source identity and every untouched
-        # plugin; build-time overlay copies only mango_layouts and nix-status.
+        # plugin; build-time overlay copies only the four customized bar plugins.
         location = "${communitySource}";
         enabled = true;
       }
@@ -57,7 +57,6 @@ in
       # Markdown notes, todos and /nt launcher entry; AI calls Go directly.
       "fel/quill"
       "gambled23/mangowm-keymode" # mmsg; shows the keymode SUPER,R enters
-      "tmelik/system-monitor"
       "mindnbytes/nix-status"
       "knyrps/nix-search"
       "nix-dotfiles/legion-conservation"

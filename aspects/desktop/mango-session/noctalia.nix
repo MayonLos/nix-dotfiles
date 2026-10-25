@@ -76,10 +76,47 @@ let
       ./noctalia/astra-selection.patch
       ./noctalia/tech-lockscreen.patch
       ./noctalia/tech-osd-segments.patch
+      ./noctalia/hud-bar.patch
+      ./noctalia/hud-tooltips.patch
+      ./noctalia/hud-battery.patch
+      ./noctalia/hud-controls-tooltips.patch
+      ./noctalia/hud-sysmon.patch
     ];
     # Fail the source build if an upstream rename or patch drift removes the
     # segmented OSD implementation instead of silently losing the appearance.
     postPatch = (old.postPatch or "") + ''
+      grep -Fq 'm_selectionIndicator' src/shell/launcher/launcher_panel.cpp
+      grep -Fq 'item.accent = static_cast<Box*>' src/shell/bar/widgets/workspaces_widget.cpp
+      grep -Fq 'syncCompactControls()' src/shell/control_center/tabs/home_tab.cpp
+      grep -Fq 'HUD27: near-black palette backdrop' src/shell/bar/bar.cpp
+      grep -Fq 'hudLineStyle(0.8F)' src/shell/bar/bar.cpp
+      grep -Fq 'bg->setOpacity(run.accordionProgress)' src/shell/bar/bar.cpp
+      grep -Fq 'HUD27: native faded separator' src/shell/bar/widgets/spacer_widget.cpp
+      grep -Fq 'minimum_visible' src/shell/bar/widgets/workspaces_widget_definition.cpp
+      grep -Fq 'HUD27: keep the first N labels' src/shell/bar/widgets/workspaces_widget.cpp
+      grep -Fq 'HUD27: profile icon + real mode name' src/shell/bar/widgets/power_profile_widget.cpp
+      grep -Fq 'HUD27: display panel uses friendly metadata' src/shell/bar/widgets/brightness_widget.cpp
+      grep -Fq 'display.friendlyName' src/system/brightness_service.cpp
+      grep -Fq 'out->refreshMilliHz = refresh' src/wayland/wayland_connection.cpp
+      grep -Fq 'HUD27: structured tooltip payload' src/shell/tooltip/tooltip_content.h
+      grep -Fq 'HUD27' src/shell/tooltip/tooltip_manager.cpp
+      grep -Fq 'hide_unavailable' src/shell/bar/widgets/sysmon_widget_definition.cpp
+      grep -Fq 'show_gpu_temperature' src/shell/bar/widgets/sysmon_widget_definition.cpp
+      grep -Fq 'label_outside' src/shell/bar/widgets/battery_widget_definition.cpp
+      grep -Fq 'HUD27: inset the green fill' src/shell/bar/widgets/battery_widget.cpp
+      grep -Fq 'HUD27: initialize rebuilt marks' src/shell/bar/widgets/workspaces_widget.cpp
+      grep -Fq 'HUD27: materialize pinned numeric labels' src/shell/bar/widgets/workspaces_widget.cpp
+      grep -Fq 'HUD27: keep peripheral charge rows' src/shell/bar/widgets/battery_widget.cpp
+      grep -Fq 'HUD27: retain live audio-device details' src/shell/bar/widgets/volume_widget.cpp
+      grep -Fq 'HUD27: preserve the live provider' src/shell/bar/widgets/network_widget.cpp
+      grep -Fq 'HUD27: preserve each connected device' src/shell/bar/widgets/bluetooth_widget.cpp
+      grep -Fq 'HUD27: short NVIDIA-only sampling sessions' src/system/system_monitor_service.cpp
+      grep -Fq 'HUD27: give the selected bar tools readable headings' src/shell/bar/widgets/plugin_widget.cpp
+      grep -Fq 'tooltipRowKeyLimit(renderer, row' src/shell/tooltip/tooltip_manager.cpp
+      grep -Fq 'gpu_only_nvidia' src/config/schema/config_schema.cpp
+      grep -Fq 'pollCfg.gpuOnlyNvidia' src/system/system_monitor_service.cpp
+      grep -Fq 'm_graph->setColor(m_highlightColor)' src/shell/bar/widgets/sysmon_widget.cpp
+      grep -Fq 'CountdownRingNode' src/shell/bar/widgets/sysmon_widget.cpp
       grep -Fq 'UI4: lockscreen palette-gradient password underline and cached runtime status' src/shell/lockscreen/lock_surface.cpp
       grep -Fq 'lockscreenRuntimeStatus()' src/shell/lockscreen/lock_surface.cpp
       grep -Fq 'charge_control_end_threshold' src/shell/lockscreen/lock_surface.cpp
@@ -202,12 +239,7 @@ in
 
       settings =
         (import ./noctalia/bar.nix {
-          inherit
-            lib
-            palette
-            reducedMotion
-            distroLogo
-            ;
+          inherit palette distroLogo;
         })
         // (import ./noctalia/plugins.nix {
           inherit inputs pkgs hostName;
@@ -424,7 +456,8 @@ in
 
           system.monitor = {
             enabled = true;
-            gpu_poll_seconds = 0.0;
+            gpu_poll_seconds = 2.0;
+            gpu_only_nvidia = (hostFacts.gpu or { }) ? nvidiaBusId;
           };
 
           location = {

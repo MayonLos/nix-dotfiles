@@ -1,0 +1,243 @@
+--- a/src/shell/tooltip/tooltip_content.h
++++ b/src/shell/tooltip/tooltip_content.h
+@@ -3,0 +4 @@
++#include "ui/palette.h"
+@@ -4,0 +6 @@
++#include <optional>
+@@ -13,0 +16,18 @@
++  double progress = -1.0;
++  std::optional<ColorSpec> color;
++};
++
++struct TooltipMetric {
++  std::string key;
++  std::string value;
++  std::optional<ColorSpec> color;
++};
++
++// HUD27: structured tooltip payload; legacy string and row variants remain supported.
++struct TooltipPanel {
++  std::string title;
++  std::string summary;
++  std::vector<TooltipRow> rows;
++  std::vector<TooltipMetric> metrics;
++  std::vector<float> history;
++  std::string historyLabel;
+@@ -46 +66 @@
+-using TooltipContent = std::variant<std::monostate, std::string, std::vector<TooltipRow>>;
++using TooltipContent = std::variant<std::monostate, std::string, std::vector<TooltipRow>, TooltipPanel>;
+--- a/src/shell/tooltip/tooltip_manager.cpp
++++ b/src/shell/tooltip/tooltip_manager.cpp
+@@ -11,0 +12 @@
++#include "ui/controls/graph.h"
+@@ -37,0 +39,10 @@
++
++  // HUD27: reserve only the real value width, keeping task text and device identities readable.
++  float tooltipRowKeyLimit(Renderer& renderer, const TooltipRow& row, float fontSize, float width, float scale) {
++    if (row.value.empty()) return width;
++    auto value = ui::label({.text = row.value, .fontSize = fontSize, .fontFamily = std::string(kValueFontFamily)});
++    value->measure(renderer);
++    const bool progress = row.progress >= 0.0;
++    const float valueReserve = std::min(value->width(), width * (progress ? 0.30F : 0.68F));
++    return std::max(1.0F, width - valueReserve - (progress ? 58.0F : 0.0F) * scale - (progress ? 14.0F : 7.0F) * scale);
++  }
+@@ -676,0 +688,43 @@
++  // HUD27 sizes the same compact blocks that buildScene lays out below.
++  if (const auto* panel = std::get_if<TooltipPanel>(&content)) {
++    const auto textHeight = [&renderer, fontSize](const std::string& text) {
++      if (text.empty()) return 0.0F;
++      const auto metrics = renderer.measureText(text, fontSize);
++      return std::max(1.0F, metrics.bottom - metrics.top);
++    };
++    const float headingHeight = std::max(textHeight(panel->title), textHeight(panel->summary));
++    float contentHeight = headingHeight;
++    std::size_t blocks = 1U;
++    if (!panel->history.empty()) {
++      contentHeight += 34.0F * scale;
++      ++blocks;
++    }
++    for (const auto& row : panel->rows) {
++      const float keyLimit = tooltipRowKeyLimit(renderer, row, fontSize, maxContentWidth, scale);
++      const int lines = row.progress >= 0.0 ? 2 : 4;
++      auto key = ui::label({.text = row.key, .fontSize = fontSize, .maxWidth = keyLimit, .maxLines = lines});
++      key->measure(renderer);
++      const float valueLimit = row.progress >= 0.0 ? maxContentWidth * 0.30F : maxContentWidth - key->width() - (row.key.empty() ? 0.0F : 7.0F * scale);
++      auto value = ui::label({.text = row.value, .fontSize = fontSize, .fontFamily = std::string(kValueFontFamily),
++                             .maxWidth = valueLimit, .maxLines = lines});
++      value->measure(renderer);
++      contentHeight += std::max(key->height(), value->height());
++      ++blocks;
++    }
++    const std::size_t metricColumns = std::min<std::size_t>(3U, panel->metrics.size());
++    const std::size_t metricRows = metricColumns == 0U ? 0U : (panel->metrics.size() + metricColumns - 1U) / metricColumns;
++    for (std::size_t row = 0; row < metricRows; ++row) {
++      float rowHeight = 0.0F;
++      const std::size_t begin = row * metricColumns;
++      const std::size_t limit = std::min(begin + metricColumns, panel->metrics.size());
++      for (std::size_t i = begin; i < limit; ++i) {
++        rowHeight = std::max(rowHeight, textHeight(panel->metrics[i].key) + textHeight(panel->metrics[i].value) + scale);
++      }
++      contentHeight += rowHeight + 8.0F * scale;
++      ++blocks;
++    }
++    contentHeight += static_cast<float>(blocks - 1U) * 5.0F * scale;
++    return {static_cast<std::uint32_t>(std::ceil(maxContentWidth + padH * 2.0F + kBorder * 2.0F)),
++            static_cast<std::uint32_t>(std::ceil(contentHeight + padV * 2.0F + kBorder * 2.0F))};
++  }
++
+@@ -693,9 +747,40 @@
+-  m_sceneRoot->addChild(
+-      ui::box({
+-          .fill = colorSpecFromRole(ColorRole::Surface),
+-          .radius = Style::scaledRadiusMd(),
+-          .width = w,
+-          .height = h,
+-          .configure = [](Box& box) { box.setBorder(colorSpecFromRole(ColorRole::Outline), kBorder); },
+-      })
+-  );
++  m_sceneRoot->addChild(ui::box({
++      .fill = colorSpecFromRole(ColorRole::Surface),
++      .radius = Style::scaledRadiusMd(),
++      .width = w,
++      .height = h,
++      .configure = [](Box& box) {
++        auto style = box.style();
++        const Color shadow = resolveColorSpec(colorSpecFromRole(ColorRole::Shadow));
++        const Color surface = lerpColor(shadow, resolveColorSpec(colorSpecFromRole(ColorRole::Surface)), 0.18F);
++        style.fill = surface;
++        style.fillMode = FillMode::LinearGradient;
++        style.gradientDirection = GradientDirection::Vertical;
++        style.gradientStops = {{GradientStop{0.0F, shadow}, GradientStop{0.3F, surface},
++                                GradientStop{0.7F, surface}, GradientStop{1.0F, shadow}}};
++        style.radius = Style::scaledRadiusMd();
++        box.setStyle(style);
++        box.setBorder(colorSpecFromRole(ColorRole::Primary, 0.22F), kBorder);
++      },
++  }));
++
++  // HUD27 blue-to-cyan rule fades at both ends and uses the native rounded rectangle renderer.
++  m_sceneRoot->addChild(ui::box({
++      .radius = 0.7F,
++      .width = w * 0.76F,
++      .height = 1.4F,
++      .configure = [w](Box& box) {
++        box.setPosition(w * 0.12F, kBorder);
++        auto style = box.style();
++        const Color blue = resolveColorSpec(colorSpecFromRole(ColorRole::Primary));
++        const Color cyan = resolveColorSpec(colorSpecFromRole(ColorRole::Secondary));
++        style.fillMode = FillMode::LinearGradient;
++        style.gradientDirection = GradientDirection::Horizontal;
++        style.gradientStops = {{GradientStop{0.0F, withAlpha(blue, 0.0F)},
++                                GradientStop{0.3F, withAlpha(blue, 0.72F)},
++                                GradientStop{0.7F, withAlpha(cyan, 0.68F)},
++                                GradientStop{1.0F, withAlpha(cyan, 0.0F)}}};
++        style.radius = Radii(0.7F);
++        box.setStyle(style);
++      },
++  }));
+@@ -741 +826 @@
+-          .color = colorSpecFromRole(ColorRole::Secondary),
++          .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
+@@ -778,0 +864,87 @@
++    return;
++  }
++
++  // HUD27 panel: muted heading, native line graph, inline progress rows and adaptive metric grid.
++  if (const auto* panel = std::get_if<TooltipPanel>(&content)) {
++    const float containerW = w - (padH + kBorder) * 2.0F;
++    auto container = ui::column({.gap = 5.0F * scale, .width = containerW, .height = h - (padV + kBorder) * 2.0F,
++                                 .configure = [padH, padV](Flex& flex) { flex.setPosition(padH + kBorder, padV + kBorder); }});
++    auto heading = ui::row({.align = FlexAlign::Center, .justify = FlexJustify::SpaceBetween,
++                            .gap = 8.0F * scale, .widthPolicy = FlexSizePolicy::Fill});
++    heading->addChild(ui::label({.text = panel->title, .fontSize = fontSize * 0.9F, .fontWeight = FontWeight::Bold,
++                                 .color = colorSpecFromRole(ColorRole::OnSurfaceVariant), .maxWidth = containerW * 0.46F,
++                                 .maxLines = 1, .ellipsize = TextEllipsize::End}));
++    if (!panel->summary.empty()) {
++      heading->addChild(ui::label({.text = panel->summary, .fontSize = fontSize * 0.9F,
++                                   .fontFamily = std::string(kValueFontFamily), .color = colorSpecFromRole(ColorRole::OnSurface),
++                                   .maxWidth = containerW * 0.5F, .maxLines = 1, .textAlign = TextAlign::End,
++                                   .ellipsize = TextEllipsize::End}));
++    }
++    container->addChild(std::move(heading));
++
++    if (!panel->history.empty()) {
++      auto graph = std::make_unique<Graph>();
++      graph->setLineWidth(1.25F * scale);
++      graph->setFillOpacity(0.18F);
++      graph->setColor(colorSpecFromRole(ColorRole::Primary));
++      graph->setSize(containerW, 34.0F * scale);
++      graph->setValues(panel->history);
++      graph->sync(renderer);
++      container->addChild(std::move(graph));
++    }
++
++    for (const auto& row : panel->rows) {
++      auto line = ui::row({.align = FlexAlign::Center, .justify = FlexJustify::SpaceBetween, .gap = 7.0F * scale, .widthPolicy = FlexSizePolicy::Fill});
++      const int lines = row.progress >= 0.0 ? 2 : 4;
++      auto key = ui::label({.text = row.key, .fontSize = fontSize,
++                            .color = colorSpecFromRole(ColorRole::OnSurfaceVariant), .maxWidth = tooltipRowKeyLimit(renderer, row, fontSize, containerW, scale),
++                            .maxLines = lines, .ellipsize = TextEllipsize::End});
++      key->measure(renderer);
++      const float keyWidth = key->width();
++      if (!row.key.empty()) line->addChild(std::move(key));
++      if (row.progress >= 0.0) {
++        line->addChild(ui::progressBar({
++            .fill = row.color.value_or(colorSpecFromRole(ColorRole::Primary)),
++            .track = colorSpecFromRole(ColorRole::OnSurface, 0.10F),
++            .radius = Style::scaledRadiusSm(),
++            .progress = static_cast<float>(std::clamp(row.progress, 0.0, 1.0)),
++            .width = 58.0F * scale,
++            .height = 3.0F * scale,
++            .flexGrow = 1.0F,
++        }));
++      }
++      if (!row.value.empty()) line->addChild(ui::label({.text = row.value, .fontSize = fontSize,
++                                .fontFamily = std::string(kValueFontFamily),
++                                .color = row.color.value_or(colorSpecFromRole(ColorRole::OnSurface)), .maxWidth = row.progress >= 0.0 ? containerW * 0.30F : containerW - keyWidth - (row.key.empty() ? 0.0F : 7.0F * scale),
++                                .maxLines = lines,
++                                .textAlign = TextAlign::End, .ellipsize = row.valueEllipsize}));
++      container->addChild(std::move(line));
++    }
++
++    const std::size_t columns = std::min<std::size_t>(3U, panel->metrics.size());
++    if (columns > 0U) {
++      const float cellWidth = (containerW - static_cast<float>(columns - 1U) * 5.0F * scale) / static_cast<float>(columns);
++      for (std::size_t first = 0; first < panel->metrics.size(); first += columns) {
++        auto gridRow = ui::row({.gap = 5.0F * scale, .widthPolicy = FlexSizePolicy::Fill});
++        const std::size_t limit = std::min(first + columns, panel->metrics.size());
++        for (std::size_t i = first; i < limit; ++i) {
++          const auto& metric = panel->metrics[i];
++          auto cell = ui::column({.align = FlexAlign::Start, .gap = 1.0F * scale, .paddingV = 4.0F * scale, .paddingH = 5.0F * scale,
++                                  .fill = colorSpecFromRole(ColorRole::OnSurface, 0.035F),
++                                  .radius = Style::scaledRadiusSm(), .width = cellWidth});
++          cell->addChild(ui::label({.text = metric.key, .fontSize = fontSize * 0.78F,
++                                    .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
++                                    .maxWidth = std::max(1.0F, cellWidth - 10.0F * scale), .maxLines = 1,
++                                    .ellipsize = TextEllipsize::End}));
++          cell->addChild(ui::label({.text = metric.value, .fontSize = fontSize,
++                                    .fontFamily = std::string(kValueFontFamily),
++                                    .color = metric.color.value_or(colorSpecFromRole(ColorRole::OnSurface)),
++                                    .maxWidth = std::max(1.0F, cellWidth - 10.0F * scale), .maxLines = 1,
++                                    .ellipsize = TextEllipsize::End}));
++          gridRow->addChild(std::move(cell));
++        }
++        container->addChild(std::move(gridRow));
++      }
++    }
++    container->layout(renderer);
++    m_sceneRoot->addChild(std::move(container));
+--- a/src/render/scene/input_area.h
++++ b/src/render/scene/input_area.h
+@@ -160,0 +161 @@
++  void setTooltip(TooltipPanel panel);
+--- a/src/render/scene/input_area.cpp
++++ b/src/render/scene/input_area.cpp
+@@ -127,0 +128,8 @@
++  notifyTooltipChanged();
++}
++
++// HUD27: structured panel overload preserves provider invalidation semantics.
++void InputArea::setTooltip(TooltipPanel panel) {
++  m_tooltipProvider = {};
++  m_tooltipRefreshInterval = {};
++  m_tooltipContent = std::move(panel);
