@@ -92,9 +92,10 @@ local function companion()
 		display = {
 			chat = {
 				window = {
+					border = "rounded",
 					layout = vim.o.columns < 120 and "float" or "vertical",
 					position = "right",
-					width = 0.42,
+					width = vim.o.columns < 120 and 0.88 or 0.42,
 					opts = {
 						number = false,
 						relativenumber = false,

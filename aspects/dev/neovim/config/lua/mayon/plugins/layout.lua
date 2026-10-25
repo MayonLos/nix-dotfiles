@@ -2,8 +2,8 @@
 -- active tmux pane as a Neovim pane for the companion tmux bindings.
 vim.g.smart_splits_multiplexer_integration = vim.env.TMUX and "tmux" or false
 
-local function wide_enough()
-	return vim.o.columns >= 90
+local function wide_enough(_, win)
+	return vim.o.columns >= 120 and vim.api.nvim_win_get_config(win).relative == ""
 end
 
 local function terminal_command(buf)
@@ -44,9 +44,7 @@ local function setup_edgy()
 					signcolumn = "yes:1",
 					fillchars = "eob: ",
 				},
-				filter = function()
-					return wide_enough()
-				end,
+				filter = wide_enough,
 				size = { width = 0.38 },
 			},
 			{
@@ -58,9 +56,7 @@ local function setup_edgy()
 					signcolumn = "yes:1",
 					fillchars = "eob: ",
 				},
-				filter = function()
-					return wide_enough()
-				end,
+				filter = wide_enough,
 				size = { width = 0.38 },
 			},
 			{
@@ -72,8 +68,8 @@ local function setup_edgy()
 					signcolumn = "yes:1",
 					fillchars = "eob: ",
 				},
-				filter = function(buf)
-					return wide_enough() and is_ai_terminal(buf)
+				filter = function(buf, win)
+					return wide_enough(buf, win) and is_ai_terminal(buf)
 				end,
 				size = { width = 0.38 },
 			},
@@ -86,9 +82,7 @@ local function setup_edgy()
 					signcolumn = "yes:1",
 					fillchars = "eob: ",
 				},
-				filter = function()
-					return wide_enough()
-				end,
+				filter = wide_enough,
 				size = { width = 0.38 },
 			},
 		},

@@ -1,0 +1,100 @@
+--- a/lua/snacks/picker/source/lsp/init.lua
++++ b/lua/snacks/picker/source/lsp/init.lua
+@@ -4,6 +4,22 @@
+ ---@module 'uv'
+ 
+ local M = {}
++
++-- LSP handlers run on Neovim's main loop, not the finder coroutine.
++-- Convert responses there (locations_to_items uses main-loop APIs), then
++-- deliver the collected items after request():wait() resumes the finder.
++local function async_finder(find)
++  return function(cb)
++    local items = {}
++    find(function(item)
++      items[#items + 1] = item
++    end)
++    for _, item in ipairs(items) do
++      cb(item)
++    end
++  end
++end
++
+ 
+ ---@alias lsp.Symbol lsp.SymbolInformation|lsp.DocumentSymbol
+ ---@alias lsp.Loc lsp.LocationLink|lsp.Location
+@@ -161,10 +177,9 @@
+ end
+ 
+ function R:cancel()
+-  while #self.requests > 0 do
+-    local req = table.remove(self.requests)
++  for _, req in pairs(self.requests) do
+     local client = vim.lsp.get_client_by_id(req.client_id)
+-    if client then
++    if client and not req.done then
+       client:cancel_request(req.request_id)
+     end
+   end
+@@ -192,6 +207,7 @@
+ function R:request(buf, method, params, cb)
+   self.pending = self.pending + 1
+   vim.schedule(function()
++    if self.async:aborted() then return end
+     self:track_cancel() -- setup autocmd here, since this must be called in the main loop
+ 
+     ---@diagnostic disable-next-line: param-type-mismatch
+@@ -282,7 +298,7 @@
+ 
+   ---@async
+   ---@param cb async fun(item: snacks.picker.finder.Item)
+-  return function(cb)
++  return async_finder(function(cb)
+     M.request(buf, method, function(client)
+       local params = vim.lsp.util.make_position_params(win, client.offset_encoding)
+       ---@diagnostic disable-next-line: inject-field
+@@ -334,7 +350,7 @@
+         end
+       end
+     end)
+-  end
++  end)
+ end
+ 
+ ---@alias lsp.ResultItem lsp.Symbol|lsp.CallHierarchyItem|{text?:string}
+@@ -445,7 +461,7 @@
+ 
+   ---@async
+   ---@param cb async fun(item: snacks.picker.finder.Item)
+-  return function(cb)
++  return async_finder(function(cb)
+     M.request(buf, method, function()
+       return p
+     end, function(client, result, params)
+@@ -488,7 +504,7 @@
+         cb(item)
+       end
+     end)
+-  end
++  end)
+ end
+ 
+ ---@param opts snacks.picker.lsp.Config
+@@ -501,7 +517,7 @@
+ 
+   ---@async
+   ---@param cb async fun(item: snacks.picker.finder.Item)
+-  return function(cb)
++  return async_finder(function(cb)
+     local requester = R.new()
+     requester:request(buf, "textDocument/prepareCallHierarchy", function(client)
+       return vim.lsp.util.make_position_params(win, client.offset_encoding)
+@@ -533,7 +549,7 @@
+       end
+     end)
+     requester:wait()
+-  end
++  end)
+ end
+ 
+ ---@param opts snacks.picker.lsp.references.Config

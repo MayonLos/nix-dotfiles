@@ -318,8 +318,8 @@ for _, desc in ipairs({
 	"跳到实现",
 	"查看悬浮文档",
 	"运行代码透镜",
-	"重命名符号",
-	"执行代码动作",
+	"查找引用 · preview",
+	"查看函数签名",
 }) do
 	assert(maps[desc], "missing LspAttach map " .. desc)
 end
@@ -330,6 +330,14 @@ for _, keymap in ipairs(vim.api.nvim_get_keymap("n")) do
 		global_maps[keymap.desc] = true
 	end
 end
+assert(
+	global_maps["重命名符号"] and global_maps["执行代码动作"],
+	"code actions and rename must have one global owner"
+)
+assert(
+	not maps["重命名符号"] and not maps["执行代码动作"],
+	"LspAttach must not shadow global rename/action maps"
+)
 for _, lhs in ipairs({ "gra", "gri", "grn", "grr", "grt", "grx" }) do
 	assert(global_maps[lhs], "native global LSP map was removed: " .. lhs)
 end

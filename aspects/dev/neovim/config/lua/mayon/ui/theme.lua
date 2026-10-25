@@ -18,12 +18,17 @@ end
 
 M.blend = blend
 
+function M.float_edge()
+	local c = require("mayon.generated").palette
+	return blend(c.border, c.deep, 0.42)
+end
+
 local function overrides()
 	local function get(name)
 		return vim.api.nvim_get_hl(0, { name = name, link = false })
 	end
 	local c = require("mayon.generated").palette
-	local edge = blend(c.border, c.deep, 0.28)
+	local edge = M.float_edge()
 	local separator = edge
 	local selection = blend(c.blue, c.bg, 0.14)
 	local inactive_bg = blend("#000000", c.bg, 0.06)
@@ -114,8 +119,8 @@ local function overrides()
 	set("TreesitterContextSeparator", { fg = c.border, bg = c.surface })
 	set("Pmenu", { fg = c.brightFg, bg = c.deep })
 	set("PmenuSel", { fg = c.brightFg, bg = c.selection, bold = true })
-	set("PmenuKind", { fg = c.purple, bg = c.deep })
-	set("PmenuKindSel", { fg = c.purple, bg = c.selection })
+	set("PmenuKind", { fg = c.blue, bg = c.deep })
+	set("PmenuKindSel", { fg = c.blue, bg = c.selection })
 	set("PmenuExtra", { fg = c.muted, bg = c.deep })
 	set("PmenuExtraSel", { fg = c.muted, bg = c.selection })
 	set("PmenuBorder", { fg = edge, bg = c.deep })
@@ -279,6 +284,7 @@ local function overrides()
 		WhichKeyBorder = "MayonPopupBorder",
 		SnacksInputNormal = "MayonPopup",
 		SnacksInputBorder = "MayonPopupBorder",
+		SnacksInputTitle = "FloatTitle",
 		SnacksPickerNormal = "MayonPopup",
 		SnacksPicker = "MayonPopup",
 		SnacksPickerList = "MayonPopup",
@@ -449,7 +455,7 @@ local function overrides()
 		links["SnacksNotifierBorder" .. level] = "FloatBorder"
 		local diagnostic = get("DiagnosticSign" .. level)
 		local severity = diagnostic.fg or c.muted
-		vim.api.nvim_set_hl(0, "SnacksNotifierTitle" .. level, { fg = c.brightFg, bg = c.deep })
+		vim.api.nvim_set_hl(0, "SnacksNotifierTitle" .. level, { fg = c.muted, bg = c.deep })
 		vim.api.nvim_set_hl(0, "SnacksNotifierIcon" .. level, { fg = severity })
 	end
 	set("TinyInlineDiagnosticVirtualTextBg", { bg = "NONE" })

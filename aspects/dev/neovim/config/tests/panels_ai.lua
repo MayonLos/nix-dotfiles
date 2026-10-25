@@ -1,4 +1,5 @@
 -- Local visual fixture for AI panels; no model request and no real CLI process.
+vim.o.columns, vim.o.lines = 160, 50
 require("lz.n").trigger_load({ "codecompanion.nvim", "claudecode.nvim", "sidekick.nvim", "edgy.nvim" })
 local panels = require("mayon.ui.ai_panels")
 local original_diff_add = vim.api.nvim_get_hl(0, { name = "DiffAdd" })
@@ -7,7 +8,7 @@ panels.setup()
 local ai_surface = vim.api.nvim_get_hl(0, { name = "MayonAIPanel", link = false })
 assert(
 	ai_surface.bg == tonumber(require("mayon.generated").palette.bg:sub(2), 16),
-	"AI panel islands should use the editor surface color"
+	"AI split panels should use the editor surface color"
 )
 assert(
 	vim.deep_equal(original_diff_add, vim.api.nvim_get_hl(0, { name = "DiffAdd" })),
@@ -42,7 +43,7 @@ local chat_win = vim.fn.win_findbuf(chat_buf)[1]
 assert(chat_win, "CodeCompanion fixture must be visible in a window")
 assert(
 	vim.wo[chat_win].winhighlight:find("Normal:MayonAIPanel", 1, true),
-	"CodeCompanion should render as an editor island"
+	"wide CodeCompanion split should use the editor surface"
 )
 local previous_win = vim.api.nvim_get_current_win()
 vim.g.statusline_winid = chat_win

@@ -5,17 +5,18 @@ if not package.loaded["which-key"] then
 end
 
 local whichkey = require("mayon.ui.whichkey").config()
-assert(whichkey.win.border == "none", "which-key should have no large border")
-assert(whichkey.win.row == -1 and whichkey.win.height.max == 6, "which-key should be anchored to the bottom")
+assert(whichkey.win.border == "rounded", "which-key should share the rounded float border")
+assert(whichkey.win.row == -1 and whichkey.win.height.max == 10, "which-key should be anchored to the bottom")
 assert(
-	whichkey.win.width == 0.999 and whichkey.layout.width.min == math.max(16, math.floor((vim.o.columns - 10) / 4)),
+	whichkey.win.width == 0.96
+		and whichkey.layout.width.min == math.max(16, math.floor((math.floor(vim.o.columns * 0.96) - 10) / 4)),
 	"which-key should form four readable columns"
 )
 assert(not whichkey.icons.mappings and whichkey.icons.separator == " ", "which-key mappings should use text labels")
 assert(not require("mayon.generated").palette.edge, "panel colors must derive edge from the palette border")
 local group_hls = {
 	WhichKey = require("mayon.generated").palette.blue,
-	WhichKeyGroup = require("mayon.generated").palette.purple,
+	WhichKeyGroup = require("mayon.generated").palette.muted,
 }
 assert(group_hls.WhichKey ~= group_hls.WhichKeyGroup, "which-key keys and group labels need distinct colors")
 
@@ -30,9 +31,14 @@ wk_view.show = function(...)
 	local result = original_show(...)
 	local view = wk_view.view
 	if view and view.win and vim.api.nvim_win_is_valid(view.win) then
-		vim.g.MayonWhichKeyTitleVisible = vim.wo[view.win].winbar:find("␣ LEADER", 1, true) ~= nil
+		vim.g.MayonWhichKeyTitleVisible = vim.inspect(vim.api.nvim_win_get_config(view.win).title)
+			:find("␣ LEADER", 1, true) ~= nil
 		local wk_win = view.win
 		local wk_buf = vim.api.nvim_win_get_buf(wk_win)
+		assert(
+			vim.api.nvim_buf_line_count(wk_buf) <= vim.api.nvim_win_get_height(wk_win),
+			"root which-key groups must fit without clipping"
+		)
 		local columns = {}
 		for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(wk_buf, -1, 0, -1, { details = true })) do
 			if mark[4].hl_group == "WhichKey" then
@@ -71,7 +77,7 @@ wk.show({ keys = "<leader>", mode = "n", delay = 0 })
 state.step = original_step
 wk_view.show = original_show
 assert(vim.g.MayonWhichKeyColumnsAligned, "which-key columns did not render")
-assert(vim.g.MayonWhichKeyTitleVisible, "public which-key.show() did not render the borderless LEADER title")
+assert(vim.g.MayonWhichKeyTitleVisible, "public which-key.show() did not render the centered LEADER title")
 
 local panel = require("mayon.features.diagnostic_panel")
 local trouble = panel.troubleOptions()

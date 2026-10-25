@@ -49,7 +49,7 @@ in
             export NVIM_APPNAME=nvim
             unset VIMINIT
             mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"
-            for test in overhaul startup completion integration workflow fileops lua_workspace modern interface ai native codediff panels_picker panels_ai panels_aux panels_surface; do
+            for test in overhaul startup completion integration workflow fileops lua_workspace modern interface ai native codediff panels_picker panels_ai panels_aux panels_surface picker_lsp embedded refinement runtime_smoke; do
               export NVIM_TEST_FILE="${neovim.configDir}/tests/$test.lua"
               ${neovim.normal}/bin/nvim --headless -c 'luafile ${neovim.configDir}/tests/run.lua'
             done

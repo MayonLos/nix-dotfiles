@@ -44,6 +44,7 @@ let
     vimPlugins.heirline-nvim
     vimPlugins.lazydev-nvim
     vimPlugins.nvim-lint
+    vimPlugins.nvim-dap
     (vimPlugins.dropbar-nvim.overrideAttrs (old: {
       # Use 0.12's public highlight namespace rather than its deprecated alias.
       postPatch = (old.postPatch or "") + ''
@@ -62,6 +63,8 @@ let
     vimPlugins.onedark-nvim
     vimPlugins.render-markdown-nvim
     (vimPlugins.snacks-nvim.overrideAttrs (old: {
+      # LSP responses must enter the finder coroutine before its time-budget yield.
+      patches = (old.patches or [ ]) ++ [ ./patches/snacks-lsp-coroutine.patch ];
       # Pinned 2.31 checks mmdc unconditionally. Make the disabled capability
       # explicit in rendering and health rather than installing Chromium/mmdc.
       postPatch = (old.postPatch or "") + ''
