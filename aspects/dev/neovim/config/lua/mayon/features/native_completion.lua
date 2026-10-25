@@ -2,6 +2,87 @@ local M = {}
 
 local snippets
 local snippet_prefixes
+local auto_timers = {}
+local auto_trigger_delay = 100
+
+local function stop_auto_timer(buf)
+	local timer = auto_timers[buf]
+	if timer then
+		auto_timers[buf] = nil
+		timer:stop()
+		timer:close()
+	end
+end
+
+local function in_comment(buf, row, col)
+	if col <= 0 then
+		return false
+	end
+	local ok, captures = pcall(vim.treesitter.get_captures_at_pos, buf, row, col - 1)
+	if ok then
+		for _, capture in ipairs(captures) do
+			if capture.capture:lower():find("comment", 1, true) then
+				return true
+			end
+		end
+	end
+	local syntax_group = vim.fn.synIDattr(vim.fn.synID(row + 1, col, 1), "name")
+	return syntax_group:lower():find("comment", 1, true) ~= nil
+end
+
+local function auto_completion_allowed(buf)
+	if not vim.api.nvim_buf_is_valid(buf) or not vim.api.nvim_buf_is_loaded(buf) then
+		return false
+	end
+	if vim.bo[buf].buftype ~= "" or vim.bo[buf].filetype == "bigfile" then
+		return false
+	end
+	if vim.b[buf].completion == false or vim.g.completion == false or vim.fn.pumvisible() == 1 then
+		return false
+	end
+	local clients = vim.lsp.get_clients({ bufnr = buf, method = "textDocument/completion" })
+	if #clients == 0 then
+		return false
+	end
+	local cursor = vim.api.nvim_win_get_cursor(0)
+	local line = vim.api.nvim_buf_get_lines(buf, cursor[1] - 1, cursor[1], false)[1] or ""
+	local prefix = line:sub(1, cursor[2])
+	local word = vim.fn.matchstr(prefix, [[\k*$]])
+	if vim.fn.strchars(word) < 2 or in_comment(buf, cursor[1] - 1, cursor[2]) then
+		return false
+	end
+	return true
+end
+
+local function schedule_auto_completion(buf)
+	stop_auto_timer(buf)
+	if vim.api.nvim_get_current_buf() ~= buf or not auto_completion_allowed(buf) then
+		return
+	end
+	local changedtick = vim.api.nvim_buf_get_changedtick(buf)
+	local timer = assert(vim.uv.new_timer())
+	auto_timers[buf] = timer
+	timer:start(
+		auto_trigger_delay,
+		0,
+		vim.schedule_wrap(function()
+			if auto_timers[buf] ~= timer then
+				return
+			end
+			auto_timers[buf] = nil
+			timer:close()
+			if
+				vim.api.nvim_get_current_buf() == buf
+				and vim.api.nvim_buf_is_valid(buf)
+				and vim.api.nvim_buf_get_changedtick(buf) == changedtick
+				and vim.api.nvim_get_mode().mode:match("^i")
+				and auto_completion_allowed(buf)
+			then
+				vim.lsp.completion.get()
+			end
+		end)
+	)
+end
 
 local function load_snippets()
 	if snippets then
@@ -70,6 +151,10 @@ local function expand_completed_snippet()
 end
 
 function M.setup()
+	while next(auto_timers) do
+		local buf = next(auto_timers)
+		stop_auto_timer(buf)
+	end
 	-- The completion menu is a compact, borderless surface. Its columns inherit
 	-- PmenuKind (blue) and PmenuExtra (muted) from the One Dark palette.
 	vim.o.pumborder = "none"
@@ -95,6 +180,18 @@ function M.setup()
 		end
 	end
 	vim.api.nvim_create_autocmd("CompleteDone", { group = group, callback = expand_completed_snippet })
+	vim.api.nvim_create_autocmd("TextChangedI", {
+		group = group,
+		callback = function(ev)
+			schedule_auto_completion(ev.buf)
+		end,
+	})
+	vim.api.nvim_create_autocmd({ "InsertLeave", "BufLeave", "BufWipeout", "LspDetach" }, {
+		group = group,
+		callback = function(ev)
+			stop_auto_timer(ev.buf)
+		end,
+	})
 
 	vim.keymap.set("i", "<C-Space>", function()
 		if vim.lsp.completion then

@@ -1,4 +1,12 @@
 local completion = require("mayon.features.native_completion")
+if vim.env.NVIM_EXPECTED_CONFIG_DIR then
+	local source = debug.getinfo(completion.setup, "S").source:sub(2)
+	local expected = vim.fs.normalize(vim.env.NVIM_EXPECTED_CONFIG_DIR) .. "/"
+	assert(
+		vim.startswith(vim.fs.normalize(source), expected),
+		"completion test loaded a config outside the expected worktree"
+	)
+end
 completion.setup()
 assert(vim.o.pumborder == "none" and vim.o.pumblend == 0, "native completion should use an opaque borderless menu")
 
@@ -171,3 +179,132 @@ assert(
 	"Enter should insert newline when no candidate is selected"
 )
 assert(vim.v.errmsg == "", vim.v.errmsg)
+
+-- Use a deterministic in-process LSP client to verify ordinary typing reaches
+-- the native completion menu without contacting Copilot or another service.
+require("mayon.features.ai_completion").set("off")
+vim.lsp.enable("lua_ls", false)
+local fixture_requests, fixture_closing = {}, false
+local fixture_id = vim.lsp.start({
+	name = "native-completion-fixture",
+	root_dir = vim.fn.getcwd(),
+	cmd = function(dispatch)
+		return {
+			request = function(method, params, callback, on_reply)
+				fixture_requests[#fixture_requests + 1] = { method = method, params = params }
+				local id = #fixture_requests
+				local result
+				if method == "initialize" then
+					result = {
+						capabilities = {
+							textDocumentSync = 1,
+							completionProvider = { triggerCharacters = { "." } },
+						},
+					}
+				elseif method == "textDocument/completion" then
+					result = { { label = "vector", kind = vim.lsp.protocol.CompletionItemKind.Variable } }
+				end
+				vim.defer_fn(function()
+					if on_reply then
+						on_reply(id)
+					end
+					if not fixture_closing then
+						callback(nil, result)
+					end
+				end, method == "initialize" and 0 or 5)
+				return true, id
+			end,
+			notify = function(method)
+				if method == "exit" then
+					fixture_closing = true
+					dispatch.on_exit(0, 0)
+				end
+				return true
+			end,
+			is_closing = function()
+				return fixture_closing
+			end,
+			terminate = function()
+				fixture_closing = true
+				dispatch.on_exit(0, 0)
+			end,
+		}
+	end,
+})
+assert(
+	vim.wait(1000, function()
+		local client = vim.lsp.get_client_by_id(fixture_id)
+		return client and client.initialized
+	end),
+	"completion fixture LSP did not initialize"
+)
+local completion_buf = vim.api.nvim_get_current_buf()
+vim.bo[completion_buf].filetype = "lua"
+vim.api.nvim_exec_autocmds("LspAttach", { buffer = completion_buf, data = { client_id = fixture_id } })
+vim.cmd("syntax on")
+vim.treesitter.start(completion_buf, "lua")
+vim.api.nvim_buf_set_lines(completion_buf, 0, -1, false, { "" })
+vim.api.nvim_win_set_cursor(0, { 1, 0 })
+vim.o.completeopt = "menuone,noselect,popup"
+local automatic_menu_opened = false
+vim.defer_fn(function()
+	vim.api.nvim_feedkeys("c", "n", false)
+end, 50)
+vim.defer_fn(function()
+	automatic_menu_opened = vim.fn.pumvisible() == 1
+	if automatic_menu_opened then
+		vim.api.nvim_feedkeys(vim.keycode("<C-n><C-y>"), "n", false)
+	end
+	vim.api.nvim_feedkeys(vim.keycode("<Esc>"), "n", false)
+end, 350)
+vim.api.nvim_feedkeys(vim.keycode("ive"), "xt!", false)
+assert(automatic_menu_opened, "typing an ordinary Lua identifier should open the native LSP completion menu")
+local automatic_requests = vim.tbl_filter(function(request)
+	return request.method == "textDocument/completion"
+end, fixture_requests)
+assert(#automatic_requests == 1, "debounced ordinary typing should send one LSP request")
+assert(automatic_requests[1].params.position.character == 3, "debounced typing should request at the latest cursor")
+assert(
+	vim.api.nvim_get_current_line() == "vector",
+	"selected native LSP completion should be accepted; line=" .. vim.inspect(vim.api.nvim_get_current_line())
+)
+
+vim.api.nvim_buf_set_lines(completion_buf, 0, -1, false, { "-- " })
+vim.api.nvim_win_set_cursor(0, { 1, 3 })
+local requests_before_comment = #fixture_requests
+local comment_menu_opened = false
+vim.defer_fn(function()
+	comment_menu_opened = vim.fn.pumvisible() == 1
+	vim.api.nvim_feedkeys(vim.keycode("<Esc>"), "n", false)
+end, 250)
+vim.api.nvim_feedkeys(vim.keycode("ive"), "xt!", false)
+assert(not comment_menu_opened, "ordinary comments should not open an automatic completion menu")
+assert(
+	#fixture_requests == requests_before_comment,
+	"typing in a comment should not send an automatic completion request"
+)
+
+vim.api.nvim_buf_set_lines(completion_buf, 0, -1, false, { "" })
+vim.api.nvim_win_set_cursor(0, { 1, 0 })
+local requests_before_escape = #fixture_requests
+vim.api.nvim_feedkeys(vim.keycode("ive<Esc>"), "xt", false)
+vim.wait(150)
+assert(#fixture_requests == requests_before_escape, "Escape should cancel a pending automatic completion timer")
+vim.api.nvim_buf_set_lines(completion_buf, 0, -1, false, { "" })
+vim.api.nvim_win_set_cursor(0, { 1, 0 })
+local manual_menu_opened = false
+vim.defer_fn(function()
+	found.manual.callback()
+	vim.defer_fn(function()
+		manual_menu_opened = vim.fn.pumvisible() == 1
+		vim.api.nvim_feedkeys(vim.keycode("<Esc>"), "n", false)
+	end, 100)
+end, 100)
+vim.api.nvim_feedkeys(vim.keycode("iv"), "xt!", false)
+assert(manual_menu_opened, "Ctrl-Space mapping should invoke native completion")
+assert(#vim.tbl_filter(function(request)
+	return request.method == "textDocument/completion"
+end, fixture_requests) >= 2, "manual completion should issue a second LSP request")
+vim.api.nvim_feedkeys(vim.keycode("<Esc>"), "xt", false)
+vim.lsp.get_client_by_id(fixture_id):stop(true)
+vim.wait(10)
