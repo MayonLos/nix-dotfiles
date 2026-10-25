@@ -9,6 +9,7 @@ DWM='@dwm@'
 XPROP='@xprop@'
 SLEEP='@sleep@'
 STAT='@stat@'
+FLOCK='@flock@'
 DEFAULT_OZONE=@defaultOzone@
 DEFAULT_XMODIFIERS=@defaultXModifiers@
 
@@ -100,6 +101,26 @@ for target in mango-session.target xorg-session.target graphical-session.target;
     die "refusing to start while $target is active."
   fi
 done
+
+# Reserve one supervisor before touching the shared activation environment.
+# The lock is process-owned and released on failure/exit, including before the
+# PID record exists. A rejected concurrent start must not rewrite active env.
+[[ ! -L "$session_dir/session.lock" ]] || die 'unsafe Xorg session lock path.'
+exec 9> "$session_dir/session.lock" || die 'cannot open Xorg session lock.'
+"$FLOCK" -n 9 || die 'an Xorg session supervisor is already running.'
+if [[ -e "$pidfile" || -L "$pidfile" ]]; then
+  if [[ -f "$pidfile" && ! -L "$pidfile" ]] && read -r existing_pid existing_start < "$pidfile"; then
+    if [[ "$existing_pid" =~ ^[1-9][0-9]*$ && "$existing_start" =~ ^[0-9]+$ \
+      && -d "/proc/$existing_pid" ]] \
+      && [[ "$(process_effective_uid "$existing_pid" 2>/dev/null || true)" == "$EUID" ]] \
+      && [[ "$(process_starttime "$existing_pid" 2>/dev/null || true)" == "$existing_start" ]]; then
+      die 'an Xorg session supervisor is already running.'
+    fi
+    rm -f -- "$pidfile" || die 'cannot remove stale Xorg session PID file.'
+  else
+    die 'Xorg session PID path is not a regular file.'
+  fi
+fi
 
 if [[ ! -r '@hmSessionVars@' ]]; then
   die 'Home Manager session variables are unavailable.'
@@ -249,25 +270,12 @@ trap 'forward_signal INT 130' INT
 
 self_pid=$BASHPID
 self_starttime=$(process_starttime "$self_pid") || die 'cannot record supervisor start time.'
-if [[ -e "$pidfile" || -L "$pidfile" ]]; then
-  if [[ -f "$pidfile" && ! -L "$pidfile" ]] && read -r existing_pid existing_start < "$pidfile"; then
-    if [[ "$existing_pid" =~ ^[1-9][0-9]*$ && "$existing_start" =~ ^[0-9]+$ \
-      && -d "/proc/$existing_pid" ]] \
-      && [[ "$(process_effective_uid "$existing_pid" 2>/dev/null || true)" == "$EUID" ]] \
-      && [[ "$(process_starttime "$existing_pid" 2>/dev/null || true)" == "$existing_start" ]]; then
-      die 'an Xorg session supervisor is already running.'
-    fi
-    rm -f -- "$pidfile" || die 'cannot remove stale Xorg session PID file.'
-  else
-    die 'Xorg session PID path is not a regular file.'
-  fi
-fi
 if ! ( set -o noclobber; printf '%s %s\n' "$self_pid" "$self_starttime" > "$pidfile" ); then
   die 'could not reserve the Xorg session PID file.'
 fi
 owns_pidfile=1
 
-"$DWM" &
+"$DWM" 9>&- &
 child=$!
 
 wait_for_dwm() {

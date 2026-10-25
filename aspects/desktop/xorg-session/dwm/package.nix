@@ -46,6 +46,7 @@ stdenv.mkDerivation {
     python ${configure} \
       --profile ${lib.escapeShellArg (toString profileDirectory)} \
       --dpi ${toString x11Dpi} \
+      --bindings ${./keybindings.json} --rules ${./window-rules.json} \
       --font-mono ${lib.escapeShellArg palette.fonts.mono} \
       --font-cjk ${lib.escapeShellArg palette.fonts.cjk} \
       --bg ${lib.escapeShellArg colors.bg} \
@@ -56,6 +57,8 @@ stdenv.mkDerivation {
       --red ${lib.escapeShellArg colors.red} \
       --deep ${lib.escapeShellArg colors.deep} \
       --surface ${lib.escapeShellArg colors.surface}
+    cp ${./mayon.c} mayon.c
+    cp ${./tags.c} patch/bar_tags.c
   '';
   preBuild = ''
     makeFlagsArray+=("PREFIX=$out" "CC=$CC")
@@ -63,6 +66,8 @@ stdenv.mkDerivation {
   postInstall = ''
     install -D -m 0644 config.h "$out/share/dwm/config.h"
     install -D -m 0644 patches.h "$out/share/dwm/patches.h"
+    install -D -m 0644 ${./keybindings.json} "$out/share/dwm/keybindings.json"
+    install -D -m 0644 ${./window-rules.json} "$out/share/dwm/window-rules.json"
     cat > "$out/share/dwm/source-revision.txt" <<'EOF'
     Source: bakkeby/dwm-flexipatch
     Commit: 4c963b33681b277a0ff4d3bf39a27b2feab68950

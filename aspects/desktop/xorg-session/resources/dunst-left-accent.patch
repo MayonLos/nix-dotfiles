@@ -1,0 +1,28 @@
+diff --git a/src/draw.c b/src/draw.c
+--- a/src/draw.c
++++ b/src/draw.c
+@@ -689,12 +689,23 @@ static cairo_surface_t *render_background(cairo_surface_t *srf,
+ 
+         radius_int = frame_internal_radius(corner_radius, settings.frame_width, height);
+         draw_rounded_rect(c, x, y, width, height, radius_int, scale, corners);
+-        cairo_set_source_rgba(c, COLOR(cl, frame.r), COLOR(cl, frame.g), COLOR(cl, frame.b), COLOR(cl, frame.a));
++        cairo_set_source_rgba(c, settings.frame_color.r, settings.frame_color.g,
++                              settings.frame_color.b, settings.frame_color.a);
+         cairo_fill(c);
+ 
+         draw_rounded_rect(c, x, y, width, height, radius_int, scale, corners);
+         cairo_set_source_rgba(c, COLOR(cl, bg.r), COLOR(cl, bg.g), COLOR(cl, bg.b), COLOR(cl, bg.a));
+         cairo_fill(c);
++
++        /* Keep the notification frame neutral and paint its urgency color as
++         * a narrow strip just inside the left edge. Geometry uses Dunst's
++         * logical coordinates and follows its output scale. */
++        if (settings.frame_width > 0) {
++                draw_rect(c, x, y, 2, height, scale);
++                cairo_set_source_rgba(c, COLOR(cl, frame.r), COLOR(cl, frame.g),
++                                      COLOR(cl, frame.b), COLOR(cl, frame.a));
++                cairo_fill(c);
++        }
+ 
+         cairo_set_operator(c, CAIRO_OPERATOR_SOURCE);
+         if (   settings.sep_color.type != SEP_FRAME

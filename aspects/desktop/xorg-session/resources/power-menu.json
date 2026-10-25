@@ -1,0 +1,27 @@
+[
+  {
+    "label": "Lock",
+    "glyph": "󰌾",
+    "path": "M7 10V7a5 5 0 0 1 10 0v3M5 10h14v12H5zM12 15v3"
+  },
+  {
+    "label": "Logout",
+    "glyph": "󰍃",
+    "path": "M10 4H4v16h6M14 7l5 5-5 5M8 12h11"
+  },
+  {
+    "label": "Suspend",
+    "glyph": "󰒲",
+    "path": "M20 15A9 9 0 0 1 9 4a9 9 0 1 0 11 11z"
+  },
+  {
+    "label": "Reboot",
+    "glyph": "󰜉",
+    "path": "M20 7v5h-5M20 12a8 8 0 1 0-2 5"
+  },
+  {
+    "label": "Shutdown",
+    "glyph": "󰐥",
+    "path": "M12 2v10M6 5a9 9 0 1 0 12 0"
+  }
+]

@@ -1,0 +1,32 @@
+
+window { width: 560px; background-color: @deep; border: 1px; border-color: @edge; }
+mainbox { children: [ listview ]; background-color: transparent; }
+inputbar { children: [ prompt, entry ]; }
+entry { placeholder: "选择电源操作"; }
+listview {
+    background-color: transparent;
+    lines: 1;
+    columns: 5;
+    fixed-height: true;
+    padding: 12px;
+    spacing: 12px;
+}
+element {
+    orientation: vertical;
+    children: [ element-icon, element-text ];
+    padding: 17px 4px;
+    border-radius: 14px;
+    spacing: 7px;
+    border: 0px 0px 2px 0px;
+    border-color: @edge;
+    background-color: @bg;
+    text-color: @muted;
+}
+element-icon { size: 26px; horizontal-align: 0.5; vertical-align: 0.5; }
+element-text { horizontal-align: 0.5; vertical-align: 0.5; text-color: inherit; background-color: transparent; }
+element selected {
+    background-color: @selected;
+    text-color: @blue;
+    border: 0px 0px 2px 0px;
+    border-color: @blue;
+}

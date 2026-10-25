@@ -1,0 +1,137 @@
+[
+  {
+    "wintype": "DIALOG",
+    "isfloating": 1,
+    "iscentered": 1
+  },
+  {
+    "wintype": "UTILITY",
+    "isfloating": 1,
+    "iscentered": 1
+  },
+  {
+    "wintype": "TOOLBAR",
+    "isfloating": 1,
+    "iscentered": 1
+  },
+  {
+    "wintype": "SPLASH",
+    "isfloating": 1,
+    "iscentered": 1
+  },
+  {
+    "class": "^(xdg-desktop-portal-gtk|xdg-desktop-portal-gnome)$",
+    "isfloating": 1,
+    "iscentered": 1,
+    "floatpos": "50% 50% 60% 65%"
+  },
+  {
+    "class": "^(Firefox|firefox|Thunar|thunar|org[.]gtk[.]GtkFileChooserDialog)$",
+    "title": "^(Open File|Save As|Save File|File Upload|Select Folder|Choose File|打开文件|保存文件|另存为|选择文件夹)$",
+    "isfloating": 1,
+    "iscentered": 1,
+    "floatpos": "50% 50% 60% 65%"
+  },
+  {
+    "class": "^(polkit-gnome-authentication-agent-1|pinentry.*)$",
+    "isfloating": 1,
+    "iscentered": 1,
+    "floatpos": "50% 50% 38% 32%"
+  },
+  {
+    "class": "^(Pavucontrol|pavucontrol|Nm-connection-editor|nm-connection-editor|Blueman-manager|blueman-manager)$",
+    "isfloating": 1,
+    "floatpos": "80% 10% 34% 52%"
+  },
+  {
+    "class": "^(Fcitx5-config-qt|qt6ct|xorg-help)$",
+    "isfloating": 1,
+    "iscentered": 1,
+    "floatpos": "50% 50% 60% 65%"
+  },
+  {
+    "class": "^(mpv|imv|swayimg)$",
+    "isfloating": 1,
+    "iscentered": 1,
+    "floatpos": "50% 50% 60% 64%"
+  },
+  {
+    "class": "^(org[.]gnome[.]Calculator|qalculate-gtk|Qalculate-gtk|qalculate-qt|kcalc)$",
+    "isfloating": 1,
+    "iscentered": 1,
+    "floatpos": "50% 50% 26% 46%"
+  },
+  {
+    "class": "^(gcolor3|org[.]gnome[.]Gcolor3|org[.]kde[.]kcolorchooser)$",
+    "isfloating": 1,
+    "iscentered": 1,
+    "floatpos": "50% 50% 38% 48%"
+  },
+  {
+    "class": "^(Firefox|firefox)$",
+    "title": "^(Picture-in-Picture|画中画)$",
+    "isfloating": 1,
+    "floatpos": "95% 92% 28% 30%",
+    "mayonpassive": 1,
+    "mayonsticky": 1,
+    "mayontop": 1
+  },
+  {
+    "class": "^(steam_app_[0-9]+|Minecraft.*|minecraft.*|com[.]mojang[.]Minecraft.*)$",
+    "mayongame": 1,
+    "bw": 0
+  },
+  {
+    "class": "^(Steam|steam|steamwebhelper)$",
+    "title": "^(Friends List|Steam - Friends|好友列表|好友与聊天)$",
+    "isfloating": 1,
+    "iscentered": 1,
+    "floatpos": "50% 50% 32% 60%"
+  },
+  {
+    "class": "^(Steam|steam|steamwebhelper)$",
+    "title": "^(Notification|Steam Notification|通知).*",
+    "isfloating": 1,
+    "mayonpassive": 1
+  },
+  {
+    "class": "^(PrismLauncher|prismlauncher|org[.]prismlauncher[.]PrismLauncher)$",
+    "title": "^(Console|Minecraft Log|Edit Instance|Instance Settings|实例设置|控制台).*",
+    "isfloating": 1,
+    "iscentered": 1,
+    "floatpos": "50% 50% 60% 65%"
+  },
+  {
+    "class": "^(QQ|qq|com[.]qq[.]QQ|wechat|WeChat|weixin|com[.]tencent[.](WeChat|wechat)|discord|Discord|vesktop|Vesktop|wemeet|wemeetapp|TencentMeeting)$",
+    "title": "^(Notification|通知|新消息提醒|消息通知|来电提醒|Screen ?Share|Sharing Toolbar|Meeting Toolbar|Mini Window|截图|屏幕共享|共享工具栏|会议悬浮窗|迷你窗口).*",
+    "isfloating": 1,
+    "mayonpassive": 1
+  },
+  {
+    "class": "^(com[.]gabm[.]satty|satty|Satty)$",
+    "isfloating": 1,
+    "iscentered": 1,
+    "floatpos": "50% 50% 80% 80%"
+  },
+  {
+    "instance": "^mayon-scratch-term$",
+    "tags": "SPTAG(0)",
+    "isfloating": 1,
+    "iscentered": 1,
+    "floatpos": "50% 50% 78% 78%"
+  },
+  {
+    "instance": "^mayon-scratch-yazi$",
+    "tags": "SPTAG(1)",
+    "isfloating": 1,
+    "iscentered": 1,
+    "floatpos": "50% 50% 78% 78%"
+  },
+  {
+    "instance": "^mayon-scratch-monitor$",
+    "tags": "SPTAG(2)",
+    "isfloating": 1,
+    "iscentered": 1,
+    "floatpos": "50% 50% 78% 78%"
+  }
+]

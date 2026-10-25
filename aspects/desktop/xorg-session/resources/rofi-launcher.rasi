@@ -1,0 +1,81 @@
+* {
+    bg: #1e2228;
+    deep: #181b20;
+    surface: #272c33;
+    selected: #323843;
+    fg: #abb2bf;
+    bright: #d7dae0;
+    muted: #828a95;
+    blue: #61afef;
+    edge: #2b3038;
+    font: "Maple Mono NF CN 12";
+    background-color: transparent;
+    text-color: @fg;
+}
+
+window {
+    width: @WIDTH@px;
+    location: center;
+    anchor: center;
+    border: 1px;
+    border-color: @edge;
+    border-radius: 12px;
+    background-color: @deep;
+    padding: 0px;
+}
+
+mainbox { children: [ inputbar, listview, textbox-hint ]; spacing: 0px; }
+inputbar {
+    children: [ textbox-search, entry, mode-switcher ];
+    padding: 12px 14px 10px 14px;
+    spacing: 10px;
+    border: 0px 0px 1px 0px;
+    border-color: @edge;
+}
+prompt { text-color: @blue; }
+textbox-search { str: "❯"; text-color: @blue; expand: false; }
+entry { text-color: @bright; placeholder: "搜索"; placeholder-color: @muted; hide-cursor-on-empty: true; cursor-width: 1px; }
+mode-switcher { enabled: true; expand: false; width: 360px; spacing: 2px; }
+button {
+    font: "Maple Mono NF CN 9";
+    padding: 3px 4px;
+    border: 0px 0px 2px 0px;
+    border-color: transparent;
+    border-radius: 0px;
+    text-color: @muted;
+}
+button selected { text-color: @bright; border-color: @blue; }
+listview {
+    lines: 6;
+    columns: 1;
+    fixed-height: false;
+    padding: 6px;
+    spacing: 2px;
+    scrollbar: false;
+}
+element {
+    padding: 6px 10px;
+    border-radius: 7px;
+    spacing: 10px;
+    text-color: @fg;
+}
+element-icon { size: 22px; border-radius: 6px; }
+element-text { vertical-align: 0.5; }
+element selected {
+    background-color: @selected;
+    text-color: @bright;
+    border: 0px 0px 0px 2px;
+    border-color: @blue;
+}
+message { padding: 7px 14px; border: 1px 0px 0px 0px; border-color: @edge; }
+textbox { text-color: @muted; }
+
+textbox-hint {
+    str: "↵ 打开   Tab 切换模式   Esc 关闭";
+    font: "Maple Mono NF CN 9";
+    padding: 7px 14px;
+    border: 1px 0px 0px 0px;
+    border-color: @edge;
+    text-color: @muted;
+    expand: false;
+}

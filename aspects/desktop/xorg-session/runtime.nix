@@ -13,6 +13,7 @@ let
     hmSessionVars = "${config.home.profileDirectory}/etc/profile.d/hm-session-vars.sh";
     dwm = "${dwmPackage}/bin/dwm";
     sleep = "${pkgs.coreutils}/bin/sleep";
+    flock = "${pkgs.util-linux}/bin/flock";
     stat = "${pkgs.coreutils}/bin/stat";
     systemctl = "${pkgs.systemd}/bin/systemctl";
     xprop = "${pkgs.xprop}/bin/xprop";

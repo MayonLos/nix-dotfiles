@@ -91,6 +91,11 @@ signal.signal(signal.SIGINT, stop)
 (root / 'dwm-started').write_text('yes')
 (root / 'dwm.pid').write_text(str(os.getpid()))
 (root / 'dwm-env.json').write_text(json.dumps(dict(os.environ)))
+try:
+    os.fstat(9)
+    (root / 'dwm-inherited-lock').write_text('bad')
+except OSError:
+    pass
 if os.environ.get('TEST_DWM_WAIT') == '1':
     while True:
         time.sleep(0.05)
@@ -129,6 +134,7 @@ esac
             "@xprop@": str(self.xprop),
             "@sleep@": shutil.which("sleep"),
             "@stat@": shutil.which("stat"),
+            "@flock@": shutil.which("flock"),
             "@hmSessionVars@": str(self.hm_vars),
             "@defaultOzone@": "1",
             "@defaultXModifiers@": "'@im=fcitx'",
@@ -214,6 +220,7 @@ esac
         }
         for name, value in expected.items():
             self.assertEqual(child_env.get(name), value)
+        self.assertFalse((self.root / "dwm-inherited-lock").exists(), "dwm must not inherit supervisor lock FD9")
         self.assertEqual(child_env.get("NIXOS_OZONE_WL"), "")
         self.assertEqual(child_env.get("__HM_SESS_VARS_SOURCED"), "1")
         for name in ("WAYLAND_DISPLAY", "MANGO_SOCKET", "HYPRLAND_INSTANCE_SIGNATURE"):
@@ -321,6 +328,37 @@ esac
         self.assertEqual((self.root / "dwm-signal").read_text(), str(signal.SIGTERM))
         self.assertFalse((self.runtime / "nix-dotfiles-xorg" / "session.pid").exists())
 
+    def test_hm_source_failure_does_not_import_or_start_session(self):
+        self.hm_vars.write_text('return 1\n')
+        result = subprocess.run([str(self.script)], env=self.environment(), text=True, capture_output=True)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('could not load Home Manager', result.stderr)
+        self.assertFalse(self.dwm_started.exists())
+        self.assertFalse(any('import-environment' in call for call in self.log()))
+        self.assertFalse((self.runtime / 'nix-dotfiles-xorg/session.pid').exists())
+
+    def test_concurrent_supervisor_is_rejected_before_environment_import(self):
+        self.hm_vars.write_text(self.hm_vars.read_text() + '\ntouch "$TEST_ROOT/hm-blocked"\nwhile [ ! -e "$TEST_ROOT/hm-release" ]; do sleep 0.02; done\n')
+        process = subprocess.Popen([str(self.script)], env=self.environment(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        try:
+            deadline = time.monotonic() + 5
+            while not (self.root / "hm-blocked").exists() and time.monotonic() < deadline:
+                time.sleep(0.02)
+            self.assertTrue((self.root / "hm-blocked").exists(), "first supervisor did not reach HM loading")
+            self.assertFalse((self.runtime / "nix-dotfiles-xorg/session.pid").exists())
+            second = subprocess.run([str(self.script)], env=self.environment(), capture_output=True, text=True, timeout=5)
+            self.assertEqual(second.returncode, 1, second.stderr)
+            self.assertIsNone(process.poll(), "first supervisor was disturbed")
+            self.assertFalse(any("import-environment" in call or "stop " in call for call in self.log()))
+            (self.root / "hm-release").touch()
+            _, stderr = process.communicate(timeout=5)
+            self.assertEqual(process.returncode, 23, stderr)
+        finally:
+            (self.root / "hm-release").touch()
+            if process.poll() is None:
+                process.terminate()
+                process.communicate(timeout=5)
+
     def test_exit_command_refuses_reused_pid(self):
         pidfile = self.runtime / "nix-dotfiles-xorg" / "session.pid"
         pidfile.parent.mkdir(mode=0o700)
@@ -342,6 +380,7 @@ esac
         self.assertEqual(result.returncode, 1)
         self.assertIn("already running", result.stderr)
         self.assertFalse(any("stop" in call for call in self.log()))
+        self.assertFalse(any("import-environment" in call for call in self.log()))
         self.assertTrue(pidfile.exists())
 
     def test_exit_command_signals_only_recorded_session_pid(self):

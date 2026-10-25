@@ -1,0 +1,36 @@
+diff --git a/unlock_indicator.c b/unlock_indicator.c
+--- a/unlock_indicator.c
++++ b/unlock_indicator.c
+@@ -520,6 +520,8 @@ static void draw_indic(cairo_t *ctx, double ind_x, double ind_y) {
+     if (unlock_indicator &&
+         (unlock_state >= STATE_KEY_PRESSED || auth_state > STATE_AUTH_IDLE || show_indicator)) {
+         /* Draw a (centered) circle with transparent background. */
++        /* xorg-dwm-idle-ring-gradient-v1 */
++        cairo_pattern_t *idle_ring_gradient = NULL;
+         cairo_set_line_width(ctx, RING_WIDTH);
+         cairo_arc(ctx, ind_x, ind_y, BUTTON_RADIUS, 0, 2 * M_PI);
+ 
+@@ -580,7 +582,14 @@ static void draw_indic(cairo_t *ctx, double ind_x, double ind_y) {
+                     }
+                     break;
+                 }
+-                cairo_set_source_rgba(ctx, ring16.red, ring16.green, ring16.blue, ring16.alpha);
++                idle_ring_gradient = cairo_pattern_create_linear(
++                    ind_x - BUTTON_RADIUS, ind_y - BUTTON_RADIUS,
++                    ind_x + BUTTON_RADIUS, ind_y + BUTTON_RADIUS);
++                cairo_pattern_add_color_stop_rgba(idle_ring_gradient, 0.0,
++                    ring16.red, ring16.green, ring16.blue, ring16.alpha);
++                cairo_pattern_add_color_stop_rgba(idle_ring_gradient, 1.0,
++                    ringver16.red, ringver16.green, ringver16.blue, ringver16.alpha);
++                cairo_set_source(ctx, idle_ring_gradient);
+                 if (internal_line_source == 1) {
+                     line16.red = ring16.red;
+                     line16.green = ring16.green;
+@@ -590,5 +599,7 @@ static void draw_indic(cairo_t *ctx, double ind_x, double ind_y) {
+         }
+         cairo_stroke(ctx);
++        if (idle_ring_gradient != NULL)
++            cairo_pattern_destroy(idle_ring_gradient);
+ 
+         /* Draw an inner separator line. */
+         if (internal_line_source != 2) {  //pretty sure this only needs drawn if it's being drawn over the inside?
