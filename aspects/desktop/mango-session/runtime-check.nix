@@ -286,8 +286,12 @@ pkgs.runCommand "interactive-session-config"
         ("control_center", "sidebar"): "none",
         ("control_center", "width"): 380,
         ("notification", "width"): 320,
-        ("bar", "main", "thickness"): 30,
-        ("bar", "main", "radius"): 10,
+        ("bar", "main", "thickness"): 35,
+        ("bar", "main", "radius"): 12,
+        ("bar", "main", "font_scale"): 0.93,
+        ("bar", "main", "widget_spacing"): 6,
+        ("bar", "main", "padding"): 7,
+        ("bar", "main", "capsule_radius"): 6,
         ("bar", "main", "capsule"): False,
         ("widget", "clock-date", "format"): "{:%m月%d日 周%a}",
         ("widget", "clock-time", "format"): "{:%H:%M}",
@@ -312,7 +316,10 @@ pkgs.runCommand "interactive-session-config"
         ("widget", "workspaces", "minimum_visible"): 5,
         ("system", "monitor", "gpu_poll_seconds"): 2.0,
         ("system", "monitor", "gpu_only_nvidia"): True,
-        ("widget", "gap-system", "length"): 4,
+        ("widget", "gap-system", "length"): 5,
+        ("widget", "gap-monitor", "length"): 5,
+        ("widget", "separator-control", "length"): 15,
+        ("widget", "clock-dot", "length"): 24,
         ("widget", "clock-dot", "decoration"): "dot",
         ("widget", "monitor-gpu", "stat"): "gpu_usage",
         ("widget", "monitor-memory", "stat"): "ram_pct",
@@ -342,6 +349,18 @@ pkgs.runCommand "interactive-session-config"
     assert all(group["opacity"] == 0 for name, group in groups.items() if name not in ("tools", "monitor"))
     assert groups["tools"]["members"] == ["fel/quill:status", "8bury/mini-docker:mini-docker", "rxtsel/portctl:indicator", "brightness", "power_profile", "caffeine"]
     assert groups["tools"]["accordion"] and groups["tools"]["border_width"] == 1
+    assert {name: group["padding"] for name, group in groups.items()} == {
+        "time": 4.0,
+        "tools": 4.0,
+        "monitor": 6.0,
+        "system": 4.0,
+    }
+    assert {name: group["widget_spacing"] for name, group in groups.items()} == {
+        "time": 7,
+        "tools": 10,
+        "monitor": 12,
+        "system": 15,
+    }
     assert not groups["monitor"]["accordion"]
     assert groups["monitor"]["members"] == ["monitor-cpu", "monitor-memory", "monitor-temp"]
     for root in (settings, generated):
@@ -351,13 +370,26 @@ pkgs.runCommand "interactive-session-config"
         assert bar["end"] == ["mindnbytes/nix-status:status", "gap-system", "group:system", "separator-control", "control-center"]
         actual_groups = {group["id"]: group for group in bar["capsule_group"]}
         assert actual_groups["system"]["members"] == ["network", "bluetooth", "volume", "tray", "battery", "notifications"]
-        assert actual_groups["system"]["widget_spacing"] == 13
+        assert actual_groups["system"]["widget_spacing"] == 15
         assert actual_groups["monitor"]["members"] == ["monitor-cpu", "monitor-memory", "monitor-temp"]
         assert actual_groups["monitor"]["opacity"] == 0.04 and actual_groups["monitor"]["border_width"] == 1
         assert root["widget"]["monitor-gpu"]["capsule"] and root["widget"]["monitor-gpu"]["hide_unavailable"]
         assert "monitor-vram" not in root["widget"]
         assert root["widget"]["monitor-temp"]["custom_label"] == ""
         assert all(root["widget"][name]["label_min_width"] >= 26 for name in actual_groups["monitor"]["members"] + ["monitor-gpu"])
+        assert all(
+            settings.get("scale") == 1.15
+            for settings in root["widget"].values()
+            if settings.get("type") != "spacer"
+        )
+        bar_widgets = bar["start"] + bar["center"] + bar["end"]
+        bar_widgets = [name for name in bar_widgets if not name.startswith("group:")]
+        bar_widgets += [member for group in bar["capsule_group"] for member in group["members"]]
+        assert all(
+            root["widget"].get(name, {}).get("scale") == 1.15
+            for name in set(bar_widgets)
+            if root["widget"].get(name, {}).get("type") != "spacer"
+        )
     clearance = patches["hud-drawer-clearance.patch"]
     for marker in ('centerSlotStart - contentMainStart - (isVertical ? 0.0F : kHudCenterClearance)', 'instance.hudMonitoringCompact || instance.startSection->width() > startSlotMain', 'setDrawerCompact(false)', 'setDrawerCompact(true)', 'm_compactDot->setVisible(m_drawerCompact)', 'panel.summary = available ? profile', '+  rootNode->setSize(m_glyph->width(), m_glyph->height());'):
         assert marker in clearance, marker
