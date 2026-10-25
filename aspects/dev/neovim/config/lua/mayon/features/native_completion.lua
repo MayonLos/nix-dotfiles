@@ -5,6 +5,34 @@ local snippet_prefixes
 local auto_timers = {}
 local auto_trigger_delay = 100
 local buffer_epochs = {}
+local cancel_request_guards = setmetatable({}, { __mode = "k" })
+
+local function guard_completed_cancellation(client)
+	local current = client.cancel_request
+	if type(current) ~= "function" or type(client.requests) ~= "table" then
+		return
+	end
+	local installed = cancel_request_guards[client]
+	if installed then
+		-- Respect a later replacement by another integration instead of stacking
+		-- wrappers or repeatedly overriding its method.
+		return
+	end
+	local original = current
+	local wrapper = function(first, ...)
+		local id = first == client and select(1, ...) or first
+		-- Neovim 0.12.6's completion aggregator retains cancellation closures
+		-- after a stale response is deliberately dropped. Its later cleanup can
+		-- call cancel_request for an id already removed from Client.requests;
+		-- the core method logs that as an error. Keep live cancellations intact.
+		if id ~= nil and client.requests[id] == nil then
+			return false
+		end
+		return original(first, ...)
+	end
+	client.cancel_request = wrapper
+	cancel_request_guards[client] = true
+end
 
 local function invalidate_buffer(buf)
 	buffer_epochs[buf] = (buffer_epochs[buf] or 0) + 1
@@ -363,6 +391,7 @@ end
 
 function M.attach(client, bufnr)
 	if client:supports_method("textDocument/completion", bufnr) then
+		guard_completed_cancellation(client)
 		vim.lsp.completion.enable(true, client.id, bufnr, { autotrigger = true, convert = M.convert })
 	end
 end

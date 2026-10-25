@@ -184,7 +184,7 @@ assert(vim.v.errmsg == "", vim.v.errmsg)
 -- the native completion menu without contacting Copilot or another service.
 require("mayon.features.ai_completion").set("off")
 vim.lsp.enable("lua_ls", false)
-local fixture_requests, fixture_closing, fixture_delay, fixture_responses = {}, false, 5, 0
+local fixture_requests, fixture_cancellations, fixture_closing, fixture_delay, fixture_responses = {}, {}, false, 5, 0
 local fixture_completion_label = "vector"
 local fixture_id = vim.lsp.start({
 	name = "native-completion-fixture",
@@ -220,7 +220,10 @@ local fixture_id = vim.lsp.start({
 				end, method == "initialize" and 0 or fixture_delay)
 				return true, id
 			end,
-			notify = function(method)
+			notify = function(method, params)
+				if method == "$/cancelRequest" then
+					fixture_cancellations[#fixture_cancellations + 1] = params.id
+				end
 				if method == "exit" then
 					fixture_closing = true
 					dispatch.on_exit(0, 0)
@@ -249,6 +252,22 @@ local fixture_original_request = fixture_client.request
 local completion_buf = vim.api.nvim_get_current_buf()
 vim.bo[completion_buf].filetype = "lua"
 vim.api.nvim_exec_autocmds("LspAttach", { buffer = completion_buf, data = { client_id = fixture_id } })
+local cancellations_before_missing = #fixture_cancellations
+assert(fixture_client:cancel_request(90001) == false, "completed request cancellation should be harmless")
+assert(fixture_client.cancel_request(90002) == false, "dot-style completed request cancellation should be harmless")
+assert(
+	#fixture_cancellations == cancellations_before_missing,
+	"missing request ids should not send cancellation notifications"
+)
+fixture_client.requests[90003] = { type = "pending", bufnr = completion_buf, method = "textDocument/completion" }
+assert(fixture_client:cancel_request(90003), "live colon-style cancellation should be forwarded")
+fixture_client.requests[90004] = { type = "pending", bufnr = completion_buf, method = "textDocument/completion" }
+assert(fixture_client.cancel_request(90004), "live dot-style cancellation should be forwarded")
+assert(
+	vim.deep_equal(fixture_cancellations, { 90003, 90004 }),
+	"the cancellation guard must preserve live request notifications and both call styles"
+)
+fixture_client.requests[90003], fixture_client.requests[90004] = nil, nil
 vim.cmd("syntax on")
 vim.treesitter.start(completion_buf, "lua")
 vim.api.nvim_buf_set_lines(completion_buf, 0, -1, false, { "" })
