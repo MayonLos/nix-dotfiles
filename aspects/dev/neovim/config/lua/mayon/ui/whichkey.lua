@@ -4,11 +4,11 @@ local function apply_highlights()
 	local c = require("mayon.generated").palette
 	vim.api.nvim_set_hl(0, "WhichKey", { fg = c.blue, bg = c.deep, bold = true })
 	vim.api.nvim_set_hl(0, "WhichKeyDesc", { fg = c.fg, bg = c.deep })
-	vim.api.nvim_set_hl(0, "WhichKeyGroup", { fg = c.purple, bg = c.deep })
+	vim.api.nvim_set_hl(0, "WhichKeyGroup", { fg = c.muted, bg = c.deep })
 	vim.api.nvim_set_hl(0, "WhichKeySeparator", { fg = c.muted, bg = c.deep })
 	vim.api.nvim_set_hl(0, "WhichKeyTitle", { fg = c.muted, bg = c.deep, bold = true })
 	vim.api.nvim_set_hl(0, "WhichKeyNormal", { fg = c.fg, bg = c.deep })
-	local edge = require("mayon.ui.theme").blend(c.border, c.deep, 0.28)
+	local edge = require("mayon.ui.theme").float_edge()
 	vim.api.nvim_set_hl(0, "WhichKeyBorder", { fg = edge, bg = c.deep })
 end
 
@@ -51,15 +51,15 @@ local function spread_columns(win)
 	vim.bo[buf].modifiable = modifiable
 end
 
-local function install_borderless_title()
+local function install_title()
 	local view = require("which-key.view")
-	if view._mayon_borderless_title then
+	if view._mayon_title then
 		return
 	end
-	view._mayon_borderless_title = true
+	view._mayon_title = true
 	local render = view.show
 	view.show = function(...)
-		local width = math.max(16, math.floor((vim.o.columns - 10) / 4))
+		local width = math.max(16, math.floor((math.floor(vim.o.columns * 0.96) - 10) / 4))
 		require("which-key.config").options.layout.width = { min = width, max = width }
 		local result = render(...)
 		local popup = view.view
@@ -68,15 +68,7 @@ local function install_borderless_title()
 			local buf = vim.api.nvim_win_get_buf(win)
 			if vim.bo[buf].filetype == "wk" then
 				spread_columns(win)
-				local config = vim.api.nvim_win_get_config(win)
-				local height = config.height + 1
-				vim.api.nvim_win_set_config(win, {
-					relative = config.relative,
-					col = config.col,
-					height = height,
-					row = math.max(0, vim.o.lines - height - vim.o.cmdheight - 1),
-				})
-				vim.wo[win].winbar = "%#WhichKeyTitle# ␣ LEADER%*"
+				vim.api.nvim_win_set_config(win, { title = " ␣ LEADER ", title_pos = "center" })
 			end
 		end
 		return result
@@ -87,6 +79,9 @@ function M.config()
 	return {
 		spec = {
 			{ "<leader>f", group = "文件" },
+			{ "<leader>r", group = "Run / 串口" },
+			{ "<leader>d", group = "Debug" },
+			{ "<leader>q", group = "关闭 / 重启" },
 			{ "<leader>s", group = "搜索" },
 			{ "<leader>g", group = "Git" },
 			{ "<leader>c", group = "代码" },
@@ -103,20 +98,22 @@ function M.config()
 		icons = { mappings = false, colors = false, separator = " " },
 		replace = { desc = { { "^%+", "+" } } },
 		show_help = false,
+		show_keys = false,
 		win = {
-			border = "none",
+			border = "rounded",
 			row = -1,
-			col = 0,
-			width = 0.999,
-			height = { min = 4, max = 6 },
+			col = 0.02,
+			width = 0.96,
+			height = { min = 4, max = 10 },
 			padding = { 0, 1 },
-			title = false,
+			title = " ␣ LEADER ",
+			title_pos = "center",
 			wo = { winblend = 0 },
 		},
 		layout = {
 			width = {
-				min = math.max(16, math.floor((vim.o.columns - 10) / 4)),
-				max = math.max(16, math.floor((vim.o.columns - 10) / 4)),
+				min = math.max(16, math.floor((math.floor(vim.o.columns * 0.96) - 10) / 4)),
+				max = math.max(16, math.floor((math.floor(vim.o.columns * 0.96) - 10) / 4)),
 			},
 			spacing = 2,
 		},
@@ -130,7 +127,7 @@ function M.setup()
 		callback = apply_highlights,
 	})
 	require("which-key").setup(M.config())
-	install_borderless_title()
+	install_title()
 end
 
 function M.show_all()

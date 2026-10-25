@@ -160,6 +160,8 @@ local function matlab_notifications()
 	}
 end
 
+local embedded = require("mayon.features.embedded")
+
 local adapters = {
 	nixd = {
 		before_init = function(_, config)
@@ -247,6 +249,10 @@ local adapters = {
 local servers = vim.deepcopy(require("mayon.generated").languages.servers)
 for name, settings in pairs(servers) do
 	servers[name] = vim.tbl_deep_extend("force", settings, adapters[name] or {})
+end
+
+if servers.clangd then
+	embedded.configure_clangd(servers.clangd)
 end
 
 local optional_servers = {

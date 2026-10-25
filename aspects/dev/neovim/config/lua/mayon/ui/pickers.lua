@@ -113,6 +113,40 @@ local function grep_format(item, picker)
 	return out
 end
 
+-- Keep navigation compact; use context where choosing a match needs code/diff.
+function M.preview_default(source)
+	source = source or ""
+	return source:match("^grep") ~= nil
+		or source:match("^lsp_") ~= nil
+		or source:match("^git_") ~= nil
+		or source:match("^diagnostics") ~= nil
+end
+
+function M.layout(preview)
+	local wide = vim.o.columns >= 120 and vim.o.lines >= 28
+	local visible = preview and wide
+	return {
+		preview = visible,
+		layout = {
+			box = "horizontal",
+			backdrop = false,
+			width = visible and 0.78 or 0.58,
+			min_width = math.min(58, vim.o.columns - 4),
+			max_width = math.min(visible and 142 or 90, vim.o.columns - 4),
+			height = visible and math.min(18, vim.o.lines - 8) or 8,
+			border = "rounded",
+			title = "{title}",
+			title_pos = "center",
+			{
+				box = "vertical",
+				{ win = "input", height = 1, border = "bottom" },
+				{ win = "list", border = "none" },
+			},
+			{ win = "preview", width = 0.52, border = "left" },
+		},
+	}
+end
+
 function M.configure(opts)
 	-- Keep native Snacks formatters on the same colored, configured devicon set.
 	require("mayon.ui.icons").ensure()
@@ -143,24 +177,16 @@ function M.configure(opts)
 			}
 		end
 	end
-	opts.layout = {
-		preview = false,
-		layout = {
-			box = "vertical",
-			backdrop = false,
-			width = 0.58,
-			min_width = math.min(58, vim.o.columns - 4),
-			max_width = math.min(90, vim.o.columns - 4),
-			height = 8,
-			min_height = 6,
-			max_height = 8,
-			border = "rounded",
-			title = "{title}",
-			title_pos = "center",
-			{ win = "input", height = 1, border = "bottom" },
-			{ win = "list", border = "none" },
-		},
-	}
+	local preview = M.preview_default(opts.source)
+	opts.layout = function()
+		return M.layout(preview)
+	end
+	opts.actions = vim.tbl_extend("force", opts.actions or {}, {
+		toggle_preview = function(picker)
+			preview = not preview
+			picker:set_layout()
+		end,
+	})
 
 	opts.win = vim.tbl_deep_extend("force", opts.win or {}, {
 		input = { wo = { winhighlight = "Normal:SnacksPickerInput,FloatBorder:SnacksPickerInputBorder" } },
@@ -173,9 +199,10 @@ function M.configure(opts)
 		},
 		preview = {
 			wo = {
+				winbar = "%#FloatTitle# Preview · Alt-p %*",
 				cursorline = true,
 				cursorlineopt = "line",
-				winhighlight = "Normal:SnacksPickerPreview,FloatBorder:SnacksPickerBorder,CursorLine:SnacksPickerPreviewCursorLine",
+				winhighlight = "Normal:SnacksPickerPreview,NormalNC:SnacksPickerPreview,WinBar:FloatTitle,SignColumn:SnacksPickerPreview,LineNr:SnacksPickerDir,FloatBorder:SnacksPickerBorder,CursorLine:SnacksPickerPreviewCursorLine",
 			},
 		},
 	})

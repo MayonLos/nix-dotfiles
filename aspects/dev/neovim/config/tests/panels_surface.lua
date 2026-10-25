@@ -89,10 +89,10 @@ local b = vim.api.nvim_create_buf(false, true)
 local ctx = { opts = {}, ns = vim.api.nvim_create_namespace("MayonNotificationTest") }
 notifier.style(b, { level = "warn", title = "Saved", msg = "formatter · 12ms" }, ctx)
 assert(
-	ctx.opts.border[8][1] == "▎" and ctx.opts.title == nil,
-	"notification should use a level rail without a large icon"
+	ctx.opts.border == "rounded" and ctx.opts.title_pos == "center",
+	"notification should share the rounded frame and centered title"
 )
-assert(vim.api.nvim_buf_get_lines(b, 0, 1, false)[1] == "Saved · WARN")
+assert(vim.api.nvim_buf_get_lines(b, 0, 1, false)[1] == "formatter · 12ms")
 local snacks_notifier = Snacks.notifier
 local old_history, old_hide = snacks_notifier.get_history, snacks_notifier.hide
 local hidden = {}

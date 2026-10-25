@@ -415,7 +415,7 @@ assert(
 local separator = vim.api.nvim_get_hl(0, { name = "WinSeparator", link = false })
 assert(separator.bg == tonumber(palette.bg:sub(2), 16), "window separators should sit on the editor surface")
 assert(
-	separator.fg == tonumber(require("mayon.ui.theme").blend(palette.border, palette.deep, 0.28):sub(2), 16),
+	separator.fg == tonumber(require("mayon.ui.theme").float_edge():sub(2), 16),
 	"window separators should use the thin edge color"
 )
 local function_hl = vim.api.nvim_get_hl(0, { name = "@lsp.type.function", link = false })

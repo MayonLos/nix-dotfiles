@@ -86,6 +86,15 @@ function M.setup()
 	map("n", "<leader>rt", function()
 		require("mayon.features.tasks").pick()
 	end, "选择 Run 任务")
+	map("n", "<leader>rs", function()
+		require("mayon.features.embedded").serial()
+	end, "打开串口终端")
+	map("n", "<leader>sn", function()
+		Snacks.picker.notifications()
+	end, "通知历史")
+	map("n", "<leader>ff", function()
+		Snacks.picker.files()
+	end, "查找文件")
 	map("n", "<leader>rr", function()
 		require("mayon.features.tasks").run_last()
 	end, "运行上次任务")
@@ -224,12 +233,6 @@ function M.setup()
 	map("n", "<leader>gg", function()
 		Snacks.lazygit()
 	end, "打开 Lazygit")
-	map("i", "<A-]>", function()
-		require("mayon.features.ai_completion").step("next")
-	end, "下一个 AI 建议")
-	map("i", "<A-[>", function()
-		require("mayon.features.ai_completion").step("prev")
-	end, "上一个 AI 建议")
 
 	-- Diagnostics, Git hunks, TODOs and quickfix navigation.
 	map("n", "[d", function()
@@ -254,33 +257,6 @@ function M.setup()
 			Snacks.image.hover()
 		end
 	end, { nargs = "?", complete = "file", desc = "预览图片或公式" })
-	vim.api.nvim_create_autocmd("LspAttach", {
-		group = vim.api.nvim_create_augroup("MayonKeymapDescriptions", { clear = true }),
-		callback = function(event)
-			local bufnr = event.buf
-			vim.schedule(function()
-				if not vim.api.nvim_buf_is_valid(bufnr) then
-					return
-				end
-				vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, {
-					buffer = bufnr,
-					desc = "执行代码动作",
-					silent = true,
-				})
-				vim.keymap.set("n", "<leader>cr", vim.lsp.buf.rename, {
-					buffer = bufnr,
-					desc = "重命名符号",
-					silent = true,
-				})
-				vim.keymap.set("n", "[d", function()
-					vim.diagnostic.jump({ count = -1, float = true })
-				end, { desc = "上一个诊断", silent = true })
-				vim.keymap.set("n", "]d", function()
-					vim.diagnostic.jump({ count = 1, float = true })
-				end, { desc = "下一个诊断", silent = true })
-			end)
-		end,
-	})
 	map("n", "<Esc>", "<cmd>nohlsearch<cr>", "清除搜索高亮")
 end
 

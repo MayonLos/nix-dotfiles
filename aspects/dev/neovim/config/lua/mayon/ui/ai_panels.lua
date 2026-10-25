@@ -23,7 +23,7 @@ local groups = {
 
 local function hl()
 	local palette = require("mayon.generated").palette
-	local edge = require("mayon.ui.theme").blend(palette.border, palette.deep, 0.28)
+	local edge = require("mayon.ui.theme").float_edge()
 	for name, spec in pairs(groups) do
 		local resolved = vim.deepcopy(spec)
 		for key, value in pairs(resolved) do
@@ -59,13 +59,13 @@ local function hl()
 	)
 	api.nvim_set_hl(0, "NormalFloat", { fg = palette.brightFg, bg = palette.deep })
 	api.nvim_set_hl(0, "FloatBorder", { fg = edge, bg = palette.deep })
-	api.nvim_set_hl(0, "FloatTitle", { fg = palette.brightFg, bg = palette.deep })
+	api.nvim_set_hl(0, "FloatTitle", { fg = palette.muted, bg = palette.deep })
 	api.nvim_set_hl(0, "CodeCompanionChatHeader", { fg = palette.muted, bg = palette.bg, bold = true })
 	api.nvim_set_hl(0, "CodeCompanionChatSeparator", { fg = edge, bg = palette.bg })
 	api.nvim_set_hl(0, "CodeCompanionChatTool", { fg = palette.cyan, bg = palette.bg })
 	api.nvim_set_hl(0, "CodeCompanionChatToolGroup", { fg = palette.cyan, bg = palette.bg })
 	api.nvim_set_hl(0, "CodeCompanionChatToolText", { fg = palette.fg, bg = palette.bg })
-	api.nvim_set_hl(0, "CodeCompanionVirtualText", { fg = palette.purple, bg = palette.bg, italic = true })
+	api.nvim_set_hl(0, "CodeCompanionVirtualText", { fg = palette.muted, bg = palette.bg })
 	api.nvim_set_hl(0, "CodeCompanionDiffAdd", {
 		fg = palette.green,
 		bg = require("mayon.ui.theme").blend(palette.green, palette.bg, 0.12),
@@ -231,10 +231,19 @@ local function decorate_chat(buf)
 		end
 	end
 	for _, win in ipairs(vim.fn.win_findbuf(buf)) do
+		local floating = api.nvim_win_get_config(win).relative ~= ""
+		local normal = floating and "NormalFloat" or "MayonAIPanel"
 		vim.wo[win].signcolumn = "yes:1"
 		vim.wo[win].conceallevel = 2
-		vim.wo[win].winhighlight =
-			"Normal:MayonAIPanel,EndOfBuffer:MayonAIPanel,SignColumn:MayonAIPanel,WinBar:EdgyWinBar"
+		vim.wo[win].winhighlight = "Normal:"
+			.. normal
+			.. ",NormalNC:"
+			.. normal
+			.. ",EndOfBuffer:"
+			.. normal
+			.. ",SignColumn:"
+			.. normal
+			.. ",WinBar:EdgyWinBar,FloatBorder:FloatBorder,FloatTitle:FloatTitle"
 		vim.wo[win].fillchars = "eob: "
 		vim.wo[win].winbar = "%!v:lua.require'mayon.ui.ai_panels'.winbar()"
 	end
@@ -365,6 +374,10 @@ function M.winbar(buf)
 		or name:lower():find("codex", 1, true) and "Codex"
 		or name:lower():find("deepseek", 1, true) and "DeepSeek"
 	active = active or statusline_text(name)
+	local win = tonumber(vim.g.statusline_winid) or vim.fn.win_findbuf(buf)[1]
+	if win and api.nvim_win_is_valid(win) and api.nvim_win_get_config(win).relative ~= "" then
+		return "%#MayonAIActive# " .. active .. " %*%=%#MayonAIPanelMuted#" .. statusline_text(status) .. " %*"
+	end
 	local tabs = {}
 	for _, label in ipairs({ "Claude", "Codex", "DeepSeek" }) do
 		local tab_state = provider_state(label)

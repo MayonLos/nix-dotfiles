@@ -3,13 +3,13 @@
 local pickers = require("mayon.ui.pickers")
 local files = pickers.configure({ source = "files" })
 assert(files.prompt == "❯ ", "general picker input should retain its prompt")
-assert(files.layout.preview == false, "general picker should not open a default preview")
-assert(files.layout.layout.width <= 0.7, "general picker should stay compact and centered")
-assert(files.layout.layout.title_pos == "center", "picker title should match the centered floating-window style")
+assert(files.layout().preview == false, "general picker should not open a default preview")
+assert(files.layout().layout.width <= 0.7, "general picker should stay compact and centered")
+assert(files.layout().layout.title_pos == "center", "picker title should match the centered floating-window style")
 assert(files.win.list.wo.cursorline and files.win.list.wo.cursorlineopt == "line")
 assert(files.win.list.wo.winhighlight:find("SnacksPickerListCursorLine", 1, true))
-local file_layout = vim.inspect(files.layout.layout)
-assert(not file_layout:find('win = "preview"', 1, true), "general picker layout contains a preview pane")
+local file_layout = vim.inspect(files.layout().layout)
+assert(file_layout:find('win = "preview"', 1, true), "hidden preview must remain available to Alt-p")
 local long_path = "/tmp/workspace/" .. string.rep("long-parent-name/", 5) .. "math_preview.lua"
 local file_picker = {
 	list = { win = {
@@ -187,3 +187,27 @@ resizing:close()
 vim.wait(100)
 assert(vim.v.errmsg == "", "closed picker resize callback failed: " .. vim.v.errmsg)
 print("Project input, compact pickers, native grep rows and resize-close passed")
+
+-- Source-aware preview defaults and a usable toggle survive resize transitions.
+vim.o.columns, vim.o.lines = 180, 50
+for _, name in ipairs({ "grep", "lsp_references", "lsp_symbols", "git_log", "diagnostics" }) do
+	assert(pickers.configure({ source = name }).layout().preview, name .. " should show context")
+end
+for _, name in ipairs({ "files", "buffers", "recent", "select" }) do
+	assert(not pickers.configure({ source = name }).layout().preview, name .. " should stay compact")
+end
+local preview = Snacks.picker.files({ cwd = project, show_delay = 0 })
+assert(vim.wait(1000, function()
+	return preview.layout ~= nil
+end))
+preview:action("toggle_preview")
+assert(preview.preview.win:valid() and not preview.layout:is_hidden("preview"), "Alt-p did not open files preview")
+vim.o.columns = 90
+preview:set_layout()
+assert(preview.layout:is_hidden("preview"), "narrow picker should hide preview")
+vim.o.columns = 180
+preview:set_layout()
+assert(not preview.layout:is_hidden("preview"), "resize lost the explicit preview preference")
+preview:action("toggle_preview")
+assert(preview.layout:is_hidden("preview"))
+preview:close()

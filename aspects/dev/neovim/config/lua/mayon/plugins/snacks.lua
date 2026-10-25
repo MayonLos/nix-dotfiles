@@ -52,7 +52,7 @@ local function setup(overrides)
 	local config = {
 		input = {
 			enabled = true,
-			win = { border = "rounded" },
+			win = { border = "rounded", title_pos = "center" },
 		},
 		styles = {
 			notification = {

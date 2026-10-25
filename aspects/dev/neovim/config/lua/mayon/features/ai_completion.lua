@@ -2,6 +2,7 @@
 local M = { provider = "copilot", busy = false, epoch = 0, pending = 0 }
 local choices = { "copilot", "deepseek", "off" }
 local warned = {}
+local copilot_ready = false
 function M.require_deepseek_key()
 	if type(vim.env.DEEPSEEK_API_KEY) == "string" and vim.env.DEEPSEEK_API_KEY ~= "" then
 		return true
@@ -39,6 +40,9 @@ function M.set(provider)
 	M.epoch = M.epoch + 1
 	M.provider = provider
 	M.busy = false
+	if copilot_ready then
+		vim.lsp.enable("copilot", provider == "copilot")
+	end
 	vim.g.sidekick_nes = provider == "copilot"
 	vim.lsp.inline_completion.enable(provider == "copilot")
 	for _, buf in ipairs(vim.api.nvim_list_bufs()) do
@@ -163,7 +167,6 @@ function M.step(direction)
 		require("minuet.virtualtext").action[direction]()
 	end
 end
-local copilot_ready = false
 function M.copilot_setup()
 	if copilot_ready then
 		return
@@ -208,7 +211,7 @@ function M.copilot_setup()
 		end,
 	})
 	vim.lsp.inline_completion.enable(M.provider == "copilot")
-	vim.lsp.enable("copilot")
+	vim.lsp.enable("copilot", M.provider == "copilot")
 end
 -- Guard asynchronous completion callbacks across provider and buffer changes.
 function M.guard(callback)

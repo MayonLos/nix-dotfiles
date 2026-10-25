@@ -63,7 +63,18 @@ function M.setup()
 			end
 		end
 	end
-	require("lz.n").load(specs)
+	-- One-shot spec normalization walks heterogeneous tables. Tracing this
+	-- bootstrap can cost more than executing it; keep JIT for actual editing.
+	local load_specs = require("lz.n").load
+	local jit_enabled = jit.status()
+	jit.off()
+	local ok, err = pcall(load_specs, specs)
+	if jit_enabled then
+		jit.on()
+	end
+	if not ok then
+		error(err)
+	end
 	vim.api.nvim_create_autocmd("UIEnter", {
 		once = true,
 		callback = function()

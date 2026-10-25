@@ -71,7 +71,7 @@ end
 
 function M.setup()
 	-- The completion menu is a compact, borderless surface. Its columns inherit
-	-- PmenuKind (purple) and PmenuExtra (muted) from the One Dark palette.
+	-- PmenuKind (blue) and PmenuExtra (muted) from the One Dark palette.
 	vim.o.pumborder = "none"
 	vim.o.pumblend = 0
 	local group = vim.api.nvim_create_augroup("MayonNativeCompletion", { clear = true })
