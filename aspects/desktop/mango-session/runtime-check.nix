@@ -273,7 +273,7 @@ pkgs.runCommand "interactive-session-config"
     assert p["dark"]["mSurface"] == m["palette"]["bg"]
     settings = m["settings"]
     patches = {patch["name"]: patch["content"] for patch in m["noctaliaPatches"]}
-    for name, marker in {"hud-bar.patch": "HUD27: native faded separator", "hud-tooltips.patch": "TooltipPanel", "hud-sysmon.patch": "hide_unavailable", "hud-controls-tooltips.patch": "TooltipPanel", "hud-battery.patch": "label_outside"}.items():
+    for name, marker in {"hud-bar.patch": "HUD27: native faded separator", "hud-tooltips.patch": "TooltipPanel", "hud-sysmon.patch": "hide_unavailable", "hud-controls-tooltips.patch": "TooltipPanel", "hud-battery.patch": "label_outside", "hud-balanced.patch": "temperature_hide_below", "hud-nix-badge.patch": "luaSetBadge", "hud-drawer-clearance.patch": "kHudCenterClearance = 24.0F"}.items():
         assert name in patches and marker in patches[name], (name, patches.keys())
     # Check serialized settings too: validating the Nix attrset alone would
     # miss a lost/renamed field during Home Manager's config generation.
@@ -303,16 +303,18 @@ pkgs.runCommand "interactive-session-config"
         ("widget", "monitor-memory", "visualization"): "ring",
         ("widget", "monitor-temp", "stat"): "cpu_temp",
         ("widget", "monitor-gpu", "hide_unavailable"): True,
-        ("widget", "monitor-gpu", "show_gpu_temperature"): True,
-        ("widget", "monitor-vram", "hide_unavailable"): True,
+        ("widget", "monitor-gpu", "show_gpu_temperature"): False,
+        ("widget", "monitor-temp", "temperature_hide_below"): 80,
+        ("widget", "monitor-temp", "hide_unavailable"): True,
+        ("widget", "volume", "show_label"): False,
+        ("bar", "main", "capsule_thickness"): 0.67,
         ("widget", "workspaces", "hide_when_empty"): True,
         ("widget", "workspaces", "minimum_visible"): 5,
         ("system", "monitor", "gpu_poll_seconds"): 2.0,
         ("system", "monitor", "gpu_only_nvidia"): True,
-        ("widget", "separator-nix", "decoration"): "separator",
+        ("widget", "gap-system", "length"): 4,
         ("widget", "clock-dot", "decoration"): "dot",
         ("widget", "monitor-gpu", "stat"): "gpu_usage",
-        ("widget", "monitor-vram", "stat"): "gpu_vram",
         ("widget", "monitor-memory", "stat"): "ram_pct",
         ("shell", "launcher", "default_view"): "pinned",
         ("shell", "launcher", "track_usage"): True,
@@ -337,11 +339,32 @@ pkgs.runCommand "interactive-session-config"
                 root = root[key]
             assert root == value, (keys, root, value)
     groups = {group["id"]: group for group in settings["bar"]["main"]["capsule_group"]}
-    assert all(group["opacity"] == 0 for name, group in groups.items() if name != "tools")
+    assert all(group["opacity"] == 0 for name, group in groups.items() if name not in ("tools", "monitor"))
     assert groups["tools"]["members"] == ["fel/quill:status", "8bury/mini-docker:mini-docker", "rxtsel/portctl:indicator", "brightness", "power_profile", "caffeine"]
     assert groups["tools"]["accordion"] and groups["tools"]["border_width"] == 1
     assert not groups["monitor"]["accordion"]
-    assert groups["monitor"]["members"] == ["monitor-cpu", "monitor-memory", "monitor-temp", "monitor-gpu", "monitor-vram"]
+    assert groups["monitor"]["members"] == ["monitor-cpu", "monitor-memory", "monitor-temp"]
+    for root in (settings, generated):
+        bar = root["bar"]["main"]
+        assert bar["start"] == ["launcher", "separator-workspaces", "workspaces", "separator-layout", "gambled23/mangowm-keymode:mangowm-keymode", "ezequiel/mango_layouts:btn", "group:tools", "gap-monitor", "group:monitor", "monitor-gpu"]
+        assert bar["center"] == ["group:time"]
+        assert bar["end"] == ["mindnbytes/nix-status:status", "gap-system", "group:system", "separator-control", "control-center"]
+        actual_groups = {group["id"]: group for group in bar["capsule_group"]}
+        assert actual_groups["system"]["members"] == ["network", "bluetooth", "volume", "tray", "battery", "notifications"]
+        assert actual_groups["system"]["widget_spacing"] == 13
+        assert actual_groups["monitor"]["members"] == ["monitor-cpu", "monitor-memory", "monitor-temp"]
+        assert actual_groups["monitor"]["opacity"] == 0.04 and actual_groups["monitor"]["border_width"] == 1
+        assert root["widget"]["monitor-gpu"]["capsule"] and root["widget"]["monitor-gpu"]["hide_unavailable"]
+        assert "monitor-vram" not in root["widget"]
+        assert root["widget"]["monitor-temp"]["custom_label"] == ""
+        assert all(root["widget"][name]["label_min_width"] >= 26 for name in actual_groups["monitor"]["members"] + ["monitor-gpu"])
+    clearance = patches["hud-drawer-clearance.patch"]
+    for marker in ('centerSlotStart - contentMainStart - (isVertical ? 0.0F : kHudCenterClearance)', 'instance.hudMonitoringCompact || instance.startSection->width() > startSlotMain', 'setDrawerCompact(false)', 'setDrawerCompact(true)', 'm_compactDot->setVisible(m_drawerCompact)', 'panel.summary = available ? profile', '+  rootNode->setSize(m_glyph->width(), m_glyph->height());'):
+        assert marker in clearance, marker
+    assert '+  m_label->setText' not in clearance
+    balanced = patches["hud-balanced.patch"]
+    for marker in ('currentGradientValue() >= 90.0', 'currentStats.cpuTempC.value_or(0.0) >= m_temperatureHideBelow', 'rootNode->setParticipatesInLayout(shown)', 'addMetric(SysmonStat::GpuVram, "VRAM"', 'addMetric(SysmonStat::GpuTemp, "独显温度"', 'm_monitor->retainGpuVram()', 'm_monitor->releaseGpuVram()'):
+        assert marker in balanced, marker
     assert not any(w.get("text") == "│" for w in settings["widget"].values())
     assert all(settings["widget"][name]["type"] == "spacer" for name in settings["widget"] if name.startswith("separator-"))
     assert len(settings["control_center"]["shortcuts"]) == 6

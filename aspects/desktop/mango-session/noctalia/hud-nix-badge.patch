@@ -1,0 +1,176 @@
+--- a/src/scripting/script_runtime_types.h
++++ b/src/scripting/script_runtime_types.h
+@@ -119,6 +119,8 @@
+     std::optional<ScriptColorPatch> textColor;
+     std::optional<ScriptColorPatch> glyphColor;
+     std::optional<bool> visible;
++    std::optional<bool> badge;
++    std::optional<float> minWidth;
+     std::optional<int> updateIntervalMs;
+ 
+     // Control-center shortcut fields (the `shortcut.*` namespace).
+--- a/src/scripting/script_runtime.cpp
++++ b/src/scripting/script_runtime.cpp
+@@ -87,6 +87,12 @@
+       }
+       if (src.visible.has_value()) {
+         dest.visible = src.visible;
++      }
++      if (src.badge.has_value()) {
++        dest.badge = src.badge;
++      }
++      if (src.minWidth.has_value()) {
++        dest.minWidth = src.minWidth;
+       }
+       if (src.updateIntervalMs.has_value()) {
+         dest.updateIntervalMs = src.updateIntervalMs;
+--- a/src/scripting/plugin_bindings.cpp
++++ b/src/scripting/plugin_bindings.cpp
+@@ -221,6 +221,22 @@
+     return 1;
+   }
+ 
++  int luau_setBadge(lua_State* L) {
++    const bool visible = lua_toboolean(L, 1) != 0;
++    if (auto* context = getContext(L)) {
++      context->patch.badge = visible;
++    }
++    return 0;
++  }
++
++  int luau_setMinWidth(lua_State* L) {
++    const float width = static_cast<float>(luaL_checknumber(L, 1));
++    if (auto* context = getContext(L)) {
++      context->patch.minWidth = std::max(0.0F, width);
++    }
++    return 0;
++  }
++
+   int luau_setVisible(lua_State* L) {
+     bool visible = lua_toboolean(L, 1) != 0;
+     if (auto* context = getContext(L)) {
+@@ -245,6 +261,8 @@
+       {"isVertical", luau_isVertical},
+       {"outputName", luau_outputName},
+       {"setVisible", luau_setVisible},
++      {"setBadge", luau_setBadge},
++      {"setMinWidth", luau_setMinWidth},
+       {"render", luau_ui_render},
+       {nullptr, nullptr},
+   };
+--- a/src/shell/bar/widgets/plugin_widget.h
++++ b/src/shell/bar/widgets/plugin_widget.h
+@@ -26,6 +26,7 @@
+ class Image;
+ class InputArea;
+ class Label;
++class Box;
+ class CompositorPlatform;
+ class ClipboardService;
+ class HttpClient;
+@@ -49,6 +50,9 @@
+   void create() override;
+ 
+   void luaSetText(std::string_view text);
++  void luaSetBadge(bool visible);
++  void luaSetMinWidth(float width);
++  void luaResetState();
+   void luaSetGlyph(std::string_view name);
+   void luaSetImage(std::string_view path, bool watch, float width, float height);
+   void luaSetTooltip(const scripting::ScriptTooltipPatch& tooltip);
+@@ -147,6 +151,7 @@
+   Glyph* m_glyph = nullptr;
+   Image* m_image = nullptr;
+   Label* m_label = nullptr;
++  Box* m_badge = nullptr;
+   // Declarative mode: barWidget.render(tree) reconciles into m_uiHost and hides
+   // the imperative glyph/image/label row.
+   Flex* m_uiHost = nullptr;
+--- a/src/shell/bar/widgets/plugin_widget.cpp
++++ b/src/shell/bar/widgets/plugin_widget.cpp
+@@ -234,6 +234,20 @@
+ 
+   area->addChild(std::move(flex));
+ 
++  area->addChild(ui::box({
++      .out = &m_badge,
++      .fill = ColorSpec{.role = std::nullopt, .fixed = hex("#e5c07b"), .alpha = 1.0F},
++      .radius = 2.5F * m_contentScale,
++      .width = 5.0F * m_contentScale,
++      .height = 5.0F * m_contentScale,
++      .visible = false,
++      .participatesInLayout = false,
++      .configure = [](Box& badge) {
++        badge.setHitTestVisible(false);
++        badge.setZIndex(std::numeric_limits<std::int32_t>::max() - 1);
++      },
++  }));
++
+   // Declarative host: barWidget.render(tree) reconciles into this Flex and
+   // hides the imperative row above.
+   area->addChild(
+@@ -370,6 +384,10 @@
+       m_dragOverlay->setPosition(0.0F, 0.0F);
+       m_dragOverlay->setFrameSize(m_uiHost->width(), m_uiHost->height());
+     }
++    if (m_badge != nullptr) {
++      const float dotSize = 5.0F * m_contentScale;
++      m_badge->setPosition(std::max(0.0F, m_uiHost->width() - dotSize), 0.0F);
++    }
+     return;
+   }
+ 
+@@ -391,9 +409,32 @@
+ 
+   if (m_area)
+     m_area->setSize(m_flex->width(), m_flex->height());
++  if (m_badge != nullptr) {
++    const float dotSize = 5.0F * m_contentScale;
++    m_badge->setPosition(std::max(0.0F, m_flex->width() - dotSize), 0.0F);
++  }
+ }
+ 
+ void PluginWidget::doUpdate(Renderer&) {}
++
++void PluginWidget::luaSetBadge(bool visible) {
++  if (m_badge != nullptr && m_badge->visible() != visible) {
++    m_badge->setVisible(visible);
++    m_dirty = true;
++  }
++}
++
++void PluginWidget::luaSetMinWidth(float width) {
++  if (m_label != nullptr) {
++    m_label->setMinWidth(std::max(0.0F, width) * m_contentScale);
++    m_dirty = true;
++  }
++}
++
++void PluginWidget::luaResetState() {
++  luaSetBadge(false);
++  luaSetMinWidth(0.0F);
++}
+ 
+ void PluginWidget::luaSetText(std::string_view text) {
+   if (!m_label)
+@@ -761,6 +802,12 @@
+   if (patch.visible.has_value()) {
+     luaSetVisible(*patch.visible);
+   }
++  if (patch.badge.has_value()) {
++    luaSetBadge(*patch.badge);
++  }
++  if (patch.minWidth.has_value()) {
++    luaSetMinWidth(*patch.minWidth);
++  }
+   if (patch.updateIntervalMs.has_value()) {
+     luaSetUpdateInterval(static_cast<float>(*patch.updateIntervalMs));
+   }
+@@ -932,6 +979,7 @@
+     m_label->setText("");
+     m_label->setVisible(false);
+   }
++  luaResetState();
+   // Hiding the host dispatches no input cancellation: a drag in flight would
+   // keep its preview and could complete against the replacement tree.
+   m_reconciler.cancelDragDrop();

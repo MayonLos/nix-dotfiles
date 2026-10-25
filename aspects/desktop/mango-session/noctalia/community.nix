@@ -61,5 +61,15 @@ pkgs.runCommand "noctalia-community-plugins" { nativeBuildInputs = [ pkgs.luau ]
   grep -Fq 'generationNumberHelper.statusText(' \
     "$out/nix-status/widget.luau"
   grep -Fq 'barWidget.setGlyphColor("primary", "script")' "$out/nix-status/widget.luau"
+  grep -Fq 'barWidget.setMinWidth(28)' "$out/nix-status/widget.luau"
+  grep -Fq 'barWidget.setBadge(generationNumberHelper.hasInputUpdates(updateState))' \
+    "$out/nix-status/widget.luau"
   grep -Fq 'statusText = statusText' "$out/nix-status/generation_number.luau"
+  grep -Fq 'hasInputUpdates = hasInputUpdates' "$out/nix-status/generation_number.luau"
+  grep -Fq 'return generation or ""' "$out/nix-status/generation_number.luau"
+  grep -Fq 'return updateState == "updates"' "$out/nix-status/generation_number.luau"
+  grep -Fq 'noctalia.state.watch' ${source}/nix-status/widget.luau
+  grep -Fq 'noctalia.state.watch' "$out/nix-status/widget.luau"
+  grep -Fq 'noctalia.togglePanel("mindnbytes/nix-status:details")' ${source}/nix-status/widget.luau
+  grep -Fq 'noctalia.togglePanel("mindnbytes/nix-status:details")' "$out/nix-status/widget.luau"
 ''

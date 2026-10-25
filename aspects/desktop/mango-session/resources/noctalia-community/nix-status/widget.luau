@@ -57,16 +57,12 @@ show = function()
     local generationState = generationStatus and generationStatus.state or "checking"
     local systemTargetState = systemTargetStatus and systemTargetStatus.state or "checking"
 
-    -- Keep generation and input-update state in one compact blue label.
-    -- The details panel retains the full error/update status information.
+    -- Keep the snowflake and generation number compact; update state lives in
+    -- the tooltip and a layout-free badge.
     barWidget.setGlyph("snowflake")
     barWidget.setGlyphColor("primary", "script")
-    barWidget.setText(generationNumberHelper.statusText(
-        currentGenerationNumber,
-        updateState,
-        generationState,
-        systemTargetState
-    ))
+    barWidget.setText(generationNumberHelper.statusText(currentGenerationNumber))
+    barWidget.setBadge(generationNumberHelper.hasInputUpdates(updateState))
 
     local tooltip = { "NixOS" }
     if currentGenerationNumber ~= nil then
@@ -116,6 +112,7 @@ function update()
     updateStatus = noctalia.state.get(contracts.state.updateStatus)
     generationStatus = noctalia.state.get(contracts.state.generationStatus)
     systemTargetStatus = noctalia.state.get(contracts.state.systemTargetStatus)
+    barWidget.setMinWidth(28)
     show()
     refreshCurrentGenerationNumber()
 end
