@@ -91,8 +91,9 @@ let
       grep -Fq 'm_selectionIndicator' src/shell/launcher/launcher_panel.cpp
       grep -Fq 'item.accent = static_cast<Box*>' src/shell/bar/widgets/workspaces_widget.cpp
       grep -Fq 'syncCompactControls()' src/shell/control_center/tabs/home_tab.cpp
-      grep -Fq 'HUD27: near-black palette backdrop' src/shell/bar/bar.cpp
-      grep -Fq 'hudLineStyle(0.8F)' src/shell/bar/bar.cpp
+      grep -Fq 'R31: flat One Dark surface' src/shell/bar/bar.cpp
+      ! grep -Fq 'hudLineStyle(' src/shell/bar/bar.cpp
+      grep -Fq 'R31: minimal reuses the indicator' src/shell/bar/widgets/workspaces_widget.cpp
       grep -Fq 'bg->setOpacity(run.accordionProgress)' src/shell/bar/bar.cpp
       grep -Fq 'HUD27: native faded separator' src/shell/bar/widgets/spacer_widget.cpp
       grep -Fq 'minimum_visible' src/shell/bar/widgets/workspaces_widget_definition.cpp
@@ -101,7 +102,7 @@ let
       grep -Fq 'rootNode->setSize(m_glyph->width(), m_glyph->height())' src/shell/bar/widgets/power_profile_widget.cpp
       grep -Fq 'panel.summary = available ? profile' src/shell/bar/widgets/power_profile_widget.cpp
       grep -Fq 'kHudCenterClearance = 24.0F' src/shell/bar/bar.cpp
-      grep -Fq 'instance.hudMonitoringCompact || instance.startSection->width() > startSlotMain' src/shell/bar/bar.cpp
+      grep -Fq 'instance.endSection->width() > endSlotMain' src/shell/bar/bar.cpp
       grep -Fq 'HUD27b: a single bounded second pass' src/shell/bar/bar.cpp
       grep -Fq 'setDrawerCompact(false)' src/shell/bar/bar.cpp
       grep -Fq 'setDrawerCompact(true)' src/shell/bar/bar.cpp

@@ -287,12 +287,13 @@ pkgs.runCommand "interactive-session-config"
         ("control_center", "width"): 380,
         ("notification", "width"): 320,
         ("bar", "main", "thickness"): 35,
-        ("bar", "main", "radius"): 12,
+        ("bar", "main", "radius"): 9,
         ("bar", "main", "font_scale"): 0.93,
         ("bar", "main", "widget_spacing"): 6,
         ("bar", "main", "padding"): 7,
         ("bar", "main", "capsule_radius"): 6,
         ("bar", "main", "capsule"): False,
+        ("widget", "control-center", "glyph"): "settings",
         ("widget", "clock-date", "format"): "{:%m月%d日 周%a}",
         ("widget", "clock-time", "format"): "{:%H:%M}",
         ("widget", "clock-time", "font_weight"): 600,
@@ -316,8 +317,8 @@ pkgs.runCommand "interactive-session-config"
         ("widget", "workspaces", "minimum_visible"): 5,
         ("system", "monitor", "gpu_poll_seconds"): 2.0,
         ("system", "monitor", "gpu_only_nvidia"): True,
-        ("widget", "gap-system", "length"): 5,
-        ("widget", "gap-monitor", "length"): 5,
+        ("widget", "separator-system", "length"): 15,
+        ("widget", "separator-monitor", "length"): 15,
         ("widget", "separator-control", "length"): 15,
         ("widget", "clock-dot", "length"): 24,
         ("widget", "clock-dot", "decoration"): "dot",
@@ -346,34 +347,38 @@ pkgs.runCommand "interactive-session-config"
                 root = root[key]
             assert root == value, (keys, root, value)
     groups = {group["id"]: group for group in settings["bar"]["main"]["capsule_group"]}
-    assert all(group["opacity"] == 0 for name, group in groups.items() if name not in ("tools", "monitor"))
+    assert all(group["opacity"] == 0 for group in groups.values())
     assert groups["tools"]["members"] == ["fel/quill:status", "8bury/mini-docker:mini-docker", "rxtsel/portctl:indicator", "brightness", "power_profile", "caffeine"]
-    assert groups["tools"]["accordion"] and groups["tools"]["border_width"] == 1
+    assert groups["tools"]["accordion"] and groups["tools"]["border_width"] == 0
     assert {name: group["padding"] for name, group in groups.items()} == {
         "time": 4.0,
         "tools": 4.0,
-        "monitor": 6.0,
+        "monitor": 2.0,
         "system": 4.0,
     }
     assert {name: group["widget_spacing"] for name, group in groups.items()} == {
         "time": 7,
         "tools": 10,
-        "monitor": 12,
-        "system": 15,
+        "monitor": 6,
+        "system": 8,
     }
     assert not groups["monitor"]["accordion"]
-    assert groups["monitor"]["members"] == ["monitor-cpu", "monitor-memory", "monitor-temp"]
+    assert groups["monitor"]["members"] == ["monitor-cpu", "monitor-memory", "monitor-gpu", "monitor-temp"]
     for root in (settings, generated):
         bar = root["bar"]["main"]
-        assert bar["start"] == ["launcher", "separator-workspaces", "workspaces", "separator-layout", "gambled23/mangowm-keymode:mangowm-keymode", "ezequiel/mango_layouts:btn", "group:tools", "gap-monitor", "group:monitor", "monitor-gpu"]
+        assert bar["start"] == ["launcher", "separator-workspaces", "workspaces", "separator-layout", "gambled23/mangowm-keymode:mangowm-keymode", "ezequiel/mango_layouts:btn", "group:tools"]
         assert bar["center"] == ["group:time"]
-        assert bar["end"] == ["mindnbytes/nix-status:status", "gap-system", "group:system", "separator-control", "control-center"]
+        assert bar["end"] == ["group:monitor", "separator-monitor", "mindnbytes/nix-status:status", "separator-system", "group:system", "separator-control", "control-center"]
         actual_groups = {group["id"]: group for group in bar["capsule_group"]}
         assert actual_groups["system"]["members"] == ["network", "bluetooth", "volume", "tray", "battery", "notifications"]
-        assert actual_groups["system"]["widget_spacing"] == 15
-        assert actual_groups["monitor"]["members"] == ["monitor-cpu", "monitor-memory", "monitor-temp"]
-        assert actual_groups["monitor"]["opacity"] == 0.04 and actual_groups["monitor"]["border_width"] == 1
-        assert root["widget"]["monitor-gpu"]["capsule"] and root["widget"]["monitor-gpu"]["hide_unavailable"]
+        assert actual_groups["system"]["widget_spacing"] == 8
+        assert actual_groups["monitor"]["widget_spacing"] == 6
+        assert actual_groups["monitor"]["padding"] == 2.0
+        assert actual_groups["monitor"]["members"] == ["monitor-cpu", "monitor-memory", "monitor-gpu", "monitor-temp"]
+        assert actual_groups["monitor"]["opacity"] == 0 and actual_groups["monitor"]["border_width"] == 0
+        assert not root["widget"]["monitor-gpu"]["capsule"] and root["widget"]["monitor-gpu"]["hide_unavailable"]
+        assert all(not root["widget"][name]["capsule"] for name in ("monitor-gpu", "ezequiel/mango_layouts:btn", "mindnbytes/nix-status:status"))
+        assert bar["border_width"] == 1 and bar["border"] == m["palette"]["muted"] + "55"
         assert "monitor-vram" not in root["widget"]
         assert root["widget"]["monitor-temp"]["custom_label"] == ""
         assert all(root["widget"][name]["label_min_width"] >= 26 for name in actual_groups["monitor"]["members"] + ["monitor-gpu"])
@@ -390,8 +395,12 @@ pkgs.runCommand "interactive-session-config"
             for name in set(bar_widgets)
             if root["widget"].get(name, {}).get("type") != "spacer"
         )
+    assert "R31: flat One Dark surface" in patches["hud-bar.patch"]
+    assert "hudLineStyle" not in patches["hud-bar.patch"]
+    assert "R31: minimal reuses the indicator" in patches["hud-bar.patch"]
+    assert "contentMainEnd - centerSlotEnd - (isVertical ? 0.0F : kHudCenterClearance)" in patches["hud-drawer-clearance.patch"]
     clearance = patches["hud-drawer-clearance.patch"]
-    for marker in ('centerSlotStart - contentMainStart - (isVertical ? 0.0F : kHudCenterClearance)', 'instance.hudMonitoringCompact || instance.startSection->width() > startSlotMain', 'setDrawerCompact(false)', 'setDrawerCompact(true)', 'm_compactDot->setVisible(m_drawerCompact)', 'panel.summary = available ? profile', '+  rootNode->setSize(m_glyph->width(), m_glyph->height());'):
+    for marker in ('centerSlotStart - contentMainStart - (isVertical ? 0.0F : kHudCenterClearance)', 'instance.endSection->width() > endSlotMain', 'setDrawerCompact(false)', 'setDrawerCompact(true)', 'm_compactDot->setVisible(m_drawerCompact)', 'panel.summary = available ? profile', '+  rootNode->setSize(m_glyph->width(), m_glyph->height());'):
         assert marker in clearance, marker
     assert '+  m_label->setText' not in clearance
     balanced = patches["hud-balanced.patch"]

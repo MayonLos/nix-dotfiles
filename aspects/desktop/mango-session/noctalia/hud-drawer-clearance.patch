@@ -13,13 +13,13 @@
        }
      };
 +    // HUD27b: measure full monitor text first on every pass, avoiding compact/full oscillation.
-+    for (auto& widget : instance.startWidgets) {
++    for (auto& widget : instance.endWidgets) {
 +      if (auto* sysmon = dynamic_cast<SysmonWidget*>(widget.get())) sysmon->setDrawerCompact(false);
 +    }
      layoutWidgets(instance.startWidgets);
      layoutWidgets(instance.centerWidgets);
      layoutWidgets(instance.endWidgets);
-@@ -1286,12 +1291,29 @@
+@@ -1286,12 +1291,25 @@
      float startSlotMain;
      float endSlotMain;
      if (!instance.centerWidgets.empty()) {
@@ -27,24 +27,22 @@
 +      // HUD27b: reserve at least 24 logical pixels before the independently centered clock.
 +      constexpr float kHudCenterClearance = 24.0F;
 +      startSlotMain = std::max(0.0F, centerSlotStart - contentMainStart - (isVertical ? 0.0F : kHudCenterClearance));
-+      const bool drawerOpen = !isVertical && std::ranges::any_of(instance.startCapsuleRuns, [](const auto& run) {
-+        return run.accordion && (run.accordionExpanded || run.accordionProgress > 0.001F);
-+      });
-+      instance.hudMonitoringCompact = drawerOpen
-+          && (instance.hudMonitoringCompact || instance.startSection->width() > startSlotMain);
++      endSlotMain = std::max(0.0F, contentMainEnd - centerSlotEnd - (isVertical ? 0.0F : kHudCenterClearance));
++      instance.hudMonitoringCompact = !isVertical && instance.endSection->width() > endSlotMain;
 +      if (instance.hudMonitoringCompact) {
 +        // HUD27b: a single bounded second pass replaces temperature/GPU text with colored dots.
-+        for (auto& widget : instance.startWidgets) {
++        for (auto& widget : instance.endWidgets) {
 +          if (auto* sysmon = dynamic_cast<SysmonWidget*>(widget.get())) sysmon->setDrawerCompact(true);
 +        }
-+        layoutWidgets(instance.startWidgets);
-+        finalizeCapsules(instance.startCapsuleRuns);
-+        configureSection(instance.startSection, FlexJustify::Start);
++        layoutWidgets(instance.endWidgets);
++        finalizeCapsules(instance.endCapsuleRuns);
++        configureSection(instance.endSection, FlexJustify::End);
 +      }
-       endSlotMain = std::max(0.0F, contentMainEnd - centerSlotEnd);
+-      endSlotMain = std::max(0.0F, contentMainEnd - centerSlotEnd);
        configureSlot(instance.startSlot, contentMainStart, startSlotMain);
        configureSlot(instance.centerSlot, centerSlotStart, centerSlotMain);
-       configureSlot(instance.endSlot, centerSlotEnd, endSlotMain);
+-      configureSlot(instance.endSlot, centerSlotEnd, endSlotMain);
++      configureSlot(instance.endSlot, contentMainEnd - endSlotMain, endSlotMain);
      } else {
 +      instance.hudMonitoringCompact = false;
        // Allow start/end sections to take the full width if center is empty
@@ -52,13 +50,11 @@
        const float endNaturalMain = isVertical ? instance.endSection->height() : instance.endSection->width();
 --- a/src/shell/bar/bar_instance.h
 +++ b/src/shell/bar/bar_instance.h
-@@ -89,6 +89,7 @@
+@@ -89,4 +89,5 @@
  
    // Bar background, shadow, and layout sections (start/center/end along main axis)
    Box* bg = nullptr;
-+  bool hudMonitoringCompact = false; // HUD27b: latch until the tools accordion closes.
-   Box* hudLine = nullptr;
-   Box* hudGlow = nullptr;
++  bool hudMonitoringCompact = false; // HUD27b: latch derived from the measured right section each pass.
    Box* shadow = nullptr;
 --- a/src/shell/bar/widgets/sysmon_widget.h
 +++ b/src/shell/bar/widgets/sysmon_widget.h

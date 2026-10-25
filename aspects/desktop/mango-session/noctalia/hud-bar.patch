@@ -1,23 +1,11 @@
 --- a/src/shell/bar/bar.cpp
 +++ b/src/shell/bar/bar.cpp
-@@ -42,0 +43,18 @@
+@@ -42,0 +43,6 @@
 +
-+  // HUD27: near-black palette backdrop and a fading blue-to-cyan upper edge.
++  // R31: flat One Dark surface; the configured border is the only bar outline.
 +  void hudBackground(RoundedRectStyle& style, float opacity) {
-+    const auto base = colorForRole(ColorRole::Shadow, opacity);
-+    style.fillMode = FillMode::LinearGradient;
-+    style.gradientDirection = GradientDirection::Vertical;
-+    style.gradientStops = {{{0.0F, lerpColor(base, colorForRole(ColorRole::Surface, opacity), 0.18F)},
-+                            {0.4F, base}, {0.8F, base}, {1.0F, base}}};
-+  }
-+  RoundedRectStyle hudLineStyle(float alpha) {
-+    RoundedRectStyle style;
-+    style.fillMode = FillMode::LinearGradient;
-+    const auto blue = colorForRole(ColorRole::Primary);
-+    const auto cyan = colorForRole(ColorRole::Secondary);
-+    style.gradientStops = {{{0.0F, withAlpha(blue, 0.0F)}, {0.38F, withAlpha(blue, alpha)},
-+                            {0.62F, withAlpha(cyan, alpha)}, {1.0F, withAlpha(cyan, 0.0F)}}};
-+    return style;
++    style.fillMode = FillMode::Solid;
++    style.fill = colorForRole(ColorRole::Surface, opacity);
 +  }
 @@ -1153,0 +1172,3 @@
 +        if (run.accordion) {
@@ -25,41 +13,11 @@
 +        }
 @@ -3207,0 +3229 @@
 +  hudBackground(style, instance.barConfig.backgroundOpacity);
-@@ -3208,0 +3231,6 @@
-+  if (instance.hudLine != nullptr) instance.hudLine->setStyle(hudLineStyle(0.8F));
-+  if (instance.hudGlow != nullptr) {
-+    auto glowStyle = hudLineStyle(0.12F);
-+    glowStyle.softness = 3.0F;
-+    instance.hudGlow->setStyle(glowStyle);
-+  }
-@@ -3429,0 +3458,4 @@
-+    instance.hudGlow = static_cast<Box*>(instance.slideRoot->addChild(ui::box()));
-+    instance.hudLine = static_cast<Box*>(instance.slideRoot->addChild(ui::box()));
-+    instance.hudGlow->setHitTestVisible(false);
-+    instance.hudLine->setHitTestVisible(false);
 @@ -3535 +3567 @@
 -    const RoundedRectStyle bgStyle{
 +    RoundedRectStyle bgStyle{
 @@ -3544,0 +3577 @@
 +    hudBackground(bgStyle, instance.barConfig.backgroundOpacity);
-@@ -3545,0 +3579,12 @@
-+    if (instance.hudLine != nullptr && instance.hudGlow != nullptr) {
-+      instance.hudLine->setVisible(!isVertical);
-+      instance.hudGlow->setVisible(!isVertical);
-+      instance.hudLine->setStyle(hudLineStyle(0.8F));
-+      auto glowStyle = hudLineStyle(0.12F);
-+      glowStyle.softness = 3.0F;
-+      instance.hudGlow->setStyle(glowStyle);
-+      instance.hudLine->setPosition(barAreaX + barAreaW * 0.12F, barAreaY);
-+      instance.hudLine->setSize(barAreaW * 0.76F, 1.0F);
-+      instance.hudGlow->setPosition(barAreaX + barAreaW * 0.12F, barAreaY);
-+      instance.hudGlow->setSize(barAreaW * 0.76F, 3.0F);
-+    }
---- a/src/shell/bar/bar_instance.h
-+++ b/src/shell/bar/bar_instance.h
-@@ -91,0 +92,2 @@
-+  Box* hudLine = nullptr;
-+  Box* hudGlow = nullptr;
 --- a/src/shell/bar/widgets/brightness_widget.cpp
 +++ b/src/shell/bar/widgets/brightness_widget.cpp
 @@ -13,0 +14 @@
@@ -296,3 +254,24 @@
 +++ b/src/wayland/wayland_connection.h
 @@ -77,0 +78 @@
 +  std::int32_t refreshMilliHz = 0; // HUD27: current wl_output mode refresh
+--- a/src/shell/bar/widgets/workspaces_widget.cpp
++++ b/src/shell/bar/widgets/workspaces_widget.cpp
+@@ -582,3 +582,3 @@
+-    // Minimal draws labels and nothing else; an unlabeled entry keeps its
+-    // layout slot as empty space.
+-    if (!isMinimal()) {
++    // R31: minimal reuses the indicator for a faint active workspace surface.
++    // Inactive minimal indicators remain transparent; the accent stays separate.
++    {
+@@ -1260,2 +1260,3 @@
+ float WorkspacesWidget::workspacePillRadius(float width, float height) const noexcept {
++  if (isMinimal()) return 5.0F * m_contentScale;
+   return resolvedBarCapsuleRadius(width, height);
+@@ -1495,2 +1495,7 @@
+ ColorSpec WorkspacesWidget::workspaceFillColor(const Workspace& workspace, wl_output* output) const {
++  if (isMinimal()) {
++    ColorSpec color = colorSpecFromRole(ColorRole::Primary);
++    color.alpha = workspaceUsesFocusedStyle(workspace, output) ? 0.13F : 0.0F;
++    return color;
++  }
+   if (workspace.active) {
