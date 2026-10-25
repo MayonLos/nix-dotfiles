@@ -2,6 +2,7 @@
   pkgs,
   home,
   palette,
+  templateRuntime,
 }:
 let
   inherit (pkgs) lib;
@@ -9,19 +10,6 @@ let
     p.pygobject3
     p.tinycss2
   ]);
-  assets = lib.removePrefix "NOCTALIA_ASSETS_DIR=" (
-    lib.findFirst (lib.hasPrefix "NOCTALIA_ASSETS_DIR=")
-      (throw "GTK check requires the selected Noctalia asset bundle")
-      home.systemd.user.services.noctalia.Service.Environment
-  );
-  customColors = (pkgs.formats.toml { }).generate "gtk-qt-custom-colors.toml" {
-    config.custom_colors = home.programs.noctalia.settings.theme.templates.custom_colors;
-  };
-  theme = pkgs.writeText "gtk-qt-theme.json" (
-    builtins.toJSON {
-      dark = home.programs.noctalia.customPalettes.onedark.dark;
-    }
-  );
   paletteJson = pkgs.writeText "gtk-qt-palette.json" (builtins.toJSON palette);
   replaceConfig = lib.replaceStrings [ home.xdg.configHome ] [ "$XDG_CONFIG_HOME" ];
   qtSeed = pkgs.writeText "qt-theme-seed.sh" (
@@ -39,10 +27,7 @@ assert home.dconf.settings."org/gnome/desktop/interface".icon-theme == palette.i
 assert !(home.xdg.configFile ? "gtk-3.0/gtk.css");
 assert !(home.xdg.configFile ? "gtk-4.0/gtk.css");
 pkgs.runCommand "gtk-qt-theme-check" {
-  NOCTALIA = lib.getExe home.programs.noctalia.package;
-  ASSETS = assets;
-  THEME_JSON = theme;
-  CUSTOM_COLORS = customColors;
+  TEMPLATE_RUNTIME = templateRuntime;
   PALETTE_JSON = paletteJson;
   CHECK_CSS = ./resources/gtk/check-css.py;
   QSS_SOURCE = qss;

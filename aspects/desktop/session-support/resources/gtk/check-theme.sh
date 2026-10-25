@@ -8,15 +8,14 @@ mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME" "$out"/{g
 test -f "$GTK_THEME_PACKAGE/share/themes/$GTK_THEME_NAME/gtk-3.0/gtk.css"
 test -f "$ICON_PACKAGE/share/icons/$ICON_NAME/index.theme"
 test -f "$ICON_PACKAGE/share/icons/$ICON_NAME/scalable/places/folder.svg"
-# Offline CLI only: explicit templates/custom colors, no built-in apply hooks.
-"$NOCTALIA" theme --theme-json "$THEME_JSON" --config "$CUSTOM_COLORS" \
-  --render "$ASSETS/templates/gtk/gtk3.css:$out/gtk-3.0/noctalia.css" \
-  --render "$ASSETS/templates/gtk/gtk4.css:$out/gtk-4.0/noctalia.css" \
-  --render "$ASSETS/templates/qt/qtct.conf:$out/qt6ct/noctalia.conf" > "$out/render.log" 2>&1
+# Parse the outputs of the config-apply integration check, rather than rendering
+# with extra custom colors unavailable to the production builtin engine.
+cp "$TEMPLATE_RUNTIME/config/gtk-3.0/noctalia.css" "$out/gtk-3.0/noctalia.css"
+cp "$TEMPLATE_RUNTIME/config/gtk-4.0/noctalia.css" "$out/gtk-4.0/noctalia.css"
+cp "$TEMPLATE_RUNTIME/config/qt6ct/colors/noctalia.conf" "$out/qt6ct/noctalia.conf"
+cp "$TEMPLATE_RUNTIME/builtin-apply.log" "$out/render.log"
 for version in 3 4; do
-  # No GTK extensions are enabled by this feature. The live writer creates
-  # this optional import; the parser fixture supplies the empty equivalent.
-  touch "$out/gtk-$version.0/noctalia-extensions.css"
+  cp "$TEMPLATE_RUNTIME/config/gtk-$version.0/noctalia-extensions.css" "$out/gtk-$version.0/noctalia-extensions.css"
   python3 "$CHECK_CSS" "$version.0" "$out/gtk-$version.0/noctalia.css"
 done
 cp "$QSS_SOURCE" "$out/qt6ct/one-dark.qss"

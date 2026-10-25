@@ -284,7 +284,7 @@ edge由现有palette的border与deep混色得到，不增加第二套颜色来�
 
 **依据与能力边界**：GTK3 由 Noctalia 现有模板生命周期独占生成 CSS，Thunar 4.20 侧栏使用真实 `.shortcuts-pane`。选中文件图标用透明计算背景配合 selection 渐变层，避开其原生 Cairo 乘色造成的变黑。GtkTreeView 无逐 cell CSS node，因此细节列表使用整行 selection 底，蓝标只画在侧栏；GTK3 无文本大写转换，保留原生表头。GTK4/libadwaita 保留原生几何，补齐语义色与 CSS custom properties；应用私有绘制仍需分别验收。
 
-Qt6ct 使用 Fusion，QPalette `Window/Base/AlternateBase/Button=bg/deep/surface`、`Text/WindowText/ButtonText=brightFg`、`Highlight=selection`、`HighlightedText=brightFg`、`Link=blue`。HM QSS 补充圆角输入/按钮、蓝色焦点与 tab 下划；GUI 配置仍是可变文件，通过缺失 seed 和有限默认值迁移接入。自定义 Qt stylesheets 保留，私有控件/Qt Quick/Qt5 不承诺完全一致。GTK/Qt/Firefox 的 Noctalia 自定义源色均读取 `_value`，而非即使 `blend=false` 仍会生成的 Material 色阶。正式实现与验证见[执行记录](history/ui-r21b-2026-10-25.md)。
+Qt6ct 使用 Fusion，QPalette `Window/Base/AlternateBase/Button=bg/deep/surface`、`Text/WindowText/ButtonText=brightFg`、`Highlight=selection`、`HighlightedText=brightFg`、`Link=blue`。HM QSS 补充圆角输入/按钮、蓝色焦点与 tab 下划；GUI 配置仍是可变文件，通过缺失 seed 和有限默认值迁移接入。自定义 Qt stylesheets 保留，私有控件/Qt Quick/Qt5 不承诺完全一致。GTK/Qt builtin asset 在构建期固定为共享 One Dark 原色，避免依赖 Noctalia builtin engine 不会注入的 custom colors；原 builtin IDs/import/apply/undo 生命周期保留。Firefox user 模板仍读取 `_value` 原色，避免 Material 色阶。正式实现与验证见[执行记录](history/ui-r21b-2026-10-25.md)。
 
 ### Firefox
 
