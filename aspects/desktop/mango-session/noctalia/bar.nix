@@ -30,10 +30,10 @@ in
     layer = "top";
     panel_overlap = 1;
     background_opacity = 0.98;
-    border = "${palette.blue}38";
+    border = "${palette.muted}55";
     border_width = 1;
     show_tooltip = true;
-    radius = 12;
+    radius = 9;
     margin_ends = 8;
     margin_edge = 6;
     padding = 7;
@@ -57,14 +57,13 @@ in
       "gambled23/mangowm-keymode:mangowm-keymode"
       "ezequiel/mango_layouts:btn"
       "group:tools"
-      "gap-monitor"
-      "group:monitor"
-      "monitor-gpu"
     ];
     center = [ "group:time" ];
     end = [
+      "group:monitor"
+      "separator-monitor"
       "mindnbytes/nix-status:status"
-      "gap-system"
+      "separator-system"
       "group:system"
       "separator-control"
       "control-center"
@@ -95,10 +94,8 @@ in
         accordion = true;
         accordion_direction = "end";
         accordion_delay_ms = 100;
-        fill = "primary";
-        opacity = 0.06;
-        border = "${palette.blue}40";
-        border_width = 1;
+        opacity = 0.0;
+        border_width = 0;
         padding = 4.0;
         widget_spacing = 10;
       }
@@ -107,15 +104,14 @@ in
         members = [
           "monitor-cpu"
           "monitor-memory"
+          "monitor-gpu"
           "monitor-temp"
         ];
-        fill = "on_surface";
-        opacity = 0.04;
-        border = "${palette.fg}1f";
-        border_width = 1;
+        opacity = 0.0;
+        border_width = 0;
         accordion = false;
-        padding = 6.0;
-        widget_spacing = 12;
+        padding = 2.0;
+        widget_spacing = 6;
       }
       {
         id = "system";
@@ -130,7 +126,7 @@ in
         opacity = 0.0;
         accordion = false;
         padding = 4.0;
-        widget_spacing = 15;
+        widget_spacing = 8;
       }
     ];
   };
@@ -150,14 +146,8 @@ in
         };
         separator-workspaces = separator;
         separator-layout = separator;
-        gap-monitor = {
-          type = "spacer";
-          length = 5; # Native section spacing keeps visible group gaps near 16px.
-        };
-        gap-system = {
-          type = "spacer";
-          length = 5;
-        };
+        separator-monitor = separator;
+        separator-system = separator;
         separator-control = separator;
         clock-dot = {
           type = "spacer";
@@ -181,20 +171,14 @@ in
         monitor-gpu = (monitor "gpu_usage" "GPU") // {
           hide_unavailable = true;
           show_gpu_temperature = false;
-          capsule = true;
-          capsule_fill = "on_surface";
-          capsule_opacity = 0.04;
-          capsule_border = "${palette.fg}1f";
-          capsule_border_width = 1;
-          capsule_padding = 6.0;
+          capsule = false;
           color = palette.orange;
           highlight_color = palette.orange;
           label_min_width = 28;
         };
         bluetooth.scale = 1.15;
         "control-center" = {
-          custom_image = distroLogo;
-          custom_image_colorize = true;
+          glyph = "settings";
           icon_color = palette.blue;
         };
         volume = {
@@ -222,20 +206,12 @@ in
         "ezequiel/mango_layouts:btn" = {
           show_text = true;
           show_glyph = true;
-          capsule = true;
-          capsule_fill = "surface";
-          capsule_opacity = 0.0;
-          capsule_border = "${palette.fg}24";
-          capsule_border_width = 1;
+          capsule = false;
           icon_color = palette.cyan;
           font_scale = 0.86;
         };
         "mindnbytes/nix-status:status" = {
-          capsule = true;
-          capsule_fill = "primary";
-          capsule_opacity = 0.08;
-          capsule_border = "${palette.blue}40";
-          capsule_border_width = 1;
+          capsule = false;
           font_family = palette.fonts.mono;
           font_scale = 0.86;
         };
