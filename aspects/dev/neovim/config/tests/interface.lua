@@ -310,6 +310,7 @@ for _, group in ipairs({
 	"MayonDashboardMuted",
 	"MayonTabPill",
 	"MayonTopProject",
+	"MayonTopMuted",
 	"OilDir",
 	"RainbowDelimiterBlue",
 	"InclineNormal",
@@ -329,6 +330,9 @@ for _, group in ipairs({
 	local hl = vim.api.nvim_get_hl(0, { name = group, link = false })
 	assert(next(hl), "missing theme group: " .. group)
 end
+local toolbar_spec = require("mayon.ui.toolbar").render()
+assert(toolbar_spec:find("%#MayonTopMuted# │ ", 1, true), "toolbar separator must use a defined muted highlight")
+assert(not toolbar_spec:find("MayonTopHint", 1, true), "toolbar references a removed highlight group")
 local palette = require("mayon.generated").palette
 for _, group in ipairs({ "FloatTitle", "MayonPopupTitle" }) do
 	local title = vim.api.nvim_get_hl(0, { name = group, link = false })
