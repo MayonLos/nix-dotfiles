@@ -52,7 +52,7 @@ local function setup(overrides)
 	local config = {
 		input = {
 			enabled = true,
-			win = { border = "rounded", title_pos = "center" },
+			win = { border = "rounded", title_pos = "center", backdrop = false },
 		},
 		styles = {
 			notification = {
@@ -62,12 +62,19 @@ local function setup(overrides)
 		},
 		lazygit = {
 			configure = false,
-			win = { style = "float", border = "rounded", title = " Git · Lazygit ", title_pos = "center" },
+			win = {
+				style = "float",
+				border = "rounded",
+				title = " Git · Lazygit ",
+				title_pos = "center",
+				backdrop = false,
+			},
 		},
 		terminal = {
 			win = {
 				border = "rounded",
 				title = " Terminal · Snacks ",
+				backdrop = false,
 				title_pos = "center",
 				wo = { winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder" },
 			},

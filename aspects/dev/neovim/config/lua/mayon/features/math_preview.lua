@@ -130,11 +130,11 @@ local function show_error(src, lines)
 		backdrop = false,
 		text = lines,
 		bo = { filetype = "tex", modifiable = false },
-		-- DiagnosticError on the border rather than on the text: the message is
+		-- A canvas-colored error border rather than red text: the message is
 		-- already the point, a red wall of it is just harder to read.
 		wo = {
 			wrap = false,
-			winhighlight = "Normal:NormalFloat,FloatBorder:DiagnosticError",
+			winhighlight = "Normal:NormalFloat,FloatBorder:MayonFloatErrorBorder",
 		},
 	})
 end

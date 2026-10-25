@@ -11,9 +11,30 @@ assert(
 )
 assert(neogit_border.fg == float_border.fg and neogit_border.bg == float_border.bg)
 assert(
-	vim.api.nvim_get_hl(0, { name = "NeogitNormalFloat", link = false }).bg == tonumber(palette.deep:sub(2), 16),
-	"Neogit's private namespace must retain the unified deep floating surface"
+	vim.api.nvim_get_hl(0, { name = "NeogitNormalFloat", link = false }).bg == tonumber(palette.bg:sub(2), 16),
+	"Neogit's private namespace must retain the unified editor floating surface"
 )
+-- Every opaque layer (title chunks, virtual padding and parent layouts too)
+-- uses the editor canvas. A same-colored border alone leaves dark rectangles.
+for _, group in ipairs({
+	"NormalFloat",
+	"FloatBorder",
+	"FloatTitle",
+	"Pmenu",
+	"PmenuBorder",
+	"MayonPopup",
+	"SnacksPickerBox",
+	"SnacksPickerPreview",
+	"MayonPickerCount",
+	"MayonNotificationBody",
+	"SnacksNotifierIconInfo",
+	"SnacksNotifierIconError",
+}) do
+	assert(
+		vim.api.nvim_get_hl(0, { name = group, link = false }).bg == tonumber(palette.bg:sub(2), 16),
+		group .. " must share the editor canvas"
+	)
+end
 local opts = floats.options("hover")
 assert(opts.border == "rounded" and opts.title_pos == "center" and opts.title:find("hover · ", 1, true))
 local buf, win = vim.lsp.util.open_floating_preview(
@@ -142,6 +163,9 @@ local rail = vim.api.nvim_get_autocmds({ group = "MayonCompletionDocs", event = 
 assert(#rail == 2, "completion documentation and selected row must both be styled")
 
 assert(require("snacks").config.lazygit.configure == false, "lazygit CLI palette belongs to the CLI feature")
+for _, name in ipairs({ "input", "terminal", "lazygit" }) do
+	assert(require("snacks").config[name].win.backdrop == false, name .. " must not add a second dimmed rectangle")
+end
 local terminal = require("snacks").terminal({ "sh", "-c", "sleep 30" }, {
 	win = { style = "float", border = "rounded", title = " terminal " },
 })
