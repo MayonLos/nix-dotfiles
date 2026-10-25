@@ -143,13 +143,13 @@ for _, name in ipairs({
 	"FloatTitle",
 }) do
 	assert(
-		hl(name).bg == tonumber(require("mayon.generated").palette.deep:sub(2), 16),
+		hl(name).bg == tonumber(require("mayon.generated").palette.bg:sub(2), 16),
 		name .. " has a disconnected background"
 	)
 end
-local popup_bg = tonumber(require("mayon.generated").palette.deep:sub(2), 16)
+local popup_bg = tonumber(require("mayon.generated").palette.bg:sub(2), 16)
 for _, name in ipairs({ "Pmenu", "PmenuBorder", "SnacksPickerList", "SnacksPickerNormal", "WhichKeyNormal" }) do
-	assert(hl(name).bg == popup_bg, name .. " should use the deep popup surface")
+	assert(hl(name).bg == popup_bg, name .. " should share the editor popup surface")
 end
 assert(hl("PmenuSel").bg == tonumber(require("mayon.generated").palette.selection:sub(2), 16))
 assert(hl("TabLineSel").bg == tonumber(require("mayon.generated").palette.selection:sub(2), 16))

@@ -5,8 +5,8 @@ assert(vim.g.colors_name == "onedark")
 local palette = require("mayon.generated").palette
 assert(vim.api.nvim_get_hl(0, { name = "Normal", link = false }).bg == tonumber(palette.bg:sub(2), 16))
 assert(vim.api.nvim_get_hl(0, { name = "Normal", link = false }).fg == tonumber(palette.brightFg:sub(2), 16))
-assert(vim.api.nvim_get_hl(0, { name = "NormalFloat", link = false }).bg == tonumber(palette.deep:sub(2), 16))
-assert(vim.api.nvim_get_hl(0, { name = "Pmenu", link = false }).bg == tonumber(palette.deep:sub(2), 16))
+assert(vim.api.nvim_get_hl(0, { name = "NormalFloat", link = false }).bg == tonumber(palette.bg:sub(2), 16))
+assert(vim.api.nvim_get_hl(0, { name = "Pmenu", link = false }).bg == tonumber(palette.bg:sub(2), 16))
 assert(vim.api.nvim_get_hl(0, { name = "PmenuSel", link = false }).bg == tonumber(palette.selection:sub(2), 16))
 for _, name in ipairs({ "DiffAdd", "DiffChange", "DiffText", "DiffDelete" }) do
 	local highlight = vim.api.nvim_get_hl(0, { name = name, link = false })
