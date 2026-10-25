@@ -7,64 +7,77 @@
   ...
 }:
 let
-  # Picom uses physical pixels; Dunst derives its logical scale from Xft.
+  # Picom rules take physical pixels. Scale the shared 10 logical px radius at
+  # the same X11 DPI used by the host; the 2 px focus border is set by dwm.
   px = n: builtins.floor (n * hostFacts.display.x11Dpi / 96.0 + 0.5);
+  dunst = pkgs.dunst.overrideAttrs (old: {
+    patches = (old.patches or [ ]) ++ [ ./resources/dunst-left-accent.patch ];
+  });
 in
 {
   # Lifecycle and D-Bus activation are owned by this feature's session target.
   services.picom = {
     enable = true;
     package = pkgs.picom;
-    # The HM defaults emit legacy opacity/wintypes options, which Picom 13
-    # ignores when modern rules are present. Keep one rules vocabulary.
+    # The HM defaults emit legacy opacity/wintypes options. Picom 13's ordered
+    # rules below are the sole source of per-window effects.
     # force: Replace legacy HM Picom settings with the complete Picom 13 rule set.
     settings = lib.mkForce {
       backend = "glx";
       vsync = true;
       use-damage = true;
-      fading = false;
+      fading = !palette.reducedMotion;
+      # 0.10 per 10 ms is at most 100 ms for either transition.
+      fade-in-step = 0.10;
+      fade-out-step = 0.10;
+      fade-delta = 8;
       shadow = false;
-      shadow-radius = px 14;
-      shadow-opacity = 0.18;
-      shadow-offset-x = -(px 10);
-      shadow-offset-y = -(px 6);
+      shadow-radius = px 18;
+      shadow-opacity = 0.24;
+      shadow-offset-x = 0;
+      shadow-offset-y = px 8;
       shadow-color = palette.black;
       crop-shadow-to-monitor = true;
-      # Solid reading surfaces do not need continuous background blur.
       blur-method = "none";
-      # Keep composition stable when notifications appear over fullscreen apps.
+      # Do not unredirect fullscreen windows; composition stays deterministic.
       unredir-if-possible = false;
     };
-    # libconfig group lists require parentheses, not HM's scalar-array writer.
-    # Our configured dwm owns _MAYON_DWM_FLOATING on each managed client.
-    # The @ condition reads the property on the client window. Later rules win.
     extraConfig = ''
       rules = (
-        { corner-radius = 0; shadow = false; dim = 0.0; },
+        # Normal clients keep the shared 10 logical px corners, soft shadow,
+        # and full brightness while focused.
         {
-          match = "_MAYON_DWM_FLOATING@ = 1";
-          corner-radius = ${toString (px 6)};
+          corner-radius = ${toString (px 10)};
           shadow = true;
+          dim = 0.0;
         },
-        # dmenu is an override-redirect window, not a dwm floating client.
-        # Give this centered menu depth without changing other popup windows.
-        { match = "class_g = 'dmenu'"; corner-radius = 0; shadow = true; },
-        # Dunst draws its own rounded, opaque surface.
-        { match = "class_g = 'Dunst'"; corner-radius = 0; shadow = false; },
-        {
-          match = "window_type = 'dock' || window_type = 'desktop'";
-          corner-radius = 0;
-          shadow = false;
-        },
-        # Rules disable Picom's implicit fullscreen corner exclusion; restore it.
-        { match = "fullscreen"; corner-radius = 0; shadow = false; blur-background = false; }
+        { match = "!focused"; dim = 0.06; },
+        { match = "focused"; dim = 0.0; },
+
+        # dwm exports this WM-owned class for its 30 px floating status bar.
+        { match = "class_g = 'dwm-bar'"; corner-radius = ${toString (px 10)}; shadow = true; dim = 0.0; },
+
+        # Dunst paints its own rounded surface and urgency accent in Cairo.
+        { match = "class_g = 'Dunst'"; corner-radius = 0; shadow = true; dim = 0.0; },
+
+        # Games and fullscreen video/capture surfaces receive no compositor
+        # decorations or dimming. The game marker is set by dwm rules.
+        { match = "_MAYON_DWM_GAME@ = 1"; corner-radius = 0; shadow = false; dim = 0.0; fade = false; },
+        { match = "fullscreen"; corner-radius = 0; shadow = false; dim = 0.0; fade = false; blur-background = false; },
+
+        # i3lock-color owns a full-screen opaque surface; keep it unmodified.
+        { match = "class_g = 'i3lock' || class_g = 'i3lock-color' || name = 'i3lock' || name = 'i3lock-color'"; corner-radius = 0; shadow = false; dim = 0.0; fade = false; blur-background = false; },
+
+        # Desktop, dock and override-redirect utility surfaces should not inherit
+        # client shadows or rounding.
+        { match = "window_type = 'dock' || window_type = 'desktop'"; corner-radius = 0; shadow = false; dim = 0.0; }
       );
     '';
   };
 
   services.dunst = {
     enable = true;
-    package = pkgs.dunst;
+    package = dunst;
     iconTheme = {
       package = pkgs.papirus-icon-theme.override { color = palette.iconFolderColor; };
       name = palette.iconTheme;
@@ -73,7 +86,7 @@ in
     settings = {
       global = {
         font = "${palette.fonts.sans} 10.5";
-        # Dunst 1.13 scales logical dimensions by Xft.dpi / 96 on X11.
+        # Dunst 1.13 auto-scales logical geometry from X11 output DPI.
         scale = 0;
         follow = "keyboard";
         origin = "top-right";
@@ -87,10 +100,8 @@ in
         text_icon_padding = 12;
         gap_size = 8;
         frame_width = 1;
-        # Ordinary notifications share the menu's quiet outline. Only critical
-        # notifications need an accent frame; focus blue belongs to navigation.
         frame_color = palette.selection;
-        corner_radius = 6;
+        corner_radius = 9;
         separator_color = "frame";
         format = "<b>%s</b>\\n%b";
         word_wrap = true;
@@ -111,23 +122,25 @@ in
         mouse_left_click = "close_current";
         mouse_middle_click = "do_action";
         mouse_right_click = "context";
-        dmenu = "${config.home.profileDirectory}/bin/xorg-dmenu -p 通知";
+        dmenu = "${config.home.profileDirectory}/bin/xorg-rofi-dmenu -p 通知";
         browser = "${pkgs.xdg-utils}/bin/xdg-open";
       };
+      # Dunst 1.13 has no left-only urgency-frame setting. The pinned Cairo
+      # patch paints a narrow urgency-colored strip inside this neutral frame.
       urgency_low = {
-        background = palette.bg;
+        background = palette.deep;
         foreground = palette.brightFg;
-        frame_color = palette.selection;
+        frame_color = palette.muted;
         timeout = 4;
       };
       urgency_normal = {
-        background = palette.bg;
+        background = palette.deep;
         foreground = palette.brightFg;
-        frame_color = palette.selection;
+        frame_color = palette.blue;
         timeout = 7;
       };
       urgency_critical = {
-        background = palette.bg;
+        background = palette.deep;
         foreground = palette.brightFg;
         frame_color = palette.red;
         default_icon = "dialog-error";

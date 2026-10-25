@@ -1,0 +1,1114 @@
+[
+  {
+    "mods": "Super",
+    "key": "Return",
+    "function": "spawn",
+    "arg": [
+      "workspace-terminal"
+    ],
+    "kind": "command",
+    "label": "workspace-terminal",
+    "mango": "spawn"
+  },
+  {
+    "mods": "Super",
+    "key": "b",
+    "function": "spawn",
+    "arg": [
+      "workspace-browser"
+    ],
+    "kind": "command",
+    "label": "workspace-browser",
+    "mango": "spawn"
+  },
+  {
+    "mods": "Super",
+    "key": "e",
+    "function": "spawn",
+    "arg": [
+      "workspace-files"
+    ],
+    "kind": "command",
+    "label": "workspace-files",
+    "mango": "spawn"
+  },
+  {
+    "mods": "Super+Alt",
+    "key": "h",
+    "function": "spawn",
+    "arg": [
+      "herdr-terminal"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  },
+  {
+    "mods": "Alt",
+    "key": "space",
+    "function": "spawn",
+    "arg": [
+      "xorg-launcher"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  },
+  {
+    "mods": "Super",
+    "key": "v",
+    "function": "spawn",
+    "arg": [
+      "xorg-launcher",
+      "Clipboard"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  },
+  {
+    "mods": "Super+Alt",
+    "key": "l",
+    "function": "spawn",
+    "arg": [
+      "xorg-lock"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  },
+  {
+    "mods": "Super",
+    "key": "s",
+    "function": "spawn",
+    "arg": [
+      "xorg-session-menu"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  },
+  {
+    "mods": "Super",
+    "key": "p",
+    "function": "spawn",
+    "arg": [
+      "xorg-session-menu"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": ""
+  },
+  {
+    "mods": "Ctrl+Alt",
+    "key": "Delete",
+    "function": "spawn",
+    "arg": [
+      "xorg-power-menu"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "e",
+    "function": "spawn",
+    "arg": [
+      "xorg-power-menu"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": ""
+  },
+  {
+    "mods": "Super",
+    "key": "F1",
+    "function": "spawn",
+    "arg": [
+      "xorg-session-help"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  },
+  {
+    "mods": "Super+Alt",
+    "key": "d",
+    "function": "spawn",
+    "arg": [
+      "dunstctl",
+      "set-paused",
+      "toggle"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  },
+  {
+    "mods": "Super+Alt",
+    "key": "n",
+    "function": "spawn",
+    "arg": [
+      "dunstctl",
+      "history-pop"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": ""
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "w",
+    "function": "spawn",
+    "arg": [
+      "xorg-wallpaper",
+      "next"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "a",
+    "function": "spawn",
+    "arg": [
+      "xorg-idle",
+      "toggle"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "p",
+    "function": "spawn",
+    "arg": [
+      "xorg-display",
+      "off"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "sleep_monitor"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "o",
+    "function": "spawn",
+    "arg": [
+      "xorg-display",
+      "on"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "wakeup_monitor"
+  },
+  {
+    "mods": "Super",
+    "key": "h",
+    "function": "focusdir",
+    "arg": "0",
+    "kind": "i",
+    "label": "方向聚焦",
+    "mango": "focusdir"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "h",
+    "function": "mayonmove",
+    "arg": "0",
+    "kind": "i",
+    "label": "方向移窗",
+    "mango": "move_client"
+  },
+  {
+    "mods": "Super",
+    "key": "Left",
+    "function": "focusdir",
+    "arg": "0",
+    "kind": "i",
+    "label": "方向聚焦",
+    "mango": "focusdir"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "Left",
+    "function": "mayonmove",
+    "arg": "0",
+    "kind": "i",
+    "label": "方向移窗",
+    "mango": "move_client"
+  },
+  {
+    "mods": "Super",
+    "key": "l",
+    "function": "focusdir",
+    "arg": "1",
+    "kind": "i",
+    "label": "方向聚焦",
+    "mango": "focusdir"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "l",
+    "function": "mayonmove",
+    "arg": "1",
+    "kind": "i",
+    "label": "方向移窗",
+    "mango": "move_client"
+  },
+  {
+    "mods": "Super",
+    "key": "Right",
+    "function": "focusdir",
+    "arg": "1",
+    "kind": "i",
+    "label": "方向聚焦",
+    "mango": "focusdir"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "Right",
+    "function": "mayonmove",
+    "arg": "1",
+    "kind": "i",
+    "label": "方向移窗",
+    "mango": "move_client"
+  },
+  {
+    "mods": "Super",
+    "key": "k",
+    "function": "focusdir",
+    "arg": "2",
+    "kind": "i",
+    "label": "方向聚焦",
+    "mango": "focusdir"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "k",
+    "function": "mayonmove",
+    "arg": "2",
+    "kind": "i",
+    "label": "方向移窗",
+    "mango": "move_client"
+  },
+  {
+    "mods": "Super",
+    "key": "Up",
+    "function": "focusdir",
+    "arg": "2",
+    "kind": "i",
+    "label": "方向聚焦",
+    "mango": "focusdir"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "Up",
+    "function": "mayonmove",
+    "arg": "2",
+    "kind": "i",
+    "label": "方向移窗",
+    "mango": "move_client"
+  },
+  {
+    "mods": "Super",
+    "key": "j",
+    "function": "focusdir",
+    "arg": "3",
+    "kind": "i",
+    "label": "方向聚焦",
+    "mango": "focusdir"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "j",
+    "function": "mayonmove",
+    "arg": "3",
+    "kind": "i",
+    "label": "方向移窗",
+    "mango": "move_client"
+  },
+  {
+    "mods": "Super",
+    "key": "Down",
+    "function": "focusdir",
+    "arg": "3",
+    "kind": "i",
+    "label": "方向聚焦",
+    "mango": "focusdir"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "Down",
+    "function": "mayonmove",
+    "arg": "3",
+    "kind": "i",
+    "label": "方向移窗",
+    "mango": "move_client"
+  },
+  {
+    "mods": "Super",
+    "key": "Home",
+    "function": "focusstack",
+    "arg": "-1",
+    "kind": "i",
+    "label": "前后切窗",
+    "mango": "focusstack"
+  },
+  {
+    "mods": "Super",
+    "key": "End",
+    "function": "focusstack",
+    "arg": "1",
+    "kind": "i",
+    "label": "前后切窗",
+    "mango": "focusstack"
+  },
+  {
+    "mods": "Super",
+    "key": "Tab",
+    "function": "swapfocus",
+    "arg": "0",
+    "kind": "raw",
+    "label": "上个窗口",
+    "mango": "focuslast"
+  },
+  {
+    "mods": "Super",
+    "key": "q",
+    "function": "killclient",
+    "arg": "0",
+    "kind": "raw",
+    "label": "关闭窗口",
+    "mango": "killclient"
+  },
+  {
+    "mods": "Super",
+    "key": "space",
+    "function": "togglefloating",
+    "arg": "0",
+    "kind": "raw",
+    "label": "浮动",
+    "mango": "togglefloating"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "space",
+    "function": "togglefloating",
+    "arg": "0",
+    "kind": "raw",
+    "label": "浮动（旧键兼容）",
+    "mango": ""
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "f",
+    "function": "togglefullscreen",
+    "arg": "0",
+    "kind": "raw",
+    "label": "全屏",
+    "mango": "togglefullscreen"
+  },
+  {
+    "mods": "Super",
+    "key": "f",
+    "function": "mayonmaximize",
+    "arg": "0",
+    "kind": "raw",
+    "label": "最大化到工作区",
+    "mango": "togglemaximizescreen"
+  },
+  {
+    "mods": "Super",
+    "key": "w",
+    "function": "cyclelayout",
+    "arg": "1",
+    "kind": "i",
+    "label": "循环布局",
+    "mango": "switch_layout"
+  },
+  {
+    "mods": "Super",
+    "key": "t",
+    "function": "setlayout",
+    "arg": "&layouts[0]",
+    "kind": "v",
+    "label": "Tile",
+    "mango": ""
+  },
+  {
+    "mods": "Super",
+    "key": "m",
+    "function": "setlayout",
+    "arg": "&layouts[2]",
+    "kind": "v",
+    "label": "Mono",
+    "mango": ""
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "t",
+    "function": "setlayout",
+    "arg": "&layouts[1]",
+    "kind": "v",
+    "label": "Float",
+    "mango": ""
+  },
+  {
+    "mods": "Super",
+    "key": "z",
+    "function": "zoom",
+    "arg": "0",
+    "kind": "raw",
+    "label": "提升主区",
+    "mango": "zoom"
+  },
+  {
+    "mods": "Super+Ctrl",
+    "key": "Return",
+    "function": "zoom",
+    "arg": "0",
+    "kind": "raw",
+    "label": "",
+    "mango": ""
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "i",
+    "function": "incnmaster",
+    "arg": "1",
+    "kind": "i",
+    "label": "主区窗口数",
+    "mango": "incnmaster"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "u",
+    "function": "incnmaster",
+    "arg": "-1",
+    "kind": "i",
+    "label": "主区窗口数",
+    "mango": "incnmaster"
+  },
+  {
+    "mods": "Super",
+    "key": "minus",
+    "function": "setmfact",
+    "arg": "-0.05",
+    "kind": "f",
+    "label": "主区比例",
+    "mango": "setmfact"
+  },
+  {
+    "mods": "Super",
+    "key": "equal",
+    "function": "setmfact",
+    "arg": "+0.05",
+    "kind": "f",
+    "label": "主区比例",
+    "mango": "setmfact"
+  },
+  {
+    "mods": "Super+Ctrl",
+    "key": "r",
+    "function": "setmfact",
+    "arg": "1.55",
+    "kind": "f",
+    "label": "",
+    "mango": "setmfact"
+  },
+  {
+    "mods": "Super+Ctrl",
+    "key": "f",
+    "function": "setmfact",
+    "arg": "1.9",
+    "kind": "f",
+    "label": "",
+    "mango": "setmfact"
+  },
+  {
+    "mods": "Super",
+    "key": "c",
+    "function": "mayoncenter",
+    "arg": "0",
+    "kind": "raw",
+    "label": "居中",
+    "mango": "centerwin"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "g",
+    "function": "togglegaps",
+    "arg": "0",
+    "kind": "raw",
+    "label": "间距",
+    "mango": "togglegaps"
+  },
+  {
+    "mods": "Super",
+    "key": "i",
+    "function": "viewtoleft",
+    "arg": "0",
+    "kind": "raw",
+    "label": "相邻工作区",
+    "mango": "viewtoleft"
+  },
+  {
+    "mods": "Super",
+    "key": "Page_Up",
+    "function": "viewtoleft",
+    "arg": "0",
+    "kind": "raw",
+    "label": "相邻工作区",
+    "mango": "viewtoleft"
+  },
+  {
+    "mods": "Super",
+    "key": "u",
+    "function": "viewtoright",
+    "arg": "0",
+    "kind": "raw",
+    "label": "相邻工作区",
+    "mango": "viewtoright"
+  },
+  {
+    "mods": "Super",
+    "key": "Page_Down",
+    "function": "viewtoright",
+    "arg": "0",
+    "kind": "raw",
+    "label": "相邻工作区",
+    "mango": "viewtoright"
+  },
+  {
+    "mods": "Super",
+    "key": "comma",
+    "function": "focusmon",
+    "arg": "-1",
+    "kind": "i",
+    "label": "切换显示器",
+    "mango": ""
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "comma",
+    "function": "tagmon",
+    "arg": "-1",
+    "kind": "i",
+    "label": "移到显示器",
+    "mango": ""
+  },
+  {
+    "mods": "Super",
+    "key": "period",
+    "function": "focusmon",
+    "arg": "1",
+    "kind": "i",
+    "label": "切换显示器",
+    "mango": ""
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "period",
+    "function": "tagmon",
+    "arg": "1",
+    "kind": "i",
+    "label": "移到显示器",
+    "mango": ""
+  },
+  {
+    "mods": "Super+Ctrl",
+    "key": "Left",
+    "function": "tagmon",
+    "arg": "-1",
+    "kind": "i",
+    "label": "移到相邻显示器",
+    "mango": "tagmon"
+  },
+  {
+    "mods": "Super+Ctrl",
+    "key": "Up",
+    "function": "tagmon",
+    "arg": "-1",
+    "kind": "i",
+    "label": "移到相邻显示器",
+    "mango": "tagmon"
+  },
+  {
+    "mods": "Super+Ctrl",
+    "key": "Right",
+    "function": "tagmon",
+    "arg": "1",
+    "kind": "i",
+    "label": "移到相邻显示器",
+    "mango": "tagmon"
+  },
+  {
+    "mods": "Super+Ctrl",
+    "key": "Down",
+    "function": "tagmon",
+    "arg": "1",
+    "kind": "i",
+    "label": "移到相邻显示器",
+    "mango": "tagmon"
+  },
+  {
+    "mods": "Super+Ctrl",
+    "key": "g",
+    "function": "togglesticky",
+    "arg": "0",
+    "kind": "raw",
+    "label": "跨标签可见",
+    "mango": "toggleglobal"
+  },
+  {
+    "mods": "Super+Alt",
+    "key": "g",
+    "function": "togglealwaysontop",
+    "arg": "0",
+    "kind": "raw",
+    "label": "置顶",
+    "mango": "toggleoverlay"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "Return",
+    "function": "togglescratch",
+    "arg": "0",
+    "kind": "ui",
+    "label": "暂存工具",
+    "mango": "toggle_named_scratchpad"
+  },
+  {
+    "mods": "Super+Alt",
+    "key": "e",
+    "function": "togglescratch",
+    "arg": "1",
+    "kind": "ui",
+    "label": "暂存工具",
+    "mango": "toggle_named_scratchpad"
+  },
+  {
+    "mods": "Super+Alt",
+    "key": "m",
+    "function": "togglescratch",
+    "arg": "2",
+    "kind": "ui",
+    "label": "暂存工具",
+    "mango": "toggle_named_scratchpad"
+  },
+  {
+    "mods": "Super",
+    "key": "1",
+    "function": "view",
+    "arg": "1 << 0",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "view"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "1",
+    "function": "mayontagfollow",
+    "arg": "1 << 0",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "tag"
+  },
+  {
+    "mods": "Super+Ctrl",
+    "key": "1",
+    "function": "tag",
+    "arg": "1 << 0",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "tagsilent"
+  },
+  {
+    "mods": "Super",
+    "key": "2",
+    "function": "view",
+    "arg": "1 << 1",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "view"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "2",
+    "function": "mayontagfollow",
+    "arg": "1 << 1",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "tag"
+  },
+  {
+    "mods": "Super+Ctrl",
+    "key": "2",
+    "function": "tag",
+    "arg": "1 << 1",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "tagsilent"
+  },
+  {
+    "mods": "Super",
+    "key": "3",
+    "function": "view",
+    "arg": "1 << 2",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "view"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "3",
+    "function": "mayontagfollow",
+    "arg": "1 << 2",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "tag"
+  },
+  {
+    "mods": "Super+Ctrl",
+    "key": "3",
+    "function": "tag",
+    "arg": "1 << 2",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "tagsilent"
+  },
+  {
+    "mods": "Super",
+    "key": "4",
+    "function": "view",
+    "arg": "1 << 3",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "view"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "4",
+    "function": "mayontagfollow",
+    "arg": "1 << 3",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "tag"
+  },
+  {
+    "mods": "Super+Ctrl",
+    "key": "4",
+    "function": "tag",
+    "arg": "1 << 3",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "tagsilent"
+  },
+  {
+    "mods": "Super",
+    "key": "5",
+    "function": "view",
+    "arg": "1 << 4",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "view"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "5",
+    "function": "mayontagfollow",
+    "arg": "1 << 4",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "tag"
+  },
+  {
+    "mods": "Super+Ctrl",
+    "key": "5",
+    "function": "tag",
+    "arg": "1 << 4",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "tagsilent"
+  },
+  {
+    "mods": "Super",
+    "key": "6",
+    "function": "view",
+    "arg": "1 << 5",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "view"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "6",
+    "function": "mayontagfollow",
+    "arg": "1 << 5",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "tag"
+  },
+  {
+    "mods": "Super+Ctrl",
+    "key": "6",
+    "function": "tag",
+    "arg": "1 << 5",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "tagsilent"
+  },
+  {
+    "mods": "Super",
+    "key": "7",
+    "function": "view",
+    "arg": "1 << 6",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "view"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "7",
+    "function": "mayontagfollow",
+    "arg": "1 << 6",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "tag"
+  },
+  {
+    "mods": "Super+Ctrl",
+    "key": "7",
+    "function": "tag",
+    "arg": "1 << 6",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "tagsilent"
+  },
+  {
+    "mods": "Super",
+    "key": "8",
+    "function": "view",
+    "arg": "1 << 7",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "view"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "8",
+    "function": "mayontagfollow",
+    "arg": "1 << 7",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "tag"
+  },
+  {
+    "mods": "Super+Ctrl",
+    "key": "8",
+    "function": "tag",
+    "arg": "1 << 7",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "tagsilent"
+  },
+  {
+    "mods": "Super",
+    "key": "9",
+    "function": "view",
+    "arg": "1 << 8",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "view"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "9",
+    "function": "mayontagfollow",
+    "arg": "1 << 8",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "tag"
+  },
+  {
+    "mods": "Super+Ctrl",
+    "key": "9",
+    "function": "tag",
+    "arg": "1 << 8",
+    "kind": "ui",
+    "label": "工作区",
+    "mango": "tagsilent"
+  },
+  {
+    "mods": "",
+    "key": "XF86AudioRaiseVolume",
+    "function": "spawn",
+    "arg": [
+      "xorg-audio",
+      "up"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  },
+  {
+    "mods": "",
+    "key": "XF86AudioLowerVolume",
+    "function": "spawn",
+    "arg": [
+      "xorg-audio",
+      "down"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  },
+  {
+    "mods": "",
+    "key": "XF86AudioMute",
+    "function": "spawn",
+    "arg": [
+      "xorg-audio",
+      "mute"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  },
+  {
+    "mods": "",
+    "key": "XF86AudioMicMute",
+    "function": "spawn",
+    "arg": [
+      "xorg-audio",
+      "mic-mute"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  },
+  {
+    "mods": "",
+    "key": "XF86MonBrightnessUp",
+    "function": "spawn",
+    "arg": [
+      "xorg-brightness",
+      "up"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  },
+  {
+    "mods": "",
+    "key": "XF86MonBrightnessDown",
+    "function": "spawn",
+    "arg": [
+      "xorg-brightness",
+      "down"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  },
+  {
+    "mods": "",
+    "key": "XF86AudioPlay",
+    "function": "spawn",
+    "arg": [
+      "xorg-media",
+      "play-pause"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  },
+  {
+    "mods": "",
+    "key": "XF86AudioStop",
+    "function": "spawn",
+    "arg": [
+      "xorg-media",
+      "stop"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  },
+  {
+    "mods": "",
+    "key": "XF86AudioPrev",
+    "function": "spawn",
+    "arg": [
+      "xorg-media",
+      "previous"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  },
+  {
+    "mods": "",
+    "key": "XF86AudioNext",
+    "function": "spawn",
+    "arg": [
+      "xorg-media",
+      "next"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  },
+  {
+    "mods": "",
+    "key": "Print",
+    "function": "spawn",
+    "arg": [
+      "xorg-screenshot",
+      "region"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  },
+  {
+    "mods": "Ctrl",
+    "key": "Print",
+    "function": "spawn",
+    "arg": [
+      "xorg-screenshot",
+      "screen"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  },
+  {
+    "mods": "Super",
+    "key": "Print",
+    "function": "spawn",
+    "arg": [
+      "xorg-screenshot",
+      "ocr-region"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  },
+  {
+    "mods": "Super+Shift",
+    "key": "Print",
+    "function": "spawn",
+    "arg": [
+      "xorg-screenshot",
+      "ocr-screen"
+    ],
+    "kind": "command",
+    "label": "",
+    "mango": "spawn"
+  }
+]

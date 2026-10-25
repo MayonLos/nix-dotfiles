@@ -8,9 +8,6 @@
 }:
 let
   target = "xorg-session.target";
-  wallpaper =
-    (import ../../appearance/appearance/resources/wallpaper/package.nix { inherit pkgs palette; })
-    .default;
   dwmPackage = import ./dwm/package.nix {
     inherit pkgs lib palette;
     profileDirectory = config.home.profileDirectory;
@@ -45,7 +42,7 @@ in
   };
   imports = [
     (import ./runtime.nix { inherit dwmPackage; })
-    ./tools.nix
+    (import ./tools.nix { inherit palette; })
     (import ./lock.nix { inherit palette; })
     (import ./ui.nix { inherit palette; })
     (import ./appearance.nix { inherit palette; })
@@ -90,14 +87,26 @@ in
         Restart = "on-failure";
         RestartSec = 3;
       };
-      xorg-background = sessionService "Xorg wallpaper and screen timeout" {
-        Type = "oneshot";
-        RemainAfterExit = true;
-        ExecStart = pkgs.writeShellScript "xorg-background" ''
-          ${pkgs.feh}/bin/feh --no-fehbg --bg-fill ${wallpaper}
-          ${pkgs.xset}/bin/xset s 600 600
-          ${pkgs.xset}/bin/xset dpms 0 0 900
+      xorg-background = sessionService "Xorg shared wallpaper rotation" {
+        ExecStart = "${config.home.profileDirectory}/bin/xorg-wallpaper daemon";
+        Restart = "on-failure";
+        RestartSec = 3;
+      };
+      xorg-outputs = sessionService "Xorg display hotplug" {
+        ExecStart = "${config.home.profileDirectory}/bin/xorg-outputs";
+        Restart = "on-failure";
+        RestartSec = 3;
+      };
+      xorg-idle = sessionService "Xorg idle: lock 15m, screen off 30m, suspend 60m" {
+        ExecStartPre = pkgs.writeShellScript "xorg-idle-setup" ''
+          ${pkgs.xset}/bin/xset s off
+          ${pkgs.xset}/bin/xset dpms 0 0 0
         '';
+        # Timers are cumulative. xss-lock owns the actual lock and logind's
+        # delay inhibitor; the lock command merely activates XScreenSaver.
+        ExecStart = "${pkgs.xidlehook}/bin/xidlehook --not-when-fullscreen --timer 900 '${pkgs.xset}/bin/xset s activate' '' --timer 900 '${pkgs.xset}/bin/xset dpms force off' '' --timer 1800 '${pkgs.systemd}/bin/systemctl suspend' ''";
+        Restart = "on-failure";
+        RestartSec = 3;
       };
     };
     # HM normally points D-Bus directly at dunst, bypassing the session guard.
