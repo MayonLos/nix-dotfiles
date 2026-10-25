@@ -1,6 +1,6 @@
 # 保留应用逐项评估与补充候选
 
-核对日期：2026-10-18；2026-10-24 更新已确认的软件替换，验证见[第十轮记录](history/software-swap-2026-10-24.md)。当前功能已迁入 Den，本文保留软件决定，新的构建及未应用边界见[实施记录](history/den-execution.md)。本文先记录选型提案；随后用户确认的 pamixer、cliphist、pavucontrol 精简已修改配置。2026-10-25 第二十六轮确认 File Roller 替换 Xarchiver、移除 Okular（PDF 默认 Zathura，批注使用 Zotero 内置阅读器），并让 OnlyOffice 与 LibreOffice 并存（MS Office 格式默认 OnlyOffice，ODF 默认 LibreOffice）。本轮实现、审计和待现场验证见[第二十六轮应用层记录](history/apps-r26-2026-10-25.md)。软件选型阶段已结束；其余条件推荐未纳入本轮。
+核对日期：2026-10-18；2026-10-24 更新已确认的软件替换，验证见[第十轮记录](history/software-swap-2026-10-24.md)。当前功能已迁入 Den，本文保留软件决定，新的构建及未应用边界见[实施记录](history/den-execution.md)。本文先记录选型提案；随后用户确认的 pamixer、cliphist、pavucontrol 精简已修改配置。2026-10-25 第二十六轮确认 File Roller 替换 Xarchiver、移除 Okular（PDF 默认 Zathura，批注使用 Zotero 内置阅读器），并曾选择 OnlyOffice 与 LibreOffice 并存；该历史决定已由用户后续明确改为仅保留 LibreOffice，九种 Office MIME 统一由 LibreOffice 打开。第二十六轮记录仍保留当时的决定与执行证据，见[应用层记录](history/apps-r26-2026-10-25.md)。
 
 依据包括当前工作树、`flake.lock`、已取得的锁定源码、官方文档，以及项目 issue 中的具体兼容案例。范围是用户直接使用的应用、桌面插件和工具组，不逐个罗列传递依赖。仓库没有声明某项，不代表用户在运行时没有手动安装或使用其他方案。没有做应用间的内存、功耗、速度基准测试；不据语言或界面技术推断谁一定更轻。
 
@@ -68,7 +68,7 @@
 | OBS Studio | 保留，比较捕获源 | 已配 wlrobs 与 obs-vkcapture。可在 Mango 上比较原生 PipeWire 与 wlrobs 的画面、帧率和卡顿，再决定是否移除插件；游戏捕获也需单独验证。 |
 | Kdenlive | 暂留，用户考虑中 | 如果没有剪辑需求，删除比换另一套剪辑软件更合理。若只是裁剪/转码，可先用现有 FFmpeg；要时间线编辑则保留。Resolve 不是更轻更省事的默认替代。 |
 | Thunderbird | 保留 | 邮件、日历、联系人集中入口；网页邮箱会改变离线和多账户流程，没有明确替换收益。 |
-| LibreOffice + OnlyOffice | 并存 | OnlyOffice 默认打开 DOC/DOCX、XLS/XLSX、PPT/PPTX；LibreOffice 默认打开 ODT/ODS/ODP。两套程序都在这九类文件的“打开方式”中。复杂文档仍应使用真实文件检查排版，不能仅凭格式支持宣称兼容性普遍更好。 |
+| LibreOffice | 保留，统一处理 Office 格式 | DOC/DOCX、XLS/XLSX、PPT/PPTX 与 ODT/ODS/ODP 均由 LibreOffice 默认打开，分别使用 Writer、Calc、Impress。复杂文档仍应使用真实文件检查排版，不凭格式支持宣称兼容性普遍更好。 |
 | Zotero | 保留，优先补 Connector | 文献库和论文注释已有一体化流程；浏览器扩展可减少手动录入。不要用普通文件同步器同步正在使用的数据目录。 |
 | Obsidian | 保留 | 本地 Markdown 知识库、链接和检索有明确角色；无需为减少应用数量直接并入单文档编辑器。 |
 | Typora | 已移除声明 | 用户确认删除包与受管主题；Markdown 默认 Obsidian，CLI 编辑仍遵循 default-tools。Typora 配置、文档与历史保留。 |
@@ -78,9 +78,7 @@
 | FFmpeg | 保留 | 视频/音频转换、截取和工作流后端；OBS 自带库不等于 shell 有可用命令。 |
 | ImageMagick | 保留 | Thunar 图片动作及编辑器 PDF/图像处理有消费者；不要因存在 GIMP 就删命令行图像后端。 |
 
-资料：[Blender GPU](https://docs.blender.org/manual/en/5.0/render/cycles/gpu_rendering.html)、[OBS 捕获源](https://obsproject.com/kb/display-capture-sources)、[wlrobs](https://github.com/zsien-debian-repo/wlrobs)、[Kdenlive](https://apps.kde.org/kdenlive/)、[Thunderbird](https://www.thunderbird.net/en-GB/)、[LibreOffice 格式](https://help.libreoffice.org/latest/ug/text/shared/guide/ms_user.html)、[ONLYOFFICE Desktop](https://www.onlyoffice.com/desktop)、[ONLYOFFICE 宏 FAQ](https://api.onlyoffice.com/docs/macros/more-information/faq)、[Zotero Connector](https://www.zotero.org/support/connector)、[Typora](https://support.typora.io/Quick-Start/)。
-
-社区边界：ONLYOFFICE [issue #2234](https://github.com/ONLYOFFICE/DesktopEditors/issues/2234) 涉及特定单元格保护/宏场景；它说明必须用自己的文件测试，不证明整个套件更差。其 JavaScript 宏与 VBA 也不能直接等同。
+资料：[Blender GPU](https://docs.blender.org/manual/en/5.0/render/cycles/gpu_rendering.html)、[OBS 捕获源](https://obsproject.com/kb/display-capture-sources)、[wlrobs](https://github.com/zsien-debian-repo/wlrobs)、[Kdenlive](https://apps.kde.org/kdenlive/)、[Thunderbird](https://www.thunderbird.net/en-GB/)、[LibreOffice 格式](https://help.libreoffice.org/latest/ug/text/shared/guide/ms_user.html)、[Zotero Connector](https://www.zotero.org/support/connector)、[Typora](https://support.typora.io/Quick-Start/)。
 
 ## 编辑器、终端与 Git
 
@@ -266,7 +264,7 @@
 
 ## 后续执行顺序与验收
 
-1. 软件选型已结束；第二十六轮改为 File Roller、移除 Okular，并确认 OnlyOffice / LibreOffice 按格式分工并存。该轮验证见[应用层记录](history/apps-r26-2026-10-25.md)。备份、密码库、Connector 及其他条件项以后有实际需求再纳入，不继续阻塞 Neovim 迁移。
+1. 软件选型已结束；第二十六轮改为 File Roller、移除 Okular。用户后续决定移除 OnlyOffice，由 LibreOffice 统一处理九种 Office MIME；备份、密码库、Connector 及其他条件项以后有实际需求再纳入，不继续阻塞 Neovim 迁移。
 2. `pamixer`、重复 `cliphist` 和 `pavucontrol` 已按用户确认精简配置；验证状态单列在执行计划。不顺带删截图/OCR、剪贴板桥或用户历史。
 3. 先删无用，再原生替换；Neovim Lua + Nix 入口现已接入。先前 Heirline/Navic 原生替代已被用户后续重建要求覆盖；现恢复成熟界面插件与公式预览，OneDark 继续固定，主题选择器不恢复。完整 LaTeX 保留。当前状态见[重建记录](neovim-rebuild-execution.md)，性能结论需独立测量。
 4. 在 Den 重构中，把桌面、开发、游戏、备份和服务器能力组合起来；实际主机只启用需要的能力，不把笔记本应用全集给服务器。

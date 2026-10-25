@@ -23,20 +23,6 @@ let
   );
   packageNames = map (package: package.pname or "") home.home.packages;
   officeDefaults = {
-    "application/msword" = "onlyoffice-desktopeditors.desktop";
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document" =
-      "onlyoffice-desktopeditors.desktop";
-    "application/vnd.ms-excel" = "onlyoffice-desktopeditors.desktop";
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" =
-      "onlyoffice-desktopeditors.desktop";
-    "application/vnd.ms-powerpoint" = "onlyoffice-desktopeditors.desktop";
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation" =
-      "onlyoffice-desktopeditors.desktop";
-    "application/vnd.oasis.opendocument.text" = "writer.desktop";
-    "application/vnd.oasis.opendocument.spreadsheet" = "calc.desktop";
-    "application/vnd.oasis.opendocument.presentation" = "impress.desktop";
-  };
-  officeLibreOfficeAssociations = {
     "application/msword" = "writer.desktop";
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document" = "writer.desktop";
     "application/vnd.ms-excel" = "calc.desktop";
@@ -48,14 +34,13 @@ let
     "application/vnd.oasis.opendocument.presentation" = "impress.desktop";
   };
   officeAssociations = home.xdg.mimeApps.associations.added;
-  onlyofficePackage = import ./package.nix { inherit pkgs; };
 in
 {
   documents-mime-config =
     assert pdfApplications == [ "org.pwmt.zathura-pdf-mupdf.desktop" ];
     assert !okularInstalled;
     assert !okularAssociated;
-    assert builtins.elem "onlyoffice-desktopeditors" packageNames;
+    assert !(builtins.elem "onlyoffice-desktopeditors" packageNames);
     assert builtins.elem "libreoffice" packageNames;
     assert lib.all (
       mime: (home.xdg.mimeApps.defaultApplications.${mime} or [ ]) == [ officeDefaults.${mime} ]
@@ -65,66 +50,16 @@ in
       let
         associations = officeAssociations.${mime} or [ ];
       in
-      builtins.elem "onlyoffice-desktopeditors.desktop" associations
-      && builtins.elem officeLibreOfficeAssociations.${mime} associations
+      associations == [ officeDefaults.${mime} ]
     ) (builtins.attrNames officeDefaults);
     pkgs.runCommand "documents-mime-config-check" { } ''
       test '${builtins.head pdfApplications}' = org.pwmt.zathura-pdf-mupdf.desktop
       test '${
         officeDefaults."application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-      }' = onlyoffice-desktopeditors.desktop
+      }' = writer.desktop
       test '${officeDefaults."application/vnd.oasis.opendocument.text"}' = writer.desktop
       touch "$out"
     '';
-
-  documents-onlyoffice-portal-wrapper =
-    pkgs.runCommand "documents-onlyoffice-portal-wrapper-check" { }
-      ''
-        wrapper=${onlyofficePackage}/bin/onlyoffice-desktopeditors
-        desktop=${onlyofficePackage}/share/applications/onlyoffice-desktopeditors.desktop
-        test -x "$wrapper"
-        test "${onlyofficePackage.pname}" = onlyoffice-desktopeditors
-        test "${onlyofficePackage.version}" = "${pkgs.onlyoffice-desktopeditors.version}"
-        grep -Fq -- '--xdg-desktop-portal=default' "$wrapper"
-        awk '
-          /^Exec=/ {
-            found = 1
-            if (index($0, "--xdg-desktop-portal=default") == 0) exit 1
-          }
-          END { if (!found) exit 1 }
-        ' "$desktop"
-        touch "$out"
-      '';
-
-  documents-onlyoffice-config-seed =
-    pkgs.runCommand "documents-onlyoffice-config-seed-check" { nativeBuildInputs = [ pkgs.python3 ]; }
-      ''
-        set -eu
-        export PYTHONDONTWRITEBYTECODE=1
-        tmp="$(mktemp -d)"
-        trap 'rm -rf "$tmp"' EXIT
-        seed=${./resources/seed-onlyoffice-config.py}
-
-        python "$seed" "$tmp/missing/DesktopEditors.conf"
-        test "$(cat "$tmp/missing/DesktopEditors.conf")" = 'UITheme=theme-dark'
-
-        mkdir -p "$tmp/existing"
-        printf 'user setting\n' > "$tmp/existing/DesktopEditors.conf"
-        python "$seed" "$tmp/existing/DesktopEditors.conf"
-        test "$(cat "$tmp/existing/DesktopEditors.conf")" = 'user setting'
-
-        mkdir -p "$tmp/symlink"
-        printf 'user target\n' > "$tmp/symlink/custom.conf"
-        ln -s custom.conf "$tmp/symlink/DesktopEditors.conf"
-        python "$seed" "$tmp/symlink/DesktopEditors.conf"
-        test -L "$tmp/symlink/DesktopEditors.conf"
-        test "$(cat "$tmp/symlink/custom.conf")" = 'user target'
-        mkdir -p "$tmp/parent-target"
-        ln -s parent-target "$tmp/parent-link"
-        python "$seed" "$tmp/parent-link/DesktopEditors.conf"
-        test ! -e "$tmp/parent-target/DesktopEditors.conf"
-        touch "$out"
-      '';
 
   documents-visual-config =
     pkgs.runCommand "documents-visual-config-check"
