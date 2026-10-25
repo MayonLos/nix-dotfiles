@@ -184,7 +184,8 @@ assert(vim.v.errmsg == "", vim.v.errmsg)
 -- the native completion menu without contacting Copilot or another service.
 require("mayon.features.ai_completion").set("off")
 vim.lsp.enable("lua_ls", false)
-local fixture_requests, fixture_closing = {}, false
+local fixture_requests, fixture_closing, fixture_delay, fixture_responses = {}, false, 5, 0
+local fixture_completion_label = "vector"
 local fixture_id = vim.lsp.start({
 	name = "native-completion-fixture",
 	root_dir = vim.fn.getcwd(),
@@ -202,16 +203,21 @@ local fixture_id = vim.lsp.start({
 						},
 					}
 				elseif method == "textDocument/completion" then
-					result = { { label = "vector", kind = vim.lsp.protocol.CompletionItemKind.Variable } }
+					result = {
+						{ label = fixture_completion_label, kind = vim.lsp.protocol.CompletionItemKind.Variable },
+					}
 				end
 				vim.defer_fn(function()
+					if method == "textDocument/completion" then
+						fixture_responses = fixture_responses + 1
+					end
 					if on_reply then
 						on_reply(id)
 					end
 					if not fixture_closing then
 						callback(nil, result)
 					end
-				end, method == "initialize" and 0 or 5)
+				end, method == "initialize" and 0 or fixture_delay)
 				return true, id
 			end,
 			notify = function(method)
@@ -238,6 +244,8 @@ assert(
 	end),
 	"completion fixture LSP did not initialize"
 )
+local fixture_client = vim.lsp.get_client_by_id(fixture_id)
+local fixture_original_request = fixture_client.request
 local completion_buf = vim.api.nvim_get_current_buf()
 vim.bo[completion_buf].filetype = "lua"
 vim.api.nvim_exec_autocmds("LspAttach", { buffer = completion_buf, data = { client_id = fixture_id } })
@@ -265,6 +273,10 @@ end, fixture_requests)
 assert(#automatic_requests == 1, "debounced ordinary typing should send one LSP request")
 assert(automatic_requests[1].params.position.character == 3, "debounced typing should request at the latest cursor")
 assert(
+	fixture_client.request == fixture_original_request,
+	"automatic completion must restore the original client.request"
+)
+assert(
 	vim.api.nvim_get_current_line() == "vector",
 	"selected native LSP completion should be accepted; line=" .. vim.inspect(vim.api.nvim_get_current_line())
 )
@@ -284,6 +296,161 @@ assert(
 	"typing in a comment should not send an automatic completion request"
 )
 
+-- A slow native response must not reopen the menu after its request context
+-- has been invalidated by clearing the input. Neovim 0.12.6 has no public
+-- per-completion cancellation handle, so the auto-trigger adapter validates
+-- the request context before forwarding the response to Neovim's aggregator.
+fixture_delay = 300
+vim.api.nvim_buf_set_lines(completion_buf, 0, -1, false, { "" })
+vim.api.nvim_win_set_cursor(0, { 1, 0 })
+local completion_requests_before_stale = #vim.tbl_filter(function(request)
+	return request.method == "textDocument/completion"
+end, fixture_requests)
+local completion_responses_before_stale = fixture_responses
+local stale_result
+vim.defer_fn(function()
+	vim.api.nvim_feedkeys(vim.keycode("<C-u>"), "n", false)
+end, 180)
+vim.defer_fn(function()
+	stale_result = {
+		line = vim.api.nvim_get_current_line(),
+		menu = vim.fn.pumvisible(),
+		mode = vim.api.nvim_get_mode().mode,
+	}
+	vim.api.nvim_feedkeys(vim.keycode("<Esc>"), "n", false)
+end, 600)
+vim.api.nvim_feedkeys(vim.keycode("ive"), "xt!", false)
+assert(stale_result and stale_result.line == "", "slow completion fixture should clear its input")
+assert(stale_result.menu == 0, "late LSP response reopened completion after Ctrl-U")
+local completion_requests_after_stale = #vim.tbl_filter(function(request)
+	return request.method == "textDocument/completion"
+end, fixture_requests)
+assert(
+	completion_requests_after_stale == completion_requests_before_stale + 1,
+	"clearing the line should issue exactly one request and suppress its late result"
+)
+assert(
+	fixture_responses == completion_responses_before_stale + 1,
+	"slow LSP fixture must deliver its response before stale-menu suppression is checked"
+)
+
+vim.api.nvim_buf_set_lines(completion_buf, 0, -1, false, { "" })
+vim.api.nvim_win_set_cursor(0, { 1, 0 })
+local moved_result
+vim.defer_fn(function()
+	vim.api.nvim_win_set_cursor(0, { 1, 0 })
+end, 180)
+vim.defer_fn(function()
+	moved_result = {
+		menu = vim.fn.pumvisible(),
+		mode = vim.api.nvim_get_mode().mode,
+	}
+	vim.api.nvim_feedkeys(vim.keycode("<Esc>"), "n", false)
+end, 600)
+vim.api.nvim_feedkeys(vim.keycode("ive"), "xt!", false)
+assert(moved_result and moved_result.menu == 0, "late LSP response should not open a menu at a moved cursor")
+
+vim.api.nvim_buf_set_lines(completion_buf, 0, -1, false, { "" })
+vim.api.nvim_win_set_cursor(0, { 1, 0 })
+local comment_result
+local responses_before_comment_stale = fixture_responses
+vim.defer_fn(function()
+	vim.api.nvim_buf_set_lines(completion_buf, 0, -1, false, { "--" })
+	vim.api.nvim_win_set_cursor(0, { 1, 2 })
+end, 180)
+vim.defer_fn(function()
+	comment_result = {
+		line = vim.api.nvim_get_current_line(),
+		menu = vim.fn.pumvisible(),
+	}
+	vim.api.nvim_feedkeys(vim.keycode("<Esc>"), "n", false)
+end, 600)
+vim.api.nvim_feedkeys(vim.keycode("ive"), "xt!", false)
+assert(comment_result and comment_result.line == "--", "comment transition should remain in place")
+assert(comment_result.menu == 0, "late LSP response should not open a menu after entering a comment")
+assert(
+	fixture_responses == responses_before_comment_stale + 1,
+	"comment transition regression must observe the delayed response"
+)
+
+vim.api.nvim_buf_set_lines(completion_buf, 0, -1, false, { "" })
+vim.api.nvim_win_set_cursor(0, { 1, 0 })
+local switched_result
+local responses_before_switch = fixture_responses
+local other_buf = vim.api.nvim_create_buf(false, true)
+vim.defer_fn(function()
+	vim.api.nvim_set_current_buf(other_buf)
+end, 180)
+vim.defer_fn(function()
+	switched_result = {
+		buf = vim.api.nvim_get_current_buf(),
+		menu = vim.fn.pumvisible(),
+		mode = vim.api.nvim_get_mode().mode,
+	}
+	vim.api.nvim_feedkeys(vim.keycode("<Esc>"), "n", false)
+end, 600)
+vim.api.nvim_feedkeys(vim.keycode("ive"), "xt!", false)
+assert(switched_result and switched_result.buf == other_buf, "buffer-switch fixture should leave the request buffer")
+assert(switched_result.menu == 0, "late LSP response should not open a menu in another buffer")
+assert(
+	switched_result.mode:match("^i"),
+	"buffer-switch fixture should remain in insert mode for the stale-response check"
+)
+assert(fixture_responses == responses_before_switch + 1, "buffer-switch regression must observe the delayed response")
+vim.api.nvim_set_current_buf(completion_buf)
+fixture_delay = 5
+
+-- A manual refresh at the same cursor must supersede an older automatic
+-- request even when the server ignores the cancellation signal.
+vim.api.nvim_buf_set_lines(completion_buf, 0, -1, false, { "" })
+vim.api.nvim_win_set_cursor(0, { 1, 0 })
+fixture_delay = 300
+fixture_completion_label = "vector_auto_late"
+local responses_before_manual_refresh = fixture_responses
+local manual_refresh_result
+vim.defer_fn(function()
+	fixture_delay = 5
+	fixture_completion_label = "vector_manual"
+	found.manual.callback()
+end, 180)
+vim.defer_fn(function()
+	manual_refresh_result = {
+		menu = vim.fn.pumvisible(),
+		responses = fixture_responses,
+		items = vim.fn.complete_info({ "items" }).items,
+	}
+	vim.api.nvim_feedkeys(vim.keycode("<Esc>"), "n", false)
+end, 600)
+vim.api.nvim_feedkeys(vim.keycode("ive"), "xt!", false)
+assert(
+	manual_refresh_result and manual_refresh_result.menu == 1,
+	"late automatic response must not replace the manual completion menu"
+)
+assert(
+	manual_refresh_result.responses == responses_before_manual_refresh + 2,
+	"manual refresh test must observe both the manual and delayed automatic responses"
+)
+assert(
+	vim.tbl_contains(
+		vim.tbl_map(function(item)
+			return item.word
+		end, manual_refresh_result.items),
+		"vector_manual"
+	),
+	"late automatic response must not replace the manual candidate"
+)
+assert(
+	not vim.tbl_contains(
+		vim.tbl_map(function(item)
+			return item.word
+		end, manual_refresh_result.items),
+		"vector_auto_late"
+	),
+	"stale automatic candidate must not be mixed into the manual result"
+)
+fixture_delay = 5
+fixture_completion_label = "vector"
+
 vim.api.nvim_buf_set_lines(completion_buf, 0, -1, false, { "" })
 vim.api.nvim_win_set_cursor(0, { 1, 0 })
 local requests_before_escape = #fixture_requests
@@ -293,18 +460,30 @@ assert(#fixture_requests == requests_before_escape, "Escape should cancel a pend
 vim.api.nvim_buf_set_lines(completion_buf, 0, -1, false, { "" })
 vim.api.nvim_win_set_cursor(0, { 1, 0 })
 local manual_menu_opened = false
+local manual_requests_before = #vim.tbl_filter(function(request)
+	return request.method == "textDocument/completion"
+end, fixture_requests)
 vim.defer_fn(function()
 	found.manual.callback()
 	vim.defer_fn(function()
 		manual_menu_opened = vim.fn.pumvisible() == 1
 		vim.api.nvim_feedkeys(vim.keycode("<Esc>"), "n", false)
-	end, 100)
-end, 100)
+	end, 150)
+end, 20)
 vim.api.nvim_feedkeys(vim.keycode("iv"), "xt!", false)
-assert(manual_menu_opened, "Ctrl-Space mapping should invoke native completion")
-assert(#vim.tbl_filter(function(request)
-	return request.method == "textDocument/completion"
-end, fixture_requests) >= 2, "manual completion should issue a second LSP request")
+assert(
+	manual_menu_opened,
+	"Ctrl-Space mapping should invoke native completion; requests="
+		.. vim.inspect(fixture_requests)
+		.. ", line="
+		.. vim.api.nvim_get_current_line()
+)
+assert(
+	#vim.tbl_filter(function(request)
+			return request.method == "textDocument/completion"
+		end, fixture_requests) == manual_requests_before + 1,
+	"manual refresh should replace the pending timer, not duplicate it"
+)
 vim.api.nvim_feedkeys(vim.keycode("<Esc>"), "xt", false)
 vim.lsp.get_client_by_id(fixture_id):stop(true)
 vim.wait(10)

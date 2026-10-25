@@ -4,6 +4,71 @@ local snippets
 local snippet_prefixes
 local auto_timers = {}
 local auto_trigger_delay = 100
+local buffer_epochs = {}
+
+local function invalidate_buffer(buf)
+	buffer_epochs[buf] = (buffer_epochs[buf] or 0) + 1
+end
+
+local function auto_completion_context_is_current(buf, win, changedtick, row, col, epoch)
+	if not vim.api.nvim_buf_is_valid(buf) or not vim.api.nvim_win_is_valid(win) then
+		return false
+	end
+	if
+		vim.api.nvim_get_current_buf() ~= buf
+		or vim.api.nvim_get_current_win() ~= win
+		or vim.api.nvim_win_get_buf(win) ~= buf
+		or vim.api.nvim_buf_get_changedtick(buf) ~= changedtick
+		or (buffer_epochs[buf] or 0) ~= epoch
+	then
+		return false
+	end
+	local cursor = vim.api.nvim_win_get_cursor(win)
+	return cursor[1] == row and cursor[2] == col and vim.api.nvim_get_mode().mode:match("^i") ~= nil
+end
+
+local function get_auto_completion(buf, changedtick)
+	local win = vim.api.nvim_get_current_win()
+	local cursor = vim.api.nvim_win_get_cursor(win)
+	local epoch = buffer_epochs[buf] or 0
+	local originals = {}
+	local ok, err = pcall(function()
+		for _, client in ipairs(vim.lsp.get_clients({ bufnr = buf, method = "textDocument/completion" })) do
+			local original = client.request
+			originals[#originals + 1] = { client = client, request = original }
+			client.request = function(self, method, params, handler, request_buf, ...)
+				if method ~= "textDocument/completion" or type(handler) ~= "function" then
+					return original(self, method, params, handler, request_buf, ...)
+				end
+				local target_buf = request_buf
+				if target_buf == nil or target_buf == 0 then
+					target_buf = vim.api.nvim_get_current_buf()
+				end
+				if target_buf ~= buf then
+					return original(self, method, params, handler, request_buf, ...)
+				end
+				local guarded_handler = function(err, result, context, ...)
+					if not auto_completion_context_is_current(buf, win, changedtick, cursor[1], cursor[2], epoch) then
+						-- Do not let the core aggregator call complete() for stale input.
+						-- Its pending cancellation closure is reset by the next get() or
+						-- InsertLeave, both of which cancel and clear pending requests.
+						return
+					end
+					return handler(err, result, context, ...)
+				end
+				return original(self, method, params, guarded_handler, request_buf, ...)
+			end
+		end
+
+		vim.lsp.completion.get()
+	end)
+	for _, entry in ipairs(originals) do
+		entry.client.request = entry.request
+	end
+	if not ok then
+		error(err, 0)
+	end
+end
 
 local function stop_auto_timer(buf)
 	local timer = auto_timers[buf]
@@ -78,7 +143,7 @@ local function schedule_auto_completion(buf)
 				and vim.api.nvim_get_mode().mode:match("^i")
 				and auto_completion_allowed(buf)
 			then
-				vim.lsp.completion.get()
+				get_auto_completion(buf, changedtick)
 			end
 		end)
 	)
@@ -183,17 +248,31 @@ function M.setup()
 	vim.api.nvim_create_autocmd("TextChangedI", {
 		group = group,
 		callback = function(ev)
+			invalidate_buffer(ev.buf)
 			schedule_auto_completion(ev.buf)
+		end,
+	})
+	vim.api.nvim_create_autocmd("CursorMovedI", {
+		group = group,
+		callback = function(ev)
+			invalidate_buffer(ev.buf)
 		end,
 	})
 	vim.api.nvim_create_autocmd({ "InsertLeave", "BufLeave", "BufWipeout", "LspDetach" }, {
 		group = group,
 		callback = function(ev)
 			stop_auto_timer(ev.buf)
+			invalidate_buffer(ev.buf)
+			if ev.event == "BufWipeout" then
+				buffer_epochs[ev.buf] = nil
+			end
 		end,
 	})
 
 	vim.keymap.set("i", "<C-Space>", function()
+		local buf = vim.api.nvim_get_current_buf()
+		stop_auto_timer(buf)
+		invalidate_buffer(buf)
 		if vim.lsp.completion then
 			vim.lsp.completion.get()
 		end
