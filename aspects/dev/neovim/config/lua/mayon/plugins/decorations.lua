@@ -34,16 +34,16 @@ return {
 		"tiny-inline-diagnostic.nvim",
 		event = "User MayonVeryLazy",
 		after = function()
-			-- Rounded end caps with low-contrast severity tint on the cursor line.
+			-- One restrained inline message at the cursor; diagnostics elsewhere
+			-- remain visible through native underlines and the sign column.
 			require("tiny-inline-diagnostic").setup({
-				preset = "modern",
-				transparent_bg = false,
-				transparent_cursorline = false,
-				blend = { factor = 0.12 },
+				preset = "minimal",
+				transparent_bg = true,
+				blend = { factor = 0 },
 				signs = {
-					left = "",
-					right = "",
-					diag = "•",
+					left = "",
+					right = "",
+					diag = "▲",
 					arrow = "",
 					up_arrow = "",
 					vertical = "",
@@ -55,17 +55,33 @@ return {
 					info = "DiagnosticInfo",
 					hint = "DiagnosticHint",
 					arrow = "NonText",
-					background = "CursorLine",
+					background = "MayonDiagnosticInline",
 					mixing_color = "Normal",
 				},
 				options = {
 					show_code = false,
 					show_related = { enabled = false },
 					show_source = { enabled = false },
-					show_all_diags_on_cursorline = true,
+					show_all_diags_on_cursorline = false,
+					overflow = { mode = "oneline" },
 					set_arrow_to_diag_color = false,
 				},
 			})
+			-- The pinned plugin falls back to every diagnostic on a line when
+			-- none intersects the cursor. Keep the inline view to one message;
+			-- native signs/underlines and the diagnostics picker retain them all.
+			local filter = require("tiny-inline-diagnostic.filter")
+			local at_position = filter.at_position
+			filter.at_position = function(opts, diagnostics, line, col)
+				local candidates = at_position(opts, diagnostics, line, col)
+				table.sort(candidates, function(a, b)
+					if a.severity ~= b.severity then
+						return a.severity < b.severity
+					end
+					return math.abs(a.col - col) < math.abs(b.col - col)
+				end)
+				return candidates[1] and { candidates[1] } or {}
+			end
 			-- The plugin rebuilds its groups on ColorScheme. Restore the palette
 			-- body color after its listener, keeping severity on the gutter signs.
 			vim.api.nvim_create_autocmd("ColorScheme", {

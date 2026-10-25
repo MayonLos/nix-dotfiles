@@ -22,36 +22,20 @@ end
 
 local function title(picker)
 	local source = picker.opts.source or "search"
-	local count = #picker.finder.items
 	local shown = picker.list:count()
-	if source:match("^grep") then
-		count, shown = 0, 0
-		for _, item in ipairs(picker.finder.items) do
-			if not item.mayon_header then
-				count = count + 1
-			end
-		end
-		for index = 1, picker.list:count() do
-			local item = picker.list:get(index)
-			if item and not item.mayon_header then
-				shown = shown + 1
-			end
-		end
-	end
-	local label = picker.opts.mayon_label or labels[source] or picker.title or source
+	local label = source:match("^grep") and "grep"
+		or (picker.opts.mayon_label or labels[source] or picker.title or source)
 	return {
 		{ label, "SnacksPickerTitle" },
 		{ " · ", "SnacksPickerBorder" },
-		{ range(picker), "MayonPickerRange" },
-		{ " · ", "SnacksPickerBorder" },
-		{ ("%d / %d"):format(shown, count), "MayonPickerCount" },
+		{ tostring(shown) .. (source:match("^grep") and " matches" or " items"), "MayonPickerCount" },
 	}
 end
 
 local function update_title(picker)
 	local root = picker.layout and picker.layout.root
 	if root and root:valid() then
-		root:set_title(title(picker), "left")
+		root:set_title(title(picker), "center")
 	end
 end
 
@@ -109,63 +93,9 @@ local function show_picker(picker)
 	update_title(picker)
 end
 
--- Real list rows keep native scrolling, preview and confirmation aligned.
--- Headers open the first match in their file; they are never fake paths.
-local function grouped_grep(opts, ctx)
-	local result = require("snacks.picker.source.grep").grep(opts, ctx)
-	return function(cb)
-		local items = {}
-		if type(result) == "function" then
-			result(function(item)
-				items[#items + 1] = item
-			end)
-		else
-			items = result
-		end
-		local groups, order = {}, {}
-		for _, item in ipairs(items) do
-			local file = item.file or ""
-			if not groups[file] then
-				groups[file] = {}
-				order[#order + 1] = file
-			end
-			table.insert(groups[file], item)
-		end
-		for _, file in ipairs(order) do
-			local entries = groups[file]
-			local texts = { file }
-			for _, item in ipairs(entries) do
-				texts[#texts + 1] = item.text
-			end
-			cb({
-				file = file,
-				cwd = entries[1].cwd,
-				pos = entries[1].pos,
-				text = table.concat(texts, " "),
-				mayon_header = true,
-				mayon_count = #entries,
-			})
-			for _, item in ipairs(entries) do
-				cb(item)
-			end
-		end
-	end
-end
-
+-- One match per row; paths stay at the right so the text remains easy to scan.
 local function grep_format(item, picker)
-	if item.mayon_header then
-		local icon, icon_hl = require("mayon.ui.icons").get(item.file)
-		return {
-			{ icon, icon_hl },
-			{ vim.fn.fnamemodify(item.file, ":~:."), "SnacksPickerFile" },
-			{
-				col = 0,
-				virt_text = { { tostring(item.mayon_count), "MayonPickerCount" } },
-				virt_text_pos = "right_align",
-			},
-		}
-	end
-	local out = { { ("  %4d  "):format(item.pos and item.pos[1] or 0), "SnacksPickerRow" } }
+	local out = { { ("%4d  "):format(item.pos and item.pos[1] or 0), "SnacksPickerRow" } }
 	if item.line then
 		if item.positions then
 			Snacks.picker.highlight.matches(out, item.positions, Snacks.picker.highlight.offset(out))
@@ -174,17 +104,20 @@ local function grep_format(item, picker)
 	else
 		out[#out + 1] = { item.text or "", "SnacksPickerFile" }
 	end
+	local icon, hl = require("mayon.ui.icons").get(item.file or "")
+	out[#out + 1] = {
+		col = 0,
+		virt_text = { { " " .. icon, hl }, { vim.fn.fnamemodify(item.file or "", ":t"), "SnacksPickerDir" } },
+		virt_text_pos = "right_align",
+	}
 	return out
 end
 
 function M.configure(opts)
-	if opts.title and opts.title:find("Search Everywhere", 1, true) then
-		opts.mayon_label = opts.title
-	end
 	-- Keep native Snacks formatters on the same colored, configured devicon set.
 	require("mayon.ui.icons").ensure()
 	if opts.source == "explorer" then
-		opts.prompt = "❯ "
+		opts.prompt = "⌕ "
 		return opts
 	end
 
@@ -211,28 +144,24 @@ function M.configure(opts)
 		end
 	end
 	opts.layout = {
+		preview = false,
 		layout = {
 			box = "vertical",
-			width = 0.9,
-			min_width = math.min(88, vim.o.columns - 4),
-			max_width = vim.o.columns - 4,
-			height = 0.72,
-			min_height = 12,
+			backdrop = false,
+			width = 0.58,
+			min_width = math.min(58, vim.o.columns - 4),
+			max_width = math.min(90, vim.o.columns - 4),
+			height = 8,
+			min_height = 6,
+			max_height = 8,
 			border = "rounded",
 			title = "{title}",
-			title_pos = "left",
-			{
-				win = "input",
-				height = 1,
-				border = "bottom",
-			},
-			{
-				box = "horizontal",
-				{ win = "list", border = "none", width = 0.48 },
-				{ win = "preview", border = "left", title = "", width = 0.52 },
-			},
+			title_pos = "center",
+			{ win = "input", height = 1, border = "bottom" },
+			{ win = "list", border = "none" },
 		},
 	}
+
 	opts.win = vim.tbl_deep_extend("force", opts.win or {}, {
 		input = { wo = { winhighlight = "Normal:SnacksPickerInput,FloatBorder:SnacksPickerInputBorder" } },
 		list = {
@@ -251,20 +180,6 @@ function M.configure(opts)
 		},
 	})
 	if opts.source == "grep" or opts.source == "grep_word" or opts.source == "grep_buffers" then
-		opts.finder = grouped_grep
-		opts.sort = function(a, b)
-			if a.file ~= b.file then
-				return (a.file or "") < (b.file or "")
-			end
-			if a.mayon_header ~= b.mayon_header then
-				return a.mayon_header == true
-			end
-			local al, bl = a.pos and a.pos[1] or 0, b.pos and b.pos[1] or 0
-			if al ~= bl then
-				return al < bl
-			end
-			return (a.idx or 0) < (b.idx or 0)
-		end
 		opts.format = grep_format
 	end
 	local prior_show, prior_change = opts.on_show, opts.on_change
@@ -289,6 +204,5 @@ end
 
 M.labels = labels
 M.grep_format = grep_format
-M.grouped_grep = grouped_grep
 
 return M

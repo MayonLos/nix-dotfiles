@@ -53,6 +53,10 @@ let
     assert opts.active_tab_foreground.as_sharp == "${palette.brightFg}"
     assert opts.inactive_tab_foreground.as_sharp == "${palette.fg}"
     assert opts.undercurl_style == "thick-sparse"
+    assert str(opts.modify_font["cell_height"]) == "cell_height 108%"
+    assert opts.disable_ligatures == 0
+    for face in ("Regular", "Bold", "SemiBold", "Italic", "BoldItalic", "SemiBoldItalic"):
+        assert tuple(str(f) for f in opts.font_features["MapleMono-NF-CN-" + face]) == ("calt", "cv01", "zero")
     assert opts.cursor_trail == ${if palette.reducedMotion or false then "0" else "1"}
     assert opts.cursor_trail_decay == (0.08, 0.16)
     assert opts.cursor_trail_start_threshold == (4, 4)

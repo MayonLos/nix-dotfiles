@@ -6,20 +6,33 @@ assert(color_options.render == "virtual" and color_options.virtual_symbol == "�
 local early_palette = require("mayon.generated").palette
 local early_normal_nc = vim.api.nvim_get_hl(0, { name = "NormalNC", link = false })
 assert(
-	early_normal_nc.bg
-		== tonumber(require("mayon.ui.theme").blend(early_palette.deep, early_palette.bg, 0.42):sub(2), 16),
-	"startup inactive editor islands should sit between deep and the active editor surface"
+	early_normal_nc.bg == tonumber(require("mayon.ui.theme").blend("#000000", early_palette.bg, 0.06):sub(2), 16),
+	"inactive editor surfaces should be only subtly darker than the active editor"
+)
+assert(
+	early_normal_nc.bg ~= tonumber(early_palette.bg:sub(2), 16),
+	"inactive editor surface must visibly differ from the active editor"
 )
 assert(color_options.enable_named_colors == false, "named colors must not recolor prose/comments")
 assert(color_options.enable_hex and color_options.enable_rgb and color_options.enable_var_usage)
 assert(color_options.enable_tailwind, "Tailwind utility colors should receive swatches")
 assert(not package.loaded.colorizer, "the background-colorizer plugin should be removed")
 local inline_diagnostic = require("tiny-inline-diagnostic")
-assert(inline_diagnostic.config.preset == "modern", "inline diagnostics should use the capsule preset")
+assert(inline_diagnostic.config.preset == "minimal", "inline diagnostics should use the quiet one-line preset")
 assert(inline_diagnostic.config.signs.arrow == "", "inline diagnostics should omit the large arrow")
-assert(inline_diagnostic.config.signs.left == "" and inline_diagnostic.config.signs.right == "")
+assert(inline_diagnostic.config.signs.left == "" and inline_diagnostic.config.signs.right == "")
+assert(inline_diagnostic.config.signs.diag == "▲" and inline_diagnostic.config.transparent_bg)
 assert(inline_diagnostic.config.options.show_code == false)
-assert(inline_diagnostic.config.options.show_all_diags_on_cursorline)
+assert(not inline_diagnostic.config.options.show_all_diags_on_cursorline)
+assert(inline_diagnostic.config.options.overflow.mode == "oneline")
+local at_position = require("tiny-inline-diagnostic.filter").at_position
+local inline_candidates = {
+	{ lnum = 0, col = 2, end_col = 4, severity = vim.diagnostic.severity.WARN, message = "first" },
+	{ lnum = 0, col = 8, end_col = 10, severity = vim.diagnostic.severity.ERROR, message = "second" },
+}
+local chosen = at_position(inline_diagnostic.config, inline_candidates, 0, 14)
+assert(#chosen == 1 and chosen[1].message == "second", "multiple diagnostics must remain a single inline message")
+assert(#inline_candidates == 2, "inline selection must not remove diagnostic data")
 local motion = require("mayon.ui.motion").config()
 assert(motion.overwrite.yank.enabled and motion.overwrite.paste.enabled)
 assert(motion.overwrite.search.enabled and motion.overwrite.undo.enabled and motion.overwrite.redo.enabled)
@@ -297,14 +310,9 @@ vim.fn.delete(file)
 for _, group in ipairs({
 	"MayonDashboardBlue",
 	"MayonDashboardMuted",
-	"MayonFrame",
-	"MayonIsland",
-	"MiniMapNormal",
-	"MiniMapSymbolLine",
-	"MiniMapSymbolCount",
-	"MiniMapSymbolView",
-	"MayonToolbar",
-	"MayonToolRail",
+	"MayonTabPill",
+	"MayonTopProject",
+	"MayonTopHint",
 	"OilDir",
 	"RainbowDelimiterBlue",
 	"InclineNormal",
@@ -325,43 +333,126 @@ for _, group in ipairs({
 	assert(next(hl), "missing theme group: " .. group)
 end
 local palette = require("mayon.generated").palette
+for _, group in ipairs({ "FloatTitle", "MayonPopupTitle" }) do
+	local title = vim.api.nvim_get_hl(0, { name = group, link = false })
+	assert(title.fg == tonumber(palette.muted:sub(2), 16), "floating titles should use muted text: " .. group)
+	assert(title.bg == tonumber(palette.deep:sub(2), 16) and not title.bold, "floating title style mismatch: " .. group)
+end
 local tiny_error = vim.api.nvim_get_hl(0, { name = "TinyInlineDiagnosticVirtualTextError", link = false })
 assert(
-	tiny_error.fg == tonumber(require("mayon.ui.theme").blend(palette.red, palette.fg, 0.58):sub(2), 16)
-		and tiny_error.bg == tonumber(require("mayon.ui.theme").blend(palette.red, palette.bg, 0.12):sub(2), 16),
-	"diagnostic capsule should use a soft severity tint and readable severity text"
+	tiny_error.fg == tonumber(require("mayon.ui.theme").blend(palette.yellow, palette.bg, 0.62):sub(2), 16)
+		and tiny_error.italic
+		and not tiny_error.bg,
+	"inline diagnostics should be pale, italic text without a capsule background"
 )
 local cursor_error = vim.api.nvim_get_hl(0, { name = "TinyInlineDiagnosticVirtualTextErrorCursorLine", link = false })
-assert(cursor_error.fg == tiny_error.fg and cursor_error.bg == tiny_error.bg)
+assert(cursor_error.fg == tiny_error.fg and cursor_error.italic and not cursor_error.bg)
 local no_bg = vim.api.nvim_get_hl(0, { name = "TinyInlineInvDiagnosticVirtualTextErrorNoBg", link = false })
-assert(no_bg.fg == tonumber(palette.muted:sub(2), 16))
+assert(no_bg.fg == tiny_error.fg and no_bg.italic and not no_bg.bg)
 local inline = vim.api.nvim_get_hl(0, { name = "LspInlineCompletion", link = false })
 assert(inline.fg == tonumber(palette.muted:sub(2), 16) and inline.italic, "AI ghost text must use muted italic")
 local normal = vim.api.nvim_get_hl(0, { name = "Normal", link = false })
 assert(normal.bg == tonumber(palette.bg:sub(2), 16), "editor surface must use generated bg")
-assert(require("mayon.ui.theme").frame_color() == "#090a0c", "frame color should be derived from palette black")
+local function luminance(hex)
+	local channels = {}
+	for _, offset in ipairs({ 2, 4, 6 }) do
+		local channel = tonumber(hex:sub(offset, offset + 1), 16) / 255
+		channels[#channels + 1] = channel <= 0.04045 and channel / 12.92 or ((channel + 0.055) / 1.055) ^ 2.4
+	end
+	return 0.2126 * channels[1] + 0.7152 * channels[2] + 0.0722 * channels[3]
+end
+local visual = vim.api.nvim_get_hl(0, { name = "Visual", link = false })
+local visual_fg = string.format("#%06x", visual.fg)
+local visual_bg = string.format("#%06x", visual.bg)
+local contrast = (luminance(visual_fg) + 0.05) / (luminance(visual_bg) + 0.05)
+assert(visual.bg == tonumber(require("mayon.ui.theme").blend(palette.blue, palette.bg, 0.14):sub(2), 16))
+assert(contrast >= 4.5, "visual selection text contrast must meet WCAG AA for normal text")
+local inactive_bg = string.format("#%06x", early_normal_nc.bg)
+local inactive_fg = string.format("#%06x", early_normal_nc.fg)
+local inactive_luminance, inactive_surface_luminance = luminance(inactive_fg), luminance(inactive_bg)
+local inactive_contrast = (inactive_luminance + 0.05) / (inactive_surface_luminance + 0.05)
+assert(inactive_contrast >= 4.5, "inactive editor text contrast must meet WCAG AA for normal text")
+local search = vim.api.nvim_get_hl(0, { name = "Search", link = false })
+assert(search.bg == tonumber(require("mayon.ui.theme").blend(palette.orange, palette.bg, 0.22):sub(2), 16))
+local inc_search = vim.api.nvim_get_hl(0, { name = "IncSearch", link = false })
+local cur_search = vim.api.nvim_get_hl(0, { name = "CurSearch", link = false })
+assert(inc_search.bg == tonumber(palette.orange:sub(2), 16) and inc_search.fg == tonumber(palette.deep:sub(2), 16))
+assert(cur_search.bg == inc_search.bg and cur_search.fg == inc_search.fg)
+local matchparen = vim.api.nvim_get_hl(0, { name = "MatchParen", link = false })
+assert(matchparen.bold and matchparen.underline and not matchparen.bg, "matching brackets should have no filled block")
+for _, group in ipairs({ "LspReferenceText", "LspReferenceRead", "LspReferenceWrite" }) do
+	local words = vim.api.nvim_get_hl(0, { name = group, link = false })
+	assert(words.underline and not words.bg and words.sp, "symbol references should use a quiet underline")
+end
+local cursor = vim.api.nvim_get_hl(0, { name = "Cursor", link = false })
+assert(cursor.bg == tonumber(palette.blue:sub(2), 16), "Normal mode cursor should use blue")
+assert(vim.o.guicursor:find("n:block-Cursor", 1, true), "Normal cursor should be a block")
+assert(vim.o.guicursor:find("i-ci:ver25-Cursor", 1, true), "Insert cursor should be a beam")
+assert(vim.o.guicursor:find("r-cr-o:hor20-Cursor", 1, true), "Replace cursor should be an underline")
+local theme = require("mayon.ui.theme")
+for mode, color in pairs({
+	n = palette.blue,
+	i = palette.green,
+	v = palette.purple,
+	R = palette.red,
+	c = palette.yellow,
+}) do
+	assert(theme.mode_color(mode) == tonumber(color:sub(2), 16), "mode cursor color mismatch: " .. mode)
+end
+for group, color in pairs({ DiffAdd = palette.green, DiffChange = palette.blue, DiffDelete = palette.red }) do
+	local diff = vim.api.nvim_get_hl(0, { name = group, link = false })
+	assert(diff.bg == tonumber(theme.blend(color, palette.bg, 0.12):sub(2), 16), "diff tint mismatch: " .. group)
+end
+for group, color in pairs({ GitSignsAdd = palette.green, GitSignsChange = palette.blue, GitSignsDelete = palette.red }) do
+	local sign = vim.api.nvim_get_hl(0, { name = group, link = false })
+	assert(sign.fg == tonumber(color:sub(2), 16), "Git marker and diff hue mismatch: " .. group)
+end
 assert(
-	vim.api.nvim_get_hl(0, { name = "MiniMapNormal", link = false }).fg
-		== tonumber(require("mayon.ui.theme").blend(palette.muted, palette.bg, 0.30):sub(2), 16),
-	"mini.map base glyphs should be muted against the editor island"
+	vim.api.nvim_get_hl(0, { name = "DiffText", link = false }).bg
+		== tonumber(theme.blend(palette.blue, palette.bg, 0.18):sub(2), 16),
+	"changed diff text should have a slightly stronger blue tint"
 )
+local separator = vim.api.nvim_get_hl(0, { name = "WinSeparator", link = false })
+assert(separator.bg == tonumber(palette.bg:sub(2), 16), "window separators should sit on the editor surface")
 assert(
-	vim.api.nvim_get_hl(0, { name = "MiniMapSymbolView", link = false }).bg
-		== tonumber(require("mayon.ui.theme").blend(palette.blue, palette.bg, 0.12):sub(2), 16),
-	"mini.map viewport should use a restrained blue tint"
+	separator.fg == tonumber(require("mayon.ui.theme").blend(palette.border, palette.deep, 0.28):sub(2), 16),
+	"window separators should use the thin edge color"
+)
+local function_hl = vim.api.nvim_get_hl(0, { name = "@lsp.type.function", link = false })
+local variable_hl = vim.api.nvim_get_hl(0, { name = "@lsp.type.variable", link = false })
+local parameter_hl = vim.api.nvim_get_hl(0, { name = "@lsp.type.parameter", link = false })
+local library_hl = vim.api.nvim_get_hl(0, { name = "@lsp.typemod.variable.defaultLibrary", link = false })
+assert(function_hl.fg == tonumber(palette.blue:sub(2), 16), "semantic functions should follow One Dark blue")
+assert(variable_hl.fg == tonumber(palette.fg:sub(2), 16), "semantic variables should use the base foreground")
+assert(
+	parameter_hl.fg == tonumber(palette.orange:sub(2), 16) and parameter_hl.italic,
+	"semantic parameters should be orange italic"
+)
+assert(library_hl.fg == tonumber(palette.yellow:sub(2), 16), "default library symbols should be yellow")
+assert(
+	vim.api.nvim_get_hl(0, { name = "DropBarIconKindFunction", link = false }).fg == tonumber(palette.purple:sub(2), 16)
 )
 assert(require("mayon.ui.theme").mode_highlight("i") == "MayonModeBlockInsert")
 assert(require("mayon.ui.theme").mode_highlight("v") == "MayonModeBlockVisual")
+assert(vim.opt.fillchars:get().eob == " ", "empty document rows should remain quiet in inactive windows")
 local current_win = vim.api.nvim_get_current_win()
 vim.cmd.vsplit()
 assert(
 	vim.wo[current_win].winhighlight:find("CursorLine:NormalNC", 1, true),
 	"inactive document windows should hide the current-line highlight"
 )
+assert(
+	vim.wo[current_win].winhighlight:find("EndOfBuffer:NormalNC", 1, true),
+	"inactive empty rows must match the document surface"
+)
 vim.cmd.close()
 assert(
 	not vim.wo[current_win].winhighlight:find("CursorLine:NormalNC", 1, true),
 	"the focused editor should restore its current-line highlight"
+)
+assert(
+	not vim.wo[current_win].winhighlight:find("EndOfBuffer:NormalNC", 1, true),
+	"focused empty rows must restore the editor surface"
 )
 assert(not package.loaded.satellite, "the removed satellite UI must stay unloaded")
 assert(vim.v.errmsg == "", vim.v.errmsg)

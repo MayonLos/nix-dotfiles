@@ -49,10 +49,10 @@ assert(codediff.explorer.view_mode == "tree")
 local palette = require("mayon.generated").palette
 local blend = require("mayon.ui.theme").blend
 local expected_highlights = {
-	CodeDiffLineInsert = { fg = palette.brightFg, bg = blend(palette.green, palette.deep, 0.08) },
-	CodeDiffLineDelete = { fg = palette.brightFg, bg = blend(palette.red, palette.deep, 0.08) },
-	CodeDiffCharInsert = { fg = palette.brightFg, bg = blend(palette.green, palette.deep, 0.12) },
-	CodeDiffCharDelete = { fg = palette.brightFg, bg = blend(palette.red, palette.deep, 0.12) },
+	CodeDiffLineInsert = { fg = palette.brightFg, bg = blend(palette.green, palette.bg, 0.12) },
+	CodeDiffLineDelete = { fg = palette.brightFg, bg = blend(palette.red, palette.bg, 0.12) },
+	CodeDiffCharInsert = { fg = palette.brightFg, bg = blend(palette.green, palette.bg, 0.18) },
+	CodeDiffCharDelete = { fg = palette.brightFg, bg = blend(palette.red, palette.bg, 0.18) },
 }
 assert(codediff.highlights.line_insert == expected_highlights.CodeDiffLineInsert.bg)
 assert(codediff.highlights.line_delete == expected_highlights.CodeDiffLineDelete.bg)

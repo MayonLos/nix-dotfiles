@@ -13,9 +13,15 @@ for _, name in ipairs({ "DiffAdd", "DiffChange", "DiffText", "DiffDelete" }) do
 	assert(highlight.bg and highlight.fg == tonumber(palette.brightFg:sub(2), 16), "invalid diff highlight: " .. name)
 end
 assert(vim.api.nvim_get_hl(0, { name = "Visual", link = false }).fg == tonumber(palette.brightFg:sub(2), 16))
-assert(vim.api.nvim_get_hl(0, { name = "Visual", link = false }).bg == tonumber(palette.selection:sub(2), 16))
+assert(
+	vim.api.nvim_get_hl(0, { name = "Visual", link = false }).bg
+		== tonumber(require("mayon.ui.theme").blend(palette.blue, palette.bg, 0.14):sub(2), 16)
+)
+assert(vim.o.guicursor:find("n:block-Cursor", 1, true))
+assert(vim.o.guicursor:find("i-ci:ver25-Cursor", 1, true))
+assert(vim.o.guicursor:find("r-cr-o:hor20-Cursor", 1, true))
 assert(vim.api.nvim_get_hl(0, { name = "LineNr", link = false }).fg == tonumber(palette.muted:sub(2), 16))
-assert(vim.api.nvim_get_hl(0, { name = "@keyword.function", link = false }).fg == tonumber(palette.cyan:sub(2), 16))
+assert(vim.api.nvim_get_hl(0, { name = "@keyword.function", link = false }).fg == tonumber(palette.purple:sub(2), 16))
 assert(vim.wo.number and not vim.wo.relativenumber and vim.wo.cursorline and vim.wo.wrap)
 assert(vim.o.laststatus == 3 and vim.o.showtabline == 2)
 assert(vim.opt.listchars:get().tab == "  ", "tab indentation must stay invisible")

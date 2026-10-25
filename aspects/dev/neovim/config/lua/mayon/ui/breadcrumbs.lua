@@ -4,9 +4,42 @@ function M.setup()
 		icons = {
 			ui = { bar = { separator = " › " } },
 			kinds = {
+				symbols = {
+					FunctionDeclaration = "󰊕 ",
+					FunctionDefinition = "󰊕 ",
+					MethodDefinition = "󰊕 ",
+					ClassDeclaration = "󰠱 ",
+				},
 				file_icon = function(path)
 					return require("mayon.ui.icons").get(path)
 				end,
+			},
+		},
+		sources = {
+			lsp = {
+				valid_symbols = {
+					"Module",
+					"Namespace",
+					"Class",
+					"Method",
+					"Constructor",
+					"Function",
+					"Interface",
+					"Enum",
+					"Struct",
+				},
+			},
+			treesitter = {
+				valid_types = {
+					"function_declaration",
+					"function_definition",
+					"method",
+					"class",
+					"class_declaration",
+					"module",
+					"struct",
+					"enum",
+				},
 			},
 		},
 		bar = {

@@ -46,16 +46,46 @@ local lua_workspace = require("mayon.features.lua_workspace")
 
 local function lua_ls_root_dir(bufnr, on_dir)
 	local filename = vim.api.nvim_buf_get_name(bufnr)
+	local directory = vim.fs.dirname(filename)
+	local project_config =
+		vim.fs.find({ ".luarc.json", ".luarc.jsonc" }, { path = directory, upward = true, type = "file", limit = 1 })[1]
+	if project_config then
+		on_dir(vim.fs.dirname(project_config))
+		return
+	end
 	local config_root = lua_workspace.root_for_path(filename)
 	if config_root then
 		on_dir(config_root)
 		return
 	end
-	local directory = vim.fs.dirname(filename)
 	local root_markers = require("mayon.generated").languages.servers.lua_ls.root_markers
 	local root = vim.fs.root(directory, root_markers) or directory
 	on_dir(root)
 end
+
+local function lua_ls_before_init(_, config)
+	if not config.root_dir or not lua_workspace.is_config_root(config.root_dir) then
+		return
+	end
+	if
+		vim.fs.find(
+			{ ".luarc.json", ".luarc.jsonc" },
+			{ path = config.root_dir, upward = true, type = "file", limit = 1 }
+		)[1]
+	then
+		return
+	end
+	-- Settings sent by the editor win over a project's .luarc.json. Keep the
+	-- editor-specific globals/runtime scoped to this checkout only.
+	config.settings = config.settings or {}
+	config.settings.Lua = config.settings.Lua or {}
+	local lua = config.settings.Lua
+	lua.runtime = vim.tbl_deep_extend("force", lua.runtime or {}, { version = "LuaJIT" })
+	lua.diagnostics = vim.tbl_deep_extend("force", lua.diagnostics or {}, { globals = { "vim", "Snacks" } })
+	lua.workspace = vim.tbl_deep_extend("force", lua.workspace or {}, { checkThirdParty = false })
+end
+
+M._lua_ls_before_init = lua_ls_before_init
 
 local function texlab_before_init(_, config)
 	local server = vim.v.servername
@@ -144,24 +174,7 @@ local adapters = {
 	},
 	lua_ls = {
 		root_dir = lua_ls_root_dir,
-		before_init = function(_, config)
-			if not config.root_dir then
-				return
-			end
-			if lua_workspace.is_config_root(config.root_dir) then
-				config.settings = config.settings or {}
-				config.settings.Lua = config.settings.Lua or {}
-				config.settings.Lua.diagnostics = config.settings.Lua.diagnostics or {}
-				config.settings.Lua.diagnostics.globals = { "vim", "Snacks" }
-			end
-		end,
-		settings = {
-			Lua = {
-				runtime = { version = "LuaJIT" },
-				-- lazydev adds only libraries actually used by this workspace.
-				workspace = { checkThirdParty = false },
-			},
-		},
+		before_init = lua_ls_before_init,
 	},
 	basedpyright = {
 		before_init = python_path,

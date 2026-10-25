@@ -94,10 +94,10 @@ return {
 		after = function()
 			local palette = require("mayon.generated").palette
 			local blend = require("mayon.ui.theme").blend
-			local line_insert = blend(palette.green, palette.deep, 0.08)
-			local line_delete = blend(palette.red, palette.deep, 0.08)
-			local char_insert = blend(palette.green, palette.deep, 0.12)
-			local char_delete = blend(palette.red, palette.deep, 0.12)
+			local line_insert = blend(palette.green, palette.bg, 0.12)
+			local line_delete = blend(palette.red, palette.bg, 0.12)
+			local char_insert = blend(palette.green, palette.bg, 0.18)
+			local char_delete = blend(palette.red, palette.bg, 0.18)
 			-- The Nix package ships libvscode_diff.so (unversioned). Skip upstream's
 			-- mutable auto-installer and let codediff's loader use its local fallback.
 			vim.env.VSCODE_DIFF_NO_AUTO_INSTALL = "1"

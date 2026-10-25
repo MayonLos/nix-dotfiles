@@ -70,6 +70,10 @@ local function expand_completed_snippet()
 end
 
 function M.setup()
+	-- The completion menu is a compact, borderless surface. Its columns inherit
+	-- PmenuKind (purple) and PmenuExtra (muted) from the One Dark palette.
+	vim.o.pumborder = "none"
+	vim.o.pumblend = 0
 	local group = vim.api.nvim_create_augroup("MayonNativeCompletion", { clear = true })
 	local function configure_cpp(buf)
 		vim.bo[buf].completefunc = "v:lua.require'mayon.features.native_completion'.snippet_complete"

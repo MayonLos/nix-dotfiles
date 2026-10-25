@@ -15,3 +15,12 @@ the same palette. The underline uses Kitty's custom Python tab-bar renderer
 because the built-in tab styles do not provide an active underline. No
 compositor blur rule is required; reduced motion disables cursor blinking and
 trail animation.
+
+Maple Mono NF CN uses `calt` programming ligatures, `cv01` normalized symbols
+and a dotted `zero`, across regular, bold and italic faces. These are native
+features of the pinned Maple 7.9 font; explicit SemiBold/SemiBoldItalic selectors
+also cover Fontconfig's automatic bold choice. See the [upstream feature list](https://github.com/subframe7536/maple-font/blob/v7/source/features/README.md).
+Kitty scales cell height to 108% while preserving cell width and the CJK two-cell
+grid. Neovim's TUI uses this terminal spacing; `linespace` is not a TUI control.
+The setting also applies to tmux, btop and Lazygit. Cursor trails remain short
+and honor reduced motion; Neovim supplies its own mode shapes and colors.

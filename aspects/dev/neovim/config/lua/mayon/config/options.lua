@@ -16,7 +16,9 @@ function M.setup()
 		-- 0.12.4: nearest has no effect with fuzzy; retain fuzzy sorting.
 		completeopt = "menuone,noselect,popup,fuzzy",
 		completeitemalign = "kind,abbr,menu",
-		pumborder = "rounded",
+		-- Keep the block/beam/bar shapes aligned with the mode-color palette.
+		guicursor = "n:block-Cursor,v-ve:block-Cursor,i-ci:ver25-Cursor,r-cr-o:hor20-Cursor,c:ver25-Cursor,sm:block-Cursor",
+		pumborder = "none",
 		pumwidth = 28,
 		pummaxwidth = 60,
 		pumheight = 8,
@@ -44,7 +46,7 @@ function M.setup()
 		scrolloff = 8,
 		shiftwidth = 4,
 		showmode = false,
-		showbreak = "",
+		showbreak = "↳ ",
 		sidescrolloff = 8,
 		smoothscroll = true,
 		linebreak = true,
@@ -83,13 +85,14 @@ function M.setup()
 	vim.opt.diffopt:remove("inline:char")
 	vim.opt.diffopt:append("inline:word")
 	vim.opt.fillchars:append({
-		vert = " ",
-		vertleft = " ",
-		vertright = " ",
-		verthoriz = " ",
-		horiz = " ",
-		horizup = " ",
-		horizdown = " ",
+		eob = " ",
+		vert = "│",
+		vertleft = "│",
+		vertright = "│",
+		verthoriz = "┼",
+		horiz = "─",
+		horizup = "┴",
+		horizdown = "┬",
 	})
 	-- Register the extra extension before the first read/new-file detection.
 	vim.api.nvim_create_autocmd({ "BufReadPre", "BufNewFile" }, {

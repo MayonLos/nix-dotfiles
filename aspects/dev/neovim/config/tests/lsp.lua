@@ -36,7 +36,71 @@ assert(vim.lsp.inlay_hint.is_enabled({ bufnr = 0 }), "inlay hint toggle should e
 inlay_toggle.callback()
 assert(not vim.lsp.inlay_hint.is_enabled({ bufnr = 0 }), "inlay hint toggle should disable hints")
 
-assert(vim.lsp.config.lua_ls.settings.Lua.runtime.version == "LuaJIT")
+local lua_servers = require("mayon.lsp.servers")
+local lua_before_init = lua_servers._lua_ls_before_init
+local config_root = require("mayon.features.lua_workspace").roots()[1]
+local config_settings = {
+	root_dir = config_root,
+	settings = { Lua = { workspace = { library = { "/managed/config/library" } } } },
+}
+lua_before_init(nil, config_settings)
+assert(config_settings.settings.Lua.runtime.version == "LuaJIT", "managed Neovim config should use LuaJIT")
+assert(
+	vim.deep_equal(config_settings.settings.Lua.diagnostics.globals, { "vim", "Snacks" }),
+	"managed Neovim config should scope vim and Snacks globals to its own workspace"
+)
+assert(
+	config_settings.settings.Lua.workspace.checkThirdParty == false
+		and vim.tbl_contains(config_settings.settings.Lua.workspace.library, "/managed/config/library"),
+	"managed LuaLS settings should preserve workspace libraries while disabling third-party prompts"
+)
+
+-- A project-owned .luarc is authoritative even if it sits at the editor config
+-- root; simulate that root without writing into the active checkout.
+local old_config_dir = vim.env.NVIM_CONFIG_DIR
+local project_root = vim.fn.tempname()
+vim.fn.mkdir(project_root, "p")
+local luarc = project_root .. "/.luarc.json"
+vim.fn.writefile({ '{ "runtime.version": "Lua 5.2" }' }, luarc)
+vim.env.NVIM_CONFIG_DIR = project_root
+local project_settings = {
+	root_dir = project_root,
+	settings = {
+		Lua = {
+			runtime = { version = "Lua 5.2" },
+			diagnostics = { globals = { "computer" } },
+			workspace = { library = { project_root .. "/lua" }, checkThirdParty = true },
+		},
+	},
+}
+local expected_project_settings = vim.deepcopy(project_settings.settings)
+lua_before_init(nil, project_settings)
+assert(
+	vim.deep_equal(project_settings.settings, expected_project_settings),
+	"a project-owned .luarc at the Neovim config root must not be overridden"
+)
+local nested_config = project_root .. "/editor/config"
+vim.fn.mkdir(nested_config, "p")
+vim.env.NVIM_CONFIG_DIR = nested_config
+local inherited = { root_dir = nested_config, settings = {} }
+lua_before_init(nil, inherited)
+assert(vim.deep_equal(inherited.settings, {}), "an ancestor project .luarc must prevent editor settings injection")
+local inherited_buf = vim.api.nvim_create_buf(false, true)
+vim.api.nvim_buf_set_name(inherited_buf, nested_config .. "/settings.lua")
+local selected_root
+vim.lsp.config.lua_ls.root_dir(inherited_buf, function(root)
+	selected_root = root
+end)
+assert(selected_root == project_root, "LuaLS must use the ancestor .luarc directory as its actual root")
+vim.api.nvim_buf_delete(inherited_buf, { force = true })
+vim.env.NVIM_CONFIG_DIR = old_config_dir
+vim.fn.delete(project_root, "rf")
+assert(
+	vim.tbl_get(vim.lsp.config.lua_ls.settings, "Lua", "runtime") == nil
+		and vim.tbl_get(vim.lsp.config.lua_ls.settings, "Lua", "diagnostics", "globals") == nil
+		and vim.tbl_get(vim.lsp.config.lua_ls.settings, "Lua", "workspace", "library") == nil,
+	"LuaLS base config must not set global project-sensitive settings"
+)
 assert(vim.lsp.config.yamlls.settings.yaml.schemaStore.enable == false)
 assert(vim.lsp.config.matlab_ls.settings.MATLAB.telemetry == false)
 assert(vim.lsp.config.matlab_ls.settings.MATLAB.matlabConnectionTiming == "onStart")

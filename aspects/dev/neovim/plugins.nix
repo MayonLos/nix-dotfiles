@@ -53,14 +53,6 @@ let
     }))
     vimPlugins.aerial-nvim
     vimPlugins.neogit
-    (vimPlugins.mini-map.overrideAttrs (old: {
-      # Only unregister an integration that actually existed. silent! leaves
-      # v:errmsg set in 0.12.6 when there is no previous dictionary watcher.
-      postPatch = (old.postPatch or "") + ''
-        substituteInPlace lua/mini/map.lua \
-          --replace-fail "silent! call dictwatcherdel(v:, 'hlsearch', 'MiniMapOnHLSearchChanged')" "if exists('*MiniMapOnHLSearchChanged') | call dictwatcherdel(v:, 'hlsearch', 'MiniMapOnHLSearchChanged') | endif"
-      '';
-    }))
     vimPlugins.nvim-autopairs
     vimPlugins.multicursor-nvim
     vimPlugins.nvim-surround
@@ -86,6 +78,10 @@ let
         substituteInPlace lua/snacks/picker/core/finder.lua \
           --replace-fail '    finder(function(item)' '    finder(function(item) if picker.closed then return end' \
           --replace-fail '    if not self.task:aborted() then' '    if not self.task:aborted() and not picker.closed then'
+        # A queued resize can still reach a list after close released its picker.
+        substituteInPlace lua/snacks/picker/core/list.lua \
+          --replace-fail 'function M:render()' 'function M:render() if not self.picker or self.picker.closed then return end' \
+          --replace-fail 'function M:update_cursorline()' 'function M:update_cursorline() if not self.picker or self.picker.closed then return end'
         substituteInPlace lua/snacks/dashboard.lua \
           --replace-fail 'if M.status.did_setup then' 'if not M.status.did_setup then M.setup() end; if M.status.did_setup then'
       '';

@@ -8,6 +8,10 @@ end
 local function setup()
 	local lint = require("lint")
 	lint.linters_by_ft = vim.deepcopy(require("mayon.generated").languages.linters)
+	-- LuaLS understands each workspace's .luarc.json globals and libraries;
+	-- running luacheck on the same buffer duplicates and can contradict them.
+	-- Keep the linter available for explicit calls and config-specific checks.
+	lint.linters_by_ft.lua = nil
 	local luacheck = lint.linters.luacheck
 	lint.linters.luacheck = function()
 		local config = vim.deepcopy(luacheck)

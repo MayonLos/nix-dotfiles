@@ -112,7 +112,11 @@ local function attach(event)
 	map(bufnr, "gD", vim.lsp.buf.declaration, "跳到声明")
 	map(bufnr, "grt", vim.lsp.buf.type_definition, "跳到类型定义")
 	map(bufnr, "gi", vim.lsp.buf.implementation, "跳到实现")
-	map(bufnr, "K", require("mayon.ui.floats").hover, "查看悬浮文档")
+	map(bufnr, "K", function()
+		local opts = require("mayon.ui.floats").options("hover")
+		opts.title_pos = "center"
+		vim.lsp.buf.hover(opts)
+	end, "查看悬浮文档")
 	map(bufnr, "grx", vim.lsp.codelens.run, "运行代码透镜")
 	map(bufnr, "<leader>cr", vim.lsp.buf.rename, "重命名符号")
 	map(bufnr, "<leader>ca", vim.lsp.buf.code_action, "执行代码动作")
@@ -143,7 +147,9 @@ local function attach(event)
 				if vim.v.char == "(" or vim.v.char == "," then
 					vim.schedule(function()
 						if vim.api.nvim_buf_is_valid(bufnr) and vim.api.nvim_get_current_buf() == bufnr then
-							require("mayon.ui.floats").signature()
+							local opts = require("mayon.ui.floats").options("signature")
+							opts.title_pos = "center"
+							vim.lsp.buf.signature_help(opts)
 						end
 					end)
 				end
@@ -158,7 +164,7 @@ local function diagnostics()
 		virtual_text = false,
 		virtual_lines = false,
 		severity_sort = true,
-		float = { border = "rounded", source = "if_many", header = "", title = " diagnostics ", title_pos = "left" },
+		float = { border = "rounded", source = "if_many", header = "", title = " diagnostics ", title_pos = "center" },
 	})
 
 	vim.keymap.set("n", "[d", function()

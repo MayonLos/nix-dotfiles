@@ -18,7 +18,17 @@ in
 
     font_family ${palette.fonts.mono}
     font_size 11.0
-    disable_ligatures cursor
+    # Shape code consistently even when the block cursor crosses a ligature.
+    disable_ligatures never
+    modify_font cell_height 108%
+    # Maple 7.9: programming ligatures, normalized symbols, dotted zero.
+    font_features MapleMono-NF-CN-Regular +calt +cv01 +zero
+    font_features MapleMono-NF-CN-Bold +calt +cv01 +zero
+    # Fontconfig may choose SemiBold for Kitty's automatic bold face.
+    font_features MapleMono-NF-CN-SemiBold +calt +cv01 +zero
+    font_features MapleMono-NF-CN-Italic +calt +cv01 +zero
+    font_features MapleMono-NF-CN-BoldItalic +calt +cv01 +zero
+    font_features MapleMono-NF-CN-SemiBoldItalic +calt +cv01 +zero
 
     background_opacity 1.0
     background ${palette.deep}

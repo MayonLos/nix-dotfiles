@@ -1,4 +1,6 @@
 local completion = require("mayon.features.native_completion")
+completion.setup()
+assert(vim.o.pumborder == "none" and vim.o.pumblend == 0, "native completion should use an opaque borderless menu")
 
 local maps = vim.api.nvim_get_keymap("i")
 local found = {}

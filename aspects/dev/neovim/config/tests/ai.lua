@@ -48,6 +48,132 @@ assert(vim.iter(saved.messages):any(function(message)
 end))
 chat:close()
 
+-- CodeCompanion renders context metadata into its Markdown chat buffer. The
+-- UI overlay may replace the visible rules label, but the source text and
+-- context item must remain intact for the plugin's request pipeline.
+local rules_chat = require("codecompanion").chat({ params = { adapter = "deepseek" } })
+rules_chat:add_buf_message({ role = "user", content = "Review this change using the project rules." })
+local context_ids = {
+	"<file>src/app.lua</file>",
+	"<rules>AGENTS.md</rules>",
+	"<buf>main.lua</buf>",
+	"<file>docs/guide.md</file>",
+}
+for index, id in ipairs(context_ids) do
+	rules_chat.context:add({
+		id = id,
+		source = index == 2 and "rules" or "fixture",
+		path = index == 2 and "AGENTS.md" or nil,
+		opts = { visible = true },
+	})
+end
+local rules_id = context_ids[2]
+local rules_buf = rules_chat.bufnr
+local rules_before = table.concat(vim.api.nvim_buf_get_lines(rules_buf, 0, -1, false), "\n")
+for _, id in ipairs(context_ids) do
+	assert(rules_before:find(id, 1, true), "CodeCompanion did not render mixed context fixture " .. id)
+end
+assert(#rules_chat.context_items == #context_ids and vim.iter(rules_chat.context_items):any(function(item)
+	return item.id == rules_id and item.source == "rules" and item.path == "AGENTS.md"
+end), "CodeCompanion mixed context metadata was not registered: " .. vim.inspect(rules_chat.context_items))
+local panels = require("mayon.ui.ai_panels")
+panels.decorate_chat(rules_buf)
+local rows = vim.api.nvim_buf_get_lines(rules_buf, 0, -1, false)
+local rules_after = table.concat(rows, "\n")
+assert(rules_after == rules_before, "rules rendering must be visual-only and leave the chat protocol buffer unchanged")
+local rules_namespace = vim.api.nvim_create_namespace("MayonAIPanels")
+local rule_row, context_row
+for row, line in ipairs(rows) do
+	if line:find(rules_id, 1, true) then
+		rule_row = row - 1
+	elseif line:match("^%s*>%s*Context:%s*$") then
+		context_row = row - 1
+	end
+end
+assert(rule_row and context_row, "mixed CodeCompanion fixture must include its Context heading and rules row")
+local rule_overlay
+local concealed_rows = {}
+for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(rules_buf, rules_namespace, 0, -1, { details = true })) do
+	local details = mark[4]
+	if details.conceal ~= nil then
+		concealed_rows[mark[2]] = true
+		if details.virt_text then
+			rule_overlay = details
+		end
+	end
+end
+assert(rule_overlay, "the raw rules block needs a visible inline replacement")
+assert(concealed_rows[rule_row], "the AGENTS reference row was not concealed")
+assert(not concealed_rows[context_row], "the Context heading must remain visible for mixed context items")
+for _, id in ipairs({ context_ids[1], context_ids[3], context_ids[4] }) do
+	local row
+	for index, line in ipairs(rows) do
+		if line:find(id, 1, true) then
+			row = index - 1
+			break
+		end
+	end
+	assert(row and not concealed_rows[row], "a non-rules context item was concealed: " .. id)
+end
+assert(
+	rule_overlay.virt_text_pos == "overlay" and rule_overlay.virt_text[1][1] == "· 已加载规则：AGENTS.md",
+	"the replacement should be a concise muted loaded-rules label"
+)
+local outbound = {
+	content = "## YOU\n\n> Context:\n\n> - " .. table.concat(context_ids, "\n> - ") .. "\n\nReview the change.",
+}
+rules_chat.context:remove(outbound)
+for _, id in ipairs(context_ids) do
+	assert(not outbound.content:find(id, 1, true), "context reference duplicated into the user prompt: " .. id)
+end
+assert(#rules_chat.context_items == #context_ids and vim.iter(rules_chat.context_items):any(function(item)
+	return item.id == rules_id and item.source == "rules" and item.path == "AGENTS.md"
+end), "removing rendered references must preserve CodeCompanion context metadata")
+
+-- Without a Context heading, attach the summary to the rule row only.
+local bare_buf = vim.api.nvim_create_buf(false, true)
+vim.bo[bare_buf].filetype = "codecompanion"
+local bare_lines = {
+	"## YOU",
+	"",
+	"> - <file>src/previous.lua</file>",
+	"> - <rules>nested/AGENTS.md</rules>",
+	"> - <file>src/next.lua</file>",
+	"",
+	"Review this change.",
+}
+vim.api.nvim_buf_set_lines(bare_buf, 0, -1, false, bare_lines)
+panels.decorate_chat(bare_buf)
+assert(
+	vim.deep_equal(vim.api.nvim_buf_get_lines(bare_buf, 0, -1, false), bare_lines),
+	"a headerless rules row must keep all source lines intact"
+)
+local rule_row, previous_row, next_row = 3, 2, 4
+local bare_overlay
+local bare_concealed = {}
+for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(bare_buf, rules_namespace, 0, -1, { details = true })) do
+	local details = mark[4]
+	if details.conceal ~= nil then
+		bare_concealed[mark[2]] = true
+		if details.virt_text then
+			bare_overlay = details
+		end
+	end
+end
+assert(bare_concealed[rule_row], "headerless rules reference was not concealed")
+assert(
+	not bare_concealed[previous_row] and not bare_concealed[next_row],
+	"headerless context concealed neighboring files"
+)
+assert(
+	bare_overlay
+		and bare_overlay.virt_text_pos == "overlay"
+		and bare_overlay.virt_text[1][1] == "· 已加载规则：AGENTS.md",
+	"headerless rules should receive a summary on the reference row"
+)
+-- Leave the synthetic chat open until the test process exits. The history
+-- extension resolves ChatClosed asynchronously and expects registered chats.
+
 assert(require("sidekick.config").cli.tools.claude == nil, "Claude must have one terminal owner")
 assert(require("sidekick.config").cli.tools.codex and require("sidekick.config").cli.tools.grok)
 local mini_diff = require("mini.diff")
@@ -58,6 +184,7 @@ assert(
 assert(mini_diff.config.source.name == "manual", "MiniDiff must not attach as a Git change owner")
 local completion = require("mayon.features.ai_completion")
 local existing = vim.api.nvim_create_buf(true, false)
+vim.api.nvim_set_current_buf(existing)
 assert(completion.set("deepseek") == "deepseek" and vim.g.sidekick_nes == false)
 assert(vim.b[existing].minuet_virtual_text_auto_trigger, "existing buffer missed DeepSeek auto trigger")
 local delivered = 0

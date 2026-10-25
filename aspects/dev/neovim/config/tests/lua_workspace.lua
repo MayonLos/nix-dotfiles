@@ -103,7 +103,7 @@ local ok, err = xpcall(function()
 	mkdir(ordinary_root .. "/.git")
 	local ordinary_buf, ordinary_client = open_lua(ordinary_file, {
 		"local module = require('conform')",
-		"return Snacks.picker.files, vim.api.nvim_get_current_buf(), module",
+		"return Snacks.picker.files, vim.api.nvim_get_current_buf(), computer, module",
 	})
 	assert(
 		vim.fs.normalize(ordinary_client.root_dir) == vim.fs.normalize(ordinary_root),
@@ -141,9 +141,9 @@ local ok, err = xpcall(function()
 	)
 	assert(
 		vim.wait(20000, function()
-			return has_undefined_global(ordinary_buf, "Snacks") and has_undefined_global(ordinary_buf, "vim")
+			return has_undefined_global(ordinary_buf, "Snacks") and has_undefined_global(ordinary_buf, "computer")
 		end, 50),
-		"ordinary Lua projects must still report undefined Snacks and vim globals; diagnostics: "
+		"ordinary Lua projects must still report undefined Snacks and OpenComputers globals; diagnostics: "
 			.. vim.inspect(vim.diagnostic.get(ordinary_buf))
 	)
 	assert(not has_path(ordinary_library, unrelated_lua_root), "LuaLS must not receive every plugin library")
@@ -272,11 +272,12 @@ local ok, err = xpcall(function()
 		end
 	end
 
-	-- Luacheck sees the managed runtime globals only within the Neovim config.
-	-- Exercise the packaged math preview, a same-layout editable checkout, and
-	-- an ordinary project with an intentional unknown global.
+	-- Luacheck remains available for explicit checks but is not run alongside
+	-- LuaLS on project buffers, since only LuaLS reads project-owned .luarc data.
+	-- Exercise its scoped manual config on a package source and ordinary source.
 	require("lz.n").trigger_load("nvim-lint")
 	local lint = require("lint")
+	assert(not lint.linters_by_ft.lua, "Lua buffers should use LuaLS diagnostics without duplicate luacheck output")
 	assert(vim.fn.executable("luacheck") == 1, "luacheck is required for this check")
 	local function has_luacheck_code(buf, wanted)
 		vim.api.nvim_set_current_buf(buf)
@@ -337,34 +338,97 @@ local ok, err = xpcall(function()
 
 	-- Project-owned .luarc files must remain the owner's configuration. Check
 	-- both JSON formats and a nested Lua file below each config.
-	for _, extension in ipairs({ "json", "jsonc" }) do
-		local root, path = project_file("configured-" .. extension)
+	for _, scenario in ipairs({ "json", "jsonc", "managed-ancestor" }) do
+		local extension = scenario == "managed-ancestor" and "json" or scenario
+		local root, path = project_file("configured-" .. scenario)
+		local configured_env = vim.env.NVIM_CONFIG_DIR
+		if scenario == "managed-ancestor" then
+			vim.env.NVIM_CONFIG_DIR = root .. "/nested"
+		end
+		local library = root .. "/lua"
+		mkdir(library)
+		write(library .. "/project_api.lua", {
+			"---@meta",
+			"---@class projectApi",
+			"---@field answer number",
+			"---@type projectApi",
+			"projectApi = {}",
+		})
 		local config_path = root .. "/.luarc." .. extension
 		local config_lines
 		if extension == "json" then
 			config_lines = {
-				'{ "workspace.library": ["/project/owned/path"], "workspace.checkThirdParty": true }',
+				'{ "runtime.version": "Lua 5.2", "diagnostics.globals": ["PROJECT_LUARC_GLOBAL", "computer"], '
+					.. '"workspace.library": ['
+					.. vim.json.encode(library)
+					.. '], "workspace.checkThirdParty": true }',
 			}
 		else
 			config_lines = {
 				"{",
 				"  // project-owned LuaLS settings",
-				'  "workspace.library": ["/project/owned/jsonc-path"],',
+				'  "runtime.version": "Lua 5.2",',
+				'  "diagnostics.globals": ["PROJECT_LUARC_GLOBAL", "computer"],',
+				'  "workspace.library": [' .. vim.json.encode(library) .. "],",
 				'  "workspace.checkThirdParty": true',
 				"}",
 			}
 		end
 		write(config_path, config_lines)
 		local before = read(config_path)
-		local buf, client = open_lua(path, { "return require('snacks')" })
+		local buf, client = open_lua(path, {
+			"return PROJECT_LUARC_GLOBAL, projectApi.answer, vim.api, Snacks.picker",
+		})
 		assert(vim.fs.normalize(client.root_dir) == vim.fs.normalize(root), "LuaLS must honor the project config root")
 		assert(lazydev_config.is_enabled(root) == false, "lazydev must defer to an ancestor .luarc." .. extension)
 		assert(not lazydev_buffer.attached[buf], "lazydev must not attach inside a project-owned LuaLS config")
+		assert(
+			vim.tbl_get(client.config.settings, "Lua", "runtime", "version") == nil,
+			"editor Lua runtime settings must not override the project's .luarc"
+		)
+		assert(
+			vim.tbl_get(client.config.settings, "Lua", "diagnostics", "globals") == nil,
+			"editor globals must not be sent to ordinary Lua projects"
+		)
+		assert(
+			vim.tbl_get(client.config.settings, "Lua", "workspace", "library") == nil,
+			"editor libraries must not replace project-owned libraries"
+		)
 		local disabled_workspace = assert(workspace_api.find({ buf = buf }))
 		assert(not disabled_workspace:enabled(), "project-owned LuaLS config must disable lazydev workspace updates")
-		assert(#disabled_workspace.library == 0, "disabled workspace must not receive lazydev plugin libraries")
+		assert(
+			not has_path(disabled_workspace.library, module_lua_root("snacks")),
+			"project-owned LuaLS config must not inherit the Neovim Snacks library"
+		)
 		assert(vim.tbl_get(disabled_workspace.settings, "Lua", "workspace", "library") == nil)
+		local project_config_applied = vim.wait(20000, function()
+			local diagnostics = vim.diagnostic.get(buf)
+			local undefined = {}
+			for _, diagnostic in ipairs(diagnostics) do
+				local message = tostring(diagnostic.message):lower()
+				if message:find("undefined global", 1, true) then
+					for _, name in ipairs({ "vim", "snacks" }) do
+						if message:find(name, 1, true) then
+							undefined[name] = true
+						end
+					end
+				end
+			end
+			return undefined["vim"] and undefined["snacks"]
+		end, 50)
+		assert(project_config_applied, "LuaLS did not analyze the .luarc project buffer")
+		assert(
+			not has_undefined_global(buf, "PROJECT_LUARC_GLOBAL"),
+			"the project-owned .luarc global declaration was not honored"
+		)
+		assert(not has_undefined_global(buf, "computer"), "the project-owned OpenComputers global was not honored")
+		assert(not has_undefined_global(buf, "projectApi"), "the project-owned .luarc library was not loaded")
+		assert(
+			has_undefined_global(buf, "vim") and has_undefined_global(buf, "Snacks"),
+			"Neovim globals leaked into a project that owns its .luarc: " .. vim.inspect(vim.diagnostic.get(buf))
+		)
 		assert(read(config_path) == before, "lazydev must leave the project config bytes untouched")
+		vim.env.NVIM_CONFIG_DIR = configured_env
 	end
 
 	-- The explicit global opt-out is also evaluated per workspace and does not

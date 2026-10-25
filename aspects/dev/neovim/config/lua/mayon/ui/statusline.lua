@@ -23,7 +23,7 @@ function M.setup()
 			position_bg = palette.surface,
 			fg = palette.fg,
 			bright = palette.brightFg,
-			gray = palette.fg,
+			gray = palette.muted,
 			blue = palette.blue,
 			cyan = palette.cyan,
 			green = palette.green,
@@ -103,15 +103,19 @@ function M.setup()
 		t = "T",
 	}
 	local ViMode = {
-		provider = function(self)
-			local name = mode_names[self.mode] or self.mode:upper()
-			local label = vim.o.columns < 80 and (short_modes[self.mode:sub(1, 1)] or name:sub(1, 1)) or name
-			return " " .. label .. " "
-		end,
-		hl = function(self)
-			local key = mode_colors[self.mode:sub(1, 1)] or "blue"
-			return { fg = key, bg = "selection", bold = true }
-		end,
+		{
+			provider = " ● ",
+			hl = function(self)
+				return { fg = mode_colors[self.mode:sub(1, 1)] or "blue" }
+			end,
+		},
+		{
+			provider = function(self)
+				local name = mode_names[self.mode] or self.mode:upper()
+				return (vim.o.columns < 80 and (short_modes[self.mode:sub(1, 1)] or name:sub(1, 1)) or name) .. " "
+			end,
+			hl = { fg = "gray" },
+		},
 	}
 	ViMode.init = function(self)
 		self.mode = vim.fn.mode(1)
@@ -126,42 +130,25 @@ function M.setup()
 		condition = function()
 			return vim.o.columns >= 80 and conditions.is_git_repo()
 		end,
-		init = function(self)
-			self.status = vim.b.gitsigns_status_dict or {}
-		end,
-		hl = { fg = "purple" },
+		{ provider = "  " },
 		{
-			provider = function(self)
-				return text.fit(self.status.head or "git", math.max(6, math.floor(vim.o.columns * 0.12))) .. " "
-			end,
-		},
-		{
-			condition = function()
-				return vim.o.columns >= 120
-			end,
-			provider = function(self)
-				local c = self.status.added or 0
-				return c > 0 and ("+" .. c .. " ") or ""
+			provider = function()
+				local n = (vim.b.gitsigns_status_dict or {}).added or 0
+				return n > 0 and ("+" .. n .. " ") or ""
 			end,
 			hl = { fg = "git_add" },
 		},
 		{
-			condition = function()
-				return vim.o.columns >= 120
-			end,
-			provider = function(self)
-				local c = self.status.changed or 0
-				return c > 0 and ("~" .. c .. " ") or ""
+			provider = function()
+				local n = (vim.b.gitsigns_status_dict or {}).changed or 0
+				return n > 0 and ("~" .. n .. " ") or ""
 			end,
 			hl = { fg = "git_change" },
 		},
 		{
-			condition = function()
-				return vim.o.columns >= 120
-			end,
-			provider = function(self)
-				local c = self.status.removed or 0
-				return c > 0 and ("-" .. c .. " ") or ""
+			provider = function()
+				local n = (vim.b.gitsigns_status_dict or {}).removed or 0
+				return n > 0 and ("-" .. n .. " ") or ""
 			end,
 			hl = { fg = "git_del" },
 		},
@@ -233,58 +220,33 @@ function M.setup()
 			hl = { fg = "orange" },
 		},
 	}
-	FileNameBlock = utils.insert(FileNameBlock, FileIcon, FileName, { provider = "%<" })
-
-	local function diag_icon(severity)
-		return ({
-			[vim.diagnostic.severity.ERROR] = "▲",
-			[vim.diagnostic.severity.WARN] = "▲",
-			[vim.diagnostic.severity.INFO] = "i",
-			[vim.diagnostic.severity.HINT] = "·",
-		})[severity]
-	end
+	FileNameBlock = utils.insert(FileNameBlock, FileName, { provider = "%<" })
 
 	local Diagnostics = {
-		condition = conditions.has_diagnostics,
-		init = function(self)
-			local sev = vim.diagnostic.severity
-			self.errors = #vim.diagnostic.get(0, { severity = sev.ERROR })
-			self.warns = #vim.diagnostic.get(0, { severity = sev.WARN })
-			self.infos = #vim.diagnostic.get(0, { severity = sev.INFO })
-			self.hints = #vim.diagnostic.get(0, { severity = sev.HINT })
+		condition = function()
+			return #vim.diagnostic.get(0, { severity = { min = vim.diagnostic.severity.WARN } }) > 0
 		end,
-		update = { "DiagnosticChanged", "BufEnter" },
 		{
-			provider = function(self)
-				return self.errors > 0 and (diag_icon(vim.diagnostic.severity.ERROR) .. self.errors .. " ")
+			condition = function()
+				return #vim.diagnostic.get(0, { severity = vim.diagnostic.severity.WARN }) > 0
 			end,
-			hl = { fg = "red" },
-		},
-		{
-			provider = function(self)
-				return self.warns > 0 and (diag_icon(vim.diagnostic.severity.WARN) .. self.warns .. " ")
+			provider = function()
+				return "▲" .. #vim.diagnostic.get(0, { severity = vim.diagnostic.severity.WARN }) .. " "
 			end,
 			hl = { fg = "diag_warn" },
 		},
 		{
 			condition = function()
-				return vim.o.columns >= 80
+				return #vim.diagnostic.get(0, { severity = vim.diagnostic.severity.ERROR }) > 0
 			end,
-			provider = function(self)
-				return self.infos > 0 and (diag_icon(vim.diagnostic.severity.INFO) .. self.infos .. " ")
+			provider = function()
+				return "●" .. #vim.diagnostic.get(0, { severity = vim.diagnostic.severity.ERROR }) .. " "
 			end,
-			hl = { fg = "diag_info" },
+			hl = { fg = "red" },
 		},
-		{
-			condition = function()
-				return vim.o.columns >= 80
-			end,
-			provider = function(self)
-				return self.hints > 0 and (diag_icon(vim.diagnostic.severity.HINT) .. self.hints .. " ")
-			end,
-			hl = { fg = "diag_hint" },
-		},
+		update = { "DiagnosticChanged", "BufEnter" },
 	}
+
 	local LSPActive = {
 		condition = function()
 			if not package.loaded["vim.lsp"] or not conditions.lsp_attached() then
@@ -307,7 +269,8 @@ function M.setup()
 			self.progress = vim.ui.progress_status():gsub("%%%%", "%%")
 			self.busy = vim.bo.busy > 0 or self.progress ~= ""
 			table.sort(client_names)
-			self.label = self.busy and ("◐ " .. (self.progress ~= "" and self.progress or "busy"))
+			local spinner = ({ "◌", "◍", "◎", "◍" })[(vim.g.mayon_lsp_spinner or 1)]
+			self.label = self.busy and (spinner .. " " .. (self.progress ~= "" and self.progress or "busy"))
 				or (client_names[1] or "")
 		end,
 		provider = function(self)
@@ -323,7 +286,7 @@ function M.setup()
 			return vim.fn.reg_recording() ~= ""
 		end,
 		provider = function()
-			return "● @" .. vim.fn.reg_recording() .. " "
+			return "● REC @" .. vim.fn.reg_recording() .. " "
 		end,
 		hl = { fg = "red", bold = true },
 	}
@@ -337,9 +300,9 @@ function M.setup()
 				return ""
 			end
 			if count.incomplete == 1 then
-				return "search … "
+				return "[…] "
 			end
-			return count.current .. "/" .. count.total .. (count.incomplete == 2 and "+ " or " ")
+			return "[" .. count.current .. "/" .. count.total .. (count.incomplete == 2 and "+" or "") .. "] "
 		end,
 		hl = { fg = "fg" },
 	}
@@ -370,9 +333,9 @@ function M.setup()
 	local Ruler = {
 		{
 			provider = function()
-				return vim.o.columns >= 120 and " %l:%v · %p%% " or " %l:%v "
+				return " %l:%v "
 			end,
-			hl = "MayonPosition",
+			hl = { fg = "gray" },
 		},
 	}
 
@@ -403,7 +366,10 @@ function M.setup()
 	})
 	vim.api.nvim_create_autocmd("Progress", {
 		group = vim.api.nvim_create_augroup("HeirlineNativeProgress", { clear = true }),
-		callback = vim.schedule_wrap(redraw_status),
+		callback = vim.schedule_wrap(function()
+			vim.g.mayon_lsp_spinner = ((vim.g.mayon_lsp_spinner or 1) % 4) + 1
+			redraw_status()
+		end),
 	})
 	local CodeCompanion = {
 		condition = function()
@@ -429,9 +395,9 @@ function M.setup()
 		provider = function()
 			local completion = package.loaded["mayon.features.ai_completion"]
 			local provider = completion and completion.provider or "copilot"
-			local name = provider == "copilot" and "Copilot" or "DeepSeek"
+			local name = ({ copilot = "Copilot", deepseek = "DeepSeek", off = "AI off" })[provider] or provider
 			local busy = completion and (completion.busy or completion.pending > 0) and " …" or ""
-			return " AI · " .. name .. busy .. " "
+			return " " .. name .. busy .. " "
 		end,
 		hl = { fg = "accent" },
 		update = { "ModeChanged", "BufEnter", "CursorHold", "User" },
@@ -439,12 +405,9 @@ function M.setup()
 
 	local DefaultStatusline = {
 		ViMode,
-		Space,
-		-- Drop optional context before Neovim truncates diagnostics on narrow UIs.
+		{ provider = " · ", hl = { fg = "accent" } },
 		{ flexible = 3, FileNameBlock, CompactFileName, {} },
-		-- Buffer state stays visible when the flexible filename contracts.
-		FileFlags,
-		Space,
+		Git,
 		Align,
 		Recording,
 		SearchCount,
@@ -453,18 +416,6 @@ function M.setup()
 		CodeCompanion,
 		{ flexible = 5, AI, {} },
 		Ruler,
-		Encoding,
-		{ flexible = 2, Git, {} },
-		{
-			provider = " 󰂚 ",
-			hl = { fg = "gray" },
-			on_click = {
-				callback = function()
-					require("snacks").notifier.show_history()
-				end,
-				name = "mayon_notifications",
-			},
-		},
 	}
 
 	local SpecialStatusline = {

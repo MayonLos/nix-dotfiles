@@ -34,14 +34,19 @@ local function add_window_highlights(win)
 	local mapped = {}
 	for entry in vim.wo[win].winhighlight:gmatch("[^,]+") do
 		local source = entry:match("^([^:]+):")
-		if source then
-			mapped[source] = true
+		-- style=minimal adds EndOfBuffer: with an empty target. That clears
+		-- its color instead of inheriting a plugin's floating namespace.
+		if not (source == "EndOfBuffer" and entry:match("^EndOfBuffer:%s*$")) then
+			if source then
+				mapped[source] = true
+			end
+			entries[#entries + 1] = entry
 		end
-		entries[#entries + 1] = entry
 	end
 	for _, entry in ipairs({
 		"Normal:NormalFloat",
 		"NormalNC:NormalFloat",
+		"EndOfBuffer:NormalFloat",
 		"FloatBorder:FloatBorder",
 		"FloatTitle:FloatTitle",
 	}) do
@@ -118,7 +123,9 @@ function M.style_float(win, title)
 	if title_is_empty(config.title) and ft ~= "snacks_terminal" then
 		config.title = " " .. surface_title(buf, title) .. " "
 	end
-	config.title_pos = config.title_pos or "left"
+	-- Keep native/plugin floats visually quiet and centered like the LSP popups.
+	-- A little whitespace in the title itself prevents it touching the edge glyphs.
+	config.title_pos = "center"
 	pcall(vim.api.nvim_win_set_config, win, config)
 	add_window_highlights(win)
 end

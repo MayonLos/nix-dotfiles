@@ -1,0 +1,17 @@
+{
+  "diagnostics.globals": [
+    "computer",
+    "component",
+    "robot",
+    "sides",
+    "event",
+    "filesystem",
+    "internet",
+    "serialization",
+    "shell",
+    "term",
+    "unicode",
+    "colors",
+    "redstone"
+  ]
+}

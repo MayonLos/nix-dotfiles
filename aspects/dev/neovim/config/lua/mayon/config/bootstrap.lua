@@ -52,7 +52,7 @@ function M.setup()
 	})
 	-- The dashboard's first frame needs only this rail. Load the full editing
 	-- statusline after that frame, or synchronously when a document is opened.
-	vim.o.statusline = "%#MayonDashboardMode# NORMAL %*  dashboard%=%#StatusLine#q 退出 "
+	vim.o.statusline = "%#MayonModeNumber# ● %*NORMAL · dashboard%=%#StatusLine#q 退出 "
 	local function statusline()
 		require("mayon.ui.statusline").setup()
 	end
@@ -69,7 +69,6 @@ function M.setup()
 		callback = function()
 			vim.schedule(function()
 				statusline()
-				require("mayon.ui.workspace").setup()
 				local s = sessions()
 				s.auto_restore()
 			end)

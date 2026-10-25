@@ -62,19 +62,19 @@ local function setup(overrides)
 		},
 		lazygit = {
 			configure = false,
-			win = { style = "float", border = "rounded", title = " Git · Lazygit ", title_pos = "left" },
+			win = { style = "float", border = "rounded", title = " Git · Lazygit ", title_pos = "center" },
 		},
 		terminal = {
 			win = {
 				border = "rounded",
 				title = " Terminal · Snacks ",
-				title_pos = "left",
+				title_pos = "center",
 				wo = { winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder" },
 			},
 		},
 		notifier = {
 			enabled = true,
-			timeout = 2500,
+			timeout = 3000,
 			style = require("mayon.ui.notifications").render,
 			filter = require("mayon.ui.notifications").filter,
 			top_down = true,
@@ -99,8 +99,8 @@ local function setup(overrides)
 		},
 		indent = {
 			enabled = true,
-			animate = { enabled = not motion_reduced, duration = { step = 10, total = 100 } },
-			indent = { enabled = false },
+			animate = { enabled = false },
+			indent = { enabled = true, char = "│", hl = "SnacksIndent" },
 			scope = { enabled = true, only_current = true, char = "│", hl = "SnacksIndentScope" },
 		},
 		words = { enabled = true, debounce = 150 },
@@ -124,10 +124,6 @@ local function setup(overrides)
 				vim.wo[win.win].winbar = ""
 				vim.wo[win.win].winhighlight = "NormalFloat:Normal,Normal:Normal,NormalNC:Normal"
 				vim.o.showtabline = 0
-				vim.g.mayon_map_before_zen = vim.g.mayon_map_enabled
-				if package.loaded["mini.map"] then
-					require("mini.map").close()
-				end
 			end,
 			on_close = function()
 				vim.o.showtabline = 2
@@ -146,7 +142,7 @@ local function setup(overrides)
 			ui_select = true,
 			db = { sqlite3_path = sqlite3_path() },
 			-- Keep picker visuals and source titles in one config hook. The
-			-- Explorer source opts out and retains its dedicated 40-column rail.
+			-- Explorer source opts out and retains its on-demand 34-column sidebar.
 			config = function(opts)
 				return require("mayon.ui.pickers").configure(opts)
 			end,
@@ -166,11 +162,6 @@ local function setup(overrides)
 			end,
 			sources = {
 				explorer = {
-					actions = {
-						focus_input = function(picker)
-							return require("mayon.ui.pickers").explorer_search(picker)
-						end,
-					},
 					config = function(opts)
 						-- Preserve Snacks' explorer config transform and install guards
 						-- before the picker exposes its actions (2.31 has no on_init).
@@ -200,33 +191,50 @@ local function setup(overrides)
 						return opts
 					end,
 					layout = function()
-						if vim.o.columns < 52 then
-							return {
-								preset = "select",
-								hidden = { "input" },
-								layout = {
-									width = 0.82,
-									min_width = vim.o.columns - 4,
-									max_width = vim.o.columns - 4,
-									height = 0.55,
-								},
-							}
-						end
-						local width = 40
 						return {
-							preset = "sidebar",
-							hidden = { "input" },
 							preview = false,
-							layout = { width = width, min_width = width, max_width = width, height = 0 },
+							layout = {
+								box = "vertical",
+								position = "left",
+								width = 34,
+								height = 0,
+								border = "none",
+								{ win = "input", height = 1, border = "rounded" },
+								{ win = "list", border = "none" },
+							},
 						}
 					end,
 					on_show = function(picker)
 						local win = picker.list.win.win
-						vim.schedule(function()
-							require("mayon.ui.workspace").attach()
-						end)
-						local title = "Project ⌄"
+						local title = "filter"
 						picker.opts.title = title
+						-- Keep the native recursive filter; render its empty hint instead of
+						-- an extra project header or a constantly changing counter.
+						if not picker.input._mayon_filter_hint then
+							local update = picker.input.update
+							picker.input.update = function(input, ...)
+								update(input, ...)
+								if input.win:buf_valid() then
+									local native = vim.api.nvim_get_namespaces()["snacks.picker.input"]
+									if native then
+										pcall(vim.api.nvim_buf_del_extmark, input.win.buf, native, 999)
+									end
+									local ns = vim.api.nvim_create_namespace("MayonExplorerFilter")
+									vim.api.nvim_buf_clear_namespace(input.win.buf, ns, 0, -1)
+									if input:get() == "" then
+										vim.api.nvim_buf_set_extmark(
+											input.win.buf,
+											ns,
+											0,
+											0,
+											{ virt_text = { { "filter", "Comment" } }, virt_text_pos = "eol" }
+										)
+									end
+								end
+							end
+							picker.input._mayon_filter_hint = true
+							picker.input:update()
+						end
 						_G.MayonExplorerStatusColumn = function()
 							local target = tonumber(vim.g.statusline_winid)
 							if
@@ -248,7 +256,7 @@ local function setup(overrides)
 							statuscolumn = "%!v:lua.MayonExplorerStatusColumn()",
 							cursorline = true,
 							cursorlineopt = "line",
-							winbar = "%#MayonExplorerTitle# " .. title .. " %*",
+							winbar = "",
 						}
 						-- Snacks reapplies opts.wo during its final layout pass.
 						picker.list.win.opts.wo = vim.tbl_extend("force", picker.list.win.opts.wo, options)
@@ -264,7 +272,7 @@ local function setup(overrides)
 						end)
 					end,
 					on_change = function(picker)
-						local title = "Project ⌄"
+						local title = "filter"
 						if picker.opts.title ~= title then
 							picker.opts.on_show(picker)
 						end
@@ -300,6 +308,7 @@ local function setup(overrides)
 						return result
 					end,
 					win = {
+						input = { title = "", wo = { winbar = "" } },
 						list = {
 							border = "none",
 							wo = {

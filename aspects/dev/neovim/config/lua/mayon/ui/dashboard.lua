@@ -234,10 +234,13 @@ local function group_heading(label, right)
 	}
 end
 
+local recent_limit = 4
+local project_limit = 3
+
 local function recent_section()
 	local _, shown = project_context()
 	local rows = { group_heading("RECENT", shown) }
-	local recent = Snacks.dashboard.sections.recent_files({ limit = 4 })()
+	local recent = Snacks.dashboard.sections.recent_files({ limit = recent_limit })()
 	for _, item in ipairs(recent) do
 		item.indent = 2
 		rows[#rows + 1] = item
@@ -246,15 +249,22 @@ local function recent_section()
 end
 
 local project_rows = setmetatable({}, { __mode = "k" })
+local project_rows_limit = setmetatable({}, { __mode = "k" })
 local project_pending = setmetatable({}, { __mode = "k" })
 local function projects_section(dashboard)
 	local rows = { group_heading("PROJECTS") }
-	if not project_rows[dashboard] and not project_pending[dashboard] then
+	if (project_rows_limit[dashboard] or 0) < project_limit and not project_pending[dashboard] then
 		project_pending[dashboard] = true
+		local requested_limit = project_limit
 		-- Recent files and their icons belong to frame one. Project discovery
 		-- walks history and ancestors, so let the first dashboard frame render.
 		vim.schedule(function()
-			project_rows[dashboard] = Snacks.dashboard.sections.projects({ limit = 3, pick = false, session = false })
+			project_rows[dashboard] = Snacks.dashboard.sections.projects({
+				limit = requested_limit,
+				pick = false,
+				session = false,
+			})
+			project_rows_limit[dashboard] = requested_limit
 			project_pending[dashboard] = nil
 			if
 				dashboard.win
@@ -266,7 +276,10 @@ local function projects_section(dashboard)
 			end
 		end)
 	end
-	for _, item in ipairs(project_rows[dashboard] or {}) do
+	for index, item in ipairs(project_rows[dashboard] or {}) do
+		if index > project_limit then
+			break
+		end
 		item.indent = 2
 		rows[#rows + 1] = item
 	end
@@ -389,7 +402,7 @@ local function install_selection()
 			-- Snacks suppresses both bars at startup; retain our dashboard rail.
 			vim.o.laststatus = 3
 			if vim.api.nvim_get_current_buf() == buf then
-				vim.o.showtabline = 0
+				vim.o.showtabline = 2
 			end
 			vim.wo[win].cursorline = false
 			vim.wo[win].winhighlight =
@@ -493,7 +506,7 @@ local function install_selection()
 				group = group,
 				buffer = buf,
 				callback = function()
-					vim.o.showtabline, vim.o.laststatus = 0, 3
+					vim.o.showtabline, vim.o.laststatus = 2, 3
 				end,
 			})
 			-- Map Enter to the grid cell; non-grid recent/project rows retain their
@@ -530,7 +543,9 @@ function M.config()
 	return {
 		enabled = true,
 		width = content_width,
-		row = 6,
+		-- Keep the compact content slightly above the vertical midpoint. Snacks
+		-- resolves this when the dashboard first opens, so startup does no scan.
+		row = math.max(2, math.floor(vim.o.lines * 0.16)),
 		formats = {
 			file = dashboard_file,
 			icon = dashboard_icon,
@@ -550,15 +565,26 @@ function M.config()
 				menu_width = math.floor((content_width - menu_gap) / 2)
 				dashboard.opts.width = content_width
 				menu_rows = {}
+				local height = dashboard._size.height
+				recent_limit, project_limit = 4, 3
+				if height < 42 then
+					recent_limit, project_limit = 3, 2
+				end
+				if height < 32 then
+					recent_limit, project_limit = 2, 1
+				end
+				if height < 24 then
+					recent_limit, project_limit = 1, 1
+				end
 				local result = { title_section(), rule_section() }
 				vim.list_extend(result, menu_section())
 				local recent, projects = recent_section(), projects_section(dashboard)
 				vim.list_extend(result, recent)
 				vim.list_extend(result, projects)
 				-- Leave the footer near the bottom, independently of history length.
-				local height = 2 + 1 + 4 + #recent + #projects + 2
+				local content_height = 2 + 1 + 4 + #recent + #projects + 2
 				local footer = startup_footer()
-				footer.padding = { 0, math.max(1, dashboard._size.height - 6 - height - 3) }
+				footer.padding = { 0, math.max(1, dashboard._size.height - 6 - content_height - 3) }
 				result[#result + 1] = footer
 				return result
 			end,

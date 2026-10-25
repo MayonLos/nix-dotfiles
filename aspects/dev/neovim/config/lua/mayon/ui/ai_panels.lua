@@ -138,6 +138,25 @@ local function set_line_hl(buf, row, group, priority)
 	})
 end
 
+local function decorate_loaded_rules(buf, lines)
+	for row, line in ipairs(lines) do
+		local rule = line:match("^%s*>%s*%-%s*<rules>([^<>]-)</rules>%s*$")
+		if rule and rule:match("AGENTS%.md$") then
+			local filename = vim.fs.basename(rule)
+			-- Replace only this rule row. Other file/buffer context entries and
+			-- their Context heading must remain visible, even when tightly packed.
+			api.nvim_buf_set_extmark(buf, ns, row - 1, 0, {
+				end_col = #line,
+				end_row = row - 1,
+				conceal = "",
+				virt_text = { { "· 已加载规则：" .. filename, "MayonAIPanelMuted" } },
+				virt_text_pos = "overlay",
+				priority = 5002,
+			})
+		end
+	end
+end
+
 local tool_names = {
 	Read = true,
 	Edit = true,
@@ -159,6 +178,7 @@ local function decorate_chat(buf)
 	end
 	api.nvim_buf_clear_namespace(buf, ns, 0, -1)
 	local lines = api.nvim_buf_get_lines(buf, 0, -1, false)
+	decorate_loaded_rules(buf, lines)
 	local user_roles, assistant_roles = role_headings(buf)
 	local in_user = false
 	local in_code = false
@@ -212,12 +232,15 @@ local function decorate_chat(buf)
 	end
 	for _, win in ipairs(vim.fn.win_findbuf(buf)) do
 		vim.wo[win].signcolumn = "yes:1"
+		vim.wo[win].conceallevel = 2
 		vim.wo[win].winhighlight =
 			"Normal:MayonAIPanel,EndOfBuffer:MayonAIPanel,SignColumn:MayonAIPanel,WinBar:EdgyWinBar"
 		vim.wo[win].fillchars = "eob: "
 		vim.wo[win].winbar = "%!v:lua.require'mayon.ui.ai_panels'.winbar()"
 	end
 end
+
+M.decorate_chat = decorate_chat
 
 local function diff_counts(buf)
 	local target = vim.b[buf].claudecode_diff_target_win

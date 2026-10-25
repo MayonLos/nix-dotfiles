@@ -12,9 +12,9 @@ function M.open(index, pattern)
 		M.open((index - 1 + delta) % #sources + 1, query)
 	end
 	local opts = {
-		title = "Search Everywhere · " .. table.concat(
+		mayon_label = table.concat(
 			vim.tbl_map(function(s)
-				return s == sources[index] and ("[" .. s .. "]") or s
+				return s == sources[index] and ("• " .. s) or s
 			end, sources),
 			"  "
 		),
