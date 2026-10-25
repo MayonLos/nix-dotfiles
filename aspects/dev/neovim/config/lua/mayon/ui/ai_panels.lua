@@ -57,9 +57,6 @@ local function hl()
 		"MayonAIDiffDeleteText",
 		{ fg = palette.brightFg, bg = require("mayon.ui.theme").blend(palette.red, palette.bg, 0.12), bold = true }
 	)
-	api.nvim_set_hl(0, "NormalFloat", { fg = palette.brightFg, bg = palette.deep })
-	api.nvim_set_hl(0, "FloatBorder", { fg = edge, bg = palette.deep })
-	api.nvim_set_hl(0, "FloatTitle", { fg = palette.muted, bg = palette.deep })
 	api.nvim_set_hl(0, "CodeCompanionChatHeader", { fg = palette.muted, bg = palette.bg, bold = true })
 	api.nvim_set_hl(0, "CodeCompanionChatSeparator", { fg = edge, bg = palette.bg })
 	api.nvim_set_hl(0, "CodeCompanionChatTool", { fg = palette.cyan, bg = palette.bg })
@@ -243,7 +240,7 @@ local function decorate_chat(buf)
 			.. normal
 			.. ",SignColumn:"
 			.. normal
-			.. ",WinBar:EdgyWinBar,FloatBorder:FloatBorder,FloatTitle:FloatTitle"
+			.. ",WinBar:MayonAIPanel,WinBarNC:MayonAIPanel,FloatBorder:FloatBorder,FloatTitle:FloatTitle"
 		vim.wo[win].fillchars = "eob: "
 		vim.wo[win].winbar = "%!v:lua.require'mayon.ui.ai_panels'.winbar()"
 	end
@@ -411,7 +408,7 @@ function M.style_diff(buf)
 			vim.w[win].mayon_claude_style =
 				{ winhighlight = vim.wo[win].winhighlight, cursorline = vim.wo[win].cursorline }
 		end
-		vim.wo[win].winhighlight = "Normal:NormalFloat,WinBar:EdgyWinBar,DiffChange:"
+		vim.wo[win].winhighlight = "Normal:NormalFloat,WinBar:MayonAIPanel,WinBarNC:MayonAIPanel,DiffChange:"
 			.. (added and "DiffAdd" or "DiffDelete")
 			.. ",DiffText:"
 			.. (added and "MayonAIDiffAddText" or "MayonAIDiffDeleteText")
@@ -438,7 +435,8 @@ local function style_terminal(buf)
 		return
 	end
 	for _, win in ipairs(vim.fn.win_findbuf(buf)) do
-		vim.wo[win].winhighlight = "Normal:NormalFloat,EndOfBuffer:NormalFloat,WinBar:EdgyWinBar"
+		vim.wo[win].winhighlight =
+			"Normal:NormalFloat,EndOfBuffer:NormalFloat,WinBar:MayonAIPanel,WinBarNC:MayonAIPanel"
 		vim.wo[win].fillchars = "eob: "
 		local name = provider(buf)
 		vim.wo[win].winbar = name and "%!v:lua.require'mayon.ui.ai_panels'.winbar()" or ""
