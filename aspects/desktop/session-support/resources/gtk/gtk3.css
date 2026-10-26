@@ -154,6 +154,7 @@ window.thunar {
   padding: 0;
   min-width: 16px;
   min-height: 16px;
+  -gtk-icon-transform: scale(0.85);
 }
 
 .thunar toolbar button arrow {
@@ -232,7 +233,7 @@ window.thunar {
   border: 0;
   border-bottom: 1px solid alpha(@borders, 0.25);
   border-radius: 0;
-  padding: 6px 8px;
+  padding: 4px 8px;
   box-shadow: none;
 }
 

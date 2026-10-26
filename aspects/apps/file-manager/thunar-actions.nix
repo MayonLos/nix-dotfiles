@@ -325,10 +325,12 @@ in
         <action>
           <icon>utilities-terminal</icon>
           <name>Open Terminal Here</name>
+          <name xml:lang="zh_CN">在此处打开终端</name>
           <submenu></submenu>
           <unique-id>1777390765336062-1</unique-id>
          <command>${terminalLauncher}/bin/thunar-open-terminal %f</command>
       <description>Open the selected item's directory in the configured terminal</description>
+      <description xml:lang="zh_CN">在配置的终端中打开所选项目所在目录</description>
           <range></range>
           <patterns>*</patterns>
           <startup-notify/>
@@ -337,10 +339,12 @@ in
         <action>
          <icon>accessories-text-editor</icon>
          <name>Open in Neovim</name>
+         <name xml:lang="zh_CN">用 Neovim 打开</name>
          <submenu></submenu>
          <unique-id>open-neovim-here-1</unique-id>
          <command>${neovimAction}/bin/thunar-open-neovim %F</command>
          <description>Open selected files in Neovim in this directory</description>
+         <description xml:lang="zh_CN">在此目录中用 Neovim 打开所选文件</description>
          <range>*</range>
          <patterns>*</patterns>
          <directories/>
@@ -353,10 +357,12 @@ in
         <action>
          <icon>utilities-terminal</icon>
          <name>Open herdr Here</name>
+         <name xml:lang="zh_CN">在此处打开 herdr</name>
          <submenu>Development</submenu>
          <unique-id>open-herdr-here-1</unique-id>
          <command>${herdrAction}/bin/thunar-open-herdr %f</command>
          <description>Open a herdr workspace in this directory</description>
+         <description xml:lang="zh_CN">在此目录中打开 herdr 工作区</description>
          <range>*</range>
          <patterns>*</patterns>
          <directories/>
@@ -364,10 +370,12 @@ in
         <action>
          <icon>utilities-terminal</icon>
          <name>Open lazygit Here</name>
+         <name xml:lang="zh_CN">在此处打开 lazygit</name>
          <submenu>Development</submenu>
          <unique-id>open-lazygit-here-1</unique-id>
          <command>${lazygitAction}/bin/thunar-open-lazygit %f</command>
          <description>Open lazygit in this directory</description>
+         <description xml:lang="zh_CN">在此目录中打开 lazygit</description>
          <range>*</range>
          <patterns>*</patterns>
          <directories/>
@@ -375,10 +383,12 @@ in
         <action>
          <icon>preferences-desktop-wallpaper</icon>
          <name>Set as Wallpaper</name>
+         <name xml:lang="zh_CN">设为壁纸</name>
          <submenu></submenu>
          <unique-id>set-as-wallpaper-1</unique-id>
          <command>${setWallpaper}/bin/thunar-set-wallpaper %f</command>
          <description>Set the selected image as the current session wallpaper</description>
+         <description xml:lang="zh_CN">将所选图片设为当前桌面会话的壁纸</description>
          <range>1</range>
          <patterns>*</patterns>
          <image-files/>
@@ -386,10 +396,12 @@ in
         <action>
           <icon>edit-copy</icon>
           <name>Copy as Image</name>
+          <name xml:lang="zh_CN">复制为图像</name>
           <submenu></submenu>
           <unique-id>${copyImageId}</unique-id>
           <command>${copyImage}/bin/copy-image %f</command>
           <description>Put the image data itself on the clipboard (Wayland + X11), not the file path</description>
+          <description xml:lang="zh_CN">将图像数据复制到剪贴板（Wayland 和 X11），而非文件路径</description>
           <range>1</range>
           <patterns>*</patterns>
           <image-files/>
@@ -397,10 +409,12 @@ in
         <action>
           <icon>edit-copy</icon>
           <name>Copy Path</name>
+          <name xml:lang="zh_CN">复制路径</name>
           <submenu></submenu>
           <unique-id>copy-path-1</unique-id>
           <command>${copyPath}/bin/copy-path %F</command>
           <description>Copy the selected paths as text to Wayland and X11 clipboards</description>
+          <description xml:lang="zh_CN">将所选路径作为文本复制到 Wayland 和 X11 剪贴板</description>
           <range>*</range>
           <patterns>*</patterns>
           <directories/>
@@ -413,10 +427,12 @@ in
         <action>
           <icon>insert-image</icon>
           <name>Paste Clipboard Image</name>
+          <name xml:lang="zh_CN">粘贴剪贴板图像</name>
           <submenu></submenu>
           <unique-id>paste-clipboard-image-1</unique-id>
           <command>${pasteClipboardImage}/bin/paste-clipboard-image %f</command>
           <description>Save the clipboard image into this folder as a PNG</description>
+          <description xml:lang="zh_CN">将剪贴板中的图像以 PNG 格式保存到此文件夹</description>
           <range>*</range>
           <patterns>*</patterns>
           <directories/>
@@ -424,10 +440,12 @@ in
         <action>
           <icon>insert-link</icon>
           <name>Paste as Link</name>
+          <name xml:lang="zh_CN">粘贴为链接</name>
           <submenu></submenu>
           <unique-id>paste-symlink-1</unique-id>
           <command>${pasteSymlink}/bin/paste-symlink %f</command>
           <description>Symlink clipboard files into this folder</description>
+          <description xml:lang="zh_CN">将剪贴板中的文件以符号链接方式放入此文件夹</description>
           <range>*</range>
           <patterns>*</patterns>
           <directories/>

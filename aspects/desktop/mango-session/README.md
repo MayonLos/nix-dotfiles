@@ -56,3 +56,11 @@ phinger-cursors-light 32 is already the shared pointer default. At output scale 
 The `hud-overlay-clearance.patch` coordinates only structured SYSTEM bar tooltips and top-right notifications. Tooltip geometry is published in output-local logical coordinates after compositor configuration; normal fade-out retains the reservation until popup destruction. Top-right notification surfaces use `exclusiveZone=-1`, so their 64 px top offset is measured from the output edge rather than a workspace already reduced by the bar. Other notification positions keep upstream workspace-relative placement.
 
 When the default notification column overlaps SYSTEM on the same output, its complete layer surface moves below the tooltip; on short outputs it moves left. Top and bottom margins change by opposite amounts, preserving the canvas height and existing notification timers/actions/reply state. Actual per-output card heights, including exiting cards, determine clearance. When neither layout fits, SYSTEM is suppressed for the current hover; leaving the widget allows it again. Notifications under the pointer stay fixed. No periodic polling or extra service is added, and user data and notification history are unchanged.
+
+## R34 overlay surfaces
+
+Notification cards and OSD use `background_opacity = 1.0`, matching the solid
+Noctalia panel surfaces. This keeps text and controls readable over detailed
+wallpapers and prevents the small translucent fringe left by the previous 0.98
+setting. Notification placement, actions, timeout, and the R33 SYSTEM clearance
+behavior are unchanged.

@@ -116,8 +116,10 @@ assert fileManagerServices == [ serviceName ];
     test -x ${fileManager.thunarWithPlugins}/bin/thunar-settings
     test ! -e ${fileManager.thunarWithPlugins}/lib/thunarx-3/thunar-wallpaper-plugin.so
     for app in thunar thunar-settings; do
-      grep -F 'if [ "''${LANGUAGE+x}" != x ]; then export LANGUAGE="zh_CN:en_US"; fi' \
+      grep -F 'if [ "''${LANGUAGE+x}" != x ]; then' \
         ${fileManager.thunarWithPlugins}/bin/$app
+      grep -F 'export LANGUAGE="zh_CN:en_US"' ${fileManager.thunarWithPlugins}/bin/$app
+      grep -F 'export LC_MESSAGES="zh_CN.UTF-8"' ${fileManager.thunarWithPlugins}/bin/$app
       ! grep -F 'LC_ALL=' ${fileManager.thunarWithPlugins}/bin/$app
     done
     grep -Fx 'Name=org.freedesktop.FileManager1' ${serviceFile}

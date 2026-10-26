@@ -329,9 +329,9 @@ in
               categories = true;
               category_icons_only = true;
               show_icons = true;
+              # Keep full rows so application/provider descriptions and paths
+              # remain visible; the locked UI has no separate row-density knob.
               compact = false;
-              # List rows retain long names and descriptions; provider search,
-              # pinned apps, categories and desktop actions remain available.
               app_grid = false;
               show_app_actions = true;
               track_usage = true;
@@ -497,7 +497,8 @@ in
             border = true;
             border_color = "outline_variant";
             border_width = 1;
-            background_opacity = 0.98;
+            # Match solid panels so busy text/wallpaper never bleeds through.
+            background_opacity = 1.0;
             # Keep transient messages on the output currently being used.
             follow_focused_output = true;
           };
@@ -511,7 +512,8 @@ in
             border = true;
             border_color = "outline_variant";
             border_width = 1;
-            background_opacity = 0.98;
+            # Keep device feedback on the same opaque surface as panels.
+            background_opacity = 1.0;
             follow_focused_output = true;
           };
 
