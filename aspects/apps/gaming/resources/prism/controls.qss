@@ -1,0 +1,185 @@
+/* Only the main-window command toolbars and the explicitly scoped Prism
+   settings controls below are refined; other Qt applications are unaffected. */
+QMainWindow#MainWindow QToolBar#mainToolBar QToolButton,
+QMainWindow#MainWindow QToolBar#instanceToolBar QToolButton {
+  color: @BRIGHT_FG@;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  padding: 4px 8px;
+}
+
+QMainWindow#MainWindow QToolBar#mainToolBar QToolButton:hover,
+QMainWindow#MainWindow QToolBar#instanceToolBar QToolButton:hover {
+  background: @SURFACE@;
+  border-color: @BORDER@;
+}
+
+QMainWindow#MainWindow QToolBar#mainToolBar QToolButton:pressed,
+QMainWindow#MainWindow QToolBar#instanceToolBar QToolButton:pressed,
+QMainWindow#MainWindow QToolBar#mainToolBar QToolButton:checked,
+QMainWindow#MainWindow QToolBar#instanceToolBar QToolButton:checked {
+  background: @SELECTION@;
+  border-color: @BLUE@;
+}
+
+QMainWindow#MainWindow QToolBar#mainToolBar QToolButton:focus,
+QMainWindow#MainWindow QToolBar#instanceToolBar QToolButton:focus {
+  background: @SELECTION@;
+  border-color: @BLUE@;
+}
+
+QMainWindow#MainWindow QToolBar#mainToolBar QToolButton:disabled,
+QMainWindow#MainWindow QToolBar#instanceToolBar QToolButton:disabled {
+  color: @MUTED@;
+  background: transparent;
+  border-color: transparent;
+}
+
+/* Keep the split-button arrow and its clickable area, while removing the
+   always-visible divider that otherwise reads as a second button. */
+QMainWindow#MainWindow QToolBar#mainToolBar QToolButton::menu-button,
+QMainWindow#MainWindow QToolBar#instanceToolBar QToolButton::menu-button {
+  background: transparent;
+  border: 0;
+  border-left: 1px solid transparent;
+  width: 14px;
+}
+
+QMainWindow#MainWindow QToolBar#mainToolBar QToolButton::menu-button:hover,
+QMainWindow#MainWindow QToolBar#instanceToolBar QToolButton::menu-button:hover,
+QMainWindow#MainWindow QToolBar#mainToolBar QToolButton::menu-button:pressed,
+QMainWindow#MainWindow QToolBar#instanceToolBar QToolButton::menu-button:pressed {
+  background: transparent;
+  border-left-color: @BORDER@;
+}
+
+/* Prism's own settings pages use tabs and checkable group boxes. Keep the
+   active underline while removing the nested dark slabs and duplicate pane. */
+QTabWidget::pane {
+  background: @BG@;
+  border: 0;
+  border-top: 1px solid @BORDER@;
+  top: -1px;
+}
+
+QTabBar::tab {
+  color: @FG@;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 7px 11px;
+  margin-right: 2px;
+}
+
+QTabBar::tab:selected {
+  color: @BRIGHT_FG@;
+  background: transparent;
+  border-bottom-color: @BLUE@;
+}
+
+QTabBar::tab:hover:!selected {
+  color: @BRIGHT_FG@;
+  background: @SURFACE@;
+  border-bottom-color: @BORDER@;
+}
+
+QGroupBox {
+  color: @FG@;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid @BORDER@;
+  border-radius: 0;
+  margin-top: 12px;
+  padding: 10px 8px 6px;
+}
+
+QGroupBox::title {
+  subcontrol-origin: margin;
+  left: 8px;
+  top: -1px;
+  background: @BG@;
+  padding: 0 4px;
+}
+
+QGroupBox::indicator {
+  width: 14px;
+  height: 14px;
+}
+
+/* Disabled editors remain readable while their darker surface preserves the
+   disabled cue. Active editors retain the shared palette and border. */
+QLineEdit:disabled, QTextEdit:disabled, QPlainTextEdit:disabled,
+QComboBox:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled {
+  color: @FG@;
+  background: @DEEP@;
+  border-color: @BORDER@;
+}
+
+/* Use crisp, palette-aware arrows and a wider transparent hit area without
+   looking like stacked mini-buttons. */
+QSpinBox, QDoubleSpinBox {
+  padding-right: 24px;
+}
+
+QSpinBox::up-button, QDoubleSpinBox::up-button,
+QSpinBox::down-button, QDoubleSpinBox::down-button {
+  background: transparent;
+  border: 1px solid transparent;
+  width: 22px;
+  height: 10px;
+  subcontrol-origin: border;
+  subcontrol-position: top right;
+}
+
+QSpinBox::down-button, QDoubleSpinBox::down-button {
+  subcontrol-position: bottom right;
+}
+
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
+  image: url(@ARROW_UP@);
+  width: 9px;
+  height: 6px;
+}
+
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
+  image: url(@ARROW_DOWN@);
+  width: 9px;
+  height: 6px;
+}
+
+QSpinBox::up-arrow:disabled, QDoubleSpinBox::up-arrow:disabled,
+QSpinBox::up-arrow:off, QDoubleSpinBox::up-arrow:off {
+  image: url(@ARROW_UP_DISABLED@);
+}
+
+QSpinBox::down-arrow:disabled, QDoubleSpinBox::down-arrow:disabled,
+QSpinBox::down-arrow:off, QDoubleSpinBox::down-arrow:off {
+  image: url(@ARROW_DOWN_DISABLED@);
+}
+
+QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
+QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
+  background: @SURFACE@;
+  border: 1px solid @BORDER@;
+  border-radius: 3px;
+}
+
+QSpinBox::up-button:pressed, QDoubleSpinBox::up-button:pressed,
+QSpinBox::down-button:pressed, QDoubleSpinBox::down-button:pressed {
+  background: @SELECTION@;
+  border-color: @BLUE@;
+}
+
+QSpinBox::up-button:disabled, QDoubleSpinBox::up-button:disabled,
+QSpinBox::down-button:disabled, QDoubleSpinBox::down-button:disabled,
+QSpinBox::up-button:off, QDoubleSpinBox::up-button:off,
+QSpinBox::down-button:off, QDoubleSpinBox::down-button:off {
+  background: transparent;
+  border-color: transparent;
+}
+
+QDialogButtonBox QPushButton {
+  padding: 3px 10px;
+  min-height: 18px;
+}

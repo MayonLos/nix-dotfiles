@@ -1,0 +1,12 @@
+[Icon Theme]
+Name=One Dark Prism
+Comment=Prism Launcher cat icon with the inherited colorful icon set
+Inherits=pe_colored
+Directories=.
+
+[.]
+Size=48
+Type=Scalable
+MinSize=16
+MaxSize=256
+Context=Actions

@@ -9,6 +9,12 @@ let
   themeRoot = "PrismLauncher/themes/OneDark";
   manifest = home.xdg.dataFile."${themeRoot}/theme.json".source;
   stylesheet = home.xdg.dataFile."${themeRoot}/themeStyle.qss".source;
+  sharedStylesheet = home.xdg.configFile."qt6ct/qss/one-dark.qss".source;
+  catpack = home.xdg.dataFile."PrismLauncher/catpacks/NixDotfilesPrism/catpack.json".source;
+  background =
+    home.xdg.dataFile."PrismLauncher/catpacks/NixDotfilesPrism/prism-background.svg".source;
+  iconTheme = home.xdg.dataFile."PrismLauncher/iconthemes/NixDotfilesPrism/index.theme".source;
+  catIcon = home.xdg.dataFile."PrismLauncher/iconthemes/NixDotfilesPrism/cat.svg".source;
   # Gaming remains usable without the optional appearance input. Exercise
   # the actual module rather than duplicating its conditional expression.
   withoutAppearance = lib.evalModules {
@@ -30,7 +36,6 @@ let
 in
 assert withoutAppearance.config.xdg.dataFile == { };
 assert builtins.length withoutAppearance.config.home.packages == 1;
-assert stylesheet == home.xdg.configFile."qt6ct/qss/one-dark.qss".source;
 {
   prism-theme =
     pkgs.runCommand "prism-theme-check"
@@ -38,7 +43,12 @@ assert stylesheet == home.xdg.configFile."qt6ct/qss/one-dark.qss".source;
         nativeBuildInputs = [ pkgs.python3 ];
         MANIFEST = manifest;
         STYLESHEET = stylesheet;
+        BASE_STYLESHEET = sharedStylesheet;
         PALETTE = pkgs.writeText "prism-theme-palette.json" (builtins.toJSON appearance);
+        CATPACK = catpack;
+        BACKGROUND = background;
+        ICON_THEME = iconTheme;
+        CAT_ICON = catIcon;
       }
       ''
         python3 - <<'PY'
@@ -46,6 +56,7 @@ assert stylesheet == home.xdg.configFile."qt6ct/qss/one-dark.qss".source;
         import os
         import pathlib
         import re
+        import xml.etree.ElementTree as ET
 
         theme = json.loads(pathlib.Path(os.environ["MANIFEST"]).read_text())
         palette = json.loads(pathlib.Path(os.environ["PALETTE"]).read_text())
@@ -65,11 +76,31 @@ assert stylesheet == home.xdg.configFile."qt6ct/qss/one-dark.qss".source;
         }.items():
             assert theme["colors"][role] == palette[key], role
         qss = pathlib.Path(os.environ["STYLESHEET"]).read_text()
+        shared_qss = pathlib.Path(os.environ["BASE_STYLESHEET"]).read_text()
+        assert qss.startswith(shared_qss), "Prism additions must follow the shared Qt stylesheet"
         assert not re.search(r"@[A-Z_]+@", qss), "unresolved theme token"
         images = re.findall(r"url\(([^)]+)\)", qss)
         assert images, "state indicators must include their resources"
         for image in images:
             assert pathlib.Path(image).is_file(), image
+        prism_qss = qss[len(shared_qss):]
+        assert "QToolBar#mainToolBar QToolButton" in prism_qss
+        assert "QToolBar#instanceToolBar QToolButton" in prism_qss
+        assert ":hover" in prism_qss and ":pressed" in prism_qss and ":focus" in prism_qss
+        assert "QToolButton::menu-button" in prism_qss and "width: 14px" in prism_qss
+        assert "QPushButton," not in prism_qss, "generic buttons must retain the shared style"
+        assert "QDialogButtonBox QPushButton" in prism_qss, "only dialog footer buttons receive compact spacing"
+        assert "QTabBar::tab:selected" in prism_qss and "QTabBar::tab:hover:!selected" in prism_qss
+        assert "QTabWidget::pane" in prism_qss and "border-bottom-color:" in prism_qss
+        assert "QGroupBox::indicator" in prism_qss and "QGroupBox::title" in prism_qss
+        assert "QDoubleSpinBox::up-button" in prism_qss and "QSpinBox::down-button" in prism_qss
+        catpack = json.loads(pathlib.Path(os.environ["CATPACK"]).read_text())
+        assert catpack == {"name": "Nix Dotfiles Prism", "default": "prism-background.svg"}
+        icon_theme = pathlib.Path(os.environ["ICON_THEME"]).read_text()
+        assert "Name=One Dark Prism" in icon_theme and "Inherits=pe_colored" in icon_theme
+        for svg in ("BACKGROUND", "CAT_ICON"):
+            ET.parse(os.environ[svg])
+            assert "@" not in pathlib.Path(os.environ[svg]).read_text(), svg
         PY
         touch "$out"
       '';

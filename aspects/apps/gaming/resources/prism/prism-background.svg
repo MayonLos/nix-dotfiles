@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="280" viewBox="0 0 240 280" fill="none">
+  <path d="M120 20 211 74 211 182 120 238 29 182 29 74Z" fill="@SURFACE@" fill-opacity=".32" stroke="@BORDER@" stroke-opacity=".52" stroke-width="2"/>
+  <path d="m120 20 0 109 91-55" fill="@BLUE@" fill-opacity=".16"/>
+  <path d="m29 74 91 55v109L29 182Z" fill="@SURFACE@" fill-opacity=".28"/>
+  <path d="m120 129 91-55v108l-91 56Z" fill="@BLUE@" fill-opacity=".07"/>
+  <path d="m29 74 91 55 91-55M120 20v109m0 0v109" stroke="@BLUE@" stroke-opacity=".36" stroke-width="2"/>
+  <path d="m120 59 57 34-57 34-57-34Z" fill="@BLUE@" fill-opacity=".08" stroke="@BLUE@" stroke-opacity=".36"/>
+  <path d="m120 129 0 63m-56-95 0 63" stroke="@BLUE@" stroke-opacity=".22"/>
+</svg>
