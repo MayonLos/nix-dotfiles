@@ -14,6 +14,8 @@ duration; identity appears for SSH or root sessions. tmux preserves `Ctrl+a`
 window/session operations and tmuxp layouts while adding a flat status line,
 blue underlined active window, conditional blue/yellow/purple `PREFIX`, `COPY`,
 and `ZOOM` badges, and a blue active-pane edge with subdued inactive dividers.
+Its status line hides the clock below 100 columns and the current path below
+80 columns, leaving the mode badges available in compact terminals.
 tmux declares underline-style support for `xterm-kitty` and `tmux-256color`, so
 the blue underline color works for Kitty clients and inside tmux. Zoomed windows
 show a yellow `Z` marker.

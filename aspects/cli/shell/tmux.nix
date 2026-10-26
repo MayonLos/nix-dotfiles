@@ -40,7 +40,7 @@ let
     # Keep style attributes separate inside conditionals: raw commas delimit
     # tmux format arguments even when they occur inside a #[style] string.
     set -g status-right-length 64
-    set -g status-right "#{?#{e|>=:#{client_width},80},#[fg=${colors.muted}]#{b;=24:pane_current_path} #[default],}#{?client_prefix,#[fg=${colors.blue}]#[bg=${colors.surface}]#[bold] PREFIX #[default],}#{?#{m/r:(copy|view)-mode,#{pane_mode}},#[fg=${colors.yellow}]#[bg=${colors.surface}]#[bold] COPY #[default],}#{?client_prefix,,#{?#{m/r:(copy|view)-mode,#{pane_mode}},,#{?window_zoomed_flag,#[fg=${colors.purple}]#[bg=${colors.surface}]#[bold] ZOOM #[default],}}}#[fg=${colors.brightFg},bold]%H:%M#[default] "
+    set -g status-right "#{?#{e|>=:#{client_width},80},#[fg=${colors.muted}]#{b;=24:pane_current_path} #[default],}#{?client_prefix,#[fg=${colors.blue}]#[bg=${colors.surface}]#[bold] PREFIX #[default],}#{?#{m/r:(copy|view)-mode,#{pane_mode}},#[fg=${colors.yellow}]#[bg=${colors.surface}]#[bold] COPY #[default],}#{?client_prefix,,#{?#{m/r:(copy|view)-mode,#{pane_mode}},,#{?window_zoomed_flag,#[fg=${colors.purple}]#[bg=${colors.surface}]#[bold] ZOOM #[default],}}}#{?#{e|>=:#{client_width},100},#[fg=${colors.brightFg}]#[bold]%H:%M#[default],} "
 
     set -g pane-border-style        "fg=${colors.surface}"
     set -g pane-active-border-style "fg=${colors.blue}"

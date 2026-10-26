@@ -7,16 +7,15 @@ pkgs.runCommand "noctalia-community-plugins" { nativeBuildInputs = [ pkgs.luau ]
     [ -d "$plugin" ] || continue
     name="''${plugin##*/}"
     case "$name" in
-      mango_layouts|nix-status|portctl|mini-docker) ;;
+      mango_layouts|portctl|mini-docker) ;;
       *) ln -s "$plugin" "$out/$name" ;;
     esac
   done
 
   cp -r ${source}/mango_layouts "$out/mango_layouts"
-  cp -r ${source}/nix-status "$out/nix-status"
   cp -r ${source}/portctl "$out/portctl"
   cp -r ${source}/mini-docker "$out/mini-docker"
-  chmod -R u+w "$out/mango_layouts" "$out/nix-status" "$out/portctl" "$out/mini-docker"
+  chmod -R u+w "$out/mango_layouts" "$out/portctl" "$out/mini-docker"
   mkdir -p "$out/portctl/tests" "$out/mini-docker/tests"
 
   # Upstream API anchors: these overrides retain the plugin state and actions.
@@ -29,13 +28,6 @@ pkgs.runCommand "noctalia-community-plugins" { nativeBuildInputs = [ pkgs.luau ]
 
   cp ${../resources/noctalia-community/mango_layouts/translations/zh-CN.json} \
     "$out/mango_layouts/translations/zh-CN.json"
-  cp ${../resources/noctalia-community/nix-status/widget.luau} "$out/nix-status/widget.luau"
-  cp ${../resources/noctalia-community/nix-status/generation_number.luau} \
-    "$out/nix-status/generation_number.luau"
-  cp ${../resources/noctalia-community/nix-status/tests/generation_number_test.luau} \
-    "$out/nix-status/tests/generation_number_test.luau"
-  luau "$out/nix-status/tests/generation_number_test.luau"
-
   # These compact bar labels intentionally replace upstream rendering while
   # retaining each plugin's state source and click behavior. Fail on drift.
   cp ${../resources/noctalia-community/portctl/widget.luau} "$out/portctl/widget.luau"
@@ -57,19 +49,4 @@ pkgs.runCommand "noctalia-community-plugins" { nativeBuildInputs = [ pkgs.luau ]
 
   cp ${../resources/noctalia-community/mango_layouts/widget.luau} "$out/mango_layouts/widget.luau"
   grep -Fq 'barWidget.setGlyphColor("secondary", "script")' "$out/mango_layouts/widget.luau"
-
-  grep -Fq 'generationNumberHelper.statusText(' \
-    "$out/nix-status/widget.luau"
-  grep -Fq 'barWidget.setGlyphColor("primary", "script")' "$out/nix-status/widget.luau"
-  grep -Fq 'barWidget.setMinWidth(28)' "$out/nix-status/widget.luau"
-  grep -Fq 'barWidget.setBadge(generationNumberHelper.hasInputUpdates(updateState))' \
-    "$out/nix-status/widget.luau"
-  grep -Fq 'statusText = statusText' "$out/nix-status/generation_number.luau"
-  grep -Fq 'hasInputUpdates = hasInputUpdates' "$out/nix-status/generation_number.luau"
-  grep -Fq 'return generation or ""' "$out/nix-status/generation_number.luau"
-  grep -Fq 'return updateState == "updates"' "$out/nix-status/generation_number.luau"
-  grep -Fq 'noctalia.state.watch' ${source}/nix-status/widget.luau
-  grep -Fq 'noctalia.state.watch' "$out/nix-status/widget.luau"
-  grep -Fq 'noctalia.togglePanel("mindnbytes/nix-status:details")' ${source}/nix-status/widget.luau
-  grep -Fq 'noctalia.togglePanel("mindnbytes/nix-status:details")' "$out/nix-status/widget.luau"
 ''

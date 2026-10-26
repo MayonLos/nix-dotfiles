@@ -2,7 +2,7 @@
 
 现行视觉依据为 [Astra 设计稿](visual-design.md)，2026-10-24 用户确认。
 第十九轮科技版与壁纸回退见[本轮执行记录](history/ui-v4-2026-10-25.md)；早期实施见[桌面视觉执行记录](history/visual-desktop-2026-10-24.md)。
-仅修改声明并验证构建，没有激活系统或改写用户目录。旧轮次设计和测量有其时间范围，
+早期记录中的未激活结论只适用于对应轮次；r29–r31 已应用。2026-10-26 的 r32 按全桌面预览继续统一边界与密度，具体取舍以 [现行视觉依据](visual-design.md) 开头的更新为准。旧轮次设计和测量有其时间范围，
 历史取舍见[第九轮记录](history/desktop-polish-2026-10-24.md)。
 
 颜色唯一来源是共享 [palette](../aspects/appearance/appearance/onedark.nix)：
@@ -60,7 +60,7 @@ Kitty 保持 11 pt：内屏 2560×1600 / scale 1.5 下约 1707×1067 逻辑空�
 Kitty 原本没有 `symbol_map`，本轮也无需新增；保留独立 Symbols Nerd Font Mono 包供其他应用回退，
 没有显式字体的 tmux/终端 Neovim 继承 Kitty，JetBrains Mono 字体包已移除。
 
-当前锁定 Noctalia `5f864d472676c77e5310881b243f15cc371bb223` 的 `src/render/text/cairo_text_renderer.cpp` 使用
+当前锁定 Noctalia `1af14b8cdb701175bec57ddf27d070b92461024b` 的 `src/render/text/cairo_text_renderer.cpp` 使用
 `pango_cairo_font_map_new`、`pango_font_description_set_family` 与 `pango_layout_set_text`，
 没有关闭 Pango 缺字回退；因此按家族名请求 Inter 不会限制为仅 Inter 字形。
 当前 pin 已是原生 C++/Pango，不能按旧 Quickshell/QML 实现推断。构建检查使用真实 host
@@ -112,7 +112,7 @@ Noctalia 由 systemd 用户服务唯一启动，随 Mango session target 拉起�
 Mango HM 的非空 autostart 是补充同步；C 实现会更早请求 session target。安全静态环境经同源
 白名单预先投递给 user manager 与 Noctalia，不依赖 autostart 与 C 启动的先后顺序。
 新 manager 环境、冷登录/退出顺序和 `launch_apps_as_systemd_services` 下的应用存活仍需实测。
-依据：[Noctalia HM](https://github.com/noctalia-dev/noctalia-shell/blob/5f864d472676c77e5310881b243f15cc371bb223/nix/home-module.nix)、
+依据：[Noctalia HM](https://github.com/noctalia-dev/noctalia-shell/blob/1af14b8cdb701175bec57ddf27d070b92461024b/nix/home-module.nix)、
 [Mango HM](https://github.com/mangowm/mango/blob/900b8d7e06c396a20b6d4e56f242c4e240a69dfa/nix/hm-modules.nix)、
 [Mango 启动](https://github.com/mangowm/mango/blob/900b8d7e06c396a20b6d4e56f242c4e240a69dfa/src/main.c)。
 

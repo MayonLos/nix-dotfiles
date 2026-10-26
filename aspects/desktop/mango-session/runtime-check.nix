@@ -19,7 +19,6 @@ let
   metadata = pkgs.writeText "desktop-contract.json" (
     builtins.toJSON {
       settings = home.programs.noctalia.settings;
-      hostName = host.networking.hostName;
       noctaliaPatches = map (path: {
         name = builtins.baseNameOf path;
         content = builtins.readFile path;
@@ -273,14 +272,14 @@ pkgs.runCommand "interactive-session-config"
     assert p["dark"]["mSurface"] == m["palette"]["bg"]
     settings = m["settings"]
     patches = {patch["name"]: patch["content"] for patch in m["noctaliaPatches"]}
-    for name, marker in {"hud-bar.patch": "HUD27: native faded separator", "hud-tooltips.patch": "TooltipPanel", "hud-sysmon.patch": "hide_unavailable", "hud-controls-tooltips.patch": "TooltipPanel", "hud-battery.patch": "label_outside", "hud-balanced.patch": "temperature_hide_below", "hud-nix-badge.patch": "luaSetBadge", "hud-drawer-clearance.patch": "kHudCenterClearance = 24.0F"}.items():
+    for name, marker in {"hud-bar.patch": "HUD27: native faded separator", "hud-tooltips.patch": "TooltipPanel", "hud-sysmon.patch": "hide_unavailable", "hud-controls-tooltips.patch": "TooltipPanel", "hud-battery.patch": "label_outside", "hud-balanced.patch": "temperature_hide_below", "hud-drawer-clearance.patch": "kHudCenterClearance = 24.0F"}.items():
         assert name in patches and marker in patches[name], (name, patches.keys())
     # Check serialized settings too: validating the Nix attrset alone would
     # miss a lost/renamed field during Home Manager's config generation.
     generated = tomllib.loads(Path(sys.argv[4]).read_text())
     expected = {
         ("shell", "launcher", "layout"): "full",
-        ("shell", "launcher", "width"): 560,
+        ("shell", "launcher", "width"): 520,
         ("shell", "launcher", "category_icons_only"): True,
         ("shell", "app_icon_colorize"): False,
         ("control_center", "sidebar"): "none",
@@ -317,7 +316,6 @@ pkgs.runCommand "interactive-session-config"
         ("widget", "workspaces", "minimum_visible"): 5,
         ("system", "monitor", "gpu_poll_seconds"): 2.0,
         ("system", "monitor", "gpu_only_nvidia"): True,
-        ("widget", "separator-system", "length"): 15,
         ("widget", "separator-monitor", "length"): 15,
         ("widget", "separator-control", "length"): 15,
         ("widget", "clock-dot", "length"): 24,
@@ -329,13 +327,13 @@ pkgs.runCommand "interactive-session-config"
         ("shell", "launcher", "sort_by_usage"): True,
         ("shell", "launcher", "pinned"): ["kitty", "nvim", "firefox", "thunar"],
         ("shell", "launcher", "providers", "calculator", "global"): False,
-        ("notification", "border_color"): "outline",
+        ("notification", "border_color"): "outline_variant",
         ("notification", "border_width"): 1,
-        ("osd", "border_color"): "outline",
+        ("osd", "border_color"): "outline_variant",
         ("osd", "border_width"): 1,
         ("shell", "show_close_buttons"): False,
         ("theme", "sync_color_scheme"): False,
-        ("shell", "panel", "border_color"): "outline",
+        ("shell", "panel", "border_color"): "outline_variant",
         ("shell", "panel", "border_width"): 1,
         ("bar", "main", "show_tooltip"): True,
         ("lockscreen_widgets", "widget", "lockscreen-login-box@eDP-1", "settings", "show_password_reveal"): True,
@@ -368,7 +366,7 @@ pkgs.runCommand "interactive-session-config"
         bar = root["bar"]["main"]
         assert bar["start"] == ["launcher", "separator-workspaces", "workspaces", "separator-layout", "gambled23/mangowm-keymode:mangowm-keymode", "ezequiel/mango_layouts:btn", "group:tools"]
         assert bar["center"] == ["group:time"]
-        assert bar["end"] == ["group:monitor", "separator-monitor", "mindnbytes/nix-status:status", "separator-system", "group:system", "separator-control", "control-center"]
+        assert bar["end"] == ["group:monitor", "separator-monitor", "group:system", "separator-control", "control-center"]
         actual_groups = {group["id"]: group for group in bar["capsule_group"]}
         assert actual_groups["system"]["members"] == ["network", "bluetooth", "volume", "tray", "battery", "notifications"]
         assert actual_groups["system"]["widget_spacing"] == 8
@@ -377,7 +375,7 @@ pkgs.runCommand "interactive-session-config"
         assert actual_groups["monitor"]["members"] == ["monitor-cpu", "monitor-memory", "monitor-gpu", "monitor-temp"]
         assert actual_groups["monitor"]["opacity"] == 0 and actual_groups["monitor"]["border_width"] == 0
         assert not root["widget"]["monitor-gpu"]["capsule"] and root["widget"]["monitor-gpu"]["hide_unavailable"]
-        assert all(not root["widget"][name]["capsule"] for name in ("monitor-gpu", "ezequiel/mango_layouts:btn", "mindnbytes/nix-status:status"))
+        assert all(not root["widget"][name]["capsule"] for name in ("monitor-gpu", "ezequiel/mango_layouts:btn"))
         assert bar["border_width"] == 1 and bar["border"] == m["palette"]["muted"] + "55"
         assert "monitor-vram" not in root["widget"]
         assert root["widget"]["monitor-temp"]["custom_label"] == ""
@@ -411,12 +409,12 @@ pkgs.runCommand "interactive-session-config"
     assert len(settings["control_center"]["shortcuts"]) == 6
     enabled_plugins = settings["plugins"]["enabled"]
     assert "tmelik/system-monitor" not in enabled_plugins
-    assert "mindnbytes/nix-status" in enabled_plugins
+    assert "mindnbytes/nix-status" not in enabled_plugins
     assert "knyrps/nix-search" in enabled_plugins
     assert "nix-dotfiles/legion-conservation" in enabled_plugins
     for root in (settings, generated):
-        nix_status = root["plugin_settings"]["mindnbytes/nix-status"]
-        assert nix_status["nixos_configuration"] == m["hostName"], nix_status
+        assert "mindnbytes/nix-status" not in root["plugin_settings"]
+        assert "mindnbytes/nix-status:status" not in root["widget"]
     assert p["dark"]["mOutline"] == m["palette"]["border"]
     assert abs(settings["shell"]["corner_radius_scale"] - 4 / 3) < 1e-6
     assert settings["shell"]["corner_radius_scale"] == m["greeter"]["appearance"]["corner_radius_scale"]
@@ -446,10 +444,10 @@ pkgs.runCommand "interactive-session-config"
         assert mango[key] == parsed[key] == value, (key, value)
     assert mango["blur"] == mango["blur_layer"] == mango["layer_shadows"] == mango["layer_animations"] == 0
     assert settings["shell"]["panel"]["shadow"] and settings["bar"]["main"]["shadow"]
-    assert mango["border_px"] == 2 and mango["border_radius"] == 12
+    assert mango["border_px"] == 2 and mango["border_radius"] == 10
     assert mango["focus_color"] == "0x" + m["palette"]["blue"].removeprefix("#") + "ff"
     assert mango["gap_inner_horizontal"] == mango["gap_inner_vertical"] == 8
-    assert mango["gap_outer_horizontal"] == mango["gap_outer_vertical"] == 16
+    assert mango["gap_outer_horizontal"] == mango["gap_outer_vertical"] == 12
     assert mango["overview_gap_inner"] == 16 and mango["overview_gap_outer"] == 32
     assert mango["shadows_position_x"] == 0 and mango["shadows_position_y"] == 6
     assert mango["shadows_color"] == "0x" + m["palette"]["black"].removeprefix("#") + "52"
@@ -546,7 +544,7 @@ pkgs.runCommand "interactive-session-config"
     assert "btop" not in settings["theme"]["templates"]["builtin_ids"]
     widgets = settings["lockscreen_widgets"]["widget"]
     seconds = widgets["lockscreen-widget-seconds"]["settings"]
-    assert seconds["format"] == "{:%S}" and seconds["color"] == "outline"
+    assert seconds["format"] == "{:%S}" and seconds["color"] == "outline_variant"
     for name in ("clock", "date", "seconds"):
         assert widgets["lockscreen-widget-" + name]["settings"]["font_family"] == m["palette"]["fonts"]["mono"]
     assert "noctalia-firefox" in settings["theme"]["templates"]["user"]

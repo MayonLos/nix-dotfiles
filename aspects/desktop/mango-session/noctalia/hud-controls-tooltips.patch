@@ -1,15 +1,24 @@
 --- a/src/shell/bar/widgets/battery_widget.cpp
 +++ b/src/shell/bar/widgets/battery_widget.cpp
-@@ -583 +583,3 @@
+@@ -580,7 +580,9 @@
+         std::ranges::stable_partition(devices, [](const UPowerDeviceInfo& d) { return d.isLaptopBattery(); }).begin();
+     int laptopBatteryCount = static_cast<int>(laptopEnd - devices.begin());
+
 -    std::vector<TooltipRow> rows;
 +    // HUD27: keep peripheral charge rows and expose laptop charge/status metrics.
 +    TooltipPanel panel;
 +    panel.title = "BATTERY";
-@@ -597,2 +599 @@
+     int laptopBatteryIndex = 0;
+     for (const auto& dev : devices) {
+       std::string name;
+@@ -594,17 +596,21 @@
+             : (!dev.nativePath.empty() ? dev.nativePath : i18n::tr("power.battery.tooltip.unknown-device"));
+       }
+       int dp = static_cast<int>(std::round(dev.state.percentage));
 -      rows.push_back({std::move(name), std::to_string(dp) + "%"});
 -
 +      const std::string charge = std::to_string(dp) + "%";
-@@ -600 +601,6 @@
+       if (dev.isLaptopBattery()) {
 -        rows.push_back({i18n::tr("power.battery.tooltip.status"), batteryStateLabel(dev.state.state)});
 +        if (panel.summary.empty()) {
 +          panel.summary = charge;
@@ -17,31 +26,49 @@
 +        panel.rows.push_back({.key = name, .value = charge, .progress = dev.state.percentage / 100.0,
 +                              .color = fixedColorSpec(rgbHex(0x98C379))});
 +        panel.rows.push_back({.key = name + " · " + i18n::tr("power.battery.tooltip.status"), .value = batteryStateLabel(dev.state.state)});
-@@ -604 +610 @@
+
+         if (dev.state.timeToEmpty > 0) {
+           auto dur = formatDuration(std::chrono::seconds(dev.state.timeToEmpty));
 -          rows.push_back({i18n::tr("power.battery.tooltip.time-left"), std::move(dur)});
 +          panel.rows.push_back({.key = i18n::tr("power.battery.tooltip.time-left"), .value = std::move(dur)});
-@@ -607 +613 @@
+         } else if (dev.state.timeToFull > 0) {
+           auto dur = formatDuration(std::chrono::seconds(dev.state.timeToFull));
 -          rows.push_back({i18n::tr("power.battery.tooltip.time-to-full"), std::move(dur)});
 +          panel.rows.push_back({.key = i18n::tr("power.battery.tooltip.time-to-full"), .value = std::move(dur)});
-@@ -615 +621 @@
+         }
+
+         if (dev.state.energyRate > 0.0) {
+@@ -612,16 +618,20 @@
+           oss << std::fixed;
+           oss.precision(1);
+           oss << dev.state.energyRate << " W";
 -          rows.push_back({i18n::tr("power.battery.tooltip.rate"), oss.str()});
 +          panel.metrics.push_back({name + " · " + i18n::tr("power.battery.tooltip.rate"), oss.str()});
-@@ -619 +625 @@
+         }
+
+         if (const std::optional<double> health = dev.healthPercent()) {
 -          rows.push_back({i18n::tr("power.battery.tooltip.health"), std::format("{:.0F}%", *health)});
 +          panel.metrics.push_back({name + " · " + i18n::tr("power.battery.tooltip.health"), std::format("{:.0F}%", *health)});
-@@ -620,0 +627,4 @@
+         }
 +      } else {
 +        TooltipRow deviceRow{std::move(name), charge};
 +        deviceRow.progress = std::clamp(static_cast<double>(dev.state.percentage) / 100.0, 0.0, 1.0);
 +        panel.rows.push_back(std::move(deviceRow));
-@@ -623,2 +633,2 @@
+       }
+     }
 -    if (!rows.empty()) {
 -      static_cast<InputArea*>(rootNode)->setTooltip(std::move(rows));
 +    if (!panel.rows.empty() || !panel.metrics.empty()) {
 +      static_cast<InputArea*>(rootNode)->setTooltip(std::move(panel));
+     } else {
+       static_cast<InputArea*>(rootNode)->clearTooltip();
+     }
 --- a/src/shell/bar/widgets/volume_widget.cpp
 +++ b/src/shell/bar/widgets/volume_widget.cpp
-@@ -172,5 +172,10 @@
+@@ -169,18 +169,23 @@
+     auto* area = static_cast<InputArea*>(rootNode);
+     if (node != nullptr) {
+       int pct = static_cast<int>(std::round(volume * 100.0F));
 -      std::vector<TooltipRow> rows;
 -      rows.push_back(
 -          {i18n::tr(m_target == VolumeWidgetTarget::Input ? "bar.widgets.volume.mic" : "bar.widgets.volume.volume"),
@@ -57,20 +84,33 @@
 +      };
 +      level.progress = std::clamp(static_cast<double>(volume), 0.0, 1.0);
 +      panel.rows.push_back(std::move(level));
-@@ -178 +183 @@
+       if (std::string deviceLabel = audioDeviceLabel(*node); !deviceLabel.empty()) {
 -        rows.push_back({i18n::tr("bar.widgets.volume.device"), std::move(deviceLabel), TextEllipsize::Middle});
 +        panel.rows.push_back({i18n::tr("bar.widgets.volume.device"), std::move(deviceLabel), TextEllipsize::Middle});
-@@ -181 +186 @@
+       }
+       if (!effectsProfile.empty()) {
 -        rows.push_back({i18n::tr("control-center.audio.effects-profile"), effectsProfile});
 +        panel.rows.push_back({i18n::tr("control-center.audio.effects-profile"), effectsProfile});
-@@ -183 +188 @@
+       }
 -      area->setTooltip(std::move(rows));
 +      area->setTooltip(std::move(panel));
+     } else {
+       area->clearTooltip();
+     }
 --- a/src/shell/bar/widgets/network_widget.cpp
 +++ b/src/shell/bar/widgets/network_widget.cpp
-@@ -14,0 +15 @@
+@@ -12,6 +12,7 @@
+ #include "ui/palette.h"
+ #include "ui/style.h"
+
 +#include <algorithm>
-@@ -82 +83,13 @@
+ #include <chrono>
+ #include <memory>
+ #include <string>
+@@ -79,7 +80,19 @@
+         if (rows.empty()) {
+           return std::monostate{};
+         }
 -        return TooltipContent{std::move(rows)};
 +        // HUD27: preserve the live provider and regroup, rather than discard, native network details.
 +        TooltipPanel panel;
@@ -85,48 +125,81 @@
 +          panel.rows.push_back(std::move(row));
 +        }
 +        return TooltipContent{std::move(panel)};
-@@ -380 +393,3 @@
+       },
+       kTooltipRefreshInterval
+   );
+@@ -377,7 +390,9 @@
+     if (!m.operatorName.empty()) {
+       rows.push_back({i18n::tr("bar.widgets.network.operator"), m.operatorName});
+     }
 -    rows.push_back({i18n::tr("bar.widgets.network.signal"), std::to_string(m.signalQuality) + "%"});
 +    TooltipRow signal{i18n::tr("bar.widgets.network.signal"), std::to_string(m.signalQuality) + "%"};
 +    signal.progress = std::clamp(static_cast<double>(m.signalQuality) / 100.0, 0.0, 1.0);
 +    rows.push_back(std::move(signal));
-@@ -390 +405,3 @@
+     if (const char* tech = cellularAccessTechnologyName(m.accessTechnologies); tech[0] != '\0') {
+       rows.push_back({i18n::tr("bar.widgets.network.technology"), tech});
+     }
+@@ -387,7 +402,9 @@
+   if (s.connected) {
+     if (s.kind == NetworkConnectivity::Wireless && !s.ssid.empty()) {
+       rows.push_back({i18n::tr("bar.widgets.network.network"), s.ssid});
 -      rows.push_back({i18n::tr("bar.widgets.network.signal"), std::to_string(s.signalStrength) + "%"});
 +      TooltipRow signal{i18n::tr("bar.widgets.network.signal"), std::to_string(s.signalStrength) + "%"};
 +      signal.progress = std::clamp(static_cast<double>(s.signalStrength) / 100.0, 0.0, 1.0);
 +      rows.push_back(std::move(signal));
-@@ -409 +426,3 @@
+       if (const char* band = network_display::wifiFrequencyBandLabel(s.frequencyMhz); band != nullptr) {
+         rows.push_back({i18n::tr("bar.widgets.network.band"), band});
+       }
+@@ -406,7 +423,9 @@
+                                                               : i18n::tr("bar.widgets.network.cellular")}
+       );
+       if (modem != nullptr) {
 -        rows.push_back({i18n::tr("bar.widgets.network.signal"), std::to_string(modem->signalQuality) + "%"});
 +        TooltipRow signal{i18n::tr("bar.widgets.network.signal"), std::to_string(modem->signalQuality) + "%"};
 +        signal.progress = std::clamp(static_cast<double>(modem->signalQuality) / 100.0, 0.0, 1.0);
 +        rows.push_back(std::move(signal));
+         if (const char* tech = cellularAccessTechnologyName(modem->accessTechnologies); tech[0] != '\0') {
+           rows.push_back({i18n::tr("bar.widgets.network.technology"), tech});
+         }
 --- a/src/shell/bar/widgets/bluetooth_widget.cpp
 +++ b/src/shell/bar/widgets/bluetooth_widget.cpp
-@@ -163 +163,4 @@
+@@ -160,15 +160,22 @@
+
+   if (rootNode != nullptr) {
+     if (numConnected > 0) {
 -      std::vector<TooltipRow> rows;
 +      // HUD27: preserve each connected device's status and battery level.
 +      TooltipPanel panel;
 +      panel.title = "BLUETOOTH";
 +      panel.summary = std::to_string(numConnected) + " CONNECTED";
-@@ -168 +171,5 @@
+       for (const auto& d : devices) {
+         if (d.connected) {
+           std::string value =
+               d.hasBattery ? std::to_string(d.batteryPercent) + "%" : i18n::tr("bar.widgets.bluetooth.connected");
 -          rows.push_back({d.alias, std::move(value)});
 +          TooltipRow deviceRow{d.alias, std::move(value)};
 +          if (d.hasBattery) {
 +            deviceRow.progress = std::clamp(static_cast<double>(d.batteryPercent) / 100.0, 0.0, 1.0);
 +          }
 +          panel.rows.push_back(std::move(deviceRow));
-@@ -171 +178 @@
+         }
+       }
 -      static_cast<InputArea*>(rootNode)->setTooltip(std::move(rows));
 +      static_cast<InputArea*>(rootNode)->setTooltip(std::move(panel));
+     } else {
+       static_cast<InputArea*>(rootNode)->clearTooltip();
+     }
 --- a/src/shell/bar/widgets/plugin_widget.cpp
 +++ b/src/shell/bar/widgets/plugin_widget.cpp
-@@ -482,0 +483,29 @@
+@@ -480,6 +480,34 @@
+     return;
+   }
+
 +  // HUD27: give the selected bar tools readable headings without changing the plugin API.
 +  std::string title;
 +  if (m_entryId.starts_with("fel/quill:")) title = "QUILL";
 +  else if (m_entryId.starts_with("8bury/mini-docker:")) title = "DOCKER";
 +  else if (m_entryId.starts_with("rxtsel/portctl:")) title = "PORTS";
-+  else if (m_entryId.starts_with("mindnbytes/nix-status:")) title = "NIXOS";
 +  if (!title.empty()) {
 +    TooltipPanel panel;
 +    panel.title = std::move(title);
@@ -150,3 +223,6 @@
 +    return;
 +  }
 +
+   if (tooltip.hasRows()) {
+     std::vector<TooltipRow> rows;
+     rows.reserve(tooltip.rows.size());

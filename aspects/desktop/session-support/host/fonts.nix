@@ -27,13 +27,15 @@
       antialias = true;
       hinting.enable = true;
       localConf = ''
-        <alias binding="same"><family>Calibri</family><prefer><family>Carlito</family></prefer></alias>
-        <alias binding="same"><family>Cambria</family><prefer><family>Caladea</family></prefer></alias>
-        <alias binding="same"><family>Arial</family><prefer><family>Liberation Sans</family></prefer></alias>
-        <alias binding="same"><family>Times New Roman</family><prefer><family>Liberation Serif</family></prefer></alias>
-        <alias binding="same"><family>Courier New</family><prefer><family>Liberation Mono</family></prefer></alias>
-        <alias binding="same"><family>SimSun</family><prefer><family>Noto Serif CJK SC</family></prefer></alias>
-        <alias binding="same"><family>Microsoft YaHei</family><prefer><family>Noto Sans CJK SC</family></prefer></alias>
+        <fontconfig>
+          <alias binding="same"><family>Calibri</family><prefer><family>Carlito</family></prefer></alias>
+          <alias binding="same"><family>Cambria</family><prefer><family>Caladea</family></prefer></alias>
+          <alias binding="same"><family>Arial</family><prefer><family>Liberation Sans</family></prefer></alias>
+          <alias binding="same"><family>Times New Roman</family><prefer><family>Liberation Serif</family></prefer></alias>
+          <alias binding="same"><family>Courier New</family><prefer><family>Liberation Mono</family></prefer></alias>
+          <alias binding="same"><family>SimSun</family><prefer><family>Noto Serif CJK SC</family></prefer></alias>
+          <alias binding="same"><family>Microsoft YaHei</family><prefer><family>Noto Sans CJK SC</family></prefer></alias>
+        </fontconfig>
       '';
       defaultFonts = {
         emoji = [ "Noto Color Emoji" ];

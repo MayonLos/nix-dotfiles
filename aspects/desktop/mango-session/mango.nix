@@ -152,11 +152,11 @@ in
       global_color = "${color palette.blue}";
       overlay_color = "${color palette.blue}";
       maximized_screen_color = "${color palette.blue}";
-      border_radius = 12;
+      border_radius = 10;
       gap_inner_horizontal = 8;
       gap_inner_vertical = 8;
-      gap_outer_horizontal = 16;
-      gap_outer_vertical = 16;
+      gap_outer_horizontal = 12;
+      gap_outer_vertical = 12;
       smart_gaps = 0;
       no_border_when_single = 0;
       no_radius_when_single = 0;

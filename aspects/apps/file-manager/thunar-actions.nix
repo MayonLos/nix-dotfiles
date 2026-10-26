@@ -353,7 +353,7 @@ in
         <action>
          <icon>utilities-terminal</icon>
          <name>Open herdr Here</name>
-         <submenu></submenu>
+         <submenu>Development</submenu>
          <unique-id>open-herdr-here-1</unique-id>
          <command>${herdrAction}/bin/thunar-open-herdr %f</command>
          <description>Open a herdr workspace in this directory</description>
@@ -364,7 +364,7 @@ in
         <action>
          <icon>utilities-terminal</icon>
          <name>Open lazygit Here</name>
-         <submenu></submenu>
+         <submenu>Development</submenu>
          <unique-id>open-lazygit-here-1</unique-id>
          <command>${lazygitAction}/bin/thunar-open-lazygit %f</command>
          <description>Open lazygit in this directory</description>

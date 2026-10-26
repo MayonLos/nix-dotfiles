@@ -201,7 +201,7 @@ try:
         settle()
         rendered = status()
         assert ("long-path-" in rendered) == (width >= 80), (width, rendered)
-        assert re.search(r"\d{2}:\d{2}", rendered), rendered
+        assert bool(re.search(r"\d{2}:\d{2}", rendered)) == (width >= 100), (width, rendered)
         assert "x" * 30 not in rendered, (width, rendered)
         widths.append(f"{width}: {rendered}")
     (out / "tmux-states.txt").write_text("\n".join([*underline_results, prefix, copy, zoom, flat, *widths]))

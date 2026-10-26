@@ -42,11 +42,11 @@
 +#include <unistd.h>
  #include <utility>
  #include <wayland-client-core.h>
- 
+
 @@ -152,6 +158,118 @@
      return formatStrftime("%Y-%m-%d", tm);
    }
- 
+
 +  [[nodiscard]] std::string readFirstLine(const std::filesystem::path& path) {
 +    std::ifstream input(path);
 +    std::string value;
@@ -160,7 +160,7 @@
 +  }
 +
  } // namespace
- 
+
  LockSurface::LockSurface(WaylandConnection& connection, ConfigService* config) : Surface(connection), m_config(config) {
 @@ -199,6 +317,24 @@
                .configure = [](Flex& flex) { flex.setZIndex(2); },
@@ -185,12 +185,12 @@
 +          },
 +      })
    );
- 
+
    m_loginPanel->addChild(
 @@ -505,6 +641,19 @@
        })
    );
- 
+
 +  {
 +    auto glow = std::make_unique<RectNode>();
 +    m_passwordGlow = static_cast<RectNode*>(m_passwordField->addChild(std::move(glow)));
@@ -225,7 +225,7 @@
        m_passwordRevealButton->setVisible(false);
 @@ -1533,6 +1684,27 @@
    }
- 
+
    m_loginPanel->arrange(renderer, LayoutRect{panelX, panelY, panelWidth, panelHeight});
 +  if (m_passwordGlow != nullptr && m_passwordUnderline != nullptr && loginVisible) {
 +    const float fieldWidth = m_passwordField->width();
@@ -248,6 +248,6 @@
 +        LayoutRect{Style::spaceLg, sh - statusHeight - Style::spaceMd, sw - Style::spaceLg * 2.0F, statusHeight}
 +    );
 +  }
- 
+
    // Auth panel: sibling above/below the login box (flips below when near the top edge).
    if (m_authPanel != nullptr && m_authLabel != nullptr) {

@@ -98,7 +98,16 @@
         home.packages = with pkgs; [
           obsidian
           zotero
-          libreoffice-qt
+          # The Qt-enabled package can still auto-select GTK under Mango.
+          # Prefer its native Qt6 UI without changing any personal LO settings;
+          # explicit SAL_USE_VCLPLUGIN overrides remain available for diagnosis.
+          (libreoffice-qt.override {
+            extraMakeWrapperArgs = [
+              "--set-default"
+              "SAL_USE_VCLPLUGIN"
+              "qt6"
+            ];
+          })
           hunspell
           hunspellDicts.en_US
           hyphenDicts.en_US

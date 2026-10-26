@@ -42,7 +42,7 @@ in
     contact_shadow = true;
     capsule = false;
     capsule_opacity = 1.0;
-    capsule_fill = "surface_variant";
+    capsule_fill = "surface_container";
     capsule_radius = 6;
     capsule_thickness = 0.67;
     font_family = palette.fonts.sans;
@@ -62,8 +62,6 @@ in
     end = [
       "group:monitor"
       "separator-monitor"
-      "mindnbytes/nix-status:status"
-      "separator-system"
       "group:system"
       "separator-control"
       "control-center"
@@ -147,7 +145,6 @@ in
         separator-workspaces = separator;
         separator-layout = separator;
         separator-monitor = separator;
-        separator-system = separator;
         separator-control = separator;
         clock-dot = {
           type = "spacer";
@@ -208,11 +205,6 @@ in
           show_glyph = true;
           capsule = false;
           icon_color = palette.cyan;
-          font_scale = 0.86;
-        };
-        "mindnbytes/nix-status:status" = {
-          capsule = false;
-          font_family = palette.fonts.mono;
           font_scale = 0.86;
         };
         brightness = {

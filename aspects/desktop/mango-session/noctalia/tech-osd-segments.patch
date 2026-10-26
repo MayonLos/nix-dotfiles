@@ -31,7 +31,7 @@
 @@ -717,6 +719,8 @@
    const float pad = cardPadding(s);
    const float gap = innerGap(s);
- 
+
 +  // UI4: clear non-owning tick pointers before rebuilding their owning scene tree.
 +  inst.progressTicks.clear();
    inst.sceneRoot = ui::node({});
@@ -66,7 +66,7 @@
 +    inst.progress->addChild(std::move(separator));
 +    inst.progressTicks.push_back(rawSeparator);
 +  }
- 
+
    std::unique_ptr<Flex> row;
    if (vertical) {
 @@ -871,6 +891,22 @@

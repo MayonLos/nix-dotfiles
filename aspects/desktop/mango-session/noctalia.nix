@@ -3,8 +3,6 @@
   avatar ? null,
   noctaliaIntegrations ? [ ],
   integrationTemplates ? { },
-  hostName,
-  flakePath,
 }:
 {
   config,
@@ -82,7 +80,6 @@ let
       ./noctalia/hud-controls-tooltips.patch
       ./noctalia/hud-sysmon.patch
       ./noctalia/hud-balanced.patch
-      ./noctalia/hud-nix-badge.patch
       ./noctalia/hud-drawer-clearance.patch
     ];
     # Fail the source build if an upstream rename or patch drift removes the
@@ -129,13 +126,6 @@ let
       grep -Fq 'pollCfg.gpuOnlyNvidia' src/system/system_monitor_service.cpp
       grep -Fq 'm_graph->setColor(m_highlightColor)' src/shell/bar/widgets/sysmon_widget.cpp
       grep -Fq 'HUD27b: external percentages reserve' src/shell/bar/widgets/battery_widget.cpp
-      grep -Fq '{"setBadge", luau_setBadge}' src/scripting/plugin_bindings.cpp
-      grep -Fq '{"setMinWidth", luau_setMinWidth}' src/scripting/plugin_bindings.cpp
-      grep -Fq 'dest.badge = src.badge' src/scripting/script_runtime.cpp
-      grep -Fq 'dest.minWidth = src.minWidth' src/scripting/script_runtime.cpp
-      grep -Fq 'm_badge->setPosition' src/shell/bar/widgets/plugin_widget.cpp
-      grep -Fq 'luaSetBadge(false)' src/shell/bar/widgets/plugin_widget.cpp
-      grep -Fq '.participatesInLayout = false' src/shell/bar/widgets/plugin_widget.cpp
       grep -Fq 'temperature_hide_below'  src/shell/bar/widgets/sysmon_widget_definition.cpp
       grep -Fq 'HUD27b: CPU alert is hidden below 80; orange at 80, red at 90.' src/shell/bar/widgets/sysmon_widget.cpp
       grep -Fq 'currentStats.cpuTempC.value_or(0.0) >= m_temperatureHideBelow' src/shell/bar/widgets/sysmon_widget.cpp
@@ -269,8 +259,7 @@ in
           inherit palette distroLogo;
         })
         // (import ./noctalia/plugins.nix {
-          inherit inputs pkgs hostName;
-          flakePath = if flakePath == null then "" else flakePath;
+          inherit inputs pkgs;
         })
         // {
           shell = {
@@ -311,7 +300,7 @@ in
               # off, so transparency would expose sharp application text behind.
               transparency_mode = "solid";
               borders = true;
-              border_color = "outline";
+              border_color = "outline_variant";
               border_width = 1;
               shadow = true;
               launcher_placement = "floating";
@@ -331,7 +320,7 @@ in
             launcher = {
               # v5.3's rebuilt full layout; `simple` retains the older compact UI.
               layout = "full";
-              width = 560;
+              width = 520;
               search_position = "top";
               default_view = "pinned";
               categories = true;
@@ -503,7 +492,7 @@ in
             offset_y = 64;
             max_visible = 3;
             border = true;
-            border_color = "outline";
+            border_color = "outline_variant";
             border_width = 1;
             background_opacity = 0.98;
             # Keep transient messages on the output currently being used.
@@ -517,7 +506,7 @@ in
             offset_y = 32;
             hide_delay_ms = 1400;
             border = true;
-            border_color = "outline";
+            border_color = "outline_variant";
             border_width = 1;
             background_opacity = 0.98;
             follow_focused_output = true;
@@ -610,7 +599,7 @@ in
                   show_caps_lock = true;
                   show_keyboard_layout = true;
                   show_password_reveal = true;
-                  background_color = "surface_variant";
+                  background_color = "surface_container";
                   background_opacity = 1.0;
                   background_radius = 16.0;
                   input_radius = 8.0;
@@ -647,7 +636,7 @@ in
                   font_family = palette.fonts.mono;
                   center_text = true;
                   background = false;
-                  color = "outline";
+                  color = "outline_variant";
                   shadow = false;
                 };
               };

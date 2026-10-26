@@ -1,36 +1,85 @@
 --- a/src/shell/bar/bar.cpp
 +++ b/src/shell/bar/bar.cpp
-@@ -42,0 +43,6 @@
+@@ -40,6 +40,12 @@
+ #include <wayland-client-protocol.h>
+
+ namespace {
 +
 +  // R31: flat One Dark surface; the configured border is the only bar outline.
 +  void hudBackground(RoundedRectStyle& style, float opacity) {
 +    style.fillMode = FillMode::Solid;
 +    style.fill = colorForRole(ColorRole::Surface, opacity);
 +  }
-@@ -1153,0 +1172,3 @@
+
+   constexpr Logger kLog("bar");
+   constexpr std::chrono::milliseconds kWorkspaceRevealDebounce{80};
+@@ -1157,6 +1163,9 @@
+         const float capsuleRadius = radiusSource != nullptr ? radiusSource->resolvedBarCapsuleRadius(shellW, shellH)
+                                                             : std::max(0.0F, std::min(shellW, shellH) * 0.5F);
+         bg->setRadius(capsuleRadius);
 +        if (run.accordion) {
 +          bg->setOpacity(run.accordionProgress);
 +        }
-@@ -3207,0 +3229 @@
+         if (run.container == nullptr) {
+           placeCapsuleHoverBoxes(
+               run, isVertical, shellW, shellH, contentX, contentY, capsuleRadius, widgetHoverPadding
+@@ -3211,6 +3220,7 @@
+   style.fill = colorForRole(ColorRole::Surface, instance.barConfig.backgroundOpacity);
+   style.border = resolveColorSpec(instance.barConfig.border);
+   style.borderWidth = instance.barConfig.borderWidth;
 +  hudBackground(style, instance.barConfig.backgroundOpacity);
-@@ -3535 +3567 @@
+   instance.bg->setStyle(style);
+ }
+
+@@ -3538,7 +3548,7 @@
+   // Keep it exactly aligned with the shadow shape; the shadow shader now
+   // draws only outside the rect, so any size mismatch is visible at corners.
+   if (instance.bg != nullptr) {
 -    const RoundedRectStyle bgStyle{
 +    RoundedRectStyle bgStyle{
-@@ -3544,0 +3577 @@
+         .fill = colorForRole(ColorRole::Surface, instance.barConfig.backgroundOpacity),
+         .border = resolveColorSpec(instance.barConfig.border),
+         .fillMode = FillMode::Solid,
+@@ -3548,6 +3558,7 @@
+         .softness = 0.0F,
+         .borderWidth = instance.barConfig.borderWidth,
+     };
 +    hudBackground(bgStyle, instance.barConfig.backgroundOpacity);
+     instance.bg->setStyle(bgStyle);
+     // (barAreaX/Y/W/H) is the body; the shader expands outward by logicalInset into
+     // the visual rect, so the node must be sized to the visual rect.
 --- a/src/shell/bar/widgets/brightness_widget.cpp
 +++ b/src/shell/bar/widgets/brightness_widget.cpp
-@@ -13,0 +14 @@
+@@ -11,6 +11,7 @@
+ #include <algorithm>
+ #include <cmath>
+ #include <string>
 +#include <format>
-@@ -121 +122,4 @@
+
+ namespace {
+
+@@ -118,12 +119,16 @@
+   const auto* display = m_brightness != nullptr ? m_brightness->findByOutput(m_output) : nullptr;
+   const bool available = display != nullptr && display->controllable;
+   const float brightness = available ? display->brightness : -1.0F;
 -  if (m_haveLastState && available == m_lastAvailable) {
 +  const std::string metadata = display == nullptr ? "" : display->friendlyName + display->id
 +      + std::to_string(display->physicalWidth) + "x" + std::to_string(display->physicalHeight)
 +      + "@" + std::to_string(display->refreshMilliHz);
 +  if (m_haveLastState && available == m_lastAvailable && metadata == m_lastMetadata) {
-@@ -126,0 +131 @@
+     if (!available || (std::abs(brightness - m_lastBrightness) < 0.001F && m_isVertical == m_lastVertical)) {
+       return;
+     }
+   }
+
 +  m_lastMetadata = metadata;
-@@ -169,4 +174,10 @@
+   m_haveLastState = true;
+   m_lastAvailable = available;
+   m_lastBrightness = brightness;
+@@ -166,12 +171,19 @@
+
+   if (rootNode != nullptr) {
+     int pct = static_cast<int>(std::round(brightness * 100.0F));
 -    std::vector<TooltipRow> rows;
 -    rows.push_back({i18n::tr("bar.widgets.brightness.brightness"), std::to_string(pct) + "%"});
 -    if (!display->label.empty()) {
@@ -45,38 +94,81 @@
 +    std::string mode = std::format("{}×{}", display->physicalWidth, display->physicalHeight);
 +    if (display->refreshMilliHz > 0) {
 +      mode += std::format("@{:.0f}", display->refreshMilliHz / 1000.0);
-@@ -174 +185,2 @@
+     }
 -    static_cast<InputArea*>(rootNode)->setTooltip(std::move(rows));
 +    panel.metrics.push_back({.key = "模式", .value = mode});
 +    static_cast<InputArea*>(rootNode)->setTooltip(std::move(panel));
+   }
+
+   requestRedraw();
 --- a/src/shell/bar/widgets/brightness_widget.h
 +++ b/src/shell/bar/widgets/brightness_widget.h
-@@ -3,0 +4 @@
+@@ -1,6 +1,7 @@
+ #pragma once
+
+ #include "shell/bar/widget.h"
 +#include <string>
-@@ -35,0 +37 @@
+
+ class BrightnessService;
+ class Glyph;
+@@ -33,6 +34,7 @@
+   Glyph* m_glyph = nullptr;
+   Label* m_label = nullptr;
+   bool m_haveLastState = false;
 +  std::string m_lastMetadata;
+   bool m_lastAvailable = false;
+   float m_lastBrightness = -1.0F;
+   bool m_isVertical = false;
 --- a/src/shell/bar/widgets/launcher_widget.cpp
 +++ b/src/shell/bar/widgets/launcher_widget.cpp
-@@ -45,0 +46 @@
+@@ -43,9 +43,11 @@
+     );
+     node->setSize(m_image->width(), m_image->height());
+   } else if (m_glyph != nullptr) {
 +    m_glyph->setShadow(colorSpecFromRole(ColorRole::Primary, 0.25F), 0.0F, 0.0F);
-@@ -49 +50,2 @@
+     m_glyph->setGlyphSize(Style::baseGlyphSize * m_contentScale);
+     m_glyph->setColor(widgetIconColorOr(colorSpecFromRole(ColorRole::OnSurface)));
+     m_glyph->measure(renderer);
 -    node->setSize(m_glyph->width(), m_glyph->height());
 +    m_glyph->setPosition(6.0F, 0.0F);
 +    node->setSize(m_glyph->width() + 12.0F, m_glyph->height());
+   }
+ }
 --- a/src/shell/bar/widgets/notification_widget.cpp
 +++ b/src/shell/bar/widgets/notification_widget.cpp
-@@ -35 +35 @@
+@@ -32,7 +32,7 @@
+   const float dotSize = kDotBaseSize * m_contentScale;
+   m_dot = area->addChild(
+       ui::box({
 -          .fill = colorSpecFromRole(ColorRole::Primary),
 +          .fill = colorSpecFromRole(ColorRole::Error),
+           .radius = dotSize * 0.5F,
+           .width = dotSize,
+           .height = dotSize,
 --- a/src/shell/bar/widgets/power_profile_widget.cpp
 +++ b/src/shell/bar/widgets/power_profile_widget.cpp
-@@ -10,0 +11 @@
+@@ -8,6 +8,7 @@
+ #include "ui/style.h"
+
+ #include <memory>
 +#include <algorithm>
-@@ -26,0 +28,3 @@
+
+ PowerProfileWidget::PowerProfileWidget(PowerProfilesService* powerProfiles) : m_powerProfiles(powerProfiles) {}
+
+@@ -24,6 +25,9 @@
+       })
+   );
+
 +  // HUD27: profile icon + real mode name, keeping native click cycling.
 +  area->addChild(ui::label({.out = &m_label, .fontSize = 11.5F * fontScale(),
 +                           .fontFamily = "monospace", .color = colorSpecFromRole(ColorRole::OnSurfaceVariant)}));
-@@ -44 +48,7 @@
+   setRoot(std::move(area));
+ }
+
+@@ -41,7 +45,13 @@
+   );
+   m_glyph->measure(renderer);
+   m_glyph->setPosition(0.0F, 0.0F);
 -  rootNode->setSize(m_glyph->width(), m_glyph->height());
 +  m_label->setText(m_available ? m_lastProfile : "unavailable");
 +  m_label->setFontSize(11.5F * fontScale());
@@ -85,28 +177,56 @@
 +  m_glyph->setPosition(0.0F, (h - m_glyph->height()) * 0.5F);
 +  m_label->setPosition(m_glyph->width() + 4.0F, (h - m_label->height()) * 0.5F);
 +  rootNode->setSize(m_label->x() + m_label->width(), h);
+ }
+
+ void PowerProfileWidget::doUpdate(Renderer& renderer) { syncState(renderer); }
 --- a/src/shell/bar/widgets/power_profile_widget.h
 +++ b/src/shell/bar/widgets/power_profile_widget.h
-@@ -7,0 +8 @@
+@@ -5,6 +5,7 @@
+ #include <string>
+
+ class Glyph;
 +class Label;
-@@ -24,0 +26 @@
+ class InputArea;
+ class PowerProfilesService;
+
+@@ -22,6 +23,7 @@
+   PowerProfilesService* m_powerProfiles = nullptr;
+   InputArea* m_area = nullptr;
+   Glyph* m_glyph = nullptr;
 +  Label* m_label = nullptr;
+   std::string m_lastProfile;
+   bool m_available = false;
+ };
 --- a/src/shell/bar/widgets/spacer_widget.cpp
 +++ b/src/shell/bar/widgets/spacer_widget.cpp
-@@ -4,0 +5,2 @@
+@@ -2,20 +2,54 @@
+
+ #include "render/scene/node.h"
+ #include "ui/builders.h"
 +#include "ui/controls/box.h"
 +#include <algorithm>
-@@ -7 +9 @@
+
+ SpacerWidget::SpacerWidget(bool verticalBar, Options options)
 -    : m_fixedLength(static_cast<float>(options.length)), m_verticalBar(verticalBar) {}
 +    : m_fixedLength(static_cast<float>(options.length)), m_verticalBar(verticalBar), m_decoration(options.decoration) {}
-@@ -12,0 +15,6 @@
+
+ void SpacerWidget::create() {
+   auto spacer = ui::node({});
+   spacer->setSize(0.0F, 0.0F);
+   spacer->setHitTestVisible(false);
 +  if (m_decoration != SpacerDecoration::None) {
 +    m_glow = static_cast<Box*>(spacer->addChild(ui::box({.fill = clearColorSpec()})));
 +    m_glow->setHitTestVisible(false);
 +    m_ink = static_cast<Box*>(spacer->addChild(ui::box({.fill = clearColorSpec()})));
 +    m_ink->setHitTestVisible(false);
 +  }
-@@ -19 +27,27 @@
+   setRoot(std::move(spacer));
+ }
+
+ void SpacerWidget::doLayout(Renderer& /*renderer*/, float /*containerWidth*/, float /*containerHeight*/) {
+   if (root() != nullptr) {
+     const float length = m_fixedLength * m_contentScale;
 -    root()->setSize(m_verticalBar ? 0.0F : length, m_verticalBar ? length : 0.0F);
 +    // HUD27: native faded separator / luminous clock dot, independent of fonts.
 +    const bool dot = m_decoration == SpacerDecoration::Dot;
@@ -135,22 +255,41 @@
 +      m_glow->setPosition((root()->width() - 6.0F) * 0.5F, (root()->height() - 6.0F) * 0.5F);
 +      m_glow->setSize(6.0F, 6.0F);
 +    }
+   }
+ }
 --- a/src/shell/bar/widgets/spacer_widget.h
 +++ b/src/shell/bar/widgets/spacer_widget.h
-@@ -3,0 +4,4 @@
+@@ -1,11 +1,16 @@
+ #pragma once
+
+ #include "shell/bar/widget.h"
 +
 +class Box;
 +
 +enum class SpacerDecoration { None, Separator, Dot };
-@@ -8,0 +13 @@
+
+ class SpacerWidget : public Widget {
+ public:
+   struct Options {
+     int length = 20;
 +    SpacerDecoration decoration = SpacerDecoration::None;
-@@ -21,0 +27,3 @@
+   };
+
+   SpacerWidget(bool verticalBar, Options options);
+@@ -19,4 +24,7 @@
+   void doLayout(Renderer& renderer, float containerWidth, float containerHeight) override;
+   float m_fixedLength;
+   bool m_verticalBar = false;
 +  SpacerDecoration m_decoration;
 +  Box* m_ink = nullptr;
 +  Box* m_glow = nullptr;
+ };
 --- a/src/shell/bar/widgets/spacer_widget_definition.cpp
 +++ b/src/shell/bar/widgets/spacer_widget_definition.cpp
-@@ -10,0 +11,8 @@
+@@ -8,6 +8,14 @@
+       .type = "spacer",
+       .fields =
+           {
 +              field<&Options::decoration>({
 +                  .key = "decoration",
 +                  .choices = {
@@ -159,22 +298,46 @@
 +                      {.value = SpacerDecoration::Dot, .configValue = "dot"},
 +                  },
 +              }),
+               field<&Options::length>({
+                   .key = "length",
+                   .minValue = 0.0,
 --- a/src/shell/bar/widgets/workspaces_widget.cpp
 +++ b/src/shell/bar/widgets/workspaces_widget.cpp
-@@ -77 +77 @@
+@@ -74,7 +74,7 @@
+     : m_platform(platform), m_configService(config), m_output(output), m_labelSource(options.labelSource),
+       m_showLabels(options.showLabels), m_maxLabelChars(options.maxLabelChars),
+       m_labelsOnlyWhenOccupied(options.labelsOnlyWhenOccupied), m_showIcons(options.showIcons),
 -      m_hideWhenEmpty(options.hideWhenEmpty), m_showAllOutputs(options.showAllOutputs), m_pillScale(options.pillScale),
 +      m_hideWhenEmpty(options.hideWhenEmpty), m_minimumVisible(options.minimumVisible), m_showAllOutputs(options.showAllOutputs), m_pillScale(options.pillScale),
-@@ -107 +107,4 @@
+       m_activePillSize(std::clamp(options.activePillSize, 0.25F, 8.0F)),
+       m_inactivePillSize(std::clamp(options.inactivePillSize, 0.25F, 8.0F)), m_style(options.style),
+       m_focusedOutputOnly(options.focusedOutputOnly), m_changeColorOnHover(options.changeColorOnHover),
+@@ -104,7 +104,10 @@
+ }
+
+ bool WorkspacesWidget::isWorkspaceHidden(const Workspace& workspace) const noexcept {
 -  return m_hideWhenEmpty && isEmptyWorkspace(workspace);
 +  // HUD27: keep the first N labels while filtering later empty workspaces.
 +  const auto id = numericWorkspaceId(workspace);
 +  const bool pinned = id.has_value() && *id >= 1 && *id <= static_cast<std::size_t>(m_minimumVisible);
 +  return m_hideWhenEmpty && !pinned && isEmptyWorkspace(workspace);
-@@ -159,0 +163,3 @@
+ }
+
+ void WorkspacesWidget::create() {
+@@ -157,6 +160,9 @@
+   if (item.indicator != nullptr) {
+     item.indicator->setFill(workspaceFillColor(item.visualWorkspace, item.output));
+     item.indicator->clearBorder();
 +  }
 +  if (item.accentGlow != nullptr) {
 +    item.accentGlow->setVisible(item.visualWorkspace.active);
-@@ -231,0 +238,21 @@
+   }
+   if (item.accent != nullptr) {
+     const auto& workspace = item.visualWorkspace;
+@@ -229,6 +235,27 @@
+     }
+   }
+
 +  // HUD27: materialize pinned numeric labels on dynamic-workspace compositors too.
 +  if (m_minimumVisible > 0 && !m_showAllOutputs && !current.empty()) {
 +    for (int index = 1; index <= m_minimumVisible; ++index) {
@@ -196,78 +359,77 @@
 +    });
 +  }
 +
-@@ -239,2 +266,2 @@
+   if (!m_cachedState.empty() && !current.empty() && !std::ranges::any_of(current, [](const WorkspaceState& state) {
+         return state.workspace.active;
+       })) {
+@@ -236,8 +263,8 @@
+   }
+
+   const bool showWidget =
 -      !current.empty() && (!m_hideWhenEmpty || std::ranges::any_of(current, [](const WorkspaceState& state) {
 -        return !isEmptyWorkspace(state.workspace);
 +      !current.empty() && (!m_hideWhenEmpty || std::ranges::any_of(current, [this](const WorkspaceState& state) {
 +        return !isWorkspaceHidden(state.workspace);
-@@ -612,0 +640,6 @@
-+      item.accentGlow = static_cast<Box*>(area->addChild(ui::box({
-+          .fill = colorSpecFromRole(ColorRole::Primary, 0.16F), .radius = 3.0F,
-+          .visible = false,
-+      })));
-+      item.accentGlow->setSoftness(3.0F);
-+      item.accentGlow->setHitTestVisible(false);
-@@ -714,0 +748,2 @@
-+    // HUD27: initialize rebuilt marks before the next state-change retarget.
-+    applyItemVisualStyle(item);
-@@ -1170,0 +1206,4 @@
-+    if (it.accentGlow != nullptr) {
-+      it.accentGlow->setPosition(it.accent->x() - 2.0F, it.accent->y() - 1.0F);
-+      it.accentGlow->setSize(it.accent->width() + 4.0F, it.accent->height() + 2.0F);
-+    }
---- a/src/shell/bar/widgets/workspaces_widget.h
-+++ b/src/shell/bar/widgets/workspaces_widget.h
-@@ -49,0 +50 @@
-+    int minimumVisible = 0;
-@@ -126,0 +128 @@
-+    Box* accentGlow = nullptr;
-@@ -177,0 +180 @@
-+  int m_minimumVisible = 0;
---- a/src/shell/bar/widgets/workspaces_widget_definition.cpp
-+++ b/src/shell/bar/widgets/workspaces_widget_definition.cpp
-@@ -42,0 +43 @@
-+              field<&Options::minimumVisible>({.key = "minimum_visible", .minValue = 0.0, .maxValue = 99.0}),
---- a/src/system/brightness_service.cpp
-+++ b/src/system/brightness_service.cpp
-@@ -246,0 +247,7 @@
-+    // HUD27: manufacturer + display kind; never surface raw EDID or serial values.
-+    auto make = output.make.empty() ? display.label.substr(0, display.label.find(' ')) : output.make;
-+    if (make.starts_with("0x") || make.size() > 24 || make == output.connectorName) make.clear();
-+    const bool internal = output.connectorName.starts_with("eDP") || output.connectorName.starts_with("LVDS")
-+                       || output.connectorName.starts_with("DSI");
-+    display.friendlyName = (make.empty() ? "" : make + " ") + (internal ? "内置屏" : "外接屏");
-+    display.refreshMilliHz = output.refreshMilliHz;
---- a/src/system/brightness_service.h
-+++ b/src/system/brightness_service.h
-@@ -18,0 +19,2 @@
-+  std::int32_t refreshMilliHz = 0;
-+  std::string friendlyName;
---- a/src/wayland/wayland_connection.cpp
-+++ b/src/wayland/wayland_connection.cpp
-@@ -145 +145 @@
--  void outputMode(void* data, wl_output* wlOut, uint32_t flags, int32_t w, int32_t h, int32_t /*refresh*/) {
-+  void outputMode(void* data, wl_output* wlOut, uint32_t flags, int32_t w, int32_t h, int32_t refresh) {
-@@ -151,0 +152 @@
-+      out->refreshMilliHz = refresh;
---- a/src/wayland/wayland_connection.h
-+++ b/src/wayland/wayland_connection.h
-@@ -77,0 +78 @@
-+  std::int32_t refreshMilliHz = 0; // HUD27: current wl_output mode refresh
---- a/src/shell/bar/widgets/workspaces_widget.cpp
-+++ b/src/shell/bar/widgets/workspaces_widget.cpp
-@@ -582,3 +582,3 @@
+       }));
+   syncWidgetVisibility(showWidget);
+   if (!showWidget) {
+@@ -579,9 +606,9 @@
+       item.fromOpacity = 0.0F;
+     }
+
 -    // Minimal draws labels and nothing else; an unlabeled entry keeps its
 -    // layout slot as empty space.
 -    if (!isMinimal()) {
 +    // R31: minimal reuses the indicator for a faint active workspace surface.
 +    // Inactive minimal indicators remain transparent; the accent stays separate.
 +    {
-@@ -1260,2 +1260,3 @@
+       const float indicatorW = m_isVertical ? m_indicatorHeight : w;
+       const float indicatorH = m_isVertical ? w : m_indicatorHeight;
+       item.indicator = static_cast<Box*>(area->addChild(
+@@ -610,6 +637,12 @@
+     }
+
+     if (isMinimal()) {
++      item.accentGlow = static_cast<Box*>(area->addChild(ui::box({
++          .fill = colorSpecFromRole(ColorRole::Primary, 0.16F), .radius = 3.0F,
++          .visible = false,
++      })));
++      item.accentGlow->setSoftness(3.0F);
++      item.accentGlow->setHitTestVisible(false);
+       item.accent = static_cast<Box*>(area->addChild(
+           ui::box({
+               .fill = clearColorSpec(),
+@@ -712,6 +745,8 @@
+     if (!entry.exiting) {
+       syncItemTooltip(item, ws);
+     }
++    // HUD27: initialize rebuilt marks before the next state-change retarget.
++    applyItemVisualStyle(item);
+     m_items.push_back(item);
+   }
+
+@@ -1168,6 +1203,10 @@
+       it.accent->setPosition(std::round((itemW - markSize) * 0.5F), itemH - (line ? 2.0F : 3.0F));
+     }
+     it.accent->setRadius(line ? 1.0F : markSize * 0.5F);
++    if (it.accentGlow != nullptr) {
++      it.accentGlow->setPosition(it.accent->x() - 2.0F, it.accent->y() - 1.0F);
++      it.accentGlow->setSize(it.accent->width() + 4.0F, it.accent->height() + 2.0F);
++    }
+   }
+
+   if (m_hoveredArea == it.area) {
+@@ -1281,6 +1320,7 @@
+ }
+
  float WorkspacesWidget::workspacePillRadius(float width, float height) const noexcept {
 +  if (isMinimal()) return 5.0F * m_contentScale;
    return resolvedBarCapsuleRadius(width, height);
-@@ -1495,2 +1495,7 @@
+ }
+
+@@ -1533,6 +1573,11 @@
+ }
+
  ColorSpec WorkspacesWidget::workspaceFillColor(const Workspace& workspace, wl_output* output) const {
 +  if (isMinimal()) {
 +    ColorSpec color = colorSpecFromRole(ColorRole::Primary);
@@ -275,3 +437,96 @@
 +    return color;
 +  }
    if (workspace.active) {
+     return workspaceUsesFocusedStyle(workspace, output) ? m_focusedColor : m_occupiedColor;
+   }
+--- a/src/shell/bar/widgets/workspaces_widget.h
++++ b/src/shell/bar/widgets/workspaces_widget.h
+@@ -47,6 +47,7 @@
+     std::size_t maxLabelChars = 1;
+     bool labelsOnlyWhenOccupied = false;
+     bool hideWhenEmpty = false;
++    int minimumVisible = 0;
+     bool showAllOutputs = false;
+     float pillScale = 1.0F;
+     float activePillSize = 2.2F;
+@@ -124,6 +125,7 @@
+     InputArea* area = nullptr;
+     Box* indicator = nullptr;
+     Box* accent = nullptr;
++    Box* accentGlow = nullptr;
+     Label* text = nullptr;
+     Image* icon = nullptr;
+     Workspace workspace;
+@@ -175,6 +177,7 @@
+   bool m_labelsOnlyWhenOccupied = false;
+   bool m_showIcons = true;
+   bool m_hideWhenEmpty = false;
++  int m_minimumVisible = 0;
+   bool m_showAllOutputs = false;
+   float m_pillScale = 1.0F;
+   float m_activePillSize = 2.2F;
+--- a/src/shell/bar/widgets/workspaces_widget_definition.cpp
++++ b/src/shell/bar/widgets/workspaces_widget_definition.cpp
+@@ -40,6 +40,7 @@
+       .type = "workspaces",
+       .fields =
+           {
++              field<&Options::minimumVisible>({.key = "minimum_visible", .minValue = 0.0, .maxValue = 99.0}),
+               field<&Options::hideWhenEmpty>({
+                   .key = "hide_when_empty",
+                   .presentation =
+--- a/src/system/brightness_service.cpp
++++ b/src/system/brightness_service.cpp
+@@ -244,6 +244,13 @@
+
+   void applyOutputMetadata(BrightnessDisplay& display, const WaylandOutput& output) {
+     display.label = output.description.empty() ? output.connectorName : output.description;
++    // HUD27: manufacturer + display kind; never surface raw EDID or serial values.
++    auto make = output.make.empty() ? display.label.substr(0, display.label.find(' ')) : output.make;
++    if (make.starts_with("0x") || make.size() > 24 || make == output.connectorName) make.clear();
++    const bool internal = output.connectorName.starts_with("eDP") || output.connectorName.starts_with("LVDS")
++                       || output.connectorName.starts_with("DSI");
++    display.friendlyName = (make.empty() ? "" : make + " ") + (internal ? "内置屏" : "外接屏");
++    display.refreshMilliHz = output.refreshMilliHz;
+     display.physicalWidth = output.width;
+     display.physicalHeight = output.height;
+     display.logicalWidth = output.logicalWidth;
+--- a/src/system/brightness_service.h
++++ b/src/system/brightness_service.h
+@@ -16,6 +16,8 @@
+   std::string label;        // human-readable (connector name or description)
+   float brightness = 0;     // 0.0–1.0 normalized
+   bool controllable = true; // false when listed for display info only
++  std::int32_t refreshMilliHz = 0;
++  std::string friendlyName;
+   std::int32_t physicalWidth = 0;
+   std::int32_t physicalHeight = 0;
+   std::int32_t logicalWidth = 0;
+--- a/src/wayland/wayland_connection.cpp
++++ b/src/wayland/wayland_connection.cpp
+@@ -142,13 +142,14 @@
+     }
+   }
+
+-  void outputMode(void* data, wl_output* wlOut, uint32_t flags, int32_t w, int32_t h, int32_t /*refresh*/) {
++  void outputMode(void* data, wl_output* wlOut, uint32_t flags, int32_t w, int32_t h, int32_t refresh) {
+     if ((flags & WL_OUTPUT_MODE_CURRENT) == 0) {
+       return;
+     }
+     auto* self = static_cast<WaylandConnection*>(data);
+     auto* out = self->findOutputByWl(wlOut);
+     if (out != nullptr) {
++      out->refreshMilliHz = refresh;
+       out->width = w;
+       out->height = h;
+       self->recomputeConfiguredScale(*out);
+--- a/src/wayland/wayland_connection.h
++++ b/src/wayland/wayland_connection.h
+@@ -75,6 +75,7 @@
+   std::uint32_t version = 0;
+   wl_output* output = nullptr;
+   std::int32_t scale = 1;
++  std::int32_t refreshMilliHz = 0; // HUD27: current wl_output mode refresh
+   std::int32_t width = 0;
+   std::int32_t height = 0;
+   std::int32_t logicalWidth = 0;

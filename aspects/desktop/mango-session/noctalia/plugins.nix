@@ -1,8 +1,6 @@
 {
   inputs,
   pkgs,
-  flakePath,
-  hostName,
 }:
 let
   communitySource = import ./community.nix {
@@ -29,7 +27,7 @@ in
         name = "community";
         kind = "path";
         # Keep the official community source identity and every untouched
-        # plugin; build-time overlay copies only the four customized bar plugins.
+        # plugin; build-time overlay copies only the three customized bar plugins.
         location = "${communitySource}";
         enabled = true;
       }
@@ -57,7 +55,6 @@ in
       # Markdown notes, todos and /nt launcher entry; AI calls Go directly.
       "fel/quill"
       "gambled23/mangowm-keymode" # mmsg; shows the keymode SUPER,R enters
-      "mindnbytes/nix-status"
       "knyrps/nix-search"
       "nix-dotfiles/legion-conservation"
 
@@ -91,10 +88,5 @@ in
       ai_model = "deepseek-v4.1-flash";
       ai_base_url = "https://opencode.ai/inference/go/openai/v1";
     };
-    "mindnbytes/nix-status" = {
-      flake_dir = flakePath;
-      nixos_configuration = hostName;
-    };
-
   };
 }

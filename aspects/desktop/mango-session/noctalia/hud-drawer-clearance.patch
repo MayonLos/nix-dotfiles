@@ -8,7 +8,7 @@
  #include "shell/bar/widgets/taskbar_widget.h"
  #include "shell/bar/widgets/tray_widget.h"
  #include "shell/panel/panel_manager.h"
-@@ -1038,6 +1039,10 @@
+@@ -1032,6 +1033,10 @@
          }
        }
      };
@@ -19,11 +19,12 @@
      layoutWidgets(instance.startWidgets);
      layoutWidgets(instance.centerWidgets);
      layoutWidgets(instance.endWidgets);
-@@ -1286,12 +1291,25 @@
+@@ -1280,12 +1285,25 @@
      float startSlotMain;
      float endSlotMain;
      if (!instance.centerWidgets.empty()) {
 -      startSlotMain = std::max(0.0F, centerSlotStart - contentMainStart);
+-      endSlotMain = std::max(0.0F, contentMainEnd - centerSlotEnd);
 +      // HUD27b: reserve at least 24 logical pixels before the independently centered clock.
 +      constexpr float kHudCenterClearance = 24.0F;
 +      startSlotMain = std::max(0.0F, centerSlotStart - contentMainStart - (isVertical ? 0.0F : kHudCenterClearance));
@@ -38,7 +39,6 @@
 +        finalizeCapsules(instance.endCapsuleRuns);
 +        configureSection(instance.endSection, FlexJustify::End);
 +      }
--      endSlotMain = std::max(0.0F, contentMainEnd - centerSlotEnd);
        configureSlot(instance.startSlot, contentMainStart, startSlotMain);
        configureSlot(instance.centerSlot, centerSlotStart, centerSlotMain);
 -      configureSlot(instance.endSlot, centerSlotEnd, endSlotMain);
@@ -50,26 +50,28 @@
        const float endNaturalMain = isVertical ? instance.endSection->height() : instance.endSection->width();
 --- a/src/shell/bar/bar_instance.h
 +++ b/src/shell/bar/bar_instance.h
-@@ -89,4 +89,5 @@
- 
+@@ -89,6 +89,7 @@
+
    // Bar background, shadow, and layout sections (start/center/end along main axis)
    Box* bg = nullptr;
 +  bool hudMonitoringCompact = false; // HUD27b: latch derived from the measured right section each pass.
    Box* shadow = nullptr;
+   Node* shadowLeftClip = nullptr;
+   Node* shadowRightClip = nullptr;
 --- a/src/shell/bar/widgets/sysmon_widget.h
 +++ b/src/shell/bar/widgets/sysmon_widget.h
-@@ -78,6 +78,10 @@
+@@ -80,6 +80,10 @@
    ~SysmonWidget() override;
- 
+
    void create() override;
 +  // Bar-owned presentation only: sampling and SYSTEM hover content stay live.
 +  void setDrawerCompact(bool compact) noexcept {
 +    m_drawerCompact = compact && (m_stat == SysmonStat::CpuTemp || m_stat == SysmonStat::GpuUsage);
 +  }
    [[nodiscard]] static const char* glyphName(SysmonStat stat);
- 
+
  private:
-@@ -117,6 +121,8 @@
+@@ -123,6 +127,8 @@
    ConfigService& m_configService;
    bool m_showGlyph;
    bool m_showValue;
@@ -80,10 +82,10 @@
    bool m_showGpuTemperature;
 --- a/src/shell/bar/widgets/sysmon_widget.cpp
 +++ b/src/shell/bar/widgets/sysmon_widget.cpp
-@@ -277,6 +277,13 @@
+@@ -289,6 +289,13 @@
      }
    }
- 
+
 +  if (m_stat == SysmonStat::CpuTemp || m_stat == SysmonStat::GpuUsage) {
 +    m_compactDot = static_cast<Box*>(container->addChild(ui::box({
 +        .fill = m_highlightColor, .radius = 3.0F * m_contentScale,
@@ -92,28 +94,28 @@
 +    m_compactDot->setHitTestVisible(false);
 +  }
    setRoot(std::move(container));
- 
+
    syncVisualPalette();
-@@ -312,6 +319,7 @@
- 
+@@ -335,6 +342,7 @@
+
  void SysmonWidget::syncValueColor() {
    const Color valueColor = currentValueColor(widgetForegroundOr(colorSpecFromRole(ColorRole::OnSurface)));
 +  if (m_compactDot != nullptr) m_compactDot->setFill(fixedColorSpec(valueColor));
    const Color iconColor = m_widgetIconColor.has_value() ? resolveColorSpec(m_widgetIconColor.value()) : valueColor;
    if (m_glyph != nullptr) {
      m_glyph->setColor(iconColor);
-@@ -350,6 +358,7 @@
- 
+@@ -374,6 +382,7 @@
+
  void SysmonWidget::syncIdentity(Renderer& renderer) {
    const Color valueColor = currentValueColor(widgetForegroundOr(colorSpecFromRole(ColorRole::OnSurface)));
 +  if (m_compactDot != nullptr) m_compactDot->setFill(fixedColorSpec(valueColor));
    const Color iconColor = m_widgetIconColor.has_value() ? resolveColorSpec(m_widgetIconColor.value()) : valueColor;
    if (m_image != nullptr) {
      widget_custom_image::sync(*m_image, renderer, m_customImage, m_contentScale, fixedColorSpec(iconColor));
-@@ -556,6 +565,16 @@
+@@ -632,6 +641,16 @@
    syncVisualPalette();
    syncIdentity(renderer);
- 
+
 +  // HUD27b: compact only the alert/GPU presentation; availability remains controlled by doUpdate.
 +  m_containerRow->setVisible(!m_drawerCompact);
 +  if (m_compactDot != nullptr) m_compactDot->setVisible(m_drawerCompact);
@@ -131,12 +133,12 @@
 +++ b/src/shell/bar/widgets/power_profile_widget.h
 @@ -5,7 +5,6 @@
  #include <string>
- 
+
  class Glyph;
 -class Label;
  class InputArea;
  class PowerProfilesService;
- 
+
 @@ -23,7 +22,6 @@
    PowerProfilesService* m_powerProfiles = nullptr;
    InputArea* m_area = nullptr;
@@ -149,22 +151,22 @@
 +++ b/src/shell/bar/widgets/power_profile_widget.cpp
 @@ -8,7 +8,6 @@
  #include "ui/style.h"
- 
+
  #include <memory>
 -#include <algorithm>
- 
+
  PowerProfileWidget::PowerProfileWidget(PowerProfilesService* powerProfiles) : m_powerProfiles(powerProfiles) {}
- 
+
 @@ -25,9 +24,6 @@
        })
    );
- 
+
 -  // HUD27: profile icon + real mode name, keeping native click cycling.
 -  area->addChild(ui::label({.out = &m_label, .fontSize = 11.5F * fontScale(),
 -                           .fontFamily = "monospace", .color = colorSpecFromRole(ColorRole::OnSurfaceVariant)}));
    setRoot(std::move(area));
  }
- 
+
 @@ -45,13 +41,7 @@
    );
    m_glyph->measure(renderer);
@@ -178,10 +180,10 @@
 -  rootNode->setSize(m_label->x() + m_label->width(), h);
 +  rootNode->setSize(m_glyph->width(), m_glyph->height());
  }
- 
+
  void PowerProfileWidget::doUpdate(Renderer& renderer) { syncState(renderer); }
 @@ -70,6 +60,11 @@
- 
+
    m_available = available;
    m_lastProfile = profile;
 +  // HUD27b: mode name belongs in the tooltip, never in the tools accordion layout.
@@ -189,6 +191,6 @@
 +  panel.title = "POWER";
 +  panel.summary = available ? profile : "unavailable";
 +  m_area->setTooltip(std::move(panel));
- 
+
    m_glyph->setGlyph(profileGlyphName(profile));
    m_glyph->setColor(

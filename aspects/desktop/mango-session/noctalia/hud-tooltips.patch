@@ -1,10 +1,19 @@
 --- a/src/shell/tooltip/tooltip_content.h
 +++ b/src/shell/tooltip/tooltip_content.h
-@@ -3,0 +4 @@
+@@ -1,7 +1,9 @@
+ #pragma once
+
+ #include "render/core/renderer.h"
 +#include "ui/palette.h"
-@@ -4,0 +6 @@
+
 +#include <optional>
-@@ -13,0 +16,18 @@
+ #include <string>
+ #include <string_view>
+ #include <variant>
+@@ -11,6 +13,24 @@
+   std::string key;
+   std::string value;
+   TextEllipsize valueEllipsize = TextEllipsize::End;
 +  double progress = -1.0;
 +  std::optional<ColorSpec> color;
 +};
@@ -23,14 +32,29 @@
 +  std::vector<TooltipMetric> metrics;
 +  std::vector<float> history;
 +  std::string historyLabel;
-@@ -46 +66 @@
+ };
+
+ enum class TooltipPlacement : std::uint8_t {
+@@ -43,4 +63,4 @@
+   float left = 0.0F;
+ };
+
 -using TooltipContent = std::variant<std::monostate, std::string, std::vector<TooltipRow>>;
 +using TooltipContent = std::variant<std::monostate, std::string, std::vector<TooltipRow>, TooltipPanel>;
 --- a/src/shell/tooltip/tooltip_manager.cpp
 +++ b/src/shell/tooltip/tooltip_manager.cpp
-@@ -11,0 +12 @@
+@@ -9,6 +9,7 @@
+ #include "render/scene/input_area.h"
+ #include "render/scene/node.h"
+ #include "ui/builders.h"
 +#include "ui/controls/graph.h"
-@@ -37,0 +39,10 @@
+ #include "ui/palette.h"
+ #include "ui/style.h"
+ #include "wayland/popup_surface.h"
+@@ -35,6 +36,16 @@
+   // Monospace so grid-mode value columns don't reflow on tiny per-tick content changes
+   // (e.g. rising bitrate). Resolved via fontconfig — respects the user's `monospace` alias.
+   constexpr std::string_view kValueFontFamily = "monospace";
 +
 +  // HUD27: reserve only the real value width, keeping task text and device identities readable.
 +  float tooltipRowKeyLimit(Renderer& renderer, const TooltipRow& row, float fontSize, float width, float scale) {
@@ -41,7 +65,13 @@
 +    const float valueReserve = std::min(value->width(), width * (progress ? 0.30F : 0.68F));
 +    return std::max(1.0F, width - valueReserve - (progress ? 58.0F : 0.0F) * scale - (progress ? 14.0F : 7.0F) * scale);
 +  }
-@@ -676,0 +688,43 @@
+
+   std::unique_ptr<Label> makeTooltipTextLabel(std::string_view text, float fontSize, float maxWidth) {
+     return ui::label({
+@@ -674,6 +685,49 @@
+     return {std::max(w, 1U), std::max(h, 1U)};
+   }
+
 +  // HUD27 sizes the same compact blocks that buildScene lays out below.
 +  if (const auto* panel = std::get_if<TooltipPanel>(&content)) {
 +    const auto textHeight = [&renderer, fontSize](const std::string& text) {
@@ -85,60 +115,22 @@
 +            static_cast<std::uint32_t>(std::ceil(contentHeight + padV * 2.0F + kBorder * 2.0F))};
 +  }
 +
-@@ -693,9 +747,40 @@
--  m_sceneRoot->addChild(
--      ui::box({
--          .fill = colorSpecFromRole(ColorRole::Surface),
--          .radius = Style::scaledRadiusMd(),
--          .width = w,
--          .height = h,
--          .configure = [](Box& box) { box.setBorder(colorSpecFromRole(ColorRole::Outline), kBorder); },
--      })
--  );
-+  m_sceneRoot->addChild(ui::box({
-+      .fill = colorSpecFromRole(ColorRole::Surface),
-+      .radius = Style::scaledRadiusMd(),
-+      .width = w,
-+      .height = h,
-+      .configure = [](Box& box) {
-+        auto style = box.style();
-+        const Color shadow = resolveColorSpec(colorSpecFromRole(ColorRole::Shadow));
-+        const Color surface = lerpColor(shadow, resolveColorSpec(colorSpecFromRole(ColorRole::Surface)), 0.18F);
-+        style.fill = surface;
-+        style.fillMode = FillMode::LinearGradient;
-+        style.gradientDirection = GradientDirection::Vertical;
-+        style.gradientStops = {{GradientStop{0.0F, shadow}, GradientStop{0.3F, surface},
-+                                GradientStop{0.7F, surface}, GradientStop{1.0F, shadow}}};
-+        style.radius = Style::scaledRadiusMd();
-+        box.setStyle(style);
-+        box.setBorder(colorSpecFromRole(ColorRole::Primary, 0.22F), kBorder);
-+      },
-+  }));
-+
-+  // HUD27 blue-to-cyan rule fades at both ends and uses the native rounded rectangle renderer.
-+  m_sceneRoot->addChild(ui::box({
-+      .radius = 0.7F,
-+      .width = w * 0.76F,
-+      .height = 1.4F,
-+      .configure = [w](Box& box) {
-+        box.setPosition(w * 0.12F, kBorder);
-+        auto style = box.style();
-+        const Color blue = resolveColorSpec(colorSpecFromRole(ColorRole::Primary));
-+        const Color cyan = resolveColorSpec(colorSpecFromRole(ColorRole::Secondary));
-+        style.fillMode = FillMode::LinearGradient;
-+        style.gradientDirection = GradientDirection::Horizontal;
-+        style.gradientStops = {{GradientStop{0.0F, withAlpha(blue, 0.0F)},
-+                                GradientStop{0.3F, withAlpha(blue, 0.72F)},
-+                                GradientStop{0.7F, withAlpha(cyan, 0.68F)},
-+                                GradientStop{1.0F, withAlpha(cyan, 0.0F)}}};
-+        style.radius = Radii(0.7F);
-+        box.setStyle(style);
-+      },
-+  }));
-@@ -741 +826 @@
+   return {};
+ }
+
+@@ -738,7 +792,7 @@
+       auto keyLabel = ui::label({
+           .text = row.key,
+           .fontSize = fontSize,
 -          .color = colorSpecFromRole(ColorRole::Secondary),
 +          .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
-@@ -778,0 +864,87 @@
+           .maxLines = 1,
+       });
+       const auto km = renderer.measureText(row.key, fontSize);
+@@ -776,6 +830,93 @@
+
+     container->layout(renderer);
+     m_sceneRoot->addChild(std::move(container));
 +    return;
 +  }
 +
@@ -226,13 +218,25 @@
 +    }
 +    container->layout(renderer);
 +    m_sceneRoot->addChild(std::move(container));
+   }
+ }
+
 --- a/src/render/scene/input_area.h
 +++ b/src/render/scene/input_area.h
-@@ -160,0 +161 @@
+@@ -158,6 +158,7 @@
+   // Tooltip
+   void setTooltip(std::string text);
+   void setTooltip(std::vector<TooltipRow> rows);
 +  void setTooltip(TooltipPanel panel);
+   void setTooltipProvider(TooltipProvider provider, std::chrono::milliseconds refreshInterval = {});
+   void clearTooltip();
+   void requestTooltipRefresh();
 --- a/src/render/scene/input_area.cpp
 +++ b/src/render/scene/input_area.cpp
-@@ -127,0 +128,8 @@
+@@ -125,5 +125,13 @@
+   m_tooltipProvider = {};
+   m_tooltipRefreshInterval = {};
+   m_tooltipContent = std::move(rows);
 +  notifyTooltipChanged();
 +}
 +
@@ -241,3 +245,5 @@
 +  m_tooltipProvider = {};
 +  m_tooltipRefreshInterval = {};
 +  m_tooltipContent = std::move(panel);
+   notifyTooltipChanged();
+ }
