@@ -54,3 +54,6 @@ generation、store 路径和样本数据只对应当时提交，与当前源码�
 | [nvim-ai-2026-10-24.md](history/nvim-ai-2026-10-24.md) | 2026-10-24 | Neovim AI 与原生能力集成 |
 | [finalize-2026-10-25.md](history/finalize-2026-10-25.md) | 2026-10-25 | 视觉与 Neovim 收尾集成、性能和完整验证 |
 | [ui-v4-2026-10-25.md](history/ui-v4-2026-10-25.md) | 2026-10-25 | 第十九轮终端套件、科技版系统界面、herdr 与壁纸回退 |
+| [desktop-polish-r32.md](history/desktop-polish-r32.md) | 2026-10-26 | 全桌面整理、flake 更新与迁移 |
+| [desktop-polish-r33.md](history/desktop-polish-r33.md) | 2026-10-26 | Thunar 紧凑样式与 SYSTEM/通知避让 |
+| [desktop-polish-r34.md](history/desktop-polish-r34.md) | 2026-10-26 | 自主视觉巡检、中文菜单、实色浮层与应用证据 |

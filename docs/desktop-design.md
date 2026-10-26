@@ -5,6 +5,24 @@
 早期记录中的未激活结论只适用于对应轮次；r29–r31 已应用。2026-10-26 的 r32 按全桌面预览继续统一边界与密度，具体取舍以 [现行视觉依据](visual-design.md) 开头的更新为准。旧轮次设计和测量有其时间范围，
 历史取舍见[第九轮记录](history/desktop-polish-2026-10-24.md)。
 
+## 当前已应用状态（2026-10-26，r34）
+
+- 顶栏为一体式 35 px，Nix Status 已移除；启动器宽 520、控制中心宽 380、通知宽 320。
+- Mango 外距 12、内距 8、窗口圆角 10；通知与 OSD 背景不透明，继续使用 One Dark 细边框。
+- SYSTEM 提示与右上通知按 r33 规则避让；通知指针悬停时不移动。
+- Thunar 工具栏图标比例 0.85、表头上下间距 4；默认中文界面及九个中文自定义操作，
+  显式语言覆盖保留。Development 子菜单仍英文。旧进程需正常退出重开。
+- 现有 Neovim 原生补全、英文 which-key 和 LibreOffice Qt6 延续已有配置。
+
+构建、应用和隔离截图证据分别见 [r32](history/desktop-polish-r32.md)、
+[r33](history/desktop-polish-r33.md)、[r34](history/desktop-polish-r34.md)。
+截图原件在 Git 忽略的 `.work/polish-r34/01-files.png`、`02-launcher.png`、`03-notifications.png`；
+它们使用最终包的隔离配置与样例内容，不是用户真实项目窗口。
+
+## 早期设计背景
+
+下表保留早期 Astra 方案的尺寸和目标，不能用于覆盖上方现行参数；实际数值以源码为准。
+
 颜色唯一来源是共享 [palette](../aspects/appearance/appearance/onedark.nix)：
 桌面 bg、卡片 surface、选择 selection；正文 brightFg、必要次级文字 fg，
 blue 标示焦点和短选中标签。无整块蓝色选中行。桌面字体 Inter，中文回退 Noto Sans CJK SC；
