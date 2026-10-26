@@ -19,6 +19,10 @@ for version in 3 4; do
   python3 "$CHECK_CSS" "$version.0" "$out/gtk-$version.0/noctalia.css"
 done
 cp "$QSS_SOURCE" "$out/qt6ct/one-dark.qss"
+"$CXX" -std=c++17 "$QT_RENDER_SOURCE" -o qt-render $(pkg-config --cflags --libs Qt6Widgets)
+export QT_QPA_PLATFORM=offscreen
+export QT_PLUGIN_PATH="${QT_PLUGIN_PATH:-}:${QT_SVG_PLUGIN_PATH:-}"
+./qt-render "$QSS_SOURCE" "$out/qt6ct/rendered-controls.png"
 run() { "$@"; }
 source "$QT_SEED"
 cp "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf" "$out/qt6ct/seed.conf"
@@ -55,6 +59,8 @@ assert '--window-bg-color: '+p['bg'] in gtk4
 assert '--accent-color: '+p['blue'] in gtk4
 qss=(out/'qt6ct/one-dark.qss').read_text()
 assert '@BG@' not in qss and p['blue'] in qss and p['fonts']['mono'] in qss
+assert '@CHECKMARK@' not in qss and '@CHECKMARK_DISABLED@' not in qss and '@INDETERMINATE@' not in qss
+assert '@INDETERMINATE_DISABLED@' not in qss
 scheme=configparser.ConfigParser(); scheme.read(out/'qt6ct/noctalia.conf')
 for group in ('active_colors','inactive_colors','disabled_colors'):
     assert len(scheme['ColorScheme'][group].split(','))==22

@@ -8,39 +8,7 @@
 {
   imports = [ (import ./kde.nix { inherit palette; }) ];
   xdg.configFile."qt6ct/qss/one-dark.qss".source =
-    let
-      cssTemplate = builtins.readFile ./resources/qt/one-dark.qss.template;
-    in
-    pkgs.writeText "qt6ct-one-dark.qss" (
-      lib.replaceStrings
-        [
-          "@BG@"
-          "@DEEP@"
-          "@SURFACE@"
-          "@SELECTION@"
-          "@FG@"
-          "@BRIGHT_FG@"
-          "@MUTED@"
-          "@BORDER@"
-          "@BLUE@"
-          "@FONT_SANS@"
-          "@FONT_MONO@"
-        ]
-        [
-          palette.bg
-          palette.deep
-          palette.surface
-          palette.selection
-          palette.fg
-          palette.brightFg
-          palette.muted
-          palette.border
-          palette.blue
-          palette.fonts.sans
-          palette.fonts.mono
-        ]
-        cssTemplate
-    );
+    (import ./qt-style.nix { inherit pkgs palette; }).stylesheet;
   # qt6ct owns the mutable GUI configuration and Noctalia owns only the
   # palette file. HM provides a read-only stylesheet and seeds defaults once.
   home.activation =

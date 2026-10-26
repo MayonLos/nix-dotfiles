@@ -1,9 +1,9 @@
 { den, ... }: {
   den.aspects = {
-    gaming = { host, ... }: {
+    gaming = { host, user, ... }: {
       homeManager.imports = [
         ./mangohud.nix
-        ./prismlauncher.nix
+        (import ./prismlauncher.nix { palette = user.appearance; })
       ];
       user.extraGroups = [ "gamemode" ];
       provides.${host.name}.includes = [ den.aspects.gaming-host ];

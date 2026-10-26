@@ -31,6 +31,8 @@ pkgs.runCommand "gtk-qt-theme-check" {
   PALETTE_JSON = paletteJson;
   CHECK_CSS = ./resources/gtk/check-css.py;
   QSS_SOURCE = qss;
+  QT_RENDER_SOURCE = ./resources/qt/check-render.cpp;
+  QT_SVG_PLUGIN_PATH = "${pkgs.qt6Packages.qtsvg}/${pkgs.qt6Packages.qtbase.qtPluginPrefix}";
   QT_SEED = qtSeed;
   QT_MIGRATION = qtMigration;
   GTK_THEME_PACKAGE = home.gtk.theme.package;
@@ -56,5 +58,6 @@ pkgs.runCommand "gtk-qt-theme-check" {
     pkgs.gtk3
     pkgs.gtk4
     pkgs.qt6Packages.qtbase
+    pkgs.qt6Packages.qtsvg
   ];
 } "bash ${./resources/gtk/check-theme.sh}"

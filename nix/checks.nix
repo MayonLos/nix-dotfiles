@@ -27,6 +27,7 @@
         ../aspects/apps/communication/checks.nix
         ../aspects/apps/file-manager/checks.nix
         ../aspects/apps/media/checks.nix
+        ../aspects/apps/gaming/checks.nix
         ../aspects/cli/shell/checks.nix
         ../aspects/cli/herdr/checks.nix
         ../aspects/desktop/mango-session/checks.nix
@@ -60,6 +61,7 @@
           "aspects/appearance/appearance/ansi.nix"
           "aspects/appearance/appearance/resources/wallpaper"
           "aspects/dev/neovim/package.nix"
+          "aspects/desktop/session-support/qt-style.nix"
           "aspects/desktop/xorg-session/dwm/package.nix"
         ]
         ++ map (path: lib.removePrefix "${toString ../.}/" (toString path)) registry;
