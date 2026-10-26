@@ -81,10 +81,13 @@ let
       ./noctalia/hud-sysmon.patch
       ./noctalia/hud-balanced.patch
       ./noctalia/hud-drawer-clearance.patch
+      ./noctalia/hud-overlay-clearance.patch
     ];
     # Fail the source build if an upstream rename or patch drift removes the
     # segmented OSD implementation instead of silently losing the appearance.
     postPatch = (old.postPatch or "") + ''
+      grep -Fq 'HUD33: move the layer surface' src/shell/notification/notification_toast.cpp
+      grep -Fq 'systemOccupancyChanged' src/shell/tooltip/tooltip_manager.h
       grep -Fq 'm_selectionIndicator' src/shell/launcher/launcher_panel.cpp
       grep -Fq 'item.accent = static_cast<Box*>' src/shell/bar/widgets/workspaces_widget.cpp
       grep -Fq 'syncCompactControls()' src/shell/control_center/tabs/home_tab.cpp

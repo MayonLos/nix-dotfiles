@@ -94,24 +94,55 @@ window.thunar {
 
 .thunar menubar {
   background: @sidebar_bg_color;
-  padding: 3px 8px;
+  padding: 2px 8px;
   border-bottom: 1px solid alpha(@borders, 0.25);
 }
 
+.thunar menubar > menuitem {
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.thunar menubar > menuitem:hover,
+.thunar menubar > menuitem:active {
+  background: @selected_bg_color;
+  color: @window_fg_color;
+}
+
+.thunar menu {
+  padding: 4px;
+  background: @popover_bg_color;
+  color: @popover_fg_color;
+  border: 1px solid alpha(@borders, 0.65);
+  border-radius: 8px;
+}
+
+.thunar menu menuitem {
+  min-height: 24px;
+  padding: 3px 8px;
+  border-radius: 5px;
+}
+
+.thunar menu menuitem:hover,
+.thunar menu menuitem:active {
+  background: @selected_bg_color;
+  color: @window_fg_color;
+}
+
 .thunar toolbar {
-  min-height: 40px;
-  padding: 6px 10px;
+  min-height: 36px;
+  padding: 3px 8px;
   background: @sidebar_bg_color;
   border-bottom: 1px solid alpha(@borders, 0.25);
   box-shadow: none;
 }
 
 .thunar toolbar button {
-  min-width: 28px;
-  min-height: 28px;
+  min-width: 26px;
+  min-height: 26px;
   margin: 0 2px;
-  padding: 3px 6px;
-  border-radius: 8px;
+  padding: 2px 5px;
+  border-radius: 7px;
   border: 1px solid transparent;
   background: transparent;
   box-shadow: none;
@@ -143,13 +174,13 @@ window.thunar {
 .thunar .path-bar {
   background: @headerbar_bg_color;
   border-radius: 8px;
-  padding: 2px 4px;
+  padding: 1px 3px;
 }
 
 .thunar .path-bar button.path-bar-button {
   font-family: @fontMono@, monospace;
   font-size: 12px;
-  padding: 3px 10px;
+  padding: 2px 8px;
   margin: 0;
   border-radius: 6px;
 }
@@ -163,7 +194,7 @@ window.thunar {
 .thunar entry {
   background: @headerbar_bg_color;
   border-radius: 8px;
-  min-height: 30px;
+  min-height: 28px;
   border: 1px solid alpha(@borders, 0.3);
   font-family: @fontMono@, monospace;
 }
@@ -177,8 +208,8 @@ window.thunar {
 }
 
 .thunar .shortcuts-pane treeview {
-  -GtkTreeView-vertical-separator: 10;
-  -GtkTreeView-horizontal-separator: 10;
+  -GtkTreeView-vertical-separator: 6;
+  -GtkTreeView-horizontal-separator: 8;
   font-size: 13px;
 }
 
@@ -187,8 +218,8 @@ window.thunar {
   color: @view_fg_color;
   font-family: @fontSans@, sans-serif;
   font-size: 13px;
-  -GtkTreeView-vertical-separator: 10;
-  -GtkTreeView-horizontal-separator: 10;
+  -GtkTreeView-vertical-separator: 6;
+  -GtkTreeView-horizontal-separator: 8;
 }
 
 /* GTK3 has no text-transform and no per-column cell CSS nodes. */
@@ -201,7 +232,7 @@ window.thunar {
   border: 0;
   border-bottom: 1px solid alpha(@borders, 0.25);
   border-radius: 0;
-  padding: 8px;
+  padding: 6px 8px;
   box-shadow: none;
 }
 
@@ -215,8 +246,8 @@ window.thunar {
   color: @secondary_text_color;
   font-family: @fontMono@, monospace;
   font-size: 11px;
-  min-height: 24px;
-  padding: 4px 10px;
+  min-height: 22px;
+  padding: 3px 8px;
   border-top: 1px solid alpha(@borders, 0.25);
 }
 

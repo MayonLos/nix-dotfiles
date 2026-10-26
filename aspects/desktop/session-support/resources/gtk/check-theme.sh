@@ -30,12 +30,26 @@ for css in (gtk3, gtk4):
     assert '{{' not in css and '@font' not in css
     assert not [r for r in tinycss2.parse_stylesheet(css) if r.type=='error']
 rules={tinycss2.serialize(r.prelude).strip(): tinycss2.serialize(r.content) for r in tinycss2.parse_stylesheet(gtk3) if r.type=='qualified-rule'}
+def rule(selector):
+    return next(v for k,v in rules.items() if selector in [part.strip() for part in k.split(',')])
 sidebar=next(v for k,v in rules.items() if '.shortcuts-pane treeview.view:selected' in k)
 assert 'inset 2px 0 '+p['blue'] in sidebar and '@selected_bg_color' in sidebar
 icons=next(v for k,v in rules.items() if 'widget.view:selected' in k)
 assert 'background-color: transparent' in icons and 'linear-gradient' in icons
 details=next(v for k,v in rules.items() if 'treeview.view:selected' in k and 'filechooser' in k)
 assert 'box-shadow: none' in details
+toolbar=rule('.thunar toolbar')
+assert 'min-height: 36px' in toolbar and 'padding: 3px 8px' in toolbar
+menubar=rule('.thunar menubar > menuitem:hover')
+assert '@selected_bg_color' in menubar
+menuitem=rule('.thunar menu menuitem')
+assert 'min-height: 24px' in menuitem and 'padding: 3px 8px' in menuitem
+file_list=rule('.thunar .standard-view .view')
+assert '-GtkTreeView-vertical-separator: 6' in file_list
+assert '-GtkTreeView-horizontal-separator: 8' in file_list
+sidebar_rows=rule('.thunar .shortcuts-pane treeview')
+assert '-GtkTreeView-vertical-separator: 6' in sidebar_rows
+assert '-GtkTreeView-horizontal-separator: 8' in sidebar_rows
 assert '--sidebar-bg-color: '+p['deep'] in gtk4
 assert '--window-bg-color: '+p['bg'] in gtk4
 assert '--accent-color: '+p['blue'] in gtk4

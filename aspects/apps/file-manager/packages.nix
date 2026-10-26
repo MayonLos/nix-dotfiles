@@ -30,11 +30,20 @@ let
     # nothing. Keep our session-aware UCA as the only wallpaper action. This
     # removes symlinks from this wrapper, never files in the original package.
     buildCommand = old.buildCommand + ''
-      test -L "$out/lib/thunarx-3/thunar-wallpaper-plugin.so"
-      rm "$out/lib/thunarx-3/thunar-wallpaper-plugin.so"
-      if [ -L "$out/lib/thunarx-3/thunar-wallpaper-plugin.la" ]; then
-        rm "$out/lib/thunarx-3/thunar-wallpaper-plugin.la"
-      fi
+            test -L "$out/lib/thunarx-3/thunar-wallpaper-plugin.so"
+            rm "$out/lib/thunarx-3/thunar-wallpaper-plugin.so"
+            if [ -L "$out/lib/thunarx-3/thunar-wallpaper-plugin.la" ]; then
+              rm "$out/lib/thunarx-3/thunar-wallpaper-plugin.la"
+            fi
+
+            # Keep Thunar's own UI in Chinese without changing the session locale.
+            # Preserve an explicit LANGUAGE; C locales can suppress translations.
+            for app in thunar thunar-settings; do
+              substituteInPlace "$out/bin/$app" \
+                --replace-fail 'export THUNARX_DIRS=' \
+                  'if [ "''${LANGUAGE+x}" != x ]; then export LANGUAGE="zh_CN:en_US"; fi
+      export THUNARX_DIRS='
+            done
     '';
   });
 in

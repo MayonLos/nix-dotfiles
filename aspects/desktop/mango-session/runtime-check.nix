@@ -16,8 +16,28 @@ let
     impureFontDirectories = [ ];
     includes = [ "${host.environment.etc.fonts.source}/conf.d" ];
   };
+  overlayClearanceCheck =
+    pkgs.runCommand "noctalia-overlay-clearance"
+      {
+        nativeBuildInputs = [
+          pkgs.patch
+          pkgs.stdenv.cc
+        ];
+      }
+      ''
+        cp -R ${home.programs.noctalia.package.src} source
+        chmod -R u+w source
+        cd source
+        ${pkgs.lib.concatMapStringsSep "\n" (
+          patch: "patch -p1 --fuzz=0 < ${patch}"
+        ) home.programs.noctalia.package.patches}
+        c++ -std=c++20 -I src ${./resources/overlay-clearance-test.cpp} -o overlay-clearance-test
+        ./overlay-clearance-test
+        touch "$out"
+      '';
   metadata = pkgs.writeText "desktop-contract.json" (
     builtins.toJSON {
+      overlayClearanceCheck = toString overlayClearanceCheck;
       settings = home.programs.noctalia.settings;
       noctaliaPatches = map (path: {
         name = builtins.baseNameOf path;
@@ -272,7 +292,7 @@ pkgs.runCommand "interactive-session-config"
     assert p["dark"]["mSurface"] == m["palette"]["bg"]
     settings = m["settings"]
     patches = {patch["name"]: patch["content"] for patch in m["noctaliaPatches"]}
-    for name, marker in {"hud-bar.patch": "HUD27: native faded separator", "hud-tooltips.patch": "TooltipPanel", "hud-sysmon.patch": "hide_unavailable", "hud-controls-tooltips.patch": "TooltipPanel", "hud-battery.patch": "label_outside", "hud-balanced.patch": "temperature_hide_below", "hud-drawer-clearance.patch": "kHudCenterClearance = 24.0F"}.items():
+    for name, marker in {"hud-overlay-clearance.patch": "HUD33: output-local logical coordinates", "hud-bar.patch": "HUD27: native faded separator", "hud-tooltips.patch": "TooltipPanel", "hud-sysmon.patch": "hide_unavailable", "hud-controls-tooltips.patch": "TooltipPanel", "hud-battery.patch": "label_outside", "hud-balanced.patch": "temperature_hide_below", "hud-drawer-clearance.patch": "kHudCenterClearance = 24.0F"}.items():
         assert name in patches and marker in patches[name], (name, patches.keys())
     # Check serialized settings too: validating the Nix attrset alone would
     # miss a lost/renamed field during Home Manager's config generation.

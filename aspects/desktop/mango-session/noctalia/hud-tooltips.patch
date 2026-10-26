@@ -233,7 +233,7 @@
    void requestTooltipRefresh();
 --- a/src/render/scene/input_area.cpp
 +++ b/src/render/scene/input_area.cpp
-@@ -125,5 +125,13 @@
+@@ -125,6 +125,14 @@
    m_tooltipProvider = {};
    m_tooltipRefreshInterval = {};
    m_tooltipContent = std::move(rows);
@@ -247,3 +247,4 @@
 +  m_tooltipContent = std::move(panel);
    notifyTooltipChanged();
  }
+ 

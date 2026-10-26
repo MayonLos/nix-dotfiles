@@ -113,7 +113,13 @@ assert fileManagerServices == [ serviceName ];
 
   file-manager-dbus = pkgs.runCommand "file-manager-dbus-check" { } ''
     test -x ${fileManager.thunarWithPlugins}/bin/Thunar
+    test -x ${fileManager.thunarWithPlugins}/bin/thunar-settings
     test ! -e ${fileManager.thunarWithPlugins}/lib/thunarx-3/thunar-wallpaper-plugin.so
+    for app in thunar thunar-settings; do
+      grep -F 'if [ "''${LANGUAGE+x}" != x ]; then export LANGUAGE="zh_CN:en_US"; fi' \
+        ${fileManager.thunarWithPlugins}/bin/$app
+      ! grep -F 'LC_ALL=' ${fileManager.thunarWithPlugins}/bin/$app
+    done
     grep -Fx 'Name=org.freedesktop.FileManager1' ${serviceFile}
     grep -Fx 'Exec=${fileManager.thunarWithPlugins}/bin/Thunar --gapplication-service' ${serviceFile}
     grep -Fx 'SystemdService=thunar.service' ${serviceFile}
