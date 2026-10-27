@@ -12,7 +12,16 @@
       support32Bit = true;
     };
     pulse.enable = true;
-    wireplumber.enable = true;
+    wireplumber = {
+      enable = true;
+      # Any capture of a headset's virtual source (pavucontrol's input peak
+      # meters, a chat app probing devices) otherwise flips A2DP to HFP:
+      # 8/16 kHz mono "radio" audio that also stalled and dropped the link.
+      # Headset mics stay available by selecting the HFP profile by hand.
+      extraConfig."51-bluetooth-no-autoswitch"."wireplumber.settings" = {
+        "bluetooth.autoswitch-to-headset-profile" = false;
+      };
+    };
     jack.enable = true;
     extraConfig = {
       pipewire."90-echo-cancel" = {
