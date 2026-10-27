@@ -215,6 +215,11 @@ pkgs.runCommand "command-line-runtime"
     tmux -S "$TMPDIR/tmux.sock" show-options -s terminal-features | grep -F 'xterm-kitty:usstyle'
     tmux -S "$TMPDIR/tmux.sock" show-options -s terminal-features | grep -F 'tmux-256color:usstyle'
     test "$(tmux -S "$TMPDIR/tmux.sock" show-options -gv allow-passthrough)" = on
+    fzf_main=$(grep -oE '/nix/store/[^ ]+/tmux-fzf/main\.tmux' ${
+      home.xdg.configFile."tmux/tmux.conf".source
+    })
+    test -f "$fzf_main"
+    if grep -F copyq "$fzf_main"; then exit 1; fi
     tmux -S "$TMPDIR/tmux.sock" list-keys -T root > root.keys
     tmux -S "$TMPDIR/tmux.sock" list-keys -T prefix > prefix.keys
     if grep -E 'M-(z|n|p|Tab|[1-9])[[:space:]]' root.keys; then exit 1; fi

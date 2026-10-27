@@ -18,7 +18,8 @@ Its status line hides the clock below 100 columns and the current path below
 80 columns, leaving the mode badges available in compact terminals.
 tmux declares underline-style support for `xterm-kitty` and `tmux-256color`, so
 the blue underline color works for Kitty clients and inside tmux. Zoomed windows
-show a yellow `Z` marker.
+show a yellow `Z` marker. The tmux-fzf plugin is patched so loading tmux no
+longer backgrounds a `copyq` server; CopyQ belongs to the Xorg session only.
 Its smart-splits integration routes `Ctrl+h/j/k/l` to Neovim or pane navigation
 and `Alt+h/j/k/l` to Neovim or resize. Copy mode retains its native vi
 cursor/selection keys.
