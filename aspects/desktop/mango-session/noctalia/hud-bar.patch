@@ -136,12 +136,24 @@
  }
 --- a/src/shell/bar/widgets/notification_widget.cpp
 +++ b/src/shell/bar/widgets/notification_widget.cpp
-@@ -32,7 +32,7 @@
+@@ -11,7 +11,8 @@
+ #include <memory>
+
+ namespace {
+-  constexpr float kDotBaseSize = 6.0F;
++  // R35: smaller unread dot with a bar-surface outline.
++  constexpr float kDotBaseSize = 5.0F;
+ } // namespace
+
+ NotificationWidget::NotificationWidget(NotificationManager* manager, wl_output* /*output*/, Options options)
+@@ -32,7 +33,9 @@
    const float dotSize = kDotBaseSize * m_contentScale;
    m_dot = area->addChild(
        ui::box({
 -          .fill = colorSpecFromRole(ColorRole::Primary),
 +          .fill = colorSpecFromRole(ColorRole::Error),
++          .border = colorSpecFromRole(ColorRole::Surface),
++          .borderWidth = 1.0F * m_contentScale,
            .radius = dotSize * 0.5F,
            .width = dotSize,
            .height = dotSize,
@@ -324,16 +336,24 @@
  }
 
  void WorkspacesWidget::create() {
-@@ -157,6 +160,9 @@
-   if (item.indicator != nullptr) {
+@@ -158,13 +161,16 @@
      item.indicator->setFill(workspaceFillColor(item.visualWorkspace, item.output));
      item.indicator->clearBorder();
-+  }
+   }
 +  if (item.accentGlow != nullptr) {
 +    item.accentGlow->setVisible(item.visualWorkspace.active);
-   }
++  }
    if (item.accent != nullptr) {
      const auto& workspace = item.visualWorkspace;
+     item.accent->setVisible(workspace.active || workspace.urgent || workspace.occupied);
+     item.accent->setFill(
+         workspace.urgent       ? colorSpecFromRole(ColorRole::Error)
+             : workspace.active ? colorSpecFromRole(ColorRole::Primary)
+-                               : colorSpecFromRole(ColorRole::OnSurfaceVariant)
++                               : colorSpecFromRole(ColorRole::OutlineVariant)
+     );
+   }
+   if (item.text != nullptr && item.showLabel) {
 @@ -229,6 +235,27 @@
      }
    }
@@ -408,8 +428,19 @@
      m_items.push_back(item);
    }
 
-@@ -1168,6 +1203,10 @@
-       it.accent->setPosition(std::round((itemW - markSize) * 0.5F), itemH - (line ? 2.0F : 3.0F));
+@@ -1160,14 +1195,18 @@
+
+   if (it.accent != nullptr) {
+     const bool line = it.workspace.active || it.workspace.urgent;
+-    const float markSize = line ? std::min(12.0F, std::max(2.0F, itemW - 4.0F)) : 3.0F;
+-    it.accent->setFrameSize(m_isVertical ? 2.0F : markSize, m_isVertical ? markSize : (line ? 2.0F : 3.0F));
++    const float markSize = line ? std::min(12.0F, std::max(2.0F, itemW - 4.0F)) : 2.0F;
++    it.accent->setFrameSize(m_isVertical ? 2.0F : markSize, m_isVertical ? markSize : 2.0F);
+     if (m_isVertical) {
+       it.accent->setPosition(itemW - 2.0F, std::round((itemH - markSize) * 0.5F));
+     } else {
+-      it.accent->setPosition(std::round((itemW - markSize) * 0.5F), itemH - (line ? 2.0F : 3.0F));
++      it.accent->setPosition(std::round((itemW - markSize) * 0.5F), itemH - 2.0F);
      }
      it.accent->setRadius(line ? 1.0F : markSize * 0.5F);
 +    if (it.accentGlow != nullptr) {

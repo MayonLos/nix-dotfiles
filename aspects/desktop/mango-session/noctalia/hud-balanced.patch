@@ -1,6 +1,6 @@
 --- a/src/shell/bar/widgets/sysmon_widget.h
 +++ b/src/shell/bar/widgets/sysmon_widget.h
-@@ -69,6 +69,7 @@
+@@ -75,6 +75,7 @@
      bool showValue = true;
      // HUD27: omit unavailable values from layout while retaining their sampling source.
      bool hideUnavailable = false;
@@ -8,7 +8,7 @@
      bool showGpuTemperature = false;
      int labelMinWidth = 0;
      bool showUnits = true;
-@@ -123,6 +124,7 @@
+@@ -129,6 +130,7 @@
    bool m_showGlyph;
    bool m_showValue;
    bool m_hideUnavailable;
@@ -36,7 +36,7 @@
        m_showGpuTemperature(options.showGpuTemperature), m_labelMinWidth(static_cast<float>(options.labelMinWidth)),
        m_diskPath(FileUtils::expandUserPath(options.diskPath).string()),
        m_networkInterface(std::move(options.networkInterface)), m_networkSpeedUnit(options.networkSpeedUnit),
-@@ -155,15 +153,10 @@
+@@ -157,15 +155,10 @@
    if (m_monitor != nullptr) {
      // HUD27: SYSTEM tooltip includes CPU temperature for every sysmon widget instance.
      m_monitor->retainCpuTemp();
@@ -56,7 +56,7 @@
      if (isDiskStat(m_stat) && !m_diskPath.empty()) {
        m_monitor->retainDiskPath(m_diskPath);
      }
-@@ -176,15 +169,10 @@
+@@ -178,15 +171,10 @@
  SysmonWidget::~SysmonWidget() {
    if (m_monitor != nullptr) {
      m_monitor->releaseCpuTemp();
@@ -76,7 +76,7 @@
      if (isDiskStat(m_stat) && !m_diskPath.empty()) {
        m_monitor->releaseDiskPath(m_diskPath);
      }
-@@ -372,6 +360,10 @@
+@@ -373,6 +361,16 @@
  }
 
  Color SysmonWidget::currentValueColor(ColorSpec baseColor, std::optional<double> value) {
@@ -84,10 +84,16 @@
 +  if (m_stat == SysmonStat::CpuTemp && m_temperatureHideBelow > 0.0) {
 +    return currentGradientValue() >= 90.0 ? colorForRole(ColorRole::Error) : rgbHex(0xD19A66);
 +  }
++  // R35: inclusive thresholds recolor values and visualization together.
++  if (m_warningThreshold > 0.0 && m_criticalThreshold > 0.0) {
++    const double usage = value.value_or(currentGradientValue());
++    return resolveColorSpec(usage >= m_criticalThreshold ? m_criticalColor
++        : usage >= m_warningThreshold ? m_warningColor : baseColor);
++  }
    const Color base = resolveColorSpec(baseColor);
    const Color highlight = resolveColorSpec(m_highlightColor);
    const auto [activityThreshold, criticalThreshold] = currentThresholds();
-@@ -640,14 +632,14 @@
+@@ -641,13 +639,13 @@
    syncVisualPalette();
    syncIdentity(renderer);
 
@@ -99,13 +105,11 @@
 
    if (m_label != nullptr) {
 -    // TextAlign is logical (End is the left edge in RTL); keep values physically right-aligned in both directions.
--    const TextAlign rightAlign = Style::rtl() ? TextAlign::Start : TextAlign::End;
-+    // HUD27b: fixed-width value boxes grow away from their labels, keeping the 5px label/value gap.
-+    const TextAlign rightAlign = Style::rtl() ? TextAlign::End : TextAlign::Start;
++    // HUD27b: fixed-width value boxes grow away from their labels, with a roughly 6 logical pixel gap at widget scale 1.15.
+     const TextAlign rightAlign = Style::rtl() ? TextAlign::Start : TextAlign::End;
      m_label->setTextAlign(isVerticalBar ? TextAlign::Center : rightAlign);
      if (orientationChanged || m_lastRawValue.empty()) {
-       syncLabelText(m_lastRawValue.empty() ? formatValue() : m_lastRawValue);
-@@ -715,7 +707,7 @@
+@@ -716,7 +714,7 @@
      visualizationNode = m_ringTrack->parent();
    } else if (m_visualization == SysmonVisualization::Graph && m_chartBg != nullptr) {
      visualizationW =
@@ -114,7 +118,7 @@
      visualizationH = hasIdentity ? identitySize.height : std::round(baseSize * 1.2F);
      m_chartBg->setSize(visualizationW, visualizationH);
      if (m_graph != nullptr) {
-@@ -828,7 +820,9 @@
+@@ -829,7 +827,9 @@
    const SystemStats currentStats = m_monitor != nullptr ? m_monitor->latest() : SystemStats{};
    const bool hasLiveValue = m_monitor != nullptr && m_monitor->isRunning()
        && statAvailableForTooltip(m_stat, currentStats) && formatValueFor(m_stat, currentStats).has_value();
@@ -125,7 +129,7 @@
    if (auto* rootNode = root(); rootNode != nullptr) {
      rootNode->setVisible(shown);
      rootNode->setParticipatesInLayout(shown);
-@@ -1287,6 +1281,10 @@
+@@ -1288,6 +1288,10 @@
    addMetric(SysmonStat::RamUsed, "内存");
    addMetric(SysmonStat::RamPct, "占用", fixedColorSpec(rgbHex(0x98C379)));
    addMetric(SysmonStat::SwapPct, "Swap");
@@ -148,7 +152,7 @@
                .key = "label_show_units",
 --- a/src/shell/bar/widgets/battery_widget.cpp
 +++ b/src/shell/bar/widgets/battery_widget.cpp
-@@ -260,7 +260,8 @@
+@@ -262,7 +262,8 @@
        m_overlayLabel->setFontFamily("monospace");
      }
      m_overlayLabel->setFontWeight(fontWeight);

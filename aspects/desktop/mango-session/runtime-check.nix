@@ -307,6 +307,8 @@ pkgs.runCommand "interactive-session-config"
         ("notification", "width"): 320,
         ("bar", "main", "thickness"): 35,
         ("bar", "main", "radius"): 9,
+        ("bar", "main", "margin_ends"): 8,
+        ("bar", "main", "margin_edge"): 6,
         ("bar", "main", "font_scale"): 0.93,
         ("bar", "main", "widget_spacing"): 6,
         ("bar", "main", "padding"): 7,
@@ -325,6 +327,14 @@ pkgs.runCommand "interactive-session-config"
         ("widget", "battery", "actions", "left"): "exec legion-conservation toggle",
         ("widget", "monitor-cpu", "visualization"): "graph",
         ("widget", "monitor-memory", "visualization"): "ring",
+        ("widget", "monitor-gpu", "visualization"): "ring",
+        ("widget", "control-center", "icon_color"): m["palette"]["fg"],
+        ("widget", "fel/quill:status", "icon_color"): m["palette"]["muted"],
+        ("widget", "battery", "graphic_color"): m["palette"]["fg"],
+        ("widget", "battery", "charging_color"): m["palette"]["green"],
+        ("widget", "battery", "critical_color"): m["palette"]["red"],
+        ("widget", "battery", "critical_threshold"): 10,
+        ("widget", "workspaces", "empty_color"): m["palette"]["border"] + "99",
         ("widget", "monitor-temp", "stat"): "cpu_temp",
         ("widget", "monitor-gpu", "hide_unavailable"): True,
         ("widget", "monitor-gpu", "show_gpu_temperature"): False,
@@ -398,8 +408,21 @@ pkgs.runCommand "interactive-session-config"
         assert all(not root["widget"][name]["capsule"] for name in ("monitor-gpu", "ezequiel/mango_layouts:btn"))
         assert bar["border_width"] == 1 and bar["border"] == m["palette"]["muted"] + "55"
         assert "monitor-vram" not in root["widget"]
+        for name, accent in (("monitor-cpu", "blue"), ("monitor-memory", "green"), ("monitor-gpu", "cyan")):
+            widget = root["widget"][name]
+            assert widget["color"] == m["palette"]["brightFg"]
+            assert widget["label_color"] == m["palette"]["muted"]
+            assert widget["highlight_color"] == m["palette"][accent]
+            assert widget["warning_threshold"] == 70 and widget["critical_threshold"] == 90
+            assert widget["warning_color"] == m["palette"]["yellow"]
+            assert widget["critical_color"] == m["palette"]["red"]
+            assert widget["font_family"] == m["palette"]["fonts"]["mono"]
+        assert root["battery"]["warning_threshold"] == 20
+        assert root["widget"]["monitor-temp"]["color"] == m["palette"]["orange"]
+        assert "glyph" not in root["widget"]["fel/quill:status"]
         assert root["widget"]["monitor-temp"]["custom_label"] == ""
-        assert all(root["widget"][name]["label_min_width"] >= 26 for name in actual_groups["monitor"]["members"] + ["monitor-gpu"])
+        assert all(root["widget"][name]["label_min_width"] == 22 for name in ("monitor-cpu", "monitor-memory", "monitor-gpu"))
+        assert root["widget"]["monitor-temp"]["label_min_width"] == 26
         assert all(
             settings.get("scale") == 1.15
             for settings in root["widget"].values()
@@ -415,6 +438,15 @@ pkgs.runCommand "interactive-session-config"
         )
     assert "R31: flat One Dark surface" in patches["hud-bar.patch"]
     assert "hudLineStyle" not in patches["hud-bar.patch"]
+    for marker in ("R35: smaller unread dot with a bar-surface outline", "kDotBaseSize = 5.0F", ".border = colorSpecFromRole(ColorRole::Surface)", ".borderWidth = 1.0F * m_contentScale", "itemW - 4.0F)) : 2.0F", ": colorSpecFromRole(ColorRole::OutlineVariant)"):
+        assert marker in patches["hud-bar.patch"], marker
+    for marker in ("warning_threshold", "critical_threshold", "warning_color", "critical_color", "label_color", "graph->setFillOpacity(0.18F)", "baseSize * 0.17F", "m_graph->setColor(currentValueColor(m_highlightColor))", "m_ringFill->setColor(currentValueColor(m_highlightColor))"):
+        assert marker in patches["hud-sysmon.patch"], marker
+    for marker in ("usage >= m_criticalThreshold", "usage >= m_warningThreshold", "Style::rtl() ? TextAlign::Start : TextAlign::End"):
+        assert marker in patches["hud-balanced.patch"], marker
+    for marker in ("R35: low/critical charge wins over charging", "scaleAlpha(graphic, 0.85F)", "R35: charging bolt is inset in the battery", "R35: alert-colored bolt remains visible", "graphic_color", "charging_color", "critical_threshold"):
+        assert marker in patches["hud-battery.patch"], marker
+    assert "0x98C379" not in patches["hud-battery.patch"]
     assert "R31: minimal reuses the indicator" in patches["hud-bar.patch"]
     assert "contentMainEnd - centerSlotEnd - (isVertical ? 0.0F : kHudCenterClearance)" in patches["hud-drawer-clearance.patch"]
     clearance = patches["hud-drawer-clearance.patch"]

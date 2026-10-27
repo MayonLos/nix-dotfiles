@@ -17,7 +17,20 @@
  enum class SysmonGlyphPosition { Before, After };
 
  class SysmonWidget : public Widget {
-@@ -66,6 +67,9 @@
+@@ -58,6 +59,12 @@
+     std::string customLabel;
+     bool customImageColorize = false;
+     std::string networkInterface;
++    // R35: opt-in discrete usage alerts; zero thresholds preserve native gradients.
++    double warningThreshold = 0.0;
++    double criticalThreshold = 0.0;
++    ColorSpec warningColor = colorSpecFromRole(ColorRole::Secondary);
++    ColorSpec criticalColor = colorSpecFromRole(ColorRole::Error);
++    ColorSpec labelColor = colorSpecFromRole(ColorRole::OnSurfaceVariant);
+     FormatUnits::DecimalByteRateUnit networkSpeedUnit = FormatUnits::DecimalByteRateUnit::Auto;
+     bool networkSpeedCompact = false;
+     int networkSpeedDecimalPlaces = 1;
+@@ -66,6 +73,9 @@
      ColorSpec highlightColor = colorSpecFromRole(ColorRole::Error);
      bool showGlyph = true;
      bool showValue = true;
@@ -27,7 +40,7 @@
      int labelMinWidth = 0;
      bool showUnits = true;
      SysmonGlyphPosition glyphPosition = SysmonGlyphPosition::Before;
-@@ -105,7 +109,7 @@
+@@ -105,7 +115,7 @@
    [[nodiscard]] std::pair<double, double> currentThresholds() const;
    [[nodiscard]] std::optional<std::string> formatValueFor(SysmonStat stat, const SystemStats& stats) const;
    [[nodiscard]] bool statAvailableForTooltip(SysmonStat stat, const SystemStats& stats) const;
@@ -36,7 +49,7 @@
    [[nodiscard]] static double normalizedFromStats(
        SysmonStat stat, const SystemStats& stats, double& tempMin, double& tempMax, std::string_view networkInterface
    );
-@@ -118,6 +122,8 @@
+@@ -118,6 +128,8 @@
    ConfigService& m_configService;
    bool m_showGlyph;
    bool m_showValue;
@@ -45,7 +58,19 @@
    float m_labelMinWidth = 0.0F;
    std::string m_diskPath;
    std::string m_networkInterface;
-@@ -153,6 +159,8 @@
+@@ -129,6 +141,11 @@
+   WidgetCustomImage m_customImage;
+   bool m_showUnits;
+   SysmonGlyphPosition m_glyphPosition;
++  double m_warningThreshold;
++  double m_criticalThreshold;
++  ColorSpec m_warningColor;
++  ColorSpec m_criticalColor;
++  ColorSpec m_labelColor;
+   std::string m_lastRawValue;
+   bool m_isVerticalBar = false;
+   bool m_lastLabelVertical = false;
+@@ -153,6 +170,8 @@
 
    // Gauge mode
    ProgressBar* m_gauge = nullptr;
@@ -147,9 +172,14 @@
        m_diskPath(FileUtils::expandUserPath(options.diskPath).string()),
        m_networkInterface(std::move(options.networkInterface)), m_networkSpeedUnit(options.networkSpeedUnit),
        m_networkSpeedLabelStyle(
-@@ -196,10 +153,9 @@
+@@ -194,12 +151,13 @@
+       m_networkSpeedDecimalPlaces(options.networkSpeedDecimalPlaces), m_glyphOverride(std::move(options.glyph)),
+       m_customLabelText(std::move(options.customLabel)),
        m_customImage(widget_custom_image::fromConfig(options.customImage, options.customImageColorize)),
-       m_showUnits(options.showUnits), m_glyphPosition(options.glyphPosition) {
+-      m_showUnits(options.showUnits), m_glyphPosition(options.glyphPosition) {
++      m_showUnits(options.showUnits), m_glyphPosition(options.glyphPosition), m_warningThreshold(options.warningThreshold),
++      m_criticalThreshold(options.criticalThreshold), m_warningColor(options.warningColor),
++      m_criticalColor(options.criticalColor), m_labelColor(options.labelColor) {
    if (m_monitor != nullptr) {
 -    if (needsCpuTemp(m_stat)) {
 -      m_monitor->retainCpuTemp();
@@ -161,7 +191,7 @@
        m_monitor->retainGpuTemp();
      }
      if (needsGpuUsage(m_stat)) {
-@@ -219,10 +175,8 @@
+@@ -219,10 +177,8 @@
 
  SysmonWidget::~SysmonWidget() {
    if (m_monitor != nullptr) {
@@ -174,7 +204,7 @@
        m_monitor->releaseGpuTemp();
      }
      if (needsGpuUsage(m_stat)) {
-@@ -260,10 +214,10 @@
+@@ -260,10 +216,10 @@
      customLabelNode = ui::label({
          .out = &m_customLabel,
          .text = m_customLabelText,
@@ -184,11 +214,20 @@
 +        .fontWeight = FontWeight::Medium,
          .fontFamily = labelFontFamily(),
 -        .color = widgetIconColorOr(colorSpecFromRole(ColorRole::OnSurface)),
-+        .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
++        .color = m_labelColor,
      });
    }
 
-@@ -304,6 +258,13 @@
+@@ -287,7 +243,7 @@
+
+     auto graph = std::make_unique<Graph>();
+     graph->setLineWidth(kGraphLineWidth * m_contentScale);
+-    graph->setFillOpacity(0.15F);
++    graph->setFillOpacity(0.18F); // R35: faint area under the native CPU line.
+     m_graph = static_cast<Graph*>(m_chartBg->addChild(std::move(graph)));
+   }
+
+@@ -304,6 +260,13 @@
      });
      m_gauge = static_cast<ProgressBar*>(graphOrGaugeNode.get());
    }
@@ -202,7 +241,7 @@
 
    std::unique_ptr<Node> textNode;
    if (m_showValue) {
-@@ -311,7 +272,7 @@
+@@ -311,7 +274,7 @@
          .out = &m_label,
          .fontSize = Style::fontSizeBody * fontScale(),
          .fontWeight = labelFontWeight(),
@@ -211,7 +250,7 @@
          .minWidth =
              m_labelMinWidth > 0.0F ? std::optional<float>{m_labelMinWidth * m_contentScale} : std::optional<float>{},
      });
-@@ -352,13 +313,13 @@
+@@ -352,13 +315,13 @@
  void SysmonWidget::syncVisualPalette() {
    if (m_chartBg != nullptr) {
      RoundedRectStyle bgStyle;
@@ -227,42 +266,41 @@
    }
    if (m_gauge != nullptr) {
      const ColorSpec base = widgetForegroundOr(colorSpecFromRole(ColorRole::OnSurface));
-@@ -375,6 +336,12 @@
+@@ -375,6 +338,11 @@
    for (std::size_t i = 0; i < coreCount; ++i) {
      m_coreGauges[i]->setFill(currentValueColor(coreBase, m_lastCoreUsage[i]));
    }
 +  if (m_ringTrack != nullptr && m_ringFill != nullptr) {
-+    Color track = resolveColorSpec(widgetForegroundOr(colorSpecFromRole(ColorRole::OnSurface)));
-+    track.a *= 0.3F;
++    Color track = colorForRole(ColorRole::Hover);
 +    m_ringTrack->setColor(track);
 +    m_ringFill->setColor(resolveColorSpec(m_highlightColor));
 +  }
    syncValueColor();
  }
 
-@@ -388,16 +355,19 @@
+@@ -388,16 +356,19 @@
      widget_custom_image::syncTint(*m_image, m_customImage, fixedColorSpec(iconColor));
    }
    if (m_customLabel != nullptr) {
 -    m_customLabel->setColor(iconColor);
-+    m_customLabel->setColor(resolveColorSpec(colorSpecFromRole(ColorRole::OnSurfaceVariant)));
++    m_customLabel->setColor(resolveColorSpec(m_labelColor));
    }
    if (m_label != nullptr) {
      m_label->setColor(valueColor);
    }
    if (m_graph != nullptr) {
 -    m_graph->setColor(valueColor);
-+    m_graph->setColor(m_highlightColor);
++    m_graph->setColor(currentValueColor(m_highlightColor));
    }
    if (m_gauge != nullptr) {
      m_gauge->setFill(valueColor);
 +  }
 +  if (m_ringFill != nullptr) {
-+    m_ringFill->setColor(resolveColorSpec(m_highlightColor));
++    m_ringFill->setColor(currentValueColor(m_highlightColor));
    }
  }
 
-@@ -421,7 +391,7 @@
+@@ -421,7 +392,7 @@
      m_glyph->measure(renderer);
    }
    if (m_customLabel != nullptr) {
@@ -271,7 +309,7 @@
      m_customLabel->measure(renderer);
    }
  }
-@@ -682,6 +652,7 @@
+@@ -682,6 +653,7 @@
      if (orientationChanged || m_lastRawValue.empty()) {
        syncLabelText(m_lastRawValue.empty() ? formatValue() : m_lastRawValue);
      }
@@ -279,7 +317,7 @@
      m_label->setFontSize((isVerticalBar ? Style::fontSizeCaption : Style::fontSizeBody) * fontScale());
      m_label->measure(renderer);
    }
-@@ -731,9 +702,20 @@
+@@ -731,9 +703,20 @@
      }
      m_gauge->setSize(visualizationW, visualizationH);
      visualizationNode = m_gauge;
@@ -291,8 +329,8 @@
 +    m_ringTrack->setSize(visualizationW, visualizationH);
 +    m_ringFill->setSize(visualizationW, visualizationH);
 +    m_ringTrack->parent()->setSize(visualizationW, visualizationH);
-+    m_ringTrack->setThickness(std::max(2.0F, roundf(baseSize * 0.12F)));
-+    m_ringFill->setThickness(std::max(2.0F, roundf(baseSize * 0.12F)));
++    m_ringTrack->setThickness(std::max(2.0F, roundf(baseSize * 0.17F)));
++    m_ringFill->setThickness(std::max(2.0F, roundf(baseSize * 0.17F)));
 +    visualizationNode = m_ringTrack->parent();
    } else if (m_visualization == SysmonVisualization::Graph && m_chartBg != nullptr) {
      visualizationW =
@@ -301,7 +339,7 @@
      visualizationH = hasIdentity ? identitySize.height : std::round(baseSize * 1.2F);
      m_chartBg->setSize(visualizationW, visualizationH);
      if (m_graph != nullptr) {
-@@ -829,6 +811,11 @@
+@@ -829,6 +812,11 @@
      syncGaugeProgress(currentNormalized());
      syncValueColor();
    }
@@ -313,7 +351,7 @@
  }
 
  void SysmonWidget::doUpdate(Renderer& renderer) {
-@@ -837,9 +824,24 @@
+@@ -837,9 +825,24 @@
      return;
    }
 
@@ -338,7 +376,7 @@
      m_label->setFontSize((m_isVerticalBar ? Style::fontSizeCaption : Style::fontSizeBody) * fontScale());
      if (syncLabelText(value)) {
        m_label->measure(renderer);
-@@ -847,7 +849,7 @@
+@@ -847,7 +850,7 @@
    }
 
    if (auto* rootNode = root(); rootNode != nullptr) {
@@ -347,7 +385,7 @@
    }
 
    if (m_visualization == SysmonVisualization::Gauge) {
-@@ -856,6 +858,10 @@
+@@ -856,6 +859,10 @@
      } else {
        syncGaugeProgress(currentNormalized());
      }
@@ -358,7 +396,7 @@
      return;
    }
 
-@@ -1099,7 +1105,9 @@
+@@ -1099,7 +1106,9 @@
      return "--";
    }
 
@@ -369,7 +407,7 @@
  }
 
  std::optional<std::string> SysmonWidget::formatValueFor(SysmonStat stat, const SystemStats& stats) const {
-@@ -1149,6 +1157,9 @@
+@@ -1149,6 +1158,9 @@
 
    case SysmonStat::GpuUsage:
      if (stats.gpuUsagePercent.has_value()) {
@@ -379,7 +417,7 @@
        return std::format("{:.0F}%", *stats.gpuUsagePercent);
      }
      return std::nullopt;
-@@ -1248,28 +1259,49 @@
+@@ -1248,28 +1260,49 @@
    return false;
  }
 
@@ -483,6 +521,19 @@
 +          field<&Options::showGpuTemperature>({.key = "show_gpu_temperature"}),
            field<&Options::showUnits>({
                .key = "label_show_units",
+               .presentation =
+@@ -291,6 +300,12 @@
+                       .visibleWhen = glyphPosition,
+                   },
+           }),
++
++          field<&Options::warningThreshold>({.key = "warning_threshold", .minValue = 0.0, .maxValue = 100.0}),
++          field<&Options::criticalThreshold>({.key = "critical_threshold", .minValue = 0.0, .maxValue = 100.0}),
++          field<&Options::warningColor>({.key = "warning_color"}),
++          field<&Options::criticalColor>({.key = "critical_color"}),
++          field<&Options::labelColor>({.key = "label_color"}),
+           field<&Options::highlightColor>({
+               .key = "highlight_color",
                .presentation =
 --- a/src/system/system_monitor_service.cpp
 +++ b/src/system/system_monitor_service.cpp

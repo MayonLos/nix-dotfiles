@@ -17,7 +17,12 @@ let
     font_family = palette.fonts.mono;
     font_scale = 0.86;
     color = palette.brightFg;
-    label_min_width = 28;
+    label_min_width = 22;
+    label_color = palette.muted;
+    warning_threshold = 70;
+    critical_threshold = 90;
+    warning_color = palette.yellow;
+    critical_color = palette.red;
     highlight_color = palette.blue;
   };
 in
@@ -169,14 +174,14 @@ in
           hide_unavailable = true;
           show_gpu_temperature = false;
           capsule = false;
-          color = palette.orange;
-          highlight_color = palette.orange;
-          label_min_width = 28;
+          visualization = "ring";
+          highlight_color = palette.cyan;
+          label_min_width = 22;
         };
         bluetooth.scale = 1.15;
         "control-center" = {
           glyph = "settings";
-          icon_color = palette.blue;
+          icon_color = palette.fg;
         };
         volume = {
           show_label = false;
@@ -191,7 +196,7 @@ in
         "fel/quill:status" = {
           hide_when_empty = false;
           show_label = false;
-          icon_color = palette.blue;
+          icon_color = palette.muted;
         };
         "rxtsel/portctl:indicator".font_scale = 0.80;
         "8bury/mini-docker:mini-docker" = {
@@ -222,6 +227,10 @@ in
           display_mode = "graphic";
           label_outside = true;
           warning_color = palette.yellow;
+          graphic_color = palette.fg;
+          charging_color = palette.green;
+          critical_color = palette.red;
+          critical_threshold = 10;
           label_content = "percent";
           show_label = true;
           color = palette.brightFg;
@@ -258,7 +267,7 @@ in
           inactive_pill_size = 1.0;
           focused_color = palette.blue;
           occupied_color = palette.fg;
-          empty_color = "#454c58";
+          empty_color = "${palette.border}99";
           urgent_color = "error";
           font_scale = 0.89;
         };

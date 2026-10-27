@@ -1,34 +1,45 @@
 --- a/src/shell/bar/widgets/battery_widget.h
 +++ b/src/shell/bar/widgets/battery_widget.h
-@@ -24,6 +24,8 @@
+@@ -24,6 +24,13 @@
      BatteryDisplayMode displayMode = BatteryDisplayMode::Glyph;
      BatteryLabelContent labelContent = BatteryLabelContent::Percent;
      bool showLabel = true;
 +    // HUD27: show a compact graphic battery with its percentage beside it.
 +    bool labelOutside = false;
++    // R35: graphic state colors come from the configured palette.
++    ColorSpec graphicColor = colorSpecFromRole(ColorRole::OnSurfaceVariant);
++    ColorSpec chargingColor = colorSpecFromRole(ColorRole::Secondary);
++    ColorSpec criticalColor = colorSpecFromRole(ColorRole::Error);
++    int criticalThreshold = 10;
      bool hideWhenPlugged = false;
      bool hideWhenFull = false;
    };
-@@ -56,6 +58,7 @@
+@@ -56,6 +63,11 @@
    BatteryDisplayMode m_displayMode = BatteryDisplayMode::Glyph;
    BatteryLabelContent m_labelContent = BatteryLabelContent::Percent;
    bool m_showLabel = true;
 +  bool m_labelOutside = false;
++  ColorSpec m_graphicColor;
++  ColorSpec m_chargingColor;
++  ColorSpec m_criticalColor;
++  int m_criticalThreshold;
    bool m_hideWhenPlugged = false;
    bool m_hideWhenFull = false;
 
 --- a/src/shell/bar/widgets/battery_widget.cpp
 +++ b/src/shell/bar/widgets/battery_widget.cpp
-@@ -75,7 +75,7 @@
+@@ -75,7 +75,9 @@
      : m_upower(upower), m_deviceSelector(std::move(options.deviceSelector)),
        m_warningThreshold(options.warningThreshold), m_warningColor(options.warningColor),
        m_displayMode(options.displayMode), m_labelContent(options.labelContent), m_showLabel(options.showLabel),
 -      m_hideWhenPlugged(options.hideWhenPlugged), m_hideWhenFull(options.hideWhenFull) {}
-+      m_labelOutside(options.labelOutside), m_hideWhenPlugged(options.hideWhenPlugged), m_hideWhenFull(options.hideWhenFull) {}
++      m_labelOutside(options.labelOutside), m_graphicColor(options.graphicColor),
++      m_chargingColor(options.chargingColor), m_criticalColor(options.criticalColor),
++      m_criticalThreshold(options.criticalThreshold), m_hideWhenPlugged(options.hideWhenPlugged), m_hideWhenFull(options.hideWhenFull) {}
 
  // Vertical bars are too narrow for time or rate text, so they always show the bare percentage; the
  // tooltip carries the full detail. Time and rate are only known while the battery is actively charging
-@@ -83,6 +83,9 @@
+@@ -83,6 +85,9 @@
  std::string BatteryWidget::buildLabelText(int pct, const UPowerState& state) const {
    if (m_isVertical) {
      return std::to_string(pct);
@@ -38,7 +49,7 @@
    }
 
    switch (m_labelContent) {
-@@ -232,8 +235,11 @@
+@@ -232,8 +237,11 @@
    }
 
    const float scale = (Style::fontSizeBody / 14.0F) * m_contentScale;
@@ -52,7 +63,7 @@
    const float termW = std::round(kGraphicTerminalWidth * scale);
    const float termH = std::round(kGraphicTerminalHeight * scale);
    const float cornerR = std::round(kGraphicCornerRadius * scale);
-@@ -248,13 +254,17 @@
+@@ -248,13 +256,17 @@
    float labelW = 0.0F;
    if (showLabel) {
      float fontSize = (m_isVertical ? Style::fontSizeMini : Style::fontSizeCaption) * fontScale();
@@ -72,7 +83,7 @@
        fontSize *= available / m_overlayLabel->width();
        m_overlayLabel->setFontSize(fontSize);
        m_overlayLabel->measure(renderer);
-@@ -276,10 +286,13 @@
+@@ -276,10 +288,13 @@
    const float bandPadding = showLabel ? labelPadding : 0.0F;
    const float batteryW = m_isVertical ? std::max(bodyH, labelW + 2.0F * bandPadding) : bodyW;
    const float batteryH = m_isVertical ? std::max({bodyW, std::round(batteryW * 1.3F), labelH + bandPadding}) : bodyH;
@@ -83,14 +94,14 @@
 +  const float rootW = m_isVertical
 +      ? std::max(batteryW, stateW)
 +      : batteryW + termW + (outsideHorizontal ? stateGap + (showLabel ? labelW : 0.0F) : 0.0F)
-+          + (showStateGlyph ? stateGap + stateW : 0.0F);
++          + (showStateGlyph && !outsideHorizontal ? stateGap + stateW : 0.0F);
 +  const float rootH = m_isVertical
 +      ? batteryH + termW + (showStateGlyph ? stateGap + stateH : 0.0F)
 +      : std::max({batteryH, stateH, outsideHorizontal && showLabel ? labelH : 0.0F});
    const float bodyX = m_isVertical ? std::round((rootW - batteryW) * 0.5F) : 0.0F;
    const float bodyY = m_isVertical ? termW : std::round((rootH - batteryH) * 0.5F);
 
-@@ -300,13 +313,20 @@
+@@ -300,13 +315,19 @@
    updateFillGeometry();
 
    if (showLabel) {
@@ -106,14 +117,13 @@
        m_overlayGlyph->setPosition((rootW - stateW) * 0.5F, termW + batteryH + stateGap);
      } else {
 -      m_overlayGlyph->setPosition(batteryW + termW + stateGap, (rootH - stateH) * 0.5F);
-+      const float stateX = outsideHorizontal
-+          ? batteryW + termW + stateGap + (showLabel ? labelW + stateGap : 0.0F)
-+          : batteryW + termW + stateGap;
++      // R35: charging bolt is inset in the battery, without growing the widget.
++      const float stateX = outsideHorizontal ? (batteryW - stateW) * 0.5F : batteryW + termW + stateGap;
 +      m_overlayGlyph->setPosition(stateX, (rootH - stateH) * 0.5F);
      }
    }
 
-@@ -367,9 +387,18 @@
+@@ -367,9 +388,18 @@
    } else {
      const float bodyW = m_bodyBg->width();
      const float bodyH = m_bodyBg->height();
@@ -121,7 +131,7 @@
 -    m_fillRect->setPosition(m_bodyBg->x(), m_bodyBg->y());
 -    m_fillRect->setSize(fillW, bodyH);
 +    if (m_labelOutside) {
-+      // HUD27: inset the green fill so the battery outline stays legible at every percentage.
++      // R35: inset the state-colored fill so the battery outline stays legible at every percentage.
 +      const float inset = std::round(2.0F * m_contentScale);
 +      const float innerW = std::max(0.0F, bodyW - inset * 2.0F);
 +      const float innerH = std::max(0.0F, bodyH - inset * 2.0F);
@@ -135,20 +145,24 @@
    }
  }
 
-@@ -381,16 +410,28 @@
+@@ -381,21 +411,37 @@
        && !batteryStatePlugged(m_lastState).value_or(false);
    const ColorSpec foreground = isWarning ? m_warningColor : normalFg;
 
 -  if (m_showLabel) {
 +  if (m_labelOutside && !m_isVertical) {
-+    // HUD27: a hollow foreground outline and One Dark green fill keep the separate percentage readable.
++    // R35: low/critical charge wins over charging; normal fill is quiet neutral.
++    const bool critical = m_lastPct >= 0.0 && std::round(m_lastPct) <= m_criticalThreshold;
++    const bool low = m_lastPct >= 0.0 && std::round(m_lastPct) <= m_warningThreshold;
++    const bool charging = m_lastState == BatteryState::Charging;
++    const ColorSpec graphic = critical ? m_criticalColor : low ? m_warningColor
++        : charging ? m_chargingColor : m_graphicColor;
 +    m_bodyBg->setFill(clearColorSpec());
-+    m_bodyBg->setBorder(foreground, std::max(1.0F, m_contentScale));
-+    const ColorSpec fill = isWarning ? foreground : fixedColorSpec(rgbHex(0x98C379));
-+    m_fillRect->setFill(fill);
-+    m_terminalNub->setFill(foreground);
++    m_bodyBg->setBorder(graphic, std::max(1.0F, m_contentScale));
++    m_fillRect->setFill(!critical && !low && !charging ? scaleAlpha(graphic, 0.85F) : graphic);
++    m_terminalNub->setFill(graphic);
 +    if (m_overlayLabel != nullptr) {
-+      m_overlayLabel->setColor(foreground);
++      m_overlayLabel->setColor(critical ? m_criticalColor : low ? m_warningColor : normalFg);
 +    }
 +  } else if (m_showLabel) {
      // Same light-on-dark body as the unlabelled battery, so it matches neighbouring glyphs. The track stays opaque and
@@ -165,7 +179,13 @@
      m_bodyBg->setFill(scaleAlpha(foreground, 0.3F));
      m_fillRect->setFill(foreground);
      m_terminalNub->setFill(scaleAlpha(foreground, 0.3F));
-@@ -485,6 +526,9 @@
+   }
+-  m_overlayGlyph->setColor(foreground);
++  m_overlayGlyph->setColor(m_labelOutside && !m_isVertical ? colorSpecFromRole(ColorRole::Surface) : foreground);
+ }
+
+ void BatteryWidget::doUpdate(Renderer& renderer) { syncState(renderer); }
+@@ -485,9 +531,13 @@
 
      // State icon
      const char* stateGlyph = batteryStateGlyph(s.state);
@@ -175,14 +195,58 @@
      if (m_overlayGlyph != nullptr) {
        if (stateGlyph != nullptr) {
          m_overlayGlyph->setGlyph(stateGlyph);
++        if (m_labelOutside && !m_isVertical) m_overlayGlyph->setGlyphSize(9.0F * m_contentScale);
+         m_overlayGlyph->measure(renderer);
+       }
+     }
 --- a/src/shell/bar/widgets/battery_widget_definition.cpp
 +++ b/src/shell/bar/widgets/battery_widget_definition.cpp
-@@ -35,6 +35,8 @@
+@@ -35,6 +35,12 @@
                field<&Options::showLabel>({
                    .key = "show_label",
                }),
 +              // HUD27: the graphic percentage sits outside the battery body on horizontal bars.
 +              field<&Options::labelOutside>({.key = "label_outside"}),
++              field<&Options::graphicColor>({.key = "graphic_color"}),
++              field<&Options::chargingColor>({.key = "charging_color"}),
++              field<&Options::criticalColor>({.key = "critical_color"}),
++              field<&Options::criticalThreshold>({.key = "critical_threshold", .minValue = 0.0, .maxValue = 100.0}),
                field<&Options::labelContent>({
                    .key = "label_content",
                    .choices =
+--- a/src/shell/bar/widgets/battery_widget.cpp
++++ b/src/shell/bar/widgets/battery_widget.cpp
+@@ -278,4 +278,4 @@
+   if (showStateGlyph) {
+-    m_overlayGlyph->setGlyphSize(Style::fontSizeCaption * m_contentScale);
++    m_overlayGlyph->setGlyphSize((outsideHorizontal ? 9.0F : Style::fontSizeCaption) * m_contentScale);
+     m_overlayGlyph->measure(renderer);
+   }
+--- a/src/shell/bar/widgets/battery_widget.cpp
++++ b/src/shell/bar/widgets/battery_widget.cpp
+@@ -411,6 +411,7 @@
+       && std::round(m_lastPct) <= m_warningThreshold
+       && !batteryStatePlugged(m_lastState).value_or(false);
+   const ColorSpec foreground = isWarning ? m_warningColor : normalFg;
++  ColorSpec boltColor = foreground;
+
+   if (m_labelOutside && !m_isVertical) {
+     // R35: low/critical charge wins over charging; normal fill is quiet neutral.
+@@ -419,6 +420,8 @@
+     const bool charging = m_lastState == BatteryState::Charging;
+     const ColorSpec graphic = critical ? m_criticalColor : low ? m_warningColor
+         : charging ? m_chargingColor : m_graphicColor;
++    // R35: alert-colored bolt remains visible over the unfilled low-charge body.
++    boltColor = critical ? m_criticalColor : low ? m_warningColor : colorSpecFromRole(ColorRole::Surface);
+     m_bodyBg->setFill(clearColorSpec());
+     m_bodyBg->setBorder(graphic, std::max(1.0F, m_contentScale));
+     m_fillRect->setFill(!critical && !low && !charging ? scaleAlpha(graphic, 0.85F) : graphic);
+@@ -442,7 +445,7 @@
+     m_fillRect->setFill(foreground);
+     m_terminalNub->setFill(scaleAlpha(foreground, 0.3F));
+   }
+-  m_overlayGlyph->setColor(m_labelOutside && !m_isVertical ? colorSpecFromRole(ColorRole::Surface) : foreground);
++  m_overlayGlyph->setColor(boltColor);
+ }
+
+ void BatteryWidget::doUpdate(Renderer& renderer) { syncState(renderer); }

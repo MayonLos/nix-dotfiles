@@ -115,7 +115,7 @@ let
       grep -Fq 'hide_unavailable' src/shell/bar/widgets/sysmon_widget_definition.cpp
       grep -Fq 'show_gpu_temperature' src/shell/bar/widgets/sysmon_widget_definition.cpp
       grep -Fq 'label_outside' src/shell/bar/widgets/battery_widget_definition.cpp
-      grep -Fq 'HUD27: inset the green fill' src/shell/bar/widgets/battery_widget.cpp
+      grep -Fq 'R35: inset the state-colored fill' src/shell/bar/widgets/battery_widget.cpp
       grep -Fq 'HUD27: initialize rebuilt marks' src/shell/bar/widgets/workspaces_widget.cpp
       grep -Fq 'HUD27: materialize pinned numeric labels' src/shell/bar/widgets/workspaces_widget.cpp
       grep -Fq 'HUD27: keep peripheral charge rows' src/shell/bar/widgets/battery_widget.cpp
@@ -137,6 +137,25 @@ let
       grep -Fq 'HUD27b: SYSTEM owns live GPU temperature and VRAM' src/shell/bar/widgets/sysmon_widget.cpp
       grep -Fq 'HUD27b: fixed-width value boxes' src/shell/bar/widgets/sysmon_widget.cpp
       grep -Fq 'CountdownRingNode'  src/shell/bar/widgets/sysmon_widget.cpp
+      grep -Fq 'R35: inclusive thresholds recolor values and visualization together' src/shell/bar/widgets/sysmon_widget.cpp
+      grep -Fq 'usage >= m_criticalThreshold' src/shell/bar/widgets/sysmon_widget.cpp
+      grep -Fq 'usage >= m_warningThreshold' src/shell/bar/widgets/sysmon_widget.cpp
+      grep -Fq 'm_graph->setColor(currentValueColor(m_highlightColor))' src/shell/bar/widgets/sysmon_widget.cpp
+      grep -Fq 'm_ringFill->setColor(currentValueColor(m_highlightColor))' src/shell/bar/widgets/sysmon_widget.cpp
+      grep -Fq 'warning_threshold' src/shell/bar/widgets/sysmon_widget_definition.cpp
+      grep -Fq 'critical_threshold' src/shell/bar/widgets/sysmon_widget_definition.cpp
+      grep -Fq 'label_color' src/shell/bar/widgets/sysmon_widget_definition.cpp
+      grep -Fq 'graph->setFillOpacity(0.18F)' src/shell/bar/widgets/sysmon_widget.cpp
+      grep -Fq 'baseSize * 0.17F' src/shell/bar/widgets/sysmon_widget.cpp
+      grep -Fq 'Style::rtl() ? TextAlign::Start : TextAlign::End' src/shell/bar/widgets/sysmon_widget.cpp
+      grep -Fq 'R35: low/critical charge wins over charging' src/shell/bar/widgets/battery_widget.cpp
+      grep -Fq 'scaleAlpha(graphic, 0.85F)' src/shell/bar/widgets/battery_widget.cpp
+      grep -Fq 'R35: charging bolt is inset in the battery' src/shell/bar/widgets/battery_widget.cpp
+      grep -Fq 'R35: alert-colored bolt remains visible' src/shell/bar/widgets/battery_widget.cpp
+      grep -Fq 'graphic_color' src/shell/bar/widgets/battery_widget_definition.cpp
+      grep -Fq 'charging_color' src/shell/bar/widgets/battery_widget_definition.cpp
+      grep -Fq 'R35: smaller unread dot with a bar-surface outline' src/shell/bar/widgets/notification_widget.cpp
+      grep -Fq '.border = colorSpecFromRole(ColorRole::Surface)' src/shell/bar/widgets/notification_widget.cpp
       grep -Fq 'UI4: lockscreen palette-gradient password underline and cached runtime status' src/shell/lockscreen/lock_surface.cpp
       grep -Fq 'lockscreenRuntimeStatus()' src/shell/lockscreen/lock_surface.cpp
       grep -Fq 'charge_control_end_threshold' src/shell/lockscreen/lock_surface.cpp
