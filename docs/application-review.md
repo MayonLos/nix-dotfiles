@@ -252,7 +252,7 @@
 | fwupd（条件） | 支持 LVFS 的设备固件更新 | 先核对具体设备是否支持。现有 redistributable firmware 是驱动固件分发，不等于 BIOS/设备更新服务。 | 硬件能力；不预设 Lenovo 全部设备可更新。 |
 | Okular（第二十六轮移除） | 用户决定移除；PDF 默认仍为 Zathura，批注使用 Zotero 内置阅读器 | 删除包与 MIME association；Zotero 当前锁定版本 9.0.6。 | 不删除 PDF 或应用数据。 |
 | Crosspipe（条件） | 可视化 PipeWire 节点连接，例如复杂录音/直播路由 | 日常音量已有 Noctalia，排障可用 wpctl/pw-cli。锁定 nixpkgs 已移除 Helvum 包别名，不照旧推荐它；Crosspipe 仍需验证实际路由。 | 桌面音频工具，按需打开。 |
-| EasyEffects（条件） | 明确需要麦克风 EQ、降噪、压缩或输出处理 | 已有 PipeWire echo-cancel，不能称麦克风处理全空白。效果链增加调试和处理成本，没有需求先不加。 | 用户级音效能力，避免双重处理。 |
+| EasyEffects（条件） | 明确需要麦克风 EQ、降噪、压缩或输出处理 | 系统不常驻 echo-cancel（曾拖垮蓝牙 A2DP），通话应用自带回声消除。效果链增加调试和处理成本，没有需求先不加。 | 用户级音效能力，避免双重处理。 |
 | Heroic（条件） | 确实有 Epic/GOG/Amazon 游戏 | 商店登录和 Wine/游戏兼容另需维护，Steam/Prism 用户不自动需要。 | 游戏桌面角色。 |
 | darktable（条件） | 拍 RAW，需要冲洗和照片库 | 与 GIMP 分工；普通截图/网页图片无需增加。 | 摄影角色。 |
 | Nvim DAP / Neotest（条件） | 希望断点、变量、测试发现/结果留在 Nvim | IDE 已有对应能力；需要按语言维护 adapter。之前已删除 DAP，不能未经选择重新加入。 | 原生 Lua 迁移完成后，按语言单独决定。 |

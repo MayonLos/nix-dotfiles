@@ -23,26 +23,11 @@
       };
     };
     jack.enable = true;
+    # No always-on echo-cancel module: nothing used its source, yet it held
+    # the built-in mic open and pulled the default sink into the mic's
+    # 256-sample graph, starving Bluetooth A2DP (constant dropouts).
+    # Chat/meeting apps and browsers run their own AEC.
     extraConfig = {
-      pipewire."90-echo-cancel" = {
-        "context.modules" = [
-          {
-            name = "libpipewire-module-echo-cancel";
-            args = {
-              "library.name" = "aec/libspa-aec-webrtc";
-              "source.props" = {
-                "node.name" = "echo_cancelled_source";
-                "node.description" = "Echo Cancelled Source";
-              };
-              "sink.props" = {
-                "node.name" = "echo_cancelled_sink";
-                "node.description" = "Echo Cancelled Sink";
-              };
-            };
-          }
-        ];
-      };
-
       pipewire-pulse."91-qq-wechat-compat" = {
         "pulse.rules" = [
           {
