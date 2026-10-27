@@ -34,8 +34,26 @@ local function delete_to_trash()
 	end)
 end
 
+-- Splits that only hold tools (file tree, help, quickfix) and floating ui2
+-- message windows do not count as editor windows; closing the last document
+-- window would otherwise leave the tree alone or fail with E444.
 local function close_smart()
-	if #vim.api.nvim_list_wins() > 1 then
+	local api, tabline = vim.api, require("mayon.ui.tabline")
+	if api.nvim_win_get_config(0).relative ~= "" then
+		vim.cmd.close()
+		return
+	end
+	local splits, documents = 0, 0
+	for _, win in ipairs(api.nvim_tabpage_list_wins(0)) do
+		if api.nvim_win_get_config(win).relative == "" then
+			splits = splits + 1
+			if tabline.is_document(api.nvim_win_get_buf(win)) then
+				documents = documents + 1
+			end
+		end
+	end
+	local current_is_document = tabline.is_document(api.nvim_get_current_buf())
+	if splits > 1 and (documents > 1 or not current_is_document) then
 		vim.cmd.close()
 	else
 		require("snacks").bufdelete()
@@ -113,6 +131,21 @@ function M.setup()
 	end, "Open Scratch Buffer")
 	map("n", "<leader>w", "<cmd>write<cr>", "Save Buffer")
 	map("n", "<leader>qq", close_smart, "Close Window or Buffer")
+	map("n", "<leader>bd", function()
+		Snacks.bufdelete()
+	end, "Close Buffer")
+	map("n", "<leader>bo", function()
+		Snacks.bufdelete.other()
+	end, "Close Other Buffers")
+	-- Positions follow the toolbar's document pills.
+	for index = 1, 9 do
+		map("n", "<leader>" .. index, function()
+			local buf = require("mayon.ui.tabline").buffers()[index]
+			if buf then
+				require("mayon.ui.tabline").select(buf)
+			end
+		end, "Jump to Buffer " .. index)
+	end
 	map("n", "<leader>qr", "<cmd>restart<cr>", "Restart Neovim")
 	map("n", "<leader>e", function()
 		local root = project_root()

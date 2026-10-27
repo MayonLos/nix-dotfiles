@@ -146,8 +146,11 @@ function M.config()
 		delay = function(ctx)
 			return ctx.plugin and 0 or 200
 		end,
+		-- The root grid is at its height budget; <leader>1-9 stay in the keymap picker.
 		filter = function(mapping)
-			return type(mapping.desc) == "string" and mapping.desc ~= ""
+			return type(mapping.desc) == "string"
+				and mapping.desc ~= ""
+				and not mapping.desc:match("^Jump to Buffer %d$")
 		end,
 		sort = { "local", "group", "manual", "alphanum", "mod" },
 		expand = 0,

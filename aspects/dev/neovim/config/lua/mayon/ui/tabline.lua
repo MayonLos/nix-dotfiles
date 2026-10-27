@@ -35,6 +35,7 @@ local function is_document(buf)
 	end
 	return true
 end
+M.is_document = is_document
 
 -- Focus may move to a sidebar or prompt without changing the active document.
 function M.active_buffer()
