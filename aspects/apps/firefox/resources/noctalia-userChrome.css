@@ -17,17 +17,50 @@
   --sidebar-launcher-button-padding-inline: 6px !important;
 }
 
+/* One continuous browser surface; web documents keep their own colors. */
+:root {
+  --toolbar-bgcolor: var(--tn-bg) !important;
+  --toolbar-color: var(--tn-fg) !important;
+  --toolbox-background-color: var(--tn-bg) !important;
+  --toolbox-text-color: var(--tn-fg) !important;
+  --lwt-accent-color: var(--tn-bg) !important;
+  --lwt-text-color: var(--tn-fg) !important;
+  --sidebar-background-color: var(--tn-bg) !important;
+  --sidebar-text-color: var(--tn-fg) !important;
+  --sidebar-border-color: transparent !important;
+  --tab-selected-bgcolor: var(--tn-bg-highlight) !important;
+  font-family: "Inter", "Noto Sans CJK SC", sans-serif !important;
+}
+
 #tabbrowser-tabs[orient="vertical"],
 sidebar-main {
-  --tab-min-height: 36px !important;
-  /* Firefox applies this margin on both sides of each vertical row. */
-  --tab-margin-block-vertical: 2px !important;
+  --tab-min-height: 32px !important;
+  --tab-margin-block-vertical: 0px !important;
+}
+
+/* Firefox's shadow wrapper uses this default only until the user resizes.
+   customWidth switches it to the native persisted width; do not fix width. */
+sidebar-main {
+  --sidebar-expanded-launcher-width: 232px !important;
+  --toolbarbutton-icon-fill: var(--tn-muted) !important;
+  --button-icon-fill: var(--tn-muted) !important;
+  --button-size-icon: 32px !important;
+}
+
+#navigator-toolbox,
+#browser,
+#sidebar-container,
+sidebar-main,
+#sidebar-box,
+#sidebar,
+#sidebar-header {
+  background: var(--tn-bg) !important;
+  color: var(--tn-fg) !important;
+  border-color: transparent !important;
 }
 
 #navigator-toolbox {
-  background: var(--tn-bg-dark) !important;
-  color: var(--tn-fg) !important;
-  border-bottom: 1px solid color-mix(in srgb, var(--tn-blue) 22%, transparent) !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--tn-fg) 12%, transparent) !important;
 }
 
 #nav-bar,
@@ -35,32 +68,40 @@ sidebar-main {
 #PersonalToolbar {
   background: transparent !important;
   color: var(--tn-fg) !important;
+  box-shadow: none !important;
+}
+
+/* Firefox handles the vertical tab strip. Keep horizontal tabs available if
+   the user chooses them later, and keep Customize's controls reachable. */
+:root[customizing] #TabsToolbar {
+  visibility: visible !important;
 }
 
 #urlbar-background,
+#urlbar > .urlbar-background,
 #searchbar {
-  background: var(--tn-bg) !important;
+  background: var(--tn-surface) !important;
   border: 1px solid transparent !important;
-  border-radius: 8px !important;
+  border-radius: 6px !important;
   min-height: 32px !important;
   box-shadow: none !important;
 }
 
-#urlbar[focused="true"] > #urlbar-background {
+#urlbar[focused] > #urlbar-background,
+#urlbar[focused] > .urlbar-background {
   border-color: var(--tn-blue) !important;
-  outline: 2px solid var(--tn-blue) !important;
-  outline-offset: 2px !important;
+  outline: none !important;
 }
 
 #urlbar-input,
 #searchbar input {
   font-family: "Maple Mono NF CN", monospace !important;
+  font-size: 14px !important;
   color: var(--tn-fg) !important;
 }
 
 /* Reading labels uses the UI face; URLs retain monospace for punctuation. */
 .tabbrowser-tab .tab-label,
-.tab-group-label,
 #allTabsMenu-allTabsView,
 #tabbrowser-tabs .tab-secondary-label,
 #tabbrowser-tabs .tab-label-container,
@@ -70,8 +111,9 @@ sidebar-main {
 }
 
 #urlbar .urlbarView,
+#urlbar .urlbarView-background,
 .urlbarView-body-inner {
-  background: var(--tn-bg) !important;
+  background: var(--tn-surface) !important;
   color: var(--tn-fg) !important;
   border-color: var(--tn-bg-highlight) !important;
 }
@@ -81,43 +123,30 @@ sidebar-main {
   background: var(--tn-bg-highlight) !important;
 }
 
-#navigator-toolbox toolbarbutton:not(#back-button):not(#forward-button) {
-  border-radius: 8px !important;
-}
-
-#navigator-toolbox toolbarbutton:hover {
-  background: var(--tn-bg-highlight) !important;
-}
-
-#navigator-toolbox toolbarbutton[checked="true"],
-#navigator-toolbox toolbarbutton[open="true"] {
-  background: var(--tn-bg-highlight) !important;
-  color: var(--tn-fg) !important;
-}
-
-#tabbrowser-tabs[orient="vertical"] .tabbrowser-tab,
-#tabbrowser-tabs:not([orient="vertical"]) .tabbrowser-tab {
+.tabbrowser-tab {
   color: var(--tn-fg) !important;
 }
 
 .tab-background {
-  border-radius: 8px !important;
+  background: transparent !important;
+  border-radius: 5px !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 .tabbrowser-tab:hover .tab-background:not([selected]) {
-  background: color-mix(in srgb, var(--tn-bg-highlight) 72%, transparent) !important;
+  background: color-mix(in srgb, var(--tn-bg-highlight) 55%, transparent) !important;
 }
 
 .tabbrowser-tab[selected] .tab-background {
-  background: var(--tn-bg-highlight) !important;
-  outline: 1px solid color-mix(in srgb, var(--tn-blue) 46%, transparent) !important;
+  background: color-mix(in srgb, var(--tn-bg-highlight) 75%, var(--tn-bg)) !important;
   position: relative !important;
 }
 
-#tabbrowser-tabs[orient="vertical"] .tabbrowser-tab[selected] .tab-background::before {
+#tabbrowser-tabs[orient="vertical"] .tabbrowser-tab:not([pinned])[selected] .tab-background::before {
   content: "" !important;
   position: absolute !important;
-  inset-block: 9px !important;
+  inset-block: 8px !important;
   inset-inline-start: 0 !important;
   width: 2px !important;
   border-radius: 2px !important;
@@ -128,71 +157,153 @@ sidebar-main {
   font-weight: 500 !important;
 }
 
-.tabbrowser-tab[selected] .tab-label,
-.tabbrowser-tab[selected] .tab-icon-image {
-  color: var(--tn-fg) !important;
+/* Fill a whole row, including inside groups. The native vertical strip adds
+   5px padding plus margins by default; remove them to get true 32px rows. */
+#tabbrowser-tabs[orient="vertical"] {
+  --tab-padding-block-start: 0px !important;
+  --tab-padding-block-end: 0px !important;
+  --tab-collapsed-background-width: 32px !important;
+  --tab-margin-inline-inner: 6px !important;
+  gap: 4px !important;
 }
 
-#sidebar-container,
-sidebar-main,
-#sidebar-box,
-#sidebar,
-#sidebar-header {
-  background: var(--tn-bg-dark) !important;
-  color: var(--tn-fg) !important;
-  border-color: color-mix(in srgb, var(--tn-blue) 18%, transparent) !important;
+#tabbrowser-tabs[orient="vertical"] .tabbrowser-tab {
+  align-self: stretch !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
-#sidebar-container,
-sidebar-main {
-  --sidebar-background-color: var(--tn-bg-dark) !important;
-  --sidebar-text-color: var(--tn-fg) !important;
-  --sidebar-border-color: color-mix(in srgb, var(--tn-blue) 18%, transparent) !important;
-  --lwt-sidebar-highlight-text-color: var(--tn-blue) !important;
+#tabbrowser-tabs[orient="vertical"] :is(.tab-stack, .tab-content, .tab-label-container, .tab-label) {
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
-sidebar-main toolbarbutton,
-sidebar-main .tabbrowser-tab {
-  border-radius: 8px !important;
+#tabbrowser-tabs[orient="vertical"][expanded] .tabbrowser-tab:not([pinned]) .tab-content {
+  padding-inline: 14px !important;
 }
 
-sidebar-main .tabbrowser-tab {
-  min-height: 36px !important;
-  margin-block: 2px !important;
+#tabbrowser-tabs[orient="vertical"] .tab-background {
+  margin-block: 0 !important;
+  margin-inline: 6px !important;
 }
 
-/* Keep Firefox's revamp launcher at icon width while it is collapsed. This
-   custom property is consumed inside sidebar-main's shadow tree. */
-#sidebar-container,
-sidebar-main {
-  --sidebar-launcher-button-padding-inline: 6px !important;
+#tabbrowser-tabs[orient="vertical"][expanded] .tab-label-container {
+  mask-image: none !important;
 }
 
-sidebar-main toolbarbutton:hover,
-sidebar-main .tabbrowser-tab:hover .tab-background {
-  background: var(--tn-bg-highlight) !important;
+#tabbrowser-tabs[orient="vertical"][expanded] .tab-label {
+  display: block !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
 }
 
-sidebar-main toolbarbutton[checked="true"],
-sidebar-main .tabbrowser-tab[selected] .tab-background {
-  background: var(--tn-bg-highlight) !important;
-  outline: 1px solid color-mix(in srgb, var(--tn-blue) 46%, transparent) !important;
+/* Pinned tabs keep a compact icon grid instead of auto-fitting wide tiles. */
+/* userChrome cannot override items-wrapper's author shadow rules. Keep the
+   native auto-fit grid but size its host to at most six 36px cells. A narrower
+   user-resized sidebar naturally wraps; no browser script or DOM move needed. */
+#tabbrowser-tabs[orient="vertical"][expanded] #pinned-tabs-container {
+  --ff-pin-columns: 1;
+  --tab-pinned-min-width: 36px !important;
+  --tab-container-margin-inline-pinned-expanded: 6px !important;
+  --tab-height-with-margin-padding: 36px !important;
+  inline-size: calc(var(--ff-pin-columns) * 36px + 12px) !important;
+  max-inline-size: 100% !important;
 }
 
-sidebar-main toolbarbutton[checked="true"] .toolbarbutton-icon,
-sidebar-main .tabbrowser-tab[selected] .tab-icon-image {
-  fill: var(--tn-blue) !important;
-  color: var(--tn-blue) !important;
+#pinned-tabs-container:has(> .tabbrowser-tab:nth-child(2)) { --ff-pin-columns: 2 !important; }
+#pinned-tabs-container:has(> .tabbrowser-tab:nth-child(3)) { --ff-pin-columns: 3 !important; }
+#pinned-tabs-container:has(> .tabbrowser-tab:nth-child(4)) { --ff-pin-columns: 4 !important; }
+#pinned-tabs-container:has(> .tabbrowser-tab:nth-child(5)) { --ff-pin-columns: 5 !important; }
+#pinned-tabs-container:has(> .tabbrowser-tab:nth-child(6)) { --ff-pin-columns: 6 !important; }
+
+#tabbrowser-tabs[orient="vertical"][expanded] .tabbrowser-tab[pinned] .tab-background {
+  margin-inline: 2px !important;
 }
 
-sidebar-main .tabbrowser-tab[selected] .tab-background::before {
-  content: "" !important;
-  position: absolute !important;
-  inset-block: 9px !important;
-  inset-inline-start: 0 !important;
-  width: 2px !important;
-  border-radius: 2px !important;
-  background: var(--tn-blue) !important;
+#tabbrowser-tabs[orient="vertical"][expanded] .tabbrowser-tab[pinned] .tab-content {
+  padding: 0 !important;
+}
+
+#tabbrowser-tabs[orient="vertical"] .tabbrowser-tab:not([selected], :hover) .tab-background {
+  background: transparent !important;
+}
+
+#tabbrowser-tabs[orient="vertical"] .tabbrowser-tab:hover:not([selected]) .tab-background {
+  background: color-mix(in srgb, var(--tn-fg) 5%, transparent) !important;
+}
+
+#vertical-tabs:has(#tabbrowser-tabs[orient="vertical"]) {
+  flex-direction: column !important;
+}
+
+#vertical-tabs:has(#tabbrowser-tabs[orient="vertical"][expanded] #pinned-tabs-container .tabbrowser-tab)::before {
+  content: "固定标签";
+  display: block;
+  padding: 6px 14px 2px;
+  font: 500 11px "Inter", "Noto Sans CJK SC", sans-serif;
+  color: var(--tn-muted);
+}
+
+/* Retain the splitter's hit area and draw one hairline through its center. */
+#tabbrowser-tabs[orient="vertical"] #vertical-pinned-tabs-splitter {
+  background: linear-gradient(color-mix(in srgb, var(--tn-fg) 12%, transparent), color-mix(in srgb, var(--tn-fg) 12%, transparent)) center / 100% 1px no-repeat !important;
+  margin-inline: 8px !important;
+  min-height: 8px !important;
+  border: none !important;
+}
+
+#tabbrowser-tabs[orient="vertical"][expanded] .tab-group-label-container {
+  margin-inline: 0 !important;
+  padding-inline: 37.5px 14px !important;
+}
+
+#tabbrowser-tabs[orient="vertical"][expanded] .tab-group-label-hover-highlight {
+  margin: 0 !important;
+}
+
+#tabbrowser-tabs[orient="vertical"] .tab-group-label {
+  font: 500 12px "Inter", "Noto Sans CJK SC", sans-serif !important;
+  color: var(--tn-muted) !important;
+  background: transparent !important;
+  border-radius: 3px !important;
+  box-shadow: none !important;
+}
+
+#tabbrowser-tabs[orient="vertical"][expanded] .tab-group-label {
+  text-align: start !important;
+  padding-inline: 0 !important;
+}
+
+#tabbrowser-tabs[orient="vertical"] .tab-group-label-hover-highlight {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+#tabbrowser-tabs[orient="vertical"] .tab-group-line {
+  background: color-mix(in srgb, var(--tn-muted) 25%, transparent) !important;
+}
+
+#tabbrowser-tabs[orient="vertical"][expanded] .tab-group-line {
+  display: none !important;
+}
+
+/* Native content must meet the browser edge, without an Islands frame. */
+#tabbrowser-tabbox,
+.browserContainer,
+.browserStack,
+#tabbrowser-tabpanels {
+  border-radius: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 /* Firefox has full-page and selection translation panels. The visible panel
@@ -261,12 +372,12 @@ panel::part(content) {
 /* Style the clickable icon boxes, rather than putting a second hover
    rectangle around Firefox's own toolbar-button background. */
 #nav-bar {
-  --toolbarbutton-inner-padding: 8px !important;
+  --toolbarbutton-inner-padding: 6px !important;
   --toolbarbutton-border-radius: 8px !important;
   --toolbarbutton-hover-background: var(--tn-bg-highlight) !important;
   --toolbarbutton-active-background: var(--tn-bg-highlight) !important;
   --toolbarbutton-icon-fill: var(--tn-fg) !important;
-  padding-block: 4px !important;
+  padding-block: 0 !important;
 }
 
 #navigator-toolbox #nav-bar toolbarbutton {
