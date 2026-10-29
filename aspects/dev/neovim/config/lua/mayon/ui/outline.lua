@@ -7,23 +7,32 @@ local aerial_windows = {}
 local managed_closes = {}
 local group
 local reconcile_scheduled = false
-local pending_bufnr
+local pending_reconciles = {}
+local tab
 
 local function normalize_bufnr(bufnr)
 	return (bufnr == nil or bufnr == 0) and vim.api.nvim_get_current_buf() or bufnr
 end
 
-local function schedule_reconcile(bufnr)
-	pending_bufnr = bufnr
+local function schedule_reconcile(bufnr, tabpage)
+	tabpage = tabpage or tab()
+	if not vim.api.nvim_tabpage_is_valid(tabpage) then
+		return
+	end
+	pending_reconciles[tabpage] = bufnr or false
 	if reconcile_scheduled then
 		return
 	end
 	reconcile_scheduled = true
 	vim.schedule(function()
 		reconcile_scheduled = false
-		local target = pending_bufnr
-		pending_bufnr = nil
-		M.reconcile(target)
+		local pending = pending_reconciles
+		pending_reconciles = {}
+		for target_tab, target_buf in pairs(pending) do
+			if vim.api.nvim_tabpage_is_valid(target_tab) then
+				M.reconcile(target_buf ~= false and target_buf or nil, target_tab)
+			end
+		end
 	end)
 end
 
@@ -48,7 +57,7 @@ local unsupported_filetypes = vim.tbl_extend("force", vim.deepcopy(panel_filetyp
 	text = true,
 })
 
-local function tab()
+tab = function()
 	return vim.api.nvim_get_current_tabpage()
 end
 
@@ -101,15 +110,13 @@ end
 
 local function document_buffer(tabpage)
 	tabpage = tabpage or tab()
-	local current = vim.api.nvim_get_current_buf()
+	local current_win = vim.api.nvim_tabpage_get_win(tabpage)
+	local current = vim.api.nvim_win_get_buf(current_win)
 	local ft = vim.bo[current].filetype
-	if
-		vim.api.nvim_get_current_tabpage() == tabpage
-		and (vim.bo[current].buftype == "terminal" or ft == "terminal" or ft == "snacks_dashboard")
-	then
+	if vim.bo[current].buftype == "terminal" or ft == "terminal" or ft == "snacks_dashboard" then
 		return nil
 	end
-	if vim.api.nvim_get_current_tabpage() == tabpage and is_document_buffer(current) then
+	if is_document_buffer(current) then
 		return current
 	end
 	local remembered = last_document[tabpage]
@@ -167,7 +174,7 @@ local function open_for(tabpage, bufnr, focus)
 		return false
 	end
 	local wins = vim.api.nvim_tabpage_list_wins(tabpage)
-	local current = vim.api.nvim_get_current_win()
+	local current = vim.api.nvim_tabpage_get_win(tabpage)
 	local win
 	for _, candidate in ipairs(wins) do
 		if vim.api.nvim_win_get_buf(candidate) == bufnr then
@@ -238,13 +245,16 @@ function M.state(tabpage)
 	}
 end
 
-function M.reconcile(bufnr)
+function M.reconcile(bufnr, tabpage)
+	tabpage = tabpage or tab()
+	if not vim.api.nvim_tabpage_is_valid(tabpage) then
+		return false
+	end
 	if bufnr == nil then
-		bufnr = document_buffer()
+		bufnr = document_buffer(tabpage)
 	else
 		bufnr = normalize_bufnr(bufnr)
 	end
-	local tabpage = tab()
 	local is_open = M.is_open(tabpage)
 	local supported = bufnr ~= nil and M.is_supported(bufnr)
 	if supported then
@@ -261,7 +271,7 @@ function M.reconcile(bufnr)
 	if is_open and can_show then
 		local outline_win = aerial_win(tabpage)
 		local bound_buf = vim.b[vim.api.nvim_win_get_buf(outline_win)].source_buffer
-		local current_win = vim.api.nvim_get_current_win()
+		local current_win = vim.api.nvim_tabpage_get_win(tabpage)
 		local focus_is_source = vim.api.nvim_win_get_buf(current_win) == bufnr
 		local different_window = focus_is_source and vim.w[outline_win].source_win ~= current_win
 		if bound_buf ~= bufnr or different_window then
@@ -304,8 +314,8 @@ function M.statuscolumn()
 	return " "
 end
 
-local function remember_aerial_window()
-	local tabpage = tab()
+local function remember_aerial_window(tabpage)
+	tabpage = tabpage or tab()
 	for _, win in ipairs(vim.api.nvim_tabpage_list_wins(tabpage)) do
 		if vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "aerial" then
 			style_window(win, tabpage)
@@ -325,7 +335,12 @@ function M.setup()
 	vim.api.nvim_create_autocmd("WinNew", {
 		group = group,
 		callback = function()
-			vim.schedule(remember_aerial_window)
+			local tabpage = tab()
+			vim.schedule(function()
+				if vim.api.nvim_tabpage_is_valid(tabpage) then
+					remember_aerial_window(tabpage)
+				end
+			end)
 		end,
 	})
 	vim.api.nvim_create_autocmd("WinClosed", {
@@ -366,9 +381,12 @@ function M.setup()
 			if is_document_buffer(current) then
 				last_document[tab()] = current
 			end
+			local tabpage = tab()
 			vim.schedule(function()
-				remember_aerial_window()
-				schedule_reconcile(document_buffer())
+				if vim.api.nvim_tabpage_is_valid(tabpage) then
+					remember_aerial_window(tabpage)
+					schedule_reconcile(document_buffer(tabpage), tabpage)
+				end
 			end)
 		end,
 	})
@@ -385,7 +403,7 @@ function M.setup()
 			end)
 		end,
 	})
-	schedule_reconcile(vim.api.nvim_get_current_buf())
+	schedule_reconcile(vim.api.nvim_get_current_buf(), tab())
 	return M
 end
 

@@ -360,38 +360,11 @@ local function setup(overrides)
 	end
 
 	local Snacks = require("snacks")
-	-- These UIEnter setups do not contribute to the first dashboard frame.
-	-- Preserve their configuration, then initialize at the existing scheduled
-	-- VeryLazy event (also explicitly fired by headless integration tests).
-	local deferred = {}
-	for _, name in ipairs({ "scroll", "input", "scope", "picker" }) do
-		if config[name] and config[name].enabled then
-			deferred[#deferred + 1] = name
-			config[name].enabled = false
-		end
-	end
+	-- Snacks owns these integrations' UIEnter lifecycle. It initializes them
+	-- after the first frame while preserving their enabled state for health checks.
 	Snacks.setup(config)
-	vim.api.nvim_create_autocmd("User", {
-		group = vim.api.nvim_create_augroup("MayonDeferredSnacks", { clear = true }),
-		pattern = "MayonVeryLazy",
-		once = true,
-		callback = function()
-			for _, name in ipairs(deferred) do
-				Snacks.config[name].enabled = true
-				local module = Snacks[name]
-				if module.setup then
-					module.setup()
-				elseif module.enable then
-					module.enable()
-				end
-			end
-		end,
-	})
-	-- Keep even prompts issued before UIEnter on Snacks, without importing the
-	-- input renderer (and its highlight/util graph) until there is a prompt.
-	vim.ui.select = function(items, opts, on_choice)
-		return Snacks.picker.select(items, opts, on_choice)
-	end
+	-- The picker installs vim.ui.select from its own setup callback. Keeping
+	-- that canonical function identity also lets Snacks' health check verify it.
 	vim.ui.input = function(opts, on_confirm)
 		return Snacks.input(opts, on_confirm)
 	end

@@ -27,7 +27,14 @@ let
       dependencies = [ vimPlugins.plenary-nvim ];
     }))
     vimPlugins.claudecode-nvim
-    vimPlugins.sidekick-nvim
+    (vimPlugins.sidekick-nvim.overrideAttrs (old: {
+      # Switching native inline completion to DeepSeek/off also disables NES.
+      # Sidekick's CLI remains usable without a Copilot client in that state.
+      postPatch = (old.postPatch or "") + ''
+        substituteInPlace lua/sidekick/health.lua \
+          --replace-fail '  if not found then' '  if not found and (Config.nes.enabled == false or vim.g.sidekick_nes == false) then vim.health.info("Copilot NES disabled; no Copilot LSP required") elseif not found then'
+      '';
+    }))
     vimPlugins.minuet-ai-nvim
     vimPlugins.mini-diff
     vimPlugins.edgy-nvim
@@ -65,6 +72,10 @@ let
       # Pinned 2.31 checks mmdc unconditionally. Make the disabled capability
       # explicit in rendering and health rather than installing Chromium/mmdc.
       postPatch = (old.postPatch or "") + ''
+        # The pinned nvim-treesitter has no norg grammar. Disable only that
+        # unsupported document-image integration; M.langs() discovers queries.
+        test -f queries/norg/images.scm
+        rm queries/norg/images.scm
         substituteInPlace lua/snacks/image/init.lua \
           --replace-fail 'if Snacks.health.have_tool("mmdc") then' 'if M.config.mermaid and M.config.mermaid.enabled == false then Snacks.health.info("Mermaid rendering disabled by configuration") elseif Snacks.health.have_tool("mmdc") then'
         substituteInPlace lua/snacks/image/doc.lua \

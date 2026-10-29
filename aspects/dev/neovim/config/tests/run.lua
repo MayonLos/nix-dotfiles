@@ -22,6 +22,11 @@ local ok, err = xpcall(function()
 	end, 10)
 	assert(not vim.g.mayon_load_error, vim.g.mayon_load_error)
 	assert(vim.v.errmsg == "", "delayed runtime error: " .. vim.v.errmsg)
+	if _G.MayonSelfcheck then
+		vim.wait(250)
+		local errors = MayonSelfcheck.finish()
+		assert(#errors == 0, "captured runtime ERROR: " .. vim.inspect(errors))
+	end
 end, debug.traceback)
 if not ok then
 	io.stderr:write(tostring(err) .. "\n")
