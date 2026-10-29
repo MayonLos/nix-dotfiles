@@ -160,6 +160,11 @@ class FirefoxUiTests(unittest.TestCase):
         self.assertIn(BEGIN, first[0])
         self.assertIn(BEGIN, first[1])
         self.assertIn('browser.newtabpage.activity-stream.topSitesRows", 1', first[2])
+        self.assertIn('media.hardware-video-decoding.enabled", true', first[2])
+        self.assertIn('widget.dmabuf.enabled", true', first[2])
+        self.assertIn('widget.dmabuf-webgl.enabled", true', first[2])
+        self.assertNotIn('media.ffmpeg.vaapi.enabled', first[2])
+        self.assertNotIn('media.hardware-video-decoding.force-enabled', first[2])
         self.assertIn('stop-reload-button', first[2])
         self.assertIn('sidebar-button', first[2])
         self.assertIn("about:home", first[1])
@@ -186,7 +191,10 @@ class FirefoxUiTests(unittest.TestCase):
         self.prefs_path.write_text(old + '\nuser_pref("sidebar.verticalTabs", false);\n')
         saved = ('user_pref("sidebar.backupState", "user-expanded-state");\n'
                  'user_pref("sidebar.visibility", "expand-on-hover");\n'
-                 'user_pref("findbar.highlightAll", false);\n')
+                 'user_pref("findbar.highlightAll", false);\n'
+                 'user_pref("media.hardware-video-decoding.enabled", false);\n'
+                 'user_pref("widget.dmabuf.enabled", false);\n'
+                 'user_pref("widget.dmabuf-webgl.enabled", false);\n')
         (self.profile / "prefs.js").write_text(saved)
         self.run_script(SEED_SCRIPT)
         updated = self.prefs_path.read_text()
@@ -195,6 +203,9 @@ class FirefoxUiTests(unittest.TestCase):
         self.assertNotIn('sidebar.backupState', managed)
         self.assertNotIn('sidebar.verticalTabs', managed)
         self.assertNotIn('findbar.highlightAll', managed)
+        self.assertNotIn('media.hardware-video-decoding.enabled', managed)
+        self.assertNotIn('widget.dmabuf.enabled', managed)
+        self.assertNotIn('widget.dmabuf-webgl.enabled', managed)
         self.assertTrue(updated.endswith('user_pref("sidebar.verticalTabs", false);\n'))
         self.assertEqual((self.profile / "prefs.js").read_text(), saved)
         self.run_script(SEED_SCRIPT)

@@ -1,8 +1,20 @@
 { pkgs, ... }:
-
+let
+  tools = import ../tools.nix { inherit pkgs; };
+in
 {
   programs.steam = {
     enable = true;
+    extraCompatPackages = [ pkgs.proton-ge-bin ];
+    package = pkgs.steam.override {
+      # GameMode filters exclude Steam's UI and runtime helpers. Both ABIs are
+      # supplied by Steam's multiPkgs so native and Proton games can preload.
+      extraLibraries = p: [ p.gamemode.lib ];
+      extraProfile = ''
+        eval "$(${tools.game-run}/bin/game-run --env)"
+        export LD_PRELOAD="libgamemodeauto.so.0''${LD_PRELOAD:+:$LD_PRELOAD}"
+      '';
+    };
 
     # No STEAM_FORCE_DESKTOPUI_SCALING override here, deliberately.
     #
@@ -22,6 +34,10 @@
     localNetworkGameTransfers.openFirewall = true;
 
     gamescopeSession.enable = true;
-    extraPackages = [ pkgs.mangohud ];
+    extraPackages = [
+      pkgs.mangohud
+      tools.game-run
+      tools.gamescope-run
+    ];
   };
 }

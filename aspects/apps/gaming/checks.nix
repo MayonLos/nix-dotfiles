@@ -2,10 +2,12 @@
   pkgs,
   home,
   appearance,
+  nixos,
   ...
 }:
 let
   inherit (pkgs) lib;
+  tools = import ./tools.nix { inherit pkgs; };
   themeRoot = "PrismLauncher/themes/OneDark";
   manifest = home.xdg.dataFile."${themeRoot}/theme.json".source;
   stylesheet = home.xdg.dataFile."${themeRoot}/themeStyle.qss".source;
@@ -37,6 +39,28 @@ in
 assert withoutAppearance.config.xdg.dataFile == { };
 assert builtins.length withoutAppearance.config.home.packages == 1;
 {
+  gaming-launch =
+    assert builtins.elem pkgs.proton-ge-bin nixos.programs.steam.extraCompatPackages;
+    assert nixos.systemd.user.services.gaming-idle-inhibit.wantedBy == [ ];
+    assert nixos.systemd.user.services.gaming-idle-inhibit.partOf == [ "gamemoded.service" ];
+    assert nixos.systemd.user.services.gaming-idle-inhibit.serviceConfig.Type == "notify";
+    assert nixos.programs.gamemode.settings.custom.script_timeout >= 150;
+    assert lib.hasInfix "gaming-mode-hook start" nixos.programs.gamemode.settings.custom.start;
+    assert lib.hasInfix "gaming-mode-hook end" nixos.programs.gamemode.settings.custom.end;
+    assert lib.hasInfix "gaming-mode-hook end"
+      nixos.systemd.user.services.gamemoded.serviceConfig.ExecStopPost;
+    pkgs.runCommand "gaming-launch-check"
+      { nativeBuildInputs = [ pkgs.python3 ] ++ builtins.attrValues tools; }
+      ''
+        python3 ${./resources}/test_gaming.py
+        touch "$out"
+      '';
+  # Building the patched launcher checks the exact replacement against the
+  # locked C++ source. No launcher or user configuration is run by this check.
+  gaming-prism-launch = pkgs.runCommand "gaming-prism-launch-check" { } ''
+    test -x ${builtins.head withoutAppearance.config.home.packages}/bin/prismlauncher
+    touch "$out"
+  '';
   prism-theme =
     pkgs.runCommand "prism-theme-check"
       {
