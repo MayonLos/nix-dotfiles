@@ -614,6 +614,12 @@ in
         After = lib.mkForce [ "mango-session.target" ];
         StartLimitIntervalSec = 60;
         StartLimitBurst = 3;
+        # Noctalia owns the ext-session-lock surface. Restarting it from an
+        # activation while the session is locked abandons the lock and Mango
+        # shows a solid fill that no password can clear. Config changes are
+        # hot-reloaded; a new binary takes effect on the next login or an
+        # explicit restart while unlocked.
+        X-RestartIfChanged = false;
       };
       Service = {
         ExecStartPre = "${reconcileOverrides}";
