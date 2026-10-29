@@ -1,14 +1,14 @@
 use std::{env, fs, path::PathBuf};
 
 fn main() {
-    println!("cargo:rerun-if-env-changed=CLASHTUI_PALETTE");
+    println!("cargo:rerun-if-env-changed=MAYON_TUI_PALETTE");
     // Nix passes the selected entity palette. Local cargo builds read the same
     // public repository palette; there is no second embedded color scheme.
-    let colors: serde_json::Value = if let Ok(json) = env::var("CLASHTUI_PALETTE") {
-        serde_json::from_str(&json).expect("CLASHTUI_PALETTE must be JSON")
+    let colors: serde_json::Value = if let Ok(json) = env::var("MAYON_TUI_PALETTE") {
+        serde_json::from_str(&json).expect("MAYON_TUI_PALETTE must be JSON")
     } else {
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../appearance/appearance/onedark.nix");
+            .join("../../../../aspects/appearance/appearance/onedark.nix");
         println!("cargo:rerun-if-changed={}", path.display());
         let source = fs::read_to_string(path).expect("repository One Dark palette is required");
         let mut map = serde_json::Map::new();

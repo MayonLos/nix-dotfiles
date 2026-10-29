@@ -2,7 +2,10 @@
 {
   den.aspects = {
     container-client.homeManager = { pkgs, ... }: {
-      home.packages = [ pkgs.docker ];
+      home.packages = [
+        pkgs.docker
+        pkgs.mayonTui.docker
+      ];
     };
 
     local-containers = { host, ... }: {

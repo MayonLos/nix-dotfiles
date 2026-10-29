@@ -16,7 +16,7 @@
 | 可选 dwm / Xorg | `xorg-session.target` 仅由 supervisor 在 dwm 就绪后启动；Picom、Dunst、CopyQ、polkit、状态、壁纸、RandR watcher、idle 与 xss-lock 都具备 desktop/target guard。 | 不启动 Noctalia 或 Wayland clipboard bridge。Dunst D-Bus 激活同样受约束；Rofi 按需运行；xidlehook 以15/30/60分钟触发锁屏/熄屏/休眠，xss-lock独立保护睡眠锁屏；共享采用 X11 原生能力。实际构建/运行边界详见 [Xorg 记录](xorg-desktop-execution.md)。 |
 | Portal / keyring / polkit | [交互宿主支持](../aspects/desktop/session-support/default.nix) 共享提供 GTK portal backend、keyring/PAM 和系统 polkit；Noctalia 提供图形认证 agent。 | 这些是宿主共享能力，不是每账号私有的访问控制。每个 bus 名称只能有实际预期 backend；屏幕共享、解锁与单 agent 需实测。 |
 | 音频 | [PipeWire/WirePlumber](../aspects/desktop/session-support/host/audio.nix) 是共享宿主支持，保留 ALSA/Pulse/JACK 和现有通信兼容规则；不常驻 echo-cancel 模块（它常开内置麦并把默认输出拉进麦克风的 256 帧图，导致蓝牙 A2DP 持续丢包），回声消除由通话应用自带。WirePlumber 关闭蓝牙耳机自动切到 HFP：麦克风采集（如 pavucontrol 电平条）曾把 A2DP 切成 8/16 kHz 单声道并导致断连，耳机麦需手动选 HFP profile。全局 `sockets.target` wants 关闭，只有选中账号的桌面 targets 请求 PipeWire sockets。 | 支持 socket 按需激活，音频进程继续遵循 user manager 生命周期，不随 Noctalia 重启。未选账号不会自动得到个人音频启动配置；共享系统能力仍可被显式请求。实际音频设备与休眠恢复待验收。 |
-| 网络与设备 | NM/resolved、Clash、Bluetooth、Intel/NVIDIA、power profiles、thermald、upower、earlyoom 等由真实 laptop host 明确选择。Nix daemon 代理只在 laptop-network，不进入通用维护。 | 不按通用身份或平台隐式启用。休眠不主动关闭业务/VM/容器；无新增周期设备轮询或通用 sleep inhibitor。 |
+| 网络与设备 | NM/resolved、Clash、Bluetooth、Intel/NVIDIA、power profiles、thermald、upower、earlyoom 等由真实 laptop host 明确选择。Nix daemon 不强制指向 Clash 本地端口；Clash 关闭时保留直接下载能力。 | 不按通用身份或平台隐式启用。休眠不主动关闭业务/VM/容器；无新增周期设备轮询或通用 sleep inhibitor。 |
 | 内核与调度 | legion-laptop 选 stable 默认 LTS `linuxPackages`（当前声明锁定 6.18.59），NVIDIA stable（595.71.05）由同一 kernelPackages 提供，保留 open / PRIME offload。`scx.service` 随 `multi-user.target` 启动 `scx_lavd` 1.1.2，空参数保留按负载调整的默认 autopilot，不使用跟随电源 profile 的 `--autopower`。 | 服务以 `/sys/kernel/sched_ext` 为启动条件，失败自动重启，30 秒内最多 2 次；无需桌面会话提供。2026-10-24 18:11 实机启动已核对 `uname -r = 6.18.57`、NVIDIA 595.71.05、`scx.service` active、sched_ext `enabled` 且 ops 为 `lavd_1.1.2`，legion 模块已加载、Wi-Fi 已连接。后续启动和交互稳定性仍需持续观察；证据与回退见[第四轮记录](history/optimization-2026-10-24.md#第四轮lts-内核stable-nvidia-与-sched-ext)。 |
 | SSH | [closed-ssh-socket](../aspects/network/remote-access/host.nix) 保留 socket 激活，仅绑定 `127.0.0.1:22` 与 `[::1]:22`，防火墙不放行，未新增授权 key。 | 这是笔记本现有策略，不能作为已可远程登录的服务器配置。真实机器须另行明确网络、key 与恢复入口。 |
 | 本地容器 | [local-containers](../aspects/dev/containers/default.nix) 与 container-client 分开。host 复用官方 rootless support，但关闭全局 daemon wants 和全局 socket 环境；所选 HM binding 提供完整 daemon unit 与 shell/environment.d 的 DOCKER_HOST。 | 第45轮声明改为所选账号的 `docker.socket` → `docker-proxy.service` → 私有 socket 的 rootless daemon，daemon 不再有登录 wants，保留官方 `Restart=always`/2 秒和限制。默认不 idle stop；容器 restart policy 在 daemon 首次按需启动时恢复，而非登录立即恢复。未新增 linger，最后注销后不能承诺容器继续。该声明尚未应用。安装 CLI 不启 daemon。 |
@@ -63,3 +63,20 @@ Noctalia/Mango 只消费 [白名单投影](../aspects/desktop/mango-session/sess
 第38轮审计同时确认：Mango 下的 xrdb-merge 服务承担 Xwayland DPI/根光标设置，属于两个会话共用的 oneshot，不能按 Xorg 专属误删。Docker 继续保留官方 rootless 常驻 unit；锁定模块没有 socket，不能直接用 fd:// 绕过 RootlessKit 的文件描述符边界。NVIDIA persistence 保留原关机崩溃规避；未改 fine-grained PM、外屏、CUDA、游戏、电源 profile 或网络后端。
 
 第45轮性能/游戏声明（尚未应用）：rootless Docker 使用 systemd-socket-proxyd 转发至私有 daemon socket，避免 RootlessKit 的 fd:// 边界；weekly builder prune 保留且可触发 daemon。GameMode 首/末客户端钩子保存并恢复 PPD 原 profile，按需持有独立 logind idle inhibitor，gamemoded 退出时执行恢复；不阻止手动锁屏/显式休眠，也不重启 scx。Steam 通过 inherited preload 和 helper blacklist 自动请求 GameMode；Prism 在实际游戏启动边界包装 game-run。NVIDIA 模块加载与 persistence 关机规避保持。隔离测试不等同应用后冷登录、真实游戏与容器验证，细节见 [Gaming](../aspects/apps/gaming/README.md) 与 [Containers](../aspects/dev/containers/README.md)。
+
+
+第47轮 TUI 声明（尚未应用）：自写程序集中在
+[mayon-tui](../packages/mayon-tui/README.md)，不新增后台服务。Clash GUI 的 Nix
+`autoStart` 显式关闭；serviceMode root helper 仍提供 TUN 权限，GUI 打开后请求启动
+内核、退出或 SIGTERM 时由 Verge 2.4.7 清理系统代理/TUN/内核。GUI 自己既有的
+mutable auto-launch 设置不在 Nix writer 范围，需实机在 Verge 设置中确认关闭。
+TUI 的 `s` 复用 Noctalia 原生 app-launch 策略，`X` 只向本 UID、验证 executable
+路径并固定 pidfd 的 GUI 发 SIGTERM。只验证过私有 mihomo 与编译替身，真实 GUI
+启动、TUN/DNS 恢复仍待应用后验收。
+
+Docker TUI 使用公开 `%t/docker.sock`，首次请求可能启动 daemon；确认停止时先取消
+并等待自身所有 API 请求，再执行 user docker/docker-proxy stop，并暂停刷新直到
+用户按 `s`。公开 socket 保留，下次连接仍可按需启动。端口 TUI 默认不探测尚未
+启动的标准 Docker endpoint（即使 DOCKER_HOST 指向该端点，也需私有 daemon
+socket 已存在）；`--docker-map` 是显式强制查询。隔离真实 rootless daemon 仍受
+newuidmap 权限限制，Docker 交互证据来自私有 API fixture，不代表实机已运行。

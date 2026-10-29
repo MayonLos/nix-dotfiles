@@ -8,6 +8,11 @@ _: {
           packages = with pkgs; [
             git
             gnumake
+            cargo
+            rustc
+            rust-analyzer
+            clippy
+            rustfmt
             clang-tools
             sops
             age
@@ -47,6 +52,10 @@ _: {
           # Statix is a lint gate; automatic fixes can alter aspect semantics.
           statix.enable = false;
           stylua.enable = true;
+          rustfmt = {
+            enable = true;
+            edition = "2021";
+          };
         };
       };
     };

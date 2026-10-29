@@ -1,6 +1,6 @@
 //! Interaction state and background jobs. No network request blocks drawing.
 use crate::{
-    api::{Client, Connection, Proxy, RuntimeConfig},
+    api::{ApiError, Client, Connection, Proxy, RuntimeConfig},
     profiles::{self, ProfileStore, Usage},
 };
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -21,6 +21,7 @@ pub struct Options {
     pub test_url: String,
     pub usage_proxy: Option<String>,
     pub no_verge: bool,
+    pub lifecycle: crate::lifecycle::Lifecycle,
 }
 #[derive(Clone, Copy, PartialEq)]
 pub enum Page {
@@ -29,6 +30,7 @@ pub enum Page {
     Connections,
 }
 pub enum Dialog {
+    Stop,
     Import {
         url: String,
         name: String,
@@ -45,7 +47,7 @@ struct Snapshot {
     version: String,
 }
 enum Update {
-    Snapshot(Result<Snapshot, String>),
+    Snapshot(Result<Snapshot, ApiError>),
     Traffic(u64, u64),
     TrafficOffline,
     Message(String),
@@ -86,6 +88,8 @@ pub struct App {
     delay_job: Option<JoinHandle<()>>,
     usage_job: Option<JoinHandle<()>>,
     command_job: Option<JoinHandle<()>>,
+    lifecycle_job: Option<JoinHandle<()>>,
+    pub lifecycle_pending: Option<(bool, Instant)>,
     generation: u64,
     last_refresh: Instant,
 }
@@ -125,6 +129,8 @@ impl App {
             delay_job: None,
             usage_job: None,
             command_job: None,
+            lifecycle_job: None,
+            lifecycle_pending: None,
             generation: 0,
             last_refresh: Instant::now(),
         })
@@ -223,14 +229,12 @@ impl App {
                 client.connections(),
                 client.version()
             );
-            let snapshot = result
-                .map(|(proxies, config, connections, version)| Snapshot {
-                    proxies,
-                    config,
-                    connections,
-                    version,
-                })
-                .map_err(|e| e.to_string());
+            let snapshot = result.map(|(proxies, config, connections, version)| Snapshot {
+                proxies,
+                config,
+                connections,
+                version,
+            });
             let _ = tx.send(Update::Snapshot(snapshot));
         }));
     }
@@ -242,6 +246,10 @@ impl App {
                         self.status = "已连接 · 1 节点  2 订阅  3 连接  ? 帮助".into();
                     }
                     self.online = true;
+                    if self.lifecycle_pending.is_some_and(|(running, _)| running) {
+                        self.lifecycle_pending = None;
+                        self.status = "Clash 已启动".into();
+                    }
                     let group_name = self.group_name();
                     let node_name = self.nodes().get(self.node).cloned();
                     let connection_id = self.connections.get(self.connection).map(|c| c.id.clone());
@@ -277,9 +285,29 @@ impl App {
                         .connection
                         .min(self.connections.len().saturating_sub(1));
                 }
-                Update::Snapshot(Err(error)) => {
+                Update::Snapshot(Err(ApiError::Transport)) => {
                     self.online = false;
-                    self.status = error;
+                    self.status = if self.lifecycle_pending.is_some_and(|(running, _)| running) {
+                        "正在启动 Verge，等待内核…"
+                    } else {
+                        "Clash 未运行 · s 启动"
+                    }
+                    .into();
+                    if self.lifecycle_pending.is_some_and(|(running, _)| !running)
+                        && !self.opts.socket.exists()
+                    {
+                        self.lifecycle_pending = None;
+                        self.status = "Clash 已关闭 · s 启动".into();
+                    }
+                }
+                Update::Snapshot(Err(error)) => {
+                    self.online = true;
+                    self.status = match error {
+                        ApiError::Rejected => "Clash 运行中 · 控制接口拒绝操作",
+                        ApiError::InvalidResponse => "Clash 运行中 · 控制接口响应格式无效",
+                        _ => "Clash 运行中 · 控制接口地址无效",
+                    }
+                    .into();
                 }
                 Update::Traffic(up, down) => self.traffic = Some((up, down)),
                 Update::TrafficOffline => self.traffic = None,
@@ -306,6 +334,13 @@ impl App {
                 },
                 _ => {}
             }
+        }
+        if self
+            .lifecycle_pending
+            .is_some_and(|(_, time)| time.elapsed() > Duration::from_secs(30))
+        {
+            self.lifecycle_pending = None;
+            self.status = "Verge 操作等待超时；请检查 GUI 状态".into();
         }
         if self.last_refresh.elapsed() > Duration::from_secs(2) {
             self.refresh();
@@ -427,25 +462,35 @@ impl App {
             self.status = "隔离模式：外部 Verge 启动已禁用".into();
             return;
         }
-        let mut command = std::process::Command::new("clash-verge");
-        if let Some(link) = link {
-            command.arg(link.as_str());
-        }
-        // The GUI owns all profile writes. Never capture URL-bearing GUI output.
-        match command
-            .stdin(std::process::Stdio::null())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .spawn()
+        match self
+            .opts
+            .lifecycle
+            .launch(link.as_ref().map(|l| l.as_str()))
         {
-            Ok(mut child) => {
-                std::thread::spawn(move || {
-                    let _ = child.wait();
-                });
-                self.status = "已交给 Verge · 按 r 重读订阅".into();
+            Ok(()) => {
+                self.lifecycle_pending = Some((true, Instant::now()));
+                self.status = "正在启动 Verge，等待内核…".into();
             }
-            Err(_) => self.status = "无法启动 clash-verge；请在桌面打开 Verge".into(),
+            Err(message) => self.status = message,
         }
+    }
+    fn stop_verge(&mut self) {
+        if self.opts.no_verge {
+            self.status = "隔离模式：Verge 生命周期已禁用".into();
+            return;
+        }
+        let lifecycle = self.opts.lifecycle.clone();
+        let tx = self.tx.clone();
+        self.lifecycle_pending = Some((false, Instant::now()));
+        self.lifecycle_job = Some(tokio::spawn(async move {
+            let message = tokio::task::spawn_blocking(move || lifecycle.stop()).await;
+            let message = match message {
+                Ok(Ok(_)) => "已发送 SIGTERM，等待内核关闭…".into(),
+                Ok(Err(e)) => e,
+                Err(_) => "关闭任务失败".into(),
+            };
+            let _ = tx.send(Update::Message(message));
+        }));
     }
     pub fn key(&mut self, key: KeyEvent) {
         if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
@@ -454,6 +499,14 @@ impl App {
         }
         if let Some(mut dialog) = self.dialog.take() {
             match &mut dialog {
+                Dialog::Stop => match key.code {
+                    KeyCode::Enter | KeyCode::Char('y') => {
+                        self.stop_verge();
+                        return;
+                    }
+                    KeyCode::Esc | KeyCode::Char('n') => return,
+                    _ => {}
+                },
                 Dialog::Import { url, name, field } => match key.code {
                     KeyCode::Esc => return,
                     KeyCode::Tab | KeyCode::BackTab => *field = !*field,
@@ -478,7 +531,9 @@ impl App {
                         {
                             Some(url) => {
                                 if !name.is_empty() {
-                                    self.dialog = Some(Dialog::Verge { reason: "该版本无法可靠传递名称；请在 Verge 导入命名，或清空名称后重试。" });
+                                    self.dialog = Some(Dialog::Verge {
+                                        reason: "该版本无法可靠传递名称；请在 Verge 导入命名，或清空名称后重试。",
+                                    });
                                 } else {
                                     self.open_verge(Some(profiles::verge_import_link(&url)));
                                 }
@@ -527,7 +582,16 @@ impl App {
             }
             return;
         }
+        if !self.online && !matches!(key.code, KeyCode::Char('q' | '?' | 's' | 'r')) {
+            return;
+        }
         match key.code {
+            KeyCode::Char('s') if !self.online && self.lifecycle_pending.is_none() => {
+                self.open_verge(None)
+            }
+            KeyCode::Char('X') if self.online && self.lifecycle_pending.is_none() => {
+                self.dialog = Some(Dialog::Stop)
+            }
             KeyCode::Char('q') => self.quit = true,
             KeyCode::Char('?') => self.help = true,
             KeyCode::Char('1') => self.page = Page::Proxies,
@@ -638,6 +702,48 @@ impl App {
                 .min(len.saturating_sub(1))
         };
     }
+    pub fn mouse(&mut self, event: crossterm::event::MouseEvent, size: ratatui::layout::Size) {
+        use crossterm::event::{MouseButton, MouseEventKind};
+        if self.dialog.is_some() || self.help || !self.online {
+            return;
+        }
+        match event.kind {
+            MouseEventKind::ScrollDown => self.move_selection(1, false),
+            MouseEventKind::ScrollUp => self.move_selection(-1, false),
+            MouseEventKind::Down(MouseButton::Left) => {
+                if event.row == 1 {
+                    if let Some(page) = crate::ui::tab_at(event.column) {
+                        self.key(KeyEvent::new(KeyCode::Char(page), KeyModifiers::NONE));
+                    }
+                    return;
+                }
+                if event.row < 4 || event.row >= size.height.saturating_sub(3) {
+                    return;
+                }
+                let (index, len, height) = match self.page {
+                    Page::Proxies if event.column < size.width * 32 / 100 => {
+                        self.nodes_focus = false;
+                        (
+                            &mut self.group,
+                            self.proxies.values().filter(|p| !p.all.is_empty()).count(),
+                            2,
+                        )
+                    }
+                    Page::Proxies => {
+                        self.nodes_focus = true;
+                        let n = self.nodes().len();
+                        (&mut self.node, n, 1)
+                    }
+                    Page::Profiles => (&mut self.profile, self.store.items.len(), 5),
+                    Page::Connections => (&mut self.connection, self.connections.len(), 2),
+                };
+                let visible = size.height.saturating_sub(7) as usize / height;
+                let offset = index.saturating_add(1).saturating_sub(visible);
+                *index = (offset + (event.row as usize - 4) / height).min(len.saturating_sub(1));
+            }
+            _ => {}
+        }
+    }
     pub fn stop(&mut self) {
         self.cancel_measure();
         for job in [
@@ -645,6 +751,7 @@ impl App {
             &mut self.traffic_job,
             &mut self.usage_job,
             &mut self.command_job,
+            &mut self.lifecycle_job,
         ]
         .into_iter()
         .filter_map(Option::take)
@@ -695,14 +802,17 @@ mod tests {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     fn app() -> App {
-        App::new(Options {
+        let mut app = App::new(Options {
             socket: "/nonexistent.sock".into(),
             profiles: "/nonexistent.yaml".into(),
             test_url: "http://example.invalid".into(),
             usage_proxy: None,
             no_verge: true,
+            lifecycle: crate::lifecycle::Lifecycle::default(),
         })
-        .unwrap()
+        .unwrap();
+        app.online = true;
+        app
     }
 
     #[test]

@@ -185,6 +185,16 @@
       checks = builtins.deepSeq architecture (
         featureChecks
         // {
+          mayon-tui =
+            assert lib.assertMsg (builtins.all
+              (output: builtins.elem output.outPath (map (package: package.outPath) home.home.packages))
+              [
+                pkgs.mayonTui.clash
+                pkgs.mayonTui.docker
+                pkgs.mayonTui.ports
+              ]
+            ) "TUI outputs must be installed by their selected features";
+            pkgs.mayonTui;
           architecture = pkgs.runCommand "architecture-check" { } "touch $out";
           palette-contrast = paletteContrast;
           statix = pkgs.runCommand "statix-check" { nativeBuildInputs = [ pkgs.statix ]; } ''

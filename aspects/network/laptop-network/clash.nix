@@ -2,7 +2,9 @@ _: {
   programs.clash-verge = {
     enable = true;
     serviceMode = true;
-    # The root service starts Mihomo and owns TUN (confirmed in boot logs).
+    autoStart = false;
+    # The root helper accepts GUI start/stop requests and owns privileged TUN.
+    # Keeping the helper available does not autostart the GUI or Mihomo.
     # tunMode only grants capabilities to the GUI wrapper; that makes it
     # non-dumpable, so the portal cannot inspect /proc/<pid>/root.
     tunMode = false;
