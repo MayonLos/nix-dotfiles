@@ -11,7 +11,7 @@
   };
   cursor = {
     name = "Bibata-Modern-Ice";
-    size = 32;
+    size = 24;
   };
   iconTheme = "WhiteSur-dark";
   iconFolderColor = "blue";

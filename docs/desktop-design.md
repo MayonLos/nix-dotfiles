@@ -9,7 +9,7 @@
 
 本批依据 `.work/redesign-r42/design/` 的已确认比较图修改系统基础和 Noctalia 面板；下方旧轮次记录保留时间范围。本批构建及私有运行不证明真实桌面已经应用。
 
-- WhiteSur dark、蓝色文件夹；Bibata-Modern-Ice 光标 32。共享 palette 提供名称，GTK/Qt/Noctalia/Mango/Xorg 消费；greeter 的 cursor.path 与系统包同步为 bibata-cursors。
+- WhiteSur dark、蓝色文件夹；Bibata-Modern-Ice 光标 24（2026-10-30 用户反馈 32 偏大）。共享 palette 提供名称，GTK/Qt/Noctalia/Mango/Xorg 消费；greeter 的 cursor.path 与系统包同步为 bibata-cursors。
 - Inter 4.x / Noto Sans CJK SC，14/400 正文、14/500 标签、16/600 与 20/600 标题；GTK/Qt 默认 10.5 pt，Maple 11 pt 保持。既有 Qt GUI 自定义值按 seed/marker 保留。
 - graphite 标题区与低对比分隔；GTK4 保留 libadwaita 控件，仅提供颜色/几何。Noctalia 继续独占 GTK CSS writer。
 - Mango 1 px 蓝焦点细框、12 圆角、外 12 / 内 8；浮窗中性阴影；140/110/150 ms 开/关/tag，开窗 0.985，focus 0 ms，非焦点不透明轻 dim。
@@ -96,7 +96,7 @@ Astra 的 S1–S3 阴影、面板行高/卡片尺寸、72px 锁屏时钟等部�
 | Swayimg / Fastfetch | Swayimg 信息使用不透明 brightFg/deep，图库 selection 底与 2px 蓝边；Fastfetch 由 CLI 分支负责 |
 | 文档、媒体与其他应用 | Zathura 与 Obsidian 改用 documents 拥有的 palette 原色模板，退出同名社区模板选择。Zathura 阅读底不透明，PDF recolor 默认关闭，UI 等宽并显示页百分比；按 `Tab` 进入原生目录索引模式，无常驻目录侧栏；原生不支持左选中条与独立细进度线。Obsidian 只对其注册的 vault 接线同名 snippet。mpv/uosc 使用 brightFg 正文、中性选择面、蓝匹配标记与 2px 蓝色选中条，时间等宽、进度线 2px；uosc 不提供选中标记发光选项，采用平面蓝线。OSC 圆角 8。Thunderbird 无既有自定义主题接线，保留原生暗色/GTK 支持。btop、VS Code、Yazi 由各自分支负责 |
 
-鼠标使用 Bibata-Modern-Ice 32，应用图标采用 WhiteSur-dark，文件夹采用 blue。
+鼠标使用 Bibata-Modern-Ice 24，应用图标采用 WhiteSur-dark，文件夹采用 blue。
 外观只拥有 `fonts.sans = "Inter"`、`fonts.cjk = "Noto Sans CJK SC"`、
 `fonts.mono = "Maple Mono NF CN"`、`iconFolderColor = "blue"` 等公共数据；GTK 与 Dunst
 GTK、Qt 和 Dunst 共用 WhiteSur-dark 蓝色图标；不再对 Papirus 做重着色。Dunst 从公开 GTK option 复用相同的名称和包。

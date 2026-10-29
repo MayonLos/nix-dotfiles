@@ -27,7 +27,7 @@ assert home.gtk.iconTheme.name == palette.iconTheme;
 assert palette.iconTheme == "WhiteSur-dark";
 assert home.gtk.iconTheme.package == pkgs.whitesur-icon-theme;
 assert home.home.pointerCursor.name == "Bibata-Modern-Ice";
-assert home.home.pointerCursor.size == 32;
+assert home.home.pointerCursor.size == 24;
 assert home.home.pointerCursor.package == pkgs.bibata-cursors;
 assert home.dconf.settings."org/gnome/desktop/interface".icon-theme == palette.iconTheme;
 assert !(home.xdg.configFile ? "gtk-3.0/gtk.css");

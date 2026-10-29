@@ -487,7 +487,7 @@ pkgs.runCommand "interactive-session-config"
     assert m["environment"]["XCURSOR_SIZE"] == str(m["palette"]["cursor"]["size"])
     assert m["palette"]["cursor"] == {"name": "Bibata-Modern-Ice", "size": 32}
     assert m["mango"]["cursor_theme"] == m["palette"]["cursor"]["name"]
-    assert m["mango"]["cursor_size"] == 32
+    assert m["mango"]["cursor_size"] == 24
     for prefix in ("tab_bar_decorate_", "group_bar_decorate_", "jump_label_decorate_"):
         assert mango[prefix + "focus_fg_color"] == "0x" + m["palette"]["blue"].removeprefix("#") + "ff"
         assert mango[prefix + "focus_bg_color"] == "0x" + m["palette"]["selection"].removeprefix("#") + "ff"

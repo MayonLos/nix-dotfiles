@@ -1,6 +1,6 @@
 # 紧凑 · 下划指示 v3
 
-2026-10-29 r44 desk 优先于下方旧轮次：光标统一 Bibata-Modern-Ice 32（bibata-cursors，含 greeter）；托盘少量应用直接内联，不再展开附着胶囊。右侧状态图标盒统一 18 逻辑 px，正常 brightFg，仅断开/不可用或静音灰色；充电及养护上限显示原生电池轮廓+闪电，保留百分比与低电警告。Launchpad 默认隐藏 Thunar 附属工具，搜索仍可找到，并修正审计发现的真实应用图标重复/回退；证据位于 `.work/r44/desk/`。
+2026-10-29 r44 desk 优先于下方旧轮次：光标统一 Bibata-Modern-Ice（10-30 改为 24）（bibata-cursors，含 greeter）；托盘少量应用直接内联，不再展开附着胶囊。右侧状态图标盒统一 18 逻辑 px，正常 brightFg，仅断开/不可用或静音灰色；充电及养护上限显示原生电池轮廓+闪电，保留百分比与低电警告。Launchpad 默认隐藏 Thunar 附属工具，搜索仍可找到，并修正审计发现的真实应用图标重复/回退；证据位于 `.work/r44/desk/`。
 
 2026-10-29 r43 base（待集成/应用）：系统基础与 Noctalia 面板依据 `.work/redesign-r42/design/` 的各项 compare.png 更新；该批覆盖下文旧轮次的对应参数。图标采用 WhiteSur dark / blue folders，光标 Bibata-Modern-Ice 32；Inter 4.x、Noto Sans CJK SC、Maple Mono NF CN（终端 11 pt），正文 14/400、标签 14/500、标题 16/600 与 20/600，GTK/Qt 以 10.5 pt 对应 14 逻辑 px。GTK3/Qt 为 graphite 外壳，GTK4 继续使用 libadwaita 原生控件。Mango 边框 1 px 蓝、圆角 12、外距 12 / 内距 8，开/关/tag 140/110/150 ms、开窗比例 0.985、focus 0 ms，非焦点保持不透明轻 dim。Noctalia 夜灯关闭且移除快捷入口；控制中心目标 348、通知 320、连续细轨 OSD 246×46 / 底距 96；面板共用原生 Soft 表面，Mango 对目标 namespace 提供模糊。顶栏、Dock、Launchpad、系统菜单、工作区、锁屏与 greeter 的布局/行为不属于本批。隔离截图与验证结果在 `.work/r43/base/`，不代表配置已经应用。
 
