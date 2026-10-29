@@ -1,0 +1,143 @@
+/* Chrome only: never style message content or write userContent.css. */
+@-moz-document url("chrome://messenger/content/messenger.xhtml"),
+               url("about:3pane"), url("about:message") {
+  :root {
+    --tb-bg: @bg@;
+    --tb-deep: @deep@;
+    --tb-surface: @surface@;
+    --tb-selection: @selection@;
+    --tb-fg: @brightFg@;
+    --tb-secondary: @fg@;
+    --tb-muted: @muted@;
+    --tb-blue: @blue@;
+    --tb-line: color-mix(in srgb, @border@ 42%, @bg@);
+    --layout-background-0: var(--tb-deep) !important;
+    --layout-background-1: var(--tb-bg) !important;
+    --layout-background-2: var(--tb-bg) !important;
+    --layout-background-3: var(--tb-surface) !important;
+    --layout-background-4: var(--tb-selection) !important;
+    --layout-color-0: var(--tb-fg) !important;
+    --layout-color-1: var(--tb-fg) !important;
+    --layout-color-2: var(--tb-secondary) !important;
+    --layout-color-3: var(--tb-muted) !important;
+    --splitter-color: var(--tb-line) !important;
+    --listbox-selected-bg: var(--tb-selection) !important;
+    --listbox-focused-selected-bg: var(--tb-selection) !important;
+    --listbox-selected-color: var(--tb-fg) !important;
+    --tree-view-bg: var(--tb-bg) !important;
+    --tree-view-color: var(--tb-fg) !important;
+    --sidebar-background: var(--tb-bg) !important;
+    --sidebar-text-color: var(--tb-fg) !important;
+    --sidebar-highlight-background: var(--tb-selection) !important;
+    --sidebar-highlight-text-color: var(--tb-fg) !important;
+    --selected-item-color: var(--tb-fg) !important;
+    --selected-item-background-color: var(--tb-selection) !important;
+    --primary: var(--tb-blue) !important;
+    --unread-color: var(--tb-fg) !important;
+    --thread-pane-unread-fill: var(--tb-blue) !important;
+    --thread-pane-unread-stroke: var(--tb-blue) !important;
+    --tab-min-height: 30px !important;
+    --tabline-color: var(--tb-blue) !important;
+    --toolbar-text-color: var(--tb-fg) !important;
+    --toolbar-background-color: var(--tb-bg) !important;
+    --tabs-toolbar-background-color: var(--tb-bg) !important;
+    --tab-selected-bgcolor: var(--tb-selection) !important;
+    --tab-selected-textcolor: var(--tb-fg) !important;
+    --toolbar-bgcolor: var(--tb-bg) !important;
+    --toolbar-color: var(--tb-fg) !important;
+    --toolbar-field-background-color: var(--tb-deep) !important;
+    --toolbar-field-color: var(--tb-fg) !important;
+    --toolbar-field-border-color: var(--tb-line) !important;
+    --button-background-color: var(--tb-surface) !important;
+    --button-background-color-hover: var(--tb-selection) !important;
+    --button-primary-background-color: var(--tb-surface) !important;
+    --button-primary-hover-background-color: var(--tb-selection) !important;
+    --button-primary-text-color: var(--tb-fg) !important;
+    --focus-outline-color: var(--tb-blue) !important;
+    font-family: "Inter", "Noto Sans CJK SC", sans-serif !important;
+    font-size: 13px !important;
+    background-color: var(--tb-bg) !important;
+    color: var(--tb-fg) !important;
+  }
+
+  button, input, select, textarea, menulist, toolbarbutton,
+  .tabmail-tab, #folderTree, #threadTree, #messageHeader {
+    font-family: "Inter", "Noto Sans CJK SC", sans-serif !important;
+  }
+
+  #unifiedToolbar, #tabs-toolbar, #toolbar-menubar, #spacesToolbar,
+  #folderPane, #threadPane, #folderPaneHeaderBar, #threadPaneHeaderBar,
+  #quickFilterBar, #messageHeader, #status-bar {
+    background-color: var(--tb-bg) !important;
+    color: var(--tb-fg) !important;
+    box-shadow: none !important;
+    border-color: var(--tb-line) !important;
+  }
+
+  /* Keep header controls and their native wrapping; compact vertical padding. */
+  #unifiedToolbar { --unified-toolbar-padding: 2px !important; }
+  #tabs-toolbar { padding-block: 0 !important; background-image: none !important; }
+  .tabmail-tab { min-height: 30px !important; }
+  .tabmail-tab .tab-background {
+    margin-block: 2px !important;
+    border-radius: 4px !important;
+    box-shadow: none !important;
+  }
+  .tabmail-tab[selected] .tab-background {
+    background: var(--tb-selection) !important;
+    background-image: none !important;
+  }
+  .tabmail-tab .tab-line { block-size: 1px !important; margin-block-start: 0 !important; }
+  #folderPaneHeaderBar, #threadPaneHeaderBar { padding-block: 3px !important; }
+  #messageHeader { padding-block: 6px !important; }
+
+  #folderTree .container { border-radius: 0 !important; }
+  #folderTree .icon {
+    fill: transparent !important;
+    stroke: var(--tb-secondary) !important;
+  }
+  #folderTree li.selected > .container .icon { stroke: var(--tb-blue) !important; }
+  #threadTree .card-layout > td {
+    background-color: var(--tb-bg) !important;
+    border-color: transparent !important;
+    border-bottom-color: var(--tb-line) !important;
+    border-radius: 0 !important;
+  }
+  #threadTree .card-layout > td > .card-container {
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+  }
+  #threadTree .card-layout.selected > td {
+    background-color: var(--tb-selection) !important;
+    box-shadow: inset 2px 0 var(--tb-blue) !important;
+  }
+  #threadTree .card-layout[data-properties~="unread"] {
+    --read-status-fill: var(--tb-blue) !important;
+    --read-status-stroke: var(--tb-blue) !important;
+  }
+  #folderTree li.selected > .container,
+  #folderTree li[aria-selected="true"] > .container {
+    background: var(--tb-selection) !important;
+    color: var(--tb-fg) !important;
+    box-shadow: inset 2px 0 var(--tb-blue) !important;
+    outline: none !important;
+  }
+  #threadTree tr.selected {
+    background-color: var(--tb-selection) !important;
+    color: var(--tb-fg) !important;
+    box-shadow: inset 2px 0 var(--tb-blue) !important;
+    outline: none !important;
+  }
+  #threadTree tr.selected .card-container {
+    background: transparent !important;
+    color: inherit !important;
+    box-shadow: none !important;
+    border-color: var(--tb-line) !important;
+  }
+  #spacesToolbar .spaces-toolbar-button.current {
+    background: var(--tb-selection) !important;
+    color: var(--tb-fg) !important;
+    box-shadow: inset 2px 0 var(--tb-blue) !important;
+  }
+}

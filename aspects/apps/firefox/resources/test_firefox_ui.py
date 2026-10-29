@@ -110,10 +110,24 @@ class FirefoxUiTests(unittest.TestCase):
         self.assertFalse(css_parse_errors(self.chrome_css), css_parse_errors(self.chrome_css))
         self.assertFalse(css_parse_errors(self.content_css), css_parse_errors(self.content_css))
 
-    def test_managed_ui_uses_monospace_for_browser_chrome_paths(self) -> None:
+    def test_managed_ui_uses_reading_face_for_tabs_and_monospace_for_urls(self) -> None:
         self.assertIn('font-family: "Maple Mono NF CN", monospace', self.chrome_css)
         self.assertIn("#urlbar-input", self.chrome_css)
-        self.assertIn(".tabbrowser-tab .tab-label", self.chrome_css)
+        rules = tinycss2.parse_stylesheet(self.chrome_css, skip_comments=True, skip_whitespace=True)
+        labels = next(rule for rule in rules if rule.type == "qualified-rule"
+                      and ".tabbrowser-tab .tab-label," in tinycss2.serialize(rule.prelude))
+        declarations = {item.lower_name: tinycss2.serialize(item.value).strip()
+                        for item in tinycss2.parse_declaration_list(labels.content)
+                        if item.type == "declaration"}
+        self.assertEqual(declarations["font-family"], '"Inter", "Noto Sans CJK SC", sans-serif')
+        self.assertEqual(declarations["font-size"], "14px")
+        # A saved native sidebar resize must never be replaced by CSS.
+        for rule in rules:
+            if rule.type == "qualified-rule" and "::" not in tinycss2.serialize(rule.prelude) and any(selector in tinycss2.serialize(rule.prelude)
+                for selector in ("sidebar-main", "#sidebar-container", "#tabbrowser-tabs")):
+                names = {item.lower_name for item in tinycss2.parse_declaration_list(rule.content)
+                         if item.type == "declaration"}
+                self.assertFalse(names & {"width", "min-width", "max-width", "inline-size", "min-inline-size", "max-inline-size"})
         self.assertIn('url("about:home")', self.content_css)
         self.assertIn('url("about:newtab")', self.content_css)
         self.assertIn("width: min(100%, 560px) !important", self.content_css)

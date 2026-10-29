@@ -58,8 +58,15 @@ sidebar-main {
   color: var(--tn-fg) !important;
 }
 
-.tabbrowser-tab .tab-label {
-  font-family: "Maple Mono NF CN", monospace !important;
+/* Reading labels uses the UI face; URLs retain monospace for punctuation. */
+.tabbrowser-tab .tab-label,
+.tab-group-label,
+#allTabsMenu-allTabsView,
+#tabbrowser-tabs .tab-secondary-label,
+#tabbrowser-tabs .tab-label-container,
+#vertical-tabs-newtab-button .toolbarbutton-text {
+  font-family: "Inter", "Noto Sans CJK SC", sans-serif !important;
+  font-size: 14px !important;
 }
 
 #urlbar .urlbarView,
@@ -115,6 +122,10 @@ sidebar-main {
   width: 2px !important;
   border-radius: 2px !important;
   background: var(--tn-blue) !important;
+}
+
+.tabbrowser-tab[selected] .tab-label {
+  font-weight: 500 !important;
 }
 
 .tabbrowser-tab[selected] .tab-label,

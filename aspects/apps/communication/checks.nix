@@ -1,11 +1,34 @@
 { pkgs, home, ... }:
 let
   thunderbird = home.programs.thunderbird.package;
+  thunderbirdActivation = pkgs.writeText "thunderbird-ui-activation" home.home.activation.seedThunderbirdUi.data;
+  python = pkgs.python3.withPackages (p: [ p.tinycss2 ]);
   wechat = pkgs.lib.findFirst (
     package: (package.name or "") == "wechat-with-fcitx-ibus"
   ) (throw "communication: selected home.packages lacks the WeChat IME wrapper") home.home.packages;
 in
 {
+  communication-thunderbird-ui =
+    pkgs.runCommand "communication-thunderbird-ui-check"
+      {
+        nativeBuildInputs = [ python ];
+      }
+      ''
+        fallback_css="$(python3 - ${thunderbirdActivation} <<'PYTHON'
+        import shlex, sys
+        from pathlib import Path
+        commands = [shlex.split(line) for line in Path(sys.argv[1]).read_text().splitlines()]
+        paths = [words[index + 1] for words in commands for index, word in enumerate(words[:-1])
+                 if word.endswith("/seed-thunderbird-ui.py")]
+        assert len(paths) == 1, "Missing or ambiguous Thunderbird seed command"
+        print(paths[0])
+        PYTHON
+        )"
+        export TMPDIR="$PWD/tmp"
+        mkdir -p "$TMPDIR"
+        python3 ${./resources}/test_thunderbird_ui.py "$fallback_css"
+        touch "$out"
+      '';
   communication-portal-config = pkgs.runCommand "communication-portal-config-check" { } ''
     grep -Fq 'widget.use-xdg-desktop-portal.file-picker", 1' \
       ${thunderbird}/lib/thunderbird/mozilla.cfg

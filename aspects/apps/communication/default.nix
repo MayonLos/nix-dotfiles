@@ -1,9 +1,10 @@
 _: {
-  den.aspects.communication = _: {
+  imports = [ ../../appearance/appearance ];
+  den.aspects.communication = { user, ... }: {
     homeManager = { pkgs, ... }: {
       imports = [
         ./im.nix
-        ./thunderbird.nix
+        (import ./thunderbird.nix { palette = user.appearance; })
       ];
       # nixpkgs builds Vesktop with PipeWire support; this enables its system
       # Vencord integration. Its wrapper honors NIXOS_OZONE_WL in Wayland
