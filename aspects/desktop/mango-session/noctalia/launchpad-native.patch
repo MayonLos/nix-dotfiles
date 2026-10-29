@@ -1,0 +1,168 @@
+--- a/src/cli/schema_msg.h
++++ b/src/cli/schema_msg.h
+@@ -663,6 +663,9 @@
+     inline constexpr Command osdShow{"osd-show", "Show a custom OSD popup", {}, {},
+                                      {},         kMsgOsdShowPositionals,    {}, false};
+     inline constexpr Command osdToggle{"osd-toggle", "Toggle OSD popups", {}, {}, {}, {}, {}, false};
++    inline constexpr std::array appLaunchArgs{Positional{"desktop-path", {}, {}, true, false, false}};
++    inline constexpr Command appList{"app-list", "List native desktop applications as JSON", {}, {}, {}, {}, {}, false};
++    inline constexpr Command appLaunch{"app-launch", "Launch through the native application provider", {}, {}, {}, appLaunchArgs, {}, false};
+     inline constexpr Command panelClose{
+         "panel-close",
+         "Close the active panel, or close the named panel if it is active",
+@@ -1006,6 +1009,8 @@
+       msg::panelClose,
+       msg::panelOpen,
+       msg::panelToggle,
++      msg::appList,
++      msg::appLaunch,
+       msg::plugin,
+       msg::plugins,
+       msg::powerCycle,
+--- a/src/app/application_ipc.cpp
++++ b/src/app/application_ipc.cpp
+@@ -62,6 +62,30 @@
+     kLog.warn("IPC disabled: could not bind socket");
+   }
+ 
++  // R39: reuse native desktop scanning, invalidation and AppProvider launch policy.
++  m_ipcService.bind(noctalia::cli::msg::appList, [](const std::string&) {
++    refreshDesktopEntriesIfSourcesChanged();
++    const auto version = desktopEntriesVersion();
++    static std::uint64_t cachedVersion = 0;
++    static std::string cached;
++    if (cached.empty() || cachedVersion != version) {
++      auto apps = nlohmann::json::array();
++      for (const auto& entry : scanDesktopEntries("zh_CN")) {
++        apps.push_back({{"id", entry.id}, {"path", entry.path}, {"name", entry.name},
++                        {"aliases", entry.localizedNamesLower}, {"categories", entry.categories}});
++      }
++      cached = apps.dump() + "\n";
++      cachedVersion = version;
++    }
++    return cached;
++  });
++  m_ipcService.bind(noctalia::cli::msg::appLaunch, [this](const std::string& path) {
++    AppProvider provider(&m_configService, &m_compositorPlatform);
++    provider.initialize();
++    LauncherResult result;
++    result.desktopEntryPath = path;
++    return provider.activate(result) ? std::string("ok\n") : std::string("error: application launch failed\n");
++  });
+   m_dmenuIpc.setLauncherPanel(m_launcherPanel);
+   m_dmenuIpc.setPanelManager(&m_panelManager);
+   m_dmenuIpc.start();
+--- a/src/shell/dock/dock.cpp
++++ b/src/shell/dock/dock.cpp
+@@ -5,6 +5,7 @@
+ #include "config/config_service.h"
+ #include "core/deferred_call.h"
+ #include "core/log.h"
++#include "scripting/plugin_ipc.h"
+ #include "ipc/ipc_service.h"
+ #include "render/scene/node.h"
+ #include "shell/dock/dock_context_menu.h"
+@@ -929,7 +930,12 @@
+                                   shell::dock::DockInstance& inst, const shell::dock::DockItemAction& action
+                               ) { activateOrLaunchItem(inst, action); },
+           .toggleLauncher =
+-              [](shell::dock::DockInstance& inst) {
++              [this](shell::dock::DockInstance& inst) {
++                // R39: Dock owns the Launchpad entry; the bar owns the system menu.
++                if (std::ranges::contains(m_config->config().plugins.enabled, "nix-dotfiles/launchpad")) {
++                  (void)scripting::PluginIpcRouter::instance().dispatch("nix-dotfiles/launchpad:control all toggle");
++                  return;
++                }
+                 PanelManager::instance().togglePanel("launcher", PanelOpenRequest{.output = inst.output});
+               },
+           .openItemMenu = [this](
+--- a/src/scripting/plugin_layer_config.h
++++ b/src/scripting/plugin_layer_config.h
+@@ -6,6 +6,7 @@
+ #include <optional>
+ #include <string>
+ #include <string_view>
++#include <vector>
+ 
+ namespace scripting {
+ 
+@@ -47,6 +48,7 @@
+     std::int32_t exclusiveZone = 0;
+     PluginLayerKeyboard keyboard = PluginLayerKeyboard::None;
+     bool clickThrough = false;
++    std::vector<std::string> captureKeys;
+     // "all", "focused" (resolved when shown), or an output connector name.
+     std::string output = "all";
+ 
+--- a/src/scripting/plugin_layer_config.cpp
++++ b/src/scripting/plugin_layer_config.cpp
+@@ -1,4 +1,5 @@
+ #include "scripting/plugin_layer_config.h"
++#include "core/input/key_chord.h"
+ 
+ #include <utility>
+ 
+@@ -100,6 +101,18 @@
+   }
+ 
+   bool parsePluginLayerTable(const toml::table& table, PluginLayerConfig& config, std::string& error) {
++    if (const auto node = table["capture_keys"]) {
++      const auto* keys = node.as_array();
++      if (keys == nullptr) { error = "capture_keys must be an array"; return false; }
++      config.captureKeys.clear();
++      for (const auto& key : *keys) {
++        const auto* value = key.as_string();
++        if (value == nullptr || !parseKeyChordSpec(value->get().starts_with("Super+") ? value->get().substr(6) : value->get()).has_value()) {
++          error = "invalid capture_keys chord"; return false;
++        }
++        config.captureKeys.push_back(value->get());
++      }
++    }
+     if (const auto node = table["layer"]) {
+       const auto* value = node.as_string();
+       const auto level = value != nullptr ? parsePluginLayerLevel(value->get()) : std::nullopt;
+--- a/src/shell/plugin_layer/plugin_layer.cpp
++++ b/src/shell/plugin_layer/plugin_layer.cpp
+@@ -3,6 +3,8 @@
+ #include "compositors/compositor_platform.h"
+ #include "config/config_service.h"
+ #include "core/log.h"
++#include "core/input/key_chord.h"
++#include "core/input/key_modifiers.h"
+ #include "core/ui_phase.h"
+ #include "i18n/i18n.h"
+ #include "notification/notifications.h"
+@@ -350,6 +352,15 @@
+     m_inputDispatcher.pointerButton(x, y, event.button, event.pressed, event.serial, event.time, event.touch);
+     break;
+   case PointerEvent::Type::Axis:
++    // R39: layer wheel callback uses the same signed whole steps as widgets.
++    if (m_runtime != nullptr) {
++      const double steps = event.axisValue120 != 0 ? event.axisValue120 / 120.0
++          : event.axisDiscrete != 0 ? event.axisDiscrete : event.axisValue / 15.0;
++      if (steps != 0) {
++        (void)m_runtime->enqueueCallStrings("onScroll", event.axis == 0 ? "vertical" : "horizontal",
++            std::to_string(steps), makeScriptSnapshot());
++      }
++    }
+     m_inputDispatcher.pointerAxis(
+         x, y, event.axis, event.axisSource, event.axisValue, event.axisDiscrete, event.axisValue120, event.axisLines
+     );
+@@ -359,6 +370,17 @@
+ }
+ 
+ void PluginLayer::onKeyboardEvent(const KeyboardEvent& event) {
++  // R39: explicit capture consumes only declared chords; text/IME reaches ui.input.
++  if (!event.preedit && m_runtime != nullptr && m_runtime->hasOnKey()) {
++    for (const auto& spec : m_config.captureKeys) {
++      auto chord = parseKeyChordSpec(spec.starts_with("Super+") ? spec.substr(6) : spec);
++      if (chord.has_value() && spec.starts_with("Super+")) { chord->modifiers |= KeyMod::Super; }
++      if (chord.has_value() && keyChordMatches(*chord, event.sym, event.modifiers)) {
++        (void)m_runtime->enqueueCallArgs("onKey", scripting::ScriptArgs{spec, event.pressed}, makeScriptSnapshot());
++        return;
++      }
++    }
++  }
+   m_inputDispatcher.keyEvent(event.sym, event.utf32, event.modifiers, event.pressed, event.preedit);
+   syncAfterInput();
+ }

@@ -1,0 +1,29 @@
+id = "nix-dotfiles/launchpad"
+name = "Launchpad"
+version = "1.0.0"
+plugin_api = 36
+author = "nix-dotfiles"
+license = "MIT"
+description = "Cached fullscreen application drawer using the native desktop index and launch policy."
+icon = "layout-grid"
+
+[[service]]
+id = "control"
+entry = "control.luau"
+
+[[layer]]
+id = "drawer"
+entry = "drawer.luau"
+layer = "overlay"
+anchors = ["top", "bottom", "left", "right"]
+exclusive_zone = -1
+keyboard = "exclusive"
+output = "focused"
+# Local, build-checked Noctalia extension; ordinary text remains with ui.input.
+capture_keys = ["Escape", "Return", "Left", "Right", "Up", "Down", "Page_Up", "Page_Down", "Super+a"]
+
+[[setting]]
+key = "hidden_apps"
+type = "string_list"
+label_key = "hidden_apps"
+default = []

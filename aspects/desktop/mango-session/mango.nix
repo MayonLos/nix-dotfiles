@@ -329,6 +329,8 @@ in
       layer_rule = [
         "layer_name:.*,no_blur:1"
         "layer_name:^noctalia-(bar-.*|dock)$,no_blur:0,no_animation:1,no_shadow:1"
+        "layer_name:^(noctalia-system-menu|noctalia-plugin:nix-dotfiles/desktop-menus:preview)$,no_blur:0,no_animation:1,no_shadow:1"
+        "layer_name:^noctalia-plugin:nix-dotfiles/launchpad:drawer$,no_blur:0,no_animation:1,no_shadow:1"
         "layer_name:^noctalia-(panel|attached-panel|notification|osd|window-switcher|panel-click-shield)$,no_animation:1,no_blur:1,no_shadow:1"
         "layer_name:^noctalia-(screenshot-region|annotate)$,no_animation:1,no_blur:1,no_shadow:1"
       ];

@@ -7,6 +7,7 @@ let
     inherit pkgs;
     source = inputs.noctalia-plugins-community;
   };
+  localSource = import ./local.nix { inherit pkgs; };
 in
 {
   # Immutable plugin sources are pinned by flake.lock and available
@@ -34,7 +35,7 @@ in
       {
         name = "nix-dotfiles";
         kind = "path";
-        location = "${../resources/noctalia-plugins}";
+        location = "${localSource}";
         enabled = true;
       }
     ];
@@ -57,6 +58,8 @@ in
       "gambled23/mangowm-keymode" # mmsg; shows the keymode SUPER,R enters
       "knyrps/nix-search"
       "nix-dotfiles/legion-conservation"
+      "nix-dotfiles/launchpad"
+      "nix-dotfiles/desktop-menus"
 
       # Notes/todo plugins were consolidated into Quill. OCR is provided
       # by the native Print bindings; its plugin had no configured entry.
@@ -69,6 +72,36 @@ in
   # values belong in widget."<plugin-id>:<entry-id>". Keep secrets in
   # runtime state or supported runtime files, never in Nix strings.
   plugin_settings = {
+    "nix-dotfiles/launchpad".hidden_apps = [
+      "org.fcitx.fcitx5-migrator"
+      "org.fcitx.fcitx5-config-qt"
+      "thunar-settings"
+      "org.xfce.thunar-settings"
+      "rofi"
+      "rofi-theme-selector"
+      "org.fcitx.fcitx5-configtool"
+      "fcitx5-configtool"
+      "kbd-layout-viewer5"
+      "libreoffice-base"
+      "libreoffice-draw"
+      "libreoffice-math"
+      "libreoffice-startcenter"
+      "base"
+      "draw"
+      "math"
+      "startcenter"
+      "qt6ct"
+      "xterm"
+      "vim"
+      "gvim"
+      "nixos-manual"
+      "mark-shot-edit"
+    ];
+    "nix-dotfiles/desktop-menus" = {
+      system_placement = "floating";
+      system_position = "top_left";
+      system_open_near_click = true;
+    };
     # Explicit /tr queries use the selected online provider; ordinary launcher
     # searches never go through the translation service.
     "noctalia/translator" = {

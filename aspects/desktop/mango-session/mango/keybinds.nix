@@ -20,6 +20,7 @@ let
     "SUPER+ALT,G,toggleoverlay"
     "SUPER+CTRL,S,tag_special_silent"
     "ALT,space,spawn,noctalia msg panel-toggle launcher"
+    "SUPER,A,spawn,noctalia msg plugin nix-dotfiles/launchpad:control all toggle"
     "SUPER+ALT,D,spawn,noctalia msg notification-dnd-toggle"
     "SUPER+ALT,I,spawn,noctalia msg caffeine-toggle"
     "SUPER,S,spawn,noctalia msg panel-toggle control-center"

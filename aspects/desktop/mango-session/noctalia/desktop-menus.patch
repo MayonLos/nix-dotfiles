@@ -1,0 +1,308 @@
+--- a/src/shell/dock/dock.h
++++ b/src/shell/dock/dock.h
+@@ -100,6 +100,7 @@
+   std::unique_ptr<shell::dock::DockPopup> m_itemMenu;        // right-click context menu
+   Signal<>::ScopedConnection m_appIconColorizeConn;
+   bool m_overlayDisplaySuppressed = false;
++  bool m_launchpadSuppressed = false;
+   bool m_hadInstancesBeforeOverlaySuppress = false;
+   bool m_smartAutoHideReevalQueued = false;
+ };
+--- a/src/shell/dock/dock.cpp
++++ b/src/shell/dock/dock.cpp
+@@ -378,7 +378,7 @@
+ }
+ 
+ void Dock::show() {
+-  if (m_overlayDisplaySuppressed) {
++  if (m_overlayDisplaySuppressed || m_launchpadSuppressed) {
+     return;
+   }
+   if (m_config == nullptr || !dockMayBeEnabled(m_config->config().dock)) {
+@@ -654,7 +654,7 @@
+ // ── Private: instance management ─────────────────────────────────────────────
+ 
+ void Dock::syncInstances() {
+-  if (m_overlayDisplaySuppressed) {
++  if ((m_overlayDisplaySuppressed || m_launchpadSuppressed)) {
+     return;
+   }
+   const auto& outputs = m_platform->outputs();
+@@ -708,7 +708,7 @@
+ }
+ 
+ void Dock::onWorkspaceChanged() {
+-  if (m_platform == nullptr || m_overlayDisplaySuppressed) {
++  if (m_platform == nullptr || m_overlayDisplaySuppressed || m_launchpadSuppressed) {
+     return;
+   }
+   scheduleSmartAutoHideReevaluation();
+@@ -726,7 +726,7 @@
+ }
+ 
+ void Dock::reevaluateSmartAutoHide() {
+-  if (m_platform == nullptr || m_config == nullptr || m_overlayDisplaySuppressed) {
++  if (m_platform == nullptr || m_config == nullptr || m_overlayDisplaySuppressed || m_launchpadSuppressed) {
+     return;
+   }
+ 
+@@ -1317,6 +1317,17 @@
+ }
+ 
+ void Dock::registerIpc(IpcService& ipc) {
++  // R39a: never persist the drawer's temporary Dock visibility.
++  ipc.bind(noctalia::cli::msg::dockSuppress, [this](const std::string&) {
++    m_launchpadSuppressed = true;
++    closeAllInstances();
++    return std::string("ok\n");
++  });
++  ipc.bind(noctalia::cli::msg::dockRestore, [this](const std::string&) {
++    m_launchpadSuppressed = false;
++    show();
++    return std::string("ok\n");
++  });
+   ipc.bind(noctalia::cli::msg::dockShow, [this](const std::string&) -> std::string {
+     if (m_config)
+       m_config->setDockEnabled(true);
+--- a/src/cli/schema_msg.h
++++ b/src/cli/schema_msg.h
+@@ -666,6 +666,10 @@
+     inline constexpr std::array appLaunchArgs{Positional{"desktop-path", {}, {}, true, false, false}};
+     inline constexpr Command appList{"app-list", "List native desktop applications as JSON", {}, {}, {}, {}, {}, false};
+     inline constexpr Command appLaunch{"app-launch", "Launch through the native application provider", {}, {}, {}, appLaunchArgs, {}, false};
++    inline constexpr Command dockSuppress{"dock-suppress", "Temporarily suppress Dock surfaces", {}, {}, {}, {}, {}, false};
++    inline constexpr Command dockRestore{"dock-restore", "Restore temporarily suppressed Dock surfaces", {}, {}, {}, {}, {}, false};
++    inline constexpr std::array windowFocusArgs{Positional{"window-id", {}, {}, true, false, false}};
++    inline constexpr Command windowFocus{"window-focus", "Focus a compositor model window", {}, {}, {}, windowFocusArgs, {}, false};
+     inline constexpr Command panelClose{
+         "panel-close",
+         "Close the active panel, or close the named panel if it is active",
+@@ -1010,6 +1014,9 @@
+       msg::panelOpen,
+       msg::panelToggle,
+       msg::appList,
++      msg::dockSuppress,
++      msg::dockRestore,
++      msg::windowFocus,
+       msg::appLaunch,
+       msg::plugin,
+       msg::plugins,
+--- a/src/app/application_ipc.cpp
++++ b/src/app/application_ipc.cpp
+@@ -86,6 +86,16 @@
+     result.desktopEntryPath = path;
+     return provider.activate(result) ? std::string("ok\n") : std::string("error: application launch failed\n");
+   });
++  m_ipcService.bind(noctalia::cli::msg::windowFocus, [this](const std::string& id) {
++    // R39a: validate against the same assignments used by taskbar/window switcher.
++    for (const auto& w : m_compositorPlatform.workspaceWindowAssignments()) {
++      if (w.windowId == id) {
++        m_compositorPlatform.focusCompositorWindow(id);
++        return std::string("ok\n");
++      }
++    }
++    return std::string("error: window no longer exists\n");
++  });
+   m_dmenuIpc.setLauncherPanel(m_launcherPanel);
+   m_dmenuIpc.setPanelManager(&m_panelManager);
+   m_dmenuIpc.start();
+--- a/src/shell/bar/widgets/workspaces_widget.h
++++ b/src/shell/bar/widgets/workspaces_widget.h
+@@ -38,6 +38,8 @@
+     WorkspacesStyle style = WorkspacesStyle::Regular;
+     WorkspacesLabelSource labelSource = WorkspacesLabelSource::Id;
+     bool showLabels = true;
++    bool activeDot = false;
++    bool hoverPreview = false;
+     bool showIcons = true;
+     ColorSpec focusedColor = colorSpecFromRole(ColorRole::Primary);
+     ColorSpec occupiedColor = colorSpecFromRole(ColorRole::Secondary);
+@@ -122,6 +124,7 @@
+   struct Item {
+     InputArea* area = nullptr;
+     Box* indicator = nullptr;
++    Box* activeDot = nullptr;
+     Label* text = nullptr;
+     Image* icon = nullptr;
+     Workspace workspace;
+@@ -169,6 +172,9 @@
+   wl_output* m_output = nullptr;
+   WorkspacesLabelSource m_labelSource = WorkspacesLabelSource::Id;
+   bool m_showLabels = true;
++  bool m_activeDot = false;
++  bool m_hoverPreview = false;
++  void previewHover(InputArea* area, std::string_view event);
+   std::size_t m_maxLabelChars = 1;
+   bool m_labelsOnlyWhenOccupied = false;
+   bool m_showIcons = true;
+--- a/src/shell/bar/widgets/workspaces_widget_definition.cpp
++++ b/src/shell/bar/widgets/workspaces_widget_definition.cpp
+@@ -40,6 +40,8 @@
+       .type = "workspaces",
+       .fields =
+           {
++              field<&Options::activeDot>({.key = "active_dot"}),
++              field<&Options::hoverPreview>({.key = "hover_preview"}),
+               field<&Options::hideWhenEmpty>({
+                   .key = "hide_when_empty",
+                   .presentation =
+--- a/src/shell/bar/widgets/workspaces_widget.cpp
++++ b/src/shell/bar/widgets/workspaces_widget.cpp
+@@ -9,6 +9,8 @@
+ #include "render/scene/input_area.h"
+ #include "render/scene/node.h"
+ #include "system/app_identity.h"
++#include "scripting/plugin_ipc.h"
++#include <nlohmann/json.hpp>
+ #include "system/desktop_entry.h"
+ #include "system/icon_resolver.h"
+ #include "system/internal_app_metadata.h"
+@@ -72,7 +74,7 @@
+     CompositorPlatform& platform, ConfigService& config, wl_output* output, Options options
+ )
+     : m_platform(platform), m_configService(config), m_output(output), m_labelSource(options.labelSource),
+-      m_showLabels(options.showLabels), m_maxLabelChars(options.maxLabelChars),
++      m_showLabels(options.showLabels), m_activeDot(options.activeDot), m_hoverPreview(options.hoverPreview), m_maxLabelChars(options.maxLabelChars),
+       m_labelsOnlyWhenOccupied(options.labelsOnlyWhenOccupied), m_showIcons(options.showIcons),
+       m_hideWhenEmpty(options.hideWhenEmpty), m_showAllOutputs(options.showAllOutputs), m_pillScale(options.pillScale),
+       m_activePillSize(std::clamp(options.activePillSize, 0.25F, 8.0F)),
+@@ -143,6 +145,34 @@
+     rootNode->setVisible(showWidget);
+     rootNode->setParticipatesInLayout(showWidget);
+   }
++}
++
++// R39a: one hover snapshot from the native compositor model, never mmsg polling.
++void WorkspacesWidget::previewHover(InputArea* area, std::string_view event) {
++  if (!m_hoverPreview) return;
++  auto& router = scripting::PluginIpcRouter::instance();
++  if (event == "leave") {
++    (void)router.dispatch("nix-dotfiles/desktop-menus:control all leave");
++    return;
++  }
++  const auto it = std::ranges::find(m_items, area, &Item::area);
++  if (it == m_items.end() || it->exiting) return;
++  const auto* output = m_platform.findOutputByWl(it->output);
++  if (output == nullptr) return;
++  auto windows = nlohmann::json::array();
++  for (const auto& w : m_platform.workspaceWindowAssignments(it->output)) {
++    if (w.workspaceKey != it->workspace.id) continue;
++    const auto identity = app_identity::resolveRunningDesktopEntry(w.appId, desktopEntries());
++    windows.push_back({{"id", w.windowId}, {"appId", w.appId},
++                       {"app", identity.name.empty() ? w.appId : identity.name}, {"title", w.title}});
++  }
++  float x = 0, y = 0;
++  Node::absolutePosition(area, x, y);
++  nlohmann::json context = {{"workspace", it->label}, {"key", it->workspace.id},
++      {"output", output->connectorName}, {"x", x + area->width() * 0.5F},
++      {"width", output->effectiveLogicalWidth()}, {"height", output->effectiveLogicalHeight()},
++      {"windows", windows}};
++  (void)router.dispatch("nix-dotfiles/desktop-menus:control all hover " + context.dump());
+ }
+ 
+ void WorkspacesWidget::setWorkspaceClickHandler(InputArea& area, wl_output* output, const Workspace& workspace) {
+@@ -535,7 +565,7 @@
+   }
+ 
+   m_gap = gap;
+-  m_indicatorHeight = isMinimal() ? std::round(maxLabelHeight + padding) : pillHeight;
++  m_indicatorHeight = isMinimal() ? std::round(maxLabelHeight + padding + (m_activeDot ? 6.0F * m_contentScale : 0.0F)) : pillHeight;
+ 
+   for (std::size_t i = 0; i < entries.size(); ++i) {
+     const auto& entry = entries[i];
+@@ -611,11 +641,19 @@
+       syncActiveWindowIcon(renderer, item);
+     }
+ 
++    if (isMinimal() && m_activeDot) {
++      item.activeDot = static_cast<Box*>(area->addChild(ui::box({
++          .fill = m_focusedColor, .radius = 2.0F * m_contentScale,
++          .width = 4.0F * m_contentScale, .height = 4.0F * m_contentScale,
++      })));
++      item.activeDot->setHitTestVisible(false);
++    }
+     InputArea* areaPtr = area.get();
+     if (!entry.exiting) {
+       setWorkspaceClickHandler(*area, entry.output, ws);
+ 
+       area->setOnEnter([this, areaPtr](const InputArea::PointerData&) {
++        previewHover(areaPtr, "hover");
+         if (!m_changeColorOnHover) {
+           return;
+         }
+@@ -654,6 +692,7 @@
+       });
+ 
+       area->setOnLeave([this, areaPtr] {
++        previewHover(areaPtr, "leave");
+         if (m_hoveredArea != areaPtr) {
+           return;
+         }
+@@ -1132,6 +1171,11 @@
+     }
+   }
+ 
++  if (it.activeDot != nullptr) {
++    const float size = 4.0F * m_contentScale;
++    it.activeDot->setVisible(it.workspace.active && !hidden);
++    it.activeDot->setPosition((itemW - size) * 0.5F, itemH - size);
++  }
+   if (m_hoveredArea == it.area) {
+     updateHoverOverlay();
+   }
+@@ -1217,13 +1261,14 @@
+         item.indicator->setFill(colorSpecFromRole(ColorRole::Hover));
+       }
+       if (item.text != nullptr) {
+-        item.text->setColor(colorSpecFromRole(isMinimal() ? ColorRole::Hover : ColorRole::OnHover));
++        item.text->setColor(colorSpecFromRole(isMinimal() ? ColorRole::OnSurfaceVariant : ColorRole::OnHover));
+       }
+     } else {
+       applyItemVisualStyle(item);
+     }
+   }
+ 
++  if (isMinimal()) return;
+   // Minimal mode uses the translucent overlay
+   if (m_hoverOverlay == nullptr) {
+     return;
+--- a/src/shell/panel/plugin_panel.h
++++ b/src/shell/panel/plugin_panel.h
+@@ -59,6 +59,8 @@
+   PluginPanel(scripting::PluginRuntimeContext context, const PluginPanelOptions& options);
+   ~PluginPanel() override;
+ 
++  // R39a: the small system menu supplies its own translucent chrome.
++  [[nodiscard]] bool hasDecoration() const override { return m_entryId != "nix-dotfiles/desktop-menus:system"; }
+   void create() override;
+   void onOpen(std::string_view context) override;
+   void onClose() override;
+--- a/src/shell/panel/panel_manager.cpp
++++ b/src/shell/panel/panel_manager.cpp
+@@ -934,7 +934,7 @@
+   }
+ 
+   auto surfaceConfig = LayerSurfaceConfig{
+-      .nameSpace = "noctalia-panel",
++      .nameSpace = m_activePanelId == "nix-dotfiles/desktop-menus:system" ? "noctalia-system-menu" : "noctalia-panel",
+       .layer = floatingPanelLayer,
+       .anchor = standaloneAnchor,
+       .width = requestedSurfaceWidth,
+--- a/src/shell/session/session_panel.cpp
++++ b/src/shell/session/session_panel.cpp
+@@ -273,10 +273,14 @@
+   }
+ }
+ 
+-void SessionPanel::onOpen(std::string_view /*context*/) {
++void SessionPanel::onOpen(std::string_view context) {
+   m_selectedIndex.reset();
+   m_pendingCountdown.reset();
+   m_actionQueued = false;
++  // R39a: select the requested action; opening never arms or executes it.
++  for (std::size_t i = 0; i < m_visibleEntries.size(); ++i) {
++    if (m_visibleEntries[i].action == context) m_selectedIndex = i;
++  }
+   hideCountdownOverlays();
+   restoreEntryBadges();
+   updateSelectionVisuals();
