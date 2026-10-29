@@ -1,279 +1,92 @@
--- Snacks owns the dashboard buffer and recent/project actions. This module
--- keeps its content as a small, palette-driven TUI rather than a large logo.
+-- A centered workspace block. Snacks owns history, navigation and actions;
+-- fixed icon/key slots and a bounded selection rail keep every row aligned.
 local M = {}
-
-vim.g.mayon_ui_started_at = vim.g.mayon_ui_started_at or vim.uv.hrtime()
-
-local content_width = 72
-local menu_width = 34
-local menu_gap = 4
-local menu_rows = {}
+local content_width = 60
+local selection_ns = vim.api.nvim_create_namespace("MayonDashboardSelection")
 local active_dashboard
-local render_context
-local menu_ns = vim.api.nvim_create_namespace("MayonDashboardMenu")
-
-local function palette()
-	return require("mayon.generated").palette
-end
-
-local function dashboard_palette()
-	local p = palette()
-	local groups = {
-		MayonDashboardNormal = { fg = p.fg, bg = p.bg },
-		MayonDashboardMuted = { fg = p.muted, bg = p.bg },
+local function highlights()
+	local p = require("mayon.generated").palette
+	for name, spec in pairs({
+		MayonDashboardNormal = { fg = p.brightFg, bg = p.bg },
 		MayonDashboardBright = { fg = p.brightFg, bg = p.bg },
-		MayonDashboardBlue = { fg = p.blue, bg = p.bg, bold = true },
-		MayonDashboardGreen = { fg = p.green, bg = p.bg },
-		MayonDashboardKey = { fg = p.muted, bg = p.surface },
-		MayonDashboardKeyActive = { fg = p.blue, bg = p.selection, bold = true },
+		MayonDashboardMuted = { fg = p.muted, bg = p.bg },
+		MayonDashboardBlue = { fg = p.blue, bg = p.bg },
+		MayonDashboardKey = { fg = p.muted, bg = p.bg },
+		MayonDashboardTitle = { fg = p.fg, bg = p.bg, bold = true },
+		MayonDashboardRail = { fg = p.blue, bg = p.selection },
 		MayonDashboardSelection = { fg = p.brightFg, bg = p.selection },
-		MayonDashboardSelectedIcon = { fg = p.blue, bg = p.selection },
-		MayonDashboardRule = { fg = require("mayon.ui.theme").blend(p.border, p.deep, 0.28), bg = p.bg },
-	}
-	for name, spec in pairs(groups) do
+		SnacksDashboardNormal = { fg = p.brightFg, bg = p.bg },
+		SnacksDashboardTitle = { fg = p.muted, bg = p.bg },
+		SnacksDashboardDesc = { fg = p.brightFg, bg = p.bg },
+		SnacksDashboardKey = { fg = p.blue, bg = p.bg },
+		SnacksDashboardIcon = { fg = p.blue, bg = p.bg },
+		SnacksDashboardEndOfBuffer = { fg = p.bg, bg = p.bg },
+	}) do
 		vim.api.nvim_set_hl(0, name, spec)
 	end
-	-- Snacks' linked default leaves some terminal backgrounds inherited. Pin all
-	-- dashboard window text groups to the same palette background.
-	vim.api.nvim_set_hl(0, "SnacksDashboardNormal", { fg = p.fg, bg = p.bg })
-	vim.api.nvim_set_hl(0, "SnacksDashboardEndOfBuffer", { fg = p.bg, bg = p.bg })
 end
-
-local function install_dashboard_palette()
-	dashboard_palette()
-	local group = vim.api.nvim_create_augroup("MayonDashboardPalette", { clear = true })
-	vim.api.nvim_create_autocmd("ColorScheme", {
-		group = group,
-		callback = dashboard_palette,
-	})
-end
-
-local function display_width(value)
-	return vim.api.nvim_strwidth(value)
-end
-
-local function fit_left(value, width)
-	if width <= 0 then
-		return ""
+local function relative_file(file)
+	local relative = vim.fs.relpath(vim.fn.getcwd(), file)
+	if relative then
+		return relative
 	end
-	if display_width(value) <= width then
-		return value .. string.rep(" ", width - display_width(value))
+	local root = vim.fs.root(vim.fs.dirname(file), { ".git", "flake.nix", "pyproject.toml", "package.json" })
+	return root and (vim.fs.basename(root) .. "/" .. vim.fs.relpath(root, file)) or vim.fn.fnamemodify(file, ":~")
+end
+
+local function dashboard_file(item, ctx)
+	local path = item.icon == "directory" and vim.fn.fnamemodify(item.file, ":~:.") or relative_file(item.file)
+	return { require("mayon.ui.text").truncate(path, ctx.width or content_width - 9), hl = "MayonDashboardMuted" }
+end
+
+local function dashboard_icon(item)
+	local icon, hl = item.icon, "MayonDashboardBlue"
+	if icon == "directory" then
+		icon = "󰉋"
+	elseif item.file then
+		icon, hl = require("mayon.ui.icons").get(item.file)
 	end
-	local chars, used, result = vim.fn.strchars(value), 1, ""
-	for index = 0, chars - 1 do
-		local char = vim.fn.strcharpart(value, index, 1)
-		local char_width = display_width(char)
-		if used + char_width > width then
+	icon = vim.trim(icon or "")
+	return { icon, hl = hl, width = 2 }
+end
+
+local function selection(d)
+	if not d or not d.win or not vim.api.nvim_win_is_valid(d.win) or vim.api.nvim_win_get_buf(d.win) ~= d.buf then
+		return
+	end
+	vim.api.nvim_buf_clear_namespace(d.buf, selection_ns, 0, -1)
+	local row = vim.api.nvim_win_get_cursor(d.win)[1]
+	for _, item in ipairs(d.items) do
+		if item.action and item._ and item._.row == row then
+			local line = vim.api.nvim_buf_get_lines(d.buf, row - 1, row, false)[1] or ""
+			local col = math.max(0, math.floor(d.col))
+			vim.api.nvim_buf_set_extmark(d.buf, selection_ns, row - 1, col, {
+				end_col = #line,
+				hl_group = "MayonDashboardSelection",
+				priority = 10000,
+			})
+			vim.api.nvim_buf_set_extmark(d.buf, selection_ns, row - 1, col, {
+				virt_text = { { "▎", "MayonDashboardRail" } },
+				virt_text_pos = "overlay",
+				priority = 10001,
+			})
 			break
 		end
-		result = result .. char
-		used = used + char_width
 	end
-	return result .. "…" .. string.rep(" ", math.max(0, width - used))
 end
 
-local function fit_right(value, width)
-	if display_width(value) > width then
-		local chars, result, used = vim.fn.strchars(value), "", 1
-		for index = chars - 1, 0, -1 do
-			local char = vim.fn.strcharpart(value, index, 1)
-			local char_width = display_width(char)
-			if used + char_width > width then
-				break
-			end
-			result = char .. result
-			used = used + char_width
-		end
-		value = "…" .. result
-	end
-	return string.rep(" ", math.max(0, width - display_width(value))) .. value
-end
-
-local function current_root()
-	local cwd = vim.fn.getcwd()
-	return vim.fs.root(cwd, { ".git", "flake.nix", "pyproject.toml", "package.json" }) or cwd
-end
-
-local function git_branch(root)
-	local git_path = root .. "/.git"
-	local stat = vim.uv.fs_stat(git_path)
-	if not stat then
-		return ""
-	end
-	if stat.type == "file" then
-		local marker = vim.fn.readfile(git_path, "", 1)[1] or ""
-		local relative = marker:match("^gitdir:%s*(.+)$")
-		if not relative then
-			return ""
-		end
-		git_path = vim.fs.normalize(relative:sub(1, 1) == "/" and relative or (root .. "/" .. relative))
-	else
-		git_path = git_path
-	end
-	if vim.fn.filereadable(git_path .. "/HEAD") == 0 then
-		return ""
-	end
-	local head = vim.fn.readfile(git_path .. "/HEAD", "", 1)[1] or ""
-	return head:match("^ref:%s+refs/heads/(.+)$") or ""
-end
-
-local function project_context()
-	if render_context then
-		return unpack(render_context)
-	end
-	local root = current_root()
-	local home = (vim.uv.os_get_passwd() or {}).homedir or vim.env.HOME or ""
-	local shown = root
-	if home ~= "" and root:sub(1, #home) == home then
-		shown = "~" .. root:sub(#home + 1)
-	end
-	local branch = git_branch(root)
-	return root, shown, branch
-end
-
-local function title_line()
-	local _, root, branch = project_context()
-	local context = root .. (branch ~= "" and (" · " .. branch) or "")
-	local available = content_width - display_width("mayon.nvim") - 2
-	context = fit_right(context, available)
-	local gap = content_width - display_width("mayon.nvim") - display_width(context)
-	return {
-		{ "mayon", hl = "MayonDashboardBright" },
-		{ ".", hl = "MayonDashboardBlue" },
-		{ "nvim", hl = "MayonDashboardBright" },
-		{ string.rep(" ", math.max(1, gap)), hl = "MayonDashboardNormal" },
-		{ context, hl = "MayonDashboardMuted" },
-	}
-end
-
-local function title_section()
-	return { text = title_line(), padding = { 0, 0 } }
-end
-
-local function rule_section()
-	return {
-		text = {
-			{ string.rep("━", math.min(48, content_width)), hl = "MayonDashboardBlue" },
-			{ string.rep("─", math.max(0, content_width - 48)), hl = "MayonDashboardRule" },
-		},
-		padding = { 1, 0 },
-	}
-end
-
-local actions = {
-	{ key = "f", icon = "⌕", desc = "Find Files", action = ":lua Snacks.picker.files()" },
-	{ key = "g", icon = "⌗", desc = "Search Text", action = ":lua Snacks.picker.grep()" },
-	{ key = "r", icon = "◷", desc = "Find Recent Files", action = ":lua Snacks.picker.recent()" },
-	{
-		key = "s",
-		icon = "↶",
-		desc = "Load Session",
-		action = function()
-			local sessions = require("mayon.features.sessions")
-			sessions.setup()
-			sessions.last()
-		end,
-	},
-	{ key = "p", icon = "▣", desc = "Find Projects", action = ":lua Snacks.picker.projects()" },
-	{ key = "a", icon = "✳", desc = "Open Claude Code", action = ":ClaudeCode" },
-	{ key = "n", icon = "+", desc = "Create File", action = ":ene | startinsert" },
-	{
-		key = "c",
-		icon = "⚙",
-		desc = "Open Neovim Config",
-		action = ":lua Snacks.picker.files({cwd = vim.env.NVIM_CONFIG_DIR})",
-	},
-}
-
-local function menu_cell(action)
-	local prefix = " " .. fit_left(action.icon, 2) .. " "
-	return {
-		{ prefix, hl = "MayonDashboardBlue" },
-		{ fit_left(action.desc, menu_width - 3 - display_width(prefix)), hl = "MayonDashboardBright" },
-		{ " " .. action.key .. " ", hl = "MayonDashboardKey" },
-	}
-end
-
-local function menu_section()
-	local result = {}
-	for index = 1, #actions, 2 do
-		local left, right = actions[index], actions[index + 1]
-		local spans = menu_cell(left)
-		spans[#spans + 1] = { string.rep(" ", menu_gap) }
-		vim.list_extend(spans, menu_cell(right))
-		local item = { text = spans, key = left.key, action = left.action }
-		item.render = function(_, pos)
-			local left_text, right_text = "", ""
-			for _, span in ipairs(menu_cell(left)) do
-				left_text = left_text .. span[1]
-			end
-			for _, span in ipairs(menu_cell(right)) do
-				right_text = right_text .. span[1]
-			end
-			menu_rows[pos[1] - 1] = {
-				base_col = pos[2] + 1,
-				left = left,
-				right = right,
-				left_bytes = #left_text,
-				right_bytes = #right_text,
-			}
-		end
-		result[#result + 1] = item
-		result[#result + 1] = { hidden = true, key = right.key, action = right.action }
-	end
-	return result
-end
-
-local function group_heading(label, right)
-	local rhs = fit_right(right or "", content_width - display_width(label) - 2)
-	local left_width = display_width(label)
-	local rhs_width = display_width(rhs)
-	local gap = math.max(1, content_width - left_width - rhs_width)
-	return {
-		text = {
-			{ label, hl = "MayonDashboardMuted" },
-			{ string.rep(" ", gap), hl = "MayonDashboardNormal" },
-			{ rhs, hl = "MayonDashboardMuted" },
-		},
-		padding = { 0, 1 },
-	}
-end
-
-local recent_limit = 4
-local project_limit = 3
-
-local function recent_section()
-	local _, shown = project_context()
-	local rows = { group_heading("RECENT", shown) }
-	local recent = Snacks.dashboard.sections.recent_files({ limit = recent_limit })()
-	for _, item in ipairs(recent) do
-		item.indent = 2
-		rows[#rows + 1] = item
-	end
-	return rows
-end
-
-local project_rows = setmetatable({}, { __mode = "k" })
-local project_rows_limit = setmetatable({}, { __mode = "k" })
+-- Discover ancestors/history after the first frame, retaining the startup
+-- latency guard while letting Snacks own the actual project data and actions.
+local project_cache = setmetatable({}, { __mode = "k" })
 local project_pending = setmetatable({}, { __mode = "k" })
-local function projects_section(dashboard)
-	local rows = { group_heading("PROJECTS") }
-	if (project_rows_limit[dashboard] or 0) < project_limit and not project_pending[dashboard] then
+local function projects(dashboard, limit)
+	if not project_cache[dashboard] and not project_pending[dashboard] then
 		project_pending[dashboard] = true
-		local requested_limit = project_limit
-		-- Recent files and their icons belong to frame one. Project discovery
-		-- walks history and ancestors, so let the first dashboard frame render.
 		vim.schedule(function()
-			project_rows[dashboard] = Snacks.dashboard.sections.projects({
-				limit = requested_limit,
-				pick = false,
-				session = false,
-			})
-			project_rows_limit[dashboard] = requested_limit
+			project_cache[dashboard] = Snacks.dashboard.sections.projects({ limit = 4, pick = false, session = false })
 			project_pending[dashboard] = nil
 			if
 				dashboard.win
-				and dashboard.buf
 				and vim.api.nvim_win_is_valid(dashboard.win)
 				and vim.api.nvim_win_get_buf(dashboard.win) == dashboard.buf
 			then
@@ -281,320 +94,159 @@ local function projects_section(dashboard)
 			end
 		end)
 	end
-	for index, item in ipairs(project_rows[dashboard] or {}) do
-		if index > project_limit then
-			break
-		end
-		item.indent = 2
-		rows[#rows + 1] = item
-	end
-	return rows
+	return vim.list_slice(project_cache[dashboard] or {}, 1, limit)
 end
 
-local function trim_left(text, width)
-	if width <= 0 then
-		return ""
-	end
-	if display_width(text) <= width then
-		return text
-	end
-	local result = ""
-	local used = 1
-	for index = vim.fn.strchars(text) - 1, 0, -1 do
-		local char = vim.fn.strcharpart(text, index, 1)
-		local char_width = display_width(char)
-		if used + char_width > width then
-			break
-		end
-		result = char .. result
-		used = used + char_width
-	end
-	return "…" .. result
+local actions = {
+	{ icon = "󰉋", key = "f", desc = "Open", action = ":lua Snacks.picker.files()" },
+	{ icon = "󰍉", key = "g", desc = "Search", action = ":lua Snacks.picker.grep()" },
+	{ icon = "󰎔", key = "n", desc = "New", action = ":ene | startinsert" },
+	{ icon = "󰒓", key = "c", desc = "Config", action = ":lua Snacks.picker.files({cwd = vim.env.NVIM_CONFIG_DIR})" },
+	{ icon = "󰗼", key = "q", desc = "Quit", action = ":qa" },
+}
+local hidden_actions = {
+	{ key = "r", action = ":lua Snacks.picker.recent()" },
+	{ key = "p", action = ":lua Snacks.picker.projects()" },
+	{ key = "a", action = ":ClaudeCode" },
+	{
+		key = "s",
+		action = function()
+			local sessions = require("mayon.features.sessions")
+			sessions.setup()
+			sessions.last()
+		end,
+	},
+}
+local function heading(text)
+	return { text = { { "  " .. text, hl = "MayonDashboardMuted" } } }
 end
-
-local function relative_parent(file)
-	local root = vim.fs.root(file, { ".git", "flake.nix", "pyproject.toml", "package.json" })
-	local parent = vim.fn.fnamemodify(file, ":h")
-	if root then
-		parent = vim.fs.relpath(root, parent) or parent
-	else
-		parent = vim.fn.fnamemodify(parent, ":~")
-	end
-	return parent == "" and "." or parent
-end
-
-local function dashboard_file(item, ctx)
-	local filename = vim.fn.fnamemodify(item.file, ":t")
-	local width = math.max(0, (ctx.width or content_width) - 2)
-	local parent
-	if item.icon == "directory" then
-		local home = (vim.uv.os_get_passwd() or {}).homedir or vim.env.HOME or ""
-		parent = vim.fn.fnamemodify(item.file, ":h")
-		if home ~= "" and parent:sub(1, #home) == home then
-			parent = "~" .. parent:sub(#home + 1)
-		end
-	else
-		parent = relative_parent(item.file)
-	end
-	if display_width(parent) > 20 then
-		parent = "…/" .. (parent:match("([^/]+/[^/]+)$") or parent:match("([^/]+)$") or parent)
-	end
-	local parent_width =
-		math.max(0, math.min(20, display_width(parent), width - math.min(28, display_width(filename)) - 2))
-	local filename_width = math.max(1, width - parent_width - 2)
-	filename = fit_left(filename, filename_width)
-	parent = trim_left(parent, parent_width)
-	local gap = math.max(2, width - display_width(filename) - display_width(parent))
-	return {
-		{ filename, hl = "MayonDashboardBright" },
-		{ string.rep(" ", gap), hl = "MayonDashboardNormal" },
-		{ parent, hl = "MayonDashboardMuted" },
-	}
-end
-
-local function dashboard_icon(item)
-	if item.icon == "directory" then
-		return { "▸ ", hl = "MayonDashboardBlue", width = 2 }
-	end
-	-- Missing icons remain blank rather than exposing Snacks' category labels.
-	local icon, highlight = require("mayon.ui.icons").get(item.file)
-	return { icon, hl = highlight, width = vim.fn.strdisplaywidth(icon) }
-end
-
-local function startup_footer()
-	local elapsed = vim.g.mayon_startup_ms
-	if type(elapsed) ~= "number" then
-		local started = vim.g.mayon_ui_started_at
-		elapsed = type(started) == "number" and (vim.uv.hrtime() - started) / 1e6 or 0
-	end
-	local plugin_count = vim.tbl_count(require("mayon.generated").plugin_dependencies)
-	local version = vim.version()
-	local nvim_version = string.format("nvim %d.%d.%d", version.major, version.minor, version.patch)
-	return {
-		text = {
-			{ "● ", hl = "MayonDashboardGreen" },
-			{ tostring(plugin_count) .. " plugins", hl = "MayonDashboardMuted" },
-			{ " · ", hl = "MayonDashboardMuted" },
-			{ string.format("%.1f ms", elapsed), hl = "MayonDashboardMuted" },
-			{ " · " .. nvim_version .. " · ", hl = "MayonDashboardMuted" },
-			{ "● ", hl = "MayonDashboardGreen" },
-			{ "copilot", hl = "MayonDashboardMuted" },
-		},
-		align = "center",
-		padding = { 1, 0 },
-	}
-end
-
-local function install_selection()
-	local group = vim.api.nvim_create_augroup("MayonDashboardSelection", { clear = true })
+function M.config()
+	highlights()
+	local group = vim.api.nvim_create_augroup("MayonDashboard", { clear = true })
+	vim.api.nvim_create_autocmd("ColorScheme", { group = group, callback = highlights })
+	vim.api.nvim_create_autocmd("User", {
+		group = group,
+		pattern = "SnacksDashboardUpdatePre",
+		callback = function()
+			local d = active_dashboard
+			if
+				not d
+				or not d.win
+				or not vim.api.nvim_win_is_valid(d.win)
+				or vim.api.nvim_win_get_buf(d.win) ~= d.buf
+			then
+				return
+			end
+			local row = vim.api.nvim_win_get_cursor(d.win)[1]
+			for _, item in ipairs(d.items or {}) do
+				if item.action and item._ and item._.row == row then
+					d._mayon_selection = item.file or item.key
+					break
+				end
+			end
+		end,
+	})
 	vim.api.nvim_create_autocmd("User", {
 		group = group,
 		pattern = "SnacksDashboardUpdatePost",
 		callback = function()
-			local dashboard = active_dashboard
+			local d = active_dashboard
 			if
-				not dashboard
-				or not vim.api.nvim_buf_is_valid(dashboard.buf)
-				or not vim.api.nvim_win_is_valid(dashboard.win)
-				or vim.api.nvim_win_get_buf(dashboard.win) ~= dashboard.buf
+				not d
+				or not d.win
+				or not vim.api.nvim_win_is_valid(d.win)
+				or vim.api.nvim_win_get_buf(d.win) ~= d.buf
 			then
 				return
 			end
-			local buf, win = dashboard.buf, dashboard.win
-			if vim.bo[buf].filetype ~= "snacks_dashboard" then
-				return
-			end
-			-- Snacks suppresses both bars at startup; retain our dashboard rail.
-			vim.o.laststatus = 3
-			if vim.api.nvim_get_current_buf() == buf then
-				vim.o.showtabline = 2
-			end
-			vim.wo[win].cursorline = false
-			vim.wo[win].winhighlight =
+			vim.o.laststatus, vim.o.showtabline = 3, 0
+			vim.wo[d.win].winbar = ""
+			vim.wo[d.win].spell = false
+			vim.wo[d.win].cursorline = false
+			vim.wo[d.win].winhighlight =
 				"Normal:SnacksDashboardNormal,NormalNC:SnacksDashboardNormal,EndOfBuffer:SnacksDashboardEndOfBuffer"
-			-- Native Snacks assumes one actionable item per row. Our grid retains
-			-- its shortcuts but uses byte-correct cell selection and Enter dispatch.
-			pcall(vim.api.nvim_del_augroup_by_name, "snacks_dashboard_cursor")
-			local function selection()
-				if not vim.api.nvim_buf_is_valid(buf) or not vim.api.nvim_win_is_valid(win) then
-					return
-				end
-				vim.api.nvim_buf_clear_namespace(buf, menu_ns, 0, -1)
-				local cursor = vim.api.nvim_win_get_cursor(win)
-				local row, col = cursor[1] - 1, cursor[2]
-				local item = menu_rows[row]
-				if not item then
-					return
-				end
-				local right = col >= item.base_col + item.left_bytes + menu_gap
-				local start = item.base_col + (right and (item.left_bytes + menu_gap) or 0)
-				local action = right and item.right or item.left
-				local overlay = {
-					{ "▎" .. fit_left(action.icon, 2) .. " ", "MayonDashboardSelectedIcon" },
-					{
-						fit_left(action.desc, menu_width - 3 - display_width(" " .. fit_left(action.icon, 2) .. " ")),
-						"MayonDashboardSelection",
-					},
-					{ " " .. action.key .. " ", "MayonDashboardKeyActive" },
-				}
-				vim.api.nvim_buf_set_extmark(buf, menu_ns, row, start, {
-					virt_text = overlay,
-					virt_text_pos = "overlay",
-					priority = 10000,
-				})
-			end
-			local rows = vim.tbl_keys(menu_rows)
-			table.sort(rows)
-			local function move(horizontal, vertical)
-				local cursor = vim.api.nvim_win_get_cursor(win)
-				local row = cursor[1] - 1
-				local previous = menu_rows[row]
-				local side = horizontal
-					or (previous and cursor[2] >= previous.base_col + previous.left_bytes + menu_gap and 1 or 0)
-				if vertical then
-					local targets = {}
-					for _, candidate in ipairs(dashboard.items) do
-						if candidate.action and candidate._ then
-							targets[#targets + 1] = candidate._.row - 1
-						end
-					end
-					table.sort(targets)
-					if vertical > 0 then
-						for _, target in ipairs(targets) do
-							if target > row then
-								row = target
-								break
-							end
-						end
-					else
-						for index = #targets, 1, -1 do
-							if targets[index] < row then
-								row = targets[index]
-								break
-							end
-						end
+			if d._mayon_selection then
+				for _, item in ipairs(d.items) do
+					if item._ and (item.file or item.key) == d._mayon_selection then
+						vim.api.nvim_win_set_cursor(d.win, { item._.row, math.floor(d.col) + 5 })
+						break
 					end
 				end
-				local item = menu_rows[row]
-				local col = item and (item.base_col + (side == 1 and (item.left_bytes + menu_gap) or 0)) or cursor[2]
-				vim.api.nvim_win_set_cursor(win, { row + 1, col })
-				selection()
 			end
-			for lhs, direction in pairs({ h = 0, l = 1, ["<Left>"] = 0, ["<Right>"] = 1 }) do
-				vim.keymap.set("n", lhs, function()
-					move(direction)
-				end, { buffer = buf, silent = true })
-			end
-			for lhs, direction in pairs({ j = 1, k = -1, ["<Down>"] = 1, ["<Up>"] = -1 }) do
-				vim.keymap.set("n", lhs, function()
-					move(nil, direction)
-				end, { buffer = buf, silent = true })
-			end
-			vim.api.nvim_clear_autocmds({ group = group, buffer = buf, event = "CursorMoved" })
-			vim.api.nvim_create_autocmd("CursorMoved", { group = group, buffer = buf, callback = selection })
-			vim.keymap.set("n", "q", "<cmd>qa<cr>", { buffer = buf, silent = true, nowait = true })
-			vim.api.nvim_clear_autocmds({ group = group, buffer = buf, event = { "BufEnter", "BufLeave" } })
-			vim.api.nvim_create_autocmd("BufLeave", {
-				group = group,
-				buffer = buf,
-				callback = function()
-					if vim.api.nvim_win_is_valid(win) then
-						vim.wo[win].cursorline = true
-						vim.wo[win].cursorlineopt = "both"
-					end
-					if vim.o.showtabline == 0 then
-						vim.o.showtabline = 2
-					end
-				end,
-			})
-			vim.api.nvim_create_autocmd("BufEnter", {
-				group = group,
-				buffer = buf,
-				callback = function()
-					vim.o.showtabline, vim.o.laststatus = 2, 3
-				end,
-			})
-			-- Map Enter to the grid cell; non-grid recent/project rows retain their
-			-- original Snacks shortcut action through the dashboard instance.
-			vim.keymap.set("n", "<cr>", function()
-				local cursor = vim.api.nvim_win_get_cursor(win)
-				local item = menu_rows[cursor[1] - 1]
-				if not item then
-					local target = dashboard:find(cursor)
-					if target and target.action then
-						dashboard:action(target.action)
-					end
-					return
-				end
-				local right = cursor[2] >= item.base_col + item.left_bytes + menu_gap
-				local action = (right and item.right or item.left).action
-				if type(action) == "function" then
-					action()
-				else
-					vim.cmd(action:sub(2))
-				end
-			end, { buffer = buf, silent = true })
-			if rows[1] then
-				vim.api.nvim_win_set_cursor(win, { rows[1] + 1, menu_rows[rows[1]].base_col })
-			end
-			selection()
+			selection(d)
 		end,
 	})
-end
-
-function M.config()
-	install_dashboard_palette()
-	install_selection()
+	vim.api.nvim_create_autocmd("CursorMoved", {
+		group = group,
+		callback = function(ev)
+			local d = active_dashboard
+			if d and d.buf == ev.buf then
+				vim.schedule(function()
+					selection(d)
+				end)
+			end
+		end,
+	})
 	return {
 		enabled = true,
 		width = content_width,
-		-- Keep the compact content slightly above the vertical midpoint. Snacks
-		-- resolves this when the dashboard first opens, so startup does no scan.
-		row = math.max(2, math.floor(vim.o.lines * 0.16)),
 		formats = {
 			file = dashboard_file,
 			icon = dashboard_icon,
 			key = { " %s ", hl = "MayonDashboardKey" },
+			desc = { "%s", hl = "MayonDashboardBright" },
 		},
-		preset = {
-			keys = {
-				{ key = "q", desc = "Quit Neovim", action = ":qa" },
-			},
-		},
+		preset = { keys = { { key = "q", desc = "Quit", action = ":qa" } } },
 		sections = {
-			function(dashboard)
-				active_dashboard = dashboard
-				render_context = nil
-				render_context = { project_context() }
-				content_width = math.max(24, math.min(72, dashboard._size.width - 4))
-				menu_width = math.floor((content_width - menu_gap) / 2)
-				dashboard.opts.width = content_width
-				menu_rows = {}
-				local height = dashboard._size.height
-				recent_limit, project_limit = 4, 3
-				if height < 42 then
-					recent_limit, project_limit = 3, 2
+			function(d)
+				active_dashboard = d
+				content_width = math.max(24, math.min(60, d._size.width - 4))
+				d.opts.width = content_width
+				d.opts.col = math.max(0, math.floor((d._size.width - content_width) / 2))
+				local limit = d._size.height < 32 and 2 or 3
+				local rows = {
+					{
+						text = {
+							{ "  Neovim", hl = "MayonDashboardTitle" },
+							{
+								"  ·  " .. require("mayon.ui.text").truncate(
+									vim.fs.basename(vim.fn.getcwd()),
+									content_width - 16
+								),
+								hl = "MayonDashboardMuted",
+							},
+						},
+					},
+					{ text = "" },
+					heading("Recent Projects"),
+				}
+				local items = projects(d, limit)
+				for _, item in ipairs(items) do
+					rows[#rows + 1] = vim.tbl_extend("force", item, { indent = 2 })
 				end
-				if height < 32 then
-					recent_limit, project_limit = 2, 1
+				if #items == 0 then
+					rows[#rows + 1] = { text = { { "     No recent projects", hl = "MayonDashboardMuted" } } }
 				end
-				if height < 24 then
-					recent_limit, project_limit = 1, 1
+				rows[#rows + 1] = { text = "" }
+				rows[#rows + 1] = heading("Recent Files")
+				local recent = Snacks.dashboard.sections.recent_files({ limit = limit })()
+				for _, item in ipairs(recent) do
+					rows[#rows + 1] = vim.tbl_extend("force", item, { indent = 2 })
 				end
-				local result = { title_section(), rule_section() }
-				vim.list_extend(result, menu_section())
-				local recent, projects = recent_section(), projects_section(dashboard)
-				vim.list_extend(result, recent)
-				vim.list_extend(result, projects)
-				-- Leave the footer near the bottom, independently of history length.
-				local content_height = 2 + 1 + 4 + #recent + #projects + 2
-				local footer = startup_footer()
-				footer.padding = { 0, math.max(1, dashboard._size.height - 6 - content_height - 3) }
-				result[#result + 1] = footer
-				return result
+				if #recent == 0 then
+					rows[#rows + 1] = { text = { { "     No recent files", hl = "MayonDashboardMuted" } } }
+				end
+				rows[#rows + 1] = { text = "" }
+				rows[#rows + 1] = heading("Actions")
+				for _, action in ipairs(actions) do
+					rows[#rows + 1] = vim.tbl_extend("force", action, { indent = 2 })
+				end
+				for _, action in ipairs(hidden_actions) do
+					rows[#rows + 1] = vim.tbl_extend("force", action, { hidden = true })
+				end
+				return rows
 			end,
 		},
 	}
 end
-
 return M

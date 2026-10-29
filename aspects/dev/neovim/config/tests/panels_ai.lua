@@ -1,5 +1,6 @@
 -- Local visual fixture for AI panels; no model request and no real CLI process.
 vim.o.columns, vim.o.lines = 160, 50
+local codecompanion_load_columns = vim.o.columns
 local float_before = {}
 for _, name in ipairs({ "NormalFloat", "FloatBorder", "FloatTitle" }) do
 	float_before[name] = vim.api.nvim_get_hl(0, { name = name, link = false })
@@ -17,8 +18,8 @@ for name, value in pairs(float_before) do
 end
 local ai_surface = vim.api.nvim_get_hl(0, { name = "MayonAIPanel", link = false })
 assert(
-	ai_surface.bg == tonumber(require("mayon.generated").palette.bg:sub(2), 16),
-	"AI split panels should use the editor surface color"
+	ai_surface.bg == tonumber(require("mayon.generated").palette.deep:sub(2), 16),
+	"AI split panels should use the shared deep surface color"
 )
 assert(
 	vim.deep_equal(original_diff_add, vim.api.nvim_get_hl(0, { name = "DiffAdd" })),
@@ -42,6 +43,8 @@ assert(diff_bar:find("a%%name.nix", 1, true), "dynamic winbar filenames must esc
 assert(diff_bar:find("MayonAIRemoved", 1, true), "reject action should use the red diff color")
 vim.api.nvim_buf_delete(diff_buf, { force = true })
 
+assert(codecompanion_load_columns >= 120, "CodeCompanion fixture must load while the editor is wide")
+vim.o.columns = 91
 local chat_buf = panels.open_fixture("chat")
 assert(vim.bo[chat_buf].filetype == "codecompanion", "fixture must use a real CodeCompanion chat buffer")
 vim.wait(30)
@@ -51,10 +54,21 @@ assert(transcript:find("## YOU", 1, true), "user fixture heading should use uppe
 assert(transcript:find("## DEEPSEEK", 1, true), "assistant fixture heading should show adapter")
 local chat_win = vim.fn.win_findbuf(chat_buf)[1]
 assert(chat_win, "CodeCompanion fixture must be visible in a window")
+local chat_config = vim.api.nvim_win_get_config(chat_win)
+assert(chat_config.relative ~= "", "CodeCompanion should open as an on-demand float after a narrow resize")
 assert(
-	vim.wo[chat_win].winhighlight:find("Normal:MayonAIPanel", 1, true),
-	"wide CodeCompanion split should use the editor surface"
+	vim.api.nvim_win_get_width(chat_win) <= vim.o.columns - 4,
+	"CodeCompanion float should stay within the current editor width"
 )
+assert(chat_config.border[1] == "┌", "CodeCompanion float should use the shared single-line border")
+local deep = tonumber(require("mayon.generated").palette.deep:sub(2), 16)
+assert(vim.api.nvim_get_hl(0, { name = "FloatBorder", link = false }).bg == deep)
+assert(vim.api.nvim_get_hl(0, { name = "FloatTitle", link = false }).bg == deep)
+assert(
+	vim.wo[chat_win].winhighlight:find("Normal:NormalFloat", 1, true),
+	"CodeCompanion float should use the shared deep surface"
+)
+assert(panels.winbar(chat_buf):find("DeepSeek", 1, true), "CodeCompanion float should retain its provider label")
 local previous_win = vim.api.nvim_get_current_win()
 vim.g.statusline_winid = chat_win
 assert(panels.winbar():find("deepseek%-v4%-flash"), "chat winbar should use the statusline window's resolved model")

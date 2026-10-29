@@ -49,9 +49,9 @@ function M.setup()
 	local mode_colors = {
 		n = "blue",
 		i = "green",
-		v = "purple",
-		V = "purple",
-		["\22"] = "purple",
+		v = "blue",
+		V = "blue",
+		["\22"] = "blue",
 		c = "diag_warn",
 		s = "yellow",
 		S = "yellow",
@@ -112,7 +112,7 @@ function M.setup()
 		{
 			provider = function(self)
 				local name = mode_names[self.mode] or self.mode:upper()
-				return (vim.o.columns < 80 and (short_modes[self.mode:sub(1, 1)] or name:sub(1, 1)) or name) .. " "
+				return (short_modes[self.mode:sub(1, 1)] or name:sub(1, 1)) .. " "
 			end,
 			hl = { fg = "gray" },
 		},
@@ -164,7 +164,7 @@ function M.setup()
 			if self.filename == "" then
 				return "[No Name]"
 			end
-			return text.fit(vim.fn.fnamemodify(self.filename, ":~:."), math.max(5, math.floor(vim.o.columns * 0.35)))
+			return text.fit(vim.fn.fnamemodify(self.filename, ":~:."), math.max(5, math.floor(vim.o.columns * 0.50)))
 		end,
 		hl = { fg = "fg" },
 	}
@@ -251,9 +251,6 @@ function M.setup()
 		condition = function()
 			if not package.loaded["vim.lsp"] or not conditions.lsp_attached() then
 				return false
-			end
-			if vim.o.columns >= 120 then
-				return true
 			end
 			return vim.bo.busy > 0 or vim.ui.progress_status() ~= ""
 		end,
@@ -390,7 +387,8 @@ function M.setup()
 
 	local AI = {
 		condition = function()
-			return vim.o.columns >= 100
+			local completion = package.loaded["mayon.features.ai_completion"]
+			return vim.o.columns >= 60 and completion and (completion.busy or completion.pending > 0)
 		end,
 		provider = function()
 			local completion = package.loaded["mayon.features.ai_completion"]
@@ -415,6 +413,7 @@ function M.setup()
 		ViMode,
 		{ provider = " · ", hl = { fg = "accent" } },
 		{ flexible = 3, FileNameBlock, CompactFileName, {} },
+		FileFlags,
 		Git,
 		Align,
 		Recording,
@@ -431,7 +430,7 @@ function M.setup()
 		condition = function()
 			return conditions.buffer_matches({
 				buftype = { "nofile", "prompt", "help", "quickfix", "terminal" },
-				filetype = { "^git.*", "fugitive", "fzf", "qf" },
+				filetype = { "^git.*", "fugitive", "fzf", "qf", "oil" },
 			})
 		end,
 		ViMode,
@@ -453,6 +452,12 @@ function M.setup()
 						end
 					end
 					return " Files & search "
+				end
+				if ft == "oil" then
+					local path = require("oil").get_current_dir() or "Directory"
+					return " "
+						.. text.fit(vim.fn.fnamemodify(path, ":~:."), math.max(12, math.floor(vim.o.columns * 0.5)))
+						.. " "
 				end
 				local names = {
 					help = "Help",
@@ -520,7 +525,7 @@ function M.setup()
 		ViMode,
 		{ provider = "  dashboard", hl = { fg = "gray" } },
 		Align,
-		{ provider = "q 退出 ", hl = { fg = "gray" } },
+		{ provider = "q Quit ", hl = { fg = "gray" } },
 	}
 
 	local StatusLines = {
@@ -535,7 +540,6 @@ function M.setup()
 	}
 
 	heirline.setup({ statusline = StatusLines })
-	require("mayon.ui.toolbar").setup()
 	heirline.load_colors(setup_colors())
 
 	vim.api.nvim_create_autocmd("ColorScheme", {

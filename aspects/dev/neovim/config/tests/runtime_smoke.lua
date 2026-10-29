@@ -223,8 +223,8 @@ assert(
 )
 local hover_ok, hover_config = has_float_with("Fixture hover documentation")
 assert(
-	hover_ok and hover_config.border[1] == "╭",
-	"hover should use the rounded float border: " .. vim.inspect(hover_config.border)
+	hover_ok and hover_config.border[1] == "┌",
+	"hover should use the single-line float border: " .. vim.inspect(hover_config.border)
 )
 for _, win in ipairs(vim.api.nvim_list_wins()) do
 	if vim.api.nvim_win_get_config(win).relative ~= "" then
@@ -312,8 +312,8 @@ vim.diagnostic.open_float(0)
 local diagnostic_float_ok, diagnostic_float = has_float_with("Fixture diagnostic message")
 assert(diagnostic_float_ok, "diagnostic float omitted the published diagnostic")
 assert(
-	diagnostic_float.border[1] == "╭",
-	"diagnostic float should use the rounded border: " .. vim.inspect(diagnostic_float.border)
+	diagnostic_float.border[1] == "┌",
+	"diagnostic float should use the single-line border: " .. vim.inspect(diagnostic_float.border)
 )
 vim.diagnostic.setqflist({ open = true, title = "Fixture diagnostics", namespace = ns })
 assert(

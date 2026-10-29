@@ -12,7 +12,7 @@ assert(
 )
 assert(neogit_border.fg == float_border.fg and neogit_border.bg == float_border.bg)
 assert(
-	vim.api.nvim_get_hl(0, { name = "NeogitNormalFloat", link = false }).bg == tonumber(palette.bg:sub(2), 16),
+	vim.api.nvim_get_hl(0, { name = "NeogitNormalFloat", link = false }).bg == tonumber(palette.deep:sub(2), 16),
 	"Neogit's private namespace must retain the unified editor floating surface"
 )
 -- Every opaque layer (title chunks, virtual padding and parent layouts too)
@@ -32,7 +32,7 @@ for _, group in ipairs({
 	"SnacksNotifierIconError",
 }) do
 	assert(
-		vim.api.nvim_get_hl(0, { name = group, link = false }).bg == tonumber(palette.bg:sub(2), 16),
+		vim.api.nvim_get_hl(0, { name = group, link = false }).bg == tonumber(palette.deep:sub(2), 16),
 		group .. " must share the editor canvas"
 	)
 end
@@ -72,7 +72,7 @@ for _, reload in ipairs({ false, true }) do
 	for index, severity in ipairs({ "Error", "Warn", "Info", "Hint" }) do
 		local body = vim.api.nvim_get_hl(0, { name = "DiagnosticFloating" .. severity, link = false })
 		assert(body.fg == tonumber(palette.brightFg:sub(2), 16), "floating prose must stay neutral: " .. severity)
-		assert(body.bg == tonumber(palette.bg:sub(2), 16), "diagnostic float surface mismatch")
+		assert(body.bg == tonumber(palette.deep:sub(2), 16), "diagnostic float surface mismatch")
 		local found_body, found_marker = false, false
 		for _, mark in ipairs(marks) do
 			local detail = mark[4]
@@ -104,7 +104,7 @@ for group, color in pairs({
 end
 
 local opts = floats.options("hover")
-assert(opts.border == "rounded" and opts.title_pos == "center" and opts.title:find("hover · ", 1, true))
+assert(opts.border == "single" and opts.title:find("hover · ", 1, true))
 local buf, win = vim.lsp.util.open_floating_preview(
 	{ "```lua", "function example()", "```", "Documentation" },
 	"markdown",
@@ -112,7 +112,7 @@ local buf, win = vim.lsp.util.open_floating_preview(
 )
 local hover_lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
 assert(vim.api.nvim_win_get_config(win).title[1][1]:find("hover", 1, true))
-assert(vim.api.nvim_win_get_config(win).title_pos == "center")
+assert(vim.api.nvim_win_get_config(win).border[1] == "┌")
 assert(vim.wo[win].winhighlight:find("NormalFloat", 1, true))
 assert(not vim.wo[win].spell, "Markdown hover should not underline API identifiers as misspellings")
 local padding_ns = vim.api.nvim_create_namespace("MayonFloatPadding")
@@ -132,7 +132,7 @@ for _, limit in ipairs({ 64, 24 }) do
 	local preview_buf, preview_win = vim.lsp.util.open_floating_preview({ text }, "text", {
 		focus_id = "textDocument/hover",
 		max_width = limit,
-		border = "rounded",
+		border = "single",
 	})
 	local dim = vim.api.nvim_win_get_config(preview_win)
 	local displayed = vim.api.nvim_win_text_height(preview_win, {}).all
@@ -182,10 +182,7 @@ assert(
 local b = vim.api.nvim_create_buf(false, true)
 local ctx = { opts = {}, ns = vim.api.nvim_create_namespace("MayonNotificationTest") }
 notifier.style(b, { level = "warn", title = "Saved", msg = "formatter · 12ms" }, ctx)
-assert(
-	ctx.opts.border == "rounded" and ctx.opts.title_pos == "center",
-	"notification should share the rounded frame and centered title"
-)
+assert(ctx.opts.border == "single", "notification should share the single-line frame")
 assert(vim.api.nvim_buf_get_lines(b, 0, 1, false)[1] == "formatter · 12ms")
 local snacks_notifier = Snacks.notifier
 local old_history, old_hide = snacks_notifier.get_history, snacks_notifier.hide
@@ -224,6 +221,23 @@ assert(
 	"retained cards must close the gaps left by hidden notifications"
 )
 vim.api.nvim_buf_delete(b, { force = true })
+local long_marker = "long-message-details-fixture"
+local long_message = table.concat({
+	long_marker .. [[ quote " slash \ pipe |]],
+	"second saved line",
+	"third saved line",
+	"fourth saved line",
+}, "\n")
+local long_notice = { id = 987654, title = "Build", level = "info", msg = long_message }
+require("mayon.ui.notifications").filter(long_notice)
+assert(long_notice.msg == "Details saved to :messages", "long notifications should collapse into a brief corner notice")
+local saved_messages = vim.api.nvim_exec2("messages", { output = true }).output
+for _, expected in ipairs({ long_marker, [[quote " slash \ pipe |]], "fourth saved line" }) do
+	assert(
+		saved_messages:find(expected, 1, true),
+		"long notification details were not saved intact to :messages: " .. expected
+	)
+end
 local c = require("mayon.generated").palette
 assert(
 	vim.api.nvim_get_hl(0, { name = "CursorLine", link = false }).bg ~= tonumber(c.bg:sub(2), 16),
@@ -240,7 +254,7 @@ for _, name in ipairs({ "input", "terminal", "lazygit" }) do
 	assert(require("snacks").config[name].win.backdrop == false, name .. " must not add a second dimmed rectangle")
 end
 local terminal = require("snacks").terminal({ "sh", "-c", "sleep 30" }, {
-	win = { style = "float", border = "rounded", title = " terminal " },
+	win = { style = "float", border = "single", title = " terminal " },
 })
 assert(terminal, "native terminal fixture did not open")
 vim.wait(200)
@@ -265,12 +279,11 @@ local surface_win = vim.api.nvim_open_win(surface_buf, false, {
 })
 extras.style_float(surface_win)
 local surface_config = vim.api.nvim_win_get_config(surface_win)
-assert(vim.inspect(surface_config.border):find("╭", 1, true), "secondary floats should use rounded borders")
+assert(vim.inspect(surface_config.border):find("┌", 1, true), "secondary floats should use single-line borders")
 assert(
 	vim.inspect(surface_config.title):find("Help · surface-help.txt", 1, true),
 	"secondary float should carry title and source: " .. vim.inspect(surface_config.title)
 )
-assert(surface_config.title_pos == "center", "secondary float titles should be centered")
 assert(vim.wo[surface_win].winhighlight:find("NormalFloat", 1, true))
 assert(
 	vim.wo[surface_win].winhighlight:find("EndOfBuffer:NormalFloat", 1, true),

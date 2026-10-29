@@ -21,15 +21,24 @@ vim.lsp.enable("marksman", false)
 vim.cmd.edit(vim.fn.fnameescape(path))
 assert(vim.bo.filetype == "markdown" and vim.wo.wrap, "long Markdown is clipped")
 local doc, docwin = vim.api.nvim_get_current_buf(), vim.api.nvim_get_current_win()
+assert(vim.wo[docwin].winbar == "", "breadcrumbs should be hidden for ordinary documents")
+assert(vim.fn.exists(":BreadcrumbsToggle") == 2, "on-demand breadcrumbs command is missing")
+vim.cmd.BreadcrumbsToggle()
+assert(vim.g.mayon_breadcrumbs == true, "breadcrumbs toggle did not enable the optional bar")
+vim.wait(80)
+assert(vim.wo[docwin].winbar ~= "", "breadcrumbs toggle did not attach a bar")
+vim.cmd.BreadcrumbsToggle()
+assert(
+	vim.g.mayon_breadcrumbs == false and vim.wo[docwin].winbar == "",
+	"breadcrumbs toggle did not restore the chrome-free editor"
+)
 for _, width in ipairs({ 40, 60, 80, 100, 120, 180 }) do
 	vim.o.columns = width
 	local status = vim.api.nvim_eval_statusline(vim.o.statusline, { maxwidth = width })
 	local tabs = vim.api.nvim_eval_statusline(vim.o.tabline, { use_tabline = true, maxwidth = width })
 	assert(status.str ~= "" and status.width <= width, "status line overflow")
-	assert(tabs.width <= width, "tab line overflow")
-	for _, forbidden in ipairs({ "×", "Run", "Search Everywhere", "‾", "▔" }) do
-		assert(not tabs.str:find(forbidden, 1, true), "toolbar contains obsolete decoration: " .. forbidden)
-	end
+	assert(tabs.str == "", "single-file editing should not render a tab toolbar")
+	assert(vim.o.tabline == "", "tabline option should remain empty")
 end
 -- A diagnostic remains visible without making the statusline overflow narrow
 -- layouts; unsaved work and close cancellation are covered below.
@@ -44,10 +53,20 @@ for _, width in ipairs({ 40, 60, 80, 100, 160 }) do
 	local rail = vim.api.nvim_eval_statusline(vim.o.statusline, { maxwidth = width })
 	assert(rail.width <= width, "diagnostics overflow the status line at " .. width .. " columns")
 	if width >= 100 then
-		assert(rail.str:find("Copilot", 1, true), "statusline should identify Copilot as the AI provider")
+		assert(not rail.str:find("Copilot", 1, true), "idle AI provider should stay out of the statusline")
 		assert(rail.str:find("●1", 1, true), "error count should use the compact red diagnostic marker")
 	end
 end
+local ai_completion = require("mayon.features.ai_completion")
+local old_busy = ai_completion.busy
+ai_completion.busy = true
+vim.cmd.redrawstatus()
+assert(
+	vim.api.nvim_eval_statusline(vim.o.statusline, { maxwidth = 160 }).str:find("…", 1, true),
+	"busy AI completion should appear in the statusline"
+)
+ai_completion.busy = old_busy
+vim.cmd.redrawstatus()
 diagnostics[1].severity = vim.diagnostic.severity.WARN
 vim.diagnostic.set(attention, doc, diagnostics)
 vim.cmd.redrawstatus()
@@ -143,17 +162,15 @@ for _, name in ipairs({
 	"FloatTitle",
 }) do
 	assert(
-		hl(name).bg == tonumber(require("mayon.generated").palette.bg:sub(2), 16),
+		hl(name).bg == tonumber(require("mayon.generated").palette.deep:sub(2), 16),
 		name .. " has a disconnected background"
 	)
 end
-local popup_bg = tonumber(require("mayon.generated").palette.bg:sub(2), 16)
+local popup_bg = tonumber(require("mayon.generated").palette.deep:sub(2), 16)
 for _, name in ipairs({ "Pmenu", "PmenuBorder", "SnacksPickerList", "SnacksPickerNormal", "WhichKeyNormal" }) do
 	assert(hl(name).bg == popup_bg, name .. " should share the editor popup surface")
 end
 assert(hl("PmenuSel").bg == tonumber(require("mayon.generated").palette.selection:sub(2), 16))
-assert(hl("TabLineSel").bg == tonumber(require("mayon.generated").palette.selection:sub(2), 16))
-assert(hl("MayonTabAccent").fg == tonumber(require("mayon.generated").palette.blue:sub(2), 16))
 for _, name in ipairs({ "RenderMarkdownH5", "RenderMarkdownH6" }) do
 	assert(hl(name).fg == tonumber(require("mayon.generated").palette.fg:sub(2), 16))
 end

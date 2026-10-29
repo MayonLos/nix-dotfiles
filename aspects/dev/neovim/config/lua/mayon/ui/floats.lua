@@ -55,7 +55,7 @@ end
 
 function M.options(kind, opts)
 	return vim.tbl_extend("force", {
-		border = "rounded",
+		border = "single",
 		max_width = 64,
 		max_height = 18,
 		title = " " .. kind .. " · " .. server() .. " ",
@@ -78,7 +78,7 @@ function M.setup()
 	local original = vim.lsp.util.open_floating_preview
 	vim.lsp.util.open_floating_preview = function(contents, syntax, opts)
 		opts = vim.tbl_extend("keep", opts or {}, {
-			border = "rounded",
+			border = "single",
 			max_width = 64,
 			max_height = 18,
 			title_pos = "center",

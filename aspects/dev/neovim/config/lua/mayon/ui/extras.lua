@@ -118,7 +118,7 @@ function M.style_float(win, title)
 		return
 	end
 	if not config.border or config.border == "none" then
-		config.border = "rounded"
+		config.border = "single"
 	end
 	if title_is_empty(config.title) and ft ~= "snacks_terminal" then
 		config.title = " " .. surface_title(buf, title) .. " "

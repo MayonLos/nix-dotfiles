@@ -1,11 +1,16 @@
--- Snacks pickers keep compact centered surfaces; the Project tool uses the
--- native input and list panes without opening a preview.
+-- Snacks pickers use a full-width top shelf; previews are opt-in and the
+-- Project tool keeps an on-demand file navigation entry.
 local pickers = require("mayon.ui.pickers")
 local files = pickers.configure({ source = "files" })
 assert(files.prompt == "❯ ", "general picker input should retain its prompt")
 assert(files.layout().preview == false, "general picker should not open a default preview")
-assert(files.layout().layout.width <= 0.7, "general picker should stay compact and centered")
-assert(files.layout().layout.title_pos == "center", "picker title should match the centered floating-window style")
+assert(
+	files.layout().layout.width == 0 and files.layout().layout.col == 0 and files.layout().layout.row == 0,
+	"picker should occupy the top width"
+)
+assert(files.layout().layout.height == math.floor(vim.o.lines * 0.28), "picker height should use 28% of the editor")
+assert(files.layout().layout.border == "none", "picker should not add an outer frame")
+assert(files.layout().layout[1][1].border == "bottom", "picker input should use a fine lower rule")
 assert(files.win.list.wo.cursorline and files.win.list.wo.cursorlineopt == "line")
 assert(files.win.list.wo.winhighlight:find("SnacksPickerListCursorLine", 1, true))
 local file_layout = vim.inspect(files.layout().layout)
@@ -166,9 +171,10 @@ end
 local live_row = grep_picker.opts.format(grep_picker.finder.items[1], grep_picker)
 assert(live_row[#live_row].virt_text_pos == "right_align", "native grep path should remain right aligned")
 grep_picker:update_titles()
+local grep_footer = vim.api.nvim_win_get_config(grep_picker.input.win.win).footer
 assert(
-	vim.api.nvim_win_get_config(grep_picker.layout.root.win).title_pos == "center",
-	"live grep count updates must preserve the centered title"
+	grep_footer and vim.inspect(grep_footer):find("matches", 1, true),
+	"live grep count should render in the right-side input footer"
 )
 grep_picker:close()
 vim.fn.delete(dir, "rf")
@@ -188,12 +194,9 @@ vim.wait(100)
 assert(vim.v.errmsg == "", "closed picker resize callback failed: " .. vim.v.errmsg)
 print("Project input, compact pickers, native grep rows and resize-close passed")
 
--- Source-aware preview defaults and a usable toggle survive resize transitions.
+-- Every picker starts without a preview; Alt-p adds context and survives resize.
 vim.o.columns, vim.o.lines = 180, 50
 for _, name in ipairs({ "grep", "lsp_references", "lsp_symbols", "git_log", "diagnostics" }) do
-	assert(pickers.configure({ source = name }).layout().preview, name .. " should show context")
-end
-for _, name in ipairs({ "files", "buffers", "recent", "select" }) do
 	assert(not pickers.configure({ source = name }).layout().preview, name .. " should stay compact")
 end
 local preview = Snacks.picker.files({ cwd = project, show_delay = 0 })
@@ -204,7 +207,7 @@ preview:action("toggle_preview")
 assert(preview.preview.win:valid() and not preview.layout:is_hidden("preview"), "Alt-p did not open files preview")
 vim.o.columns = 90
 preview:set_layout()
-assert(preview.layout:is_hidden("preview"), "narrow picker should hide preview")
+assert(not preview.layout:is_hidden("preview"), "narrow picker should keep an explicitly opened preview")
 vim.o.columns = 180
 preview:set_layout()
 assert(not preview.layout:is_hidden("preview"), "resize lost the explicit preview preference")

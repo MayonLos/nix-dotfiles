@@ -120,8 +120,9 @@ function M.setup()
 		lsp_file_methods = { enabled = false },
 		skip_confirm_for_simple_edits = false,
 		view_options = { show_hidden = true },
-		confirmation = { border = "rounded" },
-		float = { border = "rounded" },
+		win_options = { number = false, relativenumber = false, signcolumn = "no" },
+		confirmation = { border = "single" },
+		float = { border = "single" },
 	})
 	protect_files_adapter()
 	protect_trash_adapter()
