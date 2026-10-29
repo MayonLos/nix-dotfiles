@@ -1,7 +1,7 @@
 {
   palette,
 }:
-{ lib, ... }:
+{ lib, pkgs, ... }:
 let
   # An absent optional appearance keeps portable CLI consumers on ANSI roles.
   colors =
@@ -17,7 +17,7 @@ let
       palette;
   key = label: {
     key = label;
-    keyColor = colors.blue;
+    keyColor = colors.fg;
   };
 in
 
@@ -26,24 +26,15 @@ in
     fastfetch = {
       enable = true;
       settings = {
-        logo = {
-          type = "builtin";
-          source = "NixOS_small";
-          position = "left";
-          padding.right = 2;
-          color = {
-            "1" = colors.blue;
-            "2" = colors.cyan;
-          };
-        };
+        logo.type = "none";
         display = {
           hideCursor = true;
           disableLinewrap = true;
           brightColor = false;
           separator = "  ";
           key = {
-            width = 12;
-            paddingLeft = 1;
+            width = 10;
+            paddingLeft = 0;
           };
           color = {
             output = colors.brightFg;
@@ -55,19 +46,9 @@ in
             type = "title";
             format = "{#${colors.brightFg}}{user-name}@{host-name}{#}";
           }
-          "break"
-          ((key "OS") // { type = "os"; })
+          ((key "System") // { type = "os"; })
           ((key "Kernel") // { type = "kernel"; })
-          ((key "WM") // { type = "wm"; })
           ((key "Terminal") // { type = "terminal"; })
-          ((key "CPU") // { type = "cpu"; })
-          (
-            (key "GPU")
-            // {
-              type = "gpu";
-              format = "{vendor} {name}";
-            }
-          )
           (
             (key "Memory")
             // {
@@ -81,6 +62,7 @@ in
     # Home Manager is the sole btop.conf renderer, using the shared palette.
     btop = {
       enable = true;
+      package = import ./btop-package.nix { inherit pkgs; };
       themes = lib.optionalAttrs (palette != null) {
         "One Dark" = import ./onedark-btop.nix { inherit palette; };
       };
@@ -91,6 +73,18 @@ in
         theme_background = false;
         rounded_corners = true;
         vim_keys = true;
+        shown_boxes = "cpu mem proc";
+        presets = "cpu:0:default,mem:0:default,proc:0:default cpu:0:default,mem:0:default,net:0:default,proc:0:default";
+        show_cpu_cores = false;
+        cpu_single_graph = true;
+        check_temp = false;
+        show_coretemp = false;
+        show_cpu_watts = false;
+        show_cpu_freq = false;
+        show_gpu_info = "Off";
+        show_battery = false;
+        show_disks = false;
+        clock_format = "";
       };
     };
   };

@@ -16,12 +16,13 @@
   def draw_tab(draw_data, screen, tab, before, max_tab_length, index, is_last, extra_data):
       # Kitty's built-in tab styles cannot underline the selected tab. Keep its
       # normal title rendering and apply an underline SGR only to the active tab.
+      screen.cursor.bg = as_rgb(draw_data.tab_bg(tab))
       if draw_data.leading_spaces:
           screen.draw(" " * draw_data.leading_spaces)
 
       screen.cursor.fg = as_rgb(draw_data.tab_fg(tab))
       screen.cursor.bg = as_rgb(draw_data.tab_bg(tab))
-      screen.cursor.bold = tab.is_active
+      screen.cursor.bold = False
       # Keep the two padding cells inside Kitty's allocated tab width. For very
       # narrow tabs, render a single ellipsis instead of letting padding overflow.
       if max_tab_length < 3:
@@ -76,10 +77,10 @@
           screen.draw(" ")
 
       screen.cursor.bold = False
-      screen.cursor.bg = 0
+      screen.cursor.bg = as_rgb(draw_data.tab_bg(tab))
       if not is_last:
-          screen.cursor.fg = as_rgb(draw_data.inactive_fg)
+          screen.cursor.fg = as_rgb(int(draw_data.inactive_fg))
           screen.draw(draw_data.sep)
-      screen.cursor.bg = 0
+      screen.cursor.bg = as_rgb(draw_data.tab_bg(tab))
       return screen.cursor.x
 ''

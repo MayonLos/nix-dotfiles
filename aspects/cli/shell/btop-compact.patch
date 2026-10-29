@@ -1,0 +1,103 @@
+--- a/src/btop_config.cpp
++++ b/src/btop_config.cpp
+@@ -157,6 +157,8 @@
+ 
+ 		{"show_coretemp", 		"#* Show temperatures for cpu cores also if check_temp is True and sensors has been found."},
+ 
++		{"show_cpu_cores",		"#* Show individual CPU core usage rows in the CPU summary box."},
++
+ 		{"cpu_core_map",		"#* Set a custom mapping between core and coretemp, can be needed on certain cpus to get correct temperature for correct core.\n"
+ 								"#* Use lm-sensors or similar to see which cores are reporting temperatures on your machine.\n"
+ 								"#* Format \"x:y\" x=core with wrong temp, y=core with correct temp, use space as separator between multiple entries.\n"
+@@ -314,6 +316,7 @@
+ 		{"show_cpu_watts", true},
+ 		{"check_temp", true},
+ 		{"show_coretemp", true},
++		{"show_cpu_cores", true},
+ 		{"show_cpu_freq", true},
+ 		{"background_update", true},
+ 		{"mem_graphs", true},
+--- a/src/btop_draw.cpp
++++ b/src/btop_draw.cpp
+@@ -549,6 +549,7 @@
+ 		if (force_redraw) redraw = true;
+ 		bool show_temps = (Config::getB("check_temp") and got_sensors);
+ 		bool show_watts = (Config::getB("show_cpu_watts") and supports_watts);
++		bool show_cpu_cores = Config::getB("show_cpu_cores");
+ 		auto single_graph = Config::getB("cpu_single_graph");
+ 		bool hide_cores = show_temps and (cpu_temp_only or not Config::getB("show_coretemp"));
+ 		const int extra_width = (hide_cores ? max(6, 6 * b_column_size) : (b_columns == 1 && !show_temps) ? 8 : 0);
+@@ -713,7 +714,7 @@
+ 					+ Theme::c("main_fg") + graph_up_field + Mv::r(1) + "▲▼" + Mv::r(1) + graph_lo_field;
+ 			}
+ 
+-			if (b_column_size > 0 or extra_width > 0) {
++			if (show_cpu_cores and (b_column_size > 0 or extra_width > 0)) {
+ 				core_graphs.clear();
+ 				for (const auto& core_data : cpu.core_percent) {
+ 					core_graphs.emplace_back(5 * b_column_size + extra_width, 1, "cpu", core_data, graph_symbol);
+@@ -880,7 +881,7 @@
+ 		//? Core text and graphs
+ 		int cx = 0, cy = 1, cc = 0, core_width = (b_column_size == 0 ? 2 : 3);
+ 		if (Shared::coreCount >= 100) core_width++;
+-		for (const auto& n : iota(0, Shared::coreCount)) {
++		for (const auto& n : iota(0, show_cpu_cores ? Shared::coreCount : 0)) {
+ 			auto enabled = is_cpu_enabled(n);
+ 			out += Mv::to(b_y + cy + 1, b_x + cx + 1) + Theme::c(enabled ? "main_fg" : "inactive_fg") + (Shared::coreCount < 100 ? Fx::b + 'C' + Fx::ub : "")
+ 				+ ljust(to_string(n), core_width);
+@@ -2298,9 +2299,9 @@
+ 			y = cpu_bottom ? Term::height - height + 1 : 1;
+ 
+ 		#ifdef GPU_SUPPORT
+-			b_columns = max(2, (int)ceil((double)(Shared::coreCount + 1) / (height - gpus_extra_height - 5)));
++			b_columns = Config::getB("show_cpu_cores") ? max(2, (int)ceil((double)(Shared::coreCount + 1) / (height - gpus_extra_height - 5))) : 1;
+ 		#else
+-			b_columns = max(1, (int)ceil((double)(Shared::coreCount + 1) / (height - 5)));
++			b_columns = Config::getB("show_cpu_cores") ? max(1, (int)ceil((double)(Shared::coreCount + 1) / (height - 5))) : 1;
+ 		#endif
+ 			if (b_columns * (21 + 12 * show_temp) < width - (width / 3)) {
+ 				b_column_size = 2;
+@@ -2319,11 +2320,15 @@
+ 			}
+ 
+ 			if (b_column_size == 0) b_width = (8 + 6 * show_temp) * b_columns + 1;
++			if (not Config::getB("show_cpu_cores")) {
++				b_width = min(width - 2, max(29, 8 + 6 * show_temp));
++				b_column_size = 0;
++			}
+ 		#ifdef GPU_SUPPORT
+ 			//gpus_extra_height = max(0, gpus_extra_height - 1);
+-			b_height = min(height - 2, (int)ceil((double)Shared::coreCount / b_columns) + 4 + gpus_extra_height);
++			b_height = min(height - 2, Config::getB("show_cpu_cores") ? (int)ceil((double)Shared::coreCount / b_columns) + 4 + gpus_extra_height : 4 + gpus_extra_height);
+ 		#else
+-			b_height = min(height - 2, (int)ceil((double)Shared::coreCount / b_columns) + 4);
++			b_height = min(height - 2, Config::getB("show_cpu_cores") ? (int)ceil((double)Shared::coreCount / b_columns) + 4 : 4);
+ 		#endif
+ 
+ 			b_x = x + width - b_width - 1;
+--- a/src/btop_input.cpp
++++ b/src/btop_input.cpp
+@@ -232,6 +232,13 @@
+ 					Menu::show(Menu::Menus::Help);
+ 					return;
+ 				}
++				else if (key == "v" and Cpu::shown) {
++					atomic_wait(Runner::active);
++					Config::flip("show_cpu_cores");
++					Draw::calcSizes();
++					Runner::run("all", true, true);
++					return;
++				}
+ 				else if (is_in(key, "f2", "o")) {
+ 					Menu::show(Menu::Menus::Options);
+ 					return;
+--- a/src/btop_menu.cpp
++++ b/src/btop_menu.cpp
+@@ -180,6 +180,7 @@
+ 		{"4", "Toggle PROC box."},
+ 		{"5", "Toggle GPU box."},
+ 		{"d", "Toggle disks view in MEM box."},
++		{"v", "Toggle individual CPU core rows in the CPU summary box."},
+ 		{"F2, o", "Shows options."},
+ 		{"F1, ?, h", "Shows this window."},
+ 		{"ctrl + z", "Sleep program and put in background."},

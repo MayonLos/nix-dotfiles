@@ -1,7 +1,12 @@
 {
   palette ? null,
 }:
-{ config, lib, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   mix =
     base: tint: percent:
@@ -56,11 +61,14 @@ in
     # reversing the entire row's foreground and background.
     lazygit = {
       enable = true;
+      package = import ./lazygit-package.nix { inherit pkgs; };
       settings.gui = {
-        border = "rounded";
+        border = "single";
+        showCommandLog = false;
+        showBottomLine = false;
         theme = {
           activeBorderColor = [
-            "cyan"
+            "blue"
           ];
           searchingActiveBorderColor = [
             "blue"
@@ -82,11 +90,11 @@ in
           else
             {
               activeBorderColor = [ palette.blue ];
-              searchingActiveBorderColor = [ palette.cyan ];
+              searchingActiveBorderColor = [ palette.blue ];
               inactiveBorderColor = [ palette.surface ];
-              optionsTextColor = [ palette.cyan ];
+              optionsTextColor = [ palette.fg ];
               selectedLineBgColor = [ palette.selection ];
-              inactiveViewSelectedLineBgColor = [ palette.selection ];
+              inactiveViewSelectedLineBgColor = [ "default" ];
               cherryPickedCommitFgColor = [ palette.black ];
               cherryPickedCommitBgColor = [ palette.cyan ];
               markedBaseCommitFgColor = [ palette.black ];
@@ -117,23 +125,25 @@ in
         # tools.nix supplies Delta's wrapper for the same build-time Bat cache.
         syntax-theme = if palette == null then "base16" else "One Dark";
         navigate = true;
-        side-by-side = true;
-        line-numbers = true;
+        side-by-side = false;
+        line-numbers = false;
         line-numbers-left-format = "{nm:>4} │";
         line-numbers-right-format = "{np:>4} │";
         line-numbers-left-style = if palette == null then "blue" else palette.blue;
         line-numbers-right-style = if palette == null then "blue" else palette.blue;
         line-numbers-zero-style = if palette == null then "brightblack" else palette.fg;
         hunk-header-style = "file line-number syntax";
+        hunk-header-decoration-style = "none";
+        file-decoration-style = "none";
       }
       // (
         if diff == null then
           { }
         else
           {
-            plus-style = "${palette.brightFg} ${diff.add}";
+            plus-style = "${palette.brightFg} normal";
             plus-emph-style = "${palette.brightFg} ${diff.addEmph}";
-            minus-style = "${palette.brightFg} ${diff.delete}";
+            minus-style = "${palette.brightFg} normal";
             minus-emph-style = "${palette.brightFg} ${diff.deleteEmph}";
             "line-numbers-plus-style" = "${palette.green}";
             "line-numbers-minus-style" = "${palette.red}";

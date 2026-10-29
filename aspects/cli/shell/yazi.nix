@@ -44,26 +44,52 @@ in
       ouch
     ];
 
-    plugins = with pkgs.yaziPlugins; {
-      inherit
-        duckdb
-        glow
-        ouch
-        full-border
-        toggle-pane
-        smart-enter
-        smart-filter
-        jump-to-char
-        relative-motions
-        git
-        chmod
-        ;
-    };
+    plugins =
+      (with pkgs.yaziPlugins; {
+        inherit
+          duckdb
+          ouch
+          smart-enter
+          smart-filter
+          jump-to-char
+          relative-motions
+          git
+          chmod
+          ;
+      })
+      // {
+        # The pinned glow plugin predates Yazi 26's singular Command/preview
+        # APIs. Keep the adapter local and fail when upstream changes anchors.
+        glow = pkgs.runCommand "glow.yazi-compatible" { } ''
+          cp -R ${pkgs.yaziPlugins.glow} "$out"
+          chmod -R u+w "$out"
+          substituteInPlace "$out/main.lua" \
+            --replace-fail ':args({' ':arg({' \
+            --replace-fail 'ya.preview_widgets' 'ya.preview_widget' \
+            --replace-fail 'require("code").peek(job)' 'require("code"):peek(job)' \
+            --replace-fail 'ya.mgr_emit' 'ya.emit' \
+            --replace-fail 'local preview_width = 55' 'local preview_width = job.area.w' \
+            --replace-fail $'"--style",\n\t\t\t"dark",' '"--pager=false",'
+        '';
+        responsive-preview = pkgs.writeTextDir "main.lua" (
+          builtins.readFile ./resources/yazi-responsive.lua
+        );
+      };
 
     initLua = ''
-      require("full-border"):setup {
-        type = ui.Border.ROUNDED,
-      }
+      require("responsive-preview"):setup { min_width = 100 }
+      require("duckdb"):setup()
+
+      -- The native header keeps the complete parent path even with no parent
+      -- column. Separate its components as a breadcrumb, preserving filters.
+      function Header:cwd()
+        local max = self._area.w - self._right_width
+        if max <= 0 then return "" end
+        local path = ya.readable_path(tostring(self._current.cwd))
+        local prefix = path:sub(1, 1) == "/" and "/ " or ""
+        path = prefix .. path:gsub("^/", ""):gsub("/", " › ") .. self:flags()
+        return ui.Span(ui.truncate(path, { max = max, rtl = true })):style(th.mgr.cwd)
+      end
 
       require("git"):setup {
         order = 1500,
@@ -82,9 +108,9 @@ in
     settings = {
       mgr = {
         ratio = [
-          1
+          0
+          5
           4
-          3
         ];
         sort_by = "natural";
         sort_sensitive = true;
@@ -202,7 +228,7 @@ in
           bg = colors.selection;
         };
         border_style = {
-          fg = colors.border;
+          fg = colors.surface or "darkgray";
         };
       };
 
@@ -291,8 +317,8 @@ in
 
         {
           on = "!";
-          run = "plugin toggle-pane";
-          desc = "Toggle preview pane";
+          run = "plugin responsive-preview";
+          desc = "Toggle preview (automatic below 100 columns)";
         }
 
         {
