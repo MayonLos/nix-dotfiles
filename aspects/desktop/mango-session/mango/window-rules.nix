@@ -20,6 +20,8 @@ in
 [
   # With allow_tearing=2, opt every normal client out; games opt in below.
   "force_tearing:0,no_blur:1,app_id:.*"
+  # Kitty draws a 0.96 background; let the compositor frost what shows through.
+  "no_blur:0,app_id:^(kitty|Neovim|mayon-scratch|mayon-files|mayon-monitor|mayon-herdr)$"
 
   # Standard transient/dialog types already float and center in Mango. These
   # cover standalone helpers / file pickers lacking a transient parent.
