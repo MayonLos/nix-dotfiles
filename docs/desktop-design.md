@@ -44,7 +44,7 @@ Launchpad 空查询默认隐藏 Thunar 批量重命名、可移动介质设置�
 - 右侧为 Fcitx 与应用图标内联托盘、network、Bluetooth、音量、电池图标/百分比、仅未读时出现的小通知入口、sliders 控制中心和中文日期时间。
 - 底部 Dock：Smart，空工作区显示、有窗口收起、碰到底边唤出；`reserve_space=false` / exclusive zone 0，overlay 层使全屏时仍可唤出。44 px 图标、8 px 外距、16 px 圆角、0.80 opacity、1.2× 放大、原生运行 dots。固定 kitty/firefox/obsidian/thunar/code/qq/musicfox，运行应用按原生逻辑追加。私有 Mango 的 Pixman/GLES2 验证发现阴影与 layer blur 同用会产生黑色厚边，因此 Dock 原生 shadow 关闭，保留细轮廓。
 - 顶栏和 Dock 声明 `compositor_blur=true`；Mango 0.18.3 无该协议，实际磨砂由限定 namespace 的原生 layer blur 提供，使用优化壁纸缓存。普通窗口与其他 layer 不启用模糊。
-- 常驻 sysmon、布局文字、keymode 和工具抽屉移除。System/亮度/电源/caffeine/Quill 迁到控制中心；Docker/portctl/layout 面板分别为 `Super+Ctrl+D/P/W`，原有 `Super+W`、`Super+R`、btop 和硬件键保留。
+- 常驻 sysmon、布局文字、keymode 和工具抽屉移除。System/亮度/电源/caffeine 迁到控制中心；只保留本仓库 Launchpad、desktop-menus、legion-conservation 三个插件。`Super+Ctrl+D/P/W` 社区面板绑定已删除；原有 `Super+W`、Mango 原生 `Super+R`、btop 和硬件键保留。
 - 通知回到原生 usable-edge +12 px 定位；控制中心浮动 +12 px；面板、通知、OSD 继续不透明。OSD 位于底部96 px，给手动唤出的 Dock 留出间隔。
 - 八个旧 `hud-*` 补丁及其断言/避让测试删除。保留面板/启动器选择、锁屏和 OSD 三个补丁；独显采样从 hud-sysmon 拆为 `nvidia-sampler.patch`，新增小型应用名开关补丁。原生 Dock/工作区/通知不打补丁。
 

@@ -7,6 +7,16 @@ require = function(path)
 	end
 	return modules[path]
 end
+local readings = require("./pinyin-data.luau")
+assert(readings[12295] == "ling/xing/yuan") -- first stored codepoint (U+3007)
+assert(readings[13312] == "qiu") -- cross-page lookup (U+3400)
+assert(readings[19968] == "yi") -- cross-page CJK lookup (U+4E00)
+assert(readings[20048] == "le/yue") -- preserve both heteronyms (U+4E50)
+assert(readings[20108] == "er") -- same-page lookup (U+4E8C)
+assert(readings[40869] == "yu") -- a later CJK page (U+9FA5)
+assert(readings[205705] == "mo") -- last stored codepoint
+assert(readings[19968] == "yi") -- cache hits preserve values
+assert(readings[0] == nil and readings[1] == nil and readings[false] == nil)
 local model = dofile(root .. "/model.luau")
 local icons = model.iconOverrides({ "NVIM.desktop=/icons/nvim.png", "terminal=clock", "broken", "empty=" })
 assert(icons.nvim == "/icons/nvim.png" and icons.terminal == "clock" and icons.broken == nil and icons.empty == nil)
@@ -126,8 +136,9 @@ dofile(root .. "/control.luau")
 assert(pending ~= nil)
 pending({ exitCode = 0, stdout = "fixture" })
 assert(#values.apps == 3)
-update()
-update() -- finish incremental icon prewarming
+for _ = 1, #apps do
+	update() -- finish incremental icon prewarming
+end
 for _, app in ipairs(values.apps) do
 	if app.id == "code" then
 		assert(app.icon == "/icons/code-custom.png")

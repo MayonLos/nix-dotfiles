@@ -1,37 +1,17 @@
 {
-  inputs,
   pkgs,
 }:
 let
-  communitySource = import ./community.nix {
-    inherit pkgs;
-    source = inputs.noctalia-plugins-community;
-  };
   localSource = import ./local.nix { inherit pkgs; };
 in
 {
-  # Immutable plugin sources are pinned by flake.lock and available
-  # offline. Git sources fetch during startup; update them through Nix.
+  # Repository-owned plugin sources are built by Nix and available offline.
   plugins = {
     # Enum since noctalia 5: all | official | none. A boolean is still
     # accepted but warns as deprecated at startup.
     auto_update = "none";
 
     source = [
-      {
-        name = "official";
-        kind = "path";
-        location = "${inputs.noctalia-plugins-official}";
-        enabled = true;
-      }
-      {
-        name = "community";
-        kind = "path";
-        # Keep the official community source identity and every untouched
-        # plugin; build-time overlay copies only the three customized bar plugins.
-        location = "${communitySource}";
-        enabled = true;
-      }
       {
         name = "nix-dotfiles";
         kind = "path";
@@ -40,31 +20,11 @@ in
       }
     ];
 
-    # The pre-start ownership handoff removes only declared public
-    # override paths, backing up those values before starting the writer.
-    # Avoid compositor editor plugins that write the read-only HM config
-    # and plugins whose external tools only support Hyprland.
+    # Only repository-owned plugins are loaded.
     enabled = [
-      "3ri4ng0ld/ip-monitor"
-      "8bury/mini-docker"
-      "cleboost/jetbrains-provider"
-      "dunarand/tmux-provider"
-      "noctalia/translator"
-      "radimous/prismlauncher-instances"
-      "rxtsel/portctl"
-      "ezequiel/mango_layouts" # jq + mmsg
-      # Markdown notes, todos and /nt launcher entry; AI calls Go directly.
-      "fel/quill"
-      "gambled23/mangowm-keymode" # mmsg; shows the keymode SUPER,R enters
-      "knyrps/nix-search"
       "nix-dotfiles/legion-conservation"
       "nix-dotfiles/launchpad"
       "nix-dotfiles/desktop-menus"
-
-      # Notes/todo plugins were consolidated into Quill. OCR is provided
-      # by the native Print bindings; its plugin had no configured entry.
-      # The unused DeepSeek balance widget is disabled; its GUI data is
-      # left in the runtime state, outside this store configuration.
     ];
   };
 
@@ -113,25 +73,6 @@ in
       system_placement = "floating";
       system_position = "top_left";
       system_open_near_click = true;
-    };
-    # Explicit /tr queries use the selected online provider; ordinary launcher
-    # searches never go through the translation service.
-    "noctalia/translator" = {
-      provider = "google";
-      target_lang = "zh-CN";
-    };
-    # Noctalia injects generic panel settings for non-persistent entries.
-    "ezequiel/mango_layouts" = {
-      panel_placement = "attached";
-      panel_position = "auto";
-      panel_open_near_click = true;
-    };
-    # Call Go directly without the removed CLI. Use its raw model ID;
-    # the locked plugin still defaults to the older Zen endpoint/model.
-    "fel/quill" = {
-      ai_backend = "opencode-go";
-      ai_model = "deepseek-v4.1-flash";
-      ai_base_url = "https://opencode.ai/inference/go/openai/v1";
     };
   };
 }

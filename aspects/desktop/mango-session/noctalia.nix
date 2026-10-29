@@ -157,18 +157,8 @@ in
         fi
       '';
 
-      # External dependencies declared by the enabled plugins that this machine
-      # would otherwise be missing. Plugins never install their own dependencies
-      # and just silently do nothing when one is absent -- no error, no hint.
-      # Keep this in sync when adding or removing plugins; every entry maps to
-      # one specific plugin.
-      packages = with pkgs; [
-        tmuxp # tmux-provider (tmux itself lives in tmux.nix)
-        libnotify # notify-send for desktop notification review
-        nix-search-tv # nix-search community launcher provider
-        fzf # nix-search community launcher provider
-      ];
-
+      # Native notify-send remains available for desktop notification review.
+      packages = [ pkgs.libnotify ];
     };
 
     programs.noctalia = {
@@ -230,7 +220,7 @@ in
           inherit palette;
         })
         // (import ./noctalia/plugins.nix {
-          inherit inputs pkgs;
+          inherit pkgs;
         })
         // {
           shell = {
@@ -527,7 +517,6 @@ in
               "system"
               "power_profile"
               "caffeine"
-              "fel/quill:toggle"
               "notification"
             ];
           };
