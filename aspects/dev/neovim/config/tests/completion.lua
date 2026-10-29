@@ -355,6 +355,12 @@ local completion_buf = vim.api.nvim_get_current_buf()
 vim.bo[completion_buf].filetype = "lua"
 vim.api.nvim_exec_autocmds("LspAttach", { buffer = completion_buf, data = { client_id = fixture_id } })
 local cancellations_before_missing = #fixture_cancellations
+local original_deprecate = vim.deprecate
+local cancellation_deprecations = {}
+vim.deprecate = function(name, ...)
+	cancellation_deprecations[#cancellation_deprecations + 1] = name
+	return original_deprecate(name, ...)
+end
 assert(fixture_client:cancel_request(90001) == false, "completed request cancellation should be harmless")
 assert(fixture_client.cancel_request(90002) == false, "dot-style completed request cancellation should be harmless")
 assert(
@@ -370,6 +376,8 @@ assert(
 	"the cancellation guard must preserve live request notifications and both call styles"
 )
 fixture_client.requests[90003], fixture_client.requests[90004] = nil, nil
+vim.deprecate = original_deprecate
+assert(#cancellation_deprecations == 0, "cancellation compatibility calls should use the supported client method form")
 vim.cmd("syntax on")
 vim.treesitter.start(completion_buf, "lua")
 vim.api.nvim_buf_set_lines(completion_buf, 0, -1, false, { "" })

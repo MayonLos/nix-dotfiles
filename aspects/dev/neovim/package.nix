@@ -20,6 +20,9 @@ let
     + pkgs.lib.generators.toLua { } {
       inherit palette;
       nix_options = nixOptions;
+      # Preserve path context: nixd's offline workers need the pinned source
+      # in their runtime closure. toString alone loses this dependency.
+      nixpkgs_path = "${pkgs.path}";
       parser_runtime = pluginSet.parserRuntime;
       ansi = import ../../appearance/appearance/ansi.nix palette;
       tools = debugTools.tools // {

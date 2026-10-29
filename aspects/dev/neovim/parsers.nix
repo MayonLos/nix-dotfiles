@@ -15,6 +15,8 @@ let
     "markdown"
     "markdown_inline"
     "bash"
+    "make"
+    "cmake"
     "java"
     "matlab"
     "latex"

@@ -29,7 +29,12 @@ local function guard_completed_cancellation(client)
 		if id ~= nil and client.requests[id] == nil then
 			return false
 		end
-		return original(first, ...)
+		-- Core/older integrations may retain a bound dot-call closure. Forward
+		-- it using the supported colon form instead of emitting a deprecation.
+		if first == client then
+			return original(first, ...)
+		end
+		return original(client, first, ...)
 	end
 	client.cancel_request = wrapper
 	cancel_request_guards[client] = true

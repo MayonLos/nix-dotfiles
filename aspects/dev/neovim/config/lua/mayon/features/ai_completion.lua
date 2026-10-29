@@ -175,6 +175,13 @@ function M.copilot_setup()
 	vim.lsp.config("copilot", {
 		cmd = { require("mayon.generated").tools.copilot, "--stdio" },
 		settings = { telemetry = { telemetryLevel = "off" } },
+		root_dir = function(buf, on_dir)
+			-- Copilot has no filetype restriction in lspconfig. Avoid starting
+			-- its server (and sign-in errors) in help, dashboards and tool panes.
+			if M.allowed(buf) then
+				on_dir(vim.fs.root(buf, { ".git" }) or vim.fn.getcwd())
+			end
+		end,
 	})
 	local group = vim.api.nvim_create_augroup("MayonInlineCompletion", { clear = true })
 	vim.api.nvim_create_autocmd("LspAttach", {

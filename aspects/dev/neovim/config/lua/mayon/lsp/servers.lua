@@ -1,5 +1,6 @@
 local M = {}
 local nix_options = require("mayon.generated").nix_options or {}
+local nixpkgs_expr = "import " .. require("mayon.generated").nixpkgs_path .. " { }"
 
 local function nixd_options_for_repository(config, options)
 	options = options or nix_options
@@ -163,13 +164,20 @@ end
 local embedded = require("mayon.features.embedded")
 
 local adapters = {
+	clangd = {
+		before_init = function(params)
+			-- Neovim 0.12 negotiates LSP 3.17 positionEncodings. The pinned
+			-- lspconfig also sends the deprecated clangd offsetEncoding extension.
+			params.capabilities.offsetEncoding = nil
+		end,
+	},
 	nixd = {
 		before_init = function(_, config)
 			nixd_options_for_repository(config)
 		end,
 		settings = {
 			nixd = {
-				nixpkgs = { expr = "import <nixpkgs> { }" },
+				nixpkgs = { expr = nixpkgs_expr },
 				formatting = { command = { "nixfmt" } },
 			},
 		},
@@ -253,6 +261,13 @@ end
 
 if servers.clangd then
 	embedded.configure_clangd(servers.clangd)
+end
+
+if servers.nixd then
+	-- nixd starts its default workers before workspace/configuration returns.
+	-- Seed them without channels/NIX_PATH; before_init still selects this
+	-- repository's host options when the document belongs to that workspace.
+	vim.list_extend(servers.nixd.cmd, { "--nixpkgs-expr=" .. nixpkgs_expr, "--nixos-options-expr={}" })
 end
 
 if servers.jdtls then
