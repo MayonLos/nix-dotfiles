@@ -1,0 +1,61 @@
+--- a/src/shell/bar/widgets/active_window_widget.h
++++ b/src/shell/bar/widgets/active_window_widget.h
+@@ -38,6 +38,7 @@
+     ActiveWindowTitleScrollMode titleScrollMode = ActiveWindowTitleScrollMode::None;
+     ActiveWindowDisplayMode displayMode = ActiveWindowDisplayMode::IconAndText;
+     bool showEmptyLabel = false;
++    bool showAppName = false;
+   };
+ 
+   ActiveWindowWidget(ConfigService& config, CompositorPlatform& platform, Options options);
+@@ -61,6 +62,7 @@
+   ActiveWindowTitleScrollMode m_titleScrollMode = ActiveWindowTitleScrollMode::None;
+   ActiveWindowDisplayMode m_displayMode = ActiveWindowDisplayMode::IconAndText;
+   bool m_showEmptyLabel = false;
++  bool m_showAppName = false;
+   InputArea* m_area = nullptr;
+   Image* m_icon = nullptr;
+   Label* m_title = nullptr;
+--- a/src/shell/bar/widgets/active_window_widget_definition.cpp
++++ b/src/shell/bar/widgets/active_window_widget_definition.cpp
+@@ -71,6 +71,7 @@
+                       .descriptionKey = "settings.widgets.settings.display.active-window-description",
+                   },
+           }),
++          field<&Options::showAppName>({.key = "show_app_name"}),
+           field<&Options::showEmptyLabel>({
+               .key = "show_empty_label",
+           }),
+--- a/src/shell/bar/widgets/active_window_widget.cpp
++++ b/src/shell/bar/widgets/active_window_widget.cpp
+@@ -22,7 +22,7 @@
+     : m_config(config), m_platform(platform), m_maxWidth(static_cast<float>(options.maxWidth)),
+       m_minWidth(static_cast<float>(options.minWidth)), m_iconSize(static_cast<float>(options.iconSize)),
+       m_titleScrollMode(options.titleScrollMode), m_displayMode(options.displayMode),
+-      m_showEmptyLabel(options.showEmptyLabel) {
++      m_showEmptyLabel(options.showEmptyLabel), m_showAppName(options.showAppName) {
+   buildDesktopIconIndex();
+ }
+ 
+@@ -178,6 +178,10 @@
+     identifier = current->identifier;
+     title = StringUtils::windowTitleSingleLine(current->title);
+     appId = current->appId;
++    // R37: reuse native desktop identity, never a document/window title.
++    if (m_showAppName) {
++      title = app_identity::resolveRunningDesktopEntry(appId, desktopEntries()).name;
++    }
+     if (title.empty()) {
+       title = appId;
+     }
+--- a/src/shell/settings/widget_settings_registry.cpp
++++ b/src/shell/settings/widget_settings_registry.cpp
+@@ -661,6 +661,8 @@
+         fontWeightOptions.push_back({std::to_string(static_cast<int>(option.weight)), std::string(option.labelKey)});
+       }
+     }
++    // R37: Pango accepts intermediate weights; retain the approved Inter app-name weight.
++    fontWeightOptions.push_back({"650", "650"});
+     auto fontWeight = withGroup(selectSpec("font_weight", "", std::move(fontWeightOptions), true), "presentation");
+     fontWeight.integerValue = true;
+ 

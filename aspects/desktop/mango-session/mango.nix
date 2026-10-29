@@ -118,11 +118,13 @@ in
       focus_on_activate = 0;
       warp_cursor = 1;
 
-      # Noctalia owns layer shadows/animations. Kitty and reading panels are
-      # opaque; there is no declared transparent client needing GPU blur.
-      # Keep layer blur off as recommended by Noctalia's Mango guide (#1196).
-      blur = 0;
-      blur_layer = 0;
+      # Mango 0.18.3 has no ext-background-effect-v1. Its native layer blur
+      # supplies the bar/Dock frost; ordered rules below restrict its scope.
+      blur = 1;
+      blur_layer = 1;
+      blur_optimized = 1;
+      blur_params_radius = 5;
+      blur_params_num_passes = 2;
       layer_animations = 0;
       shadows = 1;
       layer_shadows = 0;
@@ -322,12 +324,12 @@ in
       enable_floating_snap = 1;
       snap_distance = 12;
 
-      # Pinned Mango supports layer_rule. Noctalia owns its animations/shadows;
-      # these namespaces come from its pinned C++ layer-surface constructors.
-      # Keep the global layer effects off too: this is not an instruction to
-      # animate or blur every surface, nor a promise of compositor bar blur.
+      # Rules apply in order: transparent clients and unrelated layer surfaces
+      # stay unblurred; only the translucent bar/Dock opt back in.
       layer_rule = [
-        "layer_name:^noctalia-(bar-.*|panel|attached-panel|notification|osd|window-switcher|panel-click-shield)$,no_animation:1,no_shadow:1"
+        "layer_name:.*,no_blur:1"
+        "layer_name:^noctalia-(bar-.*|dock)$,no_blur:0,no_animation:1,no_shadow:1"
+        "layer_name:^noctalia-(panel|attached-panel|notification|osd|window-switcher|panel-click-shield)$,no_animation:1,no_blur:1,no_shadow:1"
         "layer_name:^noctalia-(screenshot-region|annotate)$,no_animation:1,no_blur:1,no_shadow:1"
       ];
 

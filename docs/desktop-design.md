@@ -19,6 +19,23 @@
 截图原件在 Git 忽略的 `.work/polish-r34/01-files.png`、`02-launcher.png`、`03-notifications.png`；
 它们使用最终包的隔离配置与样例内容，不是用户真实项目窗口。
 
+## r37b 待应用：macOS 风格顶栏与 Smart Dock
+
+本工作树按用户确认的 G1/G2 设计实现；这不是实机已应用状态。唯一设计稿存于
+`.work/bar-r37/design/g1-mac-dock.png` 与 `g2-mac-hidden.png`。
+
+- 顶栏贴顶 30 逻辑 px，外距/圆角/边框/阴影为零，背景 opacity 0.62；Inter 500，应用名 650。
+- 左侧为 grid 启动器、当前应用名（不是窗口标题）、原生 `focus_hint` 工作区圆点/浅色活动条；中间留空。
+- 右侧为固定 Fcitx 的折叠托盘、network、Bluetooth、音量、电池图标/百分比、仅未读时出现的小通知入口、sliders 控制中心和中文日期时间。
+- 底部 Dock：Smart，空工作区显示、有窗口收起、碰到底边唤出；`reserve_space=false` / exclusive zone 0，overlay 层使全屏时仍可唤出。44 px 图标、8 px 外距、16 px 圆角、0.80 opacity、1.2× 放大、原生运行 dots。固定 kitty/firefox/obsidian/thunar/code/qq/musicfox，运行应用按原生逻辑追加。私有 Mango 的 Pixman/GLES2 验证发现阴影与 layer blur 同用会产生黑色厚边，因此 Dock 原生 shadow 关闭，保留细轮廓。
+- 顶栏和 Dock 声明 `compositor_blur=true`；Mango 0.18.3 无该协议，实际磨砂由限定 namespace 的原生 layer blur 提供，使用优化壁纸缓存。普通窗口与其他 layer 不启用模糊。
+- 常驻 sysmon、布局文字、keymode 和工具抽屉移除。System/亮度/电源/caffeine/Quill 迁到控制中心；Docker/portctl/layout 面板分别为 `Super+Ctrl+D/P/W`，原有 `Super+W`、`Super+R`、btop 和硬件键保留。
+- 通知回到原生 usable-edge +12 px 定位；控制中心浮动 +12 px；面板、通知、OSD 继续不透明。OSD 位于底部96 px，给手动唤出的 Dock 留出间隔。
+- 八个旧 `hud-*` 补丁及其断言/避让测试删除。保留面板/启动器选择、锁屏和 OSD 三个补丁；独显采样从 hud-sysmon 拆为 `nvidia-sampler.patch`，新增小型应用名开关补丁。原生 Dock/工作区/通知不打补丁。
+
+具体功能迁移、补丁理由与状态归属见 [Mango README](../aspects/desktop/mango-session/README.md)。
+构建与私有 headless 截图不证明实机应用；GPU 模糊、真实应用启动、Rime 子模式、多屏和全屏边缘手势由主代理应用后验收。
+
 ## 早期设计背景
 
 下表保留早期 Astra 方案的尺寸和目标，不能用于覆盖上方现行参数；实际数值以源码为准。
