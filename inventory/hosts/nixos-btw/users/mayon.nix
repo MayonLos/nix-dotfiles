@@ -58,6 +58,7 @@ in
           avatar
           tree-account-tool
           network-manager-user
+          clash-tui
           legion-laptop-user
           personal-desktop
           xorg-session

@@ -9,6 +9,7 @@ _: {
     ./dev/languages
     ./system/maintenance
     ./network/laptop-network
+    ./network/clash-tui
     ./network/remote-access
     ./hardware/legion-laptop
     ./cli/shell

@@ -1,0 +1,21 @@
+[package]
+name = "clashtui-mayon"
+version = "0.1.0"
+edition = "2021"
+description = "A small Unix-socket Mihomo controller and read-only Verge subscription viewer"
+license = "MIT"
+
+[dependencies]
+chrono = "0.4"
+crossterm = "0.29"
+futures-util = "0.3"
+ratatui = "0.29"
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls", "socks"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+tokio = { version = "1", features = ["full"] }
+unicode-width = "0.2"
+
+[build-dependencies]
+serde_json = "1"
