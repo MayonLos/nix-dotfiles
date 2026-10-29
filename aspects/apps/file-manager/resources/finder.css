@@ -1,0 +1,104 @@
+/* Thunar-only geometry. Semantic colors come from the shared GTK writer.
+ * GtkTreeView cells do not expose per-column nodes; sidebar headers are styled
+ * by the accompanying renderer patch. Never use opacity on the whole widget. */
+.thunar toolbar {
+  min-height: 34px;
+  padding: 3px 8px;
+  background: @window_bg_color;
+  border-bottom: 1px solid alpha(@borders, 0.18);
+  box-shadow: none;
+}
+.thunar toolbar button {
+  min-width: 28px;
+  min-height: 28px;
+  margin: 0 1px;
+  padding: 1px 3px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  box-shadow: none;
+}
+.thunar toolbar button image {
+  margin: 0;
+  padding: 0;
+  min-width: 16px;
+  min-height: 16px;
+  -gtk-icon-transform: none;
+}
+.thunar toolbar button:hover { background: alpha(@selected_bg_color, 0.6); }
+.thunar toolbar button:checked {
+  background: @selected_bg_color;
+  color: @window_fg_color;
+  box-shadow: inset 0 -1px @accent_color;
+}
+.thunar .path-bar {
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+}
+.thunar .path-bar button.path-bar-button {
+  font-family: Inter, "Noto Sans CJK SC", sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  padding: 1px 7px;
+  margin: 0;
+  border-radius: 5px;
+}
+.thunar .path-bar button.path-bar-button:checked {
+  background: alpha(@selected_bg_color, 0.5);
+  color: @window_fg_color;
+  font-weight: 500;
+  box-shadow: none;
+}
+.thunar entry {
+  font-family: Inter, "Noto Sans CJK SC", sans-serif;
+  font-size: 13px;
+  min-height: 28px;
+}
+.thunar .shortcuts-pane,
+.thunar .shortcuts-pane treeview.view { background: @sidebar_bg_color; }
+.thunar scrolledwindow.shortcuts-pane { border-right: 1px solid alpha(@borders, 0.18); }
+.thunar .shortcuts-pane treeview {
+  font-family: Inter, "Noto Sans CJK SC", sans-serif;
+  font-size: 13px;
+  -GtkTreeView-vertical-separator: 7;
+  -GtkTreeView-horizontal-separator: 6;
+}
+.thunar .shortcuts-pane treeview.view:selected {
+  background: @selected_bg_color;
+  color: @selected_fg_color;
+  border-radius: 4px;
+  box-shadow: inset 2px 0 @accent_color;
+}
+.thunar .standard-view .view {
+  font-family: Inter, "Noto Sans CJK SC", sans-serif;
+  font-size: 13px;
+  -GtkTreeView-vertical-separator: 8;
+  -GtkTreeView-horizontal-separator: 10;
+}
+.thunar .standard-view treeview.view {
+  -GtkTreeView-odd-row-color: alpha(@window_fg_color, 0.018);
+  -GtkTreeView-even-row-color: transparent;
+  -GtkTreeView-grid-line-width: 0;
+}
+.thunar .standard-view treeview.view header button {
+  font-family: Inter, "Noto Sans CJK SC", sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  background: @window_bg_color;
+  color: @secondary_text_color;
+  border: 0;
+  border-bottom: 1px solid alpha(@borders, 0.18);
+  border-radius: 0;
+  padding: 3px 10px;
+  box-shadow: none;
+}
+.thunar statusbar {
+  font-family: Inter, "Noto Sans CJK SC", sans-serif;
+  font-size: 11px;
+  min-height: 18px;
+  padding: 2px 8px;
+  background: @window_bg_color;
+  border-top: 1px solid alpha(@borders, 0.18);
+}
+.thunar paned > separator { background: alpha(@borders, 0.18); min-width: 1px; }
