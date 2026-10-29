@@ -1,0 +1,19 @@
+[package]
+name = "clashtui-mayon"
+version = "0.2.0"
+edition = "2021"
+license = "MIT"
+
+[dependencies]
+chrono = { workspace = true }
+crossterm = { workspace = true }
+futures-util = { workspace = true }
+ratatui = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+tokio = { workspace = true }
+unicode-width = { workspace = true }
+libc = { workspace = true }
+mayon-ui = { workspace = true }

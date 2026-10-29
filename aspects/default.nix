@@ -8,8 +8,8 @@ _: {
     ./workspace/project-workbench
     ./dev/languages
     ./system/maintenance
+    ./network/port-tools
     ./network/laptop-network
-    ./network/clash-tui
     ./network/remote-access
     ./hardware/legion-laptop
     ./cli/shell

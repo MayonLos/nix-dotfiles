@@ -11,3 +11,16 @@ Socket forwarding is checked with concurrent requests against an isolated Unix-s
 The first activation needs an ordered handover: the old running daemon may still own `%t/docker.sock`, while the new unit uses `%t/docker-private.sock`. In a planned container maintenance window, stop the old daemon before starting the new public socket/proxy; do not unlink a socket owned by a running daemon. Confirm the merged user units and socket paths, then test demand startup and existing restart-policy workloads. This round does not perform that handover or restart any user service. `checks.nix` is the explicit public test hook; `resources/test_socket_activation.py` owns only isolated test sockets/processes.
 
 `default.nix`, `home.nix`, and `host.nix` are private implementation files. Removing `container-client` removes the client package; removing `local-containers` also removes service and socket declarations on activation. Container writable layers, images, named volumes, and bind-mounted project data are user data and are not cleared by this feature.
+
+
+`container-client` also installs `pkgs.mayonTui.docker` (`dockertui-mayon`),
+the Docker output of the shared [Rust workspace](../../../packages/mayon-tui/README.md).
+This places the client beside its Engine/Compose CLI rather than in a desktop
+feature, so it works in a terminal or over SSH. The TUI uses the public socket,
+never the private daemon socket; it does not declare a new service or own
+Docker data. Explicit confirmed actions may modify containers/images/volumes;
+volume deletion has two confirmations and no automatic volume pruning.
+Stopping the daemon from the TUI pauses polling until the user reconnects, so
+the public demand socket can remain available. See the
+[crate README](../../../packages/mayon-tui/crates/docker/README.md) for keys and
+API details. Removing the client removes the executable and leaves Docker data.

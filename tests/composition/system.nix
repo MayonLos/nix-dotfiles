@@ -86,6 +86,7 @@ let
     laptop = {
       clashServiceOwnsTun =
         host.programs.clash-verge.serviceMode
+        && !host.programs.clash-verge.autoStart
         && !host.programs.clash-verge.tunMode
         && !(host.security.wrappers ? clash-verge)
         && host.systemd.services.clash-verge.enable;

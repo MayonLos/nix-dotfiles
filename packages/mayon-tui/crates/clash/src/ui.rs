@@ -5,30 +5,15 @@ use crate::{
 };
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Modifier, Style},
+    style::Style,
     text::{Line, Span},
-    widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Wrap},
+    widgets::{Block, Clear, List, ListItem, ListState, Paragraph, Wrap},
     Frame,
 };
 
-fn base() -> Style {
-    Style::default().fg(FG).bg(BG)
-}
-fn muted(text: impl Into<String>) -> Span<'static> {
-    Span::styled(text.into(), Style::default().fg(MUTED))
-}
-fn blue(text: impl Into<String>) -> Span<'static> {
-    Span::styled(text.into(), Style::default().fg(BLUE))
-}
+use mayon_ui::{base, blue, marker, muted};
 fn block(title: String, focused: bool) -> Block<'static> {
-    Block::default()
-        .borders(Borders::ALL)
-        .border_type(ratatui::widgets::BorderType::Rounded)
-        .border_style(Style::default().fg(if focused { BLUE } else { BORDER }))
-        .title(Span::styled(
-            title,
-            Style::default().fg(if focused { BLUE } else { FG }),
-        ))
+    mayon_ui::block(title, focused)
 }
 fn row(lines: Vec<Line<'static>>, selected: bool) -> ListItem<'static> {
     ListItem::new(lines).style(if selected {
@@ -37,10 +22,18 @@ fn row(lines: Vec<Line<'static>>, selected: bool) -> ListItem<'static> {
         base()
     })
 }
-fn marker(selected: bool) -> Span<'static> {
-    blue(if selected { "▏" } else { " " })
+pub fn tab_at(column: u16) -> Option<char> {
+    use unicode_width::UnicodeWidthStr;
+    let mut start = 1;
+    for (key, title) in [('1', "1 代理"), ('2', "2 订阅"), ('3', "3 连接")] {
+        let width = title.width() as u16 + 2;
+        if (start..start + width).contains(&column) {
+            return Some(key);
+        }
+        start += width + 2;
+    }
+    None
 }
-
 pub fn draw(frame: &mut Frame, app: &mut App) {
     let area = frame.area();
     frame.render_widget(Block::default().style(base()), area);
@@ -72,62 +65,59 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         .traffic
         .map(|(up, down)| format!("↑{} ↓{}", bytes(up), bytes(down)))
         .unwrap_or_else(|| "↑-- ↓--".into());
-    let header = if area.width >= 100 {
+    let header = if !app.online {
+        " 󰒍 Clash · 未运行".into()
+    } else if area.width >= 100 {
         format!(
-            " 󰒍 Clash  ·  {mode}  ·  TUN {}  ·  {traffic}  ·  {} 连接  ·  {}",
+            " 󰒍 Clash · 运行  ·  {mode}  ·  TUN {}  ·  {traffic}  ·  {} 连接  ·  {}",
             if app.config.tun.enable { "on" } else { "off" },
             app.connections.len(),
             app.version
         )
     } else {
         format!(
-            " 󰒍 {mode} TUN:{}  {traffic}  {} conn {}",
+            " 󰒍 运行 {mode} TUN:{}  {traffic}  {} conn {}",
             if app.config.tun.enable { "on" } else { "off" },
             app.connections.len(),
             app.version.replace("Meta ", "")
         )
     };
-    frame.render_widget(
-        Paragraph::new(clip(&header, area.width as usize)).style(base().fg(BRIGHTFG)),
-        chunks[0],
-    );
-    let mut tabs = vec![Span::raw(" ")];
-    for (page, title) in [
-        (Page::Proxies, "1 代理"),
-        (Page::Profiles, "2 订阅"),
-        (Page::Connections, "3 连接"),
-    ] {
-        tabs.push(Span::styled(
-            format!(" {title} "),
-            if app.page == page {
-                Style::default().fg(BLUE).add_modifier(Modifier::UNDERLINED)
-            } else {
-                Style::default().fg(MUTED)
-            },
-        ));
-        tabs.push(Span::raw("  "));
-    }
-    if !app.online {
-        tabs.push(Span::styled("○ offline", Style::default().fg(RED)));
-    }
-    frame.render_widget(Paragraph::new(Line::from(tabs)), chunks[1]);
-    match app.page {
-        Page::Proxies => proxies(frame, app, chunks[2]),
-        Page::Profiles => profiles(frame, app, chunks[2]),
-        Page::Connections => connections(frame, app, chunks[2]),
-    }
-    let hint = match app.page {
-        Page::Proxies => " j/k 移动  Tab 面板  Enter 选择  t/T 测速  / 过滤  m 模式  ? 帮助",
-        Page::Profiles => " j/k 移动  i 导入  f 刷新用量  u 更新  Enter 切换  o Verge  ? 帮助",
-        Page::Connections => " j/k 移动  x 关闭连接  r 刷新  m 模式  ? 帮助",
+    mayon_ui::status(frame, chunks[0], &header);
+    let page = match app.page {
+        Page::Proxies => 0,
+        Page::Profiles => 1,
+        Page::Connections => 2,
     };
     frame.render_widget(
-        Paragraph::new(vec![
-            Line::from(muted(clip(hint, area.width as usize))),
-            Line::from(blue(clip(&format!(" {}", app.status), area.width as usize))),
-        ]),
-        chunks[3],
+        Paragraph::new(mayon_ui::tabs_line(&["代理", "订阅", "连接"], page)),
+        chunks[1],
     );
+    if !app.online {
+        frame.render_widget(
+            Paragraph::new(
+                "\n\n  Clash 未运行 · s 启动\n\n  打开 Verge 即启动，退出 Verge 即关闭。",
+            )
+            .style(base().fg(MUTED))
+            .block(block(" Clash ".into(), false)),
+            chunks[2],
+        );
+    } else {
+        match app.page {
+            Page::Proxies => proxies(frame, app, chunks[2]),
+            Page::Profiles => profiles(frame, app, chunks[2]),
+            Page::Connections => connections(frame, app, chunks[2]),
+        }
+    }
+    let hint = if !app.online {
+        " s 启动 Verge  r 刷新  ? 帮助  q 退出"
+    } else {
+        match app.page {
+            Page::Proxies => " j/k 移动  Tab 面板  Enter 选择  t/T 测速  / 过滤  m 模式  ? 帮助",
+            Page::Profiles => " j/k 移动  i 导入  f 刷新用量  u 更新  Enter 切换  o Verge  ? 帮助",
+            Page::Connections => " j/k 移动  x 关闭连接  X 关闭 Clash  r 刷新  ? 帮助",
+        }
+    };
+    mayon_ui::footer(frame, chunks[3], hint, &format!(" {}", app.status));
     if app.help {
         help(frame);
     }
@@ -324,6 +314,7 @@ fn profiles(frame: &mut Frame, app: &App, area: Rect) {
                     width,
                 ))));
             } else {
+                lines.push(Line::from(""));
                 lines.push(Line::from(muted("   无用量信息 · f 从订阅响应头刷新")));
                 lines.push(Line::from(muted(format!(
                     "   类型 {}",
@@ -448,6 +439,7 @@ fn help(frame: &mut Frame) {
         Line::from("  Enter 切换节点    t 测当前    T 测整组（并发 4）"),
         Line::from("  Esc 取消测速 / 清除过滤    / 中文或英文子串过滤"),
         Line::from("  m 模式轮换：rule → global → direct    r 刷新"),
+        Line::from("  s 启动 Verge    X 确认退出 Verge / 关闭 Clash"),
         Line::from(""),
         Line::from(blue("  订阅")),
         Line::from("  i 导入 URL（Tab 输入名称）    f 经代理刷新用量"),
@@ -457,7 +449,10 @@ fn help(frame: &mut Frame) {
         Line::from(blue("  连接")),
         Line::from("  x 立即关闭当前连接    每 2 秒刷新快照"),
         Line::from(""),
-        Line::from(muted("  ? / Esc 关闭帮助    ·    clashtui-mayon 0.1.0")),
+        Line::from(muted(concat!(
+            "  ? / Esc 关闭帮助    ·    clashtui-mayon ",
+            env!("CARGO_PKG_VERSION")
+        ))),
     ];
     frame.render_widget(
         Paragraph::new(text)
@@ -469,6 +464,11 @@ fn help(frame: &mut Frame) {
 }
 fn dialog_view(frame: &mut Frame, dialog: &Dialog) {
     match dialog {
+        Dialog::Stop => mayon_ui::dialog(
+            frame,
+            " 关闭 Clash ",
+            "向本用户的 Verge GUI 发送 SIGTERM。\nVerge 将复位系统代理、关闭 TUN 并停止内核。\n\nEnter / y 确认 · Esc / n 取消",
+        ),
         Dialog::Import { url, name, field } => {
             let popup = modal(frame, 76, 15);
             // URLs are never rendered: tokens may be present even in query strings.
@@ -527,6 +527,12 @@ mod tests {
     use super::*;
     use crate::app::Options;
     #[test]
+    fn tabs_use_unicode_cell_ranges() {
+        assert_eq!(tab_at(2), Some('1'));
+        assert_eq!(tab_at(12), Some('2'));
+        assert_eq!(tab_at(22), Some('3'));
+    }
+    #[test]
     fn renders_chinese_at_wide_and_narrow_sizes() {
         for width in [48, 80, 132] {
             let mut app = App::new(Options {
@@ -535,8 +541,10 @@ mod tests {
                 test_url: "http://example.invalid".into(),
                 usage_proxy: None,
                 no_verge: true,
+                lifecycle: crate::lifecycle::Lifecycle::default(),
             })
             .unwrap();
+            app.online = true;
             app.proxies.insert(
                 "香港 选择".into(),
                 crate::api::Proxy {
@@ -549,6 +557,40 @@ mod tests {
                 let mut terminal =
                     ratatui::Terminal::new(ratatui::backend::TestBackend::new(width, 24)).unwrap();
                 terminal.draw(|f| draw(f, &mut app)).unwrap();
+                let text = terminal
+                    .backend()
+                    .buffer()
+                    .content()
+                    .iter()
+                    .map(|c| c.symbol())
+                    .collect::<String>();
+                let expected = match page {
+                    Page::Proxies => "代理组",
+                    Page::Profiles => "订阅",
+                    Page::Connections => "活动连接",
+                };
+                assert!(
+                    text.chars()
+                        .filter(|c| !c.is_whitespace())
+                        .collect::<String>()
+                        .contains(expected),
+                    "{expected} missing at {width} columns"
+                );
+                app.online = false;
+                terminal.draw(|f| draw(f, &mut app)).unwrap();
+                let text = terminal
+                    .backend()
+                    .buffer()
+                    .content()
+                    .iter()
+                    .map(|c| c.symbol())
+                    .collect::<String>();
+                assert!(text
+                    .chars()
+                    .filter(|c| !c.is_whitespace())
+                    .collect::<String>()
+                    .contains("Clash未运行"));
+                app.online = true;
             }
         }
     }

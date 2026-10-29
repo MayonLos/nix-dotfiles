@@ -28,6 +28,7 @@ NixOS + Home Manager，Den + flake-parts。当前真实实例为单主机 `nixos
 | `aspects/workspace/` | workspace-task、project-workbench |
 | `bundles/` | 只通过 Den `includes` 组成的常用功能组合 |
 | `inventory/` | 实体、硬件事实、用户身份、绑定选择、秘密声明 |
+| `packages/` | 自写程序源码只放在这里；功能目录通过公开包使用，负责安装、快捷键与配置 |
 | `lib/` | 至少两个功能目录共同使用的纯 helper；不是模块发现器 |
 | `tests/composition/`、`aspects/**/checks.nix` | 跨功能组合与功能检查 |
 | `secrets/` | sops 加密数据 |
@@ -39,7 +40,7 @@ NixOS + Home Manager，Den + flake-parts。当前真实实例为单主机 `nixos
 
 ## 配置与数据边界
 
-- stable 与 unstable nixpkgs 实例只在 `nix/pkgs.nix` 创建。功能通过 `pkgs.unstable.<白名单名>` 访问明确列出的例外，通过 `pkgs.local.<名称>` 使用第三方 flake 包的原始 derivation 别名。不得重新导入 nixpkgs 或新增自建实例。
+- stable 与 unstable nixpkgs 实例只在 `nix/pkgs.nix` 创建。功能通过 `pkgs.unstable.<白名单名>` 访问明确列出的例外，通过 `pkgs.local.<名称>` 使用第三方 flake 包的原始 derivation 别名。本仓库 Rust 工作区通过公开 `pkgs.mayonTui.{clash,docker,ports}` 输出使用；`packages/mayon-tui/default.nix` 是包工厂。不得重新导入 nixpkgs 或新增自建实例。
 - `nix/hosts.nix` 经 `den.schema.host` 以 `mkDefault` 提供 `instantiate` 和 HM 全局接线。`homeManagerArgs` 先在 host schema 边界设默认值，再以普通优先级交给 HM，因为 HM 会以普通优先级添加 `nixosConfig`；避免浅层 attrs 合并丢失 host 的 `inputs` 与 `hostFacts`。不要把某台机器的事实闭包捕获进通用接线。
 - 功能间只使用 `includes` 做选择，实体 schema 接收输入，quirk/pipe 传贡献，公开模块选项合并模块设置，公开包工厂接收参数。只可引用 feature 的 `default.nix`、`contract.nix` 或 README 明确列出的公开导出；其他 Nix 文件均为私有。
 - 有契约、主机侧内容或拥有配置/用户状态的 feature 必须提供 `README.md`，说明用途、输入、输出、拥有文件和移除后的状态。`checks.nix` 是显式登记的测试钩子，不作模块发现。

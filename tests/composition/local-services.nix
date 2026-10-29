@@ -20,6 +20,9 @@ let
           schema.user.classes = [ "homeManager" ];
 
           hosts.${system} = {
+            # Reuse the registered package set, including local public packages.
+            hostA.instantiate = args: inputs.nixpkgs.lib.nixosSystem (args // { inherit pkgs; });
+            hostB.instantiate = args: inputs.nixpkgs.lib.nixosSystem (args // { inherit pkgs; });
             hostA.users = {
               alice = { };
               bob = { };
@@ -156,6 +159,7 @@ let
   results = {
     clientsDoNotStartLocalDaemonsOrGrantGroups =
       hasPackage (home clientsOnly "hostB" "alice") pkgs.docker
+      && hasPackage (home clientsOnly "hostB" "alice") pkgs.mayonTui.docker
       && hasPackage (home clientsOnly "hostB" "bob") pkgs.virt-manager
       && !clientsHostB.virtualisation.docker.rootless.enable
       && !clientsHostB.virtualisation.libvirtd.enable

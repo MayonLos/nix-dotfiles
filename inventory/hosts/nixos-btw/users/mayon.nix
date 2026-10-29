@@ -59,6 +59,7 @@ in
           tree-account-tool
           network-manager-user
           clash-tui
+          port-tools
           legion-laptop-user
           personal-desktop
           xorg-session
