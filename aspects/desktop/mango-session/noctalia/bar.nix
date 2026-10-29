@@ -33,6 +33,9 @@
     center = [ ];
     end = [
       "tray"
+      # Mihomo (Clash Verge core) status and node switching; hover for
+      # traffic and selections, click for the control panel.
+      "mdj2812/mihomo-control:widget"
       "network"
       "bluetooth"
       "volume"
@@ -46,6 +49,11 @@
   };
 
   widget = {
+    "mdj2812/mihomo-control:widget" = {
+      # Icon only keeps the bar quiet; status colour still shows connectivity.
+      label_content = "none";
+      icon_color_mode = "status";
+    };
     launcher = {
       custom_image = "${../resources/nix-snowflake.svg}";
       custom_image_colorize = true;

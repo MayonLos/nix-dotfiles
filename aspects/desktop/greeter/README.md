@@ -27,7 +27,7 @@ upstream. Source anchors fail the package build on patch drift; `greeter-tech`
 checks the real executable, configured font/date and processed wallpaper.
 
 The feature owns system greeter configuration, preprocessed public wallpaper and
-font/cursor assets (Bibata-Modern-Ice from `bibata-cursors`, shared size 32). Removal withdraws those declarations, preserving accounts,
+font/cursor assets (Bibata-Modern-Ice from `bibata-cursors`, shared size 24). Removal withdraws those declarations, preserving accounts,
 credentials and user/session state; select a replacement display manager first.
 Isolated screenshots with a private fake greetd endpoint verify rendering, not
 cold login, actual PAM authentication, display scaling or successful session start.
