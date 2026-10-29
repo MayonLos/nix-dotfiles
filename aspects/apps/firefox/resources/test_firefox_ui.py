@@ -123,8 +123,8 @@ class FirefoxUiTests(unittest.TestCase):
         self.assertEqual(declarations["font-size"], "14px")
         # A saved native sidebar resize must never be replaced by CSS.
         for rule in rules:
-            if rule.type == "qualified-rule" and "::" not in tinycss2.serialize(rule.prelude) and any(selector in tinycss2.serialize(rule.prelude)
-                for selector in ("sidebar-main", "#sidebar-container", "#tabbrowser-tabs")):
+            if rule.type == "qualified-rule" and "::" not in tinycss2.serialize(rule.prelude) and any(selector.strip() in {"sidebar-main", "#sidebar-container", '#tabbrowser-tabs[orient="vertical"]'}
+                for selector in tinycss2.serialize(rule.prelude).split(",")):
                 names = {item.lower_name for item in tinycss2.parse_declaration_list(rule.content)
                          if item.type == "declaration"}
                 self.assertFalse(names & {"width", "min-width", "max-width", "inline-size", "min-inline-size", "max-inline-size"})
@@ -160,6 +160,8 @@ class FirefoxUiTests(unittest.TestCase):
         self.assertIn(BEGIN, first[0])
         self.assertIn(BEGIN, first[1])
         self.assertIn('browser.newtabpage.activity-stream.topSitesRows", 1', first[2])
+        self.assertIn('stop-reload-button', first[2])
+        self.assertIn('sidebar-button', first[2])
         self.assertIn("about:home", first[1])
         self.assertIn("about:newtab", first[1])
 
@@ -172,6 +174,40 @@ class FirefoxUiTests(unittest.TestCase):
                 self.prefs_path.read_text(encoding="utf-8"),
             ),
         )
+
+    def test_sidebar_state_and_personal_preferences_survive_upgrade(self) -> None:
+        self.run_script(SEED_SCRIPT)
+        old = self.prefs_path.read_text()
+        # Recreate the old generation's state overrides within the owned block.
+        old = old.replace('// END nix-dotfiles managed Firefox UI',
+            'user_pref("sidebar.visibility", "always-show");\n'
+            'user_pref("sidebar.backupState", "old-forced-state");\n'
+            '// END nix-dotfiles managed Firefox UI')
+        self.prefs_path.write_text(old + '\nuser_pref("sidebar.verticalTabs", false);\n')
+        saved = ('user_pref("sidebar.backupState", "user-expanded-state");\n'
+                 'user_pref("sidebar.visibility", "expand-on-hover");\n'
+                 'user_pref("findbar.highlightAll", false);\n')
+        (self.profile / "prefs.js").write_text(saved)
+        self.run_script(SEED_SCRIPT)
+        updated = self.prefs_path.read_text()
+        managed = updated.split('// BEGIN nix-dotfiles managed Firefox UI')[1].split('// END nix-dotfiles managed Firefox UI')[0]
+        self.assertNotIn('sidebar.visibility', managed)
+        self.assertNotIn('sidebar.backupState', managed)
+        self.assertNotIn('sidebar.verticalTabs', managed)
+        self.assertNotIn('findbar.highlightAll', managed)
+        self.assertTrue(updated.endswith('user_pref("sidebar.verticalTabs", false);\n'))
+        self.assertEqual((self.profile / "prefs.js").read_text(), saved)
+        self.run_script(SEED_SCRIPT)
+        self.assertEqual(self.prefs_path.read_text(), updated)
+
+    def test_existing_profile_preferences_are_not_adopted(self) -> None:
+        saved = ('user_pref("sidebar.revamp", false);\n'
+                 'user_pref("browser.uiCustomization.state", "personal-layout");\n')
+        (self.profile / "prefs.js").write_text(saved)
+        self.run_script(SEED_SCRIPT)
+        self.assertNotIn('user_pref("sidebar.revamp"', self.prefs_path.read_text())
+        self.assertNotIn('browser.uiCustomization.state', self.prefs_path.read_text())
+        self.assertEqual((self.profile / "prefs.js").read_text(), saved)
 
     def test_noctalia_hook_updates_both_stylesheet_blocks(self) -> None:
         self.run_script(NOCTALIA_HOOK)

@@ -35,21 +35,9 @@
           onedark_purple = user.appearance.purple;
           onedark_cyan = user.appearance.cyan;
         };
-        firefoxAddons = {
-          darkReader = pkgs.fetchurl {
-            name = "darkreader-4.9.133.xpi";
-            url = "https://addons.mozilla.org/firefox/downloads/file/5055786/darkreader-4.9.133.xpi";
-            hash = "sha256-6wbFCW12FhbH8dlUwRUkykv/T+cikETcH84oiowIU6s=";
-          };
-        };
         firefoxWithManagedThemeAndExtensions = pkgs.firefox.override {
           extraPolicies = {
             ExtensionSettings = {
-              "addon@darkreader.org" = {
-                installation_mode = "force_installed";
-                install_url = "file://${firefoxAddons.darkReader}";
-                updates_disabled = true;
-              };
               # These synchronized theme add-ons override Firefox's dark theme.
               "{74da71cc-4d66-48f5-95d1-1f017f18ffab}".installation_mode = "blocked";
               "{443bf4af-0884-4c22-886b-21f936e899df}".installation_mode = "blocked";

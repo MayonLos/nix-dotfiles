@@ -2,6 +2,7 @@
 """Seed Firefox UI preferences and the managed browser-chrome stylesheet."""
 
 import os
+import json
 from pathlib import Path
 import sys
 
@@ -11,6 +12,9 @@ from firefox_profile import (
     CONTENT_END,
     END,
     _default_profile_path,
+    preference_defaults,
+    PREF_BEGIN,
+    PREF_END,
     replace_managed_block,
     split_stylesheets,
 )
@@ -32,13 +36,26 @@ def main() -> int:
     if not profile_path.is_dir():
         raise SystemExit(f"Firefox default profile does not exist: {profile_path}")
 
+    # Initial placement only; preference_defaults leaves existing layouts alone.
+    # currentVersion=28 is the schema in locked Firefox 159 CustomizableUI.
+    toolbar = json.dumps({
+        "placements": {"nav-bar": [
+            "sidebar-button", "back-button", "forward-button", "stop-reload-button",
+            "urlbar-container", "downloads-button", "unified-extensions-button",
+        ]},
+        "currentVersion": 28,
+        "newElementCount": 0,
+    }, separators=(",", ":"))
     user_prefs = "\n".join(
         [
+            f'user_pref("browser.uiCustomization.state", {json.dumps(toolbar)});',
+            # Locked Firefox 159's experimental Nova layout adds a content
+            # frame and a different toolbar; keep the native compact layout.
+            'user_pref("browser.nova.enabled", false);',
             'user_pref("sidebar.revamp", true);',
             'user_pref("sidebar.verticalTabs", true);',
-            'user_pref("sidebar.visibility", "always-show");',
-            # Override Firefox's persisted open launcher state on every start.
-            'user_pref("sidebar.backupState", "{\\"launcherExpanded\\":false,\\"launcherVisible\\":true,\\"panelOpen\\":false}");',
+            # Firefox owns visibility, saved width and launcherExpanded. The
+            # native Ctrl+Alt+Z / toolbar button toggles the icon rail.
             'user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);',
             'user_pref("browser.newtabpage.activity-stream.showSearch", true);',
             'user_pref("browser.newtabpage.activity-stream.topSitesRows", 1);',
@@ -54,9 +71,9 @@ def main() -> int:
     try:
         replace_managed_block(
             profile_path / "user.js",
-            "// BEGIN nix-dotfiles managed Firefox UI",
-            "// END nix-dotfiles managed Firefox UI",
-            user_prefs,
+            PREF_BEGIN,
+            PREF_END,
+            preference_defaults(profile_path, user_prefs),
         )
     except RuntimeError as error:
         raise SystemExit(str(error)) from error

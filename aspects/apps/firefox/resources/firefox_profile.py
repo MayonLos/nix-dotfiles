@@ -1,6 +1,8 @@
 """Shared Firefox profile and managed-configuration helpers."""
 
 import configparser
+import json
+import re
 from pathlib import Path
 import tempfile
 
@@ -108,3 +110,54 @@ def replace_managed_block(path: Path, begin: str, end: str, content: str) -> boo
     temp_path.chmod(mode)
     temp_path.replace(path)
     return True
+
+
+PREF_BEGIN = "// BEGIN nix-dotfiles managed Firefox UI"
+PREF_END = "// END nix-dotfiles managed Firefox UI"
+PREF_PATTERN = re.compile(r'^\s*user_pref\(\s*("(?:[^"\\]|\\.)*")\s*,\s*(.*?)\s*\);', re.MULTILINE)
+
+
+def preference_defaults(profile: Path, defaults: str) -> str:
+    """Keep defaults only while the user has not chosen another value.
+
+    prefs.js records Firefox UI changes. Compare it with the previous managed
+    value, not the new default, so upgrading a default does not steal a choice.
+    An explicit user.js preference outside our markers always wins. No file
+    outside the managed user.js block is written.
+    """
+    path = profile / "user.js"
+    old = path.read_text(encoding="utf-8") if path.exists() else ""
+    previous = ""
+    outside = old
+    if PREF_BEGIN in old and PREF_END in old:
+        start = old.index(PREF_BEGIN)
+        finish = old.find(PREF_END, start + len(PREF_BEGIN))
+        if finish >= 0:
+            previous = old[start + len(PREF_BEGIN):finish]
+            outside = old[:start] + old[finish + len(PREF_END):]
+
+    def prefs(text: str) -> dict:
+        return {json.loads(key): value for key, value in PREF_PATTERN.findall(text)}
+
+    explicit = prefs(outside)
+    prior = prefs(previous)
+    saved_path = profile / "prefs.js"
+    saved = prefs(saved_path.read_text(encoding="utf-8")) if saved_path.exists() else {}
+    result = []
+    for line in defaults.splitlines():
+        match = PREF_PATTERN.match(line)
+        if match is None:
+            continue
+        key = json.loads(match[1])
+        if key in explicit:
+            continue
+        if key in saved:
+            # Unknown/complex JS values are user data too: leave them alone.
+            try:
+                unchanged = key in prior and json.loads(saved[key]) == json.loads(prior[key])
+            except (ValueError, TypeError):
+                unchanged = False
+            if not unchanged:
+                continue
+        result.append(line)
+    return "\n".join(result)
