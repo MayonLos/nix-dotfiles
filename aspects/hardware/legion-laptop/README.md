@@ -15,3 +15,9 @@ The host aspect owns kernel/driver/system declarations; hardware facts are suppl
 Removing the feature withdraws driver, boot, and hardware policy declarations on the next system generation. It does not delete user files, firmware, laptop state, or NVIDIA/Steam profiles; removing drivers while the machine is running requires a later deliberate system switch and reboot.
 
 Removing the user aspect withdraws its group grant and CLI. Removing the host rule does not reset the current firmware charge setting or retroactively revoke a sysfs mode until device recreation/reboot; no removal hook writes charge state.
+
+### Boot audit (2026-10-30, no runtime change)
+
+The running boot still spends 3.185 s in stage-2 `systemd-modules-load`, followed by firewall (213 ms), NetworkManager (801 ms) and greetd; graphical.target is reached at 6.391 s of userspace. The NVIDIA modules are the last entries (nvidia, modeset, UVM, DRM). `nvidia-persistenced` starts after module loading and is not on that measured critical chain. Boot-time registration succeeded in this boot; the user's later GPU power-off/absence is not evidence it was absent during boot.
+
+The locked NixOS NVIDIA module explicitly loads UVM for CUDA and DRM/modeset for PRIME/display support. Keeping persistence and stage-2 loading preserves the known shutdown workaround, externally wired NVIDIA outputs, early display discovery and suspend restoration. Removing persistence's multi-user ordering would not remove the observed modules-load delay. Deferring the modules until a first game/CUDA command could race external-monitor login and resume; this round therefore changes neither kernel module timing nor persistence ordering. A separate measured trial must cover cold boot with GPU disabled/enabled, external output before login, game offload, `nix develop .#cuda` and suspend/resume before adopting that change. No boot-time speedup is claimed.

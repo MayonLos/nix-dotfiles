@@ -52,6 +52,12 @@ def main() -> int:
             # Locked Firefox 159's experimental Nova layout adds a content
             # frame and a different toolbar; keep the native compact layout.
             'user_pref("browser.nova.enabled", false);',
+            # Current Firefox uses these general Linux/DMABuf preferences;
+            # media.ffmpeg.vaapi.enabled is absent from Firefox 159's pref
+            # definitions, and force-enabled would bypass decoder blocklists.
+            'user_pref("media.hardware-video-decoding.enabled", true);',
+            'user_pref("widget.dmabuf.enabled", true);',
+            'user_pref("widget.dmabuf-webgl.enabled", true);',
             'user_pref("sidebar.revamp", true);',
             'user_pref("sidebar.verticalTabs", true);',
             # Firefox owns visibility, saved width and launcherExpanded. The

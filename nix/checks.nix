@@ -35,6 +35,7 @@
         ../aspects/desktop/session-support/checks.nix
         ../aspects/desktop/xorg-session/checks.nix
         ../aspects/dev/embedded/checks.nix
+        ../aspects/dev/containers/checks.nix
         ../aspects/dev/neovim/checks.nix
         ../aspects/dev/vscode/checks.nix
         ../aspects/hardware/legion-laptop/checks.nix

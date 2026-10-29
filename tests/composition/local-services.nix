@@ -142,11 +142,15 @@ let
   selectedContainerHome =
     profile:
     profile.systemd.user.services ? docker
+    && profile.systemd.user.services ? docker-proxy
+    && profile.systemd.user.sockets ? docker
     && profile.systemd.user.services ? docker-prune
     && profile.systemd.user.timers ? docker-prune;
   noContainerHome =
     profile:
     !(profile.systemd.user.services ? docker)
+    && !(profile.systemd.user.services ? docker-proxy)
+    && !(profile.systemd.user.sockets ? docker)
     && !(profile.systemd.user.services ? docker-prune)
     && !(profile.systemd.user.timers ? docker-prune);
   results = {
@@ -184,8 +188,10 @@ let
       && !localHostB.virtualisation.libvirtd.enable
       && groups localHostB "alice" == [ ]
       && selectedContainerHome selectedAlice
+      && selectedAlice.systemd.user.sockets.docker.Install.WantedBy == [ "sockets.target" ]
+      && selectedAlice.systemd.user.services.docker-proxy.Unit.Requires == [ "docker.service" ]
       && selectedAlice.home.sessionVariables.DOCKER_HOST == "unix://$XDG_RUNTIME_DIR/docker.sock"
-      && selectedAlice.systemd.user.services.docker.Install.WantedBy == [ "default.target" ]
+      && selectedAlice.systemd.user.services.docker.Install.WantedBy == [ ]
       &&
         selectedAlice.systemd.user.services.docker-prune.Service.ExecStart
         == [ "${pkgs.docker}/bin/docker --host unix://%t/docker.sock builder prune -f --filter until=168h" ]
@@ -216,8 +222,8 @@ let
         ]
       && selectedContainerHome sharedAlice
       && selectedContainerHome sharedBob
-      && sharedAlice.systemd.user.services.docker.Install.WantedBy == [ "default.target" ]
-      && sharedBob.systemd.user.services.docker.Install.WantedBy == [ "default.target" ]
+      && sharedAlice.systemd.user.services.docker.Install.WantedBy == [ ]
+      && sharedBob.systemd.user.services.docker.Install.WantedBy == [ ]
       && sharedAlice.systemd.user.timers.docker-prune.Install.WantedBy == [ "timers.target" ]
       && sharedBob.systemd.user.timers.docker-prune.Install.WantedBy == [ "timers.target" ]
       && !hasAllRules (host sharedHost "hostB");

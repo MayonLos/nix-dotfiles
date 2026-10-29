@@ -6,6 +6,7 @@
 }:
 
 let
+  tools = import ./tools.nix { inherit pkgs; };
   java = import ../../../lib/java.nix { inherit pkgs; };
   qtStyle =
     if palette == null then
@@ -87,6 +88,15 @@ let
       (builtins.readFile ./resources/prism/prism-icon.svg)
   );
   prismlauncher = pkgs.prismlauncher.override {
+    prismlauncher-unwrapped = pkgs.prismlauncher-unwrapped.overrideAttrs (old: {
+      postPatch = (old.postPatch or "") + ''
+        # Apply at the game launch boundary, preserving user custom wrappers
+        # and instance overrides without rewriting any Prism settings file.
+        substituteInPlace launcher/minecraft/launch/LauncherPartLaunch.cpp \
+          --replace-fail 'QString wrapperCommandStr = instance->getWrapperCommand().trimmed();' \
+          'QString wrapperCommandStr = QStringLiteral("${tools.game-run}/bin/game-run ") + instance->getWrapperCommand().trimmed();'
+      '';
+    });
     additionalPrograms = [
       pkgs.ffmpeg
       pkgs.mangohud

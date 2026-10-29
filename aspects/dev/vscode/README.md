@@ -23,6 +23,17 @@ Inter is therefore not forced with a CSS-injection extension. Editor and
 terminal fonts are configured through their supported settings. Theme roles
 use the [official color API](https://code.visualstudio.com/api/references/theme-color).
 
+The locked VS Code package is 1.119.0 and its Linux wrapper adds
+`--enable-features=WaylandWindowDecorations` for Wayland. It does not declare a
+video-decoding feature switch. Chromium's current Linux VA-API guide describes
+VA-API as unsupported/best-effort and uses renamed, build-dependent feature
+switches; appending another `--enable-features` would also replace the wrapper's
+feature list unless both were explicitly combined. No speculative switch or
+profile setting is seeded. VS Code does not expose `chrome://media-internals` as
+a supported diagnostics page, so hardware decoding for an embedded video needs
+separate runtime instrumentation; it is not confirmed by the package version
+or Intel driver installation.
+
 Home Manager **does not own or symlink `Code/User/settings.json`**. Its
 `seedVscodeSettings` activation runs `seed-settings.py` after the write boundary:
 
