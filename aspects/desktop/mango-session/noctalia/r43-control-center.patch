@@ -1,0 +1,211 @@
+--- a/src/shell/control_center/control_center_panel.h
++++ b/src/shell/control_center/control_center_panel.h
+@@ -97,7 +97,7 @@
+   [[nodiscard]] bool deferExternalRefresh() const override;
+   [[nodiscard]] bool deferPointerRelayout() const override;
+   [[nodiscard]] float preferredWidth() const override;
+-  [[nodiscard]] float preferredHeight() const override { return scaled(tabFromContext(pendingOpenContext()) == TabId::Home ? 420.0F : 520.0F); }
++  [[nodiscard]] float preferredHeight() const override { return scaled(tabFromContext(pendingOpenContext()) == TabId::Home ? 540.0F : 520.0F); }
+   [[nodiscard]] PanelPlacement panelPlacement() const noexcept override;
+   [[nodiscard]] bool showsSidebar() const noexcept { return m_showSidebar; }
+ 
+--- a/src/shell/control_center/tabs/home_tab.cpp
++++ b/src/shell/control_center/tabs/home_tab.cpp
+@@ -53,7 +53,8 @@
+   // Avatar sources above this size decode noticeably slowly; warn so users
+   // understand why.
+   constexpr std::uintmax_t kHomeAvatarSourceWarnBytes = 8ULL * 1024ULL * 1024ULL;
+-  constexpr std::size_t kHomeShortcutGridColumns = 3;
++  // R43: two device tiles followed by neutral full-width function rows.
++  constexpr std::size_t kHomeShortcutGridColumns = 2;
+   // Keep the sparse shortcut set in a single column; six configured items use the
+   // 3x2 grid.
+   constexpr std::size_t kHomeStackedShortcutMax = 2;
+@@ -110,6 +111,15 @@
+ 
+   void applyShortcutButtonStyle(Button& button, bool enabled, bool active, float fillOpacity) {
+     const bool on = enabled && active;
++    // R43: keep full-width function rows neutral during every service-driven sync.
++    if (button.direction() == FlexDirection::Horizontal) {
++      auto rowPalette = Button::defaultPalette(ButtonVariant::Ghost);
++      rowPalette.normal.label = colorSpecFromRole(on ? ColorRole::Primary : ColorRole::OnSurface);
++      button.setCustomPalette(std::move(rowPalette));
++      button.setSurfaceOpacity(1.0F);
++      button.setEnabled(enabled);
++      return;
++    }
+     button.setVariant(ButtonVariant::Default);
+     auto palette = Button::defaultPalette(ButtonVariant::Default);
+     if (on) {
+@@ -377,6 +387,8 @@
+       label->setParticipatesInLayout(false);
+     }
+   }
++  userCard->setVisible(false);
++  userCard->setParticipatesInLayout(false);
+   tab->addChild(std::move(userCard));
+ 
+   auto bottomRow = ui::column({
+@@ -402,10 +414,10 @@
+       .fillWidth = true,
+       .height = 64.0F * scale,
+       .flexGrow = 0.0F,
+-      .configure = [scale, opacity = panelCardOpacity()](Flex& card) { applyHomeCardStyle(card, scale, opacity); },
++      .configure = [scale, opacity = panelCardOpacity()](Flex& card) { applyHomeCardStyle(card, scale, opacity); card.clearFill(); card.clearBorder(); },
+   });
+ 
+-  const float artSize = Style::controlHeightLg * 1.22F * scale;
++  const float artSize = 40.0F * scale;
+   auto mediaContent = ui::row(
+       {.align = FlexAlign::Center, .gap = Style::spaceSm * scale},
+       ui::column(
+@@ -528,13 +540,16 @@
+   });
+ 
+   leftColumn->addChild(std::move(mediaCard));
++  dateTimeCard->setVisible(false);
++  dateTimeCard->setParticipatesInLayout(false);
+   leftColumn->addChild(std::move(dateTimeCard));
+ 
+   // --- Shortcuts (right of media + clock) ---
+   const auto& shortcuts =
+       m_config != nullptr ? m_config->config().controlCenter.shortcuts : std::vector<ShortcutConfig>{};
+-  const std::size_t count = std::min(shortcuts.size(), std::size_t{6});
+-
++  const std::size_t count = std::min(shortcuts.size(), std::size_t{7});
++
++  auto functionRows = ui::column({.align = FlexAlign::Stretch, .gap = 4.0F * scale, .fillWidth = true});
+   auto grid = std::make_unique<GridView>();
+   grid->setColumns(kHomeShortcutGridColumns);
+   grid->setColumnGap(6.0F * scale);
+@@ -543,7 +558,7 @@
+   grid->setUniformCellSize(true);
+   grid->setStretchItems(true);
+   grid->setSquareCells(false);
+-  grid->setMinCellHeight(52.0F * scale);
++  grid->setMinCellHeight(60.0F * scale);
+   grid->setSpanLastItem(true);
+   grid->setFlexGrow(0.0F);
+   m_shortcutsGrid = grid.get();
+@@ -607,7 +622,7 @@
+         .glyph = shortcut->displayIcon(),
+         .glyphSize = 18.0F * scale,
+         .contentAlign = showLabels ? ButtonContentAlign::Start : ButtonContentAlign::Center,
+-        .minHeight = 0.0F,
++        .minHeight = i < 2 ? 60.0F * scale : 34.0F * scale,
+         .padding = Style::spaceSm * scale,
+         .gap = Style::spaceXs * scale,
+         .radius = Style::scaledRadiusXl(scale),
+@@ -624,22 +639,28 @@
+               }
+             },
+         .configure =
+-            [enabled, isActive, showLabels, fillOpacity = panelCardOpacity(), scale](Button& button) {
+-              button.setDirection(FlexDirection::Vertical);
+-              button.setJustify(FlexJustify::Center);
++            [enabled, isActive, showLabels, fillOpacity = panelCardOpacity(), scale, i](Button& button) {
++              button.setDirection(i < 2 ? FlexDirection::Vertical : FlexDirection::Horizontal);
++              button.setJustify(i < 2 ? FlexJustify::Center : FlexJustify::Start);
+               if (showLabels) {
+                 // Stretch so the label width follows the cell; Center uses
+                 // intrinsic text width and fights setMaxWidth.
+                 button.setAlign(FlexAlign::Stretch);
+                 if (button.label() != nullptr) {
+-                  button.label()->setFontSize(Style::fontSizeMini * scale);
++                  button.label()->setFontSize(14.0F * scale);
++                  button.label()->setFontWeight(FontWeight::Medium);
+                   button.label()->setMaxLines(1);
+-                  button.label()->setTextAlign(TextAlign::Center);
++                  button.label()->setTextAlign(i < 2 ? TextAlign::Center : TextAlign::Start);
+                 }
+               } else {
+                 button.setAlign(FlexAlign::Center);
+               }
+               applyShortcutButtonStyle(button, enabled, isActive, fillOpacity);
++              if (i >= 2) {
++                auto rowPalette = Button::defaultPalette(ButtonVariant::Ghost);
++                rowPalette.normal.label = colorSpecFromRole(isActive ? ColorRole::Primary : ColorRole::OnSurface);
++                button.setCustomPalette(std::move(rowPalette));
++              }
+             },
+     });
+ 
+@@ -665,10 +686,15 @@
+     pad.glyph = btnPtr->glyph();
+     pad.label = btnPtr->label();
+     m_shortcutPads.push_back(std::move(pad));
+-    grid->addChild(std::move(btn));
+-  }
+-
+-  if (m_shortcutPads.size() <= kHomeStackedShortcutMax) {
++    if (i < 2) {
++      grid->addChild(std::move(btn));
++    } else {
++      btn->setFillWidth(true);
++      functionRows->addChild(std::move(btn));
++    }
++  }
++
++  if (m_shortcutPads.size() < kHomeStackedShortcutMax) {
+     grid->setColumns(1);
+     grid->setFlexGrow(0.0F);
+   }
+@@ -678,6 +704,7 @@
+   } else {
+     m_shortcutsGrid = nullptr;
+   }
++  bottomRow->addChild(std::move(functionRows));
+   bottomRow->addChild(createCompactControls());
+   bottomRow->addChild(std::move(leftColumn));
+   tab->addChild(std::move(bottomRow));
+@@ -706,7 +733,7 @@
+             .maxValue = 1.0,
+             .step = 0.01,
+             .value = 0.0,
+-            .trackHeight = 4.0F * scale,
++            .trackHeight = 3.0F * scale,
+             .thumbSize = 14.0F * scale,
+             .controlHeight = 28.0F * scale,
+             .flexGrow = 1.0F,
+@@ -820,9 +847,9 @@
+   }
+   if (m_shortcutsGrid != nullptr && !m_shortcutPads.empty()) {
+     const auto cols = std::max<std::size_t>(1, m_shortcutsGrid->columns());
+-    const auto rows = (m_shortcutPads.size() + cols - 1) / cols;
++    const auto rows = (std::min(m_shortcutPads.size(), std::size_t{2}) + cols - 1) / cols;
+     const float height =
+-        static_cast<float>(rows) * 52.0F * contentScale() + static_cast<float>(rows - 1) * m_shortcutsGrid->rowGap();
++        static_cast<float>(rows) * 60.0F * contentScale() + static_cast<float>(rows - 1) * m_shortcutsGrid->rowGap();
+     m_shortcutsGrid->setSize(contentWidth, height);
+   }
+   m_rootLayout->setSize(contentWidth, bodyHeight);
+@@ -1446,7 +1473,8 @@
+   }
+   for (auto& pad : m_shortcutPads) {
+     if (pad.label != nullptr) {
+-      pad.label->setFontSize(Style::fontSizeMini * s);
++      pad.label->setFontSize(14.0F * s);
++      pad.label->setFontWeight(FontWeight::Medium);
+     }
+     // Icon-only glyphs are sized from cell side in doLayout.
+     if (pad.glyph != nullptr && (m_config == nullptr || m_config->config().controlCenter.showShortcutLabels)) {
+--- a/src/shell/control_center/control_center_panel.cpp
++++ b/src/shell/control_center/control_center_panel.cpp
+@@ -79,15 +79,8 @@
+ float ControlCenterPanel::preferredWidth() const {
+   const float fullSize = m_config != nullptr ? static_cast<float>(m_config->config().controlCenter.width)
+                                              : static_cast<float>(ControlCenterConfig::kDefaultWidth);
+-  switch (sidebarModeForOpen(pendingOpenContext())) {
+-  case ControlCenterSidebarMode::Full:
+-    return fullSize * m_contentScale;
+-  case ControlCenterSidebarMode::None:
+-    return fullSize * 0.75F * m_contentScale;
+-  default:
+-  case ControlCenterSidebarMode::Compact:
+-    return fullSize * 0.85F * m_contentScale;
+-  }
++  // R43: width is the visible panel width, independent of navigation mode.
++  return fullSize * m_contentScale;
+ }
+ 
+ PanelPlacement ControlCenterPanel::panelPlacement() const noexcept {

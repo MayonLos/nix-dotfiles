@@ -21,7 +21,7 @@ Xorg。两会话互斥；用途是 QQ、腾讯会议、OBS 等应用的原生 X1
 | 五格电源菜单 | Lock/Logout/Suspend/Reboot/Shutdown；后四项另一次确认，未知输入不执行 |
 | Dunst通知320、左色条与进度 | 1.13 Cairo局部补丁，级别只染左条、正文中性；原生进度hint |
 | 同壁纸锁屏 | i3lock-color，暗化缓存只在用户runtime/cache；保留PAM/nofork/睡眠延迟FD |
-| 壁纸与指针、字体、输入法 | 共享palette/phinger-cursors-light/Fcitx/xrdb；读同一managed/local目录，默认005 |
+| 壁纸与指针、字体、输入法 | 共享palette/Apple Cursor 白色/Fcitx/xrdb；读同一managed/local目录，默认005 |
 | 截图 | Print区域→Satty标注/复制/保存，Ctrl+Print全桌复制；Super Print系列OCR |
 | 托盘、外屏、暂存工具 | 原生systray、RandR事件热插拔、终端/Yazi/btop三个scratchpads |
 

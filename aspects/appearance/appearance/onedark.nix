@@ -10,10 +10,10 @@
     serif = "Noto Serif CJK SC";
   };
   cursor = {
-    name = "phinger-cursors-light";
+    name = "macOS-White";
     size = 32;
   };
-  iconTheme = "Tela-circle-dark";
+  iconTheme = "WhiteSur-dark";
   iconFolderColor = "blue";
   black = "#0e1013";
   bg = "#1e2228";

@@ -8,8 +8,9 @@ QPushButton, QToolButton, QComboBox, QSpinBox, QDoubleSpinBox {
   color: @BRIGHT_FG@;
   background: @SURFACE@;
   border: 1px solid @SELECTION@;
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 4px 9px;
+  font-weight: 500;
   min-height: 18px;
 }
 QPushButton:hover, QToolButton:hover, QComboBox:hover { background: @SELECTION@; }
@@ -114,18 +115,17 @@ QHeaderView::section {
   border: 0;
   border-bottom: 1px solid @SELECTION@;
   padding: 6px;
-  font-family: "@FONT_MONO@";
-  font-size: 11px;
+  font-weight: 500;
 }
 QGroupBox {
   color: @FG@;
   background: @BG@;
   border: 1px solid @SELECTION@;
-  border-radius: 6px;
-  margin-top: 12px;
+  border-radius: 12px;
+  margin-top: 16px;
   padding: 10px 8px 8px;
 }
-QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 4px; color: @FG@; }
+QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 4px; color: @BRIGHT_FG@; font-size: 16px; font-weight: 600; }
 
 QMenu { color: @BRIGHT_FG@; background: @SURFACE@; border: 1px solid @SELECTION@; padding: 4px; }
 QMenu::item { padding: 5px 20px; }
@@ -139,5 +139,5 @@ QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; }
 
 QProgressBar { color: @BRIGHT_FG@; background: @DEEP@; border: 0; text-align: center; }
 QProgressBar::chunk { background: @SELECTION@; border-bottom: 2px solid @BLUE@; }
-QStatusBar { background: @DEEP@; font-family: "@FONT_MONO@"; font-size: 11px; }
+QStatusBar { background: @DEEP@; font-size: 13px; }
 QToolTip { color: @BRIGHT_FG@; background: @SURFACE@; border: 1px solid @SELECTION@; padding: 5px; }

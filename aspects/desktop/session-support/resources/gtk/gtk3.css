@@ -61,7 +61,7 @@ placessidebar row:selected {
   background-color: @selected_bg_color;
   color: @selected_fg_color;
   box-shadow: inset 2px 0 {{ colors.onedark_blue_value.default.hex }};
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 /* GtkTreeView paints each cell: an inset here would repeat in every column. */
@@ -83,8 +83,19 @@ filechooser treeview.view:selected {
   background-color: transparent;
   background-image: linear-gradient(to bottom, @selected_bg_color, @selected_bg_color);
   color: @selected_fg_color;
-  border-radius: 6px;
+  border-radius: 8px;
   box-shadow: none;
+}
+
+headerbar,
+.titlebar {
+  min-height: 36px;
+  border-bottom: 1px solid alpha(@borders, 0.25);
+}
+
+label.heading {
+  font-size: 16px;
+  font-weight: 600;
 }
 
 window.thunar {
@@ -100,7 +111,7 @@ window.thunar {
 
 .thunar menubar > menuitem {
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .thunar menubar > menuitem:hover,
@@ -120,7 +131,7 @@ window.thunar {
 .thunar menu menuitem {
   min-height: 24px;
   padding: 3px 8px;
-  border-radius: 5px;
+  border-radius: 8px;
 }
 
 .thunar menu menuitem:hover,
@@ -142,7 +153,7 @@ window.thunar {
   min-height: 26px;
   margin: 0 2px;
   padding: 2px 5px;
-  border-radius: 7px;
+  border-radius: 8px;
   border: 1px solid transparent;
   background: transparent;
   box-shadow: none;
@@ -179,11 +190,11 @@ window.thunar {
 }
 
 .thunar .path-bar button.path-bar-button {
-  font-family: @fontMono@, monospace;
-  font-size: 12px;
+  font-family: @fontSans@, sans-serif;
+  font-size: 14px;
   padding: 2px 8px;
   margin: 0;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .thunar .path-bar button.path-bar-button:checked {
@@ -197,7 +208,7 @@ window.thunar {
   border-radius: 8px;
   min-height: 28px;
   border: 1px solid alpha(@borders, 0.3);
-  font-family: @fontMono@, monospace;
+  font-family: @fontSans@, sans-serif;
 }
 
 .thunar entry:focus {
@@ -211,14 +222,14 @@ window.thunar {
 .thunar .shortcuts-pane treeview {
   -GtkTreeView-vertical-separator: 6;
   -GtkTreeView-horizontal-separator: 8;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .thunar .standard-view .view {
   background: @view_bg_color;
   color: @view_fg_color;
   font-family: @fontSans@, sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   -GtkTreeView-vertical-separator: 6;
   -GtkTreeView-horizontal-separator: 8;
 }
@@ -227,8 +238,8 @@ window.thunar {
 .thunar .standard-view treeview.view header button {
   background: @sidebar_bg_color;
   color: @secondary_text_color;
-  font-family: @fontMono@, monospace;
-  font-size: 11px;
+  font-family: @fontSans@, sans-serif;
+  font-size: 14px;
   font-weight: 500;
   border: 0;
   border-bottom: 1px solid alpha(@borders, 0.25);
@@ -245,8 +256,8 @@ window.thunar {
 .thunar statusbar {
   background: @sidebar_bg_color;
   color: @secondary_text_color;
-  font-family: @fontMono@, monospace;
-  font-size: 11px;
+  font-family: @fontSans@, sans-serif;
+  font-size: 13px;
   min-height: 22px;
   padding: 3px 8px;
   border-top: 1px solid alpha(@borders, 0.25);

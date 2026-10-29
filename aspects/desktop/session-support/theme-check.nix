@@ -21,8 +21,13 @@ let
   qss = home.xdg.configFile."qt6ct/qss/one-dark.qss".source;
 in
 assert home.gtk.theme.name == "adw-gtk3-dark";
+assert home.gtk.font.name == palette.fonts.sans;
+assert home.gtk.font.size == 10.5;
 assert home.gtk.iconTheme.name == palette.iconTheme;
-assert palette.iconTheme == "Tela-circle-dark";
+assert palette.iconTheme == "WhiteSur-dark";
+assert home.gtk.iconTheme.package == pkgs.whitesur-icon-theme;
+assert home.home.pointerCursor.name == "macOS-White";
+assert home.home.pointerCursor.package == pkgs.apple-cursor;
 assert home.dconf.settings."org/gnome/desktop/interface".icon-theme == palette.iconTheme;
 assert !(home.xdg.configFile ? "gtk-3.0/gtk.css");
 assert !(home.xdg.configFile ? "gtk-4.0/gtk.css");
@@ -40,7 +45,7 @@ pkgs.runCommand "gtk-qt-theme-check" {
   ICON_PACKAGE = home.gtk.iconTheme.package;
   ICON_NAME = home.gtk.iconTheme.name;
   PRODUCTION_CONFIG_HOME = home.xdg.configHome;
-  EXPECTED_SANS = "${palette.fonts.sans},11,-1,5,50,0,0,0,0,0";
+  EXPECTED_SANS = "${palette.fonts.sans},10.5,-1,5,50,0,0,0,0,0";
   EXPECTED_MONO = "${palette.fonts.mono},11,-1,5,50,0,0,0,0,0";
   FONTCONFIG_FILE = pkgs.makeFontsConf {
     fontDirectories = [

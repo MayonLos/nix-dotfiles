@@ -1,0 +1,149 @@
+--- a/src/shell/settings/settings_content.cpp
++++ b/src/shell/settings/settings_content.cpp
+@@ -158,7 +158,8 @@
+               .glyphSize = Style::fontSizeHeader * scale,
+               .color = colorSpecFromRole(ColorRole::Primary),
+           }),
+-          makeLabel(title, Style::fontSizeHeader * scale, colorSpecFromRole(ColorRole::Primary), FontWeight::Bold)
++          // R43: native left categories/right groups, neutral 20/14/13 hierarchy.
++          makeLabel(title, 20.0F * scale, colorSpecFromRole(ColorRole::OnSurface), FontWeight::SemiBold)
+       );
+       auto section = ui::column({
+           .align = FlexAlign::Stretch,
+@@ -187,12 +188,12 @@
+                  .gap = Style::spaceSm * scale,
+                  .configure = [scale](Flex& flex) { flex.setPadding(Style::spaceSm * scale, 0.0F, 0.0F, 0.0F); }},
+                 ui::separator(),
+-                makeLabel(title, Style::fontSizeBody * scale, colorSpecFromRole(ColorRole::Secondary), FontWeight::Bold)
++                makeLabel(title, Style::fontSizeBody * scale, colorSpecFromRole(ColorRole::OnSurface), FontWeight::SemiBold)
+             )
+         );
+       } else {
+         section.addChild(
+-            makeLabel(title, Style::fontSizeBody * scale, colorSpecFromRole(ColorRole::Secondary), FontWeight::Bold)
++            makeLabel(title, Style::fontSizeBody * scale, colorSpecFromRole(ColorRole::OnSurface), FontWeight::SemiBold)
+         );
+       }
+     };
+--- a/src/shell/settings/settings_sidebar.cpp
++++ b/src/shell/settings/settings_sidebar.cpp
+@@ -4,6 +4,7 @@
+ #include "render/core/renderer.h"
+ #include "shell/settings/settings_registry.h"
+ #include "ui/builders.h"
++#include "ui/controls/box.h"
+ #include "ui/controls/roving_list_nav.h"
+ #include "ui/palette.h"
+ #include "ui/style.h"
+@@ -57,9 +58,25 @@
+     }
+ 
+     void makeButtonLabelBold(Button& button) {
+-      if (button.label() != nullptr) {
+-        button.label()->setFontWeight(FontWeight::Bold);
+-      }
++      if (button.label() != nullptr) button.label()->setFontWeight(FontWeight::Bold);
++    }
++
++    // R43: neutral categories, with a small blue selection marker.
++    void styleCategoryButton(Button& button, bool selected, float scale) {
++      auto palette = Button::defaultPalette(ButtonVariant::Ghost);
++      palette.normal.bg = selected ? colorSpecFromRole(ColorRole::Hover) : clearColorSpec();
++      palette.normal.label = colorSpecFromRole(ColorRole::OnSurface);
++      button.setCustomPalette(std::move(palette));
++      if (selected) button.addChild(ui::box({
++          .fill = colorSpecFromRole(ColorRole::Primary),
++          .radius = 1.0F * scale,
++          .width = 2.0F * scale,
++          .height = 14.0F * scale,
++          .participatesInLayout = false,
++          .configure = [scale](Box& marker) { marker.setPosition(0.0F, 8.0F * scale); marker.setHitTestVisible(false); },
++      }));
++      if (button.label() != nullptr) button.label()->setFontWeight(FontWeight::Medium);
++      button.setTabStop(false);
+     }
+ 
+     // Primary sidebar nav style: top-level section rows with a bolder label.
+@@ -69,7 +86,7 @@
+       return ui::button({
+           .text = std::move(text),
+           .glyph = std::string(glyph),
+-          .fontSize = Style::fontSizeCaption * scale,
++          .fontSize = 14.0F * scale,
+           .glyphSize = kPrimaryNavGlyphSize * scale,
+           .contentAlign = ButtonContentAlign::Start,
+           .variant = selected ? ButtonVariant::TabActive : ButtonVariant::Tab,
+@@ -79,10 +96,7 @@
+           .gap = kPrimaryNavGap * scale,
+           .radius = Style::scaledRadiusMd(scale),
+           .onClick = std::move(onClick),
+-          .configure = [](Button& button) {
+-            makeButtonLabelBold(button);
+-            button.setTabStop(false);
+-          },
++          .configure = [selected, scale](Button& button) { styleCategoryButton(button, selected, scale); },
+       });
+     }
+ 
+@@ -93,7 +107,7 @@
+       return ui::button({
+           .text = std::move(text),
+           .glyph = std::string(glyph),
+-          .fontSize = Style::fontSizeCaption * scale,
++          .fontSize = 14.0F * scale,
+           .glyphSize = Style::fontSizeCaption * scale,
+           .contentAlign = ButtonContentAlign::Start,
+           .variant = selected ? ButtonVariant::TabActive : ButtonVariant::Tab,
+@@ -105,14 +119,14 @@
+           .gap = Style::spaceXs * scale,
+           .radius = Style::scaledRadiusMd(scale),
+           .onClick = std::move(onClick),
+-          .configure = [](Button& button) { button.setTabStop(false); },
++          .configure = [selected, scale](Button& button) { styleCategoryButton(button, selected, scale); },
+       });
+     }
+ 
+     std::unique_ptr<Button> makeCreateButton(std::string text, float scale, std::function<void()> onClick) {
+       return ui::button({
+           .text = std::move(text),
+-          .fontSize = Style::fontSizeCaption * scale,
++          .fontSize = 14.0F * scale,
+           .variant = ButtonVariant::Default,
+           .minHeight = Style::controlHeightSm * scale,
+           .paddingV = Style::spaceXs * scale,
+@@ -249,7 +263,7 @@
+             ui::button({
+                 .text = i18n::tr("settings.entities.monitor-override.new"),
+                 .glyph = "add",
+-                .fontSize = Style::fontSizeCaption * scale,
++                .fontSize = 14.0F * scale,
+                 .glyphSize = Style::fontSizeCaption * scale,
+                 .contentAlign = ButtonContentAlign::Start,
+                 .variant = ButtonVariant::Ghost,
+@@ -348,7 +362,7 @@
+           ui::button({
+               .text = i18n::tr("settings.entities.monitor-override.new"),
+               .glyph = "add",
+-              .fontSize = Style::fontSizeCaption * scale,
++              .fontSize = 14.0F * scale,
+               .glyphSize = Style::fontSizeCaption * scale,
+               .contentAlign = ButtonContentAlign::Start,
+               .variant = ButtonVariant::Ghost,
+@@ -377,7 +391,7 @@
+         ui::button({
+             .text = i18n::tr("settings.entities.bar.new"),
+             .glyph = "add",
+-            .fontSize = Style::fontSizeCaption * scale,
++            .fontSize = 14.0F * scale,
+             .glyphSize = kPrimaryNavGlyphSize * scale,
+             .contentAlign = ButtonContentAlign::Start,
+             .variant = ButtonVariant::Ghost,
+@@ -408,7 +422,7 @@
+           .out = &inputPtr,
+           .value = *creatingBarName,
+           .placeholder = i18n::tr("settings.entities.bar.id-placeholder"),
+-          .fontSize = Style::fontSizeCaption * scale,
++          .fontSize = 14.0F * scale,
+           .controlHeight = Style::controlHeightSm * scale,
+           .horizontalPadding = Style::spaceXs * scale,
+           .width = 120.0F * scale,

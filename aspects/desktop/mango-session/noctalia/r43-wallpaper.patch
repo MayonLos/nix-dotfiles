@@ -1,0 +1,128 @@
+--- a/src/shell/wallpaper/panel/wallpaper_panel.cpp
++++ b/src/shell/wallpaper/panel/wallpaper_panel.cpp
+@@ -763,10 +763,14 @@
+     }
+   });
+ 
+-  root->addChild(
++  // R43: a regular Flex measures the fixed viewport; VirtualGridView's
++  // own doMeasure deliberately only reports the constraints it receives.
++  auto gridViewport = ui::column({.align = FlexAlign::Stretch, .fillWidth = true});
++  gridViewport->addChild(
+       ui::virtualGridView({
+           .out = &m_grid,
+           .contentScale = scale,
++          .columns = 3,
+           .minCellWidth = kMinTileWidth * scale,
+           .squareCells = false,
+           .columnGap = Style::spaceMd * scale,
+@@ -790,6 +794,8 @@
+           .configure = [](VirtualGridView& grid) { grid.setFillWidth(true); },
+       })
+   );
++
++  root->addChild(std::move(gridViewport));
+ 
+   if (m_grid != nullptr && m_grid->focusArea() != nullptr) {
+     m_grid->focusArea()->setOnFocusGain([this] {
+@@ -875,7 +881,15 @@
+   if (m_grid != nullptr) {
+     const float scale = contentScale();
+     const float captionH = m_showNames ? 0.0F : WallpaperTile::captionHeight(scale);
+-    m_grid->setCellHeight(kMinTileWidth * scale * kTileAspect - captionH);
++    // R43: three columns, two visible rows; scroll retains the full collection.
++    const float tileWidth = std::max(1.0F, (width - 2.0F * Style::spaceMd * scale) / 3.0F);
++    const float cellHeight = tileWidth * 0.62F - captionH;
++    m_grid->setCellHeight(cellHeight);
++    // R43: constrain the viewport, not the collection, to exactly two rows.
++    const float viewportHeight = 2.0F * cellHeight + Style::spaceMd * scale;
++    auto* viewport = static_cast<Flex*>(m_grid->parent());
++    viewport->setMinHeight(viewportHeight);
++    viewport->setMaxHeight(viewportHeight);
+   }
+ 
+   m_rootLayout->setSize(width, height);
+@@ -1446,6 +1460,7 @@
+   }
+   if (m_grid != nullptr) {
+     m_grid->setVisible(!loading);
++    m_grid->parent()->setVisible(!loading);
+   }
+   if (m_spinner != nullptr) {
+     if (loading) {
+@@ -1621,17 +1636,8 @@
+     return false;
+   }
+ 
+-  // Approximate column count from current grid layout. VirtualGridView does
+-  // not expose its column count directly, so we recompute from viewport width.
+-  std::size_t columns = 1;
+-  if (m_grid != nullptr) {
+-    const float viewportW = m_grid->scrollView().contentViewportWidth();
+-    const float cellW = kMinTileWidth * contentScale();
+-    const float gap = Style::spaceMd * contentScale();
+-    if (cellW > 0.0F) {
+-      columns = std::max<std::size_t>(1, static_cast<std::size_t>((viewportW + gap) / (cellW + gap)));
+-    }
+-  }
++  // R43: keyboard navigation follows the fixed three-column gallery.
++  constexpr std::size_t columns = 3;
+ 
+   if (KeybindMatcher::matches(KeybindAction::Left, sym, modifiers)) {
+     if (!hasVisibleSelection()) {
+--- a/src/shell/wallpaper/panel/wallpaper_tile.cpp
++++ b/src/shell/wallpaper/panel/wallpaper_tile.cpp
+@@ -40,10 +40,10 @@
+ 
+   [[nodiscard]] float activeThumbScale(bool selected, bool current, bool hovered) {
+     if (selected || current) {
+-      return 1.04F;
++      return 1.0F;
+     }
+     if (hovered) {
+-      return 1.025F;
++      return 1.0F;
+     }
+     return 1.0F;
+   }
+@@ -628,21 +628,21 @@
+   setOpacity(m_missingFile ? 0.45F : 1.0F);
+   setZIndex((m_selected || m_current) ? 2 : (m_hoveredVisual ? 1 : 0));
+   animateThumbScale(activeThumbScale(m_selected, m_current, m_hoveredVisual));
+-  m_thumb->setTint(active ? rgba(1.0F, 1.0F, 1.0F, 1.0F) : rgba(0.5F, 0.5F, 0.5F, 1.0F));
++  m_thumb->setTint(active ? rgba(1.0F, 1.0F, 1.0F, 1.0F) : rgba(0.92F, 0.92F, 0.92F, 1.0F));
+ 
+   auto outlineWidth = Style::borderWidth;
+-  if (m_selected || m_current || m_hoveredVisual) {
+-    outlineWidth = Style::emphasizedBorderWidth;
+-  }
++  // R43: selection is a single blue hairline, without thumbnail zoom.
++  outlineWidth = 1.0F * m_contentScale;
+ 
+   ColorSpec borderColor = m_selected ? colorSpecFromRole(ColorRole::Primary)
+-      : m_current                    ? colorSpecFromRole(ColorRole::Secondary)
++      : m_current                    ? colorSpecFromRole(ColorRole::Primary)
+       : m_hoveredVisual              ? colorSpecFromRole(ColorRole::Hover)
+                                      : colorSpecFromRole(ColorRole::OutlineVariant);
+   ColorSpec labelColor =
+-      m_current ? colorSpecFromRole(ColorRole::Secondary) : colorSpecFromRole(ColorRole::OnSurfaceVariant);
++      m_current ? colorSpecFromRole(ColorRole::Primary) : colorSpecFromRole(ColorRole::OnSurfaceVariant);
+   ColorSpec frameBg = colorSpecFromRole(ColorRole::SurfaceContainer);
+   m_label->setColor(labelColor);
++  m_label->setText((m_current ? "✓  " : "") + m_entry.name);
+ 
+   m_thumbHost->setFill(frameBg);
+   if (m_entry.isDir) {
+--- a/src/shell/wallpaper/panel/wallpaper_panel.h
++++ b/src/shell/wallpaper/panel/wallpaper_panel.h
+@@ -54,8 +54,8 @@
+   void onClose() override;
+   [[nodiscard]] bool handleGlobalKey(std::uint32_t sym, std::uint32_t modifiers, bool pressed, bool preedit) override;
+ 
+-  [[nodiscard]] float preferredWidth() const override { return scaled(980.0F); }
+-  [[nodiscard]] float preferredHeight() const override { return scaled(700.0F); }
++  [[nodiscard]] float preferredWidth() const override { return scaled(760.0F); }
++  [[nodiscard]] float preferredHeight() const override { return scaled(430.0F); }
+   [[nodiscard]] PanelPlacement panelPlacement() const noexcept override;
+   [[nodiscard]] LayerShellKeyboard keyboardMode() const override { return LayerShellKeyboard::Exclusive; }
+   [[nodiscard]] InputArea* initialFocusArea() const override;

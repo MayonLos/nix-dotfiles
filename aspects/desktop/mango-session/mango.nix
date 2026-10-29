@@ -132,7 +132,7 @@ in
       layer_animations = 0;
       shadows = 1;
       layer_shadows = 0;
-      # Only floating windows need elevation; focus is the native 2 px blue border.
+      # Only floating windows need elevation; focus is the native 1 px blue border.
       shadow_only_floating = 1;
       shadows_size = 10;
       shadows_blur = 20;
@@ -150,7 +150,7 @@ in
       root_color = color palette.bg;
       drop_color = "0x${lib.removePrefix "#" palette.blue}80";
       split_color = color palette.cyan;
-      border_px = 2;
+      border_px = 1;
       border_color = "${color palette.surface}";
       focus_color = "${color palette.blue}";
       urgent_color = "${color palette.red}";
@@ -158,7 +158,7 @@ in
       global_color = "${color palette.blue}";
       overlay_color = "${color palette.blue}";
       maximized_screen_color = "${color palette.blue}";
-      border_radius = 10;
+      border_radius = 12;
       gap_inner_horizontal = 8;
       gap_inner_vertical = 8;
       gap_outer_horizontal = 12;
@@ -176,12 +176,12 @@ in
       animation_fade_out = 1;
       fade_in_begin_opacity = 0.5;
       fade_out_begin_opacity = 0.5;
-      zoom_initial_ratio = 0.96;
+      zoom_initial_ratio = 0.985;
       zoom_end_ratio = 0.98;
       animation_duration_move = 180;
-      animation_duration_open = 180;
-      animation_duration_tag = 180;
-      animation_duration_close = 160;
+      animation_duration_open = 140;
+      animation_duration_tag = 150;
+      animation_duration_close = 110;
       animation_duration_focus = 0;
       # One ease-out curve across opens/closes/moves/tags; no overshoot.
       # Focus still responds immediately and reducedMotion disables animations.
@@ -313,7 +313,7 @@ in
       # warp (pointer.c treats 0 as "do not warp", not as "no corner").
       drag_corner = 4;
       drag_warp_cursor = 0;
-      # An 8px grab strip is easier than the 2px outline without consuming
+      # An 8px grab strip is easier than the 1px outline without consuming
       # the default 10px of application edge controls. Super+R stays available.
       enable_border_resize = 1;
       border_resize_size = 8;
@@ -322,18 +322,22 @@ in
       snap_distance = 12;
 
       # Rules apply in order: transparent clients and unrelated layer surfaces
-      # stay unblurred; only the translucent bar/Dock opt back in.
+      # stay unblurred; the bar/Dock and selected native panels opt back in.
       layer_rule = [
         "layer_name:.*,no_blur:1"
         "layer_name:^noctalia-(bar-.*|dock)$,no_blur:0,no_animation:1,no_shadow:1"
         "layer_name:^(noctalia-system-menu|noctalia-plugin:nix-dotfiles/desktop-menus:preview)$,no_blur:0,no_animation:1,no_shadow:1"
         "layer_name:^noctalia-plugin:nix-dotfiles/launchpad:drawer$,no_blur:0,no_animation:1,no_shadow:1"
-        "layer_name:^noctalia-(panel|attached-panel|notification|osd|window-switcher|panel-click-shield)$,no_animation:1,no_blur:1,no_shadow:1"
+        "layer_name:^noctalia-(panel|attached-panel|notification|osd)$,no_animation:1,no_blur:0,no_shadow:1"
+        "layer_name:^noctalia-(window-switcher|panel-click-shield)$,no_animation:1,no_blur:1,no_shadow:1"
         "layer_name:^noctalia-(screenshot-region|annotate)$,no_animation:1,no_blur:1,no_shadow:1"
       ];
 
       # Single rule owner. Keep app destinations opt-in to preserve current tags.
-      window_rule = import ./mango/window-rules.nix { inherit lib; };
+      window_rule = (import ./mango/window-rules.nix { inherit lib; }) ++ [
+        # Native settings window uses xdg-toplevel, rather than a panel layer.
+        "no_blur:0,app_id:^dev[.]noctalia[.]Noctalia$"
+      ];
       # Mango 0.18.3 supports 0/1/2; 2 gates tearing to fullscreen.
       # The rule table opts normal clients out and games in.
       allow_tearing = 2;

@@ -285,8 +285,8 @@ pkgs.runCommand "interactive-session-config"
     assert p["dark"]["mSurface"] == m["palette"]["bg"]
     settings = m["settings"]
     patches = {patch["name"]: patch["content"] for patch in m["noctaliaPatches"]}
-    assert set(patches) == {"astra-selection.patch", "tech-lockscreen.patch", "tech-osd-segments.patch", "nvidia-sampler.patch", "active-app-name.patch", "launchpad-native.patch", "desktop-menus.patch"}
-    for name, marker in {"astra-selection.patch": "syncCompactControls", "tech-lockscreen.patch": "m_identityAvatar->setRadius(28.0F)", "tech-osd-segments.patch": "progressTicks", "nvidia-sampler.patch": "gpuOnlyNvidia", "active-app-name.patch": "resolveRunningDesktopEntry", "launchpad-native.patch": "provider.activate(result)", "desktop-menus.patch": "workspaceWindowAssignments(it->output)"}.items():
+    assert set(patches) == {"astra-selection.patch", "tech-lockscreen.patch", "nvidia-sampler.patch", "active-app-name.patch", "launchpad-native.patch", "desktop-menus.patch", "r43-control-center.patch", "r43-notifications.patch", "r43-osd.patch", "r43-calendar.patch", "r43-settings.patch", "r43-wallpaper.patch"}
+    for name, marker in {"astra-selection.patch": "syncCompactControls", "tech-lockscreen.patch": "m_identityAvatar->setRadius(28.0F)", "nvidia-sampler.patch": "gpuOnlyNvidia", "active-app-name.patch": "resolveRunningDesktopEntry", "launchpad-native.patch": "provider.activate(result)", "desktop-menus.patch": "workspaceWindowAssignments(it->output)"}.items():
         assert marker in patches[name], name
     # Check serialized settings too: validating the Nix attrset alone would
     # miss a lost/renamed field during Home Manager's config generation.
@@ -296,9 +296,15 @@ pkgs.runCommand "interactive-session-config"
         ("shell", "launcher", "width"): 520,
         ("shell", "launcher", "category_icons_only"): True,
         ("shell", "app_icon_colorize"): False,
-        ("control_center", "sidebar"): "compact",
-        ("control_center", "width"): 380,
+        ("control_center", "sidebar"): "none",
+        ("control_center", "sidebar_section"): "compact",
+        ("control_center", "width"): 348,
         ("notification", "width"): 320,
+        ("nightlight", "enabled"): False,
+        ("nightlight", "force"): False,
+        ("shell", "panel", "transparency_mode"): "soft",
+        ("notification", "background_opacity"): 0.80,
+        ("osd", "background_opacity"): 0.80,
         ("bar", "main", "thickness"): 30,
         ("bar", "main", "radius"): 0,
         ("bar", "main", "margin_ends"): 0,
@@ -368,9 +374,13 @@ pkgs.runCommand "interactive-session-config"
         ("osd", "border_width"): 1,
         ("osd", "offset_y"): 96,
         ("shell", "show_close_buttons"): False,
+        ("shell", "settings_window_translucent"): True,
         ("theme", "sync_color_scheme"): False,
         ("shell", "panel", "border_color"): "outline_variant",
         ("shell", "panel", "border_width"): 1,
+        ("shell", "panel", "shadow"): False,
+        ("shell", "panel", "wallpaper_placement"): "floating",
+        ("shell", "panel", "wallpaper_position"): "center",
         ("bar", "main", "show_tooltip"): True,
         ("lockscreen_widgets", "widget", "lockscreen-login-box@eDP-1", "settings", "show_password_reveal"): True,
         ("lockscreen_widgets", "widget", "lockscreen-login-box@eDP-1", "settings", "input_radius"): 8.0,
@@ -389,7 +399,7 @@ pkgs.runCommand "interactive-session-config"
         assert not any(name.startswith(("monitor-", "separator-", "group:")) for name in root["widget"])
         assert root["battery"]["warning_threshold"] == 20
         assert root["dock"]["magnification_scale"] <= 1.25
-        assert [item["type"] for item in root["control_center"]["shortcuts"]] == ["system", "power_profile", "caffeine", "fel/quill:toggle", "notification", "nightlight"]
+        assert [item["type"] for item in root["control_center"]["shortcuts"]] == ["wifi", "bluetooth", "system", "power_profile", "caffeine", "fel/quill:toggle", "notification"]
         assert root["notification"]["offset_y"] == 12
     assert "workspaces_widget" not in patches["astra-selection.patch"]
     enabled_plugins = settings["plugins"]["enabled"]
@@ -436,14 +446,17 @@ pkgs.runCommand "interactive-session-config"
     assert mango["layer_rule"][:2] == ["layer_name:.*,no_blur:1", "layer_name:^noctalia-(bar-.*|dock)$,no_blur:0,no_animation:1,no_shadow:1"]
     assert "noctalia-system-menu" in mango["layer_rule"][2]
     assert mango["layer_rule"][3] == "layer_name:^noctalia-plugin:nix-dotfiles/launchpad:drawer$,no_blur:0,no_animation:1,no_shadow:1"
-    assert ",no_blur:1," in mango["layer_rule"][4]
+    assert mango["layer_rule"][4] == "layer_name:^noctalia-(panel|attached-panel|notification|osd)$,no_animation:1,no_blur:0,no_shadow:1"
+    assert mango["zoom_initial_ratio"] == 0.985
+    assert "tech-osd-segments.patch" not in patches
     assert "SUPER,A,spawn,noctalia msg plugin nix-dotfiles/launchpad:control all toggle" in mango["bind"]
     assert "ALT,space,spawn,noctalia msg panel-toggle launcher" in mango["bind"]
     assert "force_tearing:0,no_blur:1,app_id:.*" in mango["window_rule"]
+    assert mango["window_rule"][-1] == "no_blur:0,app_id:^dev[.]noctalia[.]Noctalia$"
     for binding in ("SUPER+CTRL,D,spawn,noctalia msg panel-toggle 8bury/mini-docker:manager", "SUPER+CTRL,P,spawn,noctalia msg panel-toggle rxtsel/portctl:panel", "SUPER+CTRL,W,spawn,noctalia msg panel-toggle ezequiel/mango_layouts:panel"):
         assert binding in mango["bind"]
-    assert settings["shell"]["panel"]["shadow"] and not settings["bar"]["main"]["shadow"]
-    assert mango["border_px"] == 2 and mango["border_radius"] == 10
+    assert not settings["shell"]["panel"]["shadow"] and not settings["bar"]["main"]["shadow"]
+    assert mango["border_px"] == 1 and mango["border_radius"] == 12
     assert mango["focus_color"] == "0x" + m["palette"]["blue"].removeprefix("#") + "ff"
     assert mango["gap_inner_horizontal"] == mango["gap_inner_vertical"] == 8
     assert mango["gap_outer_horizontal"] == mango["gap_outer_vertical"] == 12
@@ -457,8 +470,8 @@ pkgs.runCommand "interactive-session-config"
     assert mango["focus_on_activate"] == 0
     assert mango["allow_tearing"] == 2
     assert mango["animations"] == (0 if m["palette"]["reducedMotion"] else 1)
-    for event in ("open", "close", "move", "tag"):
-        assert 150 <= mango["animation_duration_" + event] <= 200
+    for event, duration in {"open": 140, "close": 110, "move": 180, "tag": 150, "focus": 0}.items():
+        assert mango["animation_duration_" + event] == duration
         assert mango["animation_curve_" + event] == "0.16,1.0,0.3,1.0"
     assert m["fcitxClassicUI"]["PreferTextIcon"] == "True"
     assert "keyboard_layout" not in settings["bar"]["main"]["end"]

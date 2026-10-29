@@ -1,0 +1,85 @@
+--- a/src/shell/osd/osd_overlay.cpp
++++ b/src/shell/osd/osd_overlay.cpp
+@@ -126,7 +126,8 @@
+ 
+   // Base units at ui_scale=1; passive overlay (no hit targets), between bar and old OSD size.
+   [[nodiscard]] float horizontalCardLength(float s) {
+-    return (Style::controlHeight * 6 + Style::spaceMd + Style::spaceSm + Style::spaceXs) * s;
++    // R43: continuous compact OSD, 246 x 46 logical pixels.
++    return 246.0F * s;
+   }
+ 
+   [[nodiscard]] float cardWidth(float s, const std::string& orientation) {
+@@ -143,7 +144,7 @@
+       }
+       return horizontalCardLength(s);
+     }
+-    return (Style::controlHeight + Style::spaceSm) * s;
++    return 46.0F * s;
+   }
+ 
+   [[nodiscard]] std::uint32_t osdSurfaceWidth(float s, const std::string& orientation, float innerPadX) {
+@@ -156,17 +157,17 @@
+     return static_cast<std::uint32_t>(std::max(1, static_cast<int>(std::ceil(h))));
+   }
+ 
+-  [[nodiscard]] float glyphSize(float s) { return (Style::fontSizeTitle + Style::borderWidth * 4) * s; }
+-
+-  [[nodiscard]] float valueFontSize(float s) { return Style::fontSizeBody * s; }
+-
+-  [[nodiscard]] float progressHeight(float s) { return (Style::spaceXs + Style::borderWidth * 2) * s; }
++  [[nodiscard]] float glyphSize(float s) { return 18.0F * s; }
++
++  [[nodiscard]] float valueFontSize(float s) { return Style::fontSizeCaption * s; }
++
++  [[nodiscard]] float progressHeight(float s) { return 3.0F * s; }
+ 
+   [[nodiscard]] float verticalProgressWidth(float s) { return progressHeight(s) * 1.75F; }
+ 
+-  [[nodiscard]] float cardPadding(float s) { return Style::spaceMd * s; }
+-
+-  [[nodiscard]] float innerGap(float s) { return (Style::spaceSm + Style::spaceXs * 0.5F) * s; }
++  [[nodiscard]] float cardPadding(float s) { return 16.0F * s; }
++
++  [[nodiscard]] float innerGap(float s) { return 12.0F * s; }
+ 
+   [[nodiscard]] float osdCardRadius(float cw, float ch, float layoutScale) {
+     const float maxR = std::min(cw, ch) * 0.5F;
+@@ -770,7 +771,7 @@
+   auto icon = ui::glyph({
+       .out = &inst.glyph,
+       .glyphSize = glyphSize(s),
+-      .color = colorSpecFromRole(ColorRole::Primary),
++      .color = colorSpecFromRole(ColorRole::OnSurface),
+       .configure = [](Glyph& glyph) { glyph.setZIndex(1); },
+   });
+ 
+@@ -778,7 +779,7 @@
+       .out = &inst.value,
+       .text = "100%",
+       .fontSize = valueFontSize(s),
+-      .fontWeight = FontWeight::Bold,
++      .fontWeight = FontWeight::Normal,
+       .color = colorSpecFromRole(ColorRole::OnSurface),
+       .maxWidth = vertical ? cw - pad * 2.0F : 0.0F,
+       .maxLines = 1,
+@@ -793,8 +794,8 @@
+   const float ph = progressHeight(s);
+   auto progress = ui::progressBar({
+       .out = &inst.progress,
+-      .fill = colorSpecFromRole(ColorRole::Primary),
+-      .track = colorSpecFromRole(ColorRole::SurfaceContainer),
++      .fill = colorSpecFromRole(ColorRole::OnSurface),
++      .track = colorSpecFromRole(ColorRole::OutlineVariant, 0.45F),
+       .radius = osdProgressRadius(s),
+       .orientation = vertical ? ProgressBarOrientation::Vertical : ProgressBarOrientation::Horizontal,
+       .width = vertical ? verticalProgressWidth(s) : 0.0F,
+@@ -838,7 +839,7 @@
+ 
+   const ColorRole accentRole = m_content.overLimit ? ColorRole::Error
+       : m_content.inactive                         ? ColorRole::OnSurfaceVariant
+-                                                   : ColorRole::Primary;
++                                                   : ColorRole::OnSurface;
+   inst.glyph->setGlyph(m_content.icon);
+   inst.glyph->setColor(colorSpecFromRole(accentRole));
+   inst.progress->setVisible(m_content.showProgress);

@@ -1,8 +1,8 @@
 # Appearance data
 
-This aspect defines the typed `appearance` input for host and user entities and publishes the current One Dark palette, ANSI colors, and wallpaper assets. Selecting the data aspect alone installs no applications and starts no desktop session.
+This aspect defines the typed `appearance` input for host and user entities and publishes the current One Dark palette, font roles, cursor and icon theme identifiers, ANSI colors, and wallpaper assets. Selecting the data aspect alone installs no applications and starts no desktop session.
 
-Inputs are ordinary palette assignments on `host.appearance` and `user.appearance`. The schema validates color fields, fonts, cursor settings, icon theme values, and the optional `reducedMotion` preference. Renderers consume only the values they need in their own feature.
+Inputs are ordinary palette assignments on `host.appearance` and `user.appearance`. The schema validates color fields, fonts, cursor settings, icon theme values, and the optional `reducedMotion` preference. The active system palette selects Inter 4.1, Noto Sans CJK SC, Maple Mono NF CN, WhiteSur-dark (the upstream blue-folder default), and macOS-White at 32 px. Renderers consume only the values they need in their own feature.
 
 Outputs are the shared data exports below. `noctaliaIntegrations` belongs to `desktop/mango-session` and is validated by its contract. Palette data does not cross host/user scopes automatically.
 

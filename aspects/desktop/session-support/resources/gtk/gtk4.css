@@ -46,13 +46,14 @@
 
 headerbar,
 .titlebar {
-  min-height: 40px;
+  min-height: 36px;
+  border-bottom: 1px solid alpha(@borders, 0.25);
   background-color: @headerbar_bg_color;
   color: @headerbar_fg_color;
 }
 
 toolbar {
-  min-height: 40px;
+  min-height: 36px;
   padding: 4px 8px;
   background-color: @headerbar_bg_color;
   color: @headerbar_fg_color;

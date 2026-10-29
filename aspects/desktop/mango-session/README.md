@@ -12,7 +12,7 @@ The approved G1/G2 design replaces the dense HUD with a flush 30 logical pixel t
 
 The floating bottom Dock uses native Smart auto-hide: empty workspace shows it, occupied workspace hides it, and the bottom edge reveals it again. `reserve_space=false` means its exclusive zone is zero. `layer=overlay` keeps the reveal strip and Dock reachable over fullscreen clients. It uses 44 px icons, 8 px edge gap, 16 px corners, opacity 0.80, native running dots and active accent, a leading grid launcher, and restrained 1.2× magnification. Dock client shadow is disabled: isolated Mango tests with both Pixman and GLES2 showed a thick black fringe when client shadow and native layer blur were combined; the fine capsule outline stays. Pinned order is kitty, firefox, obsidian, thunar, code, qq, musicfox; running apps are added natively. The launcher's application icons retain their source colors (`app_icon_colorize=false`); Dock also uses native application icons rather than replacing them with hand-drawn glyphs.
 
-Both surfaces request `compositor_blur=true`. Locked Mango 0.18.3 does not implement `ext-background-effect-v1`; its native blur supplies the actual effect. Blur and layer blur are enabled with optimized wallpaper caching, radius 5 and two passes. Ordered `layer_rule` entries first disable blur everywhere, then enable it only for `noctalia-bar-*` and `noctalia-dock`. The focused-output Launchpad layer additionally opts into blur by its exact namespace `noctalia-plugin:nix-dotfiles/launchpad:drawer`. A catch-all window rule keeps normal clients unblurred. Panels, notifications and OSD remain solid with their existing single outlines. The bar reserves exactly its own height; native floating panels follow the usable edge plus 12 px. Notifications use their native usable-edge positioning plus 12 px (the old absolute-edge SYSTEM-tooltip avoidance is gone). OSD stays bottom-center with a 96 px offset so even a revealed Dock remains below it.
+Both surfaces request `compositor_blur=true`. Locked Mango 0.18.3 does not implement `ext-background-effect-v1`; its native blur supplies the actual effect. Blur and layer blur are enabled with optimized wallpaper caching, radius 5 and two passes. Ordered `layer_rule` entries first disable blur everywhere, then enable it for `noctalia-bar-*` and `noctalia-dock`. The focused-output Launchpad layer additionally opts into blur by its exact namespace `noctalia-plugin:nix-dotfiles/launchpad:drawer`. A catch-all window rule keeps normal clients unblurred. R43 extends the blur opt-in to native panels, attached panels, notifications and OSD. Their shared native Soft surface has opacity 0.80 and one outline; native panel client shadow is disabled because it creates an opaque fringe with Mango layer blur, as already observed for Dock; settings uses its native translucent-window option plus a dedicated Mango app-id blur rule. The bar reserves exactly its own height; native floating panels follow the usable edge plus 12 px. Notifications use their native usable-edge positioning plus 12 px (the old absolute-edge SYSTEM-tooltip avoidance is gone). OSD stays bottom-center with a 96 px offset so even a revealed Dock remains below it.
 
 ### Function entry points
 
@@ -29,7 +29,7 @@ Both surfaces request `compositor_blur=true`. Locked Mango 0.18.3 does not imple
 | Notifications | Control Center Notifications tab / Home DND shortcut; small bar icon appears only when unread |
 | Battery conservation | Battery left click still runs `legion-conservation toggle`; local conservation plugin remains enabled |
 
-Control Center uses compact sidebar navigation so System, Monitor, Power, Notifications and other tabs remain discoverable. Its six Home shortcuts are System, power profile, caffeine, Quill, DND and nightlight. Native network/Bluetooth/audio bar buttons open their detailed tabs. Existing hooks, services, secrets and application data are preserved.
+Control Center Home has no sidebar; detailed sections keep compact navigation. The visible Home width is 348 px. Wi-Fi and Bluetooth are two device tiles; System, power profile, caffeine, Quill and DND remain neutral function rows. Nightlight is disabled (`enabled=false`, `force=false`), with no Home shortcut. Native network/Bluetooth/audio bar buttons open their detailed tabs. Existing hooks, services, secrets and application data are preserved.
 
 ## Source patches
 
@@ -39,7 +39,7 @@ The package overrides only the locked `pkgs.local.noctalia` derivation. Every re
 | --- | --- |
 | `astra-selection.patch` | Launcher/shortcut selection styling and compact vertical Control Center Home with volume/brightness sliders; old workspace and media-widget changes removed |
 | `tech-lockscreen.patch` | Compact identity/password row, circular avatar and feedback below the field |
-| `tech-osd-segments.patch` | Existing twenty-segment progress feedback, monospace value and safe scene-tree rebuild |
+| `r43-*.patch` | Independent Control Center, notification, continuous OSD, compact calendar, settings and wallpaper drawing (checked by `r43-check-panels.py`) |
 | `nvidia-sampler.patch` | System-service portions extracted from old hud-sysmon: NVIDIA-only two-second sampling, suspended/unplugged GPU invalidation and short NVML sessions |
 | `active-app-name.patch` | Opt-in application-name label using native identity resolution |
 | `launchpad-native.patch` | Native application index/launch IPC, independent Dock Launchpad entry, opt-in layer capture keys and wheel events |
@@ -65,7 +65,30 @@ The local `nix-dotfiles/desktop-menus` plugin receives hover snapshots from the 
 
 The top-left native launcher widget now displays the monochrome Nix snowflake SVG colorized with brightFg at about 15 px. It opens a small plugin panel with its own translucent chrome; the native panel host handles anchoring, output constraints, outside click and Escape. About opens Control Center System; Settings opens native settings. Lock/suspend use native actions. Reboot/shutdown/logout open the original session panel with the relevant entry selected; opening never arms or executes the action. Its existing click/Enter/countdown flow remains the confirmation boundary. Shortcut hints show actual bindings only (lock: Super+Alt+L).
 
-Mango blur opt-ins are limited to bar, Dock, Launchpad, the workspace preview namespace and the system-menu namespace. Headless sway verifies layout/input and source/model wiring, not GPU blur quality or real power actions. Removing these plugins withdraws UI/configuration without deleting applications or user data; caches are in memory.
+Mango blur opt-ins cover the unchanged bar, Dock, Launchpad, workspace preview and system-menu namespaces, plus R43 native panel/attached-panel/notification/OSD namespaces and the native settings app-id. Headless sway verifies layout/input and source/model wiring, not GPU blur quality or real power actions. Removing these plugins withdraws UI/configuration without deleting applications or user data; caches are in memory.
+
+## R43 panel styling
+
+Each panel adaptation is a separate `noctalia/r43-*.patch`: control center,
+notifications, OSD, calendar, settings, and wallpaper picker. They apply after the
+existing selection and shell integration patches. `r43-check-panels.py` runs at
+postPatch and fails on source drift. `interactive-session-config` checks the
+serialized native configuration and patch set. Global UI Style constants, bar,
+Dock, Launchpad, system menu, workspaces and authentication remain independently
+owned.
+
+Native Soft surface mode is declared once beside its pinned 0.80 opacity; transient
+notification and OSD backgrounds consume the same value. Labels remain opaque.
+The OSD replaces the removed `tech-osd-segments.patch` with 246×46 horizontal
+geometry, an 18px neutral icon, 3px continuous rail, 13px percentage and 96px bottom
+offset. Notification width remains 320 with compact 13px metadata and 14px title/body.
+Direct calendar opens at 320, without a navigation rail, with the month above agenda
+and an independent 1px today outline (it does not rely on global button borders).
+Settings keeps native categories/groups and neutral 20/14/13 typography. Wallpaper
+selection uses three columns and a viewport capped to exactly two rows (760×430 panel), neutral thumbnails and
+a 1px blue current/selected border with a check; the full collection still scrolls.
+No wallpaper collection, rotation preference, notification timeout or user data is
+removed. Removing these patches reverts drawing, not persisted application state.
 
 ## Ownership and removal
 
@@ -73,15 +96,15 @@ Mango blur opt-ins are limited to bar, Dock, Launchpad, the workspace preview na
 
 HM owns the generated Mango/Noctalia configurations, palette, pinned Neovim desktop entry and Noctalia unit. The pre-start ownership helper backs up and reconciles only declared public override paths; it does not edit unknown runtime state. The unit sets `LC_TIME=zh_CN.UTF-8`. Removing this feature withdraws configuration and services on the next activation, while preserving documents, notes, histories, settings outside declared paths and other user state. It does not switch or stop the running session during a build.
 
-HM owns `Pictures/Wallpapers/managed` as a store link. The activation only creates a missing `Pictures/Wallpapers/local/`, preserves directories and directory symlinks, and rejects other existing objects without replacement. Native scanning follows directory symlinks with canonical-path deduplication; local images stay outside Git/store. The five managed wallpapers remain 002/005/008/009/011, defaulting to 005; native startup/daily random rotation pauses during fullscreen. Lockscreen follows the current wallpaper; greeter uses the factory default.
+HM owns `Pictures/Wallpapers/managed` as a store link. The activation only creates a missing `Pictures/Wallpapers/local/`, preserves directories and directory symlinks, and rejects other existing objects without replacement. Native scanning follows directory symlinks with canonical-path deduplication; local images stay outside Git/store. The managed wallpaper collection remains intact (the package/check manifest has 18 images), defaulting to 005; native startup/daily random rotation pauses during fullscreen. Lockscreen follows the current wallpaper; greeter uses the factory default.
 
 ## Windows and pointer
 
 The single private window-rule table is `mango/window-rules.nix`, imported by `mango.nix`. `interactive-session-config` runs locked Mango's parser and generated-rule matching/false-positive fixtures. Main chats, browser windows and application placement stay user-controlled. Native transients float; exact chooser titles, polkit/pinentry, media/PiP, temporary settings and named scratch tools retain their established rules. Optional `assignAppTags` remains off. Proprietary runtime app IDs/titles require real-session acceptance.
 
-Mango still uses 12 px outer / 8 px inner gaps, 10 px client corners and a native 2 px focus border. Only floating clients receive shadows; inactive clients have 6.3% dim and fullscreen is exempt. Opens/moves/tag changes use 180 ms, closes 160 ms and the existing ease-out curve; `reducedMotion` disables animation. `focus_on_activate=0` prevents unsolicited activation jumps. Tearing remains restricted to fullscreen games by the existing rules. These choices are based on locked Mango 0.18.3 sources, not newer documentation.
+Mango still uses 12 px outer / 8 px inner gaps, 12 px client corners and a native 1 px blue focus border. Only floating clients receive shadows; inactive clients have 6.3% dim and fullscreen is exempt. Opens/closes/tag changes use 140/110/150 ms, moves 180 ms, focus 0 ms, and the existing ease-out curve; opening zoom begins at 0.985; `reducedMotion` disables animation. `focus_on_activate=0` prevents unsolicited activation jumps. Tearing remains restricted to fullscreen games by the existing rules. These choices are based on locked Mango 0.18.3 sources, not newer documentation.
 
-Fcitx keeps `ClassicUI.PreferTextIcon=True` and the bar's pinned `fcitx` SNI, so the native tray image can express Rime's Chinese/English submode. No polling service or synthetic real-session keys are added. phinger-cursors-light 32 remains shared by Mango, HM session environment, GTK, Xresources and Xorg; at 1.5 scale this is nominally 48 device pixels.
+Fcitx keeps `ClassicUI.PreferTextIcon=True` and the bar's pinned `fcitx` SNI, so the native tray image can express Rime's Chinese/English submode. No polling service or synthetic real-session keys are added. macOS-White 32 (nixpkgs apple-cursor) is shared by Mango, HM session environment, GTK, Xresources and Xorg; at 1.5 scale this is nominally 48 device pixels.
 
 Build-time validation, isolated sway/Mango screenshots and activation are separate evidence levels. Headless sway can verify layout and layer-shell behavior but provides no blur; actual GPU blur quality, real tray submode changes, external outputs and application focus/launch require the main agent's real-session acceptance after applying the generation.
 

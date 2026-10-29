@@ -7,7 +7,7 @@ export GSETTINGS_BACKEND=keyfile GTK_A11Y=none LC_ALL=C.UTF-8
 mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME" "$out"/{gtk-3.0,gtk-4.0,qt6ct}
 test -f "$GTK_THEME_PACKAGE/share/themes/$GTK_THEME_NAME/gtk-3.0/gtk.css"
 test -f "$ICON_PACKAGE/share/icons/$ICON_NAME/index.theme"
-test -f "$ICON_PACKAGE/share/icons/$ICON_NAME/scalable/places/folder.svg"
+test -f "$ICON_PACKAGE/share/icons/$ICON_NAME/places/16/folder.svg"
 # Parse the outputs of the config-apply integration check, rather than rendering
 # with extra custom colors unavailable to the production builtin engine.
 cp "$TEMPLATE_RUNTIME/config/gtk-3.0/noctalia.css" "$out/gtk-3.0/noctalia.css"
@@ -54,11 +54,19 @@ assert '-GtkTreeView-horizontal-separator: 8' in file_list
 sidebar_rows=rule('.thunar .shortcuts-pane treeview')
 assert '-GtkTreeView-vertical-separator: 6' in sidebar_rows
 assert '-GtkTreeView-horizontal-separator: 8' in sidebar_rows
+assert 'font-size: 14px' in file_list and 'font-size: 14px' in sidebar_rows
+headerbar=rule('headerbar')
+assert 'min-height: 36px' in headerbar and 'alpha(@borders, 0.25)' in headerbar
+assert 'font-size: 14px' in rule('.thunar .path-bar button.path-bar-button')
+assert 'font-size: 13px' in rule('.thunar statusbar')
 assert '--sidebar-bg-color: '+p['deep'] in gtk4
 assert '--window-bg-color: '+p['bg'] in gtk4
 assert '--accent-color: '+p['blue'] in gtk4
 qss=(out/'qt6ct/one-dark.qss').read_text()
-assert '@BG@' not in qss and p['blue'] in qss and p['fonts']['mono'] in qss
+assert '@BG@' not in qss and p['blue'] in qss
+assert p['fonts']['mono'] not in qss and 'font-size: 13px' in qss
+assert p['fonts']['sans'] not in qss and 'font-size: 14px' not in qss
+assert 'font-weight: 500' in qss and 'font-size: 16px' in qss
 assert '@CHECKMARK@' not in qss and '@CHECKMARK_DISABLED@' not in qss and '@INDETERMINATE@' not in qss
 assert '@INDETERMINATE_DISABLED@' not in qss
 scheme=configparser.ConfigParser(); scheme.read(out/'qt6ct/noctalia.conf')
@@ -88,7 +96,7 @@ int main(int argc, char **argv) {
     && settings.value("Fonts/fixed").toString() == QString::fromUtf8(qgetenv("EXPECTED_MONO"));
   QFont general, fixed;
   fonts = fonts && general.fromString(settings.value("Fonts/general").toString()) && fixed.fromString(settings.value("Fonts/fixed").toString())
-    && general.weight() == QFont::Normal && fixed.weight() == QFont::Normal && general.pointSize() == 11 && fixed.pointSize() == 11;
+    && general.weight() == QFont::Normal && fixed.weight() == QFont::Normal && general.pointSizeF() == 10.5 && fixed.pointSize() == 11;
   bool lists = settings.value("Interface/stylesheets").toStringList() == expected;
   if (!fonts || !lists) qWarning() << "fonts valid:" << fonts << "stylesheets:" << settings.value("Interface/stylesheets").toStringList() << "expected:" << expected;
   return fonts && lists ? 0 : 1;
@@ -115,6 +123,16 @@ grep -Fx "icon_theme=$ICON_NAME" "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf"
 grep -Fx 'keep=untouched' "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf"
 cp "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf" "$out/qt6ct/migrated.conf"
 source "$QT_MIGRATION"
+cmp "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf" "$out/qt6ct/migrated.conf"
+
+# Migrate the exact prior-generation serialized seed (legacy weight 50).
+python3 - "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf" <<'PY_OLD_SEED'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+p.write_text(p.read_text().replace('Inter,10.5,-1,5,50,0,0,0,0,0', 'Inter,11,-1,5,50,0,0,0,0,0').replace('icon_theme=WhiteSur-dark', 'icon_theme=Tela-circle-dark'))
+PY_OLD_SEED
+source "$QT_MIGRATION"
+./qt-settings "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf" "/custom/with,comma.qss" /custom/other.qss "$XDG_CONFIG_HOME/qt6ct/qss/one-dark.qss"
 cmp "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf" "$out/qt6ct/migrated.conf"
 
 # A GUI choice from an older generation is a managed portal field; preserve

@@ -5,6 +5,17 @@
 早期记录中的未激活结论只适用于对应轮次；r29–r31 已应用。2026-10-26 的 r32 按全桌面预览继续统一边界与密度，具体取舍以 [现行视觉依据](visual-design.md) 开头的更新为准。旧轮次设计和测量有其时间范围，
 历史取舍见[第九轮记录](history/desktop-polish-2026-10-24.md)。
 
+## r43 base 待集成与应用（2026-10-29）
+
+本批依据 `.work/redesign-r42/design/` 的已确认比较图修改系统基础和 Noctalia 面板；下方旧轮次记录保留时间范围。本批构建及私有运行不证明真实桌面已经应用。
+
+- WhiteSur dark、蓝色文件夹；Apple White 光标 32。共享 palette 提供名称，GTK/Qt/Noctalia/Mango/Xorg 消费；greeter 的旧包硬编码须由集成代理在其拥有范围内同步。
+- Inter 4.x / Noto Sans CJK SC，14/400 正文、14/500 标签、16/600 与 20/600 标题；GTK/Qt 默认 10.5 pt，Maple 11 pt 保持。既有 Qt GUI 自定义值按 seed/marker 保留。
+- graphite 标题区与低对比分隔；GTK4 保留 libadwaita 控件，仅提供颜色/几何。Noctalia 继续独占 GTK CSS writer。
+- Mango 1 px 蓝焦点细框、12 圆角、外 12 / 内 8；浮窗中性阴影；140/110/150 ms 开/关/tag，开窗 0.985，focus 0 ms，非焦点不透明轻 dim。
+- 夜灯彻底关闭，控制中心移除入口。控制中心 348、通知 320，OSD 连续 3 px 轨道、246×46、底距 96，移除分段补丁。面板采用统一 Soft 原生表面，Mango 开放目标 layer 的 blur；Sway 截图只证明透明与绘制，不证明 Mango 实机模糊。
+- 顶栏、Dock、Launchpad、系统菜单、工作区卡片、锁屏、greeter 的布局/行为不在此批调整。截图、实际命令与待验项见 `.work/r43/base/`。
+
 ## 当前已应用状态（2026-10-26，r34）
 
 - 顶栏为一体式 35 px，Nix Status 已移除；启动器宽 520、控制中心宽 380、通知宽 320。
@@ -81,10 +92,10 @@ Astra 的 S1–S3 阴影、面板行高/卡片尺寸、72px 锁屏时钟等部�
 | Swayimg / Fastfetch | Swayimg 信息使用不透明 brightFg/deep，图库 selection 底与 2px 蓝边；Fastfetch 由 CLI 分支负责 |
 | 文档、媒体与其他应用 | Zathura 与 Obsidian 改用 documents 拥有的 palette 原色模板，退出同名社区模板选择。Zathura 阅读底不透明，PDF recolor 默认关闭，UI 等宽并显示页百分比；按 `Tab` 进入原生目录索引模式，无常驻目录侧栏；原生不支持左选中条与独立细进度线。Obsidian 只对其注册的 vault 接线同名 snippet。mpv/uosc 使用 brightFg 正文、中性选择面、蓝匹配标记与 2px 蓝色选中条，时间等宽、进度线 2px；uosc 不提供选中标记发光选项，采用平面蓝线。OSC 圆角 8。Thunderbird 无既有自定义主题接线，保留原生暗色/GTK 支持。btop、VS Code、Yazi 由各自分支负责 |
 
-鼠标使用 phinger-cursors-light 32，应用图标保持 Tela-circle-dark，文件夹采用 blue。
+鼠标使用 macOS-White 32，应用图标采用 WhiteSur-dark，文件夹采用 blue。
 外观只拥有 `fonts.sans = "Inter"`、`fonts.cjk = "Noto Sans CJK SC"`、
 `fonts.mono = "Maple Mono NF CN"`、`iconFolderColor = "blue"` 等公共数据；GTK 与 Dunst
-GTK、Qt 和 Dunst 共用 Tela-circle-dark 默认蓝色图标；不再对 Papirus 做重着色。Dunst 从公开 GTK option 复用相同的名称和包。
+GTK、Qt 和 Dunst 共用 WhiteSur-dark 蓝色图标；不再对 Papirus 做重着色。Dunst 从公开 GTK option 复用相同的名称和包。
 GTK、面板、控制中心、Mango 装饰、greeter、锁屏、Swayimg 与 Zathura 界面均用 Inter；
 Qt 新配置使用相同字体，既有配置只迁移精确匹配旧仓库完整字体默认值的字段，其他 GUI 偏好保留；
 中文优先的 Fcitx 候选和 mpv 字幕用 `fonts.cjk`，mpv OSD 用 `fonts.mono`。
@@ -95,7 +106,7 @@ Kitty 保持 11 pt：内屏 2560×1600 / scale 1.5 下约 1707×1067 逻辑空�
 Kitty 原本没有 `symbol_map`，本轮也无需新增；保留独立 Symbols Nerd Font Mono 包供其他应用回退，
 没有显式字体的 tmux/终端 Neovim 继承 Kitty，JetBrains Mono 字体包已移除。
 
-当前锁定 Noctalia `1af14b8cdb701175bec57ddf27d070b92461024b` 的 `src/render/text/cairo_text_renderer.cpp` 使用
+当前锁定 Noctalia `e4390429240b7c761c948289a87463ff9d5b18c4` 的 `src/render/text/cairo_text_renderer.cpp` 使用
 `pango_cairo_font_map_new`、`pango_font_description_set_family` 与 `pango_layout_set_text`，
 没有关闭 Pango 缺字回退；因此按家族名请求 Inter 不会限制为仅 Inter 字形。
 当前 pin 已是原生 C++/Pango，不能按旧 Quickshell/QML 实现推断。构建检查使用真实 host
@@ -147,7 +158,7 @@ Noctalia 由 systemd 用户服务唯一启动，随 Mango session target 拉起�
 Mango HM 的非空 autostart 是补充同步；C 实现会更早请求 session target。安全静态环境经同源
 白名单预先投递给 user manager 与 Noctalia，不依赖 autostart 与 C 启动的先后顺序。
 新 manager 环境、冷登录/退出顺序和 `launch_apps_as_systemd_services` 下的应用存活仍需实测。
-依据：[Noctalia HM](https://github.com/noctalia-dev/noctalia-shell/blob/1af14b8cdb701175bec57ddf27d070b92461024b/nix/home-module.nix)、
+依据：[Noctalia HM](https://github.com/noctalia-dev/noctalia-shell/blob/e4390429240b7c761c948289a87463ff9d5b18c4/nix/home-module.nix)、
 [Mango HM](https://github.com/mangowm/mango/blob/900b8d7e06c396a20b6d4e56f242c4e240a69dfa/nix/hm-modules.nix)、
 [Mango 启动](https://github.com/mangowm/mango/blob/900b8d7e06c396a20b6d4e56f242c4e240a69dfa/src/main.c)。
 

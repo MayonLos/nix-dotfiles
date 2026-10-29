@@ -30,7 +30,7 @@ in
 lib.mkMerge [
   {
     home.pointerCursor = {
-      package = pkgs.phinger-cursors;
+      package = pkgs.apple-cursor;
       name = desktop.cursor.name;
       size = desktop.cursor.size;
       gtk.enable = true;
@@ -47,7 +47,8 @@ lib.mkMerge [
       enable = true;
       font = {
         name = palette.fonts.sans;
-        size = 11;
+        # GTK stores points; 10.5 pt is 14 logical px at 96 DPI.
+        size = 10.5;
       };
       # Keep libadwaita geometry; Noctalia supplies semantic GTK4 colors.
       gtk4.theme = null;
@@ -60,9 +61,9 @@ lib.mkMerge [
       };
       iconTheme = {
         name = desktop.iconTheme;
-        # The default upstream blue variant installs exactly Tela-circle-dark.
-        # Explicit --color blue produces a different theme name.
-        package = pkgs.tela-circle-icon-theme;
+        # WhiteSur's default folder artwork is blue; the dark install is named
+        # WhiteSur-dark. themeVariants controls alternate accent colors.
+        package = pkgs.whitesur-icon-theme;
       };
       # adw-gtk3 has no GTK2 resources. Legacy applications need an actual
       # GTK2 engine before the shared color roles can take effect.

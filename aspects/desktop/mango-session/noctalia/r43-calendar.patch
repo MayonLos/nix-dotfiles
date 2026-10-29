@@ -1,0 +1,141 @@
+--- a/src/shell/control_center/control_center_panel.cpp
++++ b/src/shell/control_center/control_center_panel.cpp
+@@ -77,6 +77,10 @@
+ }
+ 
+ float ControlCenterPanel::preferredWidth() const {
++  // R43: a direct Calendar entry is its own compact month panel.
++  if (tabFromContext(pendingOpenContext()) == TabId::Calendar) {
++    return 320.0F * m_contentScale;
++  }
+   const float fullSize = m_config != nullptr ? static_cast<float>(m_config->config().controlCenter.width)
+                                              : static_cast<float>(ControlCenterConfig::kDefaultWidth);
+   // R43: width is the visible panel width, independent of navigation mode.
+@@ -842,6 +846,7 @@
+ }
+ 
+ ControlCenterSidebarMode ControlCenterPanel::sidebarModeForOpen(std::string_view context) const {
++  if (tabFromContext(context) == TabId::Calendar) return ControlCenterSidebarMode::None;
+   if (m_config == nullptr) {
+     return ControlCenterSidebarMode::Compact;
+   }
+--- a/src/ui/controls/calendar_view.cpp
++++ b/src/ui/controls/calendar_view.cpp
+@@ -11,6 +11,7 @@
+ #include "time/time_format.h"
+ #include "ui/builders.h"
+ #include "ui/controls/button.h"
++#include "ui/controls/box.h"
+ #include "ui/controls/flex.h"
+ #include "ui/controls/glyph.h"
+ #include "ui/controls/grid_tile.h"
+@@ -313,17 +314,27 @@
+         Button::ButtonPalette muted = Button::defaultPalette(ButtonVariant::Ghost);
+         muted.normal.label = colorSpecFromRole(ColorRole::OnSurfaceVariant, 0.75F);
+         button->setCustomPalette(muted);
+-      } else if (options.selected == date) {
+-        button->setVariant(ButtonVariant::Primary);
+       } else {
++        // R43: today uses a fine blue ring; selected dates keep a neutral surface.
++        Button::ButtonPalette day = Button::defaultPalette(ButtonVariant::Ghost);
++        if (options.selected == date) {
++          day.normal.bg = colorSpecFromRole(ColorRole::Hover, 0.35F);
++        }
+         if (state.isCurrentMonth && date.day == state.current.day) {
+-          Button::ButtonPalette today = Button::defaultPalette(ButtonVariant::Ghost);
+-          today.normal.label = colorSpecFromRole(ColorRole::Primary);
+-          button->setCustomPalette(today);
+-        }
+-        if (button->label() != nullptr) {
+-          button->label()->setFontWeight(FontWeight::Bold);
+-        }
++          // R43: decorative outline bypasses shell.button_borders=false, without changing hit targets.
++          button->addChild(ui::box({
++              .fill = clearColorSpec(),
++              .border = colorSpecFromRole(ColorRole::Primary),
++              .borderWidth = 1.0F * options.scale,
++              .radius = Style::scaledRadiusMd(options.scale),
++              .width = layout.dayButtonSize,
++              .height = layout.dayButtonSize,
++              .participatesInLayout = false,
++              .configure = [](Box& outline) { outline.setHitTestVisible(false); },
++          }));
++          day.normal.label = colorSpecFromRole(ColorRole::Primary);
++        }
++        button->setCustomPalette(day);
+       }
+ 
+       const auto selectDate = [callback = options.onDateSelected, date, monthShift] {
+--- a/src/shell/control_center/tabs/calendar_tab.cpp
++++ b/src/shell/control_center/tabs/calendar_tab.cpp
+@@ -27,12 +27,12 @@
+ 
+ namespace {
+ 
+-  constexpr float kCalendarGridGap = Style::spaceSm;
++  constexpr float kCalendarGridGap = 4.0F;
+   constexpr float kCalendarNavButtonSize = Style::controlHeight;
+   constexpr float kCalendarWeekdayRowHeight = Style::fontSizeCaption + Style::spaceXs;
+   constexpr float kCalendarHeaderHeight = Style::controlHeight;
+-  constexpr float kCalendarCellSizeMin = Style::controlHeightSm + Style::spaceXs;
+-  constexpr float kCalendarCellSizeMax = Style::controlHeightLg + Style::spaceXs;
++  constexpr float kCalendarCellSizeMin = 29.0F;
++  constexpr float kCalendarCellSizeMax = 32.0F;
+   constexpr float kCalendarDayButtonSizeMax = Style::controlHeightLg;
+   constexpr float kCalendarLayoutEpsilon = 0.5F;
+   // Week-number column: a fraction of a day column so it stays visually subordinate, floored at the
+@@ -40,9 +40,9 @@
+   constexpr float kCalendarWeekColumnRatio = 0.55F;
+   constexpr float kCalendarWeekColumnMinFontScale = 1.45F;
+ 
+-  std::string formatShellDate(const ConfigService* config) {
+-    const char* format = config != nullptr ? config->config().shell.dateFormat.c_str() : "%A, %x";
+-    return formatLocalTime(format);
++  std::string formatShellDate(const ConfigService* /*config*/) {
++    // R43: local compact date avoids clipping at 320px without changing shell.date_format.
++    return formatLocalTime("%-m月%-d日");
+   }
+ } // namespace
+ 
+@@ -65,14 +65,16 @@
+     m_showEventsLocation = m_config->config().controlCenter.calendarTab.showEventsLocation;
+   }
+ 
+-  auto tab = ui::row({
++  auto tab = ui::column({
+       .out = &m_rootLayout,
+       .align = FlexAlign::Stretch,
+       .gap = Style::spaceMd * scale,
+   });
+ 
+   auto calendarArea = ui::inputArea({});
+-  calendarArea->setFlexGrow(3.0F);
++  // R43: month above agenda, sized for a 320px panel.
++  calendarArea->setFlexGrow(0.0F);
++  calendarArea->setSize(0.0F, 356.0F * scale);
+   calendarArea->setOnAxis([this](const InputArea::PointerData& data) {
+     if (data.axis != WL_POINTER_AXIS_VERTICAL_SCROLL) {
+       return;
+@@ -97,9 +99,9 @@
+       ui::label({
+           .out = &m_todayLabel,
+           .text = formatShellDate(m_config),
+-          .fontSize = Style::fontSizeTitle * scale,
++          .fontSize = 28.0F * scale,
+           .fontWeight = FontWeight::Medium,
+-          .color = colorSpecFromRole(ColorRole::Secondary),
++          .color = colorSpecFromRole(ColorRole::OnSurface),
+           .maxLines = 1,
+           .configure = [this](Label& label) {
+             label.setHitTestVisible(true);
+@@ -519,8 +521,8 @@
+   const float dayGridWidth = std::max(0.0F, innerWidth - weekColumnWidth - weekLaneOverhead);
+   const float dayColumnWidth = std::max(0.0F, (dayGridWidth - kCalendarGridGap * scale * 6.0F) / 7.0F);
+   // Reserve a fixed strip under each day number for event indicator dots so all cells stay aligned.
+-  const float dotDiameter = std::round(5.0F * scale);
+-  const float dotGap = std::round(2.0F * scale);
++  const float dotDiameter = std::round(3.0F * scale);
++  const float dotGap = std::round(1.0F * scale);
+   const float dotStripHeight = dotDiameter;
+   const float buttonBudget = std::max(0.0F, dayCellHeight - dotStripHeight - dotGap);
+   const float dayButtonSize = std::floor(std::min({buttonBudget, dayColumnWidth, kCalendarDayButtonSizeMax * scale}));

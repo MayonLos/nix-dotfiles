@@ -1,5 +1,7 @@
 # 紧凑 · 下划指示 v3
 
+2026-10-29 r43 base（待集成/应用）：系统基础与 Noctalia 面板依据 `.work/redesign-r42/design/` 的各项 compare.png 更新；该批覆盖下文旧轮次的对应参数。图标采用 WhiteSur dark / blue folders，光标 Apple White 32；Inter 4.x、Noto Sans CJK SC、Maple Mono NF CN（终端 11 pt），正文 14/400、标签 14/500、标题 16/600 与 20/600，GTK/Qt 以 10.5 pt 对应 14 逻辑 px。GTK3/Qt 为 graphite 外壳，GTK4 继续使用 libadwaita 原生控件。Mango 边框 1 px 蓝、圆角 12、外距 12 / 内距 8，开/关/tag 140/110/150 ms、开窗比例 0.985、focus 0 ms，非焦点保持不透明轻 dim。Noctalia 夜灯关闭且移除快捷入口；控制中心目标 348、通知 320、连续细轨 OSD 246×46 / 底距 96；面板共用原生 Soft 表面，Mango 对目标 namespace 提供模糊。顶栏、Dock、Launchpad、系统菜单、工作区、锁屏与 greeter 的布局/行为不属于本批。隔离截图与验证结果在 `.work/r43/base/`，不代表配置已经应用。
+
 2026-10-26 后续批准的 r32 调整优先于下方旧轮次：保留 r31 一体式 35 px 顶栏，删除 Nix Status；启动器宽 520，控制中心宽 380，通知宽 320；Mango 外距 12、内距 8、圆角 10。Neovim 保留 r29/r30 原生补全和英文 which-key。Thunar 低频开发入口归入 Development，LibreOffice 默认使用 Qt6 外壳并保留浅色纸张。原有状态语言继续适用，实施证据另记执行记录。
 
 2026-10-26 r33–r34 补充：Thunar 图标比例 0.85、表头上下间距 4，默认中文自定义操作；SYSTEM 提示与右上通知避让，通知/OSD 背景不透明。详见 [当前桌面说明](desktop-design.md) 与 [r34 验证记录](history/desktop-polish-r34.md)。
@@ -284,7 +286,7 @@ edge由现有palette的border与deep混色得到，不增加第二套颜色来�
 
 ### GTK / Qt（Thunar 为代表）
 
-第二十一轮 B 确认 **adw-gtk3-dark 重做 + Tela-circle-dark 默认蓝色图标**。正文 brightFg，主面 bg，Thunar 侧栏/工具栏 deep，路径容器 surface；侧栏选中 selection + 2px blue 左标，当前路径段蓝色下划。路径圆角8、等宽12px；表头小号等宽11px，状态读数等宽11px，文件列表保留 sans 13px。工具栏最小40高，控件边缘细线；侧栏宽度、zoom 与窗口尺寸保留用户状态，不强制覆盖。
+第二十一轮 B 确认 **adw-gtk3-dark 重做**（r43 图标由 WhiteSur-dark 蓝色变体取代 Tela-circle）。正文 brightFg，主面 bg，Thunar 侧栏/工具栏 deep，路径容器 surface；侧栏选中 selection + 2px blue 左标，当前路径段蓝色下划。路径圆角8、等宽12px；表头小号等宽11px，状态读数等宽11px，文件列表保留 sans 13px。工具栏最小40高，控件边缘细线；侧栏宽度、zoom 与窗口尺寸保留用户状态，不强制覆盖。
 
 **依据与能力边界**：GTK3 由 Noctalia 现有模板生命周期独占生成 CSS，Thunar 4.20 侧栏使用真实 `.shortcuts-pane`。选中文件图标用透明计算背景配合 selection 渐变层，避开其原生 Cairo 乘色造成的变黑。GtkTreeView 无逐 cell CSS node，因此细节列表使用整行 selection 底，蓝标只画在侧栏；GTK3 无文本大写转换，保留原生表头。GTK4/libadwaita 保留原生几何，补齐语义色与 CSS custom properties；应用私有绘制仍需分别验收。
 
@@ -341,6 +343,6 @@ Qt6ct 使用 Fusion，QPalette `Window/Base/AlternateBase/Button=bg/deep/surface
 
 窗口规则单一归属为 [window-rules.nix](../aspects/desktop/mango-session/mango/window-rules.nix)，行为及大小表见 [Mango README](../aspects/desktop/mango-session/README.md#window-rules)。默认保留手动工作区习惯，浏览器 2 / 通讯 4 是显式 opt-in。普通窗口仍可正常取得焦点；通知/共享工具浮窗按应用和标题静默打开，activation 请求只提示 urgent。
 
-电池使用 Noctalia 原生 graphic，规避 Tabler 小字形歧义；移除 XKB 键盘布局组件，仅常显 Fcitx 托盘图标，其他托盘项收进 drawer。技术布局名 Tile/Scroller/Monocle 等、fastfetch 标准键和 tmux PREFIX/COPY/ZOOM 使用英文，中文日期和说明保留。phinger-cursors-light 32 复用共享配置，在 1.5 缩放下名义 48 device px；安全环境补齐 XCURSOR_THEME/SIZE 到 systemd 和 Mango 启动的 Qt/Kitty 客户端，不改 GTK/Qt/icon 文件。
+电池使用 Noctalia 原生 graphic，规避 Tabler 小字形歧义；移除 XKB 键盘布局组件，仅常显 Fcitx 托盘图标，其他托盘项收进 drawer。技术布局名 Tile/Scroller/Monocle 等、fastfetch 标准键和 tmux PREFIX/COPY/ZOOM 使用英文，中文日期和说明保留。r43 的 macOS-White 32 复用共享配置，在 1.5 缩放下名义 48 device px；安全环境补齐 XCURSOR_THEME/SIZE 到 systemd 和 Mango 启动的 Qt/Kitty 客户端，不改 GTK/Qt/icon 文件。
 
 实施证据、标签对照、隔离截图及待验项见 [第二十一轮 A 记录](history/ui-r21a-2026-10-25.md)。

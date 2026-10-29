@@ -161,8 +161,8 @@ def main() -> None:
 
     font_defaults = {
         "general": (
-            {"Noto Sans CJK SC,11,-1,5,400,0,0,0,0,0", f"{sans},11,-1,5,400,0,0,0,0,0"},
-            f"{sans},11,-1,5,50,0,0,0,0,0",
+            {"Noto Sans CJK SC,11,-1,5,400,0,0,0,0,0", f"{sans},11,-1,5,400,0,0,0,0,0", f"{sans},11,-1,5,50,0,0,0,0,0"},
+            f"{sans},10.5,-1,5,50,0,0,0,0,0",
         ),
         "fixed": (
             {"JetBrainsMono Nerd Font,11,-1,5,400,0,0,0,0,0", f"{mono},11,-1,5,400,0,0,0,0,0"},
@@ -189,7 +189,10 @@ def main() -> None:
                 value in default[0] or split_qt_string_list(value) in [[item] for item in default[0]]
             ):
                 line = f"{key}={encode_qt_string_list([default[1]])}" + ("\r\n" if line.endswith("\r\n") else "\n" if line.endswith("\n") else "")
-        elif section == "Appearance" and bare == "icon_theme=Papirus-Dark":
+        elif section == "Appearance" and bare in {
+            "icon_theme=Papirus-Dark",
+            "icon_theme=Tela-circle-dark",
+        }:
             line = f"icon_theme={icon_theme}" + ("\r\n" if line.endswith("\r\n") else "\n" if line.endswith("\n") else "")
         elif section == "Interface" and bare.startswith("stylesheets="):
             stylesheet_found = True

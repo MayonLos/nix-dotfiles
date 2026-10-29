@@ -15,6 +15,13 @@
 
 let
   reducedMotion = palette.reducedMotion or false;
+  # Native Soft mode is 0.80 in the pinned source. Share its opacity with
+  # transient surfaces; Mango supplies blur for these namespaces.
+  panelSurface = {
+    mode = "soft";
+    opacity = 0.80;
+    shadow = false;
+  };
   logicalWidth = hostFacts.display.width / hostFacts.display.scale;
   logicalHeight = hostFacts.display.height / hostFacts.display.scale;
   wallpapers = import ../../appearance/appearance/resources/wallpaper/package.nix {
@@ -71,15 +78,20 @@ let
     patches = (old.patches or [ ]) ++ [
       ./noctalia/astra-selection.patch
       ./noctalia/tech-lockscreen.patch
-      ./noctalia/tech-osd-segments.patch
       ./noctalia/nvidia-sampler.patch
       ./noctalia/active-app-name.patch
       ./noctalia/launchpad-native.patch
       ./noctalia/desktop-menus.patch
+      ./noctalia/r43-control-center.patch
+      ./noctalia/r43-notifications.patch
+      ./noctalia/r43-osd.patch
+      ./noctalia/r43-calendar.patch
+      ./noctalia/r43-settings.patch
+      ./noctalia/r43-wallpaper.patch
     ];
-    # Fail the source build if an upstream rename or patch drift removes the
-    # segmented OSD implementation instead of silently losing the appearance.
+    # Fail on source drift, including the independently maintained panel patches.
     postPatch = (old.postPatch or "") + ''
+      ${pkgs.python3}/bin/python3 ${./noctalia/r43-check-panels.py}
       grep -Fq 'R39: reuse native desktop scanning' src/app/application_ipc.cpp
       grep -Fq 'R39: Dock owns the Launchpad entry' src/shell/dock/dock.cpp
       grep -Fq 'R39: explicit capture consumes' src/shell/plugin_layer/plugin_layer.cpp
@@ -105,12 +117,6 @@ let
       grep -Fq 'm_identityName->setHitTestVisible(false)' src/shell/lockscreen/lock_surface.cpp
       grep -Fq 'setAuthenticationFontSize(state.id' src/shell/lockscreen/lockscreen_widgets_host.cpp
       grep -Fq 'surfaceH < 700.0F' src/shell/lockscreen/lockscreen_widgets_host.cpp
-      grep -Fq 'UI4: palette-surface separators create twenty compact ticks' src/shell/osd/osd_overlay.cpp
-      grep -Fq 'UI4: clear non-owning tick pointers before rebuilding their owning scene tree' src/shell/osd/osd_overlay.cpp
-      grep -Fq 'progressTicks' src/shell/osd/osd_overlay.h
-      grep -Fq 'progressTicks.size()' src/shell/osd/osd_overlay.cpp
-      grep -Fq 'separator->setHitTestVisible(false)' src/shell/osd/osd_overlay.cpp
-      grep -Fq 'setFontFamily("monospace")' src/shell/osd/osd_overlay.cpp
     '';
   });
 
@@ -228,6 +234,7 @@ in
           shell = {
             lang = "zh-CN";
             font_family = palette.fonts.sans;
+            settings_window_translucent = true;
             avatar_path = "${config.home.homeDirectory}/.face";
             corner_radius_scale = 4.0 / 3.0;
             # One outer outline, quieter cards, and distinct input boundaries.
@@ -259,12 +266,13 @@ in
             };
 
             panel = {
-              # Reading surfaces stay opaque; only the bar and dock request blur.
-              transparency_mode = "solid";
+              # Native shared Soft surface; do not alter bar/Dock/plugin styling.
+              transparency_mode = panelSurface.mode;
               borders = true;
               border_color = "outline_variant";
               border_width = 1;
-              shadow = true;
+              # Client shadow plus Mango layer blur produces an opaque fringe.
+              inherit (panelSurface) shadow;
               launcher_placement = "floating";
               clipboard_placement = "floating";
               control_center_placement = "floating";
@@ -275,7 +283,8 @@ in
               floating_offset = 12;
               # Hover/selection provides the row emphasis without a card per row.
               list_item_background = false;
-              wallpaper_placement = "attached";
+              wallpaper_placement = "floating";
+              wallpaper_position = "center";
               session_placement = "attached";
             };
 
@@ -417,10 +426,9 @@ in
             top_right.action = "none";
           };
 
-          # force = false keeps the shift to night-time only instead of locking
-          # the temperature all day.
+          # No automatic or forced color-temperature changes.
           nightlight = {
-            enabled = true;
+            enabled = false;
             force = false;
             temperature_day = 6500;
             temperature_night = 4000;
@@ -456,8 +464,7 @@ in
             border = true;
             border_color = "outline_variant";
             border_width = 1;
-            # Match solid panels so busy text/wallpaper never bleeds through.
-            background_opacity = 1.0;
+            background_opacity = panelSurface.opacity;
             # Keep transient messages on the output currently being used.
             follow_focused_output = true;
           };
@@ -471,8 +478,7 @@ in
             border = true;
             border_color = "outline_variant";
             border_width = 1;
-            # Keep device feedback on the same opaque surface as panels.
-            background_opacity = 1.0;
+            background_opacity = panelSurface.opacity;
             follow_focused_output = true;
           };
 
@@ -506,20 +512,21 @@ in
 
           control_center = {
             # Compact navigation exposes System, Power, Monitor and Notifications.
-            sidebar = "compact";
+            sidebar = "none";
             # Direct section entry keeps a compact icon rail for navigation.
             sidebar_section = "compact";
-            width = 380;
+            width = 348;
             show_shortcut_labels = true;
             circular_avatar = false;
             show_session_button = true;
             shortcuts = map (type: { inherit type; }) [
+              "wifi"
+              "bluetooth"
               "system"
               "power_profile"
               "caffeine"
               "fel/quill:toggle"
               "notification"
-              "nightlight"
             ];
           };
 

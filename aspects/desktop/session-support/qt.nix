@@ -34,7 +34,7 @@
 
         # Ten-field QFont serialization uses the legacy normal weight 50.
         [Fonts]
-        general="${palette.fonts.sans},11,-1,5,50,0,0,0,0,0"
+        general="${palette.fonts.sans},10.5,-1,5,50,0,0,0,0,0"
         fixed="${palette.fonts.mono},11,-1,5,50,0,0,0,0,0"
 
         [Interface]
