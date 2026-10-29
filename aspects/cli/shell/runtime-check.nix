@@ -16,8 +16,8 @@ let
       starshipConfig = home.home.file.${home.programs.starship.configPath}.source;
       starship = "${home.programs.starship.package}/bin/starship";
       git = "${pkgs.git}/bin/git";
-      tmux = "${pkgs.tmux}/bin/tmux";
-      tmuxCurrentFormat = "#[fg=${palette.brightFg},us=${palette.blue},bold,underscore]#I #W#[nounderscore,nobold,us=default]#{?window_zoomed_flag,#[fg=${palette.yellow}]#[bold] Z,}#[default]";
+      tmux = "${home.programs.tmux.package}/bin/tmux";
+      tmuxCurrentFormat = "#[fg=${palette.brightFg},us=${palette.blue},bold,underscore]#I #W#[nounderscore,nobold,us=default]#[default]";
       tmuxUnderlineColor = palette.blue;
       terminfoDirs = [
         "${pkgs.kitty.terminfo}/share/terminfo"
@@ -27,9 +27,21 @@ let
       yazi = "${home.programs.yazi.package}/bin/yazi";
       atuin = "${home.programs.atuin.package}/bin/atuin";
       lazygit = "${home.programs.lazygit.package}/bin/lazygit";
+      yaziPlugins = pkgs.lib.mapAttrs (_: value: toString value.package) home.programs.yazi.plugins;
+      fzf = "${home.programs.fzf.package}/bin/fzf";
+      fzfOptions = home.home.sessionVariables.FZF_DEFAULT_OPTS;
+      fzfWidgetOptions = map (name: home.home.sessionVariables.${name}) [
+        "FZF_CTRL_T_OPTS"
+        "FZF_ALT_C_OPTS"
+        "FZF_CTRL_R_OPTS"
+      ];
       configs = {
         "btop/btop.conf" = home.xdg.configFile."btop/btop.conf".source;
         "btop/themes/One Dark.theme" = home.xdg.configFile."btop/themes/One Dark.theme".source;
+        "glow/glow.yml" = home.xdg.configFile."glow/glow.yml".source;
+        "glow/onedark.json" = home.xdg.configFile."glow/onedark.json".source;
+        "yazi/init.lua" = home.xdg.configFile."yazi/init.lua".source;
+        "yazi/keymap.toml" = home.xdg.configFile."yazi/keymap.toml".source;
         "yazi/theme.toml" = home.xdg.configFile."yazi/theme.toml".source;
         "yazi/yazi.toml" = home.xdg.configFile."yazi/yazi.toml".source;
         "atuin/config.toml" = home.xdg.configFile."atuin/config.toml".source;
@@ -43,11 +55,15 @@ let
     from kitty.config import load_config
     bad = []
     opts = load_config("${home.xdg.configFile."kitty/kitty.conf".source}", accumulate_bad_lines=bad)
-    if bad or opts.background_opacity != 1.0 or opts.font_size != 11.0 or opts.confirm_os_window_close[0] != -1:
+    if bad or opts.background_opacity != 0.96 or opts.font_size != 11.0 or opts.confirm_os_window_close[0] != -1:
         raise RuntimeError("Invalid Kitty workspace settings")
     if opts.cursor.as_sharp != "${palette.brightFg}" or opts.selection_foreground.as_sharp != "${palette.brightFg}":
         raise RuntimeError("Invalid cursor/selection roles")
     assert opts.tab_bar_style == "custom"
+    assert opts.tab_bar_min_tabs == 2
+    assert opts.tab_title_template == "{title}"
+    from kitty.fast_data_types import TOP_EDGE, Color, Screen
+    assert opts.tab_bar_edge == TOP_EDGE
     assert opts.selection_background.as_sharp == "${palette.selection}"
     assert opts.active_tab_background.as_sharp == "${palette.deep}"
     assert opts.active_tab_foreground.as_sharp == "${palette.brightFg}"
@@ -61,13 +77,31 @@ let
     assert opts.cursor_trail_decay == (0.08, 0.16)
     assert opts.cursor_trail_start_threshold == (4, 4)
     assert opts.cursor_trail_color.as_sharp == "${palette.blue}"
-    assert tuple(opts.window_padding_width) == (4, 4, 4, 4)
+    assert tuple(opts.window_padding_width) == (10, 10, 10, 10)
     assert opts.placement_strategy == "top-left"
-    assert opts.padding_fill_strategy == "neighboring_cell"
+    assert opts.padding_fill_strategy == "background"
     import ast
     tab_bar = open("${home.xdg.configFile."kitty/tab_bar.py".source}").read()
     ast.parse(tab_bar)
     assert "4:1;58:2::" in tab_bar and "${palette.blue}" in tab_bar
+    # Exercise real Kitty Screen drawing, including the inactive separator.
+    # Parser/AST checks alone miss Color-vs-int failures and fallback duplicates.
+    from kitty.tab_bar import DrawData, TabBarData, ExtraData
+    namespace = {}
+    exec(compile(tab_bar, "tab_bar.py", "exec"), namespace)
+    dark, light = Color(24, 27, 32), Color(215, 218, 224)
+    data = DrawData(0, " ", 0, "", (), light, dark, light, dark, dark,
+                    "{title}", None, "", "slanted", "top", 0, 1, 0, 0)
+    for columns in (80, 16, 4):
+        screen = Screen(None, 1, columns, 0, 10, 20)
+        for index, (title, active) in enumerate((("Workspace", False), ("Files", True)), 1):
+            namespace["draw_tab"](data, screen, TabBarData(title, active),
+                                  screen.cursor.x, max(1, columns // 2 - 1), index,
+                                  active, ExtraData())
+        assert screen.cursor.y == 0 and screen.cursor.x < columns
+        if columns == 80:
+            line = str(screen.line(0))
+            assert line.count("Workspace") == 1 and line.count("Files") == 1, line
     expected = ${
       builtins.toJSON (
         {
@@ -97,17 +131,35 @@ assert home.programs.delta.options.syntax-theme == home.programs.bat.config.them
 assert home.home.sessionVariables.BAT_THEME == home.programs.bat.config.theme;
 assert !home.programs.tealdeer.enableAutoUpdates;
 assert home.programs.starship.settings.directory.style == "bold ${palette.blue}";
-assert home.programs.starship.settings.git_branch.style == palette.cyan;
+assert home.programs.starship.settings.git_branch.style == palette.fg;
 assert home.programs.fzf.colors.pointer == palette.blue;
 assert home.programs.eza.theme.git_repo.branch_other.foreground == palette.cyan;
 assert home.programs.eza.theme.file_type.image.foreground == palette.cyan;
 assert home.programs.eza.theme.file_type.video.foreground == palette.cyan;
 assert home.programs.eza.theme.size.number_giga.foreground == palette.blue;
+assert home.programs.starship.settings.right_format == "$cmd_duration";
+assert home.programs.btop.settings.shown_boxes == "cpu mem proc";
+assert !home.programs.btop.settings.show_cpu_cores;
+assert !home.programs.btop.settings.show_coretemp;
+assert !home.programs.btop.settings.check_temp;
+assert !home.programs.btop.settings.show_disks;
+assert
+  home.programs.yazi.settings.mgr.ratio == [
+    0
+    5
+    4
+  ];
+assert !home.programs.delta.options.line-numbers;
+assert home.programs.delta.options.plus-style == "${palette.brightFg} normal";
+assert home.programs.delta.options.minus-style == "${palette.brightFg} normal";
 pkgs.runCommand "command-line-runtime"
   {
     nativeBuildInputs = [
-      pkgs.tmux
+      home.programs.tmux.package
       pkgs.python3
+      pkgs.lua
+      pkgs.glow
+      pkgs.duckdb
       pkgs.zsh
       pkgs.git
       home.programs.atuin.package
@@ -152,10 +204,10 @@ pkgs.runCommand "command-line-runtime"
     import json, sys
     fastfetch, glow = [json.load(open(path)) for path in sys.argv[1:]]
     display = fastfetch["display"]
-    assert display["key"]["width"] == 12
+    assert display["key"]["width"] == 10
     keys = [module["key"] for module in fastfetch["modules"] if isinstance(module, dict) and "key" in module]
     assert display["key"]["width"] >= max(map(len, keys)) + display["key"]["paddingLeft"] + len(display["separator"])
-    assert fastfetch["logo"]["color"] == {"1": "${palette.blue}", "2": "${palette.cyan}"}
+    assert fastfetch["logo"]["type"] == "none"
     assert all(not isinstance(module, dict) or module["type"] not in ("custom", "colors") for module in fastfetch["modules"])
     assert glow["h2"]["color"] == "${palette.blue}"
     assert glow["image"]["color"] == "${palette.cyan}"
@@ -164,12 +216,11 @@ pkgs.runCommand "command-line-runtime"
     # Those modules remain dynamic and are checked visually after activation.
     grep -F 'Kernel' "$out/fastfetch.txt"
     grep -F 'Terminal' "$out/fastfetch.txt"
-    grep -F 'CPU' "$out/fastfetch.txt"
     grep -F 'Memory' "$out/fastfetch.txt"
-    for key in OS Kernel WM Terminal CPU GPU Memory; do
+    for key in System Kernel Terminal Memory; do
       grep -F '"key": "'"$key"'"' ${home.xdg.configFile."fastfetch/config.jsonc".source}
     done
-    grep -F '"keyColor": "${palette.blue}"' ${home.xdg.configFile."fastfetch/config.jsonc".source}
+    grep -F '"keyColor": "${palette.fg}"' ${home.xdg.configFile."fastfetch/config.jsonc".source}
     grep -F '"format": "{#${palette.brightFg}}' ${home.xdg.configFile."fastfetch/config.jsonc".source}
     grep -F 'color_theme = "${home.programs.btop.settings.color_theme}"' ${
       home.xdg.configFile."btop/btop.conf".source
@@ -250,6 +301,7 @@ pkgs.runCommand "command-line-runtime"
     tmux -S "$TMPDIR/tmux.sock" list-keys -T copy-mode-vi > "$out/copy-mode.keys"
     grep -E 'h[[:space:]]+send-keys -X cursor-left' "$out/copy-mode.keys"
 
+    lua ${./resources/yazi-responsive-check.lua} ${./resources/yazi-responsive.lua}
     python3 ${./resources/visual-check.py} ${visualSettings} "$out"
 
     ${home.programs.fzf.package}/bin/fzf --filter fixture --color '${

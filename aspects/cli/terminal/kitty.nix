@@ -30,7 +30,9 @@ in
     font_features MapleMono-NF-CN-BoldItalic +calt +cv01 +zero
     font_features MapleMono-NF-CN-SemiBoldItalic +calt +cv01 +zero
 
-    background_opacity 1.0
+    # OSC 11 changes the default background, so application cells and padding
+    # retain the same color and opacity. Compositor blur belongs to Mango.
+    background_opacity 0.96
     background ${palette.deep}
     foreground ${palette.brightFg}
 
@@ -51,7 +53,9 @@ in
     # Match the editor's quiet tabs without adding a second project manager.
     tab_bar_min_tabs 2
     tab_bar_style custom
-    tab_title_template "{index}: {title}"
+    tab_bar_edge top
+    tab_separator "   "
+    tab_title_template "{title}"
     active_tab_foreground ${palette.brightFg}
     active_tab_background ${palette.deep}
     active_tab_font_style bold
@@ -66,10 +70,10 @@ in
 
     hide_window_decorations yes
     # Leave a small breathing space; Neovim synchronizes OSC 11 to Normal.
-    window_padding_width 4
+    window_padding_width 10
     placement_strategy top-left
-    # Match the sidebar/statusline cells at fractional-scale grid remainders.
-    padding_fill_strategy neighboring_cell
+    # Keep fractional-scale remainder strips on the OSC 11 window background.
+    padding_fill_strategy background
     # Ask before closing a window with a running foreground task.
     confirm_os_window_close -1
     enable_audio_bell no

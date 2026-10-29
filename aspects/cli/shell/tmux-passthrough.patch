@@ -1,0 +1,83 @@
+--- a/tmux.h
++++ b/tmux.h
+@@ -1750,6 +1750,7 @@
+ #define TTY_CTX_OVERLAY_SYNC 0x10
+ #define TTY_CTX_CELL_INVALIDATE 0x20
+ #define TTY_CTX_PANE_OBSCURED 0x40
++#define TTY_CTX_OSC_BG 0x80
+ 
+ 	union {
+ 		u_int			 n;
+--- a/screen-write.c
++++ b/screen-write.c
+@@ -146,6 +146,9 @@
+ 	if (wp->layout_cell == NULL)
+ 		return (0);
+ 
++	if (ttyctx->flags & TTY_CTX_OSC_BG)
++		return (1);
++
+ 	if (wp->flags & (PANE_REDRAW|PANE_DROP))
+ 		return (-1);
+ 	if (c->flags & CLIENT_REDRAWPANES) {
+@@ -2872,6 +2875,40 @@
+ 	tty_write(tty_cmd_setselection, &ttyctx);
+ }
+ 
++/* Check for one complete OSC 11 or OSC 111 background-color sequence. */
++static int
++screen_write_is_osc_bg(const u_char *str, u_int len)
++{
++	u_int	i, start, end;
++	int	reset;
++
++	start = 5;
++	if (len >= 5 && memcmp(str, "\033]11;", 5) == 0)
++		reset = 0;
++	else if (len >= 5 && memcmp(str, "\033]111", 5) == 0)
++		reset = 1;
++	else
++		return (0);
++
++	if (len > start && str[len - 1] == '\007')
++		end = len - 1;
++	else if (len >= start + 2 && str[len - 2] == '\033' &&
++	    str[len - 1] == '\\')
++		end = len - 2;
++	else
++		return (0);
++
++	if (reset)
++		return (end == start);
++	if (end == start)
++		return (0);
++	for (i = start; i < end; i++) {
++		if (str[i] < 0x20 || str[i] > 0x7e)
++			return (0);
++	}
++	return (1);
++}
++
+ /* Write unmodified string. */
+ void
+ screen_write_rawstring(struct screen_write_ctx *ctx, u_char *str, u_int len,
+@@ -2880,6 +2915,8 @@
+ 	struct tty_ctx	ttyctx;
+ 
+ 	screen_write_initctx(ctx, &ttyctx, 0, 0);
++	if (screen_write_is_osc_bg(str, len))
++		ttyctx.flags |= TTY_CTX_OSC_BG;
+ 	if (allow_invisible_panes)
+ 		ttyctx.flags |= TTY_CTX_INVISIBLE_PANES;
+ 	ttyctx.data.data = str;
+--- a/tty.c
++++ b/tty.c
+@@ -1612,7 +1612,7 @@
+ 	 * If invisible panes are allowed (used for passthrough), don't care if
+ 	 * redrawing or frozen.
+ 	 */
+-	if (ctx->flags & TTY_CTX_INVISIBLE_PANES)
++	if (ctx->flags & (TTY_CTX_INVISIBLE_PANES|TTY_CTX_OSC_BG))
+ 		return (1);
+ 
+ 	if (c->flags & CLIENT_REDRAWWINDOW)

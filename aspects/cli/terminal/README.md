@@ -4,17 +4,22 @@ Installs Kitty and renders its configuration from `user.appearance`, including t
 
 Owned files are `default.nix`, `kitty.nix`, and `tab-bar.nix`, all private. Outputs are the Kitty package, `kitty/kitty.conf`, and `kitty/tab_bar.py`. Removing the aspect removes those declarations in the next generation; Kitty scrollback files and other user data remain intact.
 
-The Astra §8 reading surface is opaque `deep` with `brightFg` text and 4-point padding.
+The r43 reading surface uses `deep` at 0.96 background opacity, `brightFg` text,
+11 pt Maple Mono NF CN and 10 pt padding.
 The character grid is anchored at the top left; fractional-scale remainder strips
-use neighboring cell backgrounds. Neovim temporarily synchronizes the terminal
+use the current terminal background so status markers cannot bleed into them. Neovim temporarily synchronizes the terminal
 background with its Normal highlight through OSC 11, including tmux passthrough,
 and restores the previous background on suspend/exit.
-Tabs stay on the `deep` background; the active tab uses a blue underline and
-inactive titles use `fg`. Cursor, selection, underline and ANSI colors consume
+Tabs appear at the top only with two or more Kitty sessions. They show title
+text without duplicate numeric indices; the active title uses a blue underline
+and inactive titles use `fg`, all on `deep`. Prefer one Kitty tab when tmux owns
+window navigation. Cursor, selection, underline and ANSI colors consume
 the same palette. The underline uses Kitty's custom Python tab-bar renderer
-because the built-in tab styles do not provide an active underline. No
-compositor blur rule is required; reduced motion disables cursor blinking and
-trail animation.
+because the built-in tab styles do not provide an active underline. Compositor blur must be supplied by the desktop owner (Mango); Kitty does not
+change compositor rules. Headless Sway verifies opacity, cells and padding but
+has no blur. Reduced motion disables cursor blinking and trail animation.
+OSC 11 changes the default background at the same 0.96 opacity, so equal
+application cells and padding remain seamless; it does not make Neovim opaque.
 
 Maple Mono NF CN uses `calt` programming ligatures, `cv01` normalized symbols
 and a dotted `zero`, across regular, bold and italic faces. These are native

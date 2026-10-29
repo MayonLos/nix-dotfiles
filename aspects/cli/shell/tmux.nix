@@ -26,21 +26,21 @@ let
     # Keep the status bar flat and quiet. The selected window uses a text
     # underline, matching Kitty's active tab and the desktop bar indicator.
     set -g status on
-    set -g status-position bottom
+    set -g status-position top
     set -g status-interval 30
-    set -g status-style "bg=${colors.deep},fg=${colors.brightFg}"
+    set -g status-style "bg=default,fg=${colors.brightFg}"
 
     set -g status-left-length 24
     set -g status-left " #[fg=${colors.blue},bold]#S #[fg=${colors.border}]│ #[default]"
 
     setw -g window-status-separator "#[fg=${colors.border}]  #[default]"
-    setw -g window-status-format "#[fg=${colors.fg}]#I #W#{?window_zoomed_flag,#[fg=${colors.yellow}] Z,}#[default]"
-    setw -g window-status-current-format "#[fg=${colors.brightFg},us=${colors.blue},bold,underscore]#I #W#[nounderscore,nobold,us=default]#{?window_zoomed_flag,#[fg=${colors.yellow}]#[bold] Z,}#[default]"
+    setw -g window-status-format "#[fg=${colors.fg}]#I #W#[default]"
+    setw -g window-status-current-format "#[fg=${colors.brightFg},us=${colors.blue},bold,underscore]#I #W#[nounderscore,nobold,us=default]#[default]"
 
     # Keep style attributes separate inside conditionals: raw commas delimit
     # tmux format arguments even when they occur inside a #[style] string.
-    set -g status-right-length 64
-    set -g status-right "#{?#{e|>=:#{client_width},80},#[fg=${colors.muted}]#{b;=24:pane_current_path} #[default],}#{?client_prefix,#[fg=${colors.blue}]#[bg=${colors.surface}]#[bold] PREFIX #[default],}#{?#{m/r:(copy|view)-mode,#{pane_mode}},#[fg=${colors.yellow}]#[bg=${colors.surface}]#[bold] COPY #[default],}#{?client_prefix,,#{?#{m/r:(copy|view)-mode,#{pane_mode}},,#{?window_zoomed_flag,#[fg=${colors.purple}]#[bg=${colors.surface}]#[bold] ZOOM #[default],}}}#{?#{e|>=:#{client_width},100},#[fg=${colors.brightFg}]#[bold]%H:%M#[default],} "
+    set -g status-right-length 24
+    set -g status-right "#{?client_prefix,#[fg=${colors.blue}] PREFIX #[default],}#{?#{m/r:(copy|view)-mode,#{pane_mode}},#[fg=${colors.yellow}] COPY #[default],}#{?window_zoomed_flag,#[fg=${colors.blue}] ZOOM #[default],}"
 
     set -g pane-border-style        "fg=${colors.surface}"
     set -g pane-active-border-style "fg=${colors.blue}"
@@ -49,6 +49,8 @@ let
 
     TMUX_FZF_LAUNCH_KEY="F"
     TMUX_FZF_ORDER="session|window|pane|command|keybinding"
+    TMUX_FZF_PREVIEW="0"
+    TMUX_FZF_OPTIONS="-p -w 62% -h 38% -m --border=none --layout=reverse --bind=ctrl-/:toggle-preview"
   '';
 
   # Upstream main.tmux backgrounds `copyq` whenever it is on PATH. CopyQ is
@@ -65,7 +67,9 @@ in
 {
   programs.tmux = {
     enable = true;
-    package = pkgs.tmux;
+    # project-workbench also installs plain tmux for standalone consumers.
+    # This feature owns the selected terminal server when both are present.
+    package = pkgs.lib.hiPrio (import ./tmux-package.nix { inherit pkgs; });
 
     prefix = "C-a";
     keyMode = "vi";

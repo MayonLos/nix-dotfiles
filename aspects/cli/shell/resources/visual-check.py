@@ -52,20 +52,30 @@ def prompt(duration=5000, **changes):
 
 
 normal = prompt()
-assert normal.count("\n") == 1 and "❯" in normal, repr(normal)
+assert normal.count("\n") == 0 and "❯" in normal, repr(normal)
 assert "42" in normal and "?1" in normal, repr(normal)
 if os.geteuid() != 0:
     assert "@" not in normal, repr(normal)
-slow = prompt(duration=12000)
-assert "· 12s" in slow, repr(slow)
+slow = run(settings["starship"], "prompt", "--right", "--cmd-duration=12000", env=env, cwd=repo)
+assert "· 12s" in ansi.sub("", slow), repr(slow)
+assert "· " not in normal, repr(normal)
 starship_config = tomllib.loads(pathlib.Path(settings["starshipConfig"]).read_text())
 assert starship_config["cmd_duration"]["min_time"] == 3000
 assert "· $duration" in starship_config["cmd_duration"]["format"]
 ssh = prompt(SSH_CONNECTION="127.0.0.1 22 127.0.0.2 2222")
 assert "@" in ssh, repr(ssh)
 nix = prompt(IN_NIX_SHELL="impure")
-assert "❄" in nix and "impure" in nix, repr(nix)
+assert "❄" not in nix and "impure" not in nix, repr(nix)
 (out / "starship.txt").write_text(normal + "\nSSH: " + ssh + "\nNix: " + nix)
+
+# FZF_* options are shell-parsed by native fzf; exercise widget strings too,
+# since unquoted preview commands can parse as unrelated command-line flags.
+for options in ["", *settings["fzfWidgetOptions"]]:
+    result = subprocess.run(
+        [settings["fzf"], "--filter=fixture"], input="fixture\n", text=True,
+        capture_output=True, env=env | {"FZF_DEFAULT_OPTS": settings["fzfOptions"] + " " + options},
+    )
+    assert result.returncode == 0 and result.stdout.strip() == "fixture", (options, result.stderr)
 
 # Use a real attached client so root-table key dispatch and client_prefix are
 # exercised; this socket is created by the surrounding runtime derivation.
@@ -154,6 +164,8 @@ def check_terminal_usstyle(term):
 
 try:
     settle()
+    assert tmux("show-options", "-gv", "status-position") == "top"
+    assert tmux("show-options", "-gv", "prefix") == "C-a"
     underline_results = [
         check_terminal_usstyle("xterm-kitty"),
         check_terminal_usstyle("tmux-256color"),
@@ -200,10 +212,29 @@ try:
         os.kill(client.pid, signal.SIGWINCH)
         settle()
         rendered = status()
-        assert ("long-path-" in rendered) == (width >= 80), (width, rendered)
-        assert bool(re.search(r"\d{2}:\d{2}", rendered)) == (width >= 100), (width, rendered)
+        assert "long-path-" not in rendered, (width, rendered)
+        assert not re.search(r"\d{2}:\d{2}", rendered), (width, rendered)
+        assert not ansi.sub("", re.sub(r"#\[[^]]*\]", "", rendered)).strip(), (width, rendered)
         assert "x" * 30 not in rendered, (width, rendered)
         widths.append(f"{width}: {rendered}")
+    # Raw OSC state cannot be reconstructed by a later cell redraw. Force
+    # alternate-screen redraw and passthrough into one write, as Nvim does on
+    # startup/exit, and still reject the same stream from a background window.
+    for visible in (True, False):
+        color = "#123456" if visible else "#654321"
+        osc = ("\x1b]11;" + color + "\x1b\\").encode()
+        raw = b"\x1bPtmux;" + osc.replace(b"\x1b", b"\x1b\x1b") + b"\x1b\\"
+        script = pathlib.Path(os.environ["TMPDIR"]) / ("raw-" + str(visible) + ".py")
+        payload = b"\x1b[?1049h" + raw + b"\x1b[?1049l"
+        script.write_text("import os,time\ntime.sleep(.2)\nos.write(1," + repr(payload) + ")\ntime.sleep(.8)\n")
+        tmux("new-window", *([] if visible else ["-d"]), "-n", "raw-osc", sys.executable, str(script))
+        captured = bytearray()
+        deadline = time.monotonic() + 1.2
+        while time.monotonic() < deadline:
+            if select.select([master], [], [], 0.02)[0]:
+                captured.extend(os.read(master, 65536))
+        assert (osc in captured) == visible, (visible, osc, bytes(captured))
+    (out / "tmux-passthrough.txt").write_text("OSC 11 survives redraw; background window passthrough stays suppressed.\n")
     (out / "tmux-states.txt").write_text("\n".join([*underline_results, prefix, copy, zoom, flat, *widths]))
 finally:
     client.terminate()
@@ -220,8 +251,12 @@ for relative, source in settings["configs"].items():
     if relative == "btop/btop.conf":
         target.write_text(re.sub(r'^color_theme = .*$', 'color_theme = "One Dark"', target.read_text(), flags=re.M))
 
+for name, source in settings["yaziPlugins"].items():
+    target = pathlib.Path(os.environ["XDG_CONFIG_HOME"]) / "yazi/plugins" / (name + ".yazi")
+    shutil.copytree(source, target)
 
-def smoke(name, args, quit_key):
+
+def smoke(name, args, quit_key, label=None):
     master, slave = pty.openpty()
     fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 40, 140, 0, 0))
     def controlling_tty():
@@ -265,6 +300,14 @@ def smoke(name, args, quit_key):
                             os.write(master, response)
     try:
         drain(1)
+        if name == "btop" and process.poll() is None:
+            assert not re.search(r"C0\s", ansi.sub("", data.decode(errors="replace"))), bytes(data)
+            os.write(master, b"v")
+            drain(0.5)
+            assert "C0" in ansi.sub("", data.decode(errors="replace")), "v did not reveal core rows"
+            os.write(master, b"3")
+            drain(0.5)
+            assert b"net" in data, "3 did not reveal network box"
         if process.poll() is None:
             os.write(master, quit_key)
             drain(1)
@@ -273,7 +316,7 @@ def smoke(name, args, quit_key):
         code = process.wait(timeout=5)
         text = data.decode(errors="replace")
         recorded = "\n".join(sorted(set(re.findall(r"\x1b\[(?:38|48);2;[0-9;]+m", text)))) if name == "btop" else text
-        (out / (name + ".terminal.txt")).write_text(recorded)
+        (out / ((label or name) + ".terminal.txt")).write_text(recorded)
         assert b"\x1b[" in data, (name, code, text)
         assert not re.search(r"(?i)(failed to (parse|load)|unknown (field|color)|invalid (theme|color)|error parsing|panic|traceback)", text), (name, text)
         # Atuin may return a cancellation status; other apps should exit cleanly.
@@ -286,7 +329,10 @@ def smoke(name, args, quit_key):
 
 
 smoke("btop", [], b"q")
-smoke("yazi", [], b"q")
+(repo / "README.md").write_text("# Preview fixture\n\nMarkdown through the native Glow plugin.\n")
+smoke("yazi", [str(repo / "README.md")], b"q")
+(repo / "sample.csv").write_text("name,value\nCPU,12\nMemory,34\n")
+smoke("yazi", [str(repo / "sample.csv")], b"q", label="yazi-csv")
 smoke("lazygit", [], b"q")
 # Seed only the isolated database, so the picker has one harmless row to render.
 os.environ["ATUIN_SESSION"] = run(settings["atuin"], "uuid").strip()

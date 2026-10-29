@@ -125,7 +125,7 @@ in
       enable = true;
       config = {
         theme = if palette == null then "base16" else batTheme.name;
-        style = "numbers,changes,header";
+        style = "plain";
       };
       themes = lib.optionalAttrs (palette != null) {
         ${batTheme.name}.src = pkgs.writeText "One Dark.tmTheme" batTheme.tmTheme;

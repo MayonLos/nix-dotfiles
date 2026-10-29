@@ -44,7 +44,7 @@ let
     if palette == null then
       {
         directory = "bold blue";
-        branch = "cyan";
+        branch = "white";
         foreground = "white";
         muted = "bright-black";
         warning = "yellow";
@@ -53,7 +53,7 @@ let
     else
       {
         directory = "bold ${palette.blue}";
-        branch = palette.cyan;
+        branch = palette.fg;
         foreground = palette.fg;
         inherit (palette) muted;
         warning = palette.yellow;
@@ -64,14 +64,15 @@ let
       {
         fg = "-1";
         bg = "-1";
+        gutter = "-1";
         "fg+" = "-1";
-        "bg+" = "bright-black";
-        hl = "yellow";
-        "hl+" = "bright-yellow";
+        "bg+" = "-1";
+        hl = "blue";
+        "hl+" = "blue";
         border = "bright-black";
         prompt = "blue";
         pointer = "blue";
-        marker = "green";
+        marker = "blue";
         spinner = "cyan";
         header = "bright-black";
         info = "bright-black";
@@ -79,15 +80,16 @@ let
     else
       {
         fg = palette.brightFg;
-        bg = palette.deep;
-        "fg+" = palette.blue;
-        "bg+" = palette.selection;
-        hl = palette.yellow;
-        "hl+" = palette.yellow;
+        bg = "-1";
+        gutter = "-1";
+        "fg+" = palette.brightFg;
+        "bg+" = "-1";
+        hl = palette.blue;
+        "hl+" = palette.blue;
         inherit (palette) border;
         prompt = palette.blue;
         pointer = palette.blue;
-        marker = palette.green;
+        marker = palette.blue;
         spinner = palette.cyan;
         header = palette.fg;
         info = palette.fg;
@@ -98,14 +100,14 @@ let
     # fzf-flags (appended last), while sharing the terminal palette with fzf.
     zstyle ':fzf-tab:*' use-fzf-default-opts yes
     zstyle ':fzf-tab:*' fzf-flags \
-      '--height=~40%' '--border=rounded' '--border-label= Complete ' \
-      '--padding=0,1' '--info=inline' '--prompt=❯ ' '--pointer=▌'
+      '--height=~40%' '--border=none' '--layout=reverse' \
+      '--padding=0' '--info=inline-right' '--no-scrollbar' '--gutter= ' '--prompt=❯ ' '--pointer=▌'
     zstyle ':fzf-tab:*' switch-group '[' ']'
     zstyle ':completion:*' menu no
     zstyle ':completion:*:descriptions' format '[%d]'
     ${lib.optionalString (
       palette != null
-    ) "export ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=${palette.fg},bg=${palette.deep}'"}
+    ) "export ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=${palette.muted}'"}
 
     zmodload zsh/terminfo 2>/dev/null
     autoload -U up-line-or-beginning-search down-line-or-beginning-search
@@ -169,7 +171,8 @@ in
       enableZshIntegration = true;
       settings = {
         add_newline = false;
-        format = "$username\${custom.root_host}$hostname$directory$git_branch$git_status$nix_shell$python$nodejs$rust$golang$cmd_duration$status\n$character";
+        format = "\${custom.root}$hostname$directory$git_branch$git_status$status$character";
+        right_format = "$cmd_duration";
 
         directory = {
           style = promptColors.directory;
@@ -180,7 +183,7 @@ in
         git_branch.style = promptColors.branch;
         git_branch.format = "[ $branch]($style) ";
         git_status = {
-          style = promptColors.warning;
+          style = promptColors.foreground;
           format = "[($all_status$ahead_behind)]($style) ";
           stashed = "≡$count";
           modified = "~$count";
@@ -192,14 +195,14 @@ in
         };
         cmd_duration = {
           min_time = 3000;
-          format = "[· $duration]($style) ";
+          format = "[· $duration]($style)";
           style = promptColors.muted;
         };
-        nix_shell.style = promptColors.foreground;
-        python.style = promptColors.foreground;
-        nodejs.style = promptColors.foreground;
-        rust.style = promptColors.foreground;
-        golang.style = promptColors.foreground;
+        nix_shell.disabled = true;
+        python.disabled = true;
+        nodejs.disabled = true;
+        rust.disabled = true;
+        golang.disabled = true;
         status = {
           disabled = false;
           symbol = "✘";
@@ -208,30 +211,25 @@ in
         };
         character = {
           success_symbol = if palette == null then "[❯](blue)" else "[❯](${palette.blue})";
-          error_symbol = if palette == null then "[❯](red)" else "[❯](${palette.red})";
+          error_symbol = if palette == null then "[❯](blue)" else "[❯](${palette.blue})";
         };
         sudo = {
           # Cached sudo credentials do not mean this shell is running as root.
-          # The username module still highlights an actual root shell.
+          # The root-only custom module marks an actual root shell.
           disabled = true;
         };
         line_break.disabled = true;
-        username = {
-          show_always = false;
-          style_user = if palette == null then "bold cyan" else "bold ${palette.cyan}";
-          style_root = if palette == null then "bold red" else "bold ${palette.red}";
-          format = "[$user]($style)";
-        };
+
         hostname = {
           ssh_only = true;
           style = if palette == null then "bold cyan" else "bold ${palette.cyan}";
           format = "@[$hostname]($style) ";
         };
-        custom.root_host = {
-          command = "${pkgs.inetutils}/bin/hostname --short";
-          when = ''test "$(${pkgs.coreutils}/bin/id -u)" -eq 0 && test -z "$SSH_CONNECTION" && test -z "$SSH_CLIENT" && test -z "$SSH_TTY"'';
-          style = if palette == null then "bold cyan" else "bold ${palette.cyan}";
-          format = "@[$output]($style) ";
+        custom.root = {
+          command = "${pkgs.coreutils}/bin/id -un";
+          when = ''test "$(${pkgs.coreutils}/bin/id -u)" -eq 0'';
+          style = promptColors.error;
+          format = "[$output]($style) ";
         };
       };
     };
@@ -281,19 +279,27 @@ in
       defaultOptions = [
         "--height=~40%"
         "--layout=reverse"
-        "--border=rounded"
-        "--padding=0,1"
-        "--info=inline"
-        "--prompt=❯ "
+        "--border=none"
+        "--padding=0"
+        "--info=inline-right"
+        "--no-scrollbar"
+        "--gutter=' '"
+        "--prompt='❯ '"
         "--pointer=▌"
         "--marker=✓"
       ];
-      historyWidgetOptions = [ "--border-label= History " ];
-      fileWidgetOptions = [ "--border-label= Files " ];
+      historyWidgetOptions = [ "--prompt='History ❯ '" ];
+      fileWidgetOptions = [
+        "--prompt='Files ❯ '"
+        "--preview='bat --color=always --style=plain -- {}'"
+        "--preview-window=right,45%,border-left,hidden"
+        "--bind=ctrl-/:toggle-preview"
+      ];
       changeDirWidgetOptions = [
-        "--border-label= Directories "
-        "--preview=eza --color=always --icons --group-directories-first -- {}"
-        "--preview-window=right,45%,border-left"
+        "--prompt='Directories ❯ '"
+        "--preview='eza --color=always --icons --group-directories-first -- {}'"
+        "--preview-window=right,45%,border-left,hidden"
+        "--bind=ctrl-/:toggle-preview"
       ];
       # Hex colors make the selected state match the shared palette exactly;
       # without an appearance palette, retain terminal ANSI inheritance.

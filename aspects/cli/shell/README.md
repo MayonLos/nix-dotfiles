@@ -8,36 +8,64 @@ Outputs include Zsh, Starship, zoxide, Atuin, fzf/fzf-tab, Git/delta/lazygit, di
 
 Removing the feature removes its shell selection, generated shell files, tools, and runtime exports on activation. It preserves shell history, Git repositories, credentials, Atuin history, project files, and user-owned configuration/data unless separately edited by the user.
 
-Astra §8 supplies the two-line Starship prompt. It shows the directory in blue,
-the Git branch in cyan, compact change counts, failures, and muted command
-duration; identity appears for SSH or root sessions. tmux preserves `Ctrl+a`
-window/session operations and tmuxp layouts while adding a flat status line,
-blue underlined active window, conditional blue/yellow/purple `PREFIX`, `COPY`,
-and `ZOOM` badges, and a blue active-pane edge with subdued inactive dividers.
-Its status line hides the clock below 100 columns and the current path below
-80 columns, leaving the mode badges available in compact terminals.
-tmux declares underline-style support for `xterm-kitty` and `tmux-256color`, so
-the blue underline color works for Kitty clients and inside tmux. Zoomed windows
-show a yellow `Z` marker. The tmux-fzf plugin is patched so loading tmux no
-longer backgrounds a `copyq` server; CopyQ belongs to the Xorg session only.
-Its smart-splits integration routes `Ctrl+h/j/k/l` to Neovim or pane navigation
-and `Alt+h/j/k/l` to Neovim or resize. Copy mode retains its native vi
-cursor/selection keys.
+r43 uses a single-line Starship prompt: directory, neutral Git metadata and a
+blue `❯`. The right prompt shows duration only from three seconds; Zsh hides it
+when input needs the space. SSH shows `@hostname`, actual UID 0 shows the root
+username, and a failed command adds `✘` plus its status. Language and Nix-shell
+versions are omitted. A cached sudo credential does not add a root marker.
 
-Yazi uses its rounded full-border plugin and the native `indicator.current` /
-`indicator.padding` theme fields for a blue hover mark and the shared selection
-surface. `mgr.marker_symbol` is reserved for marked files and is not the hover
-indicator. LazyGit uses rounded native panels, a thin blue active border, a
-surface-colored inactive border, and the same selection fill; Delta supplies
-the palette-based additions and deletions. Fastfetch places the small NixOS
-logo beside a flat list of system and hardware values, with blue keys and a
-bright foreground title. Its 12-cell key column keeps Terminal and other long
-labels clear of the values; the decorative color-block row is omitted. Glow h2
-headings use blue and image labels use cyan. Eza uses cyan for other Git branches
-and image/video names, and blue for GiB sizes. The ANSI-only fzf pointer is blue. btop uses its native `rounded_corners` setting,
-subtle palette-colored panel outlines, and blue-to-cyan CPU, memory, and I/O
-gradients. Existing sessions and user histories are preserved; runtime
-navigation and TUI appearance still need acceptance.
+fzf and fzf-tab share a borderless reverse list, top search, neutral selected
+text and a blue pointer. File (`Ctrl+t`) and directory (`Alt+c`) previews start
+hidden; `Ctrl+/` toggles them. `Ctrl+r` remains Atuin. tmux-fzf also starts with
+its preview hidden and uses the same toggle. No shell or Atuin history is
+migrated or cleared.
+
+tmux keeps `Ctrl+a`, vi copy mode, tmuxp layouts, resurrect and continuum.
+The top status line contains session and window text; the active window has a
+blue underline. `PREFIX`, `COPY` and `ZOOM` appear only while active, without
+filled badges. It has no permanent clock or path. `allow-passthrough on` retains
+Neovim OSC 11 background sync/restore; the status background inherits the
+terminal default. The locked tmux drops background-color passthrough while a pane/client
+redraw is pending. `tmux-package.nix` / `tmux-passthrough.patch` keeps these
+OSC 11/111 background-color sequences, while preserving `on` visibility checks and suspended
+client rejection. The native PTY check covers OSC 11 in the same write as an
+alternate-screen redraw and suppression from a background window.
+Underline-style support is declared for `xterm-kitty` and
+`tmux-256color`. The existing tmux-fzf CopyQ suppression remains: clipboard
+daemons belong to the Xorg session. Smart-splits still routes `Ctrl+h/j/k/l`
+and `Alt+h/j/k/l` between Neovim and tmux navigation/resize.
+
+Yazi uses list + preview (`0:5:4`) with the parent path in its breadcrumb;
+there is no full-border plugin. Below 100 terminal columns the preview folds
+automatically; `!` toggles it at either width. A manual choice lasts through
+reflow until the width crosses that threshold. The local
+`resources/yazi-responsive.lua` hooks the locked Yazi `Tab.layout` before its
+native split/reflow, retaining navigation, selections, Git, previewers and
+trash. The pinned Glow plugin has a local adapter for Yazi 26's singular
+`Command:arg` / `ya.preview_widget` APIs, uses the pane width and the shared
+Glow style, and disables paging in a preview. DuckDB receives its required
+setup call before CSV/TSV/JSON/Parquet previews. Its pure transition check and real Yazi startup run in the runtime check.
+
+LazyGit's local `lazygit-package.nix` / `lazygit-title-focus.patch` separates
+gocui's existing title and frame colors: the active title (including search)
+is blue while every frame edge stays low contrast. Unfocused titles and their
+selected tab labels use the normal foreground, without borrowing focus blue. Command-log and footer
+chrome are hidden; native keyboard help is still available with `?`. Delta
+uses the terminal background for unchanged/add/delete lines, keeping stronger
+color only for word changes. Bat defaults to plain output; use `bat --style=full`
+or `delta --line-numbers --side-by-side` for detailed review.
+
+Fastfetch has no logo and reports title, System, Kernel, Terminal and Memory
+with gray labels and bright values. Its ten-cell label column accommodates
+Terminal. btop starts with CPU aggregate, memory and processes, without disk,
+GPU, battery, frequency, power or temperature readouts. `3` toggles the native
+network panel, `p` cycles presets, and the local `v` key toggles individual
+CPU threads. `btop-package.nix` / `btop-compact.patch` adds `show_cpu_cores`
+(upstream default true; this feature selects false) and keeps the aggregate
+graph, total and load average when rows are hidden. All local patches fail on
+changed source anchors, so package upgrades require review. Themes, histories,
+repositories, credentials and persisted sessions are preserved on removal;
+these generated configurations retain their existing Home Manager writer.
 
 `herdr` is selected independently by engineering-workbench. tmux continues to own
 the existing general terminal sessions, shortcuts and tmuxp layouts; herdr adds
