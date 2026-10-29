@@ -23,6 +23,9 @@ let
     "SUPER+ALT,D,spawn,noctalia msg notification-dnd-toggle"
     "SUPER+ALT,I,spawn,noctalia msg caffeine-toggle"
     "SUPER,S,spawn,noctalia msg panel-toggle control-center"
+    "SUPER+CTRL,D,spawn,noctalia msg panel-toggle 8bury/mini-docker:manager"
+    "SUPER+CTRL,P,spawn,noctalia msg panel-toggle rxtsel/portctl:panel"
+    "SUPER+CTRL,W,spawn,noctalia msg panel-toggle ezequiel/mango_layouts:panel"
     # No argument: the keybind path has no client, so this toggles tag 0
     # on the selected monitor.
     "SUPER+SHIFT,S,toggle_special_tag"

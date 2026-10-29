@@ -38,8 +38,6 @@ let
 
   defaultWallpaperPath = wallpapers.default;
 
-  distroLogo = "${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg";
-
   lowBatterySuspend = pkgs.writeShellScript "noctalia-low-battery-suspend" ''
     set -euo pipefail
     threshold=5
@@ -74,88 +72,21 @@ let
       ./noctalia/astra-selection.patch
       ./noctalia/tech-lockscreen.patch
       ./noctalia/tech-osd-segments.patch
-      ./noctalia/hud-bar.patch
-      ./noctalia/hud-tooltips.patch
-      ./noctalia/hud-battery.patch
-      ./noctalia/hud-controls-tooltips.patch
-      ./noctalia/hud-sysmon.patch
-      ./noctalia/hud-balanced.patch
-      ./noctalia/hud-drawer-clearance.patch
-      ./noctalia/hud-overlay-clearance.patch
+      ./noctalia/nvidia-sampler.patch
+      ./noctalia/active-app-name.patch
     ];
     # Fail the source build if an upstream rename or patch drift removes the
     # segmented OSD implementation instead of silently losing the appearance.
     postPatch = (old.postPatch or "") + ''
-      grep -Fq 'HUD33: move the layer surface' src/shell/notification/notification_toast.cpp
-      grep -Fq 'systemOccupancyChanged' src/shell/tooltip/tooltip_manager.h
       grep -Fq 'm_selectionIndicator' src/shell/launcher/launcher_panel.cpp
-      grep -Fq 'item.accent = static_cast<Box*>' src/shell/bar/widgets/workspaces_widget.cpp
       grep -Fq 'syncCompactControls()' src/shell/control_center/tabs/home_tab.cpp
-      grep -Fq 'R31: flat One Dark surface' src/shell/bar/bar.cpp
-      ! grep -Fq 'hudLineStyle(' src/shell/bar/bar.cpp
-      grep -Fq 'R31: minimal reuses the indicator' src/shell/bar/widgets/workspaces_widget.cpp
-      grep -Fq 'bg->setOpacity(run.accordionProgress)' src/shell/bar/bar.cpp
-      grep -Fq 'HUD27: native faded separator' src/shell/bar/widgets/spacer_widget.cpp
-      grep -Fq 'minimum_visible' src/shell/bar/widgets/workspaces_widget_definition.cpp
-      grep -Fq 'HUD27: keep the first N labels' src/shell/bar/widgets/workspaces_widget.cpp
-      grep -Fq 'HUD27b: mode name belongs in the tooltip' src/shell/bar/widgets/power_profile_widget.cpp
-      grep -Fq 'rootNode->setSize(m_glyph->width(), m_glyph->height())' src/shell/bar/widgets/power_profile_widget.cpp
-      grep -Fq 'panel.summary = available ? profile' src/shell/bar/widgets/power_profile_widget.cpp
-      grep -Fq 'kHudCenterClearance = 24.0F' src/shell/bar/bar.cpp
-      grep -Fq 'instance.endSection->width() > endSlotMain' src/shell/bar/bar.cpp
-      grep -Fq 'HUD27b: a single bounded second pass' src/shell/bar/bar.cpp
-      grep -Fq 'setDrawerCompact(false)' src/shell/bar/bar.cpp
-      grep -Fq 'setDrawerCompact(true)' src/shell/bar/bar.cpp
-      grep -Fq 'm_compactDot->setVisible(m_drawerCompact)' src/shell/bar/widgets/sysmon_widget.cpp
-      grep -Fq 'HUD27: display panel uses friendly metadata' src/shell/bar/widgets/brightness_widget.cpp
-      grep -Fq 'display.friendlyName' src/system/brightness_service.cpp
-      grep -Fq 'out->refreshMilliHz = refresh' src/wayland/wayland_connection.cpp
-      grep -Fq 'HUD27: structured tooltip payload' src/shell/tooltip/tooltip_content.h
-      grep -Fq 'HUD27' src/shell/tooltip/tooltip_manager.cpp
-      grep -Fq 'hide_unavailable' src/shell/bar/widgets/sysmon_widget_definition.cpp
-      grep -Fq 'show_gpu_temperature' src/shell/bar/widgets/sysmon_widget_definition.cpp
-      grep -Fq 'label_outside' src/shell/bar/widgets/battery_widget_definition.cpp
-      grep -Fq 'R35: inset the state-colored fill' src/shell/bar/widgets/battery_widget.cpp
-      grep -Fq 'HUD27: initialize rebuilt marks' src/shell/bar/widgets/workspaces_widget.cpp
-      grep -Fq 'HUD27: materialize pinned numeric labels' src/shell/bar/widgets/workspaces_widget.cpp
-      grep -Fq 'HUD27: keep peripheral charge rows' src/shell/bar/widgets/battery_widget.cpp
-      grep -Fq 'HUD27: retain live audio-device details' src/shell/bar/widgets/volume_widget.cpp
-      grep -Fq 'HUD27: preserve the live provider' src/shell/bar/widgets/network_widget.cpp
-      grep -Fq 'HUD27: preserve each connected device' src/shell/bar/widgets/bluetooth_widget.cpp
-      grep -Fq 'HUD27: short NVIDIA-only sampling sessions' src/system/system_monitor_service.cpp
-      grep -Fq 'HUD27: give the selected bar tools readable headings' src/shell/bar/widgets/plugin_widget.cpp
-      grep -Fq 'tooltipRowKeyLimit(renderer, row' src/shell/tooltip/tooltip_manager.cpp
+      grep -Fq 'setCustomPalette(std::move(palette))' src/shell/control_center/tabs/home_tab.cpp
+      grep -Fq 'fontWeightOptions.push_back({"650", "650"})' src/shell/settings/widget_settings_registry.cpp
+      grep -Fq 'show_app_name' src/shell/bar/widgets/active_window_widget_definition.cpp
+      grep -Fq 'title = app_identity::resolveRunningDesktopEntry(appId, desktopEntries()).name' src/shell/bar/widgets/active_window_widget.cpp
       grep -Fq 'gpu_only_nvidia' src/config/schema/config_schema.cpp
       grep -Fq 'pollCfg.gpuOnlyNvidia' src/system/system_monitor_service.cpp
-      grep -Fq 'm_graph->setColor(m_highlightColor)' src/shell/bar/widgets/sysmon_widget.cpp
-      grep -Fq 'HUD27b: external percentages reserve' src/shell/bar/widgets/battery_widget.cpp
-      grep -Fq 'temperature_hide_below'  src/shell/bar/widgets/sysmon_widget_definition.cpp
-      grep -Fq 'HUD27b: CPU alert is hidden below 80; orange at 80, red at 90.' src/shell/bar/widgets/sysmon_widget.cpp
-      grep -Fq 'currentStats.cpuTempC.value_or(0.0) >= m_temperatureHideBelow' src/shell/bar/widgets/sysmon_widget.cpp
-      grep -Fq 'addMetric(SysmonStat::GpuVram, "VRAM"' src/shell/bar/widgets/sysmon_widget.cpp
-      grep -Fq 'addMetric(SysmonStat::GpuTemp, "独显温度"' src/shell/bar/widgets/sysmon_widget.cpp
-      grep -Fq 'HUD27b: SYSTEM owns live GPU temperature and VRAM' src/shell/bar/widgets/sysmon_widget.cpp
-      grep -Fq 'HUD27b: fixed-width value boxes' src/shell/bar/widgets/sysmon_widget.cpp
-      grep -Fq 'CountdownRingNode'  src/shell/bar/widgets/sysmon_widget.cpp
-      grep -Fq 'R35: inclusive thresholds recolor values and visualization together' src/shell/bar/widgets/sysmon_widget.cpp
-      grep -Fq 'usage >= m_criticalThreshold' src/shell/bar/widgets/sysmon_widget.cpp
-      grep -Fq 'usage >= m_warningThreshold' src/shell/bar/widgets/sysmon_widget.cpp
-      grep -Fq 'm_graph->setColor(currentValueColor(m_highlightColor))' src/shell/bar/widgets/sysmon_widget.cpp
-      grep -Fq 'm_ringFill->setColor(currentValueColor(m_highlightColor))' src/shell/bar/widgets/sysmon_widget.cpp
-      grep -Fq 'warning_threshold' src/shell/bar/widgets/sysmon_widget_definition.cpp
-      grep -Fq 'critical_threshold' src/shell/bar/widgets/sysmon_widget_definition.cpp
-      grep -Fq 'label_color' src/shell/bar/widgets/sysmon_widget_definition.cpp
-      grep -Fq 'graph->setFillOpacity(0.18F)' src/shell/bar/widgets/sysmon_widget.cpp
-      grep -Fq 'baseSize * 0.17F' src/shell/bar/widgets/sysmon_widget.cpp
-      grep -Fq 'Style::rtl() ? TextAlign::Start : TextAlign::End' src/shell/bar/widgets/sysmon_widget.cpp
-      grep -Fq 'R35: low/critical charge wins over charging' src/shell/bar/widgets/battery_widget.cpp
-      grep -Fq 'scaleAlpha(graphic, 0.85F)' src/shell/bar/widgets/battery_widget.cpp
-      grep -Fq 'R35: charging bolt is inset in the battery' src/shell/bar/widgets/battery_widget.cpp
-      grep -Fq 'R35: alert-colored bolt remains visible' src/shell/bar/widgets/battery_widget.cpp
-      grep -Fq 'graphic_color' src/shell/bar/widgets/battery_widget_definition.cpp
-      grep -Fq 'charging_color' src/shell/bar/widgets/battery_widget_definition.cpp
-      grep -Fq 'R35: smaller unread dot with a bar-surface outline' src/shell/bar/widgets/notification_widget.cpp
-      grep -Fq '.border = colorSpecFromRole(ColorRole::Surface)' src/shell/bar/widgets/notification_widget.cpp
+      grep -Fq 'HUD27: short NVIDIA-only sampling sessions' src/system/system_monitor_service.cpp
       grep -Fq 'UI4: lockscreen palette-gradient password underline and cached runtime status' src/shell/lockscreen/lock_surface.cpp
       grep -Fq 'lockscreenRuntimeStatus()' src/shell/lockscreen/lock_surface.cpp
       grep -Fq 'charge_control_end_threshold' src/shell/lockscreen/lock_surface.cpp
@@ -278,7 +209,7 @@ in
 
       settings =
         (import ./noctalia/bar.nix {
-          inherit palette distroLogo;
+          inherit palette;
         })
         // (import ./noctalia/plugins.nix {
           inherit inputs pkgs;
@@ -318,8 +249,7 @@ in
             };
 
             panel = {
-              # Reading surfaces stay opaque: Mango layer blur is deliberately
-              # off, so transparency would expose sharp application text behind.
+              # Reading surfaces stay opaque; only the bar and dock request blur.
               transparency_mode = "solid";
               borders = true;
               border_color = "outline_variant";
@@ -375,7 +305,7 @@ in
             app_icon_colorize = false;
 
             screen_corners = {
-              enabled = true;
+              enabled = false;
               size = 12;
             };
 
@@ -463,8 +393,7 @@ in
             warning_threshold = 20;
           };
 
-          # Put triggers in the bottom corners, away from the top bar's hover
-          # area. The bottom edge is free while the dock is off.
+          # Keep the launcher corner away from the centered Dock reveal strip.
           # action only accepts none / launcher / control_center / window_switcher
           # / command (hotCornerActionSelect in settings_registry.cpp); note it is
           # a free-form string in the schema, so a typo passes validation and then
@@ -512,7 +441,7 @@ in
             layer = "overlay";
             width = 320;
             offset_x = 16;
-            offset_y = 64;
+            offset_y = 12;
             max_visible = 3;
             border = true;
             border_color = "outline_variant";
@@ -524,10 +453,10 @@ in
           };
 
           osd = {
-            # Separate transient device feedback from notifications/control center.
+            # Keep transient feedback above the revealed floating Dock.
             position = "bottom_center";
             orientation = "horizontal";
-            offset_y = 32;
+            offset_y = 96;
             hide_delay_ms = 1400;
             border = true;
             border_color = "outline_variant";
@@ -565,14 +494,9 @@ in
             battery_percentage_changed = "${lowBatterySuspend}";
           };
 
-          # Off: the bar already carries a launcher and workspaces, so the dock is
-          # a duplicate entry point. With it off every other dock.* key is
-          # meaningless, hence the single line.
-          dock.enabled = false;
-
           control_center = {
-            # The local layout patch keeps Home at 380px without a sidebar.
-            sidebar = "none";
+            # Compact navigation exposes System, Power, Monitor and Notifications.
+            sidebar = "compact";
             # Direct section entry keeps a compact icon rail for navigation.
             sidebar_section = "compact";
             width = 380;
@@ -580,12 +504,12 @@ in
             circular_avatar = false;
             show_session_button = true;
             shortcuts = map (type: { inherit type; }) [
-              "wifi"
-              "bluetooth"
-              "notification"
-              "caffeine"
-              "nightlight"
+              "system"
               "power_profile"
+              "caffeine"
+              "fel/quill:toggle"
+              "notification"
+              "nightlight"
             ];
           };
 

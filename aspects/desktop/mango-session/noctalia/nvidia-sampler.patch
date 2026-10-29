@@ -1,0 +1,184 @@
+--- a/src/system/system_monitor_service.cpp
++++ b/src/system/system_monitor_service.cpp
+@@ -862,8 +862,9 @@
+     if (m_state == State::Ready) {
+       return true;
+     }
++    // HUD27: NVML can fail while the PCI function is runtime-suspended; retry on the next poll.
+     if (m_state == State::Unavailable) {
+-      return false;
++      m_state = State::Uninitialized;
+     }
+
+     m_library = dlopen("libnvidia-ml.so.1", RTLD_LAZY | RTLD_LOCAL);
+@@ -1436,7 +1437,19 @@
+         const bool logSources = !m_gpuSourcesLogged;
+         m_gpuSourcesLogged = true;
+
+-        if (pollGpuTemp) {
++        const bool unavailable = nvidiaDisplayState == NvidiaDisplayDeviceState::InactiveOnly
++            || (pollCfg.gpuOnlyNvidia && nvidiaDisplayState != NvidiaDisplayDeviceState::Active);
++        if (unavailable) {
++          // HUD27: do not fall back to the integrated GPU while the NVIDIA dGPU is powered down.
++          // Drop NVML handles so they cannot hold the card awake; the next active poll recreates them.
++          releaseGpuReaders();
++          std::scoped_lock lock{m_statsMutex};
++          m_latest.gpuTempC.reset();
++          m_latest.gpuUsagePercent.reset();
++          m_latest.gpuVramUsedBytes.reset();
++          m_latest.gpuVramTotalBytes.reset();
++        }
++        if (pollGpuTemp && !unavailable) {
+           const auto gpuTemp = readGpuTempData(nvidiaDisplayState);
+           if (logSources) {
+             if (gpuTemp.tempC.has_value()) {
+@@ -1448,11 +1461,9 @@
+             }
+           }
+           std::scoped_lock lock{m_statsMutex};
+-          if (gpuTemp.tempC.has_value()) {
+-            m_latest.gpuTempC = gpuTemp.tempC;
+-          }
++          m_latest.gpuTempC = gpuTemp.tempC;
+         }
+-        if (pollGpuUsage) {
++        if (pollGpuUsage && !unavailable) {
+           const auto gpuUsage = readGpuUsageData(nvidiaDisplayState);
+           if (logSources) {
+             if (gpuUsage.percent.has_value()) {
+@@ -1465,11 +1476,9 @@
+             }
+           }
+           std::scoped_lock lock{m_statsMutex};
+-          if (gpuUsage.percent.has_value()) {
+-            m_latest.gpuUsagePercent = gpuUsage.percent;
+-          }
++          m_latest.gpuUsagePercent = gpuUsage.percent;
+         }
+-        if (pollGpuVram) {
++        if (pollGpuVram && !unavailable) {
+           const auto gpuVram = readGpuVramData(nvidiaDisplayState);
+           if (logSources) {
+             if (gpuVram.has_value()) {
+@@ -1482,12 +1491,19 @@
+               kLog.info("detected GPU VRAM source: unavailable");
+             }
+           }
++          std::scoped_lock lock{m_statsMutex};
+           if (gpuVram.has_value()) {
+-            std::scoped_lock lock{m_statsMutex};
+             m_latest.gpuVramUsedBytes = gpuVram->usedBytes;
+             m_latest.gpuVramTotalBytes = gpuVram->totalBytes;
++          } else {
++            m_latest.gpuVramUsedBytes.reset();
++            m_latest.gpuVramTotalBytes.reset();
+           }
+         }
++      }
++      // HUD27: short NVIDIA-only sampling sessions never pin an otherwise idle card awake.
++      if (pollCfg.gpuOnlyNvidia) {
++        releaseGpuReaders();
+       }
+       nextGpu = now + gpuInterval;
+       statsTouched = true;
+@@ -1696,30 +1712,8 @@
+         .detail = nvml.has_value() ? "NVML-only mode active" : "NVML-only mode active; NVML unavailable"
+     };
+   }
+-  case NvidiaDisplayDeviceState::InactiveOnly: {
+-    AmdRsmiReader& amdRsmiReader = ensureAmdRsmiReader();
+-    if (const auto amdRsmi = amdRsmiReader.readTempSensor(); amdRsmi.has_value()) {
+-      return GpuTempData{
+-          .tempC = amdRsmi->tempC, .source = amdRsmi->source, .detail = "NVML skipped; using ROCm SMI edge temperature"
+-      };
+-    }
+-    if (amdRsmiReader.ready()) {
+-      return GpuTempData{
+-          .tempC = std::nullopt, .source = {}, .detail = "NVML skipped; ROCm SMI temperature unavailable"
+-      };
+-    }
+-    if (const auto amdSysfs = readAmdGpuSysfsTempSensor(); amdSysfs.has_value()) {
+-      return GpuTempData{
+-          .tempC = amdSysfs->tempC, .source = amdSysfs->source, .detail = "NVML skipped; using amdgpu sysfs temp1_input"
+-      };
+-    }
+-    const GpuHwmonProbe hwmon = readGpuHwmonTempSensor();
+-    return GpuTempData{
+-        .tempC = hwmon.reading.has_value() ? std::optional<double>{hwmon.reading->tempC} : std::nullopt,
+-        .source = hwmon.reading.has_value() ? hwmon.reading->source : std::string{},
+-        .detail = "NVML skipped; NVIDIA display device is runtime-suspended"
+-    };
+-  }
++  case NvidiaDisplayDeviceState::InactiveOnly:
++    return GpuTempData{.detail = "NVIDIA display device is runtime-suspended"};
+   case NvidiaDisplayDeviceState::None:
+     break;
+   }
+@@ -1770,20 +1764,8 @@
+       return GpuUsageData{.percent = gpuUsage, .source = "nvml"};
+     }
+     return GpuUsageData{};
+-  case NvidiaDisplayDeviceState::InactiveOnly: {
+-    AmdRsmiReader& amdRsmiReader = ensureAmdRsmiReader();
+-    if (const auto rsmi = amdRsmiReader.readUsage(); rsmi.has_value()) {
+-      return GpuUsageData{.percent = rsmi->percent, .source = rsmi->source};
+-    }
+-    if (amdRsmiReader.ready()) {
+-      return GpuUsageData{};
+-    }
+-    if (const auto sysfs = readAmdGpuSysfsUsage(); sysfs.has_value()) {
+-      return GpuUsageData{.percent = sysfs->percent, .source = sysfs->source};
+-    }
+-    // An Optimus laptop with the discrete GPU asleep renders on the Intel integrated GPU.
+-    return readIntelGpuUsageData();
+-  }
++  case NvidiaDisplayDeviceState::InactiveOnly:
++    return GpuUsageData{};
+   case NvidiaDisplayDeviceState::None:
+     break;
+   }
+@@ -1842,22 +1824,8 @@
+     }
+     return GpuVramData{.usedBytes = nvml->usedBytes, .totalBytes = nvml->totalBytes, .source = nvml->source};
+   }
+-  case NvidiaDisplayDeviceState::InactiveOnly: {
+-    std::optional<GpuVramReading> combined = readAmdGpuVram();
+-    if (!combined.has_value()) {
+-      if (const auto intel = readIntelGpuVram(); intel.has_value()) {
+-        combined = GpuVramReading{
+-            .usedBytes = intel->usedBytes, .totalBytes = intel->totalBytes, .source = intel->source, .isNvidia = false
+-        };
+-      }
+-    }
+-    if (!combined.has_value() || !hasUsableVram(*combined)) {
+-      return std::nullopt;
+-    }
+-    return GpuVramData{
+-        .usedBytes = combined->usedBytes, .totalBytes = combined->totalBytes, .source = combined->source
+-    };
+-  }
++  case NvidiaDisplayDeviceState::InactiveOnly:
++    return std::nullopt;
+   case NvidiaDisplayDeviceState::None:
+     break;
+   }
+--- a/src/config/config_types.h
++++ b/src/config/config_types.h
+@@ -1483,6 +1483,7 @@
+     // GPU probes only run while something displays a GPU stat (SystemMonitorService retain counts),
+     // so an idle machine never wakes a discrete GPU. Set to 0 to stop probing it entirely.
+     float gpuPollSeconds = 5.0F;
++    bool gpuOnlyNvidia = false; // HUD27: optional dedicated NVIDIA metrics, including PCI removal
+     float memoryPollSeconds = 2.0F;
+     float networkPollSeconds = 3.0F;
+     float diskPollSeconds = 10.0F;
+--- a/src/config/schema/config_schema.cpp
++++ b/src/config/schema/config_schema.cpp
+@@ -157,6 +157,7 @@
+           field(&SystemConfig::MonitorConfig::cpuTempSensorPath, "cpu_temp_sensor_path"),
+           field(&SystemConfig::MonitorConfig::cpuPollSeconds, "cpu_poll_seconds"),
+           field(&SystemConfig::MonitorConfig::gpuPollSeconds, "gpu_poll_seconds"),
++          field(&SystemConfig::MonitorConfig::gpuOnlyNvidia, "gpu_only_nvidia"),
+           field(&SystemConfig::MonitorConfig::memoryPollSeconds, "memory_poll_seconds"),
+           field(&SystemConfig::MonitorConfig::networkPollSeconds, "network_poll_seconds"),
+           field(&SystemConfig::MonitorConfig::diskPollSeconds, "disk_poll_seconds"),

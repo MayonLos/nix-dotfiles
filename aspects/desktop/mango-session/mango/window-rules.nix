@@ -19,7 +19,7 @@ let
 in
 [
   # With allow_tearing=2, opt every normal client out; games opt in below.
-  "force_tearing:0,app_id:.*"
+  "force_tearing:0,no_blur:1,app_id:.*"
 
   # Standard transient/dialog types already float and center in Mango. These
   # cover standalone helpers / file pickers lacking a transient parent.

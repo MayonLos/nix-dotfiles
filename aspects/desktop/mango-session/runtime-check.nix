@@ -16,28 +16,8 @@ let
     impureFontDirectories = [ ];
     includes = [ "${host.environment.etc.fonts.source}/conf.d" ];
   };
-  overlayClearanceCheck =
-    pkgs.runCommand "noctalia-overlay-clearance"
-      {
-        nativeBuildInputs = [
-          pkgs.patch
-          pkgs.stdenv.cc
-        ];
-      }
-      ''
-        cp -R ${home.programs.noctalia.package.src} source
-        chmod -R u+w source
-        cd source
-        ${pkgs.lib.concatMapStringsSep "\n" (
-          patch: "patch -p1 --fuzz=0 < ${patch}"
-        ) home.programs.noctalia.package.patches}
-        c++ -std=c++20 -I src ${./resources/overlay-clearance-test.cpp} -o overlay-clearance-test
-        ./overlay-clearance-test
-        touch "$out"
-      '';
   metadata = pkgs.writeText "desktop-contract.json" (
     builtins.toJSON {
-      overlayClearanceCheck = toString overlayClearanceCheck;
       settings = home.programs.noctalia.settings;
       noctaliaPatches = map (path: {
         name = builtins.baseNameOf path;
@@ -292,8 +272,9 @@ pkgs.runCommand "interactive-session-config"
     assert p["dark"]["mSurface"] == m["palette"]["bg"]
     settings = m["settings"]
     patches = {patch["name"]: patch["content"] for patch in m["noctaliaPatches"]}
-    for name, marker in {"hud-overlay-clearance.patch": "HUD33: output-local logical coordinates", "hud-bar.patch": "HUD27: native faded separator", "hud-tooltips.patch": "TooltipPanel", "hud-sysmon.patch": "hide_unavailable", "hud-controls-tooltips.patch": "TooltipPanel", "hud-battery.patch": "label_outside", "hud-balanced.patch": "temperature_hide_below", "hud-drawer-clearance.patch": "kHudCenterClearance = 24.0F"}.items():
-        assert name in patches and marker in patches[name], (name, patches.keys())
+    assert set(patches) == {"astra-selection.patch", "tech-lockscreen.patch", "tech-osd-segments.patch", "nvidia-sampler.patch", "active-app-name.patch"}
+    for name, marker in {"astra-selection.patch": "syncCompactControls", "tech-lockscreen.patch": "lockscreenRuntimeStatus", "tech-osd-segments.patch": "progressTicks", "nvidia-sampler.patch": "gpuOnlyNvidia", "active-app-name.patch": "resolveRunningDesktopEntry"}.items():
+        assert marker in patches[name], name
     # Check serialized settings too: validating the Nix attrset alone would
     # miss a lost/renamed field during Home Manager's config generation.
     generated = tomllib.loads(Path(sys.argv[4]).read_text())
@@ -302,56 +283,60 @@ pkgs.runCommand "interactive-session-config"
         ("shell", "launcher", "width"): 520,
         ("shell", "launcher", "category_icons_only"): True,
         ("shell", "app_icon_colorize"): False,
-        ("control_center", "sidebar"): "none",
+        ("control_center", "sidebar"): "compact",
         ("control_center", "width"): 380,
         ("notification", "width"): 320,
-        ("bar", "main", "thickness"): 35,
-        ("bar", "main", "radius"): 9,
-        ("bar", "main", "margin_ends"): 8,
-        ("bar", "main", "margin_edge"): 6,
+        ("bar", "main", "thickness"): 30,
+        ("bar", "main", "radius"): 0,
+        ("bar", "main", "margin_ends"): 0,
+        ("bar", "main", "margin_edge"): 0,
+        ("bar", "main", "font_family"): "Inter",
+        ("bar", "main", "font_weight"): 500,
         ("bar", "main", "font_scale"): 0.93,
-        ("bar", "main", "widget_spacing"): 6,
-        ("bar", "main", "padding"): 7,
-        ("bar", "main", "capsule_radius"): 6,
+        ("bar", "main", "background_opacity"): 0.62,
+        ("bar", "main", "compositor_blur"): True,
+        ("bar", "main", "border_width"): 0,
+        ("bar", "main", "shadow"): False,
+        ("bar", "main", "contact_shadow"): False,
         ("bar", "main", "capsule"): False,
-        ("widget", "control-center", "glyph"): "settings",
-        ("widget", "clock-date", "format"): "{:%m月%d日 周%a}",
-        ("widget", "clock-time", "format"): "{:%H:%M}",
-        ("widget", "clock-time", "font_weight"): 600,
-        ("widget", "workspaces", "style"): "minimal",
+        ("widget", "launcher", "glyph"): "layout-grid",
+        ("widget", "active_window", "display"): "text_only",
+        ("widget", "active_window", "show_app_name"): True,
+        ("widget", "active_window", "font_weight"): 650,
+        ("widget", "control-center", "glyph"): "adjustments-horizontal",
+        ("widget", "clock", "format"): "{:%m月%d日 周%a %H:%M}",
+        ("shell", "screen_corners", "enabled"): False,
+        ("widget", "workspaces", "style"): "focus_hint",
+        ("widget", "workspaces", "pill_scale"): 0.3,
+        ("widget", "workspaces", "show_labels"): False,
+        ("widget", "workspaces", "show_icons"): False,
+        ("widget", "workspaces", "hide_when_empty"): False,
+        ("widget", "workspaces", "focused_color"): m["palette"]["brightFg"],
+        ("widget", "battery", "display_mode"): "glyph",
+        ("widget", "battery", "show_label"): True,
         ("widget", "battery", "label_content"): "percent",
-        ("widget", "battery", "display_mode"): "graphic",
-        ("widget", "battery", "label_outside"): True,
+        ("widget", "battery", "actions", "left"): "exec legion-conservation toggle",
         ("widget", "tray", "drawer"): True,
         ("widget", "tray", "pinned"): ["fcitx"],
-        ("widget", "battery", "actions", "left"): "exec legion-conservation toggle",
-        ("widget", "monitor-cpu", "visualization"): "graph",
-        ("widget", "monitor-memory", "visualization"): "ring",
-        ("widget", "monitor-gpu", "visualization"): "ring",
-        ("widget", "control-center", "icon_color"): m["palette"]["fg"],
-        ("widget", "fel/quill:status", "icon_color"): m["palette"]["muted"],
-        ("widget", "battery", "graphic_color"): m["palette"]["fg"],
-        ("widget", "battery", "charging_color"): m["palette"]["green"],
-        ("widget", "battery", "critical_color"): m["palette"]["red"],
-        ("widget", "battery", "critical_threshold"): 10,
-        ("widget", "workspaces", "empty_color"): m["palette"]["border"] + "99",
-        ("widget", "monitor-temp", "stat"): "cpu_temp",
-        ("widget", "monitor-gpu", "hide_unavailable"): True,
-        ("widget", "monitor-gpu", "show_gpu_temperature"): False,
-        ("widget", "monitor-temp", "temperature_hide_below"): 80,
-        ("widget", "monitor-temp", "hide_unavailable"): True,
         ("widget", "volume", "show_label"): False,
-        ("bar", "main", "capsule_thickness"): 0.67,
-        ("widget", "workspaces", "hide_when_empty"): True,
-        ("widget", "workspaces", "minimum_visible"): 5,
+        ("widget", "notifications", "hide_when_no_unread"): True,
         ("system", "monitor", "gpu_poll_seconds"): 2.0,
         ("system", "monitor", "gpu_only_nvidia"): True,
-        ("widget", "separator-monitor", "length"): 15,
-        ("widget", "separator-control", "length"): 15,
-        ("widget", "clock-dot", "length"): 24,
-        ("widget", "clock-dot", "decoration"): "dot",
-        ("widget", "monitor-gpu", "stat"): "gpu_usage",
-        ("widget", "monitor-memory", "stat"): "ram_pct",
+        ("dock", "enabled"): True,
+        ("dock", "position"): "bottom",
+        ("dock", "smart_auto_hide"): True,
+        ("dock", "auto_hide"): False,
+        ("dock", "reserve_space"): False,
+        ("dock", "layer"): "overlay",
+        ("dock", "show_running"): True,
+        ("dock", "show_dots"): True,
+        ("dock", "launcher_position"): "start",
+        ("dock", "margin_edge"): 8,
+        ("dock", "radius"): 16,
+        ("dock", "shadow"): False,
+        ("dock", "background_opacity"): 0.80,
+        ("dock", "compositor_blur"): True,
+        ("dock", "pinned"): ["kitty", "firefox", "obsidian", "thunar", "code", "qq", "musicfox"],
         ("shell", "launcher", "default_view"): "pinned",
         ("shell", "launcher", "track_usage"): True,
         ("shell", "launcher", "sort_by_usage"): True,
@@ -361,6 +346,7 @@ pkgs.runCommand "interactive-session-config"
         ("notification", "border_width"): 1,
         ("osd", "border_color"): "outline_variant",
         ("osd", "border_width"): 1,
+        ("osd", "offset_y"): 96,
         ("shell", "show_close_buttons"): False,
         ("theme", "sync_color_scheme"): False,
         ("shell", "panel", "border_color"): "outline_variant",
@@ -374,91 +360,18 @@ pkgs.runCommand "interactive-session-config"
             for key in keys:
                 root = root[key]
             assert root == value, (keys, root, value)
-    groups = {group["id"]: group for group in settings["bar"]["main"]["capsule_group"]}
-    assert all(group["opacity"] == 0 for group in groups.values())
-    assert groups["tools"]["members"] == ["fel/quill:status", "8bury/mini-docker:mini-docker", "rxtsel/portctl:indicator", "brightness", "power_profile", "caffeine"]
-    assert groups["tools"]["accordion"] and groups["tools"]["border_width"] == 0
-    assert {name: group["padding"] for name, group in groups.items()} == {
-        "time": 4.0,
-        "tools": 4.0,
-        "monitor": 2.0,
-        "system": 4.0,
-    }
-    assert {name: group["widget_spacing"] for name, group in groups.items()} == {
-        "time": 7,
-        "tools": 10,
-        "monitor": 6,
-        "system": 8,
-    }
-    assert not groups["monitor"]["accordion"]
-    assert groups["monitor"]["members"] == ["monitor-cpu", "monitor-memory", "monitor-gpu", "monitor-temp"]
     for root in (settings, generated):
         bar = root["bar"]["main"]
-        assert bar["start"] == ["launcher", "separator-workspaces", "workspaces", "separator-layout", "gambled23/mangowm-keymode:mangowm-keymode", "ezequiel/mango_layouts:btn", "group:tools"]
-        assert bar["center"] == ["group:time"]
-        assert bar["end"] == ["group:monitor", "separator-monitor", "group:system", "separator-control", "control-center"]
-        actual_groups = {group["id"]: group for group in bar["capsule_group"]}
-        assert actual_groups["system"]["members"] == ["network", "bluetooth", "volume", "tray", "battery", "notifications"]
-        assert actual_groups["system"]["widget_spacing"] == 8
-        assert actual_groups["monitor"]["widget_spacing"] == 6
-        assert actual_groups["monitor"]["padding"] == 2.0
-        assert actual_groups["monitor"]["members"] == ["monitor-cpu", "monitor-memory", "monitor-gpu", "monitor-temp"]
-        assert actual_groups["monitor"]["opacity"] == 0 and actual_groups["monitor"]["border_width"] == 0
-        assert not root["widget"]["monitor-gpu"]["capsule"] and root["widget"]["monitor-gpu"]["hide_unavailable"]
-        assert all(not root["widget"][name]["capsule"] for name in ("monitor-gpu", "ezequiel/mango_layouts:btn"))
-        assert bar["border_width"] == 1 and bar["border"] == m["palette"]["muted"] + "55"
-        assert "monitor-vram" not in root["widget"]
-        for name, accent in (("monitor-cpu", "blue"), ("monitor-memory", "green"), ("monitor-gpu", "cyan")):
-            widget = root["widget"][name]
-            assert widget["color"] == m["palette"]["brightFg"]
-            assert widget["label_color"] == m["palette"]["muted"]
-            assert widget["highlight_color"] == m["palette"][accent]
-            assert widget["warning_threshold"] == 70 and widget["critical_threshold"] == 90
-            assert widget["warning_color"] == m["palette"]["yellow"]
-            assert widget["critical_color"] == m["palette"]["red"]
-            assert widget["font_family"] == m["palette"]["fonts"]["mono"]
+        assert bar["start"] == ["launcher", "active_window", "workspaces"]
+        assert bar["center"] == []
+        assert bar["end"] == ["tray", "network", "bluetooth", "volume", "battery", "notifications", "control-center", "clock"]
+        assert not bar.get("capsule_group")
+        assert not any(name.startswith(("monitor-", "separator-", "group:")) for name in root["widget"])
         assert root["battery"]["warning_threshold"] == 20
-        assert root["widget"]["monitor-temp"]["color"] == m["palette"]["orange"]
-        assert "glyph" not in root["widget"]["fel/quill:status"]
-        assert root["widget"]["monitor-temp"]["custom_label"] == ""
-        assert all(root["widget"][name]["label_min_width"] == 22 for name in ("monitor-cpu", "monitor-memory", "monitor-gpu"))
-        assert root["widget"]["monitor-temp"]["label_min_width"] == 26
-        assert all(
-            settings.get("scale") == 1.15
-            for settings in root["widget"].values()
-            if settings.get("type") != "spacer"
-        )
-        bar_widgets = bar["start"] + bar["center"] + bar["end"]
-        bar_widgets = [name for name in bar_widgets if not name.startswith("group:")]
-        bar_widgets += [member for group in bar["capsule_group"] for member in group["members"]]
-        assert all(
-            root["widget"].get(name, {}).get("scale") == 1.15
-            for name in set(bar_widgets)
-            if root["widget"].get(name, {}).get("type") != "spacer"
-        )
-    assert "R31: flat One Dark surface" in patches["hud-bar.patch"]
-    assert "hudLineStyle" not in patches["hud-bar.patch"]
-    for marker in ("R35: smaller unread dot with a bar-surface outline", "kDotBaseSize = 5.0F", ".border = colorSpecFromRole(ColorRole::Surface)", ".borderWidth = 1.0F * m_contentScale", "itemW - 4.0F)) : 2.0F", ": colorSpecFromRole(ColorRole::OutlineVariant)"):
-        assert marker in patches["hud-bar.patch"], marker
-    for marker in ("warning_threshold", "critical_threshold", "warning_color", "critical_color", "label_color", "graph->setFillOpacity(0.18F)", "baseSize * 0.17F", "m_graph->setColor(currentValueColor(m_highlightColor))", "m_ringFill->setColor(currentValueColor(m_highlightColor))"):
-        assert marker in patches["hud-sysmon.patch"], marker
-    for marker in ("usage >= m_criticalThreshold", "usage >= m_warningThreshold", "Style::rtl() ? TextAlign::Start : TextAlign::End"):
-        assert marker in patches["hud-balanced.patch"], marker
-    for marker in ("R35: low/critical charge wins over charging", "scaleAlpha(graphic, 0.85F)", "R35: charging bolt is inset in the battery", "R35: alert-colored bolt remains visible", "graphic_color", "charging_color", "critical_threshold"):
-        assert marker in patches["hud-battery.patch"], marker
-    assert "0x98C379" not in patches["hud-battery.patch"]
-    assert "R31: minimal reuses the indicator" in patches["hud-bar.patch"]
-    assert "contentMainEnd - centerSlotEnd - (isVertical ? 0.0F : kHudCenterClearance)" in patches["hud-drawer-clearance.patch"]
-    clearance = patches["hud-drawer-clearance.patch"]
-    for marker in ('centerSlotStart - contentMainStart - (isVertical ? 0.0F : kHudCenterClearance)', 'instance.endSection->width() > endSlotMain', 'setDrawerCompact(false)', 'setDrawerCompact(true)', 'm_compactDot->setVisible(m_drawerCompact)', 'panel.summary = available ? profile', '+  rootNode->setSize(m_glyph->width(), m_glyph->height());'):
-        assert marker in clearance, marker
-    assert '+  m_label->setText' not in clearance
-    balanced = patches["hud-balanced.patch"]
-    for marker in ('currentGradientValue() >= 90.0', 'currentStats.cpuTempC.value_or(0.0) >= m_temperatureHideBelow', 'rootNode->setParticipatesInLayout(shown)', 'addMetric(SysmonStat::GpuVram, "VRAM"', 'addMetric(SysmonStat::GpuTemp, "独显温度"', 'm_monitor->retainGpuVram()', 'm_monitor->releaseGpuVram()'):
-        assert marker in balanced, marker
-    assert not any(w.get("text") == "│" for w in settings["widget"].values())
-    assert all(settings["widget"][name]["type"] == "spacer" for name in settings["widget"] if name.startswith("separator-"))
-    assert len(settings["control_center"]["shortcuts"]) == 6
+        assert root["dock"]["magnification_scale"] <= 1.25
+        assert [item["type"] for item in root["control_center"]["shortcuts"]] == ["system", "power_profile", "caffeine", "fel/quill:toggle", "notification", "nightlight"]
+        assert root["notification"]["offset_y"] == 12
+    assert "workspaces_widget" not in patches["astra-selection.patch"]
     enabled_plugins = settings["plugins"]["enabled"]
     assert "tmelik/system-monitor" not in enabled_plugins
     assert "mindnbytes/nix-status" not in enabled_plugins
@@ -494,8 +407,15 @@ pkgs.runCommand "interactive-session-config"
     for key, role, alpha in (("root_color", "bg", "ff"), ("drop_color", "blue", "80"), ("split_color", "cyan", "ff")):
         value = "0x" + m["palette"][role].removeprefix("#") + alpha
         assert mango[key] == parsed[key] == value, (key, value)
-    assert mango["blur"] == mango["blur_layer"] == mango["layer_shadows"] == mango["layer_animations"] == 0
-    assert settings["shell"]["panel"]["shadow"] and settings["bar"]["main"]["shadow"]
+    assert mango["blur"] == mango["blur_layer"] == 1
+    assert mango["layer_shadows"] == mango["layer_animations"] == 0
+    assert mango["blur_optimized"] == 1
+    assert mango["layer_rule"][:2] == ["layer_name:.*,no_blur:1", "layer_name:^noctalia-(bar-.*|dock)$,no_blur:0,no_animation:1,no_shadow:1"]
+    assert ",no_blur:1," in mango["layer_rule"][2]
+    assert "force_tearing:0,no_blur:1,app_id:.*" in mango["window_rule"]
+    for binding in ("SUPER+CTRL,D,spawn,noctalia msg panel-toggle 8bury/mini-docker:manager", "SUPER+CTRL,P,spawn,noctalia msg panel-toggle rxtsel/portctl:panel", "SUPER+CTRL,W,spawn,noctalia msg panel-toggle ezequiel/mango_layouts:panel"):
+        assert binding in mango["bind"]
+    assert settings["shell"]["panel"]["shadow"] and not settings["bar"]["main"]["shadow"]
     assert mango["border_px"] == 2 and mango["border_radius"] == 10
     assert mango["focus_color"] == "0x" + m["palette"]["blue"].removeprefix("#") + "ff"
     assert mango["gap_inner_horizontal"] == mango["gap_inner_vertical"] == 8
@@ -514,7 +434,7 @@ pkgs.runCommand "interactive-session-config"
         assert 150 <= mango["animation_duration_" + event] <= 200
         assert mango["animation_curve_" + event] == "0.16,1.0,0.3,1.0"
     assert m["fcitxClassicUI"]["PreferTextIcon"] == "True"
-    assert "keyboard_layout" not in [member for group in settings["bar"]["main"]["capsule_group"] for member in group["members"]]
+    assert "keyboard_layout" not in settings["bar"]["main"]["end"]
     assert m["environment"]["XCURSOR_THEME"] == m["palette"]["cursor"]["name"]
     assert m["environment"]["XCURSOR_SIZE"] == str(m["palette"]["cursor"]["size"])
     for prefix in ("tab_bar_decorate_", "group_bar_decorate_", "jump_label_decorate_"):
