@@ -4,9 +4,9 @@
     ../../appearance/appearance
   ];
   den.aspects = {
-    vscode = { host, ... }: {
+    vscode = { host, user, ... }: {
       noctaliaIntegrations = [ "vscode" ];
-      homeManager.imports = [ ./vscode.nix ];
+      homeManager.imports = [ (import ./vscode.nix { palette = user.appearance; }) ];
       provides.${host.name}.includes = [ den.aspects.editing-runtime-host ];
     };
   };

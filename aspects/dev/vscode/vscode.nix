@@ -1,4 +1,5 @@
-{ pkgs, ... }:
+{ palette }:
+{ lib, pkgs, ... }:
 {
   # The FHS variant, rather than patching LD_LIBRARY_PATH onto plain vscode.
   #
@@ -13,5 +14,20 @@
   programs.vscode = {
     enable = true;
     package = pkgs.vscode-fhs;
+    profiles.default.extensions = with pkgs.vscode-extensions; [
+      zhuangtongfa.material-theme
+      bbenoist.nix
+    ];
   };
+  assertions = [
+    {
+      assertion = palette != null;
+      message = "Select an appearance for the VS Code workbench defaults";
+    }
+  ];
+  home.activation.seedVscodeSettings = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    ${pkgs.python3}/bin/python3 ${./seed-settings.py} ${
+      pkgs.writeText "vscode-defaults.json" (builtins.toJSON (import ./settings.nix { inherit palette; }))
+    }
+  '';
 }
