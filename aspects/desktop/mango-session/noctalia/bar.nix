@@ -45,7 +45,14 @@
   };
 
   widget = {
-    launcher.glyph = "layout-grid";
+    launcher = {
+      custom_image = "${../resources/nix-snowflake.svg}";
+      custom_image_colorize = true;
+      scale = 0.94;
+      show_tooltip = false;
+      color = palette.brightFg;
+      actions.left = "panel-toggle nix-dotfiles/desktop-menus:system";
+    };
     active_window = {
       display = "text_only";
       show_app_name = true; # small local extension using native app identity
@@ -56,17 +63,21 @@
       title_scroll = "none";
     };
     workspaces = {
-      style = "focus_hint";
+      style = "minimal";
       show_icons = false;
-      show_labels = false;
+      show_labels = true;
       hide_when_empty = true;
       show_all_outputs = false;
-      focused_output_only = true;
-      pill_scale = 0.3;
-      active_pill_size = 3.3;
+      focused_output_only = false;
+      active_dot = true;
+      hover_preview = true;
+      font_scale = 0.857;
+      font_weight = 600;
+      change_color_on_hover = true;
+      capsule = false;
       focused_color = palette.brightFg;
-      occupied_color = palette.fg;
-      empty_color = "${palette.fg}60";
+      occupied_color = palette.muted;
+      empty_color = palette.muted;
       urgent_color = "error";
     };
     tray = {

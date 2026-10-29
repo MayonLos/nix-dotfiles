@@ -1,0 +1,34 @@
+id = "nix-dotfiles/desktop-menus"
+name = "Desktop menus"
+version = "1.0.0"
+plugin_api = 42
+author = "nix-dotfiles"
+license = "MIT"
+description = "Native workspace-model hover preview and NixOS system menu."
+icon = "settings"
+
+[[service]]
+id = "control"
+entry = "control.luau"
+
+[[layer]]
+id = "preview"
+entry = "preview.luau"
+layer = "overlay"
+anchors = ["top", "left"]
+width = 314
+height = 200
+exclusive_zone = -1
+keyboard = "none"
+output = "focused"
+
+[[panel]]
+id = "system"
+entry = "system.luau"
+width = 230
+height = "content"
+max_height = 320
+placement = "floating"
+position = "top_left"
+open_near_click = true
+keyboard_focus = "exclusive"

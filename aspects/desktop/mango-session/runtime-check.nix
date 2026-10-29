@@ -9,6 +9,10 @@ let
     inherit pkgs palette;
   };
   python = pkgs.python3.withPackages (p: [ p.tomlkit ]);
+  localPlugins =
+    (pkgs.lib.findFirst (
+      source: source.name == "nix-dotfiles"
+    ) null home.programs.noctalia.settings.plugins.source).location;
   # Use the host's generated fontconfig rules with an isolated home. This checks
   # family selection and missing-glyph fallback without applying the system.
   fontConfig = pkgs.makeFontsConf {
@@ -98,7 +102,18 @@ pkgs.runCommand "interactive-session-config"
       home.xdg.configFile."noctalia/config.toml".source
     } > "$out/noctalia.log" 2>&1 || { cat "$out/noctalia.log"; exit 1; }
     if grep -iE '\[WARN\]|warning:|\[ERROR\]|^WARN[[:space:]]|[1-9][0-9]* warning\(s\)' "$out/noctalia.log"; then exit 1; fi
-    ${pkgs.lib.getExe home.programs.noctalia.package} plugins lint ${./resources/noctalia-plugins} > "$out/plugins.log" 2>&1 || { cat "$out/plugins.log"; exit 1; }
+    ${pkgs.lib.getExe home.programs.noctalia.package} plugins lint ${localPlugins} > "$out/plugins.log" 2>&1 || { cat "$out/plugins.log"; exit 1; }
+    python3 - ${./resources/noctalia-plugins/launchpad/plugin.toml} <<'PY'
+    import sys, tomllib
+    manifest = tomllib.load(open(sys.argv[1], "rb"))
+    layer = manifest["layer"][0]
+    assert layer["output"] == "focused" and layer["keyboard"] == "exclusive"
+    assert layer["layer"] == "overlay" and layer["exclusive_zone"] == -1
+    assert set(layer["anchors"]) == {"top", "bottom", "left", "right"}
+    assert {"Escape", "Return", "Super+a", "Page_Up", "Page_Down"} <= set(layer["capture_keys"])
+    PY
+    lua ${./resources/test-desktop-menus.lua} ${./resources/noctalia-plugins/desktop-menus} > "$out/desktop-menus.log"
+    ${pkgs.lua5_4}/bin/lua ${./resources/test-launchpad.lua} ${localPlugins}/launchpad > "$out/launchpad.log"
     lua ${./resources/test-conservation.lua} ${./resources/noctalia-plugins/legion-conservation/status.luau} > "$out/conservation.log"
     ${pkgs.lib.getExe home.wayland.windowManager.mango.package} -c ${
       home.xdg.configFile."mango/config.conf".source
@@ -272,8 +287,8 @@ pkgs.runCommand "interactive-session-config"
     assert p["dark"]["mSurface"] == m["palette"]["bg"]
     settings = m["settings"]
     patches = {patch["name"]: patch["content"] for patch in m["noctaliaPatches"]}
-    assert set(patches) == {"astra-selection.patch", "tech-lockscreen.patch", "tech-osd-segments.patch", "nvidia-sampler.patch", "active-app-name.patch"}
-    for name, marker in {"astra-selection.patch": "syncCompactControls", "tech-lockscreen.patch": "lockscreenRuntimeStatus", "tech-osd-segments.patch": "progressTicks", "nvidia-sampler.patch": "gpuOnlyNvidia", "active-app-name.patch": "resolveRunningDesktopEntry"}.items():
+    assert set(patches) == {"astra-selection.patch", "tech-lockscreen.patch", "tech-osd-segments.patch", "nvidia-sampler.patch", "active-app-name.patch", "launchpad-native.patch", "desktop-menus.patch"}
+    for name, marker in {"astra-selection.patch": "syncCompactControls", "tech-lockscreen.patch": "lockscreenRuntimeStatus", "tech-osd-segments.patch": "progressTicks", "nvidia-sampler.patch": "gpuOnlyNvidia", "active-app-name.patch": "resolveRunningDesktopEntry", "launchpad-native.patch": "provider.activate(result)", "desktop-menus.patch": "workspaceWindowAssignments(it->output)"}.items():
         assert marker in patches[name], name
     # Check serialized settings too: validating the Nix attrset alone would
     # miss a lost/renamed field during Home Manager's config generation.
@@ -299,18 +314,25 @@ pkgs.runCommand "interactive-session-config"
         ("bar", "main", "shadow"): False,
         ("bar", "main", "contact_shadow"): False,
         ("bar", "main", "capsule"): False,
-        ("widget", "launcher", "glyph"): "layout-grid",
+        ("widget", "launcher", "custom_image_colorize"): True,
         ("widget", "active_window", "display"): "text_only",
         ("widget", "active_window", "show_app_name"): True,
         ("widget", "active_window", "font_weight"): 650,
         ("widget", "control-center", "glyph"): "adjustments-horizontal",
         ("widget", "clock", "format"): "{:%m月%d日 周%a %H:%M}",
         ("shell", "screen_corners", "enabled"): False,
-        ("widget", "workspaces", "style"): "focus_hint",
-        ("widget", "workspaces", "pill_scale"): 0.3,
-        ("widget", "workspaces", "show_labels"): False,
+        ("widget", "workspaces", "style"): "minimal",
+        ("widget", "workspaces", "show_labels"): True,
         ("widget", "workspaces", "show_icons"): False,
+        ("widget", "workspaces", "capsule"): False,
+        ("widget", "workspaces", "active_dot"): True,
+        ("widget", "workspaces", "hover_preview"): True,
+        ("widget", "workspaces", "font_weight"): 600,
+        ("widget", "workspaces", "occupied_color"): m["palette"]["muted"],
+        ("widget", "workspaces", "change_color_on_hover"): True,
+        ("widget", "launcher", "actions", "left"): "panel-toggle nix-dotfiles/desktop-menus:system",
         ("widget", "workspaces", "hide_when_empty"): True,
+        ("widget", "workspaces", "focused_output_only"): False,
         ("widget", "workspaces", "focused_color"): m["palette"]["brightFg"],
         ("widget", "battery", "display_mode"): "glyph",
         ("widget", "battery", "show_label"): True,
@@ -377,6 +399,9 @@ pkgs.runCommand "interactive-session-config"
     assert "mindnbytes/nix-status" not in enabled_plugins
     assert "knyrps/nix-search" in enabled_plugins
     assert "nix-dotfiles/legion-conservation" in enabled_plugins
+    assert "nix-dotfiles/launchpad" in enabled_plugins
+    assert "nix-dotfiles/desktop-menus" in enabled_plugins
+    assert {"base", "draw", "math", "startcenter", "rofi", "xterm"} <= set(settings["plugin_settings"]["nix-dotfiles/launchpad"]["hidden_apps"])
     for root in (settings, generated):
         assert "mindnbytes/nix-status" not in root["plugin_settings"]
         assert "mindnbytes/nix-status:status" not in root["widget"]
@@ -411,7 +436,11 @@ pkgs.runCommand "interactive-session-config"
     assert mango["layer_shadows"] == mango["layer_animations"] == 0
     assert mango["blur_optimized"] == 1
     assert mango["layer_rule"][:2] == ["layer_name:.*,no_blur:1", "layer_name:^noctalia-(bar-.*|dock)$,no_blur:0,no_animation:1,no_shadow:1"]
-    assert ",no_blur:1," in mango["layer_rule"][2]
+    assert "noctalia-system-menu" in mango["layer_rule"][2]
+    assert mango["layer_rule"][3] == "layer_name:^noctalia-plugin:nix-dotfiles/launchpad:drawer$,no_blur:0,no_animation:1,no_shadow:1"
+    assert ",no_blur:1," in mango["layer_rule"][4]
+    assert "SUPER,A,spawn,noctalia msg plugin nix-dotfiles/launchpad:control all toggle" in mango["bind"]
+    assert "ALT,space,spawn,noctalia msg panel-toggle launcher" in mango["bind"]
     assert "force_tearing:0,no_blur:1,app_id:.*" in mango["window_rule"]
     for binding in ("SUPER+CTRL,D,spawn,noctalia msg panel-toggle 8bury/mini-docker:manager", "SUPER+CTRL,P,spawn,noctalia msg panel-toggle rxtsel/portctl:panel", "SUPER+CTRL,W,spawn,noctalia msg panel-toggle ezequiel/mango_layouts:panel"):
         assert binding in mango["bind"]

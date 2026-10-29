@@ -74,10 +74,23 @@ let
       ./noctalia/tech-osd-segments.patch
       ./noctalia/nvidia-sampler.patch
       ./noctalia/active-app-name.patch
+      ./noctalia/launchpad-native.patch
+      ./noctalia/desktop-menus.patch
     ];
     # Fail the source build if an upstream rename or patch drift removes the
     # segmented OSD implementation instead of silently losing the appearance.
     postPatch = (old.postPatch or "") + ''
+      grep -Fq 'R39: reuse native desktop scanning' src/app/application_ipc.cpp
+      grep -Fq 'R39: Dock owns the Launchpad entry' src/shell/dock/dock.cpp
+      grep -Fq 'R39: explicit capture consumes' src/shell/plugin_layer/plugin_layer.cpp
+      grep -Fq 'R39: layer wheel callback' src/shell/plugin_layer/plugin_layer.cpp
+      grep -Fq 'capture_keys' src/scripting/plugin_layer_config.cpp
+      grep -Fq 'R39a: one hover snapshot' src/shell/bar/widgets/workspaces_widget.cpp
+      grep -Fq 'workspaceWindowAssignments(it->output)' src/shell/bar/widgets/workspaces_widget.cpp
+      grep -Fq 'item.activeDot->setHitTestVisible(false)' src/shell/bar/widgets/workspaces_widget.cpp
+      grep -Fq 'R39a: never persist' src/shell/dock/dock.cpp
+      grep -Fq 'R39a: select the requested action' src/shell/session/session_panel.cpp
+      grep -Fq 'noctalia-system-menu' src/shell/panel/panel_manager.cpp
       grep -Fq 'm_selectionIndicator' src/shell/launcher/launcher_panel.cpp
       grep -Fq 'syncCompactControls()' src/shell/control_center/tabs/home_tab.cpp
       grep -Fq 'setCustomPalette(std::move(palette))' src/shell/control_center/tabs/home_tab.cpp
