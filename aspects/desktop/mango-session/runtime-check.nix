@@ -124,6 +124,7 @@ pkgs.runCommand "interactive-session-config"
     cp ${home.xdg.configFile."mango/config.conf".source} "$out/mango.conf"
     cp ${home.xdg.configFile."noctalia/config.toml".source} "$out/noctalia.toml"
     python3 ${./resources/window-rules-check.py} "$out/mango.conf"
+    python3 ${./mango/check-window-rules.py} "$out/mango.conf" > "$out/window-rules.log"
     export FONTCONFIG_FILE=${fontConfig}
     fc-match -f '%{family}\n' sans-serif | tee "$out/sans-family.txt"
     grep -Fx '${palette.fonts.sans}' "$out/sans-family.txt"
@@ -485,7 +486,7 @@ pkgs.runCommand "interactive-session-config"
     assert "keyboard_layout" not in settings["bar"]["main"]["end"]
     assert m["environment"]["XCURSOR_THEME"] == m["palette"]["cursor"]["name"]
     assert m["environment"]["XCURSOR_SIZE"] == str(m["palette"]["cursor"]["size"])
-    assert m["palette"]["cursor"] == {"name": "Bibata-Modern-Ice", "size": 32}
+    assert m["palette"]["cursor"] == {"name": "Bibata-Modern-Ice", "size": 24}
     assert m["mango"]["cursor_theme"] == m["palette"]["cursor"]["name"]
     assert m["mango"]["cursor_size"] == 24
     for prefix in ("tab_bar_decorate_", "group_bar_decorate_", "jump_label_decorate_"):
