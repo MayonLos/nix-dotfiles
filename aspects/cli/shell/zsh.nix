@@ -44,7 +44,7 @@ let
     if palette == null then
       {
         directory = "bold blue";
-        branch = "magenta";
+        branch = "cyan";
         foreground = "white";
         muted = "bright-black";
         warning = "yellow";
@@ -53,7 +53,7 @@ let
     else
       {
         directory = "bold ${palette.blue}";
-        branch = palette.purple;
+        branch = palette.cyan;
         foreground = palette.fg;
         inherit (palette) muted;
         warning = palette.yellow;
@@ -70,7 +70,7 @@ let
         "hl+" = "bright-yellow";
         border = "bright-black";
         prompt = "blue";
-        pointer = "magenta";
+        pointer = "blue";
         marker = "green";
         spinner = "cyan";
         header = "bright-black";

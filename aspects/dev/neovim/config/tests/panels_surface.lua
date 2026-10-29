@@ -36,6 +36,73 @@ for _, group in ipairs({
 		group .. " must share the editor canvas"
 	)
 end
+-- Use the native diagnostic renderer: neutral message extmarks and separate
+-- severity-colored number prefixes, including multi-line messages after reload.
+require("mayon.lsp").setup()
+require("mayon.ui.theme").refresh()
+local diagnostic_buf = vim.api.nvim_get_current_buf()
+local diagnostic_ns = vim.api.nvim_create_namespace("mayon-float-prose-test")
+local diagnostic_config = vim.deepcopy(vim.diagnostic.config())
+local diagnostic_styles = {}
+for _, severity in ipairs({ "Error", "Warn", "Info", "Hint" }) do
+	diagnostic_styles[severity] = {}
+	for _, role in ipairs({ "Diagnostic", "DiagnosticSign", "DiagnosticUnderline", "DiagnosticVirtualText" }) do
+		local group = role .. severity
+		diagnostic_styles[severity][role] = vim.api.nvim_get_hl(0, { name = group, link = false })
+	end
+end
+vim.api.nvim_buf_set_lines(diagnostic_buf, 0, -1, false, { "diagnostic fixture" })
+local diagnostics = {}
+for index = 1, 4 do
+	diagnostics[index] = { lnum = 0, col = 0, severity = index, message = "Message " .. index .. "\nContinuation" }
+end
+vim.diagnostic.set(diagnostic_ns, diagnostic_buf, diagnostics)
+for _, reload in ipairs({ false, true }) do
+	if reload then
+		vim.cmd.colorscheme("onedark")
+	end
+	local diagnostic_float, diagnostic_win = vim.diagnostic.open_float(diagnostic_buf, {
+		scope = "buffer",
+		header = "",
+		focus = false,
+		close_events = {},
+	})
+	assert(diagnostic_float and diagnostic_win, "native diagnostic float must open")
+	local marks = vim.api.nvim_buf_get_extmarks(diagnostic_float, -1, 0, -1, { details = true })
+	for index, severity in ipairs({ "Error", "Warn", "Info", "Hint" }) do
+		local body = vim.api.nvim_get_hl(0, { name = "DiagnosticFloating" .. severity, link = false })
+		assert(body.fg == tonumber(palette.brightFg:sub(2), 16), "floating prose must stay neutral: " .. severity)
+		assert(body.bg == tonumber(palette.bg:sub(2), 16), "diagnostic float surface mismatch")
+		local found_body, found_marker = false, false
+		for _, mark in ipairs(marks) do
+			local detail = mark[4]
+			if detail.hl_group == "DiagnosticFloating" .. severity and mark[2] == (index - 1) * 2 then
+				found_body = mark[3] == 3
+			elseif detail.hl_group == "Diagnostic" .. severity and mark[2] == (index - 1) * 2 then
+				found_marker = mark[3] == 0 and detail.end_col == 3
+			end
+		end
+		assert(found_body and found_marker, "native renderer lost separate prose/marker ranges: " .. severity)
+		for role, expected in pairs(diagnostic_styles[severity]) do
+			assert(vim.deep_equal(vim.api.nvim_get_hl(0, { name = role .. severity, link = false }), expected))
+		end
+	end
+	vim.api.nvim_win_close(diagnostic_win, true)
+end
+vim.diagnostic.reset(diagnostic_ns, diagnostic_buf)
+assert(vim.deep_equal(vim.diagnostic.config().signs, diagnostic_config.signs))
+assert(vim.diagnostic.config().virtual_text == diagnostic_config.virtual_text)
+assert(vim.diagnostic.config().virtual_lines == diagnostic_config.virtual_lines)
+assert(vim.deep_equal(vim.diagnostic.config().float, diagnostic_config.float), "theme reload changed float options")
+for group, color in pairs({
+	MayonModeBlockVisual = palette.blue,
+	OilSocket = palette.cyan,
+	DropBarIconKindFunction = palette.blue,
+	DropBarCurrentContextIcon = palette.blue,
+}) do
+	assert(vim.api.nvim_get_hl(0, { name = group, link = false }).fg == tonumber(color:sub(2), 16))
+end
+
 local opts = floats.options("hover")
 assert(opts.border == "rounded" and opts.title_pos == "center" and opts.title:find("hover · ", 1, true))
 local buf, win = vim.lsp.util.open_floating_preview(

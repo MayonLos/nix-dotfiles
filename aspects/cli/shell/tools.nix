@@ -34,7 +34,7 @@ let
       background_color = colors.selection;
       bold = true;
     };
-    h2.color = colors.purple;
+    h2.color = colors.blue;
     h2.bold = true;
     h3.color = colors.cyan;
     h4.color = colors.yellow;
@@ -46,7 +46,7 @@ let
       color = colors.cyan;
       bold = true;
     };
-    image.color = colors.purple;
+    image.color = colors.cyan;
     code = {
       prefix = " ";
       suffix = " ";
@@ -157,13 +157,13 @@ in
         };
         git_repo = {
           branch_main.foreground = colors.blue;
-          branch_other.foreground = colors.purple;
+          branch_other.foreground = colors.cyan;
           git_clean.foreground = colors.green;
           git_dirty.foreground = colors.yellow;
         };
         file_type = {
-          image.foreground = colors.purple;
-          video.foreground = colors.purple;
+          image.foreground = colors.cyan;
+          video.foreground = colors.cyan;
           music.foreground = colors.cyan;
           document.foreground = colors.blue;
           compressed.foreground = colors.orange;
@@ -176,7 +176,7 @@ in
           number_byte.foreground = colors.fg;
           number_kilo.foreground = colors.cyan;
           number_mega.foreground = colors.blue;
-          number_giga.foreground = colors.purple;
+          number_giga.foreground = colors.blue;
           number_huge.foreground = colors.red;
         };
         date.foreground = colors.fg;

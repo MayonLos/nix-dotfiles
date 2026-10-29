@@ -96,6 +96,13 @@ assert
 assert home.programs.delta.options.syntax-theme == home.programs.bat.config.theme;
 assert home.home.sessionVariables.BAT_THEME == home.programs.bat.config.theme;
 assert !home.programs.tealdeer.enableAutoUpdates;
+assert home.programs.starship.settings.directory.style == "bold ${palette.blue}";
+assert home.programs.starship.settings.git_branch.style == palette.cyan;
+assert home.programs.fzf.colors.pointer == palette.blue;
+assert home.programs.eza.theme.git_repo.branch_other.foreground == palette.cyan;
+assert home.programs.eza.theme.file_type.image.foreground == palette.cyan;
+assert home.programs.eza.theme.file_type.video.foreground == palette.cyan;
+assert home.programs.eza.theme.size.number_giga.foreground == palette.blue;
 pkgs.runCommand "command-line-runtime"
   {
     nativeBuildInputs = [
@@ -139,6 +146,20 @@ pkgs.runCommand "command-line-runtime"
       home.xdg.configFile."fastfetch/config.jsonc".source
     } --pipe false > "$out/fastfetch.txt" 2> "$out/fastfetch.err"
     test ! -s "$out/fastfetch.err"
+    python3 - ${home.xdg.configFile."fastfetch/config.jsonc".source} ${
+      home.xdg.configFile."glow/onedark.json".source
+    } <<'PY_VISUAL'
+    import json, sys
+    fastfetch, glow = [json.load(open(path)) for path in sys.argv[1:]]
+    display = fastfetch["display"]
+    assert display["key"]["width"] == 12
+    keys = [module["key"] for module in fastfetch["modules"] if isinstance(module, dict) and "key" in module]
+    assert display["key"]["width"] >= max(map(len, keys)) + display["key"]["paddingLeft"] + len(display["separator"])
+    assert fastfetch["logo"]["color"] == {"1": "${palette.blue}", "2": "${palette.cyan}"}
+    assert all(not isinstance(module, dict) or module["type"] not in ("custom", "colors") for module in fastfetch["modules"])
+    assert glow["h2"]["color"] == "${palette.blue}"
+    assert glow["image"]["color"] == "${palette.cyan}"
+    PY_VISUAL
     # The build sandbox has no os-release, compositor socket or GPU devices.
     # Those modules remain dynamic and are checked visually after activation.
     grep -F 'Kernel' "$out/fastfetch.txt"

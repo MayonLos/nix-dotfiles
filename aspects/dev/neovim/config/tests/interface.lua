@@ -394,7 +394,7 @@ local theme = require("mayon.ui.theme")
 for mode, color in pairs({
 	n = palette.blue,
 	i = palette.green,
-	v = palette.purple,
+	v = palette.blue,
 	R = palette.red,
 	c = palette.yellow,
 }) do
@@ -431,7 +431,7 @@ assert(
 )
 assert(library_hl.fg == tonumber(palette.yellow:sub(2), 16), "default library symbols should be yellow")
 assert(
-	vim.api.nvim_get_hl(0, { name = "DropBarIconKindFunction", link = false }).fg == tonumber(palette.purple:sub(2), 16)
+	vim.api.nvim_get_hl(0, { name = "DropBarIconKindFunction", link = false }).fg == tonumber(palette.blue:sub(2), 16)
 )
 assert(require("mayon.ui.theme").mode_highlight("i") == "MayonModeBlockInsert")
 assert(require("mayon.ui.theme").mode_highlight("v") == "MayonModeBlockVisual")

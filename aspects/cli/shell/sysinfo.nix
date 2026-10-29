@@ -9,10 +9,6 @@ let
       {
         blue = "blue";
         cyan = "cyan";
-        red = "red";
-        green = "green";
-        yellow = "yellow";
-        purple = "magenta";
         fg = "default";
         brightFg = "default";
         border = "light_black";
@@ -46,7 +42,7 @@ in
           brightColor = false;
           separator = "  ";
           key = {
-            width = 8;
+            width = 12;
             paddingLeft = 1;
           };
           color = {
@@ -78,17 +74,6 @@ in
               type = "memory";
             }
           )
-          {
-            type = "custom";
-            format = lib.concatMapStringsSep " " (color: "{#${color}}██{#}") [
-              colors.red
-              colors.green
-              colors.yellow
-              colors.blue
-              colors.purple
-              colors.cyan
-            ];
-          }
         ];
       };
     };
