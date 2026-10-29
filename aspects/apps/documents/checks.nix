@@ -10,6 +10,7 @@ let
   zathura = templates.documents-zathura.input_path;
   obsidian = templates.documents-obsidian.input_path;
   zathuraOptions = home.programs.zathura.options;
+  zathuraExtraConfig = home.programs.zathura.extraConfig;
   python = pkgs.python3.withPackages (pythonPackages: [ pythonPackages.tinycss2 ]);
   paletteColors = builtins.filter (
     value: builtins.isString value && builtins.substring 0 1 value == "#"
@@ -69,7 +70,7 @@ in
       ''
         export PYTHONDONTWRITEBYTECODE=1
         ${python}/bin/python ${./resources}/test_obsidian_theme.py
-        ${python}/bin/python - ${zathura} ${obsidian} '${builtins.toJSON paletteColors}' '${builtins.toJSON zathuraOptions}' <<'PY'
+        ${python}/bin/python - ${zathura} ${obsidian} '${builtins.toJSON paletteColors}' '${builtins.toJSON zathuraOptions}' '${zathuraExtraConfig}' <<'PY'
         import json
         import re
         import shlex
@@ -82,7 +83,13 @@ in
         css = Path(sys.argv[2]).read_text(encoding="utf-8")
         palette_colors = set(json.loads(sys.argv[3]))
         zathura_options = json.loads(sys.argv[4])
-        assert zathura_options["guioptions"] == "s"
+        zathura_extra_config = sys.argv[5]
+        assert zathura_options["guioptions"] == ""
+        assert zathura_options["adjust-open"] == "best-fit"
+        assert zathura_options["page-v-padding"] == 24
+        assert zathura_options["page-h-padding"] == 24
+        assert zathura_options["recolor"] is False
+        assert "map <F4> toggle_statusbar" in zathura_extra_config
         assert zathura_options["statusbar-page-percent"] is True
         assert zathura_options["statusbar-basename"] is False
         assert "Maple Mono NF CN" in zathura_options["font"]

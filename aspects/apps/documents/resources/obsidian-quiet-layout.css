@@ -1,0 +1,51 @@
+/* Optional synthetic-vault layout trial. Palette remains owned by Minimal and
+   noctalia.css; this snippet only reduces workspace chrome. */
+.workspace-tab-header-container {
+  min-height: 32px;
+  padding-inline: 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+}
+
+.workspace-tab-header {
+  min-height: 28px;
+  padding-inline: 8px;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.workspace-tab-header.is-active {
+  box-shadow: inset 0 -1px var(--vault-blue) !important;
+}
+
+.workspace-tab-header-inner,
+.workspace-tab-header-inner-title,
+.workspace-tab-header-inner-icon {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.workspace-split.mod-left-split,
+.workspace-split.mod-right-split {
+  border-color: var(--background-modifier-border);
+  box-shadow: none !important;
+}
+
+.workspace-split.mod-root,
+.workspace-split.mod-root .workspace-leaf,
+.workspace-split.mod-root .workspace-leaf-content {
+  background: var(--background-primary);
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* The r36 vault snippet adds a thick heading marker. Keep document headings
+   quiet in this trial without changing navigation or note content. */
+.markdown-rendered h2 {
+  padding-left: 0 !important;
+}
+
+.markdown-rendered h2::before {
+  content: none !important;
+}

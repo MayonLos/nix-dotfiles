@@ -16,12 +16,14 @@ in
     enable = true;
     package = pkgs.zathura;
 
-    extraConfig = "include noctaliarc";
+    extraConfig = ''
+      include noctaliarc
+      map <F4> toggle_statusbar
+    '';
 
     options = {
-      # Technical manuals are easier to read at the window's full width.
-      # `a` fits the whole page; `s` restores fit-to-width.
-      adjust-open = "width";
+      # Open with the whole page visible. `s` still switches to fit-to-width.
+      adjust-open = "best-fit";
       selection-clipboard = "clipboard";
 
       synctex = true;
@@ -42,15 +44,14 @@ in
       recolor-keephue = true;
       recolor-reverse-video = true;
 
-      # Keep the statusbar visible. Zathura's Tab binding opens the document
-      # index in its native index mode; guioptions has no persistent index flag.
-      guioptions = "s";
+      # Keep the canvas clear; F4 toggles the native statusbar when needed.
+      guioptions = "";
       statusbar-page-percent = true;
       statusbar-basename = false;
       window-title-basename = false;
       font = "${if palette == null then "monospace" else palette.fonts.mono} 10";
-      page-v-padding = 12;
-      page-h-padding = 12;
+      page-v-padding = 24;
+      page-h-padding = 24;
       statusbar-h-padding = 12;
       statusbar-v-padding = 5;
       statusbar-home-tilde = true;

@@ -1,5 +1,7 @@
 { pkgs, home, ... }:
 let
+  uosc = builtins.head home.programs.mpv.scripts;
+  uoscOptions = home.programs.mpv.scriptOpts.uosc;
   configText = home.xdg.configFile."swayimg/config".text;
 in
 {
@@ -25,7 +27,8 @@ in
         parser.read("swayimg.ini")
         assert parser["list"].get("fsmon") == "yes"
         expected = {
-            "info": {"show": "yes", "info_timeout": "0"},
+            "info": {"show": "no", "info_timeout": "0"},
+            "gallery": {"size": "128", "padding": "12", "border_width": "1", "window": "#1e2228ff"},
             "info.viewer": {
                 "top_left": "none",
                 "top_right": "none",
@@ -33,12 +36,14 @@ in
                 "bottom_right": "index",
             },
             "keys.viewer": {
+                "i": "info",
                 "r": "rotate_right",
                 "shift+r": "rotate_left",
                 "f": "zoom fit",
                 "1": "zoom real",
             },
             "keys.gallery": {
+                "i": "info",
                 "delete": "none",
                 "shift+delete": "none",
                 "d": "none",
@@ -74,6 +79,45 @@ in
         assert "%q" in viewer_keys["ctrl+c"] and "%q" in viewer_keys["ctrl+g"]
         PY
         touch "$out"
+      '';
+
+  mpv-compact-uosc =
+    assert uoscOptions.compact_rail == "yes";
+    assert uoscOptions.top_bar == "never" && uoscOptions.top_bar_title == "no";
+    assert uoscOptions.progress == "never" && uoscOptions.timeline_persistency == "";
+    assert uoscOptions.controls == "play-pause,space,menu,fullscreen";
+    assert home.programs.mpv.bindings."s" == "script-binding uosc/subtitles";
+    assert home.programs.mpv.bindings."a" == "script-binding uosc/audio";
+    assert home.programs.mpv.bindings."c" == "script-binding uosc/chapters";
+    pkgs.runCommand "mpv-compact-uosc-check"
+      {
+        nativeBuildInputs = [
+          pkgs.mpv
+          pkgs.lua
+        ];
+      }
+      ''
+        export HOME="$TMPDIR/home"
+        mkdir -p "$HOME/.config/mpv/script-opts"
+        cat > "$HOME/.config/mpv/script-opts/uosc.conf" <<'OPTS'
+        ${pkgs.lib.generators.toKeyValue { } uoscOptions}
+        OPTS
+        lua ${./resources/test-uosc-subtitle-margin.lua} ${uosc}/share/mpv/scripts/uosc/lib/compact-subtitles.lua
+        # Syntax-check every patched Lua file, then load the real script in mpv.
+        for file in ${uosc}/share/mpv/scripts/uosc/main.lua ${uosc}/share/mpv/scripts/uosc/elements/*.lua ${uosc}/share/mpv/scripts/uosc/lib/compact-subtitles.lua; do
+          luac -p "$file"
+        done
+        if ! mpv --config-dir="$HOME/.config/mpv" --vo=null --ao=null --frames=3 \
+          --script=${uosc}/share/mpv/scripts/uosc \
+          'av://lavfi:testsrc=duration=1:size=320x180:rate=24' > mpv.log 2>&1; then
+          cat mpv.log
+          exit 1
+        fi
+        if grep -E 'Lua error|stack traceback|unknown element kind|Error parsing option' mpv.log; then
+          cat mpv.log
+          exit 1
+        fi
+        cp mpv.log "$out"
       '';
 
   swayimg-shell-escaping =
