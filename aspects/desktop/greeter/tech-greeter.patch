@@ -1,211 +1,156 @@
---- a/src/greeter/greeter_surface.h
-+++ b/src/greeter/greeter_surface.h
-@@ -226,6 +226,11 @@
-   Label* m_schemeSelectLabel = nullptr;
-   Glyph* m_schemeSelectGlyph = nullptr;
-   InputArea* m_schemeSelectArea = nullptr;
-+  // UI v4: decoration only; authentication and hit testing stay upstream.
-+  RectNode* m_techFrame = nullptr;
-+  RectNode* m_techUnderline = nullptr;
-+  RectNode* m_techGlow = nullptr;
-+  Label* m_techStatus = nullptr;
-   Input* m_passwordField = nullptr;
-   Button* m_loginButton = nullptr;
-   Button* m_backButton = nullptr;
 --- a/src/greeter/greeter_surface.cpp
 +++ b/src/greeter/greeter_surface.cpp
-@@ -41,6 +41,8 @@
- #include <cstdlib>
- #include <cstring>
- #include <filesystem>
-+#include <fstream>
-+#include <sys/utsname.h>
- #include <linux/input-event-codes.h>
- #include <nlohmann/json.hpp>
- #include <pwd.h>
-@@ -51,6 +53,75 @@
- 
- namespace {
-   constexpr Logger kLog("greeter-surface");
-+
-+  // UI v4: Lenovo exposes conservation separately from standard battery limits.
-+  int techConservationMode() {
-+    int result = -1;
-+    bool conflict = false;
-+    std::error_code ec;
-+    for (std::filesystem::directory_iterator it("/sys/bus/platform/drivers/ideapad_acpi", ec), end;
-+         !ec && it != end; it.increment(ec)) {
-+      std::string mode;
-+      std::ifstream modeFile(it->path() / "conservation_mode");
-+      std::getline(modeFile, mode);
-+      if (mode != "0" && mode != "1") continue;
-+      const int current = mode == "1" ? 1 : 0;
-+      if (result != -1 && result != current) conflict = true;
-+      result = current;
-+    }
-+    return ec || conflict ? -1 : result;
-+  }
-+
-+  // UI v4: public machine telemetry only, cached to avoid frame-time sysfs IO.
-+  std::string techMachineStatus() {
-+    static std::string cached;
-+    static auto refreshed = std::chrono::steady_clock::time_point{};
-+    const auto now = std::chrono::steady_clock::now();
-+    if (!cached.empty() && now - refreshed < std::chrono::seconds(5)) return cached;
-+    refreshed = now;
-+    utsname system{};
-+    cached = uname(&system) == 0
-+        ? std::string(system.nodename) + " · " + system.sysname + " " + system.release
-+        : "system unavailable";
-+    const int conservation = techConservationMode();
-+    std::string care = conservation == 1 ? " · 养护开" : conservation == 0 ? " · 养护关" : " · 养护 --";
-+    std::error_code ec;
-+    for (std::filesystem::directory_iterator it("/sys/class/power_supply", ec), end;
-+         !ec && it != end; it.increment(ec)) {
-+      const auto& entry = *it;
-+      std::string type, state;
-+      std::ifstream(entry.path() / "type") >> type;
-+      if (type != "Battery") continue;
-+      // Conservation is independent of whether capacity can be read.
-+      int capacity = -1, threshold = -1;
-+      std::ifstream(entry.path() / "charge_control_end_threshold") >> threshold;
-+      if (conservation < 0) care = threshold > 0 && threshold <= 80 ? " · 养护开"
-+          : threshold > 80 && threshold <= 100 ? " · 养护关" : " · 养护 --";
-+      std::ifstream(entry.path() / "capacity") >> capacity;
-+      std::ifstream(entry.path() / "status") >> state;
-+      if (capacity < 0 || capacity > 100) break;
-+      cached += " · BAT " + std::to_string(capacity) + "% ";
-+      for (int i = 0; i < 10; ++i) cached += i * 10 < capacity ? "▰" : "▱";
-+      cached += " " + state;
-+      break;
-+    }
-+    cached += care;
-+    return cached;
-+  }
-+
-+  RoundedRectStyle techGradient(float alpha, float radius = 1.0f, float softness = 1.0f) {
-+    const auto blue = colorForRole(ColorRole::Primary, alpha);
-+    const auto cyan = colorForRole(ColorRole::Secondary, alpha);
-+    RoundedRectStyle style;
-+    style.fillMode = FillMode::LinearGradient;
-+    style.gradientDirection = GradientDirection::Horizontal;
-+    style.gradientStops = {{{0.0f, blue}, {0.33f, lerpColor(blue, cyan, 0.33f)},
-+                            {0.66f, lerpColor(blue, cyan, 0.66f)}, {1.0f, cyan}}};
-+    style.radius = Radii(radius);
-+    style.softness = softness;
-+    return style;
-+  }
-+
-   constexpr float kHeaderUserIconBase = 64.0f;
-   constexpr float kHeaderAvatarBorderScale = 2.0f;
- 
-@@ -316,9 +387,16 @@
-   m_panelDivider = divider.get();
-   m_root.addChild(std::move(divider));
- 
-+  // UI v4: a thin gradient frame behind the existing opaque login card.
-+  auto techFrame = std::make_unique<RectNode>();
-+  techFrame->setHitTestVisible(false);
-+  techFrame->setZIndex(1);
-+  m_techFrame = techFrame.get();
-+  m_root.addChild(std::move(techFrame));
-+
-   auto panel = std::make_unique<Box>();
-   m_loginPanel = panel.get();
--  m_loginPanel->setZIndex(1);
-+  m_loginPanel->setZIndex(2);
-   m_root.addChild(std::move(panel));
- 
-   auto pwField = std::make_unique<Input>();
-@@ -330,6 +408,25 @@
-   m_passwordField = pwField.get();
-   m_passwordField->setZIndex(6);
-   m_root.addChild(std::move(pwField));
-+
-+  auto techGlow = std::make_unique<RectNode>();
-+  techGlow->setZIndex(7);
-+  techGlow->setHitTestVisible(false);
-+  m_techGlow = techGlow.get();
-+  m_root.addChild(std::move(techGlow));
-+  auto techUnderline = std::make_unique<RectNode>();
-+  techUnderline->setZIndex(8);
-+  techUnderline->setHitTestVisible(false);
-+  m_techUnderline = techUnderline.get();
-+  m_root.addChild(std::move(techUnderline));
-+  auto techStatus = std::make_unique<Label>();
-+  techStatus->setFontSize(Style::scaled(11.0f));
-+  techStatus->setColor(colorForRole(ColorRole::OnSurfaceVariant));
-+  techStatus->setHitTestVisible(false);
-+  techStatus->setZIndex(5);
-+  m_techStatus = techStatus.get();
-+  m_root.addChild(std::move(techStatus));
-+
- 
-   auto userBox = std::make_unique<Box>();
-   m_userSelectBox = userBox.get();
-@@ -1030,7 +1127,9 @@
-   const std::string date = m_clockEnabled ? formatLocalUnixTime(second, m_clockDateFormat) : std::string{};
-   const bool timeChanged = m_clockTimeLabel->setText(time);
-   const bool dateChanged = m_clockDateLabel->setText(date);
--  return timeChanged || dateChanged;
-+  const bool statusChanged = m_techStatus->setText(
-+      (m_username.empty() ? std::string{} : m_username + "@") + techMachineStatus());
-+  return timeChanged || dateChanged || statusChanged;
- }
- 
- void GreeterSurface::syncScaledTypography() {
-@@ -1088,6 +1187,12 @@
-   const float sh = m_outputViewportActive ? m_viewportHeight : fullH;
- 
-   m_root.setSize(fullW, fullH);
-+  m_techStatus->setFontSize(Style::scaled(11.0f));
-+  m_techStatus->setColor(colorForRole(ColorRole::OnSurfaceVariant));
-+  m_techStatus->setMaxWidth(std::max(1.0f, sw - Style::scaled(180.0f)));
-+  m_techStatus->measure(*renderer);
-+  m_techStatus->setPosition(ox + Style::spaceLg(), oy + sh - m_techStatus->height() - Style::spaceLg());
-+
- 
-   if (m_letterbox != nullptr) {
-     m_letterbox->setVisible(m_outputViewportActive);
-@@ -1255,12 +1360,15 @@
-   if (m_panelDivider != nullptr)
+@@ -254,6 +254,6 @@
+
+   auto formSubtitle = std::make_unique<Label>();
+-  formSubtitle->setFontSize(Style::fontSizeTitle());
+-  formSubtitle->setBold(true);
++  formSubtitle->setFontSize(Style::scaled(14.0f));
++  formSubtitle->setBold(false);
+   formSubtitle->setColor(colorForRole(ColorRole::OnSurfaceVariant));
+   m_formSubtitleLabel = formSubtitle.get();
+@@ -491,5 +491,5 @@
+   loginBtn->setGlyph("arrow-right");
+   loginBtn->setGlyphSize(16.0f);
+-  loginBtn->setVariant(ButtonVariant::Primary);
++  loginBtn->setVariant(ButtonVariant::Ghost);
+   loginBtn->setContentAlign(ButtonContentAlign::Center);
+   loginBtn->setOnClick([this]() { tryAuthenticate(); });
+@@ -1038,5 +1038,5 @@
+     m_headerUserGlyph->setGlyphSize(Style::scaled(kHeaderUserIconBase));
+   }
+-  m_formSubtitleLabel->setFontSize(Style::fontSizeTitle());
++  m_formSubtitleLabel->setFontSize(Style::scaled(14.0f));
+   m_brandTitleLabel->setFontSize(Style::scaled(30.0f));
+   m_brandSubtitleLabel->setFontSize(Style::fontSizeCaption());
+@@ -1134,12 +1134,13 @@
+   }
+
+-  const float panelWidth = std::clamp(sw * 0.32f, Style::scaled(440.0f), Style::scaled(540.0f));
+-  const float rowHeight = Style::controlHeightLg();
++  // R41: compact transparent identity group, sharing the lockscreen geometry.
++  const float panelWidth = std::min(sw - Style::scaled(48.0f), Style::scaled(400.0f));
++  const float rowHeight = Style::scaled(30.0f);
+   const float rowGap = Style::spaceSm();
+-  const float panelPadding = Style::spaceLg();
++  const float panelPadding = 0.0f;
+
+   const float userCount = static_cast<float>(m_users.size());
+   const float glyphScale = std::clamp(1.0f - (userCount - 2.0f) * 0.08f, 0.75f, 1.0f);
+-  const float headerGlyphSize = Style::scaled(kHeaderUserIconBase) * glyphScale;
++  const float headerGlyphSize = Style::scaled(56.0f) * glyphScale;
+
+   if (m_passwordVisible && !m_users.empty() && m_selectedUser < m_users.size()) {
+@@ -1152,4 +1153,5 @@
+     m_formSubtitleLabel->measure(*renderer);
+   }
++  m_statusLabel->setFontSize(Style::scaled(12.0f));
+   m_statusLabel->measure(*renderer);
+
+@@ -1186,5 +1188,5 @@
+       std::clamp(panelInnerHeight + panelTopPadding + panelBottomPadding, minPanelHeight, maxPanelHeight);
+   const float panelX = ox + std::round((sw - panelWidth) * 0.5f);
+-  const float panelY = oy + std::round((sh - panelHeight) * 0.5f);
++  const float panelY = oy + std::round(sh * (sh < Style::scaled(700.0f) ? 0.68f : 0.58f) - headerBlockHeight);
+   const float contentLeft = panelX + panelPadding;
+   const float contentWidth = panelWidth - panelPadding * 2.0f;
+@@ -1256,12 +1258,16 @@
      m_panelDivider->setVisible(false);
- 
-+  m_techFrame->setPosition(panelX - 1.0f, panelY - 1.0f);
-+  m_techFrame->setSize(panelWidth + 2.0f, panelHeight + 2.0f);
-+  m_techFrame->setStyle(techGradient(0.45f, Style::scaledRadiusXl() + 1.0f));
-   m_loginPanel->setPosition((panelX), (panelY));
-   m_loginPanel->setSize(panelWidth, panelHeight);
+
+-  m_loginPanel->setPosition((panelX), (panelY));
+-  m_loginPanel->setSize(panelWidth, panelHeight);
++  // R41: the existing panel becomes only the password row, behind native controls.
++  m_loginPanel->setPosition(contentLeft, contentTop);
++  m_loginPanel->setSize(contentWidth, Style::scaled(40.0f));
++  m_loginPanel->setVisible(m_passwordVisible);
++  m_passwordField->setFlatStyle(true);
++  m_passwordField->setControlHeight(Style::scaled(40.0f));
    m_loginPanel->setStyle(
        RoundedRectStyle{
 -          .fill = colorForRole(ColorRole::SurfaceVariant),
 -          .border = colorForRole(ColorRole::Outline),
-+          .fill = colorForRole(ColorRole::Surface),
-+          .border = colorForRole(ColorRole::Surface),
++          .fill = colorForRole(ColorRole::SurfaceVariant, 0.92f),
++          .border = colorForRole(ColorRole::Primary),
            .fillMode = FillMode::Solid,
-           .radius = Style::scaledRadiusXl(),
+-          .radius = Style::scaledRadiusXl(),
++          .radius = Style::scaled(8.0f),
            .softness = 1.0f,
-@@ -1333,6 +1441,8 @@
-   m_loginButton->setRadius(buttonRadius);
-   m_backButton->setRadius(buttonRadius);
-   m_passwordField->setVisible(showPasswordStep);
-+  m_techUnderline->setVisible(showPasswordStep);
-+  m_techGlow->setVisible(showPasswordStep);
-   m_loginButton->setVisible(showPasswordStep);
-   m_backButton->setVisible(showBackButton);
-   if (showPasswordStep) {
-@@ -1355,6 +1465,14 @@
-     m_passwordField->setSize(inputWidth, 0.0f);
-     m_passwordField->setPosition((contentLeft), (contentTop));
+           .borderWidth = Style::borderWidth(),
+@@ -1353,9 +1359,9 @@
+     }
+
+-    m_passwordField->setSize(inputWidth, 0.0f);
+-    m_passwordField->setPosition((contentLeft), (contentTop));
++    m_passwordField->setSize(inputWidth - Style::scaled(12.0f), 0.0f);
++    m_passwordField->setPosition(contentLeft + Style::scaled(12.0f), contentTop);
      m_passwordField->layout(*renderer);
-+    const float underlineY = contentTop + m_passwordField->height() - 2.0f;
-+    m_techGlow->setPosition(contentLeft, underlineY - 3.0f);
-+    m_techGlow->setSize(inputWidth, 8.0f);
-+    m_techGlow->setStyle(techGradient(0.16f, 4.0f, 4.0f));
-+    m_techUnderline->setPosition(contentLeft, underlineY);
-+    m_techUnderline->setSize(inputWidth, 2.0f);
-+    m_techUnderline->setStyle(techGradient(1.0f));
-+
- 
-     m_loginButton->setSize(buttonWidth, Style::controlHeight());
+
+-    m_loginButton->setSize(buttonWidth, Style::controlHeight());
++    m_loginButton->setSize(buttonWidth, Style::scaled(40.0f));
      m_loginButton->setPosition((contentLeft + inputWidth + gap), (contentTop));
+     m_loginButton->layout(*renderer);
+@@ -1365,5 +1371,5 @@
+       const float glyphW = glyphMetrics.right - glyphMetrics.left;
+       const float glyphH = glyphMetrics.bottom - glyphMetrics.top;
+-      const float glyphY = std::round(Style::controlHeight() * 0.5f - (glyphMetrics.top + glyphMetrics.bottom) * 0.5f);
++      const float glyphY = std::round(Style::scaled(40.0f) * 0.5f - (glyphMetrics.top + glyphMetrics.bottom) * 0.5f);
+       loginGlyph->setPosition(std::round(buttonWidth * 0.5f - (glyphMetrics.left + glyphMetrics.right) * 0.5f), glyphY);
+       loginGlyph->setSize(std::max(glyphW, 1.0f), std::max(glyphH, 1.0f));
+@@ -1373,7 +1379,8 @@
+   }
+
+-  const float sessionY = m_passwordVisible ? (contentTop + Style::controlHeight() + sessionRowGap)
++  const float sessionY = m_passwordVisible ? (contentTop + Style::scaled(40.0f) + sessionRowGap)
+                                            : (contentTop + userBlockHeight + sessionRowGap);
+-  layoutPanelSessionSelector(contentLeft, sessionY, contentWidth, sessionRowH);
++  const float sessionWidth = std::min(contentWidth, Style::scaled(160.0f));
++  layoutPanelSessionSelector(panelX + (panelWidth - sessionWidth) * 0.5f, sessionY, sessionWidth, sessionRowH);
+
+   if (hasStatus) {
+@@ -2545,5 +2552,5 @@
+   m_sessionSelectBox->setStyle(
+       RoundedRectStyle{
+-          .fill = active ? colorForRole(ColorRole::Secondary) : colorForRole(ColorRole::Surface),
++          .fill = colorForRole(ColorRole::Surface),
+           .border = active ? colorForRole(ColorRole::Primary) : colorForRole(ColorRole::Outline),
+           .fillMode = FillMode::Solid,
+@@ -2554,6 +2561,6 @@
+   );
+
+-  const Color labelColor = active ? colorForRole(ColorRole::OnSecondary) : colorForRole(ColorRole::OnSurface);
+-  const Color iconColor = active ? colorForRole(ColorRole::OnSecondary) : colorForRole(ColorRole::OnSurfaceVariant);
++  const Color labelColor = colorForRole(ColorRole::OnSurface);
++  const Color iconColor = active ? colorForRole(ColorRole::Primary) : colorForRole(ColorRole::OnSurfaceVariant);
+   if (m_sessionSelectLabel != nullptr) {
+     m_sessionSelectLabel->setColor(labelColor);
+@@ -2782,5 +2789,5 @@
+       minimumY = std::max(minimumY, m_configErrorBanner->y() + m_configErrorBanner->height() + Style::spaceSm());
+     }
+-    blockY = panelY - totalHeight - Style::spaceXl();
++    blockY = oy + sh * (sh < Style::scaled(700.0f) ? 0.13f : 0.258f);
+     if (blockY < minimumY && m_clockDateLabel->visible()) {
+       m_clockDateLabel->setVisible(false);
+@@ -2981,5 +2988,6 @@
+     }
+
+-    Color rowFill = highlighted ? colorForRole(ColorRole::Secondary) : colorForRole(ColorRole::SurfaceVariant);
++    // R41: session highlights use a neutral surface and blue text.
++    Color rowFill = highlighted ? colorForRole(ColorRole::Hover) : colorForRole(ColorRole::SurfaceVariant);
+     Color labelColor = colorForRole(ColorRole::OnSurface);
+     Color iconColor = colorForRole(ColorRole::OnSurfaceVariant);
+@@ -2996,5 +3004,5 @@
+       }
+     } else if (highlighted) {
+-      labelColor = colorForRole(ColorRole::OnSecondary);
++      labelColor = colorForRole(ColorRole::Primary);
+     } else if (isSelected) {
+       labelColor = colorForRole(ColorRole::Primary);
+--- a/src/render/text/cairo_text_renderer.cpp
++++ b/src/render/text/cairo_text_renderer.cpp
+@@ -296,4 +296,6 @@
+     hyphens->end_index = PANGO_ATTR_INDEX_TO_TEXT_END;
+     pango_attr_list_insert(attrs, hyphens);
++    // R41: Inter digits stay aligned without changing the CJK fallback.
++    pango_attr_list_insert(attrs, pango_attr_font_features_new("tnum=1"));
+     pango_layout_set_attributes(layout, attrs);
+     pango_attr_list_unref(attrs);

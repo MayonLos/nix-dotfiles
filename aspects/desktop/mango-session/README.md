@@ -38,7 +38,7 @@ The package overrides only the locked `pkgs.local.noctalia` derivation. Every re
 | Patch | Purpose |
 | --- | --- |
 | `astra-selection.patch` | Launcher/shortcut selection styling and compact vertical Control Center Home with volume/brightness sliders; old workspace and media-widget changes removed |
-| `tech-lockscreen.patch` | Existing palette password underline, user/host/kernel/battery footer and Legion maintenance readout |
+| `tech-lockscreen.patch` | Compact identity/password row, circular avatar and feedback below the field |
 | `tech-osd-segments.patch` | Existing twenty-segment progress feedback, monospace value and safe scene-tree rebuild |
 | `nvidia-sampler.patch` | System-service portions extracted from old hud-sysmon: NVIDIA-only two-second sampling, suspended/unplugged GPU invalidation and short NVML sessions |
 | `active-app-name.patch` | Opt-in application-name label using native identity resolution |
@@ -84,3 +84,38 @@ Mango still uses 12 px outer / 8 px inner gaps, 10 px client corners and a nativ
 Fcitx keeps `ClassicUI.PreferTextIcon=True` and the bar's pinned `fcitx` SNI, so the native tray image can express Rime's Chinese/English submode. No polling service or synthetic real-session keys are added. phinger-cursors-light 32 remains shared by Mango, HM session environment, GTK, Xresources and Xorg; at 1.5 scale this is nominally 48 device pixels.
 
 Build-time validation, isolated sway/Mango screenshots and activation are separate evidence levels. Headless sway can verify layout and layer-shell behavior but provides no blur; actual GPU blur quality, real tray submode changes, external outputs and application focus/launch require the main agent's real-session acceptance after applying the generation.
+
+
+## Authentication scene (R41)
+
+Lockscreen uses the current wallpaper with native blur/tint (0.75/0.58), Inter
+clock/date and no independent seconds widget. The two managed clock widgets use 72/16px normal-weight Inter with OpenType
+`tnum`; the private authentication font-size API leaves other desktop clocks
+unchanged. Their managed boxes use natural text metrics. The compact login box is a transparent 400px group with a 40px
+password row, reveal control and neutral arrow button. `tech-lockscreen.patch`
+adds the circular 56px `~/.face` and account name above it, and moves the native
+error/Caps Lock/PAM hint below it. No machine telemetry or gradient footer remains. Below 700 logical pixels the
+clock/date and identity anchors move apart using actual surface dimensions, so
+1280×800 at scale 1.5 does not overlap.
+The appearance feature still owns missing-only avatar seeding; personal `.face`
+is preserved. `lockscreen-avatar.nix` no longer adds a second sticker.
+
+Noctalia 5.4 resolves `XDG_SESSION_ID` with login1 `GetSession` before falling back
+to `GetSessionByPID`; both brightness and lock monitoring use this order. A user
+service is outside the graphical logind scope. `host/mango.nix` therefore extends
+Mango's early C dynamic environment list with `XDG_SESSION_ID`, before its existing
+`mango-session.target` request, and clears it through the same exit list. HM's
+supplementary hook imports the same variable; both modules use the same package.
+No session ID is stored in Nix or added to the static whitelist. Noctalia remains
+a bounded systemd user service owned by the Mango target.
+
+logind handles lid-triggered suspend. Noctalia subscribes to `PrepareForSleep`,
+locks before sleep by default and holds its sleep-delay inhibitor until the lock
+surfaces are ready; Mango does not own this locking path. Native idle
+`lock_and_suspend` locks before requesting suspend. Application and physical lid /
+suspend / wake / actual PAM unlock still require the integrator's live test.
+After deployment, log out and back in so the early hook runs; inspect
+`systemctl --user show-environment` for `XDG_SESSION_ID`, then Noctalia's journal
+for `logind session lock monitor active`. The integrator can run
+`loginctl lock-session "$XDG_SESSION_ID"` and test lid/suspend only when prepared
+to authenticate. Never run those commands during isolated visual verification.

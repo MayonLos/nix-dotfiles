@@ -3,6 +3,7 @@
   config,
   hostFacts,
   inputs,
+  osConfig,
   lib,
   pkgs,
   ...
@@ -47,6 +48,9 @@ in
     # mango-session.target. The static whitelist below is available to Mango's
     # early target request and to its HM autostart synchronization.
     systemd.enable = true;
+    # Match the display-manager entry and its early dynamic environment import.
+    package = osConfig.programs.mango.package;
+    systemd.variables = lib.mkOptionDefault [ "XDG_SESSION_ID" ];
 
     settings = {
       monitor_rule = [

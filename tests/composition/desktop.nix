@@ -327,13 +327,15 @@ let
       && !(hasHomeUnit xorgAliceHome "noctalia")
       && !(hasHomeUnit xorgAliceHome "clipboard-bridge");
 
-    removingAvatarRemovesWidget =
+    # The lock surface draws ~/.face in its own identity group, so no
+    # free-positioned avatar sticker is added with or without the avatar.
+    lockscreenHasNoAvatarSticker =
       !(
         selectedHome.programs.noctalia.settings.lockscreen_widgets.widget or { } ? lockscreen-widget-avatar
       )
-      && (
-        (home avatarMango "hostA" "alice").programs.noctalia.settings.lockscreen_widgets.widget
-          ? lockscreen-widget-avatar
+      && !(
+        (home avatarMango "hostA" "alice").programs.noctalia.settings.lockscreen_widgets.widget or { }
+        ? lockscreen-widget-avatar
       );
 
     avatarDoesNotSelectMango =

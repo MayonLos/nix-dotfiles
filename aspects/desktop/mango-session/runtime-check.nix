@@ -36,6 +36,7 @@ let
       wallpaperRoot = "${home.home.homeDirectory}/Pictures/Wallpapers";
       wallpaperActivation = home.home.activation.wallpaperLocalDirectory.data;
       mango = home.wayland.windowManager.mango.settings;
+      mangoSessionVariables = home.wayland.windowManager.mango.systemd.variables;
       units = pkgs.lib.getAttrs [
         "noctalia"
         "fcitx5-daemon"
@@ -77,7 +78,7 @@ let
     builtins.toJSON {
       homeSource = builtins.toString home.xdg.dataFile."nix-dotfiles/mayon-avatar.png".source;
       hostSource = builtins.toString host.environment.etc."nix-dotfiles/mayon-avatar.png".source;
-      sticker = home.programs.noctalia.settings.lockscreen_widgets.widget.lockscreen-widget-avatar;
+      widgets = builtins.attrNames home.programs.noctalia.settings.lockscreen_widgets.widget;
     }
   );
   homeAvatarActivation = pkgs.writeText "seed-mayon-avatar.sh" home.home.activation.seedMayonAvatar.data;
@@ -137,10 +138,7 @@ pkgs.runCommand "interactive-session-config"
     data = json.load(open(sys.argv[1]))
     assert data["homeSource"] == data["hostSource"], data
     assert Path(data["homeSource"]).is_file()
-    widget = data["sticker"]
-    assert widget["type"] == "sticker", widget
-    assert widget["box_width"] == 80.0 and widget["box_height"] == 80.0, widget
-    assert widget["settings"]["image_path"] == "/home/mayon/.face", widget
+    assert "lockscreen-widget-avatar" not in data["widgets"]
     PY
 
     fixture="$TMPDIR/avatar-activation"
@@ -288,7 +286,7 @@ pkgs.runCommand "interactive-session-config"
     settings = m["settings"]
     patches = {patch["name"]: patch["content"] for patch in m["noctaliaPatches"]}
     assert set(patches) == {"astra-selection.patch", "tech-lockscreen.patch", "tech-osd-segments.patch", "nvidia-sampler.patch", "active-app-name.patch", "launchpad-native.patch", "desktop-menus.patch"}
-    for name, marker in {"astra-selection.patch": "syncCompactControls", "tech-lockscreen.patch": "lockscreenRuntimeStatus", "tech-osd-segments.patch": "progressTicks", "nvidia-sampler.patch": "gpuOnlyNvidia", "active-app-name.patch": "resolveRunningDesktopEntry", "launchpad-native.patch": "provider.activate(result)", "desktop-menus.patch": "workspaceWindowAssignments(it->output)"}.items():
+    for name, marker in {"astra-selection.patch": "syncCompactControls", "tech-lockscreen.patch": "m_identityAvatar->setRadius(28.0F)", "tech-osd-segments.patch": "progressTicks", "nvidia-sampler.patch": "gpuOnlyNvidia", "active-app-name.patch": "resolveRunningDesktopEntry", "launchpad-native.patch": "provider.activate(result)", "desktop-menus.patch": "workspaceWindowAssignments(it->output)"}.items():
         assert marker in patches[name], name
     # Check serialized settings too: validating the Nix attrset alone would
     # miss a lost/renamed field during Home Manager's config generation.
@@ -503,7 +501,7 @@ pkgs.runCommand "interactive-session-config"
     assert sorted(path.name for path in managed_source.iterdir()) == expected_names
     assert all(path.is_symlink() and path.is_file() for path in managed_source.iterdir())
     assert Path(wallpaper["default"]["path"]).resolve() == Path(m["wallpaperFactoryDefault"]).resolve()
-    assert Path(m["greeter"]["appearance"]["wallpaper"]["path"]).resolve() == Path(m["wallpaperFactoryDefault"]).resolve()
+    assert Path(m["greeter"]["appearance"]["wallpaper"]["path"]).is_file()
     assert all(Path(asset["path"]).is_file() for asset in m["wallpaperAssets"])
     activation = m["wallpaperActivation"]
     local_path = str(wallpaper_root / "local")
@@ -544,10 +542,17 @@ pkgs.runCommand "interactive-session-config"
     assert "mango" not in settings["theme"]["templates"]["builtin_ids"]
     assert "btop" not in settings["theme"]["templates"]["builtin_ids"]
     widgets = settings["lockscreen_widgets"]["widget"]
-    seconds = widgets["lockscreen-widget-seconds"]["settings"]
-    assert seconds["format"] == "{:%S}" and seconds["color"] == "outline_variant"
-    for name in ("clock", "date", "seconds"):
-        assert widgets["lockscreen-widget-" + name]["settings"]["font_family"] == m["palette"]["fonts"]["mono"]
+    assert widgets["lockscreen-widget-clock"]["settings"]["format"] == "{:%H:%M}"
+    assert widgets["lockscreen-widget-date"]["settings"]["format"] == "{:%-m月%-d日 %A}"
+    assert "lockscreen-widget-seconds" not in widgets
+    assert "lockscreen-widget-seconds" not in settings["lockscreen_widgets"]["widget_order"]
+    for name in ("clock", "date"):
+        assert widgets["lockscreen-widget-" + name]["settings"]["font_family"] == m["palette"]["fonts"]["sans"]
+    assert settings["lockscreen"]["blur_intensity"] == 0.75
+    assert settings["lockscreen"]["lock_before_suspend"]
+    assert "XDG_SESSION_ID" in m["mangoSessionVariables"]
+    assert widgets["lockscreen-login-box@eDP-1"]["settings"]["background_opacity"] == 0.0
+    assert m["greeter"]["appearance"]["font_family"] == m["palette"]["fonts"]["sans"]
     assert "noctalia-firefox" in settings["theme"]["templates"]["user"]
     assert "noctalia-mango" not in settings["theme"]["templates"]["user"]
     assert settings["shell"]["launch_apps_as_systemd_services"]
@@ -560,6 +565,7 @@ pkgs.runCommand "interactive-session-config"
     assert noctalia["Service"]["Restart"] == "on-failure"
     assert noctalia["Unit"]["StartLimitBurst"] == 3
     assert noctalia["Service"]["ExecStartPre"]
+    assert noctalia["Service"]["UnsetEnvironment"] == ["LC_ALL"]
     env = dict(value.split("=", 1) for value in noctalia["Service"]["Environment"])
     assert env["QT_QPA_PLATFORMTHEME"] == "qt6ct" and env["XMODIFIERS"] == "@im=fcitx"
     mango_env = dict(value.split(",", 1) for value in mango["env"])
