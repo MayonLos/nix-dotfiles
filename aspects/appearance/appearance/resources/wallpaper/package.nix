@@ -1,23 +1,37 @@
-# Public factory for the retained cool-toned wallpaper set; see ../../README.md.
+# Public factory for the original wallpaper set; see ./CREDITS.md.
 { pkgs, ... }:
 let
-  wallpapers =
-    map
-      (id: {
-        name = "wallpaper-${id}.png";
-        path = ./. + "/wallpaper-${id}.png";
-      })
-      [
-        "002"
-        "005"
-        "008"
-        "009"
-        "011"
-      ];
+  # The 18 images from the first wallpaper commit (553d8b1), restored on
+  # 2026-10-29 at the user's request. Two are JPEG, the rest PNG.
+  files = [
+    "wallpaper-001.jpg"
+    "wallpaper-002.jpg"
+  ]
+  ++ map (n: "wallpaper-${n}.png") [
+    "003"
+    "004"
+    "005"
+    "006"
+    "007"
+    "008"
+    "009"
+    "010"
+    "011"
+    "012"
+    "013"
+    "014"
+    "015"
+    "016"
+    "017"
+    "018"
+  ];
+  wallpapers = map (name: {
+    inherit name;
+    path = ./. + "/${name}";
+  }) files;
 in
 {
   inherit wallpapers;
-  # Restored on 2026-10-25 at the user's request.
   default = "${./wallpaper-005.png}";
-  directory = pkgs.linkFarm "astra-cool-wallpapers" wallpapers;
+  directory = pkgs.linkFarm "original-wallpapers" wallpapers;
 }
