@@ -130,14 +130,14 @@ in
         scale = "optimal";
       };
       gallery = {
-        size = 180;
-        padding = 8;
+        size = 128;
+        padding = 12;
         aspect = "fit";
         window = "${palette.bg}ff";
         background = "${palette.surface}ff";
         select = "${palette.selection}ff";
         border_color = "${palette.blue}ff";
-        border_width = 2;
+        border_width = 1;
       };
       list = {
         all = "yes";
@@ -152,9 +152,8 @@ in
         background = "${palette.deep}ff";
       };
       info = {
-        show = "yes";
-        # The locked default hides info after 5 seconds. Keep the bottom
-        # filename/dimensions/zoom/index visible while browsing.
+        show = "no";
+        # Explicitly toggled information stays until the next toggle.
         info_timeout = 0;
       };
       "info.viewer" = {
@@ -164,6 +163,7 @@ in
         bottom_right = "index";
       };
       "keys.viewer" = {
+        i = "info";
         Left = "prev_file";
         Right = "next_file";
         h = "prev_file";
@@ -185,6 +185,7 @@ in
         MouseRight = "mode gallery";
       };
       "keys.gallery" = {
+        i = "info";
         Delete = "none";
         "Shift+Delete" = "none";
         d = "none";

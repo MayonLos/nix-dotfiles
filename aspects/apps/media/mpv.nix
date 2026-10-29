@@ -18,16 +18,17 @@ in
     enable = true;
 
     scripts = with pkgs.mpvScripts; [
-      (
-        if palette == null then
-          uosc
-        else
-          uosc.overrideAttrs (old: {
-            postPatch = (old.postPatch or "") + ''
-              ${pkgs.python3}/bin/python3 ${./resources/refine-uosc.py} src/uosc
-            '';
-          })
-      )
+      (uosc.overrideAttrs (old: {
+        postPatch =
+          (old.postPatch or "")
+          + ''
+            cp ${./resources/uosc-subtitle-margin.lua} src/uosc/lib/compact-subtitles.lua
+            ${pkgs.python3}/bin/python3 ${./resources/compact-uosc.py} src/uosc
+          ''
+          + lib.optionalString (palette != null) ''
+            ${pkgs.python3}/bin/python3 ${./resources/refine-uosc.py} src/uosc
+          '';
+      }))
       mpris
       autoload
       thumbfast
@@ -83,12 +84,22 @@ in
       border_radius = 8;
       timeline_style = "line";
       timeline_line_width = 2;
-      timeline_size = 36;
-      timeline_persistency = "paused";
-      progress = "windowed";
-      top_bar = "no-border";
-      top_bar_title = "yes";
-      controls = "menu,gap,subtitles,audio,gap,space,prev,playlist,next,gap,fullscreen";
+      timeline_size = 28;
+      compact_rail = "yes";
+      controls_size = 28;
+      controls_margin = 24;
+      controls_spacing = 4;
+      controls_persistency = "";
+      volume = "none";
+      proximity_in = 12;
+      proximity_out = 32;
+      timeline_persistency = "";
+      progress = "never";
+      top_bar = "never";
+      top_bar_title = "no";
+      top_bar_flash_on = "";
+      # Track/chapters/playlist remain reachable from the menu and keys.
+      controls = "play-pause,space,menu,fullscreen";
     }
     // lib.optionalAttrs (palette != null) {
       # The bounded uosc theme adaptation separates selection from the
@@ -98,6 +109,11 @@ in
     };
 
     bindings = {
+      "s" = "script-binding uosc/subtitles";
+      "a" = "script-binding uosc/audio";
+      "c" = "script-binding uosc/chapters";
+      "p" = "script-binding uosc/playlist";
+      "TAB" = "script-binding uosc/menu";
       "SPACE" = "cycle pause; script-binding uosc/flash-pause-indicator";
       "LEFT" = "no-osd seek -5; script-binding uosc/flash-timeline";
       # evafast owns RIGHT: tap to seek, hold to temporarily accelerate.

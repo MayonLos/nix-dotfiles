@@ -8,6 +8,7 @@ from pathlib import Path
 
 
 SCRIPT = Path(__file__).with_name("obsidian_theme.py")
+LAYOUT_SNIPPET = Path(__file__).with_name("obsidian-quiet-layout.css")
 
 
 class ObsidianThemeTest(unittest.TestCase):
@@ -80,6 +81,29 @@ class ObsidianThemeTest(unittest.TestCase):
         self.run_script("enable")
         self.assertEqual(appearance.read_bytes(), first)
         self.assertEqual(json.loads(first), {"cssTheme": "Minimal", "enabledCssSnippets": ["vaults-ui", "noctalia"]})
+
+    def test_quiet_layout_is_opt_in_and_does_not_hide_navigation(self):
+        obsidian = self.vault / ".obsidian"
+        obsidian.mkdir()
+        appearance = obsidian / "appearance.json"
+        appearance.write_text(
+            json.dumps({"cssTheme": "Minimal", "enabledCssSnippets": ["vaults-ui"]}),
+            encoding="utf-8",
+        )
+
+        css = LAYOUT_SNIPPET.read_text(encoding="utf-8")
+        self.assertIn(".workspace-tab-header.is-active", css)
+        self.assertIn("inset 0 -1px var(--vault-blue)", css)
+        self.assertIn(".workspace-split.mod-left-split", css)
+        self.assertIn(".workspace-split.mod-right-split", css)
+        self.assertNotIn("display: none", css)
+        self.assertNotIn("#", css)
+
+        self.run_script("enable")
+        updated = json.loads(appearance.read_text(encoding="utf-8"))
+        self.assertEqual(updated["cssTheme"], "Minimal")
+        self.assertEqual(updated["enabledCssSnippets"], ["vaults-ui", "noctalia"])
+        self.assertNotIn("obsidian-quiet-layout", updated["enabledCssSnippets"])
 
     def test_bad_appearance_json_is_rejected_without_rewrite(self):
         obsidian = self.vault / ".obsidian"
