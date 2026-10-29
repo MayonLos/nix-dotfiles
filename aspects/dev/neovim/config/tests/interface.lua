@@ -11,7 +11,10 @@ assert(
 		and early_normal_nc.fg ~= tonumber(early_palette.brightFg:sub(2), 16),
 	"inactive editor text should be dimmer on the shared editor surface"
 )
-assert(vim.o.showtabline == 0 and vim.o.winbar == "", "document chrome should be hidden by default")
+assert(
+	vim.o.tabline ~= "" and vim.o.winbar == "",
+	"document workbench header should be available without a breadcrumb winbar"
+)
 assert(color_options.enable_named_colors == false, "named colors must not recolor prose/comments")
 assert(color_options.enable_hex and color_options.enable_rgb and color_options.enable_var_usage)
 assert(color_options.enable_tailwind, "Tailwind utility colors should receive swatches")
@@ -286,7 +289,12 @@ assert(
 	vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(dashboard.win)) == recent_file,
 	"recent-file Enter failed after an unfocused resize"
 )
-assert(vim.o.showtabline == 0, "leaving the dashboard should keep document tabs hidden")
+assert(
+	vim.wait(500, function()
+		return vim.o.showtabline == 2
+	end),
+	"leaving the dashboard should restore the document header"
+)
 vim.api.nvim_win_close(ordinary_win, true)
 
 -- Worktrees use an absolute gitdir; it must render a branch without reading
@@ -413,12 +421,12 @@ for _, group in ipairs({
 	local hl = vim.api.nvim_get_hl(0, { name = group, link = false })
 	assert(next(hl), "missing theme group: " .. group)
 end
-assert(vim.o.tabline == "", "no persistent toolbar should be installed")
+assert(vim.o.tabline ~= "", "the document workbench header should remain installed")
 local palette = require("mayon.generated").palette
 for _, group in ipairs({ "FloatTitle", "MayonPopupTitle" }) do
 	local title = vim.api.nvim_get_hl(0, { name = group, link = false })
 	assert(title.fg == tonumber(palette.muted:sub(2), 16), "floating titles should use muted text: " .. group)
-	assert(title.bg == tonumber(palette.deep:sub(2), 16) and not title.bold, "floating title style mismatch: " .. group)
+	assert(title.bg == tonumber(palette.bg:sub(2), 16) and not title.bold, "floating title style mismatch: " .. group)
 end
 local tiny_error = vim.api.nvim_get_hl(0, { name = "TinyInlineDiagnosticVirtualTextError", link = false })
 assert(
@@ -447,7 +455,7 @@ local visual = vim.api.nvim_get_hl(0, { name = "Visual", link = false })
 local visual_fg = string.format("#%06x", visual.fg)
 local visual_bg = string.format("#%06x", visual.bg)
 local contrast = (luminance(visual_fg) + 0.05) / (luminance(visual_bg) + 0.05)
-assert(visual.bg == tonumber(require("mayon.ui.theme").blend(palette.blue, palette.bg, 0.14):sub(2), 16))
+assert(visual.bg == tonumber(require("mayon.ui.theme").blend(palette.blue, palette.bg, 0.10):sub(2), 16))
 assert(contrast >= 4.5, "visual selection text contrast must meet WCAG AA for normal text")
 local inactive_bg = string.format("#%06x", early_normal_nc.bg)
 local inactive_fg = string.format("#%06x", early_normal_nc.fg)
@@ -475,9 +483,9 @@ local theme = require("mayon.ui.theme")
 for mode, color in pairs({
 	n = palette.blue,
 	i = palette.green,
-	v = palette.blue,
+	v = palette.yellow,
 	R = palette.red,
-	c = palette.yellow,
+	c = palette.cyan,
 }) do
 	assert(theme.mode_color(mode) == tonumber(color:sub(2), 16), "mode cursor color mismatch: " .. mode)
 end
@@ -512,7 +520,12 @@ assert(
 )
 assert(library_hl.fg == tonumber(palette.yellow:sub(2), 16), "default library symbols should be yellow")
 assert(
-	vim.api.nvim_get_hl(0, { name = "DropBarIconKindFunction", link = false }).fg == tonumber(palette.blue:sub(2), 16)
+	vim.api.nvim_get_hl(0, { name = "MayonHeaderFile", link = false }).fg == tonumber(palette.brightFg:sub(2), 16),
+	"current document header should stay bright"
+)
+assert(
+	vim.api.nvim_get_hl(0, { name = "MayonHeaderMuted", link = false }).fg == tonumber(palette.muted:sub(2), 16),
+	"project and branch should stay muted"
 )
 assert(require("mayon.ui.theme").mode_highlight("i") == "MayonModeBlockInsert")
 assert(require("mayon.ui.theme").mode_highlight("v") == "MayonModeBlockVisual")

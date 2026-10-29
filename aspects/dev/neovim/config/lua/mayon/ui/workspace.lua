@@ -73,8 +73,7 @@ function M.action(name)
 	elseif name == "commit" then
 		vim.cmd.Neogit()
 	elseif name == "structure" then
-		require("lz.n").trigger_load("aerial.nvim")
-		require("aerial").toggle({ focus = true })
+		require("mayon.ui.outline").toggle()
 	elseif name == "marks" then
 		S.picker.marks()
 	elseif name == "terminal" then

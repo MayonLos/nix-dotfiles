@@ -49,13 +49,6 @@ let
     vimPlugins.nvim-dap-virtual-text
     vimPlugins.one-small-step-for-vimkind
     vimPlugins.nvim-jdtls
-    (vimPlugins.dropbar-nvim.overrideAttrs (old: {
-      # Use 0.12's public highlight namespace rather than its deprecated alias.
-      postPatch = (old.postPatch or "") + ''
-        substituteInPlace lua/dropbar/menu.lua lua/dropbar/utils/hl.lua \
-          --replace-fail 'vim.highlight' 'vim.hl'
-      '';
-    }))
     vimPlugins.aerial-nvim
     vimPlugins.neogit
     vimPlugins.nvim-autopairs

@@ -47,11 +47,16 @@ vim.api.nvim_exec_autocmds("BufWinEnter", { buffer = vim.api.nvim_win_get_buf(do
 assert(not vim.wo[doc].winhighlight:find("SnacksDashboard", 1, true), "dashboard colors leaked into editor")
 vim.wo[doc].winhighlight = "Normal:NormalFloat,NormalNC:NormalFloat,WinBar:MayonPanelTitle,CursorLine:PmenuSel"
 vim.api.nvim_exec_autocmds("BufWinEnter", { buffer = vim.api.nvim_win_get_buf(doc) })
-assert(not vim.wo[doc].winhighlight:find("NormalFloat", 1, true), "auxiliary deep surface leaked into editor")
+assert(not vim.wo[doc].winhighlight:find("NormalFloat", 1, true), "auxiliary float surface leaked into editor")
 local tabs = require("mayon.ui.tabline")
 local active = tabs.active_buffer()
 assert(vim.tbl_contains(tabs.buffers(), active), "active document is missing from buffer navigation")
-assert(vim.o.showtabline == 0 and vim.o.tabline == "", "document navigation should not reserve a top row")
+assert(
+	vim.wait(500, function()
+		return vim.o.showtabline == 2 and vim.o.tabline ~= ""
+	end),
+	"document header should occupy the top row"
+)
 local many = {}
 for i = 1, 12 do
 	local group = i == 1 and "alpha" or i == 2 and "beta" or ("group" .. i)

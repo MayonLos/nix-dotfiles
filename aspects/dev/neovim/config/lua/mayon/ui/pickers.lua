@@ -114,37 +114,52 @@ local function grep_format(item, picker)
 	return out
 end
 
--- Keep navigation compact; use context where choosing a match needs code/diff.
-function M.preview_default(_)
-	return false
+-- The document stays visible above a bottom search panel. File/content
+-- selection gets a preview on wide editors; Alt-p remains an explicit choice.
+function M.preview_default(source)
+	return vim.o.columns >= 120 and vim.tbl_contains({ "files", "recent", "grep", "grep_word" }, source)
 end
 
 function M.layout(preview)
 	local wide = vim.o.columns >= 120
-	local height = math.max(6, math.floor(vim.o.lines * 0.28))
+	local height = math.max(8, math.floor(vim.o.lines * (wide and 0.42 or 0.52)))
 	return {
 		preview = preview or false,
 		layout = {
-			box = wide and "horizontal" or "vertical",
+			box = "vertical",
 			backdrop = false,
-			row = 0,
+			position = "bottom",
 			width = 0,
-			col = 0,
-			height = preview and not wide and math.min(vim.o.lines - 4, height * 2) or height,
-			border = "none",
+			height = height,
+			border = "top",
+			{ win = "input", height = 1, border = "bottom" },
 			{
-				box = "vertical",
-				{ win = "input", height = 1, border = "bottom", title = "{title}", title_pos = "left" },
+				box = wide and "horizontal" or "vertical",
 				{ win = "list", border = "none" },
-			},
-			{
-				win = "preview",
-				width = wide and 0.5 or nil,
-				height = not wide and height or nil,
-				border = wide and "left" or "top",
+				{
+					win = "preview",
+					width = wide and 0.55 or nil,
+					height = not wide and 0.5 or nil,
+					border = wide and "left" or "top",
+				},
 			},
 		},
 	}
+end
+
+function M.explorer_filter(picker)
+	picker:focus("input", { show = true })
+end
+
+function M.explorer_filter_close(picker)
+	picker.input:set("")
+	-- The delayed input callback will stop after its window is hidden.
+	-- Rerun the native finder now so the unfiltered tree is restored.
+	picker:find({ refresh = false })
+	picker:focus("list")
+	if not picker.layout:is_hidden("input") then
+		picker:toggle("input", { enable = false })
+	end
 end
 
 function M.configure(opts)
@@ -152,6 +167,14 @@ function M.configure(opts)
 	require("mayon.ui.icons").ensure()
 	if opts.source == "explorer" then
 		opts.prompt = "⌕ "
+		opts.actions = vim.tbl_extend("force", opts.actions or {}, {
+			explorer_filter = M.explorer_filter,
+			explorer_filter_close = M.explorer_filter_close,
+		})
+		opts.win = vim.tbl_deep_extend("force", opts.win or {}, {
+			list = { keys = { ["/"] = "explorer_filter" } },
+			input = { keys = { ["<Esc>"] = { "explorer_filter_close", mode = { "n", "i" } } } },
+		})
 		return opts
 	end
 

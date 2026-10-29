@@ -43,7 +43,7 @@ local function overrides()
 	local c = require("mayon.generated").palette
 	local edge = M.float_edge()
 	local separator = edge
-	local selection = blend(c.blue, c.bg, 0.14)
+	local selection = blend(c.blue, c.bg, 0.10)
 	local inactive_bg = c.bg
 	local function set(name, values)
 		vim.api.nvim_set_hl(0, name, values)
@@ -71,33 +71,40 @@ local function overrides()
 		set("DiagnosticUnderline" .. severity, { sp = blend(color, c.bg, 0.52), undercurl = true })
 		set("DiagnosticSign" .. severity, { fg = blend(color, c.bg, 0.72), bg = c.bg })
 		-- Floating prose stays neutral; the prefix carries the severity color.
-		set("DiagnosticFloating" .. severity, { fg = c.brightFg, bg = c.deep })
+		set("DiagnosticFloating" .. severity, { fg = c.brightFg, bg = c.bg })
 	end
 	local diagnostic_inline = blend(c.yellow, c.bg, 0.62)
 	set("MayonDiagnosticInline", { fg = diagnostic_inline, bg = "NONE", italic = true })
-	set("MayonModified", { fg = c.orange, bg = c.deep, bold = true })
-	set("StatusLine", { fg = c.fg, bg = c.deep })
-	set("StatusLineNC", { fg = c.fg, bg = c.deep })
+	set("MayonModified", { fg = c.orange, bg = c.bg, bold = true })
+	set("StatusLine", { fg = c.fg, bg = c.bg })
+	set("StatusLineNC", { fg = c.fg, bg = c.bg })
 	set("MayonDashboardMode", { fg = c.blue, bg = c.selection, bold = true })
-	set("MayonProject", { fg = c.muted, bg = c.deep })
-	set("MayonPosition", { fg = c.brightFg, bg = c.surface, bold = true })
+	set("MayonProject", { fg = c.muted, bg = c.bg })
+	set("MayonPosition", { fg = c.brightFg, bg = c.bg, bold = true })
+	set("MayonHeaderMuted", { fg = c.muted, bg = c.bg })
+	set("MayonHeaderFile", { fg = c.brightFg, bg = c.bg })
+	set("MayonOutlineRail", { fg = c.blue, bg = selection })
+	set("AerialNormal", { fg = c.fg, bg = c.bg })
+	set("AerialLine", { fg = c.brightFg, bg = selection })
+	set("AerialGuide", { fg = blend(c.border, c.bg, 0.24), bg = c.bg })
+	set("AerialGuideLast", { link = "AerialGuide" })
 	set("MayonTabAccent", { fg = c.blue, bg = c.bg })
-	set("MayonTabVisible", { fg = c.fg, bg = c.deep, bold = true })
+	set("MayonTabVisible", { fg = c.fg, bg = c.bg, bold = true })
 	set("MayonMuted", { fg = c.muted })
 	set("MayonDashboardBlue", { fg = c.blue, bold = true })
 	set("MayonDashboardMix", { fg = c.cyan, bold = true })
 	set("MayonDashboardCyan", { fg = c.cyan, bold = true })
 	set("MayonDashboardMuted", { fg = c.muted })
-	set("MayonModeNormal", { fg = c.blue, bg = c.deep, bold = true, underline = true, sp = c.blue })
-	set("MayonModeInsert", { fg = c.green, bg = c.deep, bold = true, underline = true, sp = c.green })
-	set("MayonModeVisual", { fg = c.yellow, bg = c.deep, bold = true, underline = true, sp = c.yellow })
-	set("MayonModeReplace", { fg = c.red, bg = c.deep, bold = true, underline = true, sp = c.red })
-	set("MayonModeCommand", { fg = c.orange, bg = c.deep, bold = true, underline = true, sp = c.orange })
+	set("MayonModeNormal", { fg = c.blue, bg = c.bg, bold = true, underline = true, sp = c.blue })
+	set("MayonModeInsert", { fg = c.green, bg = c.bg, bold = true, underline = true, sp = c.green })
+	set("MayonModeVisual", { fg = c.yellow, bg = c.bg, bold = true, underline = true, sp = c.yellow })
+	set("MayonModeReplace", { fg = c.red, bg = c.bg, bold = true, underline = true, sp = c.red })
+	set("MayonModeCommand", { fg = c.cyan, bg = c.bg, bold = true, underline = true, sp = c.cyan })
 	set("MayonModeBlockNormal", { fg = c.blue, bg = c.selection, bold = true })
 	set("MayonModeBlockInsert", { fg = c.green, bg = c.selection, bold = true })
-	set("MayonModeBlockVisual", { fg = c.blue, bg = c.selection, bold = true })
+	set("MayonModeBlockVisual", { fg = c.yellow, bg = c.bg, bold = true })
 	set("MayonModeBlockReplace", { fg = c.red, bg = c.selection, bold = true })
-	set("MayonModeBlockCommand", { fg = c.yellow, bg = c.selection, bold = true })
+	set("MayonModeBlockCommand", { fg = c.cyan, bg = c.bg, bold = true })
 	set("MayonFoldText", { fg = c.fg, bg = c.surface })
 	set("MayonFoldCount", { fg = c.muted, bg = c.surface })
 	set("MayonStatusGit", { fg = c.cyan })
@@ -114,34 +121,64 @@ local function overrides()
 	set("DiagnosticSignInfo", { fg = blend(c.blue, c.bg, 0.62), bg = c.bg })
 	set("DiagnosticSignHint", { fg = blend(c.cyan, c.bg, 0.62), bg = c.bg })
 	set("DiagnosticSignOk", { fg = c.green })
-	vim.api.nvim_set_hl(0, "NormalFloat", { fg = c.brightFg, bg = c.deep })
-	vim.api.nvim_set_hl(0, "FloatBorder", { fg = edge, bg = c.deep })
-	vim.api.nvim_set_hl(0, "FloatTitle", { fg = c.muted, bg = c.deep })
+	vim.api.nvim_set_hl(0, "NormalFloat", { fg = c.brightFg, bg = c.bg })
+	vim.api.nvim_set_hl(0, "FloatBorder", { fg = edge, bg = c.bg })
+	vim.api.nvim_set_hl(0, "FloatTitle", { fg = c.muted, bg = c.bg })
 	-- Neogit remaps these names inside its own highlight namespace. Use
 	-- concrete colors to avoid a FloatBorder -> NeogitFloatBorder link cycle.
-	vim.api.nvim_set_hl(0, "NeogitNormal", { fg = c.brightFg, bg = c.deep })
-	vim.api.nvim_set_hl(0, "NeogitNormalFloat", { fg = c.brightFg, bg = c.deep })
-	vim.api.nvim_set_hl(0, "NeogitFloatBorder", { fg = edge, bg = c.deep })
-	vim.api.nvim_set_hl(0, "NeogitFloatHeader", { fg = c.muted, bg = c.deep })
+	vim.api.nvim_set_hl(0, "NeogitNormal", { fg = c.brightFg, bg = c.bg })
+	vim.api.nvim_set_hl(0, "NeogitNormalFloat", { fg = c.brightFg, bg = c.bg })
+	vim.api.nvim_set_hl(0, "NeogitFloatBorder", { fg = edge, bg = c.bg })
+	vim.api.nvim_set_hl(0, "NeogitFloatHeader", { fg = c.muted, bg = c.bg })
 	vim.api.nvim_set_hl(0, "MultiCursorCursor", { fg = c.bg, bg = c.cyan, bold = true })
 	vim.api.nvim_set_hl(0, "MultiCursorDisabledCursor", { fg = c.bg, bg = c.muted })
 	set("MatchParen", { fg = c.blue, bg = "NONE", bold = true, underline = true, sp = c.blue })
-	set("TabLine", { bg = c.deep, fg = c.fg })
+	set("TabLine", { bg = c.bg, fg = c.fg })
 	set("TabLineSel", { bg = c.selection, fg = c.brightFg, bold = true })
-	set("TabLineFill", { bg = c.deep, fg = c.fg })
-	set("TreesitterContext", { bg = c.surface })
-	set("TreesitterContextLineNumber", { bg = c.surface, fg = c.fg })
-	set("TreesitterContextSeparator", { fg = c.border, bg = c.surface })
-	set("Pmenu", { fg = c.brightFg, bg = c.deep })
+	set("TabLineFill", { bg = c.bg, fg = c.fg })
+	set("TreesitterContext", { bg = c.bg })
+	set("TreesitterContextLineNumber", { bg = c.bg, fg = c.fg })
+	set("TreesitterContextSeparator", { fg = c.border, bg = c.bg })
+	set("Pmenu", { fg = c.brightFg, bg = c.bg })
 	set("PmenuSel", { fg = c.blue, bg = c.selection, bold = true })
-	set("PmenuKind", { fg = c.blue, bg = c.deep })
+	set("PmenuKind", { fg = c.blue, bg = c.bg })
+	local kind_colors = {
+		Function = c.blue,
+		Method = c.blue,
+		Constructor = c.blue,
+		Variable = c.cyan,
+		Field = c.cyan,
+		Property = c.cyan,
+		Class = c.yellow,
+		Struct = c.yellow,
+		Interface = c.yellow,
+		Enum = c.yellow,
+		TypeParameter = c.yellow,
+		Constant = c.orange,
+		Value = c.orange,
+		EnumMember = c.orange,
+		Unit = c.orange,
+		Keyword = c.blue,
+		Snippet = c.green,
+		Color = c.green,
+		File = c.fg,
+		Folder = c.blue,
+		Reference = c.cyan,
+		Event = c.yellow,
+		Operator = c.cyan,
+		Text = c.fg,
+	}
+	for name in pairs(require("mayon.kinds")) do
+		set("MayonCompletion" .. name, { fg = kind_colors[name] or c.fg })
+	end
+
 	set("PmenuKindSel", { fg = c.blue, bg = c.selection })
-	set("PmenuExtra", { fg = c.muted, bg = c.deep })
+	set("PmenuExtra", { fg = c.muted, bg = c.bg })
 	set("PmenuExtraSel", { fg = c.fg, bg = c.selection })
-	set("PmenuBorder", { fg = edge, bg = c.deep })
-	set("PmenuSbar", { bg = c.surface })
+	set("PmenuBorder", { fg = edge, bg = c.bg })
+	set("PmenuSbar", { bg = c.bg })
 	set("PmenuThumb", { bg = c.border })
-	set("PmenuMatch", { fg = c.blue, bg = c.deep, bold = true })
+	set("PmenuMatch", { fg = c.blue, bg = c.bg, bold = true })
 	set("PmenuMatchSel", { fg = c.blue, bg = c.selection, bold = true })
 	set("SnippetTabstopActive", { bg = c.selection, underline = true, sp = c.cyan })
 	set("LspInlineCompletion", { fg = c.muted, italic = true })
@@ -152,8 +189,8 @@ local function overrides()
 		set("markdownH" .. level, { link = "RenderMarkdownH" .. level })
 		set("RenderMarkdownH" .. level .. "Bg", { bg = c.bg })
 	end
-	set("RenderMarkdownCode", { fg = c.fg, bg = c.surface })
-	set("RenderMarkdownCodeInline", { fg = c.cyan, bg = c.surface })
+	set("RenderMarkdownCode", { fg = c.fg, bg = c.bg })
+	set("RenderMarkdownCodeInline", { fg = c.cyan, bg = c.bg })
 	set("SnacksImageMath", { fg = c.brightFg })
 	set("RenderMarkdownCodeBorder", { fg = c.border, bg = c.bg })
 	set("RenderMarkdownTableHead", { fg = c.cyan, bold = true })
@@ -169,7 +206,7 @@ local function overrides()
 		RainbowDelimiterBlue = c.blue,
 		RainbowDelimiterOrange = c.orange,
 		RainbowDelimiterGreen = c.green,
-		RainbowDelimiterViolet = c.purple,
+		RainbowDelimiterViolet = c.blue,
 		RainbowDelimiterCyan = c.cyan,
 	}) do
 		vim.api.nvim_set_hl(0, name, { fg = color })
@@ -179,7 +216,7 @@ local function overrides()
 		TODO = c.blue,
 		HACK = c.orange,
 		WARN = c.orange,
-		PERF = c.purple,
+		PERF = c.blue,
 		NOTE = c.cyan,
 		TEST = c.green,
 	}
@@ -245,15 +282,15 @@ local function overrides()
 	set("MiniDiffOverChangeBuf", { link = "DiffText" })
 	set("MiniDiffOverContext", { link = "Normal" })
 	set("MiniDiffOverDelete", { link = "DiffDelete" })
-	set("MayonDiffHint", { fg = c.blue, bg = c.deep, bold = true })
+	set("MayonDiffHint", { fg = c.blue, bg = c.bg, bold = true })
 	set("ComplHint", { link = "LspInlineCompletion" })
 	set("ComplHintMore", { link = "LspInlineCompletion" })
 	set("MinuetVirtualText", { link = "LspInlineCompletion" })
 	set("Directory", { fg = c.blue, bold = true })
-	set("MayonPopup", { fg = c.brightFg, bg = c.deep })
-	set("MayonPopupBorder", { fg = edge, bg = c.deep })
-	set("MayonPopupTitle", { fg = c.muted, bg = c.deep })
-	set("MayonFloatErrorBorder", { fg = blend(c.red, c.bg, 0.65), bg = c.deep })
+	set("MayonPopup", { fg = c.brightFg, bg = c.bg })
+	set("MayonPopupBorder", { fg = edge, bg = c.bg })
+	set("MayonPopupTitle", { fg = c.muted, bg = c.bg })
+	set("MayonFloatErrorBorder", { fg = blend(c.red, c.bg, 0.65), bg = c.bg })
 	set("MayonExplorerFile", { fg = c.fg })
 	set("MayonExplorerTitle", { fg = c.muted, bg = c.bg })
 	set("MayonExplorerDirectory", { fg = c.fg, bg = c.bg })
@@ -265,10 +302,10 @@ local function overrides()
 	end
 	set("LspReferenceWrite", { fg = c.fg, bg = "NONE", underline = true, sp = blend(c.blue, c.bg, 0.38) })
 	set("SnacksPickerListCursorLine", { bg = c.selection })
-	set("SnacksPickerPreview", { fg = c.brightFg, bg = c.deep })
+	set("SnacksPickerPreview", { fg = c.brightFg, bg = c.bg })
 	set("SnacksPickerDimmed", { fg = blend(c.muted, c.bg, 0.5) })
-	set("MayonNotificationTitle", { fg = c.brightFg, bg = c.deep })
-	set("MayonNotificationBody", { fg = c.brightFg, bg = c.deep })
+	set("MayonNotificationTitle", { fg = c.brightFg, bg = c.bg })
+	set("MayonNotificationBody", { fg = c.brightFg, bg = c.bg })
 	set("MayonPanelTitle", { fg = c.muted, bg = c.bg })
 	set("MayonCompletionRail", { fg = c.blue, bg = c.selection })
 	set("MayonPreviewLine", { bg = blend(c.blue, c.bg, 0.12) })
@@ -276,9 +313,9 @@ local function overrides()
 		SnacksPickerPrompt = { fg = c.blue, bold = true },
 		SnacksPickerMatch = { fg = c.blue, bold = true },
 		MayonPickerRail = { fg = c.blue, bg = c.selection },
-		MayonPickerSource = { fg = c.brightFg, bg = c.deep },
-		MayonPickerRange = { fg = c.muted, bg = c.deep },
-		MayonPickerCount = { fg = c.muted, bg = c.deep },
+		MayonPickerSource = { fg = c.brightFg, bg = c.bg },
+		MayonPickerRange = { fg = c.muted, bg = c.bg },
+		MayonPickerCount = { fg = c.muted, bg = c.bg },
 		SnacksPickerRow = { fg = c.border },
 		SnacksPickerCol = { fg = c.border },
 		SnacksPickerFile = { fg = c.brightFg },
@@ -314,7 +351,7 @@ local function overrides()
 		FloatFooter = "FloatTitle",
 		SnacksPickerPreviewCursorLine = "MayonPreviewLine",
 		SnacksPickerDirectory = "MayonExplorerDirectory",
-		SnacksPickerTree = "Comment",
+		SnacksPickerTree = "MayonIndentGuide",
 		SnacksDashboardNormal = "Normal",
 		SnacksDashboardHeader = "MayonDashboardBlue",
 		SnacksDashboardFooter = "MayonDashboardMuted",
@@ -343,19 +380,19 @@ local function overrides()
 		Boolean = { fg = c.orange },
 		Constant = { fg = c.orange },
 		Function = { fg = c.blue },
-		Keyword = { fg = c.purple },
-		Conditional = { fg = c.purple },
-		Repeat = { fg = c.purple },
+		Keyword = { fg = c.blue },
+		Conditional = { fg = c.blue },
+		Repeat = { fg = c.blue },
 		Operator = { fg = c.cyan },
-		Exception = { fg = c.purple },
-		PreProc = { fg = c.purple },
-		Include = { fg = c.purple },
-		Define = { fg = c.purple },
-		Macro = { fg = c.purple },
+		Exception = { fg = c.blue },
+		PreProc = { fg = c.blue },
+		Include = { fg = c.blue },
+		Define = { fg = c.blue },
+		Macro = { fg = c.blue },
 		Typedef = { fg = c.cyan },
-		StorageClass = { fg = c.purple },
+		StorageClass = { fg = c.blue },
 		Structure = { fg = c.cyan },
-		Statement = { fg = c.purple },
+		Statement = { fg = c.blue },
 		Type = { fg = c.cyan },
 		Identifier = { fg = c.brightFg },
 		Special = { fg = c.brightFg },
@@ -367,8 +404,8 @@ local function overrides()
 		["@function"] = { fg = c.blue },
 		["@function.call"] = { fg = c.blue },
 		["@lsp.type.function"] = { fg = c.blue },
-		["@keyword"] = { fg = c.purple },
-		["@keyword.directive"] = { fg = c.purple },
+		["@keyword"] = { fg = c.blue },
+		["@keyword.directive"] = { fg = c.blue },
 		["@type"] = { fg = c.cyan },
 		["@variable"] = { fg = c.fg },
 		["@variable.builtin"] = { fg = c.fg },
@@ -399,7 +436,7 @@ local function overrides()
 		"@lsp.type.typeParameter",
 		"@lsp.type.builtinType",
 	}) do
-		set(group, { fg = group:find("keyword", 1, true) and c.purple or c.yellow })
+		set(group, { fg = group:find("keyword", 1, true) and c.blue or c.yellow })
 	end
 	for _, group in ipairs({
 		"@punctuation.bracket",
@@ -413,53 +450,6 @@ local function overrides()
 	end
 	set("@lsp.typemod.variable.defaultLibrary", { fg = c.yellow })
 	set("@lsp.typemod.variable.injected", { fg = c.fg })
-	for _, kind in ipairs({ "FunctionDeclaration", "FunctionDefinition", "MethodDefinition", "ClassDeclaration" }) do
-		set("DropBarKind" .. kind, { fg = c.muted, bg = c.bg })
-		set("DropBarIconKind" .. kind, { fg = c.blue, bg = c.bg })
-	end
-	set("DropBarCurrentContext", { fg = c.muted, bg = c.bg })
-	set("DropBarCurrentContextName", { fg = c.muted, bg = c.bg })
-	set("DropBarCurrentContextIcon", { fg = c.blue, bg = c.bg })
-	set("DropBarIconUISeparator", { fg = blend(c.muted, c.bg, 0.60), bg = c.bg })
-	set("DropBarIconKindDefault", { fg = c.muted, bg = c.bg })
-	local dropbar_kinds = {
-		"Array",
-		"Boolean",
-		"Call",
-		"Class",
-		"Constant",
-		"Constructor",
-		"Enum",
-		"EnumMember",
-		"Event",
-		"Field",
-		"File",
-		"Folder",
-		"Function",
-		"Interface",
-		"Macro",
-		"MarkdownH1",
-		"MarkdownH2",
-		"MarkdownH3",
-		"MarkdownH4",
-		"MarkdownH5",
-		"MarkdownH6",
-		"Method",
-		"Module",
-		"Namespace",
-		"Package",
-		"Property",
-		"Struct",
-		"Type",
-		"Variable",
-	}
-	for _, kind in ipairs(dropbar_kinds) do
-		set("DropBarKind" .. kind, { fg = c.muted, bg = c.bg })
-		set("DropBarKind" .. kind .. "NC", { fg = c.muted, bg = c.bg })
-	end
-	for _, kind in ipairs({ "Function", "Method", "Class", "Struct", "Interface", "Module", "Namespace", "Type" }) do
-		set("DropBarIconKind" .. kind, { fg = c.blue, bg = c.bg })
-	end
 	for _, group in ipairs({
 		"@comment.documentation",
 		"@comment.error",
@@ -474,8 +464,8 @@ local function overrides()
 		links["SnacksNotifierBorder" .. level] = "FloatBorder"
 		local diagnostic = get("DiagnosticSign" .. level)
 		local severity = diagnostic.fg or c.muted
-		vim.api.nvim_set_hl(0, "SnacksNotifierTitle" .. level, { fg = c.muted, bg = c.deep })
-		vim.api.nvim_set_hl(0, "SnacksNotifierIcon" .. level, { fg = severity, bg = c.deep })
+		vim.api.nvim_set_hl(0, "SnacksNotifierTitle" .. level, { fg = c.muted, bg = c.bg })
+		vim.api.nvim_set_hl(0, "SnacksNotifierIcon" .. level, { fg = severity, bg = c.bg })
 	end
 	set("TinyInlineDiagnosticVirtualTextBg", { bg = "NONE" })
 	for _, name in ipairs({ "Error", "Warn", "Info", "Hint" }) do
@@ -628,8 +618,8 @@ local function configure()
 		code_style = { comments = "italic" },
 		colors = {
 			black = c.black,
-			bg0 = c.deep,
-			bg1 = c.surface,
+			bg0 = c.bg,
+			bg1 = c.bg,
 			bg2 = c.selection,
 			bg3 = c.selection,
 			bg_blue = c.blue,
@@ -637,19 +627,19 @@ local function configure()
 			dark_cyan = blend(c.cyan, c.deep, 0.12),
 			dark_red = blend(c.red, c.deep, 0.12),
 			dark_yellow = blend(c.yellow, c.deep, 0.12),
-			dark_purple = blend(c.purple, c.deep, 0.12),
+			dark_purple = blend(c.blue, c.deep, 0.12),
 			diff_add = blend(c.green, c.bg, 0.12),
 			diff_delete = blend(c.red, c.bg, 0.12),
 			diff_change = blend(c.blue, c.bg, 0.12),
 			diff_text = blend(c.blue, c.bg, 0.18),
-			bg_d = c.deep,
+			bg_d = c.bg,
 			fg = c.brightFg,
 			comment = c.fg,
 			grey = c.border,
 			light_grey = c.muted,
 			blue = c.blue,
 			cyan = c.cyan,
-			purple = c.purple,
+			purple = c.blue,
 			green = c.green,
 			orange = c.orange,
 			yellow = c.yellow,

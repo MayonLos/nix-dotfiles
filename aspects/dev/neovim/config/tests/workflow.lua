@@ -1,4 +1,4 @@
--- UI contracts against real Heirline/Dropbar/Snacks, using only temporary files.
+-- UI contracts against real Heirline/Aerial/Snacks, using only temporary files.
 local tab = require("mayon.ui.tabline")
 local initial = vim.api.nvim_get_current_buf()
 assert(not vim.tbl_contains(tab.buffers(), initial), "empty placeholder occupies a tab")
@@ -7,6 +7,7 @@ assert(vim.tbl_contains(tab.buffers(), initial), "unsaved unnamed work was hidde
 vim.bo[initial].modified = false
 local root = vim.fn.tempname()
 vim.fn.mkdir(root, "p")
+vim.fn.writefile({ '{ description = "workbench fixture"; }' }, root .. "/flake.nix")
 local path = root .. "/中文%说明.md"
 vim.fn.writefile({
 	"# 标题",
@@ -22,23 +23,26 @@ vim.cmd.edit(vim.fn.fnameescape(path))
 assert(vim.bo.filetype == "markdown" and vim.wo.wrap, "long Markdown is clipped")
 local doc, docwin = vim.api.nvim_get_current_buf(), vim.api.nvim_get_current_win()
 assert(vim.wo[docwin].winbar == "", "breadcrumbs should be hidden for ordinary documents")
-assert(vim.fn.exists(":BreadcrumbsToggle") == 2, "on-demand breadcrumbs command is missing")
-vim.cmd.BreadcrumbsToggle()
-assert(vim.g.mayon_breadcrumbs == true, "breadcrumbs toggle did not enable the optional bar")
-vim.wait(80)
-assert(vim.wo[docwin].winbar ~= "", "breadcrumbs toggle did not attach a bar")
-vim.cmd.BreadcrumbsToggle()
+local header = require("mayon.ui.tabline")
+header.refresh()
+assert(vim.o.showtabline == 2, "ordinary documents should show the workbench header")
+local rendered_header = vim.api.nvim_eval_statusline(vim.o.tabline, { use_tabline = true, maxwidth = vim.o.columns })
 assert(
-	vim.g.mayon_breadcrumbs == false and vim.wo[docwin].winbar == "",
-	"breadcrumbs toggle did not restore the chrome-free editor"
+	rendered_header.str:find("中文%说明.md", 1, true),
+	"header should preserve CJK and literal percent in file names"
+)
+assert(
+	rendered_header.str:find(vim.fs.basename(root), 1, true),
+	"header should identify the active project: "
+		.. vim.inspect({ root = root, project = header.project(doc), header = rendered_header.str })
 )
 for _, width in ipairs({ 40, 60, 80, 100, 120, 180 }) do
 	vim.o.columns = width
+	header.refresh()
 	local status = vim.api.nvim_eval_statusline(vim.o.statusline, { maxwidth = width })
 	local tabs = vim.api.nvim_eval_statusline(vim.o.tabline, { use_tabline = true, maxwidth = width })
 	assert(status.str ~= "" and status.width <= width, "status line overflow")
-	assert(tabs.str == "", "single-file editing should not render a tab toolbar")
-	assert(vim.o.tabline == "", "tabline option should remain empty")
+	assert(tabs.width <= width and vim.o.showtabline == 2, "document header should fit and remain visible at " .. width)
 end
 -- A diagnostic remains visible without making the statusline overflow narrow
 -- layouts; unsaved work and close cancellation are covered below.
@@ -53,20 +57,15 @@ for _, width in ipairs({ 40, 60, 80, 100, 160 }) do
 	local rail = vim.api.nvim_eval_statusline(vim.o.statusline, { maxwidth = width })
 	assert(rail.width <= width, "diagnostics overflow the status line at " .. width .. " columns")
 	if width >= 100 then
-		assert(not rail.str:find("Copilot", 1, true), "idle AI provider should stay out of the statusline")
+		assert(rail.str:find("Copilot", 1, true), "selected AI provider should remain visible in the statusline")
 		assert(rail.str:find("●1", 1, true), "error count should use the compact red diagnostic marker")
 	end
 end
 local ai_completion = require("mayon.features.ai_completion")
 local old_busy = ai_completion.busy
 ai_completion.busy = true
-vim.cmd.redrawstatus()
-assert(
-	vim.api.nvim_eval_statusline(vim.o.statusline, { maxwidth = 160 }).str:find("…", 1, true),
-	"busy AI completion should appear in the statusline"
-)
+assert(require("mayon.ui.statusline").ai_status().completion_generating, "AI helper missed active completion")
 ai_completion.busy = old_busy
-vim.cmd.redrawstatus()
 diagnostics[1].severity = vim.diagnostic.severity.WARN
 vim.diagnostic.set(attention, doc, diagnostics)
 vim.cmd.redrawstatus()
@@ -75,20 +74,13 @@ assert(warning_rail.str:find("▲1", 1, true), "warning count should use the com
 assert(not warning_rail.str:find("●1", 1, true), "warning-only status should not show an error marker")
 vim.diagnostic.reset(attention, doc)
 vim.bo[doc].modified, vim.bo[doc].readonly = false, false
-vim.b[doc].gitsigns_status_dict = { added = 2, changed = 3, removed = 1 }
-vim.cmd.redrawstatus()
-local git_rail = vim.api.nvim_eval_statusline(vim.o.statusline, { maxwidth = 160, highlights = true })
+vim.b[doc].gitsigns_status_dict = { head = "workbench-test", added = 2, changed = 3, removed = 1 }
+header.refresh()
+local branch_header = vim.api.nvim_eval_statusline(vim.o.tabline, { use_tabline = true, maxwidth = 160 })
+assert(branch_header.str:find("workbench-test", 1, true), "Git branch should appear in the project header")
+local git_rail = vim.api.nvim_eval_statusline(vim.o.statusline, { maxwidth = 160 })
 for _, count in ipairs({ "+2", "~3", "-1" }) do
-	assert(git_rail.str:find(count, 1, true), "Git change count missing from statusline: " .. count)
-end
-local git_colors = {}
-for _, span in ipairs(git_rail.highlights or {}) do
-	local group = vim.api.nvim_get_hl(0, { name = span.group, link = false })
-	git_colors[group.fg] = true
-end
-local palette = require("mayon.generated").palette
-for _, color in ipairs({ palette.green, palette.yellow, palette.red }) do
-	assert(git_colors[tonumber(color:sub(2), 16)], "Git change counts lost a distinct severity color")
+	assert(not git_rail.str:find(count, 1, true), "the compact document status should not duplicate Git change counts")
 end
 vim.b[doc].gitsigns_status_dict = nil
 
@@ -114,6 +106,13 @@ vim.bo.filetype = "snacks_picker_list"
 tab.select(doc)
 assert(vim.api.nvim_get_current_win() == docwin, "tab click chose the sidebar")
 assert(vim.api.nvim_win_get_buf(toolwin) == toolbuf, "tab click replaced the sidebar")
+header.refresh()
+assert(
+	vim.api
+		.nvim_eval_statusline(vim.o.tabline, { use_tabline = true, maxwidth = vim.o.columns }).str
+		:find("中文%说明.md", 1, true),
+	"focusing a tool window should preserve the active document header"
+)
 vim.bo[toolbuf].filetype = "nofile"
 local confirm = vim.fn.confirm
 vim.api.nvim_buf_set_lines(doc, 0, -1, false, { "unsaved document" })
@@ -162,11 +161,11 @@ for _, name in ipairs({
 	"FloatTitle",
 }) do
 	assert(
-		hl(name).bg == tonumber(require("mayon.generated").palette.deep:sub(2), 16),
+		hl(name).bg == tonumber(require("mayon.generated").palette.bg:sub(2), 16),
 		name .. " has a disconnected background"
 	)
 end
-local popup_bg = tonumber(require("mayon.generated").palette.deep:sub(2), 16)
+local popup_bg = tonumber(require("mayon.generated").palette.bg:sub(2), 16)
 for _, name in ipairs({ "Pmenu", "PmenuBorder", "SnacksPickerList", "SnacksPickerNormal", "WhichKeyNormal" }) do
 	assert(hl(name).bg == popup_bg, name .. " should share the editor popup surface")
 end

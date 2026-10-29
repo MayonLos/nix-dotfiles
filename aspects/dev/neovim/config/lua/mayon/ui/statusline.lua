@@ -1,13 +1,52 @@
 -- A quiet workspace rail: editing mode, location, attention, then cursor position.
 local M = {}
 local ready = false
+local codecompanion_requests = {}
+
+local function ai_status()
+	local completion = package.loaded["mayon.features.ai_completion"]
+	local provider = completion and completion.provider or "copilot"
+	local pending = completion and completion.pending or 0
+	local copilot_pending = 0
+	if provider == "copilot" then
+		for _, client in ipairs(vim.lsp.get_clients({ name = "copilot" })) do
+			for _, request in pairs(client.requests or {}) do
+				if request.type == "pending" and request.method == "textDocument/inlineCompletion" then
+					copilot_pending = copilot_pending + 1
+				end
+			end
+		end
+	end
+	local requests = 0
+	for _ in pairs(codecompanion_requests) do
+		requests = requests + 1
+	end
+	local companion_loaded = package.loaded.codecompanion ~= nil
+	local companion_command = vim.fn.exists(":CodeCompanion") == 2
+	local completion_pending = provider == "deepseek" and pending or provider == "copilot" and copilot_pending or 0
+	return {
+		provider = provider,
+		completion_enabled = provider ~= "off",
+		completion_generating = provider ~= "off"
+			and ((completion and completion.busy == true) or completion_pending > 0),
+		completion_pending = completion_pending,
+		codecompanion_enabled = companion_loaded or companion_command,
+		codecompanion_generating = requests > 0,
+		codecompanion_requests = requests,
+	}
+end
+
+-- Public status data is deliberately read-only so state transitions can be
+-- checked without starting either AI provider.
+function M.ai_status()
+	return ai_status()
+end
 
 function M.setup()
 	if ready then
 		return
 	end
 	ready = true
-	vim.ui.progress_status() -- Initialize the native collector before LSP progress can arrive.
 	require("mayon.config.loader").pack("heirline.nvim")
 	local heirline = require("heirline")
 	local conditions = require("heirline.conditions")
@@ -17,10 +56,10 @@ function M.setup()
 	local function setup_colors()
 		local palette = require("mayon.generated").palette
 		return {
-			bg = palette.deep,
+			bg = palette.bg,
 			selection = palette.selection,
 			purple = palette.purple,
-			position_bg = palette.surface,
+			position_bg = palette.bg,
 			fg = palette.fg,
 			bright = palette.brightFg,
 			gray = palette.muted,
@@ -31,11 +70,6 @@ function M.setup()
 			orange = palette.orange,
 			red = palette.red,
 			diag_warn = palette.yellow,
-			diag_info = palette.blue,
-			diag_hint = palette.cyan,
-			git_add = palette.green,
-			git_change = palette.yellow,
-			git_del = palette.red,
 		}
 	end
 
@@ -49,10 +83,10 @@ function M.setup()
 	local mode_colors = {
 		n = "blue",
 		i = "green",
-		v = "blue",
-		V = "blue",
-		["\22"] = "blue",
-		c = "diag_warn",
+		v = "yellow",
+		V = "yellow",
+		["\22"] = "yellow",
+		c = "cyan",
 		s = "yellow",
 		S = "yellow",
 		["\19"] = "yellow",
@@ -104,7 +138,7 @@ function M.setup()
 	}
 	local ViMode = {
 		{
-			provider = " ● ",
+			provider = "●",
 			hl = function(self)
 				return { fg = mode_colors[self.mode:sub(1, 1)] or "blue" }
 			end,
@@ -112,9 +146,11 @@ function M.setup()
 		{
 			provider = function(self)
 				local name = mode_names[self.mode] or self.mode:upper()
-				return (short_modes[self.mode:sub(1, 1)] or name:sub(1, 1)) .. " "
+				return " " .. (short_modes[self.mode:sub(1, 1)] or name:sub(1, 1)) .. " "
 			end,
-			hl = { fg = "gray" },
+			hl = function(self)
+				return { fg = mode_colors[self.mode:sub(1, 1)] or "blue" }
+			end,
 		},
 	}
 	ViMode.init = function(self)
@@ -124,34 +160,6 @@ function M.setup()
 		"ModeChanged",
 		pattern = "*:*",
 		callback = vim.schedule_wrap(redraw_status),
-	}
-
-	local Git = {
-		condition = function()
-			return vim.o.columns >= 80 and conditions.is_git_repo()
-		end,
-		{ provider = "  " },
-		{
-			provider = function()
-				local n = (vim.b.gitsigns_status_dict or {}).added or 0
-				return n > 0 and ("+" .. n .. " ") or ""
-			end,
-			hl = { fg = "git_add" },
-		},
-		{
-			provider = function()
-				local n = (vim.b.gitsigns_status_dict or {}).changed or 0
-				return n > 0 and ("~" .. n .. " ") or ""
-			end,
-			hl = { fg = "git_change" },
-		},
-		{
-			provider = function()
-				local n = (vim.b.gitsigns_status_dict or {}).removed or 0
-				return n > 0 and ("-" .. n .. " ") or ""
-			end,
-			hl = { fg = "git_del" },
-		},
 	}
 
 	local FileNameBlock = {
@@ -170,6 +178,7 @@ function M.setup()
 	}
 	local FileIcon = {
 		init = function(self)
+			self.filename = vim.api.nvim_buf_get_name(0)
 			self.file_icon, self.file_icon_hl = require("mayon.ui.icons").get(self.filename)
 		end,
 		provider = function(self)
@@ -220,7 +229,7 @@ function M.setup()
 			hl = { fg = "orange" },
 		},
 	}
-	FileNameBlock = utils.insert(FileNameBlock, FileName, { provider = "%<" })
+	FileNameBlock = utils.insert(FileNameBlock, FileIcon, FileName, { provider = "%<" })
 
 	local Diagnostics = {
 		condition = function()
@@ -245,37 +254,6 @@ function M.setup()
 			hl = { fg = "red" },
 		},
 		update = { "DiagnosticChanged", "BufEnter" },
-	}
-
-	local LSPActive = {
-		condition = function()
-			if not package.loaded["vim.lsp"] or not conditions.lsp_attached() then
-				return false
-			end
-			return vim.bo.busy > 0 or vim.ui.progress_status() ~= ""
-		end,
-		init = function(self)
-			local client_names = {}
-			for _, client in ipairs(vim.lsp.get_clients({ bufnr = 0 })) do
-				if client.name ~= "copilot" and client.name ~= "minuet" then
-					client_names[#client_names + 1] = client.name
-				end
-			end
-			-- 0.12.4 already escapes percent for statusline use. Decode before
-			-- text.fit clips display cells and performs the single final escape.
-			self.progress = vim.ui.progress_status():gsub("%%%%", "%%")
-			self.busy = vim.bo.busy > 0 or self.progress ~= ""
-			table.sort(client_names)
-			local spinner = ({ "◌", "◍", "◎", "◍" })[(vim.g.mayon_lsp_spinner or 1)]
-			self.label = self.busy and (spinner .. " " .. (self.progress ~= "" and self.progress or "busy"))
-				or (client_names[1] or "")
-		end,
-		provider = function(self)
-			return text.fit(self.label, math.max(5, math.min(26, math.floor(vim.o.columns * 0.20)))) .. " "
-		end,
-		hl = function(self)
-			return { fg = self.busy and "blue" or "gray" }
-		end,
 	}
 
 	local Recording = {
@@ -307,98 +285,77 @@ function M.setup()
 		group = vim.api.nvim_create_augroup("HeirlineState", { clear = true }),
 		callback = vim.schedule_wrap(redraw_status),
 	})
-	vim.api.nvim_create_autocmd("User", {
+	vim.api.nvim_create_autocmd("LspRequest", {
 		group = "HeirlineState",
-		pattern = "GitSignsUpdate",
-		callback = vim.schedule_wrap(redraw_status),
+		callback = function(ev)
+			local data = ev.data or {}
+			local request = data.request or {}
+			local client = vim.lsp.get_client_by_id(data.client_id)
+			if client and client.name == "copilot" and request.method == "textDocument/inlineCompletion" then
+				vim.schedule(redraw_status)
+			end
+		end,
 	})
 	local Encoding = {
 		condition = function()
-			return vim.o.columns >= 140
+			return vim.o.columns >= 120
 		end,
 		provider = function()
-			return (vim.bo.fileformat == "dos" and "CRLF" or "LF")
-				.. "  "
+			return " "
 				.. (vim.bo.fileencoding ~= "" and vim.bo.fileencoding:upper() or "UTF-8")
-				.. "  "
-				.. (vim.bo.expandtab and "Spaces " or "Tabs ")
-				.. vim.bo.shiftwidth
+				.. " "
+				.. (vim.bo.fileformat == "dos" and "CRLF" or "LF")
 				.. " "
 		end,
 		hl = { fg = "gray" },
 	}
+
 	local Ruler = {
 		{
 			provider = function()
-				return " %l:%v "
+				return " %l:%v %p%% "
 			end,
 			hl = { fg = "gray" },
 		},
 	}
 
-	local cc = { count = 0, name = nil, requests = {}, order = {} }
 	vim.api.nvim_create_autocmd("User", {
 		group = vim.api.nvim_create_augroup("HeirlineCodeCompanion", { clear = true }),
 		pattern = { "CodeCompanionRequestStarted", "CodeCompanionRequestFinished" },
 		callback = function(args)
 			local data = args.data or {}
 			local id = data.id
-			if args.match == "CodeCompanionRequestStarted" and id ~= nil and not cc.requests[id] then
+			if args.match == "CodeCompanionRequestStarted" and id ~= nil and not codecompanion_requests[id] then
 				local adapter = data.adapter
-				cc.requests[id] = adapter and (adapter.formatted_name or adapter.name) or "CodeCompanion"
-				cc.order[#cc.order + 1] = id
+				codecompanion_requests[id] = adapter and (adapter.formatted_name or adapter.name) or "CodeCompanion"
 			elseif args.match == "CodeCompanionRequestFinished" and id ~= nil then
-				cc.requests[id] = nil
-				for index, key in ipairs(cc.order) do
-					if key == id then
-						table.remove(cc.order, index)
-						break
-					end
-				end
+				codecompanion_requests[id] = nil
 			end
-			cc.count = #cc.order
-			cc.name = cc.requests[cc.order[#cc.order]]
 			vim.cmd("redrawstatus")
 		end,
 	})
-	vim.api.nvim_create_autocmd("Progress", {
-		group = vim.api.nvim_create_augroup("HeirlineNativeProgress", { clear = true }),
-		callback = vim.schedule_wrap(function()
-			vim.g.mayon_lsp_spinner = ((vim.g.mayon_lsp_spinner or 1) % 4) + 1
-			redraw_status()
-		end),
-	})
-	local CodeCompanion = {
-		condition = function()
-			return cc.count > 0
-		end,
-		provider = function()
-			if vim.o.columns < 50 then
-				return "⋯" .. (cc.count > 1 and ("×" .. cc.count) or "") .. " "
-			end
-			local width = math.max(5, math.min(18, math.floor(vim.o.columns * 0.18)))
-			return "⋯ "
-				.. text.fit(cc.name or "CodeCompanion", width)
-				.. (cc.count > 1 and (" ×" .. cc.count) or "")
-				.. " "
-		end,
-		hl = { fg = "accent", bold = true },
-	}
-
 	local AI = {
-		condition = function()
-			local completion = package.loaded["mayon.features.ai_completion"]
-			return vim.o.columns >= 60 and completion and (completion.busy or completion.pending > 0)
-		end,
 		provider = function()
-			local completion = package.loaded["mayon.features.ai_completion"]
-			local provider = completion and completion.provider or "copilot"
-			local name = ({ copilot = "Copilot", deepseek = "DeepSeek", off = "AI off" })[provider] or provider
-			local busy = completion and (completion.busy or completion.pending > 0) and " …" or ""
-			return " " .. name .. busy .. " "
+			local state = ai_status()
+			local name = ({ copilot = "Copilot", deepseek = "DeepSeek", off = "AI off" })[state.provider]
+				or state.provider
+			if state.provider == "deepseek" and (not vim.env.DEEPSEEK_API_KEY or vim.env.DEEPSEEK_API_KEY == "") then
+				name = "DeepSeek key?"
+			end
+			local busy = state.completion_generating and " …" or ""
+			local cc = state.codecompanion_generating and " · CC …"
+				or (state.codecompanion_enabled and " · CC" or "")
+			return " " .. name .. busy .. cc .. " "
 		end,
-		hl = { fg = "accent" },
-		update = { "ModeChanged", "BufEnter", "CursorHold", "User" },
+		hl = function()
+			local state = ai_status()
+			if state.completion_generating or state.codecompanion_generating then
+				return { fg = "blue" }
+			end
+			return { fg = state.provider == "copilot" and "green" or state.provider == "off" and "gray" or "cyan" }
+		end,
+		-- Read the small state snapshot on redraw; request events can arrive
+		-- before Heirline update caches are invalidated. Never cache busy text.
 	}
 
 	local Debug = {
@@ -411,18 +368,27 @@ function M.setup()
 
 	local DefaultStatusline = {
 		ViMode,
-		{ provider = " · ", hl = { fg = "accent" } },
+		{ provider = " │ ", hl = { fg = "gray" } },
 		{ flexible = 3, FileNameBlock, CompactFileName, {} },
 		FileFlags,
-		Git,
+		{
+			provider = function()
+				return "  │ "
+			end,
+			hl = { fg = "gray" },
+		},
+		Diagnostics,
 		Align,
 		Recording,
 		Debug,
 		SearchCount,
-		Diagnostics,
-		{ flexible = 1, LSPActive, {} },
-		CodeCompanion,
-		{ flexible = 5, AI, {} },
+		AI,
+		{
+			condition = function()
+				return vim.o.columns >= 120
+			end,
+			Encoding,
+		},
 		Ruler,
 	}
 

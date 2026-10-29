@@ -40,6 +40,8 @@ lsp.get_client_by_id = function(id)
 	if id == -2 then
 		return {
 			id = id,
+			name = "offline-fixture",
+			server_capabilities = {},
 			supports_method = function(_, method)
 				return method ~= "textDocument/unsupported"
 			end,
@@ -104,6 +106,7 @@ local bridge_client_id = 8122
 local bridge_client = {
 	id = bridge_client_id,
 	name = "bridge-test",
+	server_capabilities = {},
 	attached_buffers = { [buf] = true },
 }
 local get_client_by_id = vim.lsp.get_client_by_id
@@ -137,7 +140,7 @@ assert(vim.ui.progress_status():find("(1)", 1, true), "LspProgress begin should 
 lsp_progress("work", "report", 55, "Loading workspace: 55% 138/249")
 assert(vim.ui.progress_status():find("55", 1, true), "LspProgress report should update native progress")
 assert(bridged_events[#bridged_events].source == "lsp" and bridged_events[#bridged_events].status == "running")
--- Evaluate the complete Heirline output, not just the progress provider string.
+-- The compact workbench status does not duplicate the native progress collector.
 local get_clients = vim.lsp.get_clients
 vim.lsp.get_clients = function()
 	return { bridge_client }
@@ -146,8 +149,8 @@ local columns = vim.o.columns
 for _, width in ipairs({ 80, 120, 180 }) do
 	vim.o.columns = width
 	local rail = vim.api.nvim_eval_statusline(vim.o.statusline, { maxwidth = width }).str
-	assert(rail:find("55%(1)", 1, true), "progress lost its single percent: " .. rail)
-	assert(not rail:find("55%%", 1, true), "progress was escaped twice: " .. rail)
+	assert(not rail:find("55%(1)", 1, true), "compact status should not duplicate native LSP progress: " .. rail)
+	assert(vim.ui.progress_status():find("55%%(1)", 1, true), "native progress collector lost its escaped percent")
 end
 vim.o.columns = columns
 vim.lsp.get_clients = get_clients

@@ -182,6 +182,13 @@ assert(
 	converted.abbr == "vector" and converted.kind == require("mayon.kinds").Class,
 	"LSP completion should put its kind icon in the leading column"
 )
+assert(converted.kind_hlgroup == "MayonCompletionClass", "LSP kind icons should expose their semantic highlight")
+local class_kind = vim.api.nvim_get_hl(0, { name = "MayonCompletionClass", link = false })
+local variable_kind = vim.api.nvim_get_hl(0, { name = "MayonCompletionVariable", link = false })
+assert(
+	class_kind.fg and variable_kind.fg and class_kind.fg ~= variable_kind.fg,
+	"completion kinds should have distinct semantic colors"
+)
 assert(converted.menu == "std::vector<T>", "LSP completion should include concise detail")
 local overload = completion.convert({
 	label = "operator()(int)",

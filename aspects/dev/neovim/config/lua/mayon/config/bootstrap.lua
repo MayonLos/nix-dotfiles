@@ -43,6 +43,7 @@ function M.setup()
 	})
 	require("mayon.config.keymaps").setup()
 	require("mayon.config.autocmds").setup()
+	require("mayon.ui.tabline").setup()
 	require("mayon.ui.extras").setup()
 	vim.api.nvim_create_autocmd("FileType", {
 		once = true,

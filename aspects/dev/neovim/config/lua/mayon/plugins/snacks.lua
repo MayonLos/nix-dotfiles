@@ -130,10 +130,10 @@ local function setup(overrides)
 				vim.api.nvim_win_set_config(win.win, { border = "none", title = "" })
 				vim.wo[win.win].winbar = ""
 				vim.wo[win.win].winhighlight = "NormalFloat:Normal,Normal:Normal,NormalNC:Normal"
-				vim.o.showtabline = 0
+				require("mayon.ui.tabline").suspend(true)
 			end,
 			on_close = function()
-				vim.o.showtabline = 0
+				require("mayon.ui.tabline").suspend(false)
 			end,
 		},
 		statuscolumn = {
@@ -149,7 +149,7 @@ local function setup(overrides)
 			ui_select = true,
 			db = { sqlite3_path = sqlite3_path() },
 			-- Keep picker visuals and source titles in one config hook. The
-			-- Explorer source opts out and retains its on-demand 34-column sidebar.
+			-- Explorer source opts out and retains its on-demand compact sidebar.
 			config = function(opts)
 				return require("mayon.ui.pickers").configure(opts)
 			end,
@@ -200,48 +200,21 @@ local function setup(overrides)
 					layout = function()
 						return {
 							preview = false,
+							hidden = { "input" },
 							layout = {
 								box = "vertical",
 								position = "left",
-								width = 34,
+								width = vim.o.columns >= 120 and 28 or 24,
 								height = 0,
 								border = "none",
-								{ win = "input", height = 1, border = "single" },
+								{ win = "input", height = 1, border = "bottom" },
 								{ win = "list", border = "none" },
 							},
 						}
 					end,
 					on_show = function(picker)
 						local win = picker.list.win.win
-						local title = "filter"
-						picker.opts.title = title
-						-- Keep the native recursive filter; render its empty hint instead of
-						-- an extra project header or a constantly changing counter.
-						if not picker.input._mayon_filter_hint then
-							local update = picker.input.update
-							picker.input.update = function(input, ...)
-								update(input, ...)
-								if input.win:buf_valid() then
-									local native = vim.api.nvim_get_namespaces()["snacks.picker.input"]
-									if native then
-										pcall(vim.api.nvim_buf_del_extmark, input.win.buf, native, 999)
-									end
-									local ns = vim.api.nvim_create_namespace("MayonExplorerFilter")
-									vim.api.nvim_buf_clear_namespace(input.win.buf, ns, 0, -1)
-									if input:get() == "" then
-										vim.api.nvim_buf_set_extmark(
-											input.win.buf,
-											ns,
-											0,
-											0,
-											{ virt_text = { { "filter", "Comment" } }, virt_text_pos = "eol" }
-										)
-									end
-								end
-							end
-							picker.input._mayon_filter_hint = true
-							picker.input:update()
-						end
+						picker.opts.title = "Project"
 						_G.MayonExplorerStatusColumn = function()
 							local target = tonumber(vim.g.statusline_winid)
 							if
@@ -279,7 +252,7 @@ local function setup(overrides)
 						end)
 					end,
 					on_change = function(picker)
-						local title = "filter"
+						local title = "Project"
 						if picker.opts.title ~= title then
 							picker.opts.on_show(picker)
 						end
@@ -289,7 +262,7 @@ local function setup(overrides)
 						while parent and parent.file ~= picker:cwd() do
 							depth, parent = depth + 1, parent.parent
 						end
-						local prefix = string.rep("  ", math.min(depth, 8))
+						local prefix = string.rep("│ ", math.min(depth, 8))
 						local icon, icon_hl
 						if item.dir then
 							icon, icon_hl = (item.open and "▾ " or "▸ ") .. "󰉋 ", "Directory"
@@ -308,7 +281,8 @@ local function setup(overrides)
 								- (item.status and 2 or 0)
 						)
 						name = middle_truncate_filename(name, width)
-						local result = { { prefix }, { icon, icon_hl }, { name, "MayonExplorerFile" } }
+						local result =
+							{ { prefix, "SnacksPickerTree" }, { icon, icon_hl }, { name, "MayonExplorerFile" } }
 						if item.status then
 							vim.list_extend(result, require("snacks.picker.format").file_git_status(item, picker))
 						end

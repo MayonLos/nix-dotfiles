@@ -5,8 +5,8 @@ assert(vim.g.colors_name == "onedark")
 local palette = require("mayon.generated").palette
 assert(vim.api.nvim_get_hl(0, { name = "Normal", link = false }).bg == tonumber(palette.bg:sub(2), 16))
 assert(vim.api.nvim_get_hl(0, { name = "Normal", link = false }).fg == tonumber(palette.brightFg:sub(2), 16))
-assert(vim.api.nvim_get_hl(0, { name = "NormalFloat", link = false }).bg == tonumber(palette.deep:sub(2), 16))
-assert(vim.api.nvim_get_hl(0, { name = "Pmenu", link = false }).bg == tonumber(palette.deep:sub(2), 16))
+assert(vim.api.nvim_get_hl(0, { name = "NormalFloat", link = false }).bg == tonumber(palette.bg:sub(2), 16))
+assert(vim.api.nvim_get_hl(0, { name = "Pmenu", link = false }).bg == tonumber(palette.bg:sub(2), 16))
 assert(vim.api.nvim_get_hl(0, { name = "PmenuSel", link = false }).bg == tonumber(palette.selection:sub(2), 16))
 for _, name in ipairs({ "DiffAdd", "DiffChange", "DiffText", "DiffDelete" }) do
 	local highlight = vim.api.nvim_get_hl(0, { name = name, link = false })
@@ -15,16 +15,25 @@ end
 assert(vim.api.nvim_get_hl(0, { name = "Visual", link = false }).fg == tonumber(palette.brightFg:sub(2), 16))
 assert(
 	vim.api.nvim_get_hl(0, { name = "Visual", link = false }).bg
-		== tonumber(require("mayon.ui.theme").blend(palette.blue, palette.bg, 0.14):sub(2), 16)
+		== tonumber(require("mayon.ui.theme").blend(palette.blue, palette.bg, 0.10):sub(2), 16)
 )
 assert(vim.o.guicursor:find("n:block-Cursor", 1, true))
 assert(vim.o.guicursor:find("i-ci:ver25-Cursor", 1, true))
 assert(vim.o.guicursor:find("r-cr-o:hor20-Cursor", 1, true))
 assert(vim.api.nvim_get_hl(0, { name = "LineNr", link = false }).fg == tonumber(palette.muted:sub(2), 16))
-assert(vim.api.nvim_get_hl(0, { name = "@keyword.function", link = false }).fg == tonumber(palette.purple:sub(2), 16))
+assert(vim.api.nvim_get_hl(0, { name = "@keyword.function", link = false }).fg == tonumber(palette.blue:sub(2), 16))
 assert(vim.wo.number and not vim.wo.relativenumber and vim.wo.cursorline and vim.wo.wrap)
-assert(vim.o.laststatus == 3 and vim.o.showtabline == 0)
-assert(vim.o.winbar == "" and vim.o.tabline == "", "document chrome should stay hidden by default")
+assert(
+	vim.o.laststatus == 3 and vim.o.showtabline == 0,
+	vim.inspect({
+		showtabline = vim.o.showtabline,
+		ft = vim.bo.filetype,
+		name = vim.api.nvim_buf_get_name(0),
+		buffers = require("mayon.ui.tabline").buffers(),
+		active = require("mayon.ui.tabline").active_buffer(),
+	})
+)
+assert(vim.o.winbar == "" and vim.o.tabline ~= "", "dashboard should hide the workbench row without a document winbar")
 assert(vim.opt.listchars:get().tab == "  ", "tab indentation must stay invisible")
 -- Exercise the terminal lifecycle without a host TTY or changing its colors.
 do

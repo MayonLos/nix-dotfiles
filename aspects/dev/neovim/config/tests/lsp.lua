@@ -298,6 +298,8 @@ vim.lsp.get_client_by_id = function(id)
 	if id == -1 then
 		return {
 			id = id,
+			name = "offline-fixture",
+			server_capabilities = {},
 			supports_method = function()
 				return false
 			end,
