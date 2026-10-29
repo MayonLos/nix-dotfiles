@@ -1,0 +1,213 @@
+--- a/thunar/thunar-application.c
++++ b/thunar/thunar-application.c
+@@ -425,6 +425,21 @@
+   application->accel_map = NULL;
+ 
+   thunar_application_load_css ();
++
++  /* Feature-owned geometry, after the shared GTK palette. No runtime file writer. */
++  {
++    GtkCssProvider *finder_css = gtk_css_provider_new ();
++    GError *css_error = NULL;
++    if (!gtk_css_provider_load_from_path (finder_css, "@finderCss@", &css_error))
++      {
++        g_warning ("Finder shell CSS: %s", css_error->message);
++        g_clear_error (&css_error);
++      }
++    gtk_style_context_add_provider_for_screen (gdk_screen_get_default (),
++                                               GTK_STYLE_PROVIDER (finder_css),
++                                               GTK_STYLE_PROVIDER_PRIORITY_USER + 1);
++    g_object_unref (finder_css);
++  }
+ }
+ 
+ 
+--- a/thunar/thunar-shortcuts-model.h
++++ b/thunar/thunar-shortcuts-model.h
+@@ -60,21 +60,26 @@
+                                        | THUNAR_SHORTCUT_GROUP_DEVICES_FILESYSTEM \
+                                        | THUNAR_SHORTCUT_GROUP_DEVICES_VOLUMES \
+                                        | THUNAR_SHORTCUT_GROUP_DEVICES_MOUNTS)
++#define THUNAR_SHORTCUT_GROUP_FAVORITES (THUNAR_SHORTCUT_GROUP_FAVORITES_HEADER \
++                                         | THUNAR_SHORTCUT_GROUP_PLACES_BOOKMARKS)
+ #define THUNAR_SHORTCUT_GROUP_PLACES (THUNAR_SHORTCUT_GROUP_PLACES_HEADER \
+                                       | THUNAR_SHORTCUT_GROUP_PLACES_DEFAULT \
+                                       | THUNAR_SHORTCUT_GROUP_PLACES_TRASH \
+-                                      | THUNAR_SHORTCUT_GROUP_PLACES_BOOKMARKS \
+                                       | THUNAR_SHORTCUT_GROUP_PLACES_COMPUTER \
+                                       | THUNAR_SHORTCUT_GROUP_PLACES_RECENT)
+ #define THUNAR_SHORTCUT_GROUP_NETWORK (THUNAR_SHORTCUT_GROUP_NETWORK_HEADER \
+                                        | THUNAR_SHORTCUT_GROUP_NETWORK_DEFAULT \
+                                        | THUNAR_SHORTCUT_GROUP_NETWORK_MOUNTS)
+-#define THUNAR_SHORTCUT_GROUP_HEADER (THUNAR_SHORTCUT_GROUP_DEVICES_HEADER \
++#define THUNAR_SHORTCUT_GROUP_HEADER (THUNAR_SHORTCUT_GROUP_FAVORITES_HEADER \
++                                      | THUNAR_SHORTCUT_GROUP_DEVICES_HEADER \
+                                       | THUNAR_SHORTCUT_GROUP_PLACES_HEADER \
+                                       | THUNAR_SHORTCUT_GROUP_NETWORK_HEADER)
+ 
+ enum _ThunarShortcutGroup
+ {
++  /* Header is new; existing group bits retain their upstream values. */
++  THUNAR_SHORTCUT_GROUP_FAVORITES_HEADER = (1 << 13),
++
+   /* THUNAR_SHORTCUT_GROUP_PLACES */
+   THUNAR_SHORTCUT_GROUP_PLACES_HEADER = (1 << 0),    /* places header */
+   THUNAR_SHORTCUT_GROUP_PLACES_COMPUTER = (1 << 1),  /* computer */
+--- a/thunar/thunar-shortcuts-model.c
++++ b/thunar/thunar-shortcuts-model.c
+@@ -986,10 +986,11 @@
+ update_header:
+ 
+               header = lp_header->data;
+-              if (header->hidden != (n_children == 0))
++              if (header->hidden != (n_children == 0 && header->group != THUNAR_SHORTCUT_GROUP_PLACES_HEADER && header->group != THUNAR_SHORTCUT_GROUP_FAVORITES_HEADER))
+                 {
+                   /* set new visibility */
+-                  header->hidden = (n_children == 0);
++                  /* Keep the bookmark tail drop target even when all Places are hidden. */
++                  header->hidden = (n_children == 0 && header->group != THUNAR_SHORTCUT_GROUP_PLACES_HEADER && header->group != THUNAR_SHORTCUT_GROUP_FAVORITES_HEADER);
+ 
+                   /* notify view */
+                   path = gtk_tree_path_new_from_indices (idx_header, -1);
+@@ -1100,6 +1101,13 @@
+   GFile          *desktop;
+   GFile          *trash;
+   ThunarFile     *file;
++
++  /* Gtk bookmarks retain their file, IDs, names, monitor and drag/reorder logic. */
++  shortcut = g_slice_new0 (ThunarShortcut);
++  shortcut->group = THUNAR_SHORTCUT_GROUP_FAVORITES_HEADER;
++  shortcut->name = g_strdup (g_str_has_prefix (setlocale (LC_MESSAGES, NULL), "zh_CN")
++                             ? "收藏" : "Favorites");
++  thunar_shortcuts_model_add_shortcut (model, shortcut);
+ 
+   /* add the places heading */
+   shortcut = g_slice_new0 (ThunarShortcut);
+@@ -1250,9 +1258,15 @@
+   const ThunarShortcut *a = shortcut_a;
+   const ThunarShortcut *b = shortcut_b;
+ 
+-  /* sort groups */
++  /* Favorites precede native places/devices/network; preserve each group's IDs. */
+   if (a->group != b->group)
+-    return a->group - b->group;
++    {
++      gint a_rank = a->group == THUNAR_SHORTCUT_GROUP_FAVORITES_HEADER ? -2
++                    : a->group == THUNAR_SHORTCUT_GROUP_PLACES_BOOKMARKS ? -1 : (gint) a->group;
++      gint b_rank = b->group == THUNAR_SHORTCUT_GROUP_FAVORITES_HEADER ? -2
++                    : b->group == THUNAR_SHORTCUT_GROUP_PLACES_BOOKMARKS ? -1 : (gint) b->group;
++      return a_rank - b_rank;
++    }
+ 
+   /* use sort order */
+   if (a->sort_id != b->sort_id)
+@@ -2096,8 +2110,8 @@
+   if (shortcut->group == THUNAR_SHORTCUT_GROUP_PLACES_BOOKMARKS)
+     return TRUE;
+ 
+-  /* we can drop at the end of the bookmarks (before devices header) */
+-  if (shortcut->group == THUNAR_SHORTCUT_GROUP_DEVICES_HEADER)
++  /* Bookmarks now end immediately before the places header. */
++  if (shortcut->group == THUNAR_SHORTCUT_GROUP_PLACES_HEADER)
+     return TRUE;
+ 
+   return FALSE;
+@@ -2158,6 +2172,7 @@
+ 
+   /* add the shortcut to the list at the given position */
+   thunar_shortcuts_model_add_shortcut_with_path (model, shortcut, dst_path);
++  thunar_shortcuts_model_header_visibility (model);
+ 
+   /* the shortcuts list was changed, so write the gtk bookmarks file */
+   thunar_shortcuts_model_save_bookmarks (model);
+--- a/thunar/thunar-shortcuts-view.c
++++ b/thunar/thunar-shortcuts-view.c
+@@ -320,6 +320,19 @@
+ 
+ 
+ static void
++thunar_shortcuts_view_header_style (GtkTreeViewColumn *column,
++                                     GtkCellRenderer   *renderer,
++                                     GtkTreeModel      *model,
++                                     GtkTreeIter       *iter,
++                                     gpointer           data)
++{
++  GdkRGBA color;
++  GtkStyleContext *context = gtk_widget_get_style_context (GTK_WIDGET (data));
++  if (gtk_style_context_lookup_color (context, "secondary_text_color", &color))
++    g_object_set (renderer, "foreground-rgba", &color, NULL);
++}
++
++static void
+ thunar_shortcuts_view_init (ThunarShortcutsView *view)
+ {
+   GtkTreeViewColumn *column;
+@@ -355,7 +368,8 @@
+ 
+   /* header */
+   renderer = g_object_new (GTK_TYPE_CELL_RENDERER_TEXT,
+-                           "weight", PANGO_WEIGHT_BOLD,
++                           "weight", PANGO_WEIGHT_MEDIUM,
++                           "scale", 0.85,
+                            "xpad", 6,
+                            "ypad", 4,
+                            "ellipsize", PANGO_ELLIPSIZE_END,
+@@ -365,6 +379,8 @@
+                                        "text", THUNAR_SHORTCUTS_MODEL_COLUMN_NAME,
+                                        "visible", THUNAR_SHORTCUTS_MODEL_COLUMN_IS_HEADER,
+                                        NULL);
++
++  gtk_tree_view_column_set_cell_data_func (column, renderer, thunar_shortcuts_view_header_style, view, NULL);
+ 
+   /* separator for indent */
+   renderer = gtk_cell_renderer_text_new ();
+@@ -1195,6 +1211,8 @@
+           /* get the mask of the group */
+           if ((group & THUNAR_SHORTCUT_GROUP_DEVICES) != 0)
+             mask = THUNAR_SHORTCUT_GROUP_DEVICES;
++          else if ((group & THUNAR_SHORTCUT_GROUP_FAVORITES) != 0)
++            mask = THUNAR_SHORTCUT_GROUP_FAVORITES;
+           else if ((group & THUNAR_SHORTCUT_GROUP_PLACES) != 0)
+             mask = THUNAR_SHORTCUT_GROUP_PLACES;
+           else if ((group & THUNAR_SHORTCUT_GROUP_NETWORK) != 0)
+--- a/thunar/thunar-window.c
++++ b/thunar/thunar-window.c
+@@ -4268,7 +4268,13 @@
+   window->menubar_visible = !window->menubar_visible;
+ 
+   gtk_widget_set_visible (window->menubar, window->menubar_visible);
+-  gtk_widget_set_visible (window->location_toolbar_item_menu, !window->menubar_visible);
++  {
++    gchar *items;
++    g_object_get (G_OBJECT (window->preferences), "last-toolbar-items", &items, NULL);
++    gtk_widget_set_visible (window->location_toolbar_item_menu,
++                            !window->menubar_visible && strstr (items, "menu:1") != NULL);
++    g_free (items);
++  }
+ 
+   g_object_set (G_OBJECT (window->preferences), "last-menubar-visible", window->menubar_visible, NULL);
+ 
+@@ -7041,7 +7047,9 @@
+ 
+               /* set its visibility */
+               hidden = (g_strcmp0 (item_data[1], "0") == 0);
+-              if (hidden)
++              if (item == window->location_toolbar_item_menu)
++                gtk_widget_set_visible (item, !hidden && !window->menubar_visible);
++              else if (hidden)
+                 thunar_window_toolbar_toggle_item_visibility (window, i);
+ 
+               /* remove it from the list */
+--- a/thunar/thunar-location-buttons.c
++++ b/thunar/thunar-location-buttons.c
+@@ -312,7 +312,9 @@
+   icon = gtk_image_new_from_icon_name (use_symbolic_icons ? "document-edit-symbolic" : "document-edit", GTK_ICON_SIZE_BUTTON);
+   gtk_widget_set_halign (icon, GTK_ALIGN_END);
+   gtk_container_add (GTK_CONTAINER (buttons->filler_widget), icon);
+-  gtk_widget_show (icon);
++  /* Keep the empty path area clickable for location editing without another glyph. */
++  gtk_widget_set_no_show_all (icon, TRUE);
++  gtk_widget_hide (icon);
+ 
+   gtk_container_add (GTK_CONTAINER (buttons), buttons->filler_widget);
+   gtk_widget_show (buttons->filler_widget);

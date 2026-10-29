@@ -8,6 +8,7 @@
           ./thunar-actions.nix
           ./thunar-terminal.nix
           ./templates.nix
+          ./preferences.nix
         ];
         home.packages = [
           pkgs.file-roller

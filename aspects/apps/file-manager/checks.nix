@@ -13,6 +13,10 @@ let
     run() { "$@"; }
     ${home.home.activation.seedThunarTemplates.data}
   '';
+  preferenceActivation = pkgs.writeText "thunar-preference-activation.sh" ''
+    run() { "$@"; }
+    ${home.home.activation.seedThunarPreferences.data}
+  '';
   mimeDefaults = home.xdg.mimeApps.defaultApplications or { };
   serviceFile = "${fileManager.thunarWithPlugins}/share/dbus-1/services/org.freedesktop.FileManager1.service";
   archivePlugin = builtins.head fileManager.plugins;
@@ -48,7 +52,10 @@ assert !(home.xdg.dataFile ? "dbus-1/services/org.freedesktop.FileManager1.servi
             "Open lazygit Here", "Set as Wallpaper", "Copy as Image",
             "Copy Path", "Paste Clipboard Image", "Paste as Link",
         }
-        assert expected <= actions.keys(), expected - actions.keys()
+        assert expected == actions.keys(), (expected - actions.keys(), actions.keys() - expected)
+        for item in actions.values():
+            assert item.find("name[@{http://www.w3.org/XML/1998/namespace}lang='zh_CN']") is not None
+            assert item.find("description[@{http://www.w3.org/XML/1998/namespace}lang='zh_CN']") is not None
         commands = {name: item.findtext("command") for name, item in actions.items()}
         assert "exo-open" not in " ".join(commands.values())
         for name, command in commands.items():
@@ -103,6 +110,47 @@ assert !(home.xdg.dataFile ? "dbus-1/services/org.freedesktop.FileManager1.servi
         bash -e ${templateActivation}
         test -L "$HOME/Templates"
         test -z "$(ls -A "$TMPDIR/user-templates")"
+        touch "$out"
+      '';
+
+  file-manager-preferences =
+    pkgs.runCommand "file-manager-preferences-check"
+      {
+        nativeBuildInputs = [
+          pkgs.bash
+          pkgs.dbus
+          pkgs.xfconf
+          pkgs.gnugrep
+        ];
+      }
+      ''
+        export HOME="$TMPDIR/home"
+        export XDG_CONFIG_HOME="$HOME/.config"
+        export XDG_CACHE_HOME="$HOME/.cache"
+        export XDG_DATA_DIRS="${pkgs.xfconf}/share"
+        mkdir -p "$HOME"
+        cat > "$TMPDIR/session.conf" <<CONF
+        <busconfig>
+          <type>session</type><listen>unix:tmpdir=$TMPDIR</listen>
+          <auth>EXTERNAL</auth>
+          <servicedir>${pkgs.xfconf}/share/dbus-1/services</servicedir>
+          <policy context="default"><allow send_destination="*"/><allow receive_sender="*"/><allow own="*"/></policy>
+        </busconfig>
+        CONF
+        dbus-run-session --config-file="$TMPDIR/session.conf" -- bash -euo pipefail ${./resources/check-preferences.sh} ${preferenceActivation}
+
+        # Boot activation has neither a display nor a session bus. A fresh bus
+        # afterwards must read the values from disk, rather than the first daemon.
+        export HOME="$TMPDIR/boot-home"
+        export XDG_CONFIG_HOME="$HOME/.config"
+        export XDG_CACHE_HOME="$HOME/.cache"
+        export XDG_RUNTIME_DIR="$TMPDIR/boot-runtime"
+        mkdir -p "$HOME" "$XDG_RUNTIME_DIR"
+        env -u DBUS_SESSION_BUS_ADDRESS -u DISPLAY bash -euo pipefail ${preferenceActivation}
+        dbus-run-session --config-file="$TMPDIR/session.conf" -- bash -euc '
+          test "$(xfconf-query -c thunar -p /last-menubar-visible)" = false
+          test "$(xfconf-query -c thunar -p /last-view)" = ThunarDetailsView
+        '
         touch "$out"
       '';
 
