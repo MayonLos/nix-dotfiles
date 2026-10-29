@@ -124,6 +124,7 @@ pkgs.runCommand "interactive-session-config"
     cp ${home.xdg.configFile."mango/config.conf".source} "$out/mango.conf"
     cp ${home.xdg.configFile."noctalia/config.toml".source} "$out/noctalia.toml"
     python3 ${./resources/window-rules-check.py} "$out/mango.conf"
+    python3 ${./mango/check-window-rules.py} "$out/mango.conf" > "$out/window-rules.log"
     export FONTCONFIG_FILE=${fontConfig}
     fc-match -f '%{family}\n' sans-serif | tee "$out/sans-family.txt"
     grep -Fx '${palette.fonts.sans}' "$out/sans-family.txt"

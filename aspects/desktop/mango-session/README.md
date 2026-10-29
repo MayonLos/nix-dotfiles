@@ -100,11 +100,75 @@ HM owns `Pictures/Wallpapers/managed` as a store link. The activation only creat
 
 ## Windows and pointer
 
-The single private window-rule table is `mango/window-rules.nix`, imported by `mango.nix`. `interactive-session-config` runs locked Mango's parser and generated-rule matching/false-positive fixtures. Main chats, browser windows and application placement stay user-controlled. Native transients float; exact chooser titles, polkit/pinentry, media/PiP, temporary settings and named scratch tools retain their established rules. Optional `assignAppTags` remains off. Proprietary runtime app IDs/titles require real-session acceptance.
+The single private window-rule table is `mango/window-rules.nix`, imported by `mango.nix`.
+`interactive-session-config` runs locked Mango's parser and both generated-rule
+fixture suites (`resources/window-rules-check.py`, `mango/check-window-rules.py`).
+They check allowed window/layer fields, UTF-8 value lengths, matching order,
+main-window exclusions, scratchpads, PiP, silent toolbars and game exceptions.
+Fixtures are policy checks, not evidence that a proprietary application's windows
+were opened. Optional `assignAppTags` stays off; no app receives a fixed tag.
+
+Rules use Mango 0.18.3, revision `9c44c664725421fbccaf2619e3641b38614db04d`:
+[`option_defs.c`](https://github.com/mangowm/mango/blob/9c44c664725421fbccaf2619e3641b38614db04d/src/config/option_defs.c),
+[`client.c`](https://github.com/mangowm/mango/blob/9c44c664725421fbccaf2619e3641b38614db04d/src/manage/client.c).
+`app_id` is the native app ID or XWayland WM_CLASS; combining it with `title`
+requires both to match. Properties merge in file order. Titles are matched when
+mapping; later title changes do not rerun rules. Native transient/fixed-size
+windows and X11 modal/splash/utility/toolbar windows with size hints already float.
+Mango centers initial windows unless `no_force_center` is set. Width/height
+between 0 and 1 are output fractions; larger values are initial logical pixels,
+not enforced minimum/maximum sizes. Client hints may constrain them. Offsets are
+percentages of the remaining half-screen, not pixels.
+
+| Windows | Match / behavior |
+|---|---|
+| File choosers, Open/Save | Native transients plus exact English/Chinese title fallbacks scoped to browser, mail, file manager, editors, office, graphics and chat apps; centered about 1024×694 at 1707×1067 |
+| Preferences/Settings/Properties, About/confirmation | App-scoped exact titles; settings about 922×683, compact dialogs about 717×405; document/tab titles with application suffixes stay tiled |
+| Portal, polkit, pinentry | Portal app IDs float at chooser size; authentication IDs about 649×341; parented native dialogs retain client hints |
+| Firefox | `firefox` / Library, Downloads and About float; PiP starts 480×270 near bottom right, `is_overlay` + `is_global` + silent opening |
+| Thunar | `thunar` / File Operation Progress (about 717×192), properties, preferences and Bulk Rename float; main directory windows remain tiled |
+| Audio/Bluetooth/network | `org.pulseaudio.pavucontrol`, `blueman-manager` / `org.blueman.Manager`, `nm-connection-editor`: about 683×598 near top right |
+| CopyQ, Clash, calculator/color tools | `com.github.hluk.copyq`, `clash-verge`, calculator/color-picker IDs: floating, with separate practical sizes; no fixed tag or persistent no-focus |
+| Qt/Fcitx settings | `qt6ct`, `qt5ct`, `org.fcitx.*`, `fcitx5-config-qt`; File Roller, keyboard-layout viewer and Legion controls: floating settings size; observed Fcitx ID is `org.fcitx.` |
+| QQ/WeChat/Tencent Meeting/Vesktop | Distinct login, image-viewer and call titles float; passive notifications open silently; sharing-toolbar titles additionally use persistent `no_focus`; main chats stay tiled |
+| JetBrains/LibreOffice/Zotero/GIMP/Prism | Agreement/splash, Prism Quick Setup and specific tool/dialog titles float (JetBrains agreements retain client size to avoid empty Wayland frames); project, document, library and image main windows stay tiled |
+| Thunderbird/Obsidian/VS Code/MATLAB/OBS/Kdenlive/Blender/virt-manager | Native transients and app-scoped dialog fallbacks; compose windows, projects, VMs and other main windows keep their native behavior |
+| mpv/swayimg/imv/feh, games | Players/viewers float and receive compositor opacity 1; games matching `steam_app_[0-9]+` or Minecraft keep border/shadow/radius/animation removal, fullscreen-only tearing and the existing VRR hint (the host output enables VRR globally); never force helpers fullscreen |
+| Steam | Friends List narrow floating window, Settings/Login floating, notifications silent and unfocusable; main client tiled |
+| Capture tools | mark-shot editor toplevel floats; capture overlays and wayscrollshot layer surfaces keep full-output geometry |
+| Kitty/scratchpads | Existing Kitty frosting (`no_blur:0`), opacity and named scratch identities/sizes remain intact |
+
+There is no Mango rule for `keep_aspect_ratio`, `opaque`, window role/type criteria,
+min/max size or dynamic title matching. PiP retains client size/aspect hints, but
+an arbitrary resize is not compositor-constrained to 16:9. Opacity 1 removes only
+compositor-added transparency; it cannot replace pixels a client draws with alpha.
+`is_global` means all tags on the owning output, not all outputs. Layer rules
+match `layer_name` and only support animation types, `shield_when_capture`,
+`no_blur`, `no_animation`, `no_shadow`; they cannot reposition/focus a capture layer.
+
+Community references, inspected 2026-10-30 (behavior adapted, syntax not copied):
+
+- [Hyprland wiki](https://github.com/hyprwm/hyprland-wiki/blob/main/content/configuring/core/rules/window-rules.md): matching, initial versus dynamic effects and fullscreen policy.
+- [end-4](https://github.com/end-4/dots-hyprland/blob/2f2a376fdb2ad738bf55f693dd0b474b64bb0ab8/dots/.config/hypr/hyprland/rules.lua): chooser/control sizing and pinned PiP. Its broad title and all-Zotero floating rules are deliberately narrowed here.
+- [HyDE](https://github.com/HyDE-Project/HyDE/blob/fa2fd57afc7203b1b5653d3271f3a57ea3873f97/Configs/.local/share/hypr/lua/window_rules.lua): grouped controls, modals and PiP.
+- [JaKooLit](https://github.com/JaKooLit/Hyprland-Dots/blob/c093e836764d62346390ba307c9163ca11d0229b/config/hypr/configs/WindowRules.conf): Thunar progress, settings utilities, PiP and numeric Steam game classes.
+- [Sway-DE](https://github.com/madic-creates/Sway-DE/blob/ddfc746b3851ed495b027edb927915c4d00d8396/config/sway/sway.d/06_floating.conf): transient roles/types and pinentry; Mango handles supported types natively rather than exposing these criteria.
+- [Mango examples](https://github.com/mangowm/mango/blob/9c44c664725421fbccaf2619e3641b38614db04d/docs/window-management/rules.md): initial sizes/offsets, game tearing and named scratchpads. The bundled `assets/config.conf` only supplies layer animation examples; parser source takes precedence over documentation tables.
+- [ML4W](https://github.com/mylinuxforwork/dotfiles/blob/d6bfb5a4d2ca9fd9f0e69510b75f7aa59fe57a34/dotfiles/.config/hypr/conf/windowrules/default.lua): current default file is empty, so it supplies no additional rules. [Earlier default](https://github.com/mylinuxforwork/dotfiles/blob/437a2eb26540bc66215f6a3a53af959095b5dc6d/dotfiles/.config/hypr/conf/windowrules/default.conf) contains optional commented examples, not a reason to force a global XWayland workaround.
+
+R45 isolation uses real headless Mango, private HOME/XDG/socket/D-Bus and per-app
+mount/PID/network namespaces. It never opens existing profiles or starts user
+session services. Screenshots/IPC observations are separate from configuration
+application. In the installed QQ build, the login is `QQ` / `QQ`; WeChat login is
+XWayland `wechat` / `Weixin`. Mango cannot distinguish them from a main window
+with the same identifiers. No unconditional floating rule is applied to these ambiguous IDs (WeChat may
+float natively through fixed-size hints); `Super+Space`
+provides the existing manual floating toggle. Distinct login-title fallbacks are
+conditional, not a claim that post-login chat/call/share windows were observed.
 
 Mango still uses 12 px outer / 8 px inner gaps, 12 px client corners and a native 1 px blue focus border. Only floating clients receive shadows; inactive clients have 6.3% dim and fullscreen is exempt. Opens/closes/tag changes use 140/110/150 ms, moves 180 ms, focus 0 ms, and the existing ease-out curve; opening zoom begins at 0.985; `reducedMotion` disables animation. `focus_on_activate=0` prevents unsolicited activation jumps. Tearing remains restricted to fullscreen games by the existing rules. These choices are based on locked Mango 0.18.3 sources, not newer documentation.
 
-Fcitx keeps `ClassicUI.PreferTextIcon=True` and the bar's pinned `fcitx` SNI, so the native tray image can express Rime's Chinese/English submode. No polling service or synthetic real-session keys are added. Bibata-Modern-Ice 32 (nixpkgs bibata-cursors) is shared by Mango, HM session environment, GTK, Xresources and Xorg; at 1.5 scale this is nominally 48 device pixels.
+Fcitx keeps `ClassicUI.PreferTextIcon=True` and the bar's pinned `fcitx` SNI, so the native tray image can express Rime's Chinese/English submode. No polling service or synthetic real-session keys are added. Bibata-Modern-Ice 24 (nixpkgs bibata-cursors) is shared by Mango, HM session environment, GTK, Xresources and Xorg; at 1.5 scale this is nominally 36 device pixels.
 
 Build-time validation, isolated sway/Mango screenshots and activation are separate evidence levels. Headless sway can verify layout and layer-shell behavior but provides no blur; actual GPU blur quality, real tray submode changes, external outputs and application focus/launch require the main agent's real-session acceptance after applying the generation.
 

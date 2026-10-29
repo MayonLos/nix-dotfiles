@@ -51,6 +51,34 @@ Launchpad 空查询默认隐藏 Thunar 批量重命名、可移动介质设置�
 具体功能迁移、补丁理由与状态归属见 [Mango README](../aspects/desktop/mango-session/README.md)。
 构建与私有 headless 截图不证明实机应用；GPU 模糊、真实应用启动、Rime 子模式、多屏和全屏边缘手势由主代理应用后验收。
 
+## 窗口规则（R45）
+
+单一规则表为 `aspects/desktop/mango-session/mango/window-rules.nix`，字段以锁定
+Mango 0.18.3 的解析器和 `client_apply_rules()` 为准。规则按顺序覆盖；`app_id`
+与 `title` 同时写时为 AND，标题变化后不重新匹配。按应用限定的精确对话框标题，
+配合 Mango 原生 transient / X11 modal、splash、utility 识别，避免把同名网页或文档浮动。
+
+- 文件选择约 1024×694、设置约 922×683、确认约 717×405、进度约 717×192，初始居中；数值以
+  1707×1067 逻辑尺寸为参考，使用输出比例并保留应用尺寸约束，不锁死用户调整后的大小。
+- 音量、蓝牙、网络控制放右上；CopyQ、Clash、计算器、Qt/Fcitx 设置分别浮动。
+  Thunar 进度、属性、批量重命名，Firefox Library，以及 IDE/办公软件工具窗口单独匹配。
+  JetBrains Wayland 协议窗口保留客户端尺寸，避免强制放大留下透明空框。
+- Firefox PiP 初始 480×270，右下、overlay 置顶、同输出全 tags 可见、打开不抢焦点。
+  Mango 没有强制比例字段，保留客户端 hints，不承诺任意拖拽缩放都保持 16:9。
+- 聊天主窗、IDE 工程、办公文档和资料库继续平铺；只有可区分标题的登录、图片、通话窗
+  浮动，共享工具条不抢焦点。QQ/QQ、wechat/Weixin 的登录与主窗标识可能相同，
+  无法只靠 Mango 规则可靠区分；保留 `Super+Space` 手动浮动，不扩大到整个应用。
+- 所有普通窗口沿用不模糊；Kitty 和 scratch 的磨砂例外保留。媒体的 compositor opacity
+  为 1，不改变应用自身 alpha。`steam_app_[0-9]+` 与 Minecraft 保留无边框/阴影/圆角、
+  全屏撕裂和现有 VRR 提示（输出仍启用全局 VRR），不强制游戏辅助窗全屏；Steam 好友/设置单独浮动。无固定工作区分配。
+- mark-shot 编辑器是普通窗口；截图选区和 wayscrollshot 是 layer surface，不对捕获面强制
+  小尺寸。已有 Noctalia layer 规则不因应用窗口规则而改变。
+
+调研来源、匹配清单、字段限制与隔离验证边界见
+[Mango README 的 Windows and pointer](../aspects/desktop/mango-session/README.md#windows-and-pointer)。
+构建检查运行原生解析器及主窗误匹配 fixtures；截图和 IPC 才是隔离运行证据。
+需要登录的聊天子窗、Steam 好友/游戏、认证请求及真实 GPU 的 VRR/撕裂由主代理实机核对。
+
 ## 早期设计背景
 
 下表保留早期 Astra 方案的尺寸和目标，不能用于覆盖上方现行参数；实际数值以源码为准。
