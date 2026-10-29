@@ -7,6 +7,7 @@
 let
   greeter = nixos.services.displayManager.noctalia-greeter;
 in
+assert greeter.settings.cursor.path == pkgs.bibata-cursors;
 {
   greeter-tech = pkgs.runCommand "greeter-tech-check" { } ''
     # Building this closure applies the patch and its fail-closed source checks.

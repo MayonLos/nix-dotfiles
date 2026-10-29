@@ -1,6 +1,17 @@
 --!nonstrict
 local M = {}
 local pinyin = require("./pinyin.luau")
+-- Desktop IDs remain the launch identity; overrides affect only the picture.
+function M.iconOverrides(entries)
+	local result = {}
+	for _, entry in ipairs(entries or {}) do
+		local id, icon = string.match(entry, "^([^=]+)=(.+)$")
+		if id and icon then
+			result[string.lower(id):gsub("%.desktop$", "")] = icon
+		end
+	end
+	return result
+end
 local definitions = {
 	{ id = "all", label = "全部", tokens = {} },
 	{ id = "dev", label = "开发", tokens = { "Development" } },

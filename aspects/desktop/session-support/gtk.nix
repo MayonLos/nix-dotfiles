@@ -30,7 +30,7 @@ in
 lib.mkMerge [
   {
     home.pointerCursor = {
-      package = pkgs.apple-cursor;
+      package = pkgs.bibata-cursors;
       name = desktop.cursor.name;
       size = desktop.cursor.size;
       gtk.enable = true;

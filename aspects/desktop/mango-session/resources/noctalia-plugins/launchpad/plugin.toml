@@ -27,3 +27,10 @@ key = "hidden_apps"
 type = "string_list"
 label_key = "hidden_apps"
 default = []
+
+[[setting]]
+key = "icon_overrides"
+type = "string_list"
+label_key = "icon_overrides"
+# desktop-id=icon-name-or-absolute-path; native launch identity stays intact.
+default = []

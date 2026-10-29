@@ -5,18 +5,22 @@
 早期记录中的未激活结论只适用于对应轮次；r29–r31 已应用。2026-10-26 的 r32 按全桌面预览继续统一边界与密度，具体取舍以 [现行视觉依据](visual-design.md) 开头的更新为准。旧轮次设计和测量有其时间范围，
 历史取舍见[第九轮记录](history/desktop-polish-2026-10-24.md)。
 
-## r43 base 待集成与应用（2026-10-29）
+## r43 基础与 r44 desk 修正（2026-10-29）
 
 本批依据 `.work/redesign-r42/design/` 的已确认比较图修改系统基础和 Noctalia 面板；下方旧轮次记录保留时间范围。本批构建及私有运行不证明真实桌面已经应用。
 
-- WhiteSur dark、蓝色文件夹；Apple White 光标 32。共享 palette 提供名称，GTK/Qt/Noctalia/Mango/Xorg 消费；greeter 的旧包硬编码须由集成代理在其拥有范围内同步。
+- WhiteSur dark、蓝色文件夹；Bibata-Modern-Ice 光标 32。共享 palette 提供名称，GTK/Qt/Noctalia/Mango/Xorg 消费；greeter 的 cursor.path 与系统包同步为 bibata-cursors。
 - Inter 4.x / Noto Sans CJK SC，14/400 正文、14/500 标签、16/600 与 20/600 标题；GTK/Qt 默认 10.5 pt，Maple 11 pt 保持。既有 Qt GUI 自定义值按 seed/marker 保留。
 - graphite 标题区与低对比分隔；GTK4 保留 libadwaita 控件，仅提供颜色/几何。Noctalia 继续独占 GTK CSS writer。
 - Mango 1 px 蓝焦点细框、12 圆角、外 12 / 内 8；浮窗中性阴影；140/110/150 ms 开/关/tag，开窗 0.985，focus 0 ms，非焦点不透明轻 dim。
 - 夜灯彻底关闭，控制中心移除入口。控制中心 348、通知 320，OSD 连续 3 px 轨道、246×46、底距 96，移除分段补丁。面板采用统一 Soft 原生表面，Mango 开放目标 layer 的 blur；Sway 截图只证明透明与绘制，不证明 Mango 实机模糊。
 - 顶栏、Dock、Launchpad、系统菜单、工作区卡片、锁屏、greeter 的布局/行为不在此批调整。截图、实际命令与待验项见 `.work/r43/base/`。
 
-## 当前已应用状态（2026-10-26，r34）
+r44 desk 将托盘改为内联，取消少量图标时突兀的附着抽屉。托盘、网络、蓝牙、音量、电池与控制中心使用 18 逻辑 px 图标盒，正常状态 brightFg；断开/不可用与静音才用灰色。电池的充电、已满及养护上限状态共用原生电池轮廓+闪电，低电警告和百分比保留。
+
+Launchpad 空查询默认隐藏 Thunar 批量重命名、可移动介质设置及 Fcitx 后台启动项，搜索仍可找到；Neovim、长任务终端与本地 Dead by Daylight 分别有独立图标。补齐 Noctalia 的 hicolor 1024px 目录扫描，修复 DeepSeek Harness 通用回退。Yazi 与 Legion GUI 继续使用已验证的随包图标。完整枚举、隔离截图及限制见 `.work/r44/desk/`，不代表已应用配置。
+
+## 历史已应用状态（2026-10-26，r34）
 
 - 顶栏为一体式 35 px，Nix Status 已移除；启动器宽 520、控制中心宽 380、通知宽 320。
 - Mango 外距 12、内距 8、窗口圆角 10；通知与 OSD 背景不透明，继续使用 One Dark 细边框。
@@ -37,7 +41,7 @@
 
 - 顶栏贴顶 30 逻辑 px，外距/圆角/边框/阴影为零，背景 opacity 0.62；Inter 500，应用名 650。
 - 左侧为 grid 启动器、当前应用名（不是窗口标题）、原生 `focus_hint` 工作区圆点/浅色活动条；中间留空。
-- 右侧为固定 Fcitx 的折叠托盘、network、Bluetooth、音量、电池图标/百分比、仅未读时出现的小通知入口、sliders 控制中心和中文日期时间。
+- 右侧为 Fcitx 与应用图标内联托盘、network、Bluetooth、音量、电池图标/百分比、仅未读时出现的小通知入口、sliders 控制中心和中文日期时间。
 - 底部 Dock：Smart，空工作区显示、有窗口收起、碰到底边唤出；`reserve_space=false` / exclusive zone 0，overlay 层使全屏时仍可唤出。44 px 图标、8 px 外距、16 px 圆角、0.80 opacity、1.2× 放大、原生运行 dots。固定 kitty/firefox/obsidian/thunar/code/qq/musicfox，运行应用按原生逻辑追加。私有 Mango 的 Pixman/GLES2 验证发现阴影与 layer blur 同用会产生黑色厚边，因此 Dock 原生 shadow 关闭，保留细轮廓。
 - 顶栏和 Dock 声明 `compositor_blur=true`；Mango 0.18.3 无该协议，实际磨砂由限定 namespace 的原生 layer blur 提供，使用优化壁纸缓存。普通窗口与其他 layer 不启用模糊。
 - 常驻 sysmon、布局文字、keymode 和工具抽屉移除。System/亮度/电源/caffeine/Quill 迁到控制中心；Docker/portctl/layout 面板分别为 `Super+Ctrl+D/P/W`，原有 `Super+W`、`Super+R`、btop 和硬件键保留。
@@ -92,7 +96,7 @@ Astra 的 S1–S3 阴影、面板行高/卡片尺寸、72px 锁屏时钟等部�
 | Swayimg / Fastfetch | Swayimg 信息使用不透明 brightFg/deep，图库 selection 底与 2px 蓝边；Fastfetch 由 CLI 分支负责 |
 | 文档、媒体与其他应用 | Zathura 与 Obsidian 改用 documents 拥有的 palette 原色模板，退出同名社区模板选择。Zathura 阅读底不透明，PDF recolor 默认关闭，UI 等宽并显示页百分比；按 `Tab` 进入原生目录索引模式，无常驻目录侧栏；原生不支持左选中条与独立细进度线。Obsidian 只对其注册的 vault 接线同名 snippet。mpv/uosc 使用 brightFg 正文、中性选择面、蓝匹配标记与 2px 蓝色选中条，时间等宽、进度线 2px；uosc 不提供选中标记发光选项，采用平面蓝线。OSC 圆角 8。Thunderbird 无既有自定义主题接线，保留原生暗色/GTK 支持。btop、VS Code、Yazi 由各自分支负责 |
 
-鼠标使用 macOS-White 32，应用图标采用 WhiteSur-dark，文件夹采用 blue。
+鼠标使用 Bibata-Modern-Ice 32，应用图标采用 WhiteSur-dark，文件夹采用 blue。
 外观只拥有 `fonts.sans = "Inter"`、`fonts.cjk = "Noto Sans CJK SC"`、
 `fonts.mono = "Maple Mono NF CN"`、`iconFolderColor = "blue"` 等公共数据；GTK 与 Dunst
 GTK、Qt 和 Dunst 共用 WhiteSur-dark 蓝色图标；不再对 Papirus 做重着色。Dunst 从公开 GTK option 复用相同的名称和包。

@@ -8,6 +8,8 @@ require = function(path)
 	return modules[path]
 end
 local model = dofile(root .. "/model.luau")
+local icons = model.iconOverrides({ "NVIM.desktop=/icons/nvim.png", "terminal=clock", "broken", "empty=" })
+assert(icons.nvim == "/icons/nvim.png" and icons.terminal == "clock" and icons.broken == nil and icons.empty == nil)
 local apps = {
 	{ id = "code", name = "编辑器", search = "编辑器 code visual studio code", categories = "Development;IDE;" },
 	{ id = "firefox", name = "Firefox", search = "firefox web browser", categories = "Network;WebBrowser;" },
@@ -71,6 +73,9 @@ assert(
 assert(model.filter(chinese, "", "all")[1] == chinese[1])
 local values, watchers, pending, shows, hides = {}, {}, nil, 0, 0
 noctalia = {
+	getConfig = function(key)
+		return key == "icon_overrides" and { "code=/icons/code-custom.png", "firefox=missing-override" } or nil
+	end,
 	state = {
 		get = function(k)
 			return values[k]
@@ -108,6 +113,12 @@ noctalia = {
 	},
 	setUpdateInterval = function() end,
 	appIconPath = function(id)
+		if id == "missing-override" then
+			return nil
+		end
+		if string.sub(id, 1, 1) == "/" then
+			return id
+		end
 		return "/icons/" .. id
 	end,
 }
@@ -117,6 +128,13 @@ pending({ exitCode = 0, stdout = "fixture" })
 assert(#values.apps == 3)
 update()
 update() -- finish incremental icon prewarming
+for _, app in ipairs(values.apps) do
+	if app.id == "code" then
+		assert(app.icon == "/icons/code-custom.png")
+	elseif app.id == "firefox" then
+		assert(app.icon == "/icons/firefox") -- bad override falls back to native identity
+	end
+end
 onIpc("toggle")
 assert(values.visible and shows == 1 and #values.apps == 3)
 onIpc("toggle")

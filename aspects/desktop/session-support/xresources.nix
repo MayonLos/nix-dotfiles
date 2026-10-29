@@ -41,8 +41,9 @@ let
       if ${lib.getExe pkgs.xrdb} -merge ${config.xresources.path}; then
         # Pyglet/ManimGL inherits the X11 root cursor. Mango seeds that cursor
         # with an output-scaled bitmap, unlike clients loading Xcursor.size.
-        # On this 1.5x panel it was 32px despite Xcursor.size=24; explicitly
-        # loading the root cursor after xrdb gives a measured 24px bitmap.
+        # The earlier 24px-theme measurement found a mismatched 32px root;
+        # reload after xrdb so the current shared theme/size owns the root too.
+        # That historical measurement does not describe Bibata at size 32.
         ${lib.getExe pkgs.xsetroot} -cursor_name left_ptr
         exit $?
       fi

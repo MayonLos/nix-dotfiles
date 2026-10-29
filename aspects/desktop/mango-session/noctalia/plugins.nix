@@ -77,6 +77,11 @@ in
       "org.fcitx.fcitx5-config-qt"
       "thunar-settings"
       "org.xfce.thunar-settings"
+      "thunar-bulk-rename"
+      "org.xfce.thunar-bulk-rename"
+      "thunar-volman-settings"
+      "org.xfce.volman"
+      "org.fcitx.Fcitx5"
       "rofi"
       "rofi-theme-selector"
       "org.fcitx.fcitx5-configtool"
@@ -96,6 +101,13 @@ in
       "gvim"
       "nixos-manual"
       "mark-shot-edit"
+    ];
+    # These are pictures only: neither user's desktop files nor app launch
+    # commands change. Missing override resources fall back to native lookup.
+    "nix-dotfiles/launchpad".icon_overrides = [
+      "nvim=${pkgs.unstable.neovim-unwrapped}/share/icons/hicolor/128x128/apps/nvim.png"
+      "workspace-task-terminal=${../resources/terminal-clock.svg}"
+      "Dead by Daylight=${../resources/dead-by-daylight.jpg}"
     ];
     "nix-dotfiles/desktop-menus" = {
       system_placement = "floating";

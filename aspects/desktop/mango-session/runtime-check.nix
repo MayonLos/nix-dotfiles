@@ -285,7 +285,7 @@ pkgs.runCommand "interactive-session-config"
     assert p["dark"]["mSurface"] == m["palette"]["bg"]
     settings = m["settings"]
     patches = {patch["name"]: patch["content"] for patch in m["noctaliaPatches"]}
-    assert set(patches) == {"astra-selection.patch", "tech-lockscreen.patch", "nvidia-sampler.patch", "active-app-name.patch", "launchpad-native.patch", "desktop-menus.patch", "r43-control-center.patch", "r43-notifications.patch", "r43-osd.patch", "r43-calendar.patch", "r43-settings.patch", "r43-wallpaper.patch"}
+    assert set(patches) == {"astra-selection.patch", "tech-lockscreen.patch", "nvidia-sampler.patch", "active-app-name.patch", "launchpad-native.patch", "desktop-menus.patch", "r43-control-center.patch", "r43-notifications.patch", "r43-osd.patch", "r43-calendar.patch", "r43-settings.patch", "r43-wallpaper.patch", "r44-status-icons.patch"}
     for name, marker in {"astra-selection.patch": "syncCompactControls", "tech-lockscreen.patch": "m_identityAvatar->setRadius(28.0F)", "nvidia-sampler.patch": "gpuOnlyNvidia", "active-app-name.patch": "resolveRunningDesktopEntry", "launchpad-native.patch": "provider.activate(result)", "desktop-menus.patch": "workspaceWindowAssignments(it->output)"}.items():
         assert marker in patches[name], name
     # Check serialized settings too: validating the Nix attrset alone would
@@ -342,7 +342,7 @@ pkgs.runCommand "interactive-session-config"
         ("widget", "battery", "show_label"): True,
         ("widget", "battery", "label_content"): "percent",
         ("widget", "battery", "actions", "left"): "exec legion-conservation toggle",
-        ("widget", "tray", "drawer"): True,
+        ("widget", "tray", "drawer"): False,
         ("widget", "tray", "pinned"): ["fcitx"],
         ("widget", "volume", "show_label"): False,
         ("widget", "notifications", "hide_when_no_unread"): True,
@@ -401,6 +401,10 @@ pkgs.runCommand "interactive-session-config"
         assert root["dock"]["magnification_scale"] <= 1.25
         assert [item["type"] for item in root["control_center"]["shortcuts"]] == ["wifi", "bluetooth", "system", "power_profile", "caffeine", "fel/quill:toggle", "notification"]
         assert root["notification"]["offset_y"] == 12
+    assert "battery-charging" in patches["r44-status-icons.patch"]
+    assert settings["bar"]["main"]["icon_color"] == m["palette"]["brightFg"]
+    for name in ("network", "bluetooth", "volume", "battery", "tray", "notifications", "control-center"):
+        assert settings["widget"][name]["scale"] == 1.125
     assert "workspaces_widget" not in patches["astra-selection.patch"]
     enabled_plugins = settings["plugins"]["enabled"]
     assert "tmelik/system-monitor" not in enabled_plugins
@@ -409,7 +413,11 @@ pkgs.runCommand "interactive-session-config"
     assert "nix-dotfiles/legion-conservation" in enabled_plugins
     assert "nix-dotfiles/launchpad" in enabled_plugins
     assert "nix-dotfiles/desktop-menus" in enabled_plugins
-    assert {"base", "draw", "math", "startcenter", "rofi", "xterm"} <= set(settings["plugin_settings"]["nix-dotfiles/launchpad"]["hidden_apps"])
+    assert {"base", "draw", "math", "startcenter", "rofi", "xterm", "thunar-bulk-rename", "thunar-volman-settings", "org.fcitx.Fcitx5"} <= set(settings["plugin_settings"]["nix-dotfiles/launchpad"]["hidden_apps"])
+    icon_overrides = settings["plugin_settings"]["nix-dotfiles/launchpad"]["icon_overrides"]
+    assert {entry.split("=", 1)[0] for entry in icon_overrides} == {"nvim", "workspace-task-terminal", "Dead by Daylight"}
+    for entry in icon_overrides:
+        assert Path(entry.split("=", 1)[1]).is_file(), entry
     for root in (settings, generated):
         assert "mindnbytes/nix-status" not in root["plugin_settings"]
         assert "mindnbytes/nix-status:status" not in root["widget"]
@@ -477,6 +485,9 @@ pkgs.runCommand "interactive-session-config"
     assert "keyboard_layout" not in settings["bar"]["main"]["end"]
     assert m["environment"]["XCURSOR_THEME"] == m["palette"]["cursor"]["name"]
     assert m["environment"]["XCURSOR_SIZE"] == str(m["palette"]["cursor"]["size"])
+    assert m["palette"]["cursor"] == {"name": "Bibata-Modern-Ice", "size": 32}
+    assert m["mango"]["cursor_theme"] == m["palette"]["cursor"]["name"]
+    assert m["mango"]["cursor_size"] == 32
     for prefix in ("tab_bar_decorate_", "group_bar_decorate_", "jump_label_decorate_"):
         assert mango[prefix + "focus_fg_color"] == "0x" + m["palette"]["blue"].removeprefix("#") + "ff"
         assert mango[prefix + "focus_bg_color"] == "0x" + m["palette"]["selection"].removeprefix("#") + "ff"

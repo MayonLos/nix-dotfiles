@@ -88,10 +88,12 @@ let
       ./noctalia/r43-calendar.patch
       ./noctalia/r43-settings.patch
       ./noctalia/r43-wallpaper.patch
+      ./noctalia/r44-status-icons.patch
     ];
     # Fail on source drift, including the independently maintained panel patches.
     postPatch = (old.postPatch or "") + ''
       ${pkgs.python3}/bin/python3 ${./noctalia/r43-check-panels.py}
+      ${pkgs.python3}/bin/python3 ${./noctalia/r44-check-status.py}
       grep -Fq 'R39: reuse native desktop scanning' src/app/application_ipc.cpp
       grep -Fq 'R39: Dock owns the Launchpad entry' src/shell/dock/dock.cpp
       grep -Fq 'R39: explicit capture consumes' src/shell/plugin_layer/plugin_layer.cpp

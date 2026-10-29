@@ -29,8 +29,8 @@ assert
   home.systemd.user.sessionVariables.QT_PLUGIN_PATH == home.home.sessionVariables.QT_PLUGIN_PATH;
 assert home.home.sessionVariables.GTK_USE_PORTAL == "1";
 assert home.systemd.user.sessionVariables.GTK_USE_PORTAL == "1";
-assert home.home.pointerCursor.name == "macOS-White";
-assert home.home.pointerCursor.package == pkgs.apple-cursor;
+assert home.home.pointerCursor.name == "Bibata-Modern-Ice";
+assert home.home.pointerCursor.package == pkgs.bibata-cursors;
 assert home.home.sessionVariables.XCURSOR_THEME == home.home.pointerCursor.name;
 assert home.systemd.user.sessionVariables.XCURSOR_SIZE == toString home.home.pointerCursor.size;
 assert

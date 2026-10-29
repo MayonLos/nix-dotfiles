@@ -1,6 +1,8 @@
 # 紧凑 · 下划指示 v3
 
-2026-10-29 r43 base（待集成/应用）：系统基础与 Noctalia 面板依据 `.work/redesign-r42/design/` 的各项 compare.png 更新；该批覆盖下文旧轮次的对应参数。图标采用 WhiteSur dark / blue folders，光标 Apple White 32；Inter 4.x、Noto Sans CJK SC、Maple Mono NF CN（终端 11 pt），正文 14/400、标签 14/500、标题 16/600 与 20/600，GTK/Qt 以 10.5 pt 对应 14 逻辑 px。GTK3/Qt 为 graphite 外壳，GTK4 继续使用 libadwaita 原生控件。Mango 边框 1 px 蓝、圆角 12、外距 12 / 内距 8，开/关/tag 140/110/150 ms、开窗比例 0.985、focus 0 ms，非焦点保持不透明轻 dim。Noctalia 夜灯关闭且移除快捷入口；控制中心目标 348、通知 320、连续细轨 OSD 246×46 / 底距 96；面板共用原生 Soft 表面，Mango 对目标 namespace 提供模糊。顶栏、Dock、Launchpad、系统菜单、工作区、锁屏与 greeter 的布局/行为不属于本批。隔离截图与验证结果在 `.work/r43/base/`，不代表配置已经应用。
+2026-10-29 r44 desk 优先于下方旧轮次：光标统一 Bibata-Modern-Ice 32（bibata-cursors，含 greeter）；托盘少量应用直接内联，不再展开附着胶囊。右侧状态图标盒统一 18 逻辑 px，正常 brightFg，仅断开/不可用或静音灰色；充电及养护上限显示原生电池轮廓+闪电，保留百分比与低电警告。Launchpad 默认隐藏 Thunar 附属工具，搜索仍可找到，并修正审计发现的真实应用图标重复/回退；证据位于 `.work/r44/desk/`。
+
+2026-10-29 r43 base（待集成/应用）：系统基础与 Noctalia 面板依据 `.work/redesign-r42/design/` 的各项 compare.png 更新；该批覆盖下文旧轮次的对应参数。图标采用 WhiteSur dark / blue folders，光标 Bibata-Modern-Ice 32；Inter 4.x、Noto Sans CJK SC、Maple Mono NF CN（终端 11 pt），正文 14/400、标签 14/500、标题 16/600 与 20/600，GTK/Qt 以 10.5 pt 对应 14 逻辑 px。GTK3/Qt 为 graphite 外壳，GTK4 继续使用 libadwaita 原生控件。Mango 边框 1 px 蓝、圆角 12、外距 12 / 内距 8，开/关/tag 140/110/150 ms、开窗比例 0.985、focus 0 ms，非焦点保持不透明轻 dim。Noctalia 夜灯关闭且移除快捷入口；控制中心目标 348、通知 320、连续细轨 OSD 246×46 / 底距 96；面板共用原生 Soft 表面，Mango 对目标 namespace 提供模糊。顶栏、Dock、Launchpad、系统菜单、工作区、锁屏与 greeter 的布局/行为不属于本批。隔离截图与验证结果在 `.work/r43/base/`，不代表配置已经应用。
 
 2026-10-26 后续批准的 r32 调整优先于下方旧轮次：保留 r31 一体式 35 px 顶栏，删除 Nix Status；启动器宽 520，控制中心宽 380，通知宽 320；Mango 外距 12、内距 8、圆角 10。Neovim 保留 r29/r30 原生补全和英文 which-key。Thunar 低频开发入口归入 Development，LibreOffice 默认使用 Qt6 外壳并保留浅色纸张。原有状态语言继续适用，实施证据另记执行记录。
 
@@ -343,6 +345,6 @@ Qt6ct 使用 Fusion，QPalette `Window/Base/AlternateBase/Button=bg/deep/surface
 
 窗口规则单一归属为 [window-rules.nix](../aspects/desktop/mango-session/mango/window-rules.nix)，行为及大小表见 [Mango README](../aspects/desktop/mango-session/README.md#window-rules)。默认保留手动工作区习惯，浏览器 2 / 通讯 4 是显式 opt-in。普通窗口仍可正常取得焦点；通知/共享工具浮窗按应用和标题静默打开，activation 请求只提示 urgent。
 
-电池使用 Noctalia 原生 graphic，规避 Tabler 小字形歧义；移除 XKB 键盘布局组件，仅常显 Fcitx 托盘图标，其他托盘项收进 drawer。技术布局名 Tile/Scroller/Monocle 等、fastfetch 标准键和 tmux PREFIX/COPY/ZOOM 使用英文，中文日期和说明保留。r43 的 macOS-White 32 复用共享配置，在 1.5 缩放下名义 48 device px；安全环境补齐 XCURSOR_THEME/SIZE 到 systemd 和 Mango 启动的 Qt/Kitty 客户端，不改 GTK/Qt/icon 文件。
+电池使用 Noctalia 原生 graphic，规避 Tabler 小字形歧义；移除 XKB 键盘布局组件，Fcitx 与其他托盘图标内联排列（r44 取代旧 drawer 默认值）。技术布局名 Tile/Scroller/Monocle 等、fastfetch 标准键和 tmux PREFIX/COPY/ZOOM 使用英文，中文日期和说明保留。r43 的 Bibata-Modern-Ice 32 复用共享配置，在 1.5 缩放下名义 48 device px；安全环境补齐 XCURSOR_THEME/SIZE 到 systemd 和 Mango 启动的 Qt/Kitty 客户端，不改 GTK/Qt/icon 文件。
 
 实施证据、标签对照、隔离截图及待验项见 [第二十一轮 A 记录](history/ui-r21a-2026-10-25.md)。

@@ -1,0 +1,81 @@
+--- a/src/dbus/upower/upower_service.cpp
++++ b/src/dbus/upower/upower_service.cpp
+@@ -69,7 +69,8 @@
+     return "battery-charging";
+   }
+   if (state == BatteryState::FullyCharged || state == BatteryState::PendingCharge) {
+-    return "battery-plugged";
++    // R44: AC at full/charge-limit still reads as a battery, with the native bolt.
++    return "battery-charging";
+   }
+   if (state == BatteryState::Unknown && percentage <= 0.0) {
+     return "battery-exclamation";
+--- a/src/shell/bar/widgets/network_widget.cpp
++++ b/src/shell/bar/widgets/network_widget.cpp
+@@ -303,7 +303,10 @@
+     m_glyph->setGlyph(network_display::glyphForState(s));
+   }
+   m_glyph->setGlyphSize(Style::baseGlyphSize * m_contentScale);
+-  m_glyph->setColor(widgetIconColorOr(colorSpecFromRole(ColorRole::OnSurface)));
++  // R44: healthy device icons retain the bar's bright foreground, without alpha dimming.
++  m_glyph->setColor(s.connected || s.resolving
++                        ? widgetIconColorOr(colorSpecFromRole(ColorRole::OnSurface))
++                        : colorSpecFromRole(ColorRole::OnSurfaceVariant));
+   m_glyph->measure(renderer);
+ 
+   if (m_spinner != nullptr) {
+--- a/src/shell/bar/widgets/bluetooth_widget.cpp
++++ b/src/shell/bar/widgets/bluetooth_widget.cpp
+@@ -148,7 +148,10 @@
+ 
+   m_glyph->setGlyph(glyphForState(s, numConnected));
+   m_glyph->setGlyphSize(Style::baseGlyphSize * m_contentScale);
+-  m_glyph->setColor(widgetIconColorOr(colorSpecFromRole(ColorRole::OnSurface)));
++  // R44: only an off/disconnected adapter uses the secondary foreground.
++  m_glyph->setColor(s.powered && hasConnectedDevice
++                        ? widgetIconColorOr(colorSpecFromRole(ColorRole::OnSurface))
++                        : colorSpecFromRole(ColorRole::OnSurfaceVariant));
+   m_glyph->measure(renderer);
+ 
+   if (m_label != nullptr) {
+--- a/src/system/icon_resolver.cpp
++++ b/src/system/icon_resolver.cpp
+@@ -486,7 +486,7 @@
+       if (dirs.empty()) {
+         // No index.theme — fall back to common paths so the theme isn't silently skipped
+         for (const char* path :
+-             {"/scalable/apps/", "/512x512/apps/", "/256x256/apps/", "/128x128/apps/", "/64x64/apps/", "/48x48/apps/",
++             {"/scalable/apps/", "/1024x1024/apps/", "/512x512/apps/", "/256x256/apps/", "/128x128/apps/", "/64x64/apps/", "/48x48/apps/",
+               "/32x32/apps/", "/"}) {
+           const std::string_view name(path);
+           pushUniqueDir(
+@@ -516,6 +516,15 @@
+           );
+         }
+       }
++      // R44: package icon directories can be absent from a shared hicolor index.
++      // Keep indexed priority; supplement the real 1024-only application directory.
++      const std::string largeApps = themeRoot + "/1024x1024/apps/";
++      if (themeName == "hicolor" && pathIsDirectory(largeApps)) {
++        pushUniqueDir(searchDirs, IconSearchDir{
++            .path = largeApps, .size = 1024, .scalable = false, .theme = themeName,
++            .minSize = 1024, .maxSize = 1024
++        });
++      }
+     }
+     for (const auto& parent : parents) {
+       buildThemeSearchPaths(parent, baseDirs, visited, themeRoots, searchDirs);
+--- a/src/scripting/luau_host.cpp
++++ b/src/scripting/luau_host.cpp
+@@ -608,7 +608,10 @@
+ 
+     std::string iconName;
+     const auto entries = desktopEntriesSnapshot();
+-    if (const auto entry = app_identity::findDesktopEntry(std::string_view(appId, len), *entries);
++    // R44: an explicit file path is artwork, not an app identity to canonicalize.
++    if (std::string_view(appId, len).starts_with("/")) {
++      iconName.assign(appId, len);
++    } else if (const auto entry = app_identity::findDesktopEntry(std::string_view(appId, len), *entries);
+         entry.has_value() && !entry->icon.empty()) {
+       iconName = entry->icon;
+     } else {

@@ -23,6 +23,7 @@
     font_weight = 500;
     font_scale = 0.93;
     color = palette.brightFg;
+    icon_color = palette.brightFg;
 
     start = [
       "launcher"
@@ -81,13 +82,27 @@
       urgent_color = "error";
     };
     tray = {
-      drawer = true;
+      # R44: two native tray items belong inline; no attached drawer capsule.
+      drawer = false;
+      scale = 1.125;
+      match_adjacent_spacing = true;
       pinned = [ "fcitx" ];
     };
-    network.show_label = false;
-    volume.show_label = false;
+    # A common 18 logical px Tabler box (native base 16) improves legibility
+    # at 1.5 output scale. Only unavailable/disconnected devices use grey.
+    network = {
+      show_label = false;
+      scale = 1.125;
+    };
+    bluetooth.scale = 1.125;
+    volume = {
+      show_label = false;
+      scale = 1.125;
+      mute_color = palette.muted;
+    };
     battery = {
-      # Native Tabler glyph + external percentage; no custom battery renderer.
+      # R44 keeps native Tabler battery outline + bolt even at AC charge limit.
+      scale = 1.125;
       display_mode = "glyph";
       label_content = "percent";
       show_label = true;
@@ -96,9 +111,12 @@
     };
     notifications = {
       hide_when_no_unread = true;
-      scale = 0.85;
+      scale = 1.125;
     };
-    "control-center".glyph = "adjustments-horizontal";
+    "control-center" = {
+      glyph = "adjustments-horizontal";
+      scale = 1.125;
+    };
     clock.format = "{:%m月%d日 周%a %H:%M}";
   };
 

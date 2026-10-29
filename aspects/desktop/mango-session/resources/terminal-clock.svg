@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Original launcher artwork: a terminal with its long-task clock. -->
+  <rect x="7" y="7" width="114" height="114" rx="25" fill="#272c33"/>
+  <rect x="19" y="24" width="90" height="72" rx="8" fill="#181b20" stroke="#abb2bf" stroke-width="3"/>
+  <path d="m32 44 13 11-13 11m23 0h17" fill="none" stroke="#d7dae0" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="91" cy="88" r="22" fill="#272c33" stroke="#61afef" stroke-width="4"/>
+  <path d="M91 75v14l9 5" fill="none" stroke="#d7dae0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

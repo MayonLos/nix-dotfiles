@@ -10,7 +10,7 @@
     serif = "Noto Serif CJK SC";
   };
   cursor = {
-    name = "macOS-White";
+    name = "Bibata-Modern-Ice";
     size = 32;
   };
   iconTheme = "WhiteSur-dark";

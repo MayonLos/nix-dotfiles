@@ -2,6 +2,8 @@
 -- The layer is lazy; process-lifetime shared state keeps its index warm.
 local refreshing = false
 local cachedIcons, iconQueue, indexed = {}, {}, {}
+local model = require("./model.luau")
+local iconOverrides = model.iconOverrides(noctalia.getConfig("icon_overrides"))
 local function refresh()
 	if refreshing then
 		return
@@ -78,7 +80,10 @@ function update()
 		-- Bound work per callback: resolving a whole icon theme exceeds Luau's CPU budget.
 		for _ = 1, math.min(2, #iconQueue) do
 			local app = table.remove(iconQueue, 1)
-			cachedIcons[app.id] = noctalia.appIconPath(app.id, 114) or false
+			local icon = iconOverrides[string.lower(app.id)]
+			cachedIcons[app.id] = (icon and noctalia.appIconPath(icon, 114))
+				or noctalia.appIconPath(app.id, 114)
+				or false
 			app.icon = cachedIcons[app.id]
 		end
 		noctalia.state.set("apps", indexed)
