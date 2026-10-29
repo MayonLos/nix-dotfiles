@@ -446,38 +446,6 @@
         "type": "github"
       }
     },
-    "noctalia-plugins-community": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1793226906,
-        "narHash": "sha256-ce+yhW5X3tiIUChNlDuD6S7q4ioWndbhQGnhWzxxebk=",
-        "owner": "noctalia-dev",
-        "repo": "community-plugins",
-        "rev": "cd454463cdafa8684e7e886fd9bd9bc99b51b462",
-        "type": "github"
-      },
-      "original": {
-        "owner": "noctalia-dev",
-        "repo": "community-plugins",
-        "type": "github"
-      }
-    },
-    "noctalia-plugins-official": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1793026850,
-        "narHash": "sha256-bs8F2dSBHfq6hc4MQIvNAPnMfD1JU6jH08VBHLbOaGM=",
-        "owner": "noctalia-dev",
-        "repo": "official-plugins",
-        "rev": "d696743c5e6718ed5bf6b4a4ef10d2636002d80c",
-        "type": "github"
-      },
-      "original": {
-        "owner": "noctalia-dev",
-        "repo": "official-plugins",
-        "type": "github"
-      }
-    },
     "root": {
       "inputs": {
         "den": "den",
@@ -491,8 +459,6 @@
         "nixpkgs-unstable": "nixpkgs-unstable",
         "noctalia": "noctalia",
         "noctalia-greeter": "noctalia-greeter",
-        "noctalia-plugins-community": "noctalia-plugins-community",
-        "noctalia-plugins-official": "noctalia-plugins-official",
         "sops-nix": "sops-nix",
         "treefmt-nix": "treefmt-nix_2",
         "wayscrollshot": "wayscrollshot"

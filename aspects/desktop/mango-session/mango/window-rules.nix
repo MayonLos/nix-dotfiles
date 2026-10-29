@@ -46,7 +46,7 @@ let
     # allow_tearing=2: opt normal clients out; only games opt in below.
     "force_tearing:0,no_blur:1,app_id:.*"
     # Kitty supplies its own translucent background; preserve native frost.
-    "no_blur:0,app_id:^(kitty|Neovim|mayon-scratch|mayon-files|mayon-monitor|mayon-clash|mayon-herdr)$"
+    "no_blur:0,app_id:^(kitty|Neovim|mayon-scratch|mayon-files|mayon-monitor|mayon-clash|mayon-docker|mayon-docker-exec|mayon-ports|mayon-herdr)$"
 
     # Native transients / X11 modal, splash, utility types already float.
     # These standalone portal windows have no reliable transient parent.
@@ -105,11 +105,14 @@ let
     "${settings},app_id:^(virt-manager|[.]virt-manager-wrapped)$,title:^(Connection Details|Virtual Machine Details|New VM|New Connection|连接详情|新建虚拟机)$"
 
     # Preserve named scratch launch identities and their established sizes.
-    "${opaque},app_id:^(kitty|mayon-scratch|mayon-files|mayon-monitor|mayon-clash)$"
+    "${opaque},app_id:^(kitty|mayon-scratch|mayon-files|mayon-monitor|mayon-clash|mayon-docker|mayon-docker-exec|mayon-ports)$"
     "is_named_scratchpad:1,width:0.78,height:0.78,app_id:^mayon-scratch$"
     "is_named_scratchpad:1,width:0.78,height:0.78,app_id:^mayon-files$"
     "is_named_scratchpad:1,width:0.72,height:0.74,app_id:^mayon-monitor$"
     "is_named_scratchpad:1,width:0.62,height:0.72,app_id:^mayon-clash$"
+    "is_named_scratchpad:1,width:0.62,height:0.72,app_id:^mayon-docker$"
+    "is_named_scratchpad:1,width:0.62,height:0.72,app_id:^mayon-ports$"
+    "is_floating:1,width:0.62,height:0.72,app_id:^mayon-docker-exec$"
   ]
   # Community modal/chooser patterns, scoped to apps and anchored to avoid
   # floating tabs such as "Save As - documentation — Mozilla Firefox".

@@ -17,6 +17,8 @@ let
     "SUPER+ALT,E,toggle_named_scratchpad,mayon-files,none,${lib.getExe pkgs.kitty} --class=mayon-files ${lib.getExe pkgs.yazi}"
     "SUPER+ALT,M,toggle_named_scratchpad,mayon-monitor,none,${lib.getExe pkgs.kitty} --class=mayon-monitor btop"
     "SUPER+ALT,C,toggle_named_scratchpad,mayon-clash,none,${lib.getExe pkgs.kitty} --class=mayon-clash clashtui-mayon"
+    "SUPER+CTRL,D,toggle_named_scratchpad,mayon-docker,none,${lib.getExe pkgs.kitty} --class=mayon-docker dockertui-mayon"
+    "SUPER+CTRL,P,toggle_named_scratchpad,mayon-ports,none,${lib.getExe pkgs.kitty} --class=mayon-ports portstui-mayon"
     "SUPER+CTRL,G,toggleglobal"
     "SUPER+ALT,G,toggleoverlay"
     "SUPER+CTRL,S,tag_special_silent"
@@ -268,6 +270,8 @@ let
         mayon-files = "临时文件 Yazi";
         mayon-monitor = "系统监视 btop";
         mayon-clash = "Clash 代理";
+        mayon-docker = "Docker 容器与镜像";
+        mayon-ports = "监听端口与进程";
       };
       args =
         if action == "toggle_named_scratchpad" then

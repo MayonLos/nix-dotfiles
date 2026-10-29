@@ -460,8 +460,11 @@ pkgs.runCommand "interactive-session-config"
     assert "ALT,space,spawn,noctalia msg panel-toggle launcher" in mango["bind"]
     assert "force_tearing:0,no_blur:1,app_id:.*" in mango["window_rule"]
     assert mango["window_rule"][-1] == "no_blur:0,app_id:^dev[.]noctalia[.]Noctalia$"
-    for chord in ("SUPER+CTRL,D,", "SUPER+CTRL,P,", "SUPER+CTRL,W,"):
-        assert not any(binding.startswith(chord) for binding in mango["bind"])
+    assert not any(binding.startswith("SUPER+CTRL,W,") for binding in mango["bind"])
+    for chord, scratch, tool in (("SUPER+CTRL,D,", "mayon-docker", "dockertui-mayon"), ("SUPER+CTRL,P,", "mayon-ports", "portstui-mayon")):
+        matches = [binding for binding in mango["bind"] if binding.startswith(chord)]
+        assert len(matches) == 1 and "noctalia" not in matches[0]
+        assert f"toggle_named_scratchpad,{scratch}," in matches[0] and matches[0].endswith(f"--class={scratch} {tool}")
     assert "SUPER,R,setkeymode,resize" in mango["bind"]
     assert not settings["shell"]["panel"]["shadow"] and not settings["bar"]["main"]["shadow"]
     assert mango["border_px"] == 1 and mango["border_radius"] == 12
