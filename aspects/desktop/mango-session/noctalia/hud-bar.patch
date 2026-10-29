@@ -1,6 +1,6 @@
 --- a/src/shell/bar/bar.cpp
 +++ b/src/shell/bar/bar.cpp
-@@ -40,6 +40,12 @@
+@@ -39,6 +39,12 @@
  #include <wayland-client-protocol.h>
 
  namespace {
@@ -13,7 +13,7 @@
 
    constexpr Logger kLog("bar");
    constexpr std::chrono::milliseconds kWorkspaceRevealDebounce{80};
-@@ -1157,6 +1163,9 @@
+@@ -1148,6 +1154,9 @@
          const float capsuleRadius = radiusSource != nullptr ? radiusSource->resolvedBarCapsuleRadius(shellW, shellH)
                                                              : std::max(0.0F, std::min(shellW, shellH) * 0.5F);
          bg->setRadius(capsuleRadius);
@@ -23,7 +23,7 @@
          if (run.container == nullptr) {
            placeCapsuleHoverBoxes(
                run, isVertical, shellW, shellH, contentX, contentY, capsuleRadius, widgetHoverPadding
-@@ -3211,6 +3220,7 @@
+@@ -3202,6 +3211,7 @@
    style.fill = colorForRole(ColorRole::Surface, instance.barConfig.backgroundOpacity);
    style.border = resolveColorSpec(instance.barConfig.border);
    style.borderWidth = instance.barConfig.borderWidth;
@@ -31,7 +31,7 @@
    instance.bg->setStyle(style);
  }
 
-@@ -3538,7 +3548,7 @@
+@@ -3529,7 +3539,7 @@
    // Keep it exactly aligned with the shadow shape; the shadow shader now
    // draws only outside the rect, so any size mismatch is visible at corners.
    if (instance.bg != nullptr) {
@@ -40,7 +40,7 @@
          .fill = colorForRole(ColorRole::Surface, instance.barConfig.backgroundOpacity),
          .border = resolveColorSpec(instance.barConfig.border),
          .fillMode = FillMode::Solid,
-@@ -3548,6 +3558,7 @@
+@@ -3539,6 +3549,7 @@
          .softness = 0.0F,
          .borderWidth = instance.barConfig.borderWidth,
      };
@@ -58,25 +58,25 @@
 
  namespace {
 
-@@ -118,12 +119,16 @@
+@@ -117,12 +118,15 @@
    const auto* display = m_brightness != nullptr ? m_brightness->findByOutput(m_output) : nullptr;
    const bool available = display != nullptr && display->controllable;
    const float brightness = available ? display->brightness : -1.0F;
--  if (m_haveLastState && available == m_lastAvailable) {
+-  if (m_haveLastState
+-      && available == m_lastAvailable
 +  const std::string metadata = display == nullptr ? "" : display->friendlyName + display->id
 +      + std::to_string(display->physicalWidth) + "x" + std::to_string(display->physicalHeight)
 +      + "@" + std::to_string(display->refreshMilliHz);
-+  if (m_haveLastState && available == m_lastAvailable && metadata == m_lastMetadata) {
-     if (!available || (std::abs(brightness - m_lastBrightness) < 0.001F && m_isVertical == m_lastVertical)) {
-       return;
-     }
++  if (m_haveLastState && available == m_lastAvailable && metadata == m_lastMetadata
+       && (!available || (std::abs(brightness - m_lastBrightness) < 0.001F && m_isVertical == m_lastVertical))) {
+     return;
    }
 
 +  m_lastMetadata = metadata;
    m_haveLastState = true;
    m_lastAvailable = available;
    m_lastBrightness = brightness;
-@@ -166,12 +171,19 @@
+@@ -165,12 +169,19 @@
 
    if (rootNode != nullptr) {
      int pct = static_cast<int>(std::round(brightness * 100.0F));
@@ -508,7 +508,7 @@
                    .presentation =
 --- a/src/system/brightness_service.cpp
 +++ b/src/system/brightness_service.cpp
-@@ -244,6 +244,13 @@
+@@ -246,6 +246,13 @@
 
    void applyOutputMetadata(BrightnessDisplay& display, const WaylandOutput& output) {
      display.label = output.description.empty() ? output.connectorName : output.description;
@@ -535,7 +535,7 @@
    std::int32_t logicalWidth = 0;
 --- a/src/wayland/wayland_connection.cpp
 +++ b/src/wayland/wayland_connection.cpp
-@@ -142,13 +142,14 @@
+@@ -140,13 +140,14 @@
      }
    }
 

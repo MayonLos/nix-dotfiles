@@ -150,8 +150,29 @@ let
         [ -n "''${WAYLAND_DISPLAY:-}" ] || exit 0
         mkdir -p "$STATE_DIR"
 
+        local stopping=0
+        local wl_pid=""
+        local x11_pid=""
+
+        # ShellCheck does not resolve these nested functions through trap.
+        # shellcheck disable=SC2329
+        request_stop() {
+          stopping=1
+          [ -z "$wl_pid" ] || kill "$wl_pid" 2>/dev/null || true
+          [ -z "$x11_pid" ] || kill "$x11_pid" 2>/dev/null || true
+        }
+
+        # shellcheck disable=SC2329
+        cleanup_watchers() {
+          [ -z "$wl_pid" ] || kill "$wl_pid" 2>/dev/null || true
+          [ -z "$x11_pid" ] || kill "$x11_pid" 2>/dev/null || true
+        }
+
+        trap request_stop INT TERM
+        trap cleanup_watchers EXIT
+
         wl-paste --watch "$0" from-wayland &
-        local wl_pid=$!
+        wl_pid=$!
 
         (
           while true; do
@@ -159,15 +180,26 @@ let
             "$0" from-x11 || true
           done
         ) &
-        local x11_pid=$!
+        x11_pid=$!
 
-        # shellcheck disable=SC2064
-        trap "kill $wl_pid $x11_pid 2>/dev/null || true" EXIT INT TERM
+        # systemd stops this unit with TERM while Mango is tearing down its
+        # displays. Treat that requested shutdown as clean, while an
+        # independently exiting watcher still fails and triggers Restart.
         # Wait for the first watcher to exit; waiting on both PIDs here would
-        # leave the bridge alive with one direction broken. The EXIT trap
-        # stops the peer, and even a clean watcher exit must restart the unit.
+        # leave the bridge alive with one direction broken.
+        # Exit inside bridge so EXIT cleanup still sees its local watcher PIDs
+        # under writeShellApplication's nounset mode.
         wait -n "$wl_pid" "$x11_pid" || true
-        return 1
+        if [ "$stopping" -eq 1 ]; then
+          exit 0
+        fi
+        # The compositor may lose its display before this unit receives TERM
+        # during system shutdown. Only that explicit manager state is clean;
+        # a watcher failure while the machine is running must still restart.
+        if [ "$(timeout 1s ${pkgs.systemd}/bin/systemctl is-system-running 2>/dev/null || true)" = stopping ]; then
+          exit 0
+        fi
+        exit 1
       }
 
       case "''${1:-}" in

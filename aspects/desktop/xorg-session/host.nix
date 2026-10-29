@@ -51,7 +51,7 @@ in
   xdg.portal.config.dwm = {
     default = [ "gtk" ];
     "org.freedesktop.impl.portal.FileChooser" = [ "gtk" ];
-    "org.freedesktop.impl.portal.Settings" = [ "gnome" ];
+    "org.freedesktop.impl.portal.Settings" = [ "gtk" ];
     "org.freedesktop.impl.portal.Secret" = [ "gnome-keyring" ];
     # Neither wlroots nor Mutter capture can serve this Xorg session.
     # Native X11 capture is used by compatible applications instead.

@@ -161,7 +161,7 @@
 | dfu-util | 保留 USB DFU 引导加载路径。 |
 | stm32flash | 保留 UART 引导加载路径，与 DFU 不同。 |
 | STM32CubeMX | 保留时钟、引脚和 HAL 工程生成。 |
-| STM32CubeProgrammer | 保留 ST 官方 GUI/CLI 烧录入口。与 CubeMX 的生成职责不同；多个烧录入口可在用户确认常用方式后再精简。 |
+| STM32CubeProgrammer | 2026-10-29 移除：官方安装包需登录下载，无法自动获取；烧录改用 OpenOCD、st-flash、probe-rs 或 dfu-util。 |
 | tio | 保留串口终端；不需再添 minicom/picocom。 |
 | Docker rootless | 保留，未来用 SSH context 管远程 Docker。换 Podman 需核对 socket/Compose/Noctalia 插件，不因“无守护进程”就断言更适合。 |
 | QEMU/KVM | 保留虚拟机执行和硬件加速。 |

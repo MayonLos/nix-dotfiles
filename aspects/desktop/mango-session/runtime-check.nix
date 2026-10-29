@@ -547,7 +547,7 @@ pkgs.runCommand "interactive-session-config"
     directory = Path(wallpaper["directory"])
     wallpaper_root = Path(m["wallpaperRoot"])
     assert directory == wallpaper_root
-    assert wallpaper["automation"] == {"enabled": True, "order": "random", "interval_seconds": 86400, "recursive": True}
+    assert wallpaper["automation"] == {"enabled": True, "order": "random", "interval_seconds": 86400, "recursive": True, "pause_on_fullscreen": True}
     managed_source = Path(m["wallpaperManagedSource"])
     expected_names = sorted(f"wallpaper-{suffix}.png" for suffix in ("002", "005", "008", "009", "011"))
     assert sorted(asset["name"] for asset in m["wallpaperAssets"]) == expected_names

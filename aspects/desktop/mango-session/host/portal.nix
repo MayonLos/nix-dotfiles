@@ -17,11 +17,11 @@ in
       # desktop uses Thunar, so GTK is the functioning chooser without adding
       # a second FileManager1 owner. GTK 3 cannot match fractional output DPI.
       "org.freedesktop.impl.portal.FileChooser" = "gtk";
-      "org.freedesktop.impl.portal.Settings" = "gnome";
+      "org.freedesktop.impl.portal.Settings" = "gtk";
       "org.freedesktop.impl.portal.OpenURI" = "gtk";
     };
 
-    config.common.default = "gnome";
+    config.common.default = "gtk";
 
     # xdg-desktop-portal-wlr is started with an explicit
     # `--config=<generated ini>` (this option is what generates it), and

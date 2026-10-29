@@ -38,12 +38,68 @@ assert
   == [ "gtk" ];
 assert
   pkgs.lib.toList nixos.xdg.portal.config.dwm."org.freedesktop.impl.portal.FileChooser" == [ "gtk" ];
+assert
+  pkgs.lib.toList nixos.xdg.portal.config.mango."org.freedesktop.impl.portal.Settings" == [ "gtk" ];
+assert
+  pkgs.lib.toList nixos.xdg.portal.config.dwm."org.freedesktop.impl.portal.Settings" == [ "gtk" ];
+assert !(builtins.elem pkgs.xdg-desktop-portal-gnome nixos.xdg.portal.extraPortals);
 pkgs.runCommand "application-portals-theme-check"
   {
-    nativeBuildInputs = [ pkgs.python3 ];
+    nativeBuildInputs = [
+      pkgs.python3
+      pkgs.dbus
+    ];
   }
   ''
     mkdir -p "$out"
+    python3 - ${nixos.environment.etc."dbus-1".source} ${nixos.system.path} <<'PYDBUS'
+    import configparser, pathlib, sys, xml.etree.ElementTree as ET
+    config, profile = map(pathlib.Path, sys.argv[1:])
+    def names(directory):
+        result = []
+        for path in directory.glob("*.service"):
+            parser = configparser.ConfigParser(interpolation=None, strict=False)
+            parser.read(path)
+            result.append(parser["D-BUS Service"]["Name"])
+        assert len(result) == len(set(result)), result
+        return set(result)
+    system_names = names(profile / "share/dbus-1/services")
+    for bus in ("session", "system"):
+        tree = ET.parse(config / f"{bus}.conf")
+        directories = tree.findall("servicedir")
+        assert len(directories) == 1
+        extra_names = names(pathlib.Path(directories[0].text))
+        if bus == "session":
+            assert tree.find("standard_session_servicedirs") is not None
+            assert not system_names & extra_names
+        else:
+            assert "org.freedesktop.nm_dispatcher" in extra_names
+    PYDBUS
+    # Parse the production session config on a private bus. Its standard dirs
+    # contain the generated system profile and an isolated user-service fixture.
+    # Do not couple this portal check to unrelated proprietary HM packages.
+    export HOME="$TMPDIR/private-home"
+    export XDG_DATA_HOME="$HOME/.local/share"
+    export XDG_DATA_DIRS=${nixos.system.path}/share
+    mkdir -p "$XDG_DATA_HOME/dbus-1/services"
+    cat > "$XDG_DATA_HOME/dbus-1/services/org.example.NixDotfilesTest.service" <<EOF
+    [D-BUS Service]
+    Name=org.example.NixDotfilesTest
+    Exec=${pkgs.coreutils}/bin/false
+    EOF
+    dbus-run-session --config-file=${nixos.environment.etc."dbus-1".source}/session.conf -- \
+      python3 - ${nixos.environment.etc."dbus-1".source}/service-providers.json <<'PYACTIVATION'
+    import json, subprocess, sys
+    expected = json.load(open(sys.argv[1]))["session"]
+    names = subprocess.check_output([
+        "dbus-send", "--session", "--print-reply", "--dest=org.freedesktop.DBus",
+        "/org/freedesktop/DBus", "org.freedesktop.DBus.ListActivatableNames"
+    ], text=True)
+    required = set(expected["providers"]) | set(expected["standard_profile_names"])
+    required.add("org.example.NixDotfilesTest")
+    for name in required:
+        assert f'string "{name}"' in names, (name, names)
+    PYACTIVATION
     test -f ${home.home.sessionVariables.QT_PLUGIN_PATH}/platformthemes/libqt6ct.so
     test -f ${home.gtk.gtk2.theme.package}/share/themes/Adwaita-dark/gtk-2.0/gtkrc
     grep -F 'gtk-theme-name = "Adwaita-dark"' ${gtk2rc}

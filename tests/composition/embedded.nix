@@ -128,7 +128,6 @@ let
     "dfu-util"
     "stm32flash"
     "stm32cubemx"
-    "stm32cubeprogrammer"
     "tio"
     "cmake"
     "ninja"

@@ -28,6 +28,11 @@
     # 256-sample graph, starving Bluetooth A2DP (constant dropouts).
     # Chat/meeting apps and browsers run their own AEC.
     extraConfig = {
+      # Desktop notifications provide their own sounds. The legacy X11 bell
+      # module holds an Xwayland connection until PipeWire exits (later than
+      # Mango), generating X I/O errors during logout. No session uses that
+      # system bell; PCM/Pulse/JACK and desktop notification sounds are intact.
+      pipewire."90-no-x11-bell"."context.properties"."module.x11.bell" = false;
       pipewire-pulse."91-qq-wechat-compat" = {
         "pulse.rules" = [
           {

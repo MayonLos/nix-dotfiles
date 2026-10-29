@@ -2,7 +2,10 @@ _: {
   programs.clash-verge = {
     enable = true;
     serviceMode = true;
-    tunMode = true;
+    # The root service starts Mihomo and owns TUN (confirmed in boot logs).
+    # tunMode only grants capabilities to the GUI wrapper; that makes it
+    # non-dumpable, so the portal cannot inspect /proc/<pid>/root.
+    tunMode = false;
   };
 
   # Stub listener stays at the module default. Clash TUN hijacks DNS inside

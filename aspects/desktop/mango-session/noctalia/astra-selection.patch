@@ -1,7 +1,7 @@
 --- a/src/shell/bar/widgets/media_widget.cpp
 +++ b/src/shell/bar/widgets/media_widget.cpp
-@@ -403,9 +403,9 @@
-   const std::string artists = hideArtist ? std::string() : joinArtists(player.artists);
+@@ -407,9 +407,9 @@
+   std::string artists = hideArtist ? std::string() : joinArtists(player.artists);
    if (!player.title.empty() && !artists.empty()) {
      if (artistFirst) {
 -      return artists + " - " + player.title;
@@ -132,7 +132,7 @@
      for (const auto& item : m_items) {
        if (item.targetWidth > 0.0F) {
 @@ -1025,7 +1050,8 @@
-       [this]() { finishAnimation(); }, this
+       [this] { finishAnimation(); }, this
    );
 
 -  // Reserve final bounds before the first animated frame to avoid one-frame overflow.
@@ -239,7 +239,7 @@
    default:
    case ControlCenterSidebarMode::Compact:
      return fullSize * 0.85F * m_contentScale;
-@@ -892,7 +893,8 @@
+@@ -890,7 +891,8 @@
    const float minWidth = Style::controlHeightSm * scale;
    const float contentWidth = std::max(minWidth, std::ceil(maxTabWidth));
 
@@ -268,9 +268,9 @@
  #include "notification/notifications.h"
 +#include "pipewire/pipewire_service.h"
  #include "render/animation/animation_manager.h"
- #include "render/core/async_texture_cache.h"
  #include "render/scene/input_area.h"
-@@ -21,13 +22,16 @@
+ #include "scripting/plugin_id.h"
+@@ -20,13 +21,16 @@
  #include "shell/panel/panel_manager.h"
  #include "shell/profile/avatar_path.h"
  #include "shell/wallpaper/wallpaper.h"
@@ -287,7 +287,7 @@
 
  #include <algorithm>
  #include <cmath>
-@@ -46,21 +50,14 @@
+@@ -45,21 +49,14 @@
 
    constexpr Logger kLog("control-center");
 
@@ -315,7 +315,7 @@
    constexpr auto kHomeTransientPositionRegressionWindow = std::chrono::milliseconds(1500);
    constexpr std::int64_t kHomeTransientPositionRegressionFloorUs = 5'000'000;
    constexpr std::int64_t kHomeTransientPositionRegressionCeilingUs = 1'500'000;
-@@ -68,27 +65,6 @@
+@@ -67,27 +64,6 @@
    constexpr int kHomeMediaArtLayoutPassLimit = 8;
 
    float homeAvatarSize(float scale) { return Style::controlHeightLg * kHomeAvatarScale * scale; }
@@ -343,7 +343,7 @@
 
    std::filesystem::path avatarStartDirectory(const AccountsService* accounts, const ConfigService* config) {
      const std::string currentPath =
-@@ -122,7 +98,8 @@
+@@ -121,7 +97,8 @@
 
    std::string noctaliaVersionLine() { return std::format("Noctalia {}", noctalia::build_info::displayVersion()); }
 
@@ -353,7 +353,7 @@
    std::string compositorLine(const std::optional<std::string>& versionLine) {
      return versionLine.has_value() && !versionLine->empty() ? *versionLine : compositorLabel();
    }
-@@ -134,14 +111,28 @@
+@@ -133,14 +110,28 @@
 
    void applyShortcutButtonStyle(Button& button, bool enabled, bool active, float fillOpacity) {
      const bool on = enabled && active;
@@ -386,7 +386,7 @@
    void applyHomeCardHover(Flex& card, bool hovered) {
      if (hovered) {
        card.setBorder(colorSpecFromRole(ColorRole::Hover), Style::borderWidth);
-@@ -175,10 +166,10 @@
+@@ -174,10 +165,10 @@
  } // namespace
 
  HomeTab::HomeTab(const ControlCenterServices& services)
@@ -399,9 +399,9 @@
 +      m_accounts(services.accounts), m_wallpaper(services.wallpaper), m_thumbnails(services.thumbnails),
 +      m_asyncTextures(services.asyncTextures), m_services(services.shortcutServices()) {
    if (m_thumbnails != nullptr) {
-     m_thumbnailPendingSub = m_thumbnails->subscribePendingUpload([this]() {
+     m_thumbnailPendingSub = m_thumbnails->subscribePendingUpload([this] {
        if (m_wallpaperBg == nullptr) {
-@@ -223,8 +214,7 @@
+@@ -222,8 +213,7 @@
    auto userCard = ui::column({
        .out = &m_userCard,
        .justify = FlexJustify::Center,
@@ -411,7 +411,7 @@
        .configure = [scale, opacity = panelCardOpacity()](Flex& card) { applyHomeCardStyle(card, scale, opacity); },
    });
 
-@@ -336,7 +326,7 @@
+@@ -335,7 +325,7 @@
             .flexGrow = 1.0F},
            ui::label({
                .text = displayName,
@@ -420,15 +420,7 @@
                .fontWeight = FontWeight::Bold,
                .color = colorSpecFromRole(ColorRole::OnSurface),
                .configure = [scale](
-@@ -375,15 +365,23 @@
-   );
-   userCard->addChild(std::move(userRow));
-
--  // Wallpaper panel: full-card keyboard target; carved pointer target leaves the avatar clickable.
-+  // Wallpaper panel: full-card keyboard target; carved pointer target leaves
-+  // the avatar clickable.
-   const auto openWallpaperPanel = []() { PanelManager::instance().togglePanel("wallpaper"); };
-   m_userCardKeyboardArea =
+@@ -380,9 +370,16 @@
        addCardOverlay(*m_userCard, openWallpaperPanel, {.keyboardFocus = true, .pointerHitTest = false});
    m_userCardArea = addCardOverlay(*m_userCard, openWallpaperPanel, {.keyboardFocus = false, .pointerHitTest = true});
 
@@ -446,7 +438,7 @@
        .out = &m_bottomRow,
        .align = FlexAlign::Stretch,
        .gap = Style::spaceMd * scale,
-@@ -395,7 +393,7 @@
+@@ -394,7 +391,7 @@
        .justify = FlexJustify::Start,
        .gap = Style::spaceMd * scale,
        .fillWidth = true,
@@ -455,7 +447,7 @@
    });
 
    // --- Media (top of left column) ---
-@@ -404,8 +402,8 @@
+@@ -403,8 +400,8 @@
        .justify = FlexJustify::Center,
        .gap = Style::spaceXs * scale,
        .fillWidth = true,
@@ -466,7 +458,7 @@
        .configure = [scale, opacity = panelCardOpacity()](Flex& card) { applyHomeCardStyle(card, scale, opacity); },
    });
 
-@@ -483,8 +481,8 @@
+@@ -482,8 +479,8 @@
         .justify = FlexJustify::Center,
         .gap = Style::spaceLg * scale,
         .fillWidth = true,
@@ -477,7 +469,7 @@
         .configure =
             [scale, opacity = panelCardOpacity()](Flex& card) {
               applyHomeCardStyle(card, scale, opacity);
-@@ -533,7 +531,6 @@
+@@ -532,7 +529,6 @@
 
    leftColumn->addChild(std::move(mediaCard));
    leftColumn->addChild(std::move(dateTimeCard));
@@ -485,7 +477,7 @@
 
    // --- Shortcuts (right of media + clock) ---
    const auto& shortcuts =
-@@ -542,19 +539,20 @@
+@@ -541,19 +537,20 @@
 
    auto grid = std::make_unique<GridView>();
    grid->setColumns(kHomeShortcutGridColumns);
@@ -512,7 +504,7 @@
    std::vector<std::unique_ptr<Shortcut>> previous;
    previous.reserve(m_shortcutPads.size());
    for (auto& pad : m_shortcutPads) {
-@@ -573,10 +571,11 @@
+@@ -572,10 +569,11 @@
      return nullptr;
    };
 
@@ -528,7 +520,7 @@
    const bool pluginsChanged = m_config != nullptr && !(m_config->config().plugins == m_lastPlugins);
    if (m_config != nullptr) {
      m_lastPlugins = m_config->config().plugins;
-@@ -608,7 +607,7 @@
+@@ -607,7 +605,7 @@
      auto btn = ui::button({
          .text = showLabels ? std::optional<std::string>{label} : std::nullopt,
          .glyph = shortcut->displayIcon(),
@@ -537,7 +529,7 @@
          .contentAlign = showLabels ? ButtonContentAlign::Start : ButtonContentAlign::Center,
          .minHeight = 0.0F,
          .padding = Style::spaceSm * scale,
-@@ -631,8 +630,8 @@
+@@ -630,8 +628,8 @@
                button.setDirection(FlexDirection::Vertical);
                button.setJustify(FlexJustify::Center);
                if (showLabels) {
@@ -548,7 +540,7 @@
                  button.setAlign(FlexAlign::Stretch);
                  if (button.label() != nullptr) {
                    button.label()->setFontSize(Style::fontSizeMini * scale);
-@@ -656,7 +655,8 @@
+@@ -655,7 +653,8 @@
          if (steps == 0.0F) {
            return false;
          }
@@ -558,7 +550,7 @@
          m_shortcutPads[padIdx].shortcut->onScroll(steps > 0.0F ? -1 : 1);
          return true;
        });
-@@ -680,9 +680,105 @@
+@@ -679,9 +678,105 @@
    } else {
      m_shortcutsGrid = nullptr;
    }
@@ -664,7 +656,7 @@
  }
 
  std::unique_ptr<Flex> HomeTab::createHeaderActions() {
-@@ -725,52 +821,17 @@
+@@ -724,52 +819,17 @@
      m_userMain->setSize(m_userMain->width(), userMainHeight);
    }
    if (m_shortcutsGrid != nullptr && !m_shortcutPads.empty()) {
@@ -724,7 +716,7 @@
    if (!m_shortcutPads.empty() && m_shortcutsGrid != nullptr) {
      const float scale = contentScale();
      for (auto& pad : m_shortcutPads) {
-@@ -824,9 +885,10 @@
+@@ -823,9 +883,10 @@
      m_weatherLine->setMaxLines(1);
      m_weatherLine->setEllipsize(TextEllipsize::End);
    }
@@ -738,7 +730,7 @@
    resizeMediaArtToCard();
 
    // Keep the media card height stable: one ellipsized line each, capped to the
-@@ -868,59 +930,6 @@
+@@ -867,59 +928,6 @@
      m_userMain->setSize(m_userMain->width(), desiredAvatar);
    }
 
@@ -798,7 +790,7 @@
    bool artSizeChanged = false;
    for (int pass = 0; pass < kHomeMediaArtLayoutPassLimit; ++pass) {
      m_rootLayout->layout(renderer);
-@@ -930,7 +939,8 @@
+@@ -929,7 +937,8 @@
      }
    }
    if (artSizeChanged) {
@@ -808,7 +800,7 @@
      m_rootLayout->layout(renderer);
    }
    layoutWallpaperBackground(renderer);
-@@ -1008,8 +1018,9 @@
+@@ -1007,8 +1016,9 @@
    cover(m_dateTimeCard, m_dateTimeCardArea);
    cover(m_userCard, m_userCardKeyboardArea);
 
@@ -820,7 +812,7 @@
    if (m_userCard != nullptr && m_userCardArea != nullptr) {
      float left = 0.0F;
      if (m_userAvatar != nullptr) {
-@@ -1052,8 +1063,9 @@
+@@ -1051,8 +1061,9 @@
      return;
    }
 
@@ -832,7 +824,7 @@
    const float bw = Style::borderWidth;
    const float cw = std::max(0.0F, m_userCard->width() - bw * 2.0F);
    const float ch = std::max(0.0F, m_userCard->height() - bw * 2.0F);
-@@ -1087,8 +1099,8 @@
+@@ -1086,8 +1097,8 @@
    if (m_userCard == nullptr) {
      return;
    }
@@ -843,7 +835,7 @@
    const bool wallpaperCovers = m_placeholderReady || m_crispOpaque;
    if (wallpaperCovers) {
      m_userCard->clearFill();
-@@ -1147,16 +1159,18 @@
+@@ -1146,16 +1157,18 @@
      return;
    }
 
@@ -866,7 +858,7 @@
    if (path != m_crispWorkingPath || targetPx != m_crispWorkingSize) {
      m_crispWorkingPath = path;
      m_crispWorkingSize = targetPx;
-@@ -1176,7 +1190,8 @@
+@@ -1175,7 +1188,8 @@
    (void)m_thumbnails->uploadPending(renderer.textureManager());
    const TextureHandle crisp = m_thumbnails->peek(path, targetPx);
    if (!crisp.valid()) {
@@ -876,7 +868,7 @@
      m_crispNeedsFade = true;
      syncWallpaperLayerVisibility();
      return;
-@@ -1262,8 +1277,9 @@
+@@ -1261,8 +1275,9 @@
          if (!m_active) {
            return;
          }
@@ -888,33 +880,7 @@
          PanelManager::instance().refresh();
          PanelManager::instance().requestRedraw();
        });
-@@ -1294,17 +1310,19 @@
-   }
-
-   if (becameActive) {
--    // Other tabs were laid out while this body was hidden; flex sizes for the media row can be stale.
--    // Defer so the tab container receives its configure size before HomeTab::doLayout runs.
-+    // Other tabs were laid out while this body was hidden; flex sizes for the
-+    // media row can be stale. Defer so the tab container receives its configure
-+    // size before HomeTab::doLayout runs.
-     DeferredCall::callLater([]() {
-       PanelManager::instance().requestLayout();
-       PanelManager::instance().requestUpdateOnly();
-     });
-
--    // Tick the clock once per second so the time/date labels keep moving while the panel is
--    // open and idle. Without this, the clock only refreshes when an unrelated service happens
--    // to force a redraw (see issue #4046). setText() is a no-op when the text is unchanged, so
--    // formats without seconds cost nothing beyond the cheap format + comparison each second.
-+    // Tick the clock once per second so the time/date labels keep moving while
-+    // the panel is open and idle. Without this, the clock only refreshes when
-+    // an unrelated service happens to force a redraw (see issue #4046).
-+    // setText() is a no-op when the text is unchanged, so formats without
-+    // seconds cost nothing beyond the cheap format + comparison each second.
-     m_clockTimer.startRepeating(std::chrono::milliseconds(1000), [this]() {
-       if (!m_active) {
-         return;
-@@ -1328,6 +1346,10 @@
+@@ -1327,6 +1342,10 @@
    m_progressTimer.stop();
    m_clockTimer.stop();
    m_rootLayout = nullptr;
@@ -925,7 +891,7 @@
    m_bottomRow = nullptr;
    m_dateTimeCard = nullptr;
    m_mediaCard = nullptr;
-@@ -1378,7 +1400,8 @@
+@@ -1377,7 +1396,8 @@
    m_nextRealtimeUpdateAt = {};
    m_lastRealtimeMprisPollAt = {};
    m_shortcutsGrid = nullptr;
@@ -935,13 +901,12 @@
    for (auto& pad : m_shortcutPads) {
      if (pad.shortcut != nullptr) {
        pad.shortcut->onPanelClose();
-@@ -1432,13 +1455,14 @@
-     if (pad.glyph != nullptr) {
-       // Icon-only glyphs are sized from cell side in doLayout.
-       if (m_config == nullptr || m_config->config().controlCenter.showShortcutLabels) {
--        pad.glyph->setGlyphSize(Style::fontSizeTitle * 1.35F * s);
-+        pad.glyph->setGlyphSize(18.0F * s);
-       }
+@@ -1430,12 +1450,13 @@
+     }
+     // Icon-only glyphs are sized from cell side in doLayout.
+     if (pad.glyph != nullptr && (m_config == nullptr || m_config->config().controlCenter.showShortcutLabels)) {
+-      pad.glyph->setGlyphSize(Style::fontSizeTitle * 1.35F * s);
++      pad.glyph->setGlyphSize(18.0F * s);
      }
    }
  }
@@ -951,7 +916,7 @@
    syncScaledFonts();
    syncShortcuts();
 
-@@ -1457,10 +1481,11 @@
+@@ -1454,10 +1475,11 @@
        m_userAvatar->clear(renderer);
      } else {
        warnOnOversizedAvatarSource(displayPath);
@@ -967,7 +932,7 @@
        const int avatarSize = static_cast<int>(std::round(m_userAvatar->width()));
        (void)m_userAvatar->setSourceFileAsync(renderer, *m_asyncTextures, displayPath, avatarSize, false);
      }
-@@ -1474,6 +1499,7 @@
+@@ -1471,6 +1493,7 @@
      const std::string uptimeText =
          uptime.has_value() ? formatDuration(*uptime) : i18n::tr("control-center.home.unknown");
      m_userUptime->setText(i18n::tr("control-center.home.uptime", "uptime", uptimeText));
@@ -975,7 +940,7 @@
    }
    if (m_userVersion != nullptr) {
      m_userVersion->setText(noctaliaVersionLine());
-@@ -1681,8 +1707,9 @@
+@@ -1678,8 +1701,9 @@
      return;
    }
    kLog.warn(
@@ -1070,7 +1035,7 @@
  };
 --- a/src/shell/launcher/launcher_panel.cpp
 +++ b/src/shell/launcher/launcher_panel.cpp
-@@ -43,7 +43,8 @@
+@@ -44,7 +44,8 @@
  namespace {
 
    constexpr std::size_t kRowOverscan = 3;
@@ -1080,7 +1045,7 @@
    constexpr std::size_t kGlobalOptInMinChars = 2;
    constexpr float kIconSizeDefault = 40.0F;
    constexpr float kIconSizeCompact = 28.0F;
-@@ -221,6 +222,17 @@
+@@ -227,6 +228,17 @@
             .radius = Style::scaledRadiusMd(m_style.scale)}
        );
        addChild(std::move(row));
@@ -1097,8 +1062,8 @@
 +      );
 
        m_row->addChild(
-           ui::label({
-@@ -325,6 +337,9 @@
+           ui::box({
+@@ -339,6 +351,9 @@
 
        setSize(width, height);
        m_row->setFrameSize(width, height);
@@ -1106,9 +1071,9 @@
 +      m_selectionIndicator->setFrameSize(2.0F, height);
 +      m_selectionIndicator->setVisible(selected);
 
-       m_badgeLabel->setVisible(false);
-       m_badgeLabel->setParticipatesInLayout(false);
-@@ -424,9 +439,9 @@
+       m_badgeHost->setVisible(m_badgeVisible);
+       m_badgeHost->setParticipatesInLayout(m_badgeVisible);
+@@ -445,9 +460,9 @@
    private:
      void applyVisualState() {
        if (m_selected) {
@@ -1120,7 +1085,7 @@
        } else {
          m_row->setFill(m_style.listItemBackground.value_or(clearColorSpec()));
        }
-@@ -436,17 +451,16 @@
+@@ -457,17 +472,16 @@
          m_row->clearBorder();
        }
 
@@ -1145,15 +1110,15 @@
      }
 
      LauncherListStyle m_style{};
-@@ -454,6 +468,7 @@
-     bool m_selected = false;
+@@ -476,6 +490,7 @@
      bool m_hovered = false;
      Flex* m_row = nullptr;
+     Box* m_badgeHost = nullptr;
 +    Box* m_selectionIndicator = nullptr;
      Label* m_badgeLabel = nullptr;
      Image* m_image = nullptr;
      Glyph* m_glyph = nullptr;
-@@ -681,9 +696,9 @@
+@@ -703,9 +718,9 @@
    private:
      void applyVisualState() {
        if (m_selected) {
@@ -1165,7 +1130,7 @@
        } else {
          m_col->setFill(m_style.listItemBackground.value_or(clearColorSpec()));
        }
-@@ -693,17 +708,16 @@
+@@ -715,17 +730,16 @@
          m_col->clearBorder();
        }
 
@@ -1186,7 +1151,7 @@
        );
      }
 
-@@ -2335,7 +2349,8 @@
+@@ -2358,7 +2372,8 @@
    }
 
    // Pick up apps installed since the last scan (notably Nix profile swaps that
@@ -1196,7 +1161,7 @@
    refreshDesktopEntriesIfSourcesChanged();
 
    m_activeCategoryType = All;
-@@ -2414,7 +2429,8 @@
+@@ -2437,7 +2452,8 @@
    m_gridAdapter.reset();
    m_launcherSectionsAdapter.reset();
 
@@ -1206,7 +1171,7 @@
    m_container = nullptr;
    m_input = nullptr;
    m_categoryFilter = nullptr;
-@@ -2637,9 +2653,10 @@
+@@ -2658,9 +2674,10 @@
        m_allResults = providerOverviewResults(text);
        m_showingProviderOverview = true;
      } else {
@@ -1222,7 +1187,7 @@
        const bool browserAppBrowse = m_browserMode && text.empty();
 --- a/src/ui/controls/slider.cpp
 +++ b/src/ui/controls/slider.cpp
-@@ -289,7 +289,7 @@
+@@ -299,7 +299,7 @@
 
    Color trackColor = resolved(ColorRole::OutlineVariant);
    Color fillColor = resolved(ColorRole::Primary);

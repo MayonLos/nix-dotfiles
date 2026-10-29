@@ -90,3 +90,5 @@ helpers on private Xvfb/D-Bus instances. They do not establish real Xorg GLX,
 PAM authentication, mixed-DPI hotplug, suspend/resume or proprietary capture.
 Removing this feature withdraws its declarations on the next activation and
 retains user data; this implementation task does not activate a generation.
+
+Round 37 keeps Dunst for Xorg, with one canonical `org.freedesktop.Notifications.service` in its tailored package. It activates the guarded `dunst.service`; the redundant Home Manager service file is disabled. Mango continues to use Noctalia notifications. Settings now routes to GTK, and the legacy PipeWire X11 system bell is disabled by shared audio support.

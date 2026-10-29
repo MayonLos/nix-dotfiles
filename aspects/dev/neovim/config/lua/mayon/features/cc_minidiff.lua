@@ -1,5 +1,5 @@
--- Compatibility bridge for pinned CodeCompanion 19.27, which removed the old
--- diff provider setting. Only inline calls are routed through MiniDiff.
+-- Compatibility bridge for CodeCompanion inline review, which has no MiniDiff
+-- provider. Only inline calls are routed through MiniDiff.
 local M = {}
 function M.setup()
 	local diff = require("mini.diff")
@@ -71,7 +71,14 @@ function M.setup()
 				end
 			end
 		end
+		ui.diff = {
+			from = { lines = vim.deepcopy(args.from_lines) },
+			to = { lines = vim.deepcopy(args.to_lines) },
+		}
 		function ui:close()
+			close()
+		end
+		function ui:remove_inline_marks()
 			close()
 		end
 		local function resolve(accept)

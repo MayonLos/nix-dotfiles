@@ -12,6 +12,17 @@ let
   px = n: builtins.floor (n * hostFacts.display.x11Dpi / 96.0 + 0.5);
   dunst = pkgs.dunst.overrideAttrs (old: {
     patches = (old.patches or [ ]) ++ [ ./resources/dunst-left-accent.patch ];
+    postInstall = (old.postInstall or "") + ''
+      service_dir="$out/share/dbus-1/services"
+      rm "$service_dir/org.knopwob.dunst.service"
+      cat > "$service_dir/org.freedesktop.Notifications.service" <<EOF
+      [D-BUS Service]
+      Name=org.freedesktop.Notifications
+      Exec=${pkgs.coreutils}/bin/false
+      SystemdService=dunst.service
+      EOF
+      grep -Fx 'SystemdService=dunst.service' "$service_dir/org.freedesktop.Notifications.service"
+    '';
   });
 in
 {

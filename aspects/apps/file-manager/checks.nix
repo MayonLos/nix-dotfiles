@@ -14,20 +14,15 @@ let
     ${home.home.activation.seedThunarTemplates.data}
   '';
   mimeDefaults = home.xdg.mimeApps.defaultApplications or { };
-  serviceName = "dbus-1/services/org.freedesktop.FileManager1.service";
-  serviceText = home.xdg.dataFile.${serviceName}.text;
-  serviceFile = pkgs.writeText "thunar-filemanager1.service" serviceText;
+  serviceFile = "${fileManager.thunarWithPlugins}/share/dbus-1/services/org.freedesktop.FileManager1.service";
   archivePlugin = builtins.head fileManager.plugins;
-  fileManagerServices = builtins.filter (
-    name: lib.hasInfix "org.freedesktop.FileManager1.service" name
-  ) (builtins.attrNames home.xdg.dataFile);
 in
-assert builtins.elem fileManager.thunarWithPlugins home.home.packages;
+assert !(builtins.elem fileManager.thunarWithPlugins home.home.packages);
 assert builtins.elem fileManager.thunarWithPlugins nixos.environment.systemPackages;
 assert builtins.elem fileManager.thunarWithPlugins nixos.services.dbus.packages;
 assert builtins.elem fileManager.thunarWithPlugins nixos.systemd.packages;
 assert nixos.programs.xfconf.enable;
-assert fileManagerServices == [ serviceName ];
+assert !(home.xdg.dataFile ? "dbus-1/services/org.freedesktop.FileManager1.service");
 {
 
   file-manager-actions =

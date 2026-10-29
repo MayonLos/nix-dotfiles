@@ -10,7 +10,8 @@ load({
 })
 vim.wait(100)
 assert(not vim.g.mayon_load_error, vim.g.mayon_load_error)
-assert(require("mayon.generated").versions.codecompanion == "19.27.0", "CodeCompanion version drift")
+local codecompanion_version = require("mayon.generated").versions.codecompanion
+assert(vim.version.parse(codecompanion_version).major == 20, "review CodeCompanion major upgrades")
 assert(not package.loaded.copilot and not package.loaded["blink.cmp"])
 local cc = require("codecompanion.config").config
 assert(cc.interactions.chat.adapter == "deepseek" and cc.interactions.inline.adapter == "deepseek")
@@ -23,7 +24,7 @@ for _, name in ipairs({ "codex", "claude_code" }) do
 	assert(not path:find("npx", 1, true))
 end
 assert(cc.extensions.history.enabled)
-assert(require("codecompanion").version() == "19.27.0", "loaded CodeCompanion version drift")
+assert(require("codecompanion").version() == codecompanion_version, "loaded CodeCompanion version drift")
 local chat = require("codecompanion.interactions.chat").new({
 	adapter = "deepseek",
 	buffer_context = require("codecompanion.utils.context").get(),
@@ -41,7 +42,7 @@ history.save_chat(chat)
 local saved = history.load_chat(chat.opts.save_id)
 assert(
 	saved and saved.adapter == "deepseek" and saved.title == chat.opts.title,
-	"history save/load is incompatible with CodeCompanion 19.27"
+	"history save/load is incompatible with the selected CodeCompanion"
 )
 assert(vim.iter(saved.messages):any(function(message)
 	return type(message.content) == "string" and message.content:find("round13 local history fixture", 1, true) ~= nil
@@ -297,6 +298,55 @@ assert(rejected == 1 and vim.api.nvim_buf_get_lines(buf, 0, -1, false)[1] == "re
 helpers.show_diff(args)
 vim.fn.maparg(",a", "n", false, true).callback()
 assert(accepted == 1 and vim.api.nvim_buf_get_lines(buf, 0, -1, false)[1] == "return 2")
+
+-- Exercise CodeCompanion 20's real Inline:review -> diff UI callback path.
+-- This constructs only local state; no prompt, adapter request or model call
+-- is made. The callbacks require diff_ui.diff.from.lines and
+-- diff_ui:remove_inline_marks(), both part of the v20 contract.
+local Inline = require("codecompanion.interactions.inline")
+local inline_buf = vim.api.nvim_create_buf(true, false)
+vim.api.nvim_set_current_buf(inline_buf)
+vim.bo[inline_buf].filetype = "lua"
+local original_lines = { "local value = 1", "return value" }
+local edited_lines = { "local value = 2", "return value" }
+vim.api.nvim_buf_set_lines(inline_buf, 0, -1, false, original_lines)
+local buffer_context = { bufnr = inline_buf, filetype = "lua" }
+
+local function review_result()
+	local review = Inline.new({ buffer_context = buffer_context, adapter = "deepseek" })
+	review.target = { lines = vim.deepcopy(original_lines) }
+	review:review(vim.deepcopy(edited_lines))
+	assert(review.diff_ui, "Inline:review did not retain the MiniDiff UI")
+	assert(vim.deep_equal(review.diff_ui.diff.from.lines, original_lines))
+	assert(vim.deep_equal(review.diff_ui.diff.to.lines, edited_lines))
+	assert(vim.deep_equal(vim.api.nvim_buf_get_lines(inline_buf, 0, -1, false), edited_lines))
+	return review
+end
+
+local function press_review_key(key)
+	local mapping = vim.fn.maparg(key, "n", false, true)
+	assert(type(mapping.callback) == "function", "missing inline review mapping " .. key)
+	mapping.callback()
+end
+
+local inline_rejected = review_result()
+press_review_key(",r")
+assert(
+	vim.deep_equal(vim.api.nvim_buf_get_lines(inline_buf, 0, -1, false), original_lines),
+	"CodeCompanion Inline rejection did not restore the original buffer"
+)
+assert(inline_rejected.diff_ui == nil, "rejected Inline review was not reset")
+assert(not vim.b[inline_buf].mayon_inline_review, "rejected Inline review left the buffer locked")
+
+vim.api.nvim_buf_set_lines(inline_buf, 0, -1, false, original_lines)
+local inline_accepted = review_result()
+press_review_key(",a")
+assert(
+	vim.deep_equal(vim.api.nvim_buf_get_lines(inline_buf, 0, -1, false), edited_lines),
+	"CodeCompanion Inline acceptance discarded the proposed buffer"
+)
+assert(inline_accepted.diff_ui == nil, "accepted Inline review was not reset")
+assert(not vim.b[inline_buf].mayon_inline_review, "accepted Inline review left the buffer locked")
 assert(vim.bo.modified and not vim.b.mayon_inline_review)
 vim.bo.modified = false
 -- Real native Claude diff: accept/reject via its public commands, no CLI.

@@ -39,7 +39,7 @@
               inherit (u) qq;
               # Stable still has the older official Linux client.
               inherit (u) wechat;
-              # Stable CodeCompanion 19.13 lacks the ACP fixes in 19.27; v20 needs a separate migration.
+              # Stable CodeCompanion 19.13 lacks the ACP fixes; the editor uses the reviewed v20 API.
               codecompanion-nvim = u.vimPlugins.codecompanion-nvim;
               # JDK 26 is absent from stable 26.05.
               jdk26 = u.javaPackages.compiler.temurin-bin.jdk-26;

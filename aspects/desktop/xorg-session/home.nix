@@ -109,17 +109,9 @@ in
         RestartSec = 3;
       };
     };
-    # HM normally points D-Bus directly at dunst, bypassing the session guard.
-    # Use the guarded systemd service even when clients request activation.
-    # force: Replace upstream unit defaults with the guarded Xorg session lifecycle.
-    xdg.dataFile."dbus-1/services/org.knopwob.dunst.service".source = lib.mkForce (
-      pkgs.writeText "org.knopwob.dunst.service" ''
-        [D-BUS Service]
-        Name=org.freedesktop.Notifications
-        Exec=${pkgs.coreutils}/bin/false
-        SystemdService=dunst.service
-      ''
-    );
+    # The tailored Dunst package publishes the canonical name and guarded
+    # systemd activation. Suppress HM's second, misnamed per-user service.
+    xdg.dataFile."dbus-1/services/org.knopwob.dunst.service".enable = false;
     home.packages = [
       pkgs.copyq
       pkgs.xss-lock

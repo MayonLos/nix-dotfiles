@@ -385,17 +385,11 @@
    }
 
    if (m_visualization == SysmonVisualization::Gauge) {
-@@ -856,6 +859,10 @@
-     } else {
-       syncGaugeProgress(currentNormalized());
-     }
-+    return;
-+  }
-+  if (m_visualization == SysmonVisualization::Ring) {
+@@ -870,1 +870,3 @@
+-  } else if (m_visualization == SysmonVisualization::Graph) {
++  } else if (m_visualization == SysmonVisualization::Ring) {
 +    if (m_ringFill != nullptr) m_ringFill->setProgress(static_cast<float>(currentNormalized()));
-     return;
-   }
-
++  } else if (m_visualization == SysmonVisualization::Graph) {
 @@ -1099,7 +1106,9 @@
      return "--";
    }

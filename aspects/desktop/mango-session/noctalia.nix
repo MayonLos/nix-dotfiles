@@ -436,6 +436,7 @@ in
             automation = {
               enabled = true;
               interval_seconds = 86400;
+              pause_on_fullscreen = true;
               order = "random";
               recursive = true;
             };

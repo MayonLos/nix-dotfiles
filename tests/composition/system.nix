@@ -73,6 +73,11 @@ let
     x86 = inspect "x86_64-linux" false;
     arm = inspect "aarch64-linux" false;
     laptop = {
+      clashServiceOwnsTun =
+        host.programs.clash-verge.serviceMode
+        && !host.programs.clash-verge.tunMode
+        && !(host.security.wrappers ? clash-verge)
+        && host.systemd.services.clash-verge.enable;
       stableDefaultKernel = host.boot.kernelPackages.kernel.drvPath == pkgs.linuxPackages.kernel.drvPath;
       matchingStableNvidia =
         host.hardware.nvidia.package.drvPath == host.boot.kernelPackages.nvidiaPackages.stable.drvPath;

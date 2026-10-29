@@ -36,6 +36,11 @@ let
                     rm "$out/lib/thunarx-3/thunar-wallpaper-plugin.la"
                   fi
 
+                  # Publish the canonical bus filename once from the host package.
+                  service_dir="$out/share/dbus-1/services"
+                  mv "$service_dir/org.xfce.Thunar.FileManager1.service" \
+                    "$service_dir/org.freedesktop.FileManager1.service"
+
                   # Keep Thunar's UI and UCA action labels in Chinese without changing
                   # the session locale globally. The UCA parser matches xml:lang with
                   # LC_MESSAGES (not LANGUAGE), so supply a Chinese message locale
