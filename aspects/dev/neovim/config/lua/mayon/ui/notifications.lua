@@ -77,6 +77,12 @@ function M.filter(notif)
 		notif.title = "AI 补全"
 		notif.level = "info"
 	end
+	if notif.msg and (#vim.split(notif.msg, "\n", { plain = true }) > 3 or vim.fn.strdisplaywidth(notif.msg) > 160) then
+		-- Native UI2 collapses the log; history keeps every line, including
+		-- quotes/newlines that must never be interpolated into an Ex command.
+		vim.api.nvim_echo({ { notif.msg, "Normal" } }, true, {})
+		notif.msg = "Details saved to :messages"
+	end
 	schedule_cap()
 	return true
 end
@@ -89,7 +95,7 @@ function M.render(buf, notif, ctx)
 	ctx.opts.wo = ctx.opts.wo or {}
 	ctx.opts.wo.winhighlight =
 		"Normal:NormalFloat,NormalNC:NormalFloat,FloatBorder:FloatBorder,FloatTitle:FloatTitle,FloatFooter:FloatTitle,SignColumn:NormalFloat,LineNr:NormalFloat,EndOfBuffer:NormalFloat"
-	ctx.opts.border = "rounded"
+	ctx.opts.border = "single"
 	ctx.opts.footer = nil
 	ctx.opts.title = {
 		{ " ● ", rail },

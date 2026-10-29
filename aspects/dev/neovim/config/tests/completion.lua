@@ -8,7 +8,7 @@ if vim.env.NVIM_EXPECTED_CONFIG_DIR then
 	)
 end
 completion.setup()
-assert(vim.o.pumborder == "rounded" and vim.o.pumblend == 0, "completion should use an opaque rounded menu")
+assert(vim.o.pumborder == "single" and vim.o.pumblend == 0, "completion should use an opaque single-line menu")
 
 local maps = vim.api.nvim_get_keymap("i")
 local found = {}

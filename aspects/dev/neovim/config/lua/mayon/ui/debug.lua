@@ -99,7 +99,7 @@ function M.setup()
 			base_sections = { scopes = { label = "Variables", keymap = "V" } },
 			custom_sections = { stack = { label = "Stack", keymap = "S", buffer = stack_buf, action = render_stack } },
 		},
-		help = { border = "rounded" },
+		help = { border = "single" },
 	})
 	require("nvim-dap-virtual-text").setup({
 		commented = true,

@@ -124,7 +124,7 @@ local function show_error(src, lines)
 		col = 0,
 		width = width,
 		height = math.min(#lines, 8),
-		border = "rounded",
+		border = "single",
 		focusable = false,
 		enter = false,
 		backdrop = false,

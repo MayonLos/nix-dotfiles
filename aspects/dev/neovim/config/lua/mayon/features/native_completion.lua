@@ -260,7 +260,7 @@ function M.setup()
 		stop_auto_timer(buf)
 	end
 	-- The completion menu uses the shared rounded One Dark completion surface.
-	vim.o.pumborder = "rounded"
+	vim.o.pumborder = "single"
 	vim.o.pumblend = 0
 	require("mayon.features.completion_ui").setup()
 	local group = vim.api.nvim_create_augroup("MayonNativeCompletion", { clear = true })

@@ -74,7 +74,7 @@ return {
 			{
 				"<leader>dh",
 				function()
-					require("dap.ui.widgets").hover(nil, { border = "rounded" })
+					require("dap.ui.widgets").hover(nil, { border = "single" })
 				end,
 				desc = "Inspect value",
 			},
@@ -108,7 +108,7 @@ return {
 		"grug-far.nvim",
 		cmd = "GrugFar",
 		after = function()
-			require("grug-far").setup({ headerMaxWidth = 80, border = "rounded" })
+			require("grug-far").setup({ headerMaxWidth = 80, border = "single" })
 		end,
 	},
 	{

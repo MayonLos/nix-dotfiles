@@ -66,7 +66,7 @@ local function terminal(position)
 			win = {
 				style = "terminal",
 				position = position,
-				border = "rounded",
+				border = "single",
 			},
 		})
 	end
@@ -98,9 +98,8 @@ function M.setup()
 		require("which-key").show({ global = true })
 	end, "Show Keymaps")
 	map("n", "<leader>;", function()
-		require("lz.n").trigger_load("dropbar.nvim")
-		require("dropbar.api").pick()
-	end, "Pick Breadcrumb")
+		Snacks.picker.lsp_symbols()
+	end, "Pick Code Context")
 	map("n", "<leader>rt", function()
 		require("mayon.features.tasks").pick()
 	end, "Pick Run Task")
@@ -137,7 +136,7 @@ function M.setup()
 	map("n", "<leader>bo", function()
 		Snacks.bufdelete.other()
 	end, "Close Other Buffers")
-	-- Positions follow the toolbar's document pills.
+	-- Keep direct buffer positions available alongside the buffer picker.
 	for index = 1, 9 do
 		map("n", "<leader>" .. index, function()
 			local buf = require("mayon.ui.tabline").buffers()[index]
@@ -151,6 +150,9 @@ function M.setup()
 		local root = project_root()
 		Snacks.explorer({ cwd = root, focus = "list" })
 	end, "Open File Tree")
+	map("n", "<leader>fe", function()
+		vim.cmd("Oil")
+	end, "Browse Directory")
 	map("n", "<leader>fn", "<cmd>enew<cr>", "Create File")
 	map("n", "<leader>fD", delete_to_trash, "Move to Trash")
 	map("n", "<leader>fc", function()
@@ -231,6 +233,31 @@ function M.setup()
 	map("n", "<leader>xw", function()
 		vim.lsp.buf.workspace_diagnostics()
 	end, "Collect Project Diagnostics")
+	vim.api.nvim_create_user_command("BreadcrumbsToggle", function()
+		require("mayon.ui.breadcrumbs").toggle()
+	end, { desc = "Toggle Document Breadcrumbs" })
+	map("n", "<leader>ub", function()
+		require("mayon.ui.breadcrumbs").toggle()
+	end, "Toggle Breadcrumbs")
+	map("n", "<leader>ui", function()
+		vim.cmd("EditorStatus")
+	end, "Show Editor Status")
+	vim.api.nvim_create_user_command("EditorStatus", function()
+		local ai = require("mayon.features.ai_completion")
+		local clients = vim.tbl_map(function(c)
+			return c.name
+		end, vim.lsp.get_clients({ bufnr = 0 }))
+		vim.notify(
+			"LSP: "
+				.. (#clients > 0 and table.concat(clients, ", ") or "none")
+				.. "\nAI: "
+				.. ai.provider
+				.. "\nGit: "
+				.. ((vim.b.gitsigns_status_dict or {}).head or "none"),
+			vim.log.levels.INFO,
+			{ title = "Editor Status" }
+		)
+	end, { desc = "Show LSP, Git and AI status" })
 	map("n", "<leader>uw", toggle_option("wrap", "自动折行"), "Toggle Line Wrap")
 	map("n", "<leader>us", toggle_option("spell", "拼写检查"), "Toggle Spell Check")
 	map("n", "<leader>uh", function()

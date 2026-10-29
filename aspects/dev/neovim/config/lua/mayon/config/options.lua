@@ -20,7 +20,7 @@ function M.setup()
 		completeitemalign = "kind,abbr,menu",
 		-- Keep the block/beam/bar shapes aligned with the mode-color palette.
 		guicursor = "n:block-Cursor,v-ve:block-Cursor,i-ci:ver25-Cursor,r-cr-o:hor20-Cursor,c:ver25-Cursor,sm:block-Cursor",
-		pumborder = "rounded",
+		pumborder = "single",
 		pumwidth = 36,
 		pummaxwidth = 72,
 		pumheight = 10,
@@ -52,7 +52,7 @@ function M.setup()
 		sidescrolloff = 8,
 		smoothscroll = true,
 		linebreak = true,
-		showtabline = 2,
+		showtabline = 0,
 		signcolumn = "yes:2",
 		smartcase = true,
 		smartindent = true,
@@ -65,7 +65,7 @@ function M.setup()
 		timeoutlen = 400,
 		undofile = true,
 		updatetime = 250,
-		winborder = "rounded",
+		winborder = "single",
 		-- The Nixvim baseline left `wrap` at Neovim's default (`true`). Keep
 		-- long prose and Markdown lines visible instead of clipping them at the
 		-- right edge; break at word boundaries without noisy continuation arrows.

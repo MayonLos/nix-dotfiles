@@ -69,7 +69,7 @@ whichkey.setup()
 vim.api.nvim_exec_autocmds("VimEnter", {})
 vim.wait(100)
 local config = whichkey.config()
-assert(config.win.border == "rounded" and config.win.row == -1, "which-key must keep its bottom rounded card")
+assert(config.win.border == "single" and config.win.row == -1, "which-key should keep a bottom single-line surface")
 assert(config.win.title == true, "which-key should derive its title from the active prefix")
 local geometry = whichkey.geometry
 local wide = geometry(1706)
@@ -152,7 +152,7 @@ for _, name in ipairs({
 	"WhichKeyBorder",
 }) do
 	local hl = vim.api.nvim_get_hl(0, { name = name, link = false })
-	assert(hl.bg == tonumber(palette.bg:sub(2), 16), "which-key surface must match One Dark: " .. name)
+	assert(hl.bg == tonumber(palette.deep:sub(2), 16), "which-key surface must match One Dark deep: " .. name)
 end
 
 -- Descriptions are short English action labels. Inspect all modes after lazy

@@ -150,7 +150,7 @@ local function diagnostics()
 		virtual_text = false,
 		virtual_lines = false,
 		severity_sort = true,
-		float = { border = "rounded", source = "if_many", header = "", title = " diagnostics ", title_pos = "center" },
+		float = { border = "single", source = "if_many", header = "", title = " diagnostics ", title_pos = "center" },
 	})
 
 	vim.keymap.set("n", "<leader>ll", function()

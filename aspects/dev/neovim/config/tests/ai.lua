@@ -394,7 +394,7 @@ local function review(title, decision)
 	assert(vim.fn.maparg(",a", "n") ~= "" and vim.fn.maparg(",r", "n") ~= "")
 	assert(
 		vim.api.nvim_eval_statusline(vim.wo.winbar, { winid = 0 }).str:find(",a 接受", 1, true),
-		"diff lacks its review hint"
+		"Claude diff tool window should retain its on-demand review hint"
 	)
 	vim.cmd(decision)
 	assert(resolved, "Claude diff did not resolve")

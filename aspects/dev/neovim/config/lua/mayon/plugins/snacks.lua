@@ -52,11 +52,11 @@ local function setup(overrides)
 	local config = {
 		input = {
 			enabled = true,
-			win = { border = "rounded", title_pos = "center", backdrop = false },
+			win = { border = "single", title_pos = "center", backdrop = false },
 		},
 		styles = {
 			notification = {
-				border = "rounded",
+				border = "single",
 				wo = { winblend = 0 },
 			},
 		},
@@ -64,7 +64,7 @@ local function setup(overrides)
 			configure = false,
 			win = {
 				style = "float",
-				border = "rounded",
+				border = "single",
 				title = " Git · Lazygit ",
 				title_pos = "center",
 				backdrop = false,
@@ -72,7 +72,7 @@ local function setup(overrides)
 		},
 		terminal = {
 			win = {
-				border = "rounded",
+				border = "single",
 				title = " Terminal · Snacks ",
 				backdrop = false,
 				title_pos = "center",
@@ -133,7 +133,7 @@ local function setup(overrides)
 				vim.o.showtabline = 0
 			end,
 			on_close = function()
-				vim.o.showtabline = 2
+				vim.o.showtabline = 0
 			end,
 		},
 		statuscolumn = {
@@ -206,7 +206,7 @@ local function setup(overrides)
 								width = 34,
 								height = 0,
 								border = "none",
-								{ win = "input", height = 1, border = "rounded" },
+								{ win = "input", height = 1, border = "single" },
 								{ win = "list", border = "none" },
 							},
 						}

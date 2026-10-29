@@ -71,7 +71,7 @@ local function overrides()
 		set("DiagnosticUnderline" .. severity, { sp = blend(color, c.bg, 0.52), undercurl = true })
 		set("DiagnosticSign" .. severity, { fg = blend(color, c.bg, 0.72), bg = c.bg })
 		-- Floating prose stays neutral; the prefix carries the severity color.
-		set("DiagnosticFloating" .. severity, { fg = c.brightFg, bg = c.bg })
+		set("DiagnosticFloating" .. severity, { fg = c.brightFg, bg = c.deep })
 	end
 	local diagnostic_inline = blend(c.yellow, c.bg, 0.62)
 	set("MayonDiagnosticInline", { fg = diagnostic_inline, bg = "NONE", italic = true })
@@ -114,15 +114,15 @@ local function overrides()
 	set("DiagnosticSignInfo", { fg = blend(c.blue, c.bg, 0.62), bg = c.bg })
 	set("DiagnosticSignHint", { fg = blend(c.cyan, c.bg, 0.62), bg = c.bg })
 	set("DiagnosticSignOk", { fg = c.green })
-	vim.api.nvim_set_hl(0, "NormalFloat", { fg = c.brightFg, bg = c.bg })
-	vim.api.nvim_set_hl(0, "FloatBorder", { fg = edge, bg = c.bg })
-	vim.api.nvim_set_hl(0, "FloatTitle", { fg = c.muted, bg = c.bg })
+	vim.api.nvim_set_hl(0, "NormalFloat", { fg = c.brightFg, bg = c.deep })
+	vim.api.nvim_set_hl(0, "FloatBorder", { fg = edge, bg = c.deep })
+	vim.api.nvim_set_hl(0, "FloatTitle", { fg = c.muted, bg = c.deep })
 	-- Neogit remaps these names inside its own highlight namespace. Use
 	-- concrete colors to avoid a FloatBorder -> NeogitFloatBorder link cycle.
-	vim.api.nvim_set_hl(0, "NeogitNormal", { fg = c.brightFg, bg = c.bg })
-	vim.api.nvim_set_hl(0, "NeogitNormalFloat", { fg = c.brightFg, bg = c.bg })
-	vim.api.nvim_set_hl(0, "NeogitFloatBorder", { fg = edge, bg = c.bg })
-	vim.api.nvim_set_hl(0, "NeogitFloatHeader", { fg = c.muted, bg = c.bg })
+	vim.api.nvim_set_hl(0, "NeogitNormal", { fg = c.brightFg, bg = c.deep })
+	vim.api.nvim_set_hl(0, "NeogitNormalFloat", { fg = c.brightFg, bg = c.deep })
+	vim.api.nvim_set_hl(0, "NeogitFloatBorder", { fg = edge, bg = c.deep })
+	vim.api.nvim_set_hl(0, "NeogitFloatHeader", { fg = c.muted, bg = c.deep })
 	vim.api.nvim_set_hl(0, "MultiCursorCursor", { fg = c.bg, bg = c.cyan, bold = true })
 	vim.api.nvim_set_hl(0, "MultiCursorDisabledCursor", { fg = c.bg, bg = c.muted })
 	set("MatchParen", { fg = c.blue, bg = "NONE", bold = true, underline = true, sp = c.blue })
@@ -132,16 +132,16 @@ local function overrides()
 	set("TreesitterContext", { bg = c.surface })
 	set("TreesitterContextLineNumber", { bg = c.surface, fg = c.fg })
 	set("TreesitterContextSeparator", { fg = c.border, bg = c.surface })
-	set("Pmenu", { fg = c.brightFg, bg = c.bg })
-	set("PmenuSel", { fg = c.brightFg, bg = c.selection, bold = true })
-	set("PmenuKind", { fg = c.blue, bg = c.bg })
+	set("Pmenu", { fg = c.brightFg, bg = c.deep })
+	set("PmenuSel", { fg = c.blue, bg = c.selection, bold = true })
+	set("PmenuKind", { fg = c.blue, bg = c.deep })
 	set("PmenuKindSel", { fg = c.blue, bg = c.selection })
-	set("PmenuExtra", { fg = c.muted, bg = c.bg })
-	set("PmenuExtraSel", { fg = c.muted, bg = c.selection })
-	set("PmenuBorder", { fg = edge, bg = c.bg })
+	set("PmenuExtra", { fg = c.muted, bg = c.deep })
+	set("PmenuExtraSel", { fg = c.fg, bg = c.selection })
+	set("PmenuBorder", { fg = edge, bg = c.deep })
 	set("PmenuSbar", { bg = c.surface })
 	set("PmenuThumb", { bg = c.border })
-	set("PmenuMatch", { fg = c.blue, bg = c.bg, bold = true })
+	set("PmenuMatch", { fg = c.blue, bg = c.deep, bold = true })
 	set("PmenuMatchSel", { fg = c.blue, bg = c.selection, bold = true })
 	set("SnippetTabstopActive", { bg = c.selection, underline = true, sp = c.cyan })
 	set("LspInlineCompletion", { fg = c.muted, italic = true })
@@ -250,10 +250,10 @@ local function overrides()
 	set("ComplHintMore", { link = "LspInlineCompletion" })
 	set("MinuetVirtualText", { link = "LspInlineCompletion" })
 	set("Directory", { fg = c.blue, bold = true })
-	set("MayonPopup", { fg = c.brightFg, bg = c.bg })
-	set("MayonPopupBorder", { fg = edge, bg = c.bg })
-	set("MayonPopupTitle", { fg = c.muted, bg = c.bg })
-	set("MayonFloatErrorBorder", { fg = blend(c.red, c.bg, 0.65), bg = c.bg })
+	set("MayonPopup", { fg = c.brightFg, bg = c.deep })
+	set("MayonPopupBorder", { fg = edge, bg = c.deep })
+	set("MayonPopupTitle", { fg = c.muted, bg = c.deep })
+	set("MayonFloatErrorBorder", { fg = blend(c.red, c.bg, 0.65), bg = c.deep })
 	set("MayonExplorerFile", { fg = c.fg })
 	set("MayonExplorerTitle", { fg = c.muted, bg = c.bg })
 	set("MayonExplorerDirectory", { fg = c.fg, bg = c.bg })
@@ -265,10 +265,10 @@ local function overrides()
 	end
 	set("LspReferenceWrite", { fg = c.fg, bg = "NONE", underline = true, sp = blend(c.blue, c.bg, 0.38) })
 	set("SnacksPickerListCursorLine", { bg = c.selection })
-	set("SnacksPickerPreview", { fg = c.brightFg, bg = c.bg })
+	set("SnacksPickerPreview", { fg = c.brightFg, bg = c.deep })
 	set("SnacksPickerDimmed", { fg = blend(c.muted, c.bg, 0.5) })
-	set("MayonNotificationTitle", { fg = c.brightFg, bg = c.bg })
-	set("MayonNotificationBody", { fg = c.muted, bg = c.bg })
+	set("MayonNotificationTitle", { fg = c.brightFg, bg = c.deep })
+	set("MayonNotificationBody", { fg = c.brightFg, bg = c.deep })
 	set("MayonPanelTitle", { fg = c.muted, bg = c.bg })
 	set("MayonCompletionRail", { fg = c.blue, bg = c.selection })
 	set("MayonPreviewLine", { bg = blend(c.blue, c.bg, 0.12) })
@@ -276,9 +276,9 @@ local function overrides()
 		SnacksPickerPrompt = { fg = c.blue, bold = true },
 		SnacksPickerMatch = { fg = c.blue, bold = true },
 		MayonPickerRail = { fg = c.blue, bg = c.selection },
-		MayonPickerSource = { fg = c.brightFg, bg = c.bg },
-		MayonPickerRange = { fg = c.muted, bg = c.bg },
-		MayonPickerCount = { fg = c.muted, bg = c.bg },
+		MayonPickerSource = { fg = c.brightFg, bg = c.deep },
+		MayonPickerRange = { fg = c.muted, bg = c.deep },
+		MayonPickerCount = { fg = c.muted, bg = c.deep },
 		SnacksPickerRow = { fg = c.border },
 		SnacksPickerCol = { fg = c.border },
 		SnacksPickerFile = { fg = c.brightFg },
@@ -474,8 +474,8 @@ local function overrides()
 		links["SnacksNotifierBorder" .. level] = "FloatBorder"
 		local diagnostic = get("DiagnosticSign" .. level)
 		local severity = diagnostic.fg or c.muted
-		vim.api.nvim_set_hl(0, "SnacksNotifierTitle" .. level, { fg = c.muted, bg = c.bg })
-		vim.api.nvim_set_hl(0, "SnacksNotifierIcon" .. level, { fg = severity, bg = c.bg })
+		vim.api.nvim_set_hl(0, "SnacksNotifierTitle" .. level, { fg = c.muted, bg = c.deep })
+		vim.api.nvim_set_hl(0, "SnacksNotifierIcon" .. level, { fg = severity, bg = c.deep })
 	end
 	set("TinyInlineDiagnosticVirtualTextBg", { bg = "NONE" })
 	for _, name in ipairs({ "Error", "Warn", "Info", "Hint" }) do

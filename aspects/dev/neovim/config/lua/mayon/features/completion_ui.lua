@@ -61,7 +61,7 @@ local function style_docs(win)
 	local width = math.max(1, math.min(cfg.width, 64, vim.o.columns - pos[2] - 2))
 	local height = math.max(1, math.min(cfg.height, 14, vim.o.lines - pos[1] - 2))
 	vim.api.nvim_win_set_config(win, {
-		border = "rounded",
+		border = "single",
 		title = " Documentation ",
 		title_pos = "center",
 		width = width,
@@ -187,7 +187,7 @@ local function trigger_signature(char)
 				)
 				local docbuf
 				docbuf, signature_win = vim.lsp.util.open_floating_preview(lines, "markdown", {
-					border = "rounded",
+					border = "single",
 					title = " Signature ",
 					title_pos = "center",
 					focusable = false,

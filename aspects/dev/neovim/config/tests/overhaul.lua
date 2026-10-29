@@ -39,7 +39,6 @@ assert(
 local ws = require("mayon.ui.workspace")
 ws.setup()
 assert(type(ws.action) == "function" and type(ws.editor) == "function")
-assert(type(ws.buffer_labels) == "function")
 assert(ws.attach == nil and ws.page == nil and ws.rails == nil and ws.headers == nil)
 local doc = assert(ws.editor(), "workspace did not locate the document window")
 vim.wo[doc].winhighlight =
@@ -49,21 +48,10 @@ assert(not vim.wo[doc].winhighlight:find("SnacksDashboard", 1, true), "dashboard
 vim.wo[doc].winhighlight = "Normal:NormalFloat,NormalNC:NormalFloat,WinBar:MayonPanelTitle,CursorLine:PmenuSel"
 vim.api.nvim_exec_autocmds("BufWinEnter", { buffer = vim.api.nvim_win_get_buf(doc) })
 assert(not vim.wo[doc].winhighlight:find("NormalFloat", 1, true), "auxiliary deep surface leaked into editor")
-local toolbar = require("mayon.ui.toolbar")
-local original_columns = vim.o.columns
-vim.o.columns = 78
-local active = require("mayon.ui.tabline").active_buffer()
-local rendered_toolbar =
-	vim.api.nvim_eval_statusline(toolbar.render(), { use_tabline = true, maxwidth = vim.o.columns })
-assert(rendered_toolbar.width <= vim.o.columns, "toolbar overflowed the top row")
-assert(rendered_toolbar.str:find("example.lua", 1, true), "active file is missing from the toolbar")
-for _, obsolete in ipairs({ "×", "Run", "Search Everywhere" }) do
-	assert(not rendered_toolbar.str:find(obsolete, 1, true), "toolbar contains removed control: " .. obsolete)
-end
-local palette = require("mayon.generated").palette
-local pill = vim.api.nvim_get_hl(0, { name = "MayonTabPill", link = false })
-assert(pill.bg == tonumber(palette.selection:sub(2), 16), "selected document pill should use selection background")
-assert(pill.fg == tonumber(palette.brightFg:sub(2), 16), "selected document pill should use bright foreground")
+local tabs = require("mayon.ui.tabline")
+local active = tabs.active_buffer()
+assert(vim.tbl_contains(tabs.buffers(), active), "active document is missing from buffer navigation")
+assert(vim.o.showtabline == 0 and vim.o.tabline == "", "document navigation should not reserve a top row")
 local many = {}
 for i = 1, 12 do
 	local group = i == 1 and "alpha" or i == 2 and "beta" or ("group" .. i)
@@ -76,14 +64,7 @@ for i = 1, 12 do
 	vim.bo[buf].buflisted = true
 	many[#many + 1] = buf
 end
-local labels = ws.buffer_labels(many)
-assert(
-	labels[many[1]] == "alpha/init.lua" and labels[many[2]] == "beta/init.lua",
-	"duplicate basenames lack unique parent suffixes"
-)
 vim.api.nvim_set_current_buf(many[12])
-vim.cmd.redrawtabline()
-local tabs = require("mayon.ui.tabline")
 local excluded_types = {
 	"checkhealth",
 	"grug-far",
@@ -127,64 +108,35 @@ assert(tabs.active_buffer() == many[12], "document was not active before opening
 vim.api.nvim_win_set_buf(tool_window, health)
 vim.api.nvim_set_current_win(tool_window)
 assert(tabs.active_buffer() == many[12], "health buffer replaced the remembered active document")
-local health_toolbar = vim.api.nvim_eval_statusline(toolbar.render(), { use_tabline = true, maxwidth = vim.o.columns })
-assert(not health_toolbar.str:find("health-report", 1, true), "health buffer appeared in document tabs")
+assert(not vim.tbl_contains(tabs.buffers(), health), "health buffer appeared in document navigation")
 tabs.select(many[1])
 assert(vim.api.nvim_get_current_win() == doc, "file selection did not return to the document window")
 assert(vim.api.nvim_win_get_buf(tool_window) == health, "file selection replaced the health tool window")
 vim.api.nvim_win_close(tool_window, true)
 vim.api.nvim_set_current_buf(many[12])
-vim.cmd.redrawtabline()
-rendered_toolbar = vim.api.nvim_eval_statusline(toolbar.render(), { use_tabline = true, maxwidth = vim.o.columns })
-assert(rendered_toolbar.str:find("document-12.lua", 1, true), "active file disappeared when the toolbar overflowed")
-local active_icon = require("mayon.ui.icons").get(vim.api.nvim_buf_get_name(many[12]))
-assert(rendered_toolbar.str:find(active_icon, 1, true), "active document lost its filetype icon")
-assert(rendered_toolbar.width <= vim.o.columns, "overflow toolbar exceeded the available width")
-local all_labels = ws.buffer_labels(require("mayon.ui.tabline").buffers())
-local visible_tabs = 0
-for _, label in pairs(all_labels) do
-	if rendered_toolbar.str:find(label, 1, true) then
-		visible_tabs = visible_tabs + 1
-	end
-end
-local hidden_count = tonumber(rendered_toolbar.str:match("%+(%d+)"))
-assert(hidden_count == #require("mayon.ui.tabline").buffers() - visible_tabs, "toolbar overflow count is not exact")
+assert(tabs.active_buffer() == many[12], "active document identity was lost")
+assert(vim.api.nvim_get_current_buf() == many[12], "document selection should update the editing buffer")
 local snacks = require("snacks")
 local pick_buffers, buffers_picked = snacks.picker.buffers, false
 snacks.picker.buffers = function()
 	buffers_picked = true
 end
-toolbar.click(4)
-assert(
-	vim.wait(500, function()
-		return buffers_picked
-	end),
-	"+N overflow control did not open the buffer picker"
-)
+local buffer_picker = vim.fn.maparg("<leader>,", "n", false, true)
+assert(type(buffer_picker.callback) == "function", "buffer picker key should remain available")
+buffer_picker.callback()
+assert(buffers_picked, "buffer picker key did not open the picker")
 snacks.picker.buffers = pick_buffers
-local diagnostic_ns = vim.api.nvim_create_namespace("toolbar-error-test")
+local diagnostic_ns = vim.api.nvim_create_namespace("buffer-navigation-status-test")
 vim.diagnostic.set(diagnostic_ns, many[12], {
 	{ lnum = 0, col = 0, message = "toolbar error", severity = vim.diagnostic.severity.ERROR },
 })
 vim.bo[many[12]].modified = true
-vim.cmd.redrawtabline()
-local error_tabs = vim.api.nvim_eval_statusline(toolbar.render(), { use_tabline = true, maxwidth = vim.o.columns })
-assert(error_tabs.str:find("●", 1, true), "tab status dot disappeared for a buffer with an error")
-assert(
-	vim.api.nvim_get_hl(0, { name = "MayonTabError", link = false }).fg == tonumber(palette.red:sub(2), 16),
-	"tab error dot is not red"
-)
+vim.cmd.redrawstatus()
+local error_status = vim.api.nvim_eval_statusline(vim.o.statusline, { maxwidth = vim.o.columns })
+assert(error_status.str:find("●1", 1, true), "diagnostic count should appear in the minimal statusline")
 vim.diagnostic.reset(diagnostic_ns, many[12])
 vim.bo[many[12]].modified = false
-vim.bo[many[12]].readonly = true
-local readonly_tabs = vim.api.nvim_eval_statusline(toolbar.render(), { use_tabline = true, maxwidth = vim.o.columns })
-assert(readonly_tabs.str:find("·", 1, true), "read-only buffer should use a quiet status dot")
-assert(
-	vim.api.nvim_get_hl(0, { name = "MayonTabReadonly", link = false }).fg == tonumber(palette.muted:sub(2), 16),
-	"read-only status should remain muted"
-)
 vim.bo[many[12]].readonly = false
-vim.o.columns = original_columns
 vim.api.nvim_set_current_win(doc)
 local big = root .. "/large.lua"
 vim.fn.writefile({ string.rep("x", 1024 * 1024 + 10) }, big)
@@ -196,7 +148,7 @@ for _, key in ipairs({ "<A-1>", "<A-2>", "<A-7>", "<A-F12>", "<leader>?", "<lead
 	assert(vim.fn.maparg(key, "n") ~= "" or vim.fn.maparg(key, "n", false, true).callback, "missing tool key " .. key)
 end
 assert(not package.loaded["nvim-navic"] and not package.loaded.colorizer)
-print("Parser visibility, toolbar lifecycle and bigfile guards passed")
+print("Parser visibility, buffer navigation and bigfile guards passed")
 
 -- A resize scheduled before a picker closes must not rebuild released windows.
 vim.cmd.edit(file)

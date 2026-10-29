@@ -11,6 +11,7 @@ assert(
 		and early_normal_nc.fg ~= tonumber(early_palette.brightFg:sub(2), 16),
 	"inactive editor text should be dimmer on the shared editor surface"
 )
+assert(vim.o.showtabline == 0 and vim.o.winbar == "", "document chrome should be hidden by default")
 assert(color_options.enable_named_colors == false, "named colors must not recolor prose/comments")
 assert(color_options.enable_hex and color_options.enable_rgb and color_options.enable_var_usage)
 assert(color_options.enable_tailwind, "Tailwind utility colors should receive swatches")
@@ -57,49 +58,97 @@ vim.v.oldfiles = { recent_file }
 local dashboard = snacks.dashboard.open({ win = 0, buf = 0 })
 local rendered = vim.api.nvim_buf_get_lines(dashboard.buf, 0, -1, false)
 local lines = table.concat(rendered, "\n")
-assert(lines:find("mayon.nvim", 1, true), "dashboard title did not render")
-assert(lines:find("━━━", 1, true), "dashboard blue rule did not render")
-for _, label in ipairs({
-	"Find Files",
-	"Search Text",
-	"Find Recent Files",
-	"Load Session",
-	"Find Projects",
-	"Open Claude Code",
-	"Create File",
-	"Open Neovim Config",
-}) do
+local wide_geometry = dashboard.opts
+assert(wide_geometry.width == 60, "wide dashboard block should be 60 columns: " .. vim.inspect(wide_geometry))
+assert(wide_geometry.col == 30, "wide dashboard block should be horizontally centered: " .. vim.inspect(wide_geometry))
+vim.o.columns = 80
+vim.api.nvim_exec_autocmds("VimResized", {})
+vim.wait(40)
+local narrow_geometry = dashboard.opts
+assert(
+	narrow_geometry.width == 60,
+	"80-column dashboard should retain its 60-column block: " .. vim.inspect(narrow_geometry)
+)
+assert(narrow_geometry.col == 10, "80-column dashboard block should remain centered: " .. vim.inspect(narrow_geometry))
+vim.o.columns = 120
+vim.api.nvim_exec_autocmds("VimResized", {})
+vim.wait(40)
+assert(dashboard.opts.width == 60 and dashboard.opts.col == 30, "wide dashboard geometry should recover after resize")
+assert(lines:find("Neovim", 1, true), "dashboard title did not render")
+assert(
+	lines:find("Recent Projects", 1, true) and lines:find("Recent Files", 1, true) and lines:find("Actions", 1, true),
+	"dashboard history groups did not render"
+)
+for _, label in ipairs({ "Open", "Search", "New", "Config", "Quit" }) do
 	assert(lines:find(label, 1, true), "dashboard action missing: " .. label)
 end
-for _, key in ipairs({ "f", "g", "r", "s", "p", "a", "n", "c" }) do
-	assert(lines:find(" " .. key .. " ", 1, true), "dashboard action keycap missing: " .. key)
-end
-local paired_actions = false
-for _, line in ipairs(rendered) do
-	if line:find("Find Files", 1, true) and line:find("Search Text", 1, true) then
-		paired_actions = true
-	end
-end
-assert(paired_actions, "dashboard actions should use a two-column grid")
-assert(lines:find("RECENT", 1, true) and lines:find("PROJECTS", 1, true), "dashboard groups did not render")
 assert(lines:find("recent-note.txt", 1, true), "dashboard did not render a recent file")
-assert(lines:find("plugins", 1, true) and lines:find("nvim ", 1, true), "dashboard footer lacks runtime details")
-assert(lines:find("copilot", 1, true), "dashboard footer lacks Copilot status")
+assert(
+	not lines:find("plugins", 1, true) and not lines:find("copilot", 1, true),
+	"dashboard should omit runtime counters"
+)
 assert(not lines:find("██", 1, true), "dashboard should not render a large ASCII logo")
 assert(
 	not lines:find("%f[%a]file%f[%A]") and not lines:find("%f[%a]directory%f[%A]"),
 	"dashboard exposed an icon fallback label"
 )
 assert(vim.bo[dashboard.buf].filetype == "snacks_dashboard")
-local find_mapping = vim.fn.maparg("f", "n", false, true)
-assert(type(find_mapping.callback) == "function", "dashboard file-search key mapping is missing")
-local original_files, file_search_called = snacks.picker.files, false
-snacks.picker.files = function()
-	file_search_called = true
+local dashboard_keys = {}
+for _, item in ipairs(dashboard.items) do
+	if item.key then
+		dashboard_keys[item.key] = item.action
+	end
 end
-find_mapping.callback()
-snacks.picker.files = original_files
-assert(file_search_called, "dashboard file-search mapping did not route to Snacks")
+for _, key in ipairs({ "f", "g", "n", "c", "q", "r", "s", "p", "a" }) do
+	assert(dashboard_keys[key], "dashboard shortcut should remain callable: " .. key)
+end
+assert(dashboard_keys.q == ":qa", "dashboard quit shortcut should route to :qa")
+for _, key in ipairs({ "f", "g", "n", "c", "q" }) do
+	assert(lines:find(" " .. key .. " ", 1, true), "visible dashboard shortcut missing: " .. key)
+end
+for _, key in ipairs({ "r", "s", "p", "a" }) do
+	assert(not lines:find(" " .. key .. " ", 1, true), "legacy dashboard shortcut should stay hidden: " .. key)
+end
+local action_labels = { Open = "f", Search = "g", New = "n", Config = "c", Quit = "q" }
+local key_column
+local name_column
+local function display_column(line, value)
+	local start = assert(line:find(value, 1, true), "missing text while measuring dashboard column: " .. value)
+	return vim.fn.strdisplaywidth(line:sub(1, start - 1))
+end
+for label, key in pairs(action_labels) do
+	local action_line
+	for _, line in ipairs(rendered) do
+		if line:find(label, 1, true) then
+			action_line = line
+			break
+		end
+	end
+	assert(action_line, "dashboard action row missing: " .. label)
+	local key_start = action_line:find(" " .. key .. " ", 1, true)
+	assert(key_start, "dashboard action row has no visible shortcut: " .. label)
+	local current_key_column = vim.fn.strdisplaywidth(action_line:sub(1, key_start - 1))
+	key_column = key_column or current_key_column
+	assert(current_key_column == key_column, "dashboard shortcut column is not right aligned: " .. label)
+	local current_name_column = display_column(action_line, label)
+	name_column = name_column or current_name_column
+	assert(current_name_column == name_column, "dashboard action labels do not share a text column: " .. label)
+end
+local function dashboard_row(text)
+	for _, line in ipairs(rendered) do
+		if line:find(text, 1, true) then
+			return line
+		end
+	end
+	error("dashboard row missing: " .. text)
+end
+local heading_column = display_column(dashboard_row("Neovim"), "Neovim")
+for _, heading in ipairs({ "Recent Projects", "Recent Files", "Actions" }) do
+	assert(
+		display_column(dashboard_row(heading), heading) == heading_column,
+		"dashboard heading alignment mismatch: " .. heading
+	)
+end
 assert(
 	vim.api.nvim_get_hl(0, { name = "MayonDashboardNormal", link = false }).bg
 		== tonumber(require("mayon.generated").palette.bg:sub(2), 16),
@@ -114,36 +163,20 @@ palette.blue = original_blue
 vim.api.nvim_exec_autocmds("ColorScheme", { pattern = "dashboard-palette-restore-test" })
 local dashboard_config = require("mayon.ui.dashboard").config()
 assert(dashboard_config.preset.keys[1].key == "q", "quit should remain in the dashboard footer hint")
-assert(
-	vim.api.nvim_get_hl(0, { name = "MayonDashboardSelection", link = false }).bg
-		== tonumber(palette.selection:sub(2), 16),
-	"dashboard selection should use the palette selection surface"
-)
-local keycap = vim.api.nvim_get_hl(0, { name = "MayonDashboardKey", link = false })
-assert(
-	keycap.fg == tonumber(palette.muted:sub(2), 16) and keycap.bg == tonumber(palette.surface:sub(2), 16),
-	"dashboard keycaps should use the muted surface style"
-)
-local active_keycap = vim.api.nvim_get_hl(0, { name = "MayonDashboardKeyActive", link = false })
-assert(
-	active_keycap.fg == tonumber(palette.blue:sub(2), 16) and active_keycap.bg == tonumber(palette.selection:sub(2), 16),
-	"selected dashboard keycaps should use blue on the selection surface"
-)
 local file_segments = dashboard_config.formats.file({ file = recent_file }, { width = 40 })
-assert(vim.trim(file_segments[1][1]) == "recent-note.txt", "recent file should lead with its filename")
-assert(file_segments[3].hl == "MayonDashboardMuted", "recent file parent path should be muted")
-assert(file_segments[3][1]:find(vim.fn.fnamemodify(vim.fs.dirname(recent_file), ":t"), 1, true))
+assert(file_segments.hl == "MayonDashboardMuted", "recent file path should be muted")
+assert(file_segments[1]:find("recent-note.txt", 1, true), "recent file path should include its filename")
 local dashboard_file_icon = dashboard_config.formats.icon({ icon = "file", file = recent_file })
 local expected_dashboard_icon = require("mayon.ui.icons").get(recent_file)
 assert(
-	dashboard_file_icon[1] == expected_dashboard_icon
-		and dashboard_file_icon[1] ~= "  "
+	dashboard_file_icon[1] == vim.trim(expected_dashboard_icon)
+		and dashboard_file_icon[1] ~= ""
 		and dashboard_file_icon.hl:match("^DevIcon"),
 	"recent files should display their colored devicon"
 )
 assert(
-	dashboard_config.formats.icon({ icon = "directory" })[1] == "▸ ",
-	"project directories should use the blue arrow"
+	dashboard_config.formats.icon({ icon = "directory" }).width == 2,
+	"project icons should reserve a consistent two-cell column"
 )
 local root_fixture = vim.fn.tempname()
 vim.fn.mkdir(root_fixture, "p")
@@ -151,7 +184,56 @@ vim.fn.writefile({ "[project]", 'name = "dashboard-fixture"' }, root_fixture .. 
 local root_file = require("mayon.ui.dashboard").config().formats.file({
 	file = root_fixture .. "/pyproject.toml",
 }, { width = 40 })
-assert(root_file[3][1] == ".", "project-root files should show '.' as their parent")
+assert(
+	root_file[1]:match("[^/]+/pyproject%.toml$"),
+	"recent path should be short and relative rather than absolute: " .. vim.inspect(root_file)
+)
+
+local function assert_dashboard_selection(row)
+	vim.api.nvim_win_set_cursor(dashboard.win, { row, 0 })
+	vim.api.nvim_exec_autocmds("CursorMoved", { buffer = dashboard.buf })
+	vim.wait(30)
+	local marks = vim.api.nvim_buf_get_extmarks(
+		dashboard.buf,
+		vim.api.nvim_get_namespaces().MayonDashboardSelection,
+		{ row - 1, 0 },
+		{ row - 1, -1 },
+		{ details = true }
+	)
+	local selected, rail = false, false
+	local line = vim.api.nvim_buf_get_lines(dashboard.buf, row - 1, row, false)[1] or ""
+	for _, mark in ipairs(marks) do
+		local details = mark[4]
+		selected = selected
+			or (
+				details.hl_group == "MayonDashboardSelection"
+				and mark[3] == dashboard.opts.col
+				and details.end_col == #line
+			)
+		rail = rail
+			or (
+				details.virt_text
+				and details.virt_text[1]
+				and details.virt_text[1][1] == "▎"
+				and details.virt_text[1][2] == "MayonDashboardRail"
+			)
+	end
+	assert(
+		selected,
+		"selected dashboard row lacks bounded background: "
+			.. vim.inspect({ marks = marks, line = line, col = dashboard.opts.col, items = dashboard.items })
+	)
+	assert(rail, "selected dashboard row lacks its blue rail: " .. vim.inspect(marks))
+end
+local open_row
+for _, item in ipairs(dashboard.items) do
+	if item.key == "f" then
+		open_row = item._.row
+		break
+	end
+end
+assert(open_row, "dashboard Open row metadata is missing")
+assert_dashboard_selection(open_row)
 
 -- Session restore must initialize the lazy feature even before any file read.
 local session_fixture = vim.fn.stdpath("state") .. "/sessions/dashboard-restore.vim"
@@ -161,26 +243,14 @@ vim.fn.maparg("s", "n", false, true).callback()
 assert(vim.g.mayon_dashboard_restored == 1, "dashboard session action did not initialize lazy sessions")
 vim.fn.delete(session_fixture)
 
--- A dashboard may remain visible while another split owns focus. Resizing
--- must style and bind only the dashboard, then recent-file Enter must work.
+-- A dashboard may remain visible while another split owns focus. Native Snacks
+-- movement remains available and recent-file Enter opens the selected item.
 vim.api.nvim_set_current_win(dashboard.win)
-vim.fn.maparg("l", "n", false, true).callback()
-local right_column = vim.api.nvim_win_get_cursor(dashboard.win)[2]
-vim.fn.maparg("j", "n", false, true).callback()
-assert(
-	vim.api.nvim_win_get_cursor(dashboard.win)[2] >= right_column - 4,
-	"vertical grid movement lost the right column"
-)
-vim.cmd.vnew()
-local ordinary_win, ordinary_buf = vim.api.nvim_get_current_win(), vim.api.nvim_get_current_buf()
-vim.bo.filetype = "text"
-vim.keymap.set("n", "q", function() end, { buffer = ordinary_buf, desc = "ordinary-q" })
-local ordinary_highlight = vim.wo.winhighlight
-vim.api.nvim_win_set_width(dashboard.win, 70)
-vim.api.nvim_exec_autocmds("VimResized", {})
-vim.wait(50)
-assert(vim.fn.maparg("q", "n", false, true).desc == "ordinary-q", "dashboard resize replaced a document mapping")
-assert(vim.wo[ordinary_win].winhighlight == ordinary_highlight, "dashboard resize restyled a document")
+vim.api.nvim_win_set_cursor(dashboard.win, { 1, 0 })
+vim.api.nvim_win_call(dashboard.win, function()
+	vim.cmd.normal({ args = { "j" }, bang = true })
+end)
+assert(vim.api.nvim_win_get_cursor(dashboard.win)[1] == 2, "native dashboard j movement should advance one row")
 local recent_row
 for index, line in ipairs(vim.api.nvim_buf_get_lines(dashboard.buf, 0, -1, false)) do
 	if line:find("recent-note.txt", 1, true) then
@@ -188,10 +258,26 @@ for index, line in ipairs(vim.api.nvim_buf_get_lines(dashboard.buf, 0, -1, false
 		break
 	end
 end
+assert(recent_row, "dashboard recent-file row metadata is missing before resize")
+vim.api.nvim_win_set_cursor(dashboard.win, { recent_row, 0 })
+vim.wait(30)
+assert_dashboard_selection(recent_row)
+vim.cmd.vnew()
+local ordinary_win, ordinary_buf = vim.api.nvim_get_current_win(), vim.api.nvim_get_current_buf()
+vim.bo.filetype = "text"
+vim.keymap.set("n", "q", function() end, { buffer = ordinary_buf, desc = "ordinary-q" })
+local ordinary_highlight = vim.wo.winhighlight
+vim.api.nvim_exec_autocmds("VimResized", {})
+vim.wait(50)
+assert(vim.fn.maparg("q", "n", false, true).desc == "ordinary-q", "dashboard resize replaced a document mapping")
+assert(vim.wo[ordinary_win].winhighlight == ordinary_highlight, "dashboard resize restyled a document")
+recent_row = vim.api.nvim_win_get_cursor(dashboard.win)[1]
+local selected_after_resize = vim.api.nvim_buf_get_lines(dashboard.buf, recent_row - 1, recent_row, false)[1] or ""
 assert(
-	recent_row,
-	"resize lost the recent-file row: " .. vim.inspect(vim.api.nvim_buf_get_lines(dashboard.buf, 0, -1, false))
+	selected_after_resize:find("recent-note.txt", 1, true),
+	"resize did not preserve the selected recent file: " .. vim.inspect(selected_after_resize)
 )
+assert_dashboard_selection(recent_row)
 vim.api.nvim_win_set_cursor(dashboard.win, { recent_row, 0 })
 vim.api.nvim_win_call(dashboard.win, function()
 	vim.fn.maparg("<cr>", "n", false, true).callback()
@@ -200,7 +286,7 @@ assert(
 	vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(dashboard.win)) == recent_file,
 	"recent-file Enter failed after an unfocused resize"
 )
-assert(vim.o.showtabline == 2, "leaving a manually opened dashboard should restore tabs")
+assert(vim.o.showtabline == 0, "leaving the dashboard should keep document tabs hidden")
 vim.api.nvim_win_close(ordinary_win, true)
 
 -- Worktrees use an absolute gitdir; it must render a branch without reading
@@ -214,7 +300,7 @@ vim.fn.writefile({ "ref: refs/heads/visual-fixture" }, metadata .. "/HEAD")
 vim.fn.chdir(worktree)
 local worktree_dashboard = snacks.dashboard.open({ win = 0, buf = 0 })
 local worktree_lines = table.concat(vim.api.nvim_buf_get_lines(worktree_dashboard.buf, 0, -1, false), "\n")
-assert(worktree_lines:find("visual-fixture", 1, true), "absolute worktree gitdir lost its branch")
+assert(not worktree_lines:find("visual-fixture", 1, true), "dashboard should not render a persistent branch header")
 vim.fn.chdir(original_cwd)
 vim.v.oldfiles = oldfiles
 
@@ -308,9 +394,6 @@ vim.fn.delete(file)
 for _, group in ipairs({
 	"MayonDashboardBlue",
 	"MayonDashboardMuted",
-	"MayonTabPill",
-	"MayonTopProject",
-	"MayonTopMuted",
 	"OilDir",
 	"RainbowDelimiterBlue",
 	"InclineNormal",
@@ -330,14 +413,12 @@ for _, group in ipairs({
 	local hl = vim.api.nvim_get_hl(0, { name = group, link = false })
 	assert(next(hl), "missing theme group: " .. group)
 end
-local toolbar_spec = require("mayon.ui.toolbar").render()
-assert(toolbar_spec:find("%#MayonTopMuted# │ ", 1, true), "toolbar separator must use a defined muted highlight")
-assert(not toolbar_spec:find("MayonTopHint", 1, true), "toolbar references a removed highlight group")
+assert(vim.o.tabline == "", "no persistent toolbar should be installed")
 local palette = require("mayon.generated").palette
 for _, group in ipairs({ "FloatTitle", "MayonPopupTitle" }) do
 	local title = vim.api.nvim_get_hl(0, { name = group, link = false })
 	assert(title.fg == tonumber(palette.muted:sub(2), 16), "floating titles should use muted text: " .. group)
-	assert(title.bg == tonumber(palette.bg:sub(2), 16) and not title.bold, "floating title style mismatch: " .. group)
+	assert(title.bg == tonumber(palette.deep:sub(2), 16) and not title.bold, "floating title style mismatch: " .. group)
 end
 local tiny_error = vim.api.nvim_get_hl(0, { name = "TinyInlineDiagnosticVirtualTextError", link = false })
 assert(

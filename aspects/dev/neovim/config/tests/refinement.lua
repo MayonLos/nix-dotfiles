@@ -22,21 +22,23 @@ local function color(value)
 	return tonumber(value:sub(2), 16)
 end
 
-local function assert_rounded_centered(win, label)
+local function assert_single_surface(win, label)
 	local config = vim.api.nvim_win_get_config(win)
 	assert(config.relative ~= "", label .. " must be a real floating window")
-	local rounded = config.border == nil and vim.o.winborder == "rounded"
-		or type(config.border) == "table" and config.border[1] == "╭"
-	assert(rounded, label .. " must use a rounded border: " .. vim.inspect(config.border) .. " / " .. vim.o.winborder)
-	assert(config.title_pos == "center", label .. " title must be centered")
+	local single = config.border == nil and vim.o.winborder == "single"
+		or type(config.border) == "table" and config.border[1] == "┌"
+	assert(
+		single,
+		label .. " must use a single-line border: " .. vim.inspect(config.border) .. " / " .. vim.o.winborder
+	)
 	return config
 end
 
 local border = highlight("FloatBorder")
 local title = highlight("FloatTitle")
 assert(border.fg == color(require("mayon.ui.theme").float_edge()), "global float border must use the quiet edge")
-assert(border.bg == color(palette.bg), "global float border must share the editor surface")
-assert(title.fg == color(palette.muted) and title.bg == color(palette.bg), "global float title palette mismatch")
+assert(border.bg == color(palette.deep), "global float border must share the deep surface")
+assert(title.fg == color(palette.muted) and title.bg == color(palette.deep), "global float title palette mismatch")
 local popup_border = highlight("MayonPopupBorder")
 local popup_title = highlight("MayonPopupTitle")
 assert(popup_border.fg == border.fg and popup_border.bg == border.bg, "input border must match FloatBorder")
@@ -64,7 +66,7 @@ assert(
 	end, 10),
 	"Snacks input did not create a floating prompt"
 )
-local input_config = assert_rounded_centered(input_win, "Snacks input")
+local input_config = assert_single_surface(input_win, "Snacks input")
 assert(type(input_config.title) == "table", "input should render its native title chunks")
 assert(
 	vim.wo[input_win].winhighlight:find("FloatBorder:SnacksInputBorder", 1, true),
@@ -94,8 +96,8 @@ assert(
 	end, 10),
 	"configured notifier did not render a notification window"
 )
-local notification_config = assert_rounded_centered(notification_win, "notification")
-assert(type(notification_config.title) == "table", "notification should render centered title chunks")
+local notification_config = assert_single_surface(notification_win, "notification")
+assert(type(notification_config.title) == "table", "notification should render title chunks")
 assert(
 	vim.wo[notification_win].winhighlight:find("FloatBorder:FloatBorder", 1, true)
 		and vim.wo[notification_win].winhighlight:find("FloatTitle:FloatTitle", 1, true),
@@ -114,12 +116,12 @@ local chat_buf = panels.open_fixture("chat")
 vim.wait(100)
 local chat_win = vim.fn.win_findbuf(chat_buf)[1]
 assert(chat_win, "offline AI fixture must open its chat window")
-local chat_config = assert_rounded_centered(chat_win, "AI chat")
-assert(type(chat_config.title) == "table", "AI chat should render a centered title")
+local chat_config = assert_single_surface(chat_win, "AI chat")
+assert(type(chat_config.title) == "table", "AI chat should render title chunks")
 border = highlight("FloatBorder")
 title = highlight("FloatTitle")
-assert(border.fg == color(require("mayon.ui.theme").float_edge()) and border.bg == color(palette.bg))
-assert(title.fg == color(palette.muted) and title.bg == color(palette.bg), "AI loading changed FloatTitle")
+assert(border.fg == color(require("mayon.ui.theme").float_edge()) and border.bg == color(palette.deep))
+assert(title.fg == color(palette.muted) and title.bg == color(palette.deep), "AI loading changed FloatTitle")
 assert(highlight("CodeCompanionVirtualText").fg == color(palette.muted), "AI hints should remain muted")
 local ai_border_group = vim.wo[chat_win].winhighlight:match("FloatBorder:([^,]+)") or "FloatBorder"
 local ai_border = highlight(ai_border_group)

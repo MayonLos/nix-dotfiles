@@ -4,21 +4,21 @@ local ns = api.nvim_create_namespace("MayonAIPanels")
 local setup_done = false
 
 local groups = {
-	MayonAIPanel = { fg = "brightFg", bg = "bg" },
-	MayonAIPanelMuted = { fg = "muted", bg = "bg" },
-	MayonAIConnected = { fg = "green", bg = "bg" },
-	MayonAIConfigured = { fg = "blue", bg = "bg" },
-	MayonAIRemoved = { fg = "red", bg = "bg" },
-	MayonAIDisconnected = { fg = "dim", bg = "bg" },
-	MayonAIActive = { fg = "brightFg", bg = "bg", underline = true, sp = "blue" },
-	MayonAIInactive = { fg = "muted", bg = "bg" },
-	MayonAIUser = { fg = "muted", bg = "bg", italic = true },
-	MayonAIAssistant = { fg = "muted", bg = "bg", bold = true },
-	MayonAIUserRail = { fg = "dim", bg = "bg" },
-	MayonAITool = { fg = "cyan", bg = "bg" },
-	MayonAICode = { fg = "fg", bg = "bg" },
-	MayonAIAdd = { fg = "green", bg = "bg" },
-	MayonAIDelete = { fg = "red", bg = "bg" },
+	MayonAIPanel = { fg = "brightFg", bg = "deep" },
+	MayonAIPanelMuted = { fg = "muted", bg = "deep" },
+	MayonAIConnected = { fg = "green", bg = "deep" },
+	MayonAIConfigured = { fg = "blue", bg = "deep" },
+	MayonAIRemoved = { fg = "red", bg = "deep" },
+	MayonAIDisconnected = { fg = "dim", bg = "deep" },
+	MayonAIActive = { fg = "brightFg", bg = "deep", underline = true, sp = "blue" },
+	MayonAIInactive = { fg = "muted", bg = "deep" },
+	MayonAIUser = { fg = "muted", bg = "deep", italic = true },
+	MayonAIAssistant = { fg = "muted", bg = "deep", bold = true },
+	MayonAIUserRail = { fg = "dim", bg = "deep" },
+	MayonAITool = { fg = "cyan", bg = "deep" },
+	MayonAICode = { fg = "fg", bg = "deep" },
+	MayonAIAdd = { fg = "green", bg = "deep" },
+	MayonAIDelete = { fg = "red", bg = "deep" },
 }
 
 local function hl()
@@ -57,12 +57,12 @@ local function hl()
 		"MayonAIDiffDeleteText",
 		{ fg = palette.brightFg, bg = require("mayon.ui.theme").blend(palette.red, palette.bg, 0.12), bold = true }
 	)
-	api.nvim_set_hl(0, "CodeCompanionChatHeader", { fg = palette.muted, bg = palette.bg, bold = true })
-	api.nvim_set_hl(0, "CodeCompanionChatSeparator", { fg = edge, bg = palette.bg })
-	api.nvim_set_hl(0, "CodeCompanionChatTool", { fg = palette.cyan, bg = palette.bg })
-	api.nvim_set_hl(0, "CodeCompanionChatToolGroup", { fg = palette.cyan, bg = palette.bg })
-	api.nvim_set_hl(0, "CodeCompanionChatToolText", { fg = palette.fg, bg = palette.bg })
-	api.nvim_set_hl(0, "CodeCompanionVirtualText", { fg = palette.muted, bg = palette.bg })
+	api.nvim_set_hl(0, "CodeCompanionChatHeader", { fg = palette.muted, bg = palette.deep, bold = true })
+	api.nvim_set_hl(0, "CodeCompanionChatSeparator", { fg = edge, bg = palette.deep })
+	api.nvim_set_hl(0, "CodeCompanionChatTool", { fg = palette.cyan, bg = palette.deep })
+	api.nvim_set_hl(0, "CodeCompanionChatToolGroup", { fg = palette.cyan, bg = palette.deep })
+	api.nvim_set_hl(0, "CodeCompanionChatToolText", { fg = palette.fg, bg = palette.deep })
+	api.nvim_set_hl(0, "CodeCompanionVirtualText", { fg = palette.muted, bg = palette.deep })
 	api.nvim_set_hl(0, "CodeCompanionDiffAdd", {
 		fg = palette.green,
 		bg = require("mayon.ui.theme").blend(palette.green, palette.bg, 0.12),
@@ -373,6 +373,8 @@ function M.winbar(buf)
 	active = active or statusline_text(name)
 	local win = tonumber(vim.g.statusline_winid) or vim.fn.win_findbuf(buf)[1]
 	if win and api.nvim_win_is_valid(win) and api.nvim_win_get_config(win).relative ~= "" then
+		local width = math.max(8, api.nvim_win_get_width(win) - vim.fn.strdisplaywidth(active) - 6)
+		status = require("mayon.ui.text").truncate(status, width)
 		return "%#MayonAIActive# " .. active .. " %*%=%#MayonAIPanelMuted#" .. statusline_text(status) .. " %*"
 	end
 	local tabs = {}

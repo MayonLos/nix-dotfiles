@@ -7,7 +7,7 @@ end
 require("mayon.ui.whichkey").setup()
 vim.wait(20)
 local whichkey = require("mayon.ui.whichkey").config()
-assert(whichkey.win.border == "rounded", "which-key should share the rounded float border")
+assert(whichkey.win.border == "single", "which-key should share the single-line float border")
 assert(whichkey.win.row == -1 and whichkey.win.height.max == 10, "which-key should be anchored to the bottom")
 assert(
 	whichkey.win.width == require("mayon.ui.whichkey").geometry(vim.o.columns).width
@@ -33,7 +33,7 @@ for _, name in ipairs({
 	"WhichKeyBorder",
 }) do
 	local hl = vim.api.nvim_get_hl(0, { name = name, link = false })
-	assert(hl.bg == tonumber(palette.bg:sub(2), 16), "which-key surface must match One Dark: " .. name)
+	assert(hl.bg == tonumber(palette.deep:sub(2), 16), "which-key surface must match One Dark deep: " .. name)
 end
 assert(
 	vim.api.nvim_get_hl(0, { name = "WhichKey", link = false }).fg

@@ -242,7 +242,7 @@ function M.run(task)
 	save_last(validated)
 	require("snacks").terminal(validated.command, {
 		cwd = validated.cwd,
-		win = { style = "terminal", position = "bottom", height = 0.32, border = "rounded" },
+		win = { style = "terminal", position = "bottom", height = 0.32, border = "single" },
 	})
 	return true
 end

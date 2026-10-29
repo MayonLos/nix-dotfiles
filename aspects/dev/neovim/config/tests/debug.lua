@@ -125,7 +125,7 @@ assert(
 		{ "scopes", "watches", "breakpoints", "stack", "threads", "repl", "console" }
 	)
 )
-assert(config.help.border == "rounded")
+assert(config.help.border == "single")
 local view = require("dap-view")
 view.open()
 local state = require("dap-view.state")

@@ -92,10 +92,14 @@ local function companion()
 		display = {
 			chat = {
 				window = {
-					border = "rounded",
-					layout = vim.o.columns < 120 and "float" or "vertical",
+					border = "single",
+					-- Resolve geometry at every open, including after a resize. A
+					-- focused float keeps chat usable without narrowing the document.
+					layout = "float",
 					position = "right",
-					width = vim.o.columns < 120 and 0.88 or 0.42,
+					width = function()
+						return math.min(100, math.floor(vim.o.columns * 0.88))
+					end,
 					opts = {
 						number = false,
 						relativenumber = false,
@@ -196,7 +200,7 @@ local function claude()
 			split_width_percentage = 0.36,
 			snacks_win_opts = {
 				position = vim.o.columns < 120 and "float" or "right",
-				border = "rounded",
+				border = "single",
 				title = " Claude Code ",
 				bo = { filetype = "claudecode" },
 				wo = { winhighlight = "Normal:NormalFloat,WinBar:FloatTitle" },

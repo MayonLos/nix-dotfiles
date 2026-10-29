@@ -2,17 +2,17 @@
 local M = {}
 
 local labels = {
-	files = "文件",
-	grep = "全文搜索",
-	grep_word = "全文搜索",
-	grep_buffers = "缓冲区搜索",
-	lsp_symbols = "符号",
-	lsp_workspace_symbols = "工作区符号",
-	buffers = "缓冲区",
-	recent = "最近文件",
-	help = "帮助",
-	keymaps = "快捷键",
-	diagnostics = "诊断",
+	files = "Files",
+	grep = "Search Text",
+	grep_word = "Search Text",
+	grep_buffers = "Search Buffers",
+	lsp_symbols = "Symbols",
+	lsp_workspace_symbols = "Workspace Symbols",
+	buffers = "Buffers",
+	recent = "Recent Files",
+	help = "Help",
+	keymaps = "Keymaps",
+	diagnostics = "Diagnostics",
 }
 
 local function range(picker)
@@ -33,9 +33,10 @@ local function title(picker)
 end
 
 local function update_title(picker)
-	local root = picker.layout and picker.layout.root
+	local root = picker.input and picker.input.win
 	if root and root:valid() then
-		root:set_title(title(picker), "center")
+		root.opts.footer, root.opts.footer_pos = title(picker), "right"
+		vim.api.nvim_win_set_config(root.win, { title = "", footer = root.opts.footer, footer_pos = "right" })
 	end
 end
 
@@ -114,35 +115,34 @@ local function grep_format(item, picker)
 end
 
 -- Keep navigation compact; use context where choosing a match needs code/diff.
-function M.preview_default(source)
-	source = source or ""
-	return source:match("^grep") ~= nil
-		or source:match("^lsp_") ~= nil
-		or source:match("^git_") ~= nil
-		or source:match("^diagnostics") ~= nil
+function M.preview_default(_)
+	return false
 end
 
 function M.layout(preview)
-	local wide = vim.o.columns >= 120 and vim.o.lines >= 28
-	local visible = preview and wide
+	local wide = vim.o.columns >= 120
+	local height = math.max(6, math.floor(vim.o.lines * 0.28))
 	return {
-		preview = visible,
+		preview = preview or false,
 		layout = {
-			box = "horizontal",
+			box = wide and "horizontal" or "vertical",
 			backdrop = false,
-			width = visible and 0.78 or 0.58,
-			min_width = math.min(58, vim.o.columns - 4),
-			max_width = math.min(visible and 142 or 90, vim.o.columns - 4),
-			height = visible and math.min(18, vim.o.lines - 8) or 8,
-			border = "rounded",
-			title = "{title}",
-			title_pos = "center",
+			row = 0,
+			width = 0,
+			col = 0,
+			height = preview and not wide and math.min(vim.o.lines - 4, height * 2) or height,
+			border = "none",
 			{
 				box = "vertical",
-				{ win = "input", height = 1, border = "bottom" },
+				{ win = "input", height = 1, border = "bottom", title = "{title}", title_pos = "left" },
 				{ win = "list", border = "none" },
 			},
-			{ win = "preview", width = 0.52, border = "left" },
+			{
+				win = "preview",
+				width = wide and 0.5 or nil,
+				height = not wide and height or nil,
+				border = wide and "left" or "top",
+			},
 		},
 	}
 end
