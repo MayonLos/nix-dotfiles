@@ -9,7 +9,7 @@ Outputs include Zsh, Starship, zoxide, Atuin, fzf/fzf-tab, Git/delta/lazygit, di
 Removing the feature removes its shell selection, generated shell files, tools, and runtime exports on activation. It preserves shell history, Git repositories, credentials, Atuin history, project files, and user-owned configuration/data unless separately edited by the user.
 
 Astra §8 supplies the two-line Starship prompt. It shows the directory in blue,
-the Git branch in purple, compact change counts, failures, and muted command
+the Git branch in cyan, compact change counts, failures, and muted command
 duration; identity appears for SSH or root sessions. tmux preserves `Ctrl+a`
 window/session operations and tmuxp layouts while adding a flat status line,
 blue underlined active window, conditional blue/yellow/purple `PREFIX`, `COPY`,
@@ -31,7 +31,10 @@ indicator. LazyGit uses rounded native panels, a thin blue active border, a
 surface-colored inactive border, and the same selection fill; Delta supplies
 the palette-based additions and deletions. Fastfetch places the small NixOS
 logo beside a flat list of system and hardware values, with blue keys and a
-bright foreground title. btop uses its native `rounded_corners` setting,
+bright foreground title. Its 12-cell key column keeps Terminal and other long
+labels clear of the values; the decorative color-block row is omitted. Glow h2
+headings use blue and image labels use cyan. Eza uses cyan for other Git branches
+and image/video names, and blue for GiB sizes. The ANSI-only fzf pointer is blue. btop uses its native `rounded_corners` setting,
 subtle palette-colored panel outlines, and blue-to-cyan CPU, memory, and I/O
 gradients. Existing sessions and user histories are preserved; runtime
 navigation and TUI appearance still need acceptance.

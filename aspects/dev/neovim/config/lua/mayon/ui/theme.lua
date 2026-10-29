@@ -23,9 +23,22 @@ function M.float_edge()
 	return blend(c.border, c.bg, 0.62)
 end
 
+local function diagnostic_prefix(diagnostic, index)
+	local severity = ({ "Error", "Warn", "Info", "Hint" })[diagnostic.severity]
+	return index .. ". ", "Diagnostic" .. severity
+end
+
 local function overrides()
 	local function get(name)
 		return vim.api.nvim_get_hl(0, { name = name, link = false })
+	end
+	-- The LSP core sets float options lazily. Merge the marker after it loads;
+	-- do not load diagnostics on the dashboard or replace its geometry/options.
+	if package.loaded["vim.diagnostic"] then
+		local float = vim.diagnostic.config().float
+		if type(float) == "table" and float.prefix ~= diagnostic_prefix then
+			vim.diagnostic.config({ float = vim.tbl_extend("force", float, { prefix = diagnostic_prefix }) })
+		end
 	end
 	local c = require("mayon.generated").palette
 	local edge = M.float_edge()
@@ -57,6 +70,8 @@ local function overrides()
 	for severity, color in pairs({ Error = c.red, Warn = c.yellow, Info = c.blue, Hint = c.cyan }) do
 		set("DiagnosticUnderline" .. severity, { sp = blend(color, c.bg, 0.52), undercurl = true })
 		set("DiagnosticSign" .. severity, { fg = blend(color, c.bg, 0.72), bg = c.bg })
+		-- Floating prose stays neutral; the prefix carries the severity color.
+		set("DiagnosticFloating" .. severity, { fg = c.brightFg, bg = c.bg })
 	end
 	local diagnostic_inline = blend(c.yellow, c.bg, 0.62)
 	set("MayonDiagnosticInline", { fg = diagnostic_inline, bg = "NONE", italic = true })
@@ -80,7 +95,7 @@ local function overrides()
 	set("MayonModeCommand", { fg = c.orange, bg = c.deep, bold = true, underline = true, sp = c.orange })
 	set("MayonModeBlockNormal", { fg = c.blue, bg = c.selection, bold = true })
 	set("MayonModeBlockInsert", { fg = c.green, bg = c.selection, bold = true })
-	set("MayonModeBlockVisual", { fg = c.purple, bg = c.selection, bold = true })
+	set("MayonModeBlockVisual", { fg = c.blue, bg = c.selection, bold = true })
 	set("MayonModeBlockReplace", { fg = c.red, bg = c.selection, bold = true })
 	set("MayonModeBlockCommand", { fg = c.yellow, bg = c.selection, bold = true })
 	set("MayonFoldText", { fg = c.fg, bg = c.surface })
@@ -178,7 +193,7 @@ local function overrides()
 	set("OilDirHidden", { fg = c.muted, bold = true })
 	set("OilFile", { fg = c.fg })
 	set("OilFileHidden", { fg = c.muted })
-	set("OilSocket", { fg = c.purple })
+	set("OilSocket", { fg = c.cyan })
 	set("OilSocketHidden", { fg = c.muted })
 	set("OilLink", { fg = c.cyan, underline = true })
 	set("OilOrphanLink", { fg = c.red, underline = true })
@@ -400,11 +415,11 @@ local function overrides()
 	set("@lsp.typemod.variable.injected", { fg = c.fg })
 	for _, kind in ipairs({ "FunctionDeclaration", "FunctionDefinition", "MethodDefinition", "ClassDeclaration" }) do
 		set("DropBarKind" .. kind, { fg = c.muted, bg = c.bg })
-		set("DropBarIconKind" .. kind, { fg = c.purple, bg = c.bg })
+		set("DropBarIconKind" .. kind, { fg = c.blue, bg = c.bg })
 	end
 	set("DropBarCurrentContext", { fg = c.muted, bg = c.bg })
 	set("DropBarCurrentContextName", { fg = c.muted, bg = c.bg })
-	set("DropBarCurrentContextIcon", { fg = c.purple, bg = c.bg })
+	set("DropBarCurrentContextIcon", { fg = c.blue, bg = c.bg })
 	set("DropBarIconUISeparator", { fg = blend(c.muted, c.bg, 0.60), bg = c.bg })
 	set("DropBarIconKindDefault", { fg = c.muted, bg = c.bg })
 	local dropbar_kinds = {
@@ -443,7 +458,7 @@ local function overrides()
 		set("DropBarKind" .. kind .. "NC", { fg = c.muted, bg = c.bg })
 	end
 	for _, kind in ipairs({ "Function", "Method", "Class", "Struct", "Interface", "Module", "Namespace", "Type" }) do
-		set("DropBarIconKind" .. kind, { fg = c.purple, bg = c.bg })
+		set("DropBarIconKind" .. kind, { fg = c.blue, bg = c.bg })
 	end
 	for _, group in ipairs({
 		"@comment.documentation",
@@ -672,6 +687,7 @@ end
 
 function M.setup()
 	vim.cmd.colorscheme("onedark")
+
 	local group = vim.api.nvim_create_augroup("MayonActiveSurface", { clear = true })
 	vim.api.nvim_create_autocmd("WinLeave", {
 		group = group,
