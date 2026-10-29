@@ -394,7 +394,7 @@ pkgs.runCommand "interactive-session-config"
         bar = root["bar"]["main"]
         assert bar["start"] == ["launcher", "active_window", "workspaces"]
         assert bar["center"] == []
-        assert bar["end"] == ["tray", "mdj2812/mihomo-control:widget", "network", "bluetooth", "volume", "battery", "notifications", "control-center", "clock"]
+        assert bar["end"] == ["tray", "network", "bluetooth", "volume", "battery", "notifications", "control-center", "clock"]
         assert not bar.get("capsule_group")
         assert not any(name.startswith(("monitor-", "separator-", "group:")) for name in root["widget"])
         assert root["battery"]["warning_threshold"] == 20
@@ -413,9 +413,6 @@ pkgs.runCommand "interactive-session-config"
     assert "nix-dotfiles/legion-conservation" in enabled_plugins
     assert "nix-dotfiles/launchpad" in enabled_plugins
     assert "nix-dotfiles/desktop-menus" in enabled_plugins
-    assert "mdj2812/mihomo-control" in enabled_plugins
-    mihomo = settings["plugin_settings"]["mdj2812/mihomo-control"]
-    assert (mihomo["host"], mihomo["port"]) == ("127.0.0.1", "9097") and "secret" not in mihomo
     assert {"base", "draw", "math", "startcenter", "rofi", "xterm", "thunar-bulk-rename", "thunar-volman-settings", "org.fcitx.Fcitx5"} <= set(settings["plugin_settings"]["nix-dotfiles/launchpad"]["hidden_apps"])
     icon_overrides = settings["plugin_settings"]["nix-dotfiles/launchpad"]["icon_overrides"]
     assert {entry.split("=", 1)[0] for entry in icon_overrides} == {"nvim", "workspace-task-terminal", "Dead by Daylight"}

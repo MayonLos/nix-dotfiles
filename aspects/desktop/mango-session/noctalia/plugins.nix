@@ -57,7 +57,6 @@ in
       "fel/quill"
       "gambled23/mangowm-keymode" # mmsg; shows the keymode SUPER,R enters
       "knyrps/nix-search"
-      "mdj2812/mihomo-control" # jq; Clash Verge external controller
       "nix-dotfiles/legion-conservation"
       "nix-dotfiles/launchpad"
       "nix-dotfiles/desktop-menus"
@@ -73,13 +72,6 @@ in
   # values belong in widget."<plugin-id>:<entry-id>". Keep secrets in
   # runtime state or supported runtime files, never in Nix strings.
   plugin_settings = {
-    # Clash Verge's local external controller (Settings -> External
-    # Controller). The controller secret lives only in runtime state.
-    "mdj2812/mihomo-control" = {
-      host = "127.0.0.1";
-      port = "9097";
-      panel_placement = "attached";
-    };
     "nix-dotfiles/launchpad".hidden_apps = [
       "org.fcitx.fcitx5-migrator"
       "org.fcitx.fcitx5-config-qt"
