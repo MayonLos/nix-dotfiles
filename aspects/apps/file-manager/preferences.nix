@@ -10,6 +10,7 @@ let
   };
   # Boot-time HM can run before any graphical login. This private bus exposes
   # only Xfconf; its daemon flushes preferences when dbus-run-session exits.
+  # The boot-time unit has no dbus-daemon on PATH, so name it explicitly.
   seedBus = pkgs.writeText "thunar-seed-session.conf" ''
     <busconfig>
       <type>session</type><listen>unix:tmpdir=/tmp</listen><auth>EXTERNAL</auth>
@@ -30,7 +31,7 @@ in
         run ${pkgs.coreutils}/bin/env DBUS_SESSION_BUS_ADDRESS="unix:path=$thunar_runtime/bus" \
           ${seed}/bin/thunar-seed-preferences
       else
-        run ${pkgs.dbus}/bin/dbus-run-session --config-file=${seedBus} -- \
+        run ${pkgs.dbus}/bin/dbus-run-session --dbus-daemon=${pkgs.dbus}/bin/dbus-daemon --config-file=${seedBus} -- \
           ${seed}/bin/thunar-seed-preferences
       fi
     fi
