@@ -207,20 +207,13 @@ in
       idle_inhibit_when_fullscreen = 1;
 
       new_is_master = 1;
-      default_master_factor = 0.55;
+      # Every tag starts like tag 1: tile with a 60% master area. Layouts can
+      # still be changed per tag at runtime.
+      default_master_factor = 0.60;
       default_master_count = 1;
       tag_num = 9;
-      # Layout defaults describe activities, not app-id destinations. Users can
-      # still move any application to any tag and change its layout.
       tag_rule = [
         "id:*,layout_name:tile"
-        "id:0,layout_name:scroller,scroller_default_proportion:0.65"
-        "id:1,layout_name:tile,master_factor:0.60"
-        "id:2,layout_name:scroller,scroller_default_proportion:0.80"
-        "id:4,layout_name:monocle"
-        "id:5,layout_name:tile,master_factor:0.65"
-        "id:6,layout_name:monocle"
-        "id:8,layout_name:monocle"
       ];
       # A larger centered preview makes titles/content readable on 1.5x DPI.
       overcircle_center_ratio = 0.60;
