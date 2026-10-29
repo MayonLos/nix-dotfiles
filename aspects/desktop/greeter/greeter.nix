@@ -12,6 +12,16 @@ let
     (import ../../appearance/appearance/resources/wallpaper/package.nix {
       inherit pkgs palette;
     }).default;
+  # Greeter has no background blur option in 1.7.0. Preprocess only the public
+  # default wallpaper; this derivation never reads a user's mutable wallpaper.
+  authWallpaper =
+    pkgs.runCommand "greeter-auth-wallpaper.png"
+      {
+        nativeBuildInputs = [ pkgs.imagemagick ];
+      }
+      ''
+        magick ${wallpaper} -blur 0x24 -fill '${palette.black}' -colorize 48 "$out"
+      '';
 in
 {
   imports = [ inputs.noctalia-greeter.nixosModules.default ];
@@ -29,9 +39,7 @@ in
         # Match the shell's central authentication scene and rounded surfaces.
         corner_radius_scale = 4.0 / 3.0;
         hide_logo = true;
-        # Greeter v1.7.0 only exposes one appearance font family; use the
-        # palette's monospace face so its clock and status readouts align.
-        font_family = palette.fonts.mono;
+        font_family = palette.fonts.sans;
         scheme_selector_position = "hidden";
         power_buttons_position = "bottom-right";
         palette = {
@@ -53,7 +61,7 @@ in
           on_hover = palette.brightFg;
         };
         wallpaper = {
-          path = wallpaper;
+          path = authWallpaper;
           fill_mode = "crop";
           fill_color = palette.surface;
         };
@@ -63,9 +71,9 @@ in
         enabled = true;
         position = "above-panel";
         time_format = "{:%H:%M}";
-        time_font_size = 60;
-        date_font_size = 14;
-        date_format = "%Y年%m月%d日 %A";
+        time_font_size = 72;
+        date_font_size = 16;
+        date_format = "%-m月%-d日 %A";
       };
 
       # Pin the known internal panel scale while allowing unknown external

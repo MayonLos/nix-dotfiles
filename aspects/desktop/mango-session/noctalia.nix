@@ -100,14 +100,11 @@ let
       grep -Fq 'gpu_only_nvidia' src/config/schema/config_schema.cpp
       grep -Fq 'pollCfg.gpuOnlyNvidia' src/system/system_monitor_service.cpp
       grep -Fq 'HUD27: short NVIDIA-only sampling sessions' src/system/system_monitor_service.cpp
-      grep -Fq 'UI4: lockscreen palette-gradient password underline and cached runtime status' src/shell/lockscreen/lock_surface.cpp
-      grep -Fq 'lockscreenRuntimeStatus()' src/shell/lockscreen/lock_surface.cpp
-      grep -Fq 'charge_control_end_threshold' src/shell/lockscreen/lock_surface.cpp
-      grep -Fq 'UI4: ideapad_acpi conservation status precedes the standard battery limit fallback' src/shell/lockscreen/lock_surface.cpp
-      grep -Fq 'm_passwordUnderline->setSize' src/shell/lockscreen/lock_surface.cpp
-      grep -Fq 'm_passwordGlow->setHitTestVisible(false)' src/shell/lockscreen/lock_surface.cpp
-      grep -Fq 'm_passwordUnderline->setHitTestVisible(false)' src/shell/lockscreen/lock_surface.cpp
-      grep -Fq 'label.setHitTestVisible(false)' src/shell/lockscreen/lock_surface.cpp
+      grep -Fq 'R41: a single 40px row' src/shell/lockscreen/lock_surface.cpp
+      grep -Fq 'm_identityAvatar->setRadius(28.0F)' src/shell/lockscreen/lock_surface.cpp
+      grep -Fq 'm_identityName->setHitTestVisible(false)' src/shell/lockscreen/lock_surface.cpp
+      grep -Fq 'setAuthenticationFontSize(state.id' src/shell/lockscreen/lockscreen_widgets_host.cpp
+      grep -Fq 'surfaceH < 700.0F' src/shell/lockscreen/lockscreen_widgets_host.cpp
       grep -Fq 'UI4: palette-surface separators create twenty compact ticks' src/shell/osd/osd_overlay.cpp
       grep -Fq 'UI4: clear non-owning tick pointers before rebuilding their owning scene tree' src/shell/osd/osd_overlay.cpp
       grep -Fq 'progressTicks' src/shell/osd/osd_overlay.h
@@ -528,12 +525,13 @@ in
 
           lockscreen = {
             enabled = true;
+            lock_before_suspend = true;
             # Lock/unlock has its own effect pool; it does not inherit wallpaper.
             transition = lib.optional (!reducedMotion) "fade";
             transition_duration = 200;
             edge_smoothness = 0.3;
-            blur_intensity = 0.40;
-            tint_intensity = 0.48;
+            blur_intensity = 0.75;
+            tint_intensity = 0.58;
             blurred_desktop = false;
           };
 
@@ -541,7 +539,6 @@ in
             enabled = true;
             widget_order = [
               "lockscreen-widget-clock"
-              "lockscreen-widget-seconds"
               "lockscreen-widget-date"
               "lockscreen-login-box@${desktop.primaryOutput}"
             ];
@@ -550,7 +547,8 @@ in
                 type = "login_box";
                 output = desktop.primaryOutput;
                 cx = logicalWidth / 2;
-                cy = logicalHeight * 0.54;
+                cy = logicalHeight * 0.58;
+                box_width = 400.0;
                 settings = {
                   layout = "compact";
                   show_media = false;
@@ -559,59 +557,41 @@ in
                   show_session_buttons = false;
                   show_unlock_hint = true;
                   show_caps_lock = true;
-                  show_keyboard_layout = true;
+                  show_keyboard_layout = false;
                   show_password_reveal = true;
                   background_color = "surface_container";
-                  background_opacity = 1.0;
+                  background_opacity = 0.0;
                   background_radius = 16.0;
                   input_radius = 8.0;
-                  input_opacity = 1.0;
+                  input_opacity = 0.92;
                 };
               };
               lockscreen-widget-clock = {
                 type = "clock";
                 output = desktop.primaryOutput;
                 cx = logicalWidth / 2;
-                cy = logicalHeight * 0.24;
-                box_width = 420.0;
-                box_height = 110.0;
+                cy = logicalHeight * 0.30;
+                box_width = 288.0;
+                box_height = 86.0;
                 settings = {
                   format = "{:%H:%M}";
-                  font_family = palette.fonts.mono;
+                  font_family = palette.fonts.sans;
                   center_text = true;
                   background = false;
                   color = "on_surface";
                   shadow = true;
                 };
               };
-              # A separate, smaller clock keeps seconds visually subordinate
-              # while retaining the clock widget's native second-tick updates.
-              lockscreen-widget-seconds = {
-                type = "clock";
-                output = desktop.primaryOutput;
-                cx = logicalWidth / 2 + 128;
-                cy = logicalHeight * 0.24 + 17;
-                box_width = 48.0;
-                box_height = 42.0;
-                settings = {
-                  format = "{:%S}";
-                  font_family = palette.fonts.mono;
-                  center_text = true;
-                  background = false;
-                  color = "outline_variant";
-                  shadow = false;
-                };
-              };
               lockscreen-widget-date = {
                 type = "clock";
                 output = desktop.primaryOutput;
                 cx = logicalWidth / 2;
-                cy = logicalHeight * 0.325;
-                box_width = 360.0;
-                box_height = 32.0;
+                cy = logicalHeight * 0.36;
+                box_width = 200.0;
+                box_height = 22.0;
                 settings = {
-                  format = "{:%Y年%m月%d日  %A}";
-                  font_family = palette.fonts.mono;
+                  format = "{:%-m月%-d日 %A}";
+                  font_family = palette.fonts.sans;
                   center_text = true;
                   background = false;
                   color = "on_surface";
@@ -639,6 +619,7 @@ in
         ExecStartPre = "${reconcileOverrides}";
         Restart = "on-failure";
         RestartSec = 2;
+        UnsetEnvironment = [ "LC_ALL" ];
         Environment = (lib.mapAttrsToList (name: value: "${name}=${value}") safeSessionVariables) ++ [
           "LC_TIME=zh_CN.UTF-8"
         ];

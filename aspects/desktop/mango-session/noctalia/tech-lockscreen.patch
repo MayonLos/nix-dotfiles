@@ -1,253 +1,312 @@
---- a/src/shell/lockscreen/lock_surface.h
-+++ b/src/shell/lockscreen/lock_surface.h
-@@ -37,6 +37,7 @@
- class LockscreenTransitionCover;
- class MprisService;
- class Renderer;
-+class RectNode;
- class SessionActionRunner;
- class WallpaperNode;
- class WeatherService;
-@@ -187,6 +188,9 @@
-   Label* m_authLabel = nullptr;
-   Flex* m_loginContentRow = nullptr;
-   Input* m_passwordField = nullptr;
-+  RectNode* m_passwordGlow = nullptr;
-+  RectNode* m_passwordUnderline = nullptr;
-+  Label* m_runtimeStatusLabel = nullptr;
-   Button* m_passwordRevealButton = nullptr;
-   Button* m_loginButton = nullptr;
-   Button* m_layoutChip = nullptr;
 --- a/src/shell/lockscreen/lock_surface.cpp
 +++ b/src/shell/lockscreen/lock_surface.cpp
-@@ -12,6 +12,7 @@
- #include "render/core/shared_texture_cache.h"
- #include "render/render_context.h"
- #include "render/scene/wallpaper_node.h"
-+#include "render/scene/rect_node.h"
- #include "shell/lockscreen/lockscreen_login_box.h"
- #include "shell/lockscreen/lockscreen_session_actions.h"
- #include "shell/lockscreen/lockscreen_widgets_host.h"
-@@ -35,9 +36,14 @@
- #include <cmath>
+@@ -36,6 +36,9 @@
  #include <ctime>
  #include <format>
-+#include <filesystem>
-+#include <fstream>
  #include <memory>
++#include <cstdlib>
++#include <pwd.h>
++#include <unistd.h>
  #include <string_view>
  #include <tuple>
-+#include <pwd.h>
-+#include <sys/utsname.h>
-+#include <unistd.h>
  #include <utility>
- #include <wayland-client-core.h>
-
-@@ -152,6 +158,118 @@
-     return formatStrftime("%Y-%m-%d", tm);
-   }
-
-+  [[nodiscard]] std::string readFirstLine(const std::filesystem::path& path) {
-+    std::ifstream input(path);
-+    std::string value;
-+    std::getline(input, value);
-+    return value;
-+  }
-+
-+  // UI4: lockscreen palette-gradient password underline and cached runtime status.
-+  [[nodiscard]] std::string lockscreenRuntimeStatus() {
-+    using Clock = std::chrono::steady_clock;
-+    static auto lastRead = Clock::time_point{};
-+    static std::string cached;
-+    const auto now = Clock::now();
-+    if (!cached.empty() && now - lastRead < std::chrono::seconds{5}) {
-+      return cached;
-+    }
-+    lastRead = now;
-+
-+    std::string username = "unknown";
-+    if (const passwd* account = getpwuid(getuid()); account != nullptr && account->pw_name != nullptr) {
-+      username = account->pw_name;
-+    }
-+    std::array<char, 256> host{};
-+    if (gethostname(host.data(), host.size() - 1) != 0 || host.front() == '\0') {
-+      host[0] = '?';
-+    }
-+    utsname system{};
-+    const std::string kernel = uname(&system) == 0 ? system.release : "unknown";
-+
-+    std::string power = "power n/a";
-+    std::string care = "养护 --";
-+    std::optional<bool> conservationMode;
-+    bool conflictingConservationModes = false;
-+    std::error_code modeError;
-+    const std::filesystem::path ideapadDevices{"/sys/bus/platform/drivers/ideapad_acpi"};
-+    for (std::filesystem::directory_iterator it(ideapadDevices, modeError), end;
-+         !modeError && it != end; it.increment(modeError)) {
-+      const std::string mode = readFirstLine(it->path() / "conservation_mode");
-+      if (mode != "0" && mode != "1") {
-+        continue;
-+      }
-+      const bool enabled = mode == "1";
-+      if (conservationMode.has_value() && *conservationMode != enabled) {
-+        conflictingConservationModes = true;
-+      } else {
-+        conservationMode = enabled;
-+      }
-+    }
-+    const bool haveConservationMode =
-+        !modeError && conservationMode.has_value() && !conflictingConservationModes;
-+    if (haveConservationMode) {
-+      care = *conservationMode ? "养护 on" : "养护 off";
-+    }
-+
-+    // UI4: ideapad_acpi conservation status precedes the standard battery limit fallback.
-+    std::error_code error;
-+    const std::filesystem::path supplies{"/sys/class/power_supply"};
-+    for (std::filesystem::directory_iterator it(supplies, error), end; !error && it != end; it.increment(error)) {
-+      const auto type = readFirstLine(it->path() / "type");
-+      if (type != "Battery") {
-+        continue;
-+      }
-+      const std::string chargeLimit = readFirstLine(it->path() / "charge_control_end_threshold");
-+      if (!haveConservationMode && !chargeLimit.empty()) {
-+        try {
-+          const int limit = std::stoi(chargeLimit);
-+          if (limit >= 1 && limit <= 100) {
-+            care = limit <= 80 ? std::format("养护 ≤{}%", limit) : std::format("养护 off {}%", limit);
-+          }
-+        } catch (const std::exception&) {
-+          care = "养护 --";
-+        }
-+      }
-+
-+      const std::string capacityText = readFirstLine(it->path() / "capacity");
-+      const std::string state = readFirstLine(it->path() / "status");
-+      try {
-+        const int capacity = std::stoi(capacityText);
-+        if (capacity < 0 || capacity > 100) {
-+          throw std::invalid_argument("battery capacity out of range");
-+        }
-+        const int lit = (capacity + 9) / 10;
-+        power = std::format("bat [{}{}] {}% {}", std::string(static_cast<std::size_t>(lit), '#'),
-+                            std::string(static_cast<std::size_t>(10 - lit), '.'), capacity,
-+                            state.empty() ? "state n/a" : state);
-+      } catch (const std::exception&) {
-+        power = "bat [..........] n/a";
-+      }
-+      break;
-+    }
-+    cached = std::format("{}@{} | Linux {} | {} | {}", username, host.data(), kernel, power, care);
-+    return cached;
-+  }
-+
-+  [[nodiscard]] RoundedRectStyle passwordAccentStyle(bool glow) {
-+    const Color primary = resolveColorSpec(colorSpecFromRole(ColorRole::Primary));
-+    const Color secondary = resolveColorSpec(colorSpecFromRole(ColorRole::Secondary));
-+    const float alpha = glow ? 0.22F : 1.0F;
-+    RoundedRectStyle style;
-+    style.fillMode = FillMode::LinearGradient;
-+    style.gradientDirection = GradientDirection::Horizontal;
-+    style.gradientStops = {
-+        GradientStop{0.0F, withAlpha(primary, alpha)},
-+        GradientStop{0.34F, withAlpha(primary, alpha)},
-+        GradientStop{0.66F, withAlpha(secondary, alpha)},
-+        GradientStop{1.0F, withAlpha(secondary, alpha)},
-+    };
-+    style.softness = glow ? 2.0F : 1.0F;
-+    style.radius = glow ? 3.0F : 1.0F;
-+    return style;
-+  }
-+
- } // namespace
-
- LockSurface::LockSurface(WaylandConnection& connection, ConfigService* config) : Surface(connection), m_config(config) {
-@@ -199,6 +317,24 @@
-               .configure = [](Flex& flex) { flex.setZIndex(2); },
+@@ -200,6 +203,17 @@
            }
        )
-+  );
-+
-+  m_root.addChild(
-+      ui::label({
-+          .out = &m_runtimeStatusLabel,
-+          .text = "",
-+          .fontSize = Style::fontSizeCaption,
-+          .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
-+          .maxLines = 1,
-+          .textAlign = TextAlign::Center,
-+          .visible = false,
-+          .configure = [](Label& label) {
-+            label.setFontFamily("monospace");
-+            label.setEllipsize(TextEllipsize::Middle);
-+            label.setHitTestVisible(false);
-+            label.setZIndex(5);
-+          },
-+      })
    );
++
++  // R41: identity is decoration, outside the compact authentication row.
++  m_root.addChild(ui::image({.out = &m_identityAvatar}));
++  m_identityAvatar->setHitTestVisible(false);
++  m_identityAvatar->setZIndex(5);
++  m_root.addChild(ui::label({.out = &m_identityName, .textAlign = TextAlign::Center}));
++  m_identityName->setHitTestVisible(false);
++  m_identityName->setZIndex(5);
++  if (const auto* account = getpwuid(getuid()); account != nullptr) {
++    m_identityName->setText(account->pw_name);
++  }
 
    m_loginPanel->addChild(
-@@ -505,6 +641,19 @@
-       })
-   );
-
-+  {
-+    auto glow = std::make_unique<RectNode>();
-+    m_passwordGlow = static_cast<RectNode*>(m_passwordField->addChild(std::move(glow)));
-+    m_passwordGlow->setStyle(passwordAccentStyle(true));
-+    m_passwordGlow->setZIndex(1);
-+    m_passwordGlow->setHitTestVisible(false);
-+    auto underline = std::make_unique<RectNode>();
-+    m_passwordUnderline = static_cast<RectNode*>(m_passwordField->addChild(std::move(underline)));
-+    m_passwordUnderline->setStyle(passwordAccentStyle(false));
-+    m_passwordUnderline->setZIndex(2);
-+    m_passwordUnderline->setHitTestVisible(false);
-+  }
-+
-   m_loginContentRow->addChild(
+       ui::flex(
+@@ -531,9 +545,9 @@
        ui::button({
-           .out = &m_passwordRevealButton,
-@@ -1082,6 +1231,7 @@
+           .out = &m_loginButton,
+           .text = "",
+-          .glyph = "check",
++          .glyph = "arrow-right",
+           .glyphSize = 16.0F,
+-          .variant = ButtonVariant::Primary,
++          .variant = ButtonVariant::Ghost,
+           .onClick =
+               [this] {
+                 if (m_onLogin) {
+@@ -1082,6 +1096,8 @@
    m_backgroundLayer->setVisible(false);
    m_widgetLayer->setVisible(false);
    m_loginPanel->setVisible(false);
-+  m_runtimeStatusLabel->setVisible(false);
++    m_identityAvatar->setVisible(false);
++    m_identityName->setVisible(false);
    m_authPanel->setVisible(false);
    layoutTransitionCover();
    syncTransitionCover();
-@@ -1218,6 +1368,7 @@
+@@ -1218,6 +1234,8 @@
      );
      m_widgetLayer->setVisible(false);
      m_loginPanel->setVisible(false);
-+    m_runtimeStatusLabel->setVisible(false);
++    m_identityAvatar->setVisible(false);
++    m_identityName->setVisible(false);
      m_passwordField->setVisible(false);
      if (m_passwordRevealButton != nullptr) {
        m_passwordRevealButton->setVisible(false);
-@@ -1533,6 +1684,27 @@
+@@ -1286,6 +1304,12 @@
+     }
+   }
+
++  if (!regular) {
++    // R41: a single 40px row; no surrounding login card.
++    panelX = (sw - panelWidth) * 0.5F;
++    panelY = sh * (sh < 700.0F ? 0.68F : 0.58F) - 20.0F;
++    panelHeight = 40.0F;
++  }
+   panelX = util::clampOrdered(panelX, Style::spaceLg, sw - panelWidth - Style::spaceLg);
+   panelY = util::clampOrdered(panelY, Style::spaceLg, sh - panelHeight - Style::spaceLg);
+
+@@ -1325,13 +1349,14 @@
+     }
+   }
+
++  m_loginPanel->setPadding(regular ? Style::spaceLg : 0.0F, regular ? Style::spaceLg : 0.0F);
+   m_loginPanel->setFill(loginStyle.panelFill);
+   m_loginPanel->setBorder(colorForRole(ColorRole::OutlineVariant, loginStyle.panelOpacity), Style::borderWidth);
+   m_loginPanel->setRadius(Style::scaledRadius(loginStyle.panelRadius));
+   m_loginPanel->setSoftness(1.0F);
+   m_loginPanel->setClipChildren(true);
+
+-  const float contentWidth = std::max(0.0F, panelWidth - 2.0F * Style::spaceLg);
++  const float contentWidth = std::max(0.0F, panelWidth - (regular ? 2.0F * Style::spaceLg : 0.0F));
+
+   m_loginPanel->setJustify(regular ? FlexJustify::Start : FlexJustify::Center);
+
+@@ -1471,7 +1496,7 @@
+     m_infoRow->setJustify((mediaAlone || weatherAlone) ? FlexJustify::Center : FlexJustify::Start);
+   }
+
+-  const float controlHeight = regular ? rows.password : Style::controlHeight;
++  const float controlHeight = regular ? rows.password : 40.0F;
+   m_loginContentRow->setMinHeight(controlHeight);
+   m_loginContentRow->setMaxHeight(controlHeight);
+   m_loginContentRow->setMaxWidth(contentWidth);
+@@ -1512,6 +1537,11 @@
+     m_layoutChip->setMaxHeight(controlHeight);
+   }
+
++  // R41: one shared translucent row includes reveal and submit controls.
++  m_loginContentRow->setFill(colorForRole(ColorRole::SurfaceContainer, regular ? 0.0F : loginStyle.inputOpacity));
++  m_loginContentRow->setRadius(Style::scaledRadius(loginStyle.inputRadius));
++  m_loginContentRow->setBorder(colorForRole(m_error ? ColorRole::Error : ColorRole::Primary), regular ? 0.0F : 1.0F);
++  m_passwordField->setFrameVisible(regular);
+   m_passwordField->setSurfaceOpacity(loginStyle.inputOpacity);
+   m_passwordField->setFrameRadius(loginStyle.inputRadius);
+   m_passwordField->setTextAlign(loginStyle.centerPasswordText ? TextAlign::Center : TextAlign::Start);
+@@ -1533,6 +1563,20 @@
    }
 
    m_loginPanel->arrange(renderer, LayoutRect{panelX, panelY, panelWidth, panelHeight});
-+  if (m_passwordGlow != nullptr && m_passwordUnderline != nullptr && loginVisible) {
-+    const float fieldWidth = m_passwordField->width();
-+    const float fieldHeight = m_passwordField->height();
-+    m_passwordGlow->setPosition(0.0F, std::max(0.0F, fieldHeight - 5.0F));
-+    m_passwordGlow->setSize(fieldWidth, 8.0F);
-+    m_passwordUnderline->setPosition(0.0F, std::max(0.0F, fieldHeight - 2.0F));
-+    m_passwordUnderline->setSize(fieldWidth, 2.0F);
++  m_identityAvatar->setVisible(loginVisible && !regular);
++  m_identityName->setVisible(loginVisible && !regular);
++  if (loginVisible && !regular) {
++    if (const char* home = std::getenv("HOME"); home != nullptr) {
++      m_identityAvatar->setSourceFile(renderer, std::string(home) + "/.face", 112, true, true);
++    }
++    m_identityAvatar->setRadius(28.0F);
++    m_identityAvatar->setBorder(colorForRole(ColorRole::OnSurface, 0.55F), 1.0F);
++    m_identityAvatar->setSize(56.0F, 56.0F);
++    m_identityAvatar->arrange(renderer, LayoutRect{sw * 0.5F - 28.0F, panelY - 112.0F, 56.0F, 56.0F});
++    m_identityName->setFontSize(14.0F);
++    m_identityName->arrange(renderer, LayoutRect{panelX, panelY - 44.0F, panelWidth, 20.0F});
 +  }
-+  const bool showRuntimeStatus = m_locked && !m_blackout;
-+  m_runtimeStatusLabel->setVisible(showRuntimeStatus);
-+  if (showRuntimeStatus) {
-+    m_runtimeStatusLabel->setText(lockscreenRuntimeStatus());
-+    m_runtimeStatusLabel->setFontSize(captionSize);
-+    m_runtimeStatusLabel->setMaxWidth(std::max(0.0F, sw - Style::spaceLg * 2.0F));
-+    m_runtimeStatusLabel->measure(renderer);
-+    const float statusHeight = std::max(captionSize, m_runtimeStatusLabel->height());
-+    m_runtimeStatusLabel->arrange(
-+        renderer,
-+        LayoutRect{Style::spaceLg, sh - statusHeight - Style::spaceMd, sw - Style::spaceLg * 2.0F, statusHeight}
-+    );
-+  }
++
 
    // Auth panel: sibling above/below the login box (flips below when near the top edge).
    if (m_authPanel != nullptr && m_authLabel != nullptr) {
+@@ -1544,19 +1588,19 @@
+     if (showAuth) {
+       m_authLabel->setText(authText);
+       m_authLabel->setColor(colorSpecFromRole(statusError ? ColorRole::Error : ColorRole::OnSurfaceVariant));
+-      const float authFontSize = captionSize + (regular ? contentScale : 1.0F);
++      const float authFontSize = 12.0F;
+       m_authLabel->setFontSize(authFontSize);
+       m_authLabel->setEllipsize(TextEllipsize::End);
+
+-      const float authPadV = Style::spaceMd * (regular ? contentScale : 1.0F);
++      const float authPadV = regular ? Style::spaceMd * contentScale : 0.0F;
+       const float authPadH = Style::spaceMd * (regular ? contentScale : 1.0F);
+       const float authW = panelWidth;
+       const float authH = authPadV * 2.0F + authFontSize;
+       const float labelMaxW = std::max(0.0F, authW - authPadH * 2.0F);
+
+       m_authPanel->setPadding(authPadV, authPadH);
+-      m_authPanel->setFill(loginStyle.panelFill);
+-      m_authPanel->setBorder(colorForRole(ColorRole::OutlineVariant, loginStyle.panelOpacity), Style::borderWidth);
++      m_authPanel->setFill(colorForRole(ColorRole::Surface, 0.0F));
++      m_authPanel->setBorder(colorForRole(ColorRole::OutlineVariant, 0.0F), 0.0F);
+       m_authPanel->setRadius(Style::scaledRadius(loginStyle.panelRadius));
+       m_authPanel->setSoftness(1.0F);
+       m_authPanel->setMinWidth(authW);
+@@ -1569,7 +1613,7 @@
+       const float authX = panelX;
+       const float authYAbove = panelY - authGap - authH;
+       const float authYBelow = panelY + panelHeight + authGap;
+-      const float authY = (authYAbove >= Style::spaceLg) ? authYAbove : authYBelow;
++      const float authY = regular && authYAbove >= Style::spaceLg ? authYAbove : authYBelow;
+       m_authPanel->arrange(renderer, LayoutRect{authX, authY, authW, authH});
+     }
+   }
+--- a/src/shell/lockscreen/lock_surface.h
++++ b/src/shell/lockscreen/lock_surface.h
+@@ -186,6 +186,8 @@
+   Flex* m_authPanel = nullptr;
+   Label* m_authLabel = nullptr;
+   Flex* m_loginContentRow = nullptr;
++  Image* m_identityAvatar = nullptr;
++  Label* m_identityName = nullptr;
+   Input* m_passwordField = nullptr;
+   Button* m_passwordRevealButton = nullptr;
+   Button* m_loginButton = nullptr;
+--- a/src/shell/lockscreen/lockscreen_widgets_host.cpp
++++ b/src/shell/lockscreen/lockscreen_widgets_host.cpp
+@@ -5,6 +5,7 @@
+ #include "render/scene/node.h"
+ #include "scripting/plugin_id.h"
+ #include "shell/desktop/desktop_widget_layout.h"
++#include "shell/desktop/widgets/desktop_clock_widget.h"
+ #include "shell/lockscreen/lock_screen.h"
+ #include "shell/lockscreen/lock_surface.h"
+ #include "shell/lockscreen/lockscreen_login_box.h"
+@@ -234,8 +235,14 @@
+     return;
+   }
+
++  const bool managedClock = state.id == "lockscreen-widget-clock" || state.id == "lockscreen-widget-date";
++  if (managedClock) {
++    if (auto* clock = dynamic_cast<DesktopClockWidget*>(widget.get()); clock != nullptr) {
++      clock->setAuthenticationFontSize(state.id == "lockscreen-widget-clock" ? 72.0F : 16.0F);
++    }
++  }
+   widget->create();
+-  widget->setBox(state.boxWidth, state.boxHeight);
++  widget->setBox(managedClock ? 0.0F : state.boxWidth, managedClock ? 0.0F : state.boxHeight);
+
+   if (surface.renderTarget().isReady()) {
+     m_renderContext->makeCurrent(surface.renderTarget());
+@@ -390,7 +397,8 @@
+     }
+
+     instance->widget->setContentScale(desktop_widgets::widgetContentScale(baseUiScale));
+-    instance->widget->setBox(instance->state.boxWidth, instance->state.boxHeight);
++    const bool managedClock = instance->state.id == "lockscreen-widget-clock" || instance->state.id == "lockscreen-widget-date";
++    instance->widget->setBox(managedClock ? 0.0F : instance->state.boxWidth, managedClock ? 0.0F : instance->state.boxHeight);
+
+     if (needsUpdate) {
+       instance->widget->update(renderer);
+@@ -416,6 +424,14 @@
+       continue;
+     }
+
++    // R41: only the two managed clocks use responsive authentication anchors.
++    // Read actual logical surface geometry, including hotplug/resolution changes.
++    if (instance->state.id == "lockscreen-widget-clock" || instance->state.id == "lockscreen-widget-date") {
++      const bool compact = surfaceH < 700.0F;
++      const bool clock = instance->state.id == "lockscreen-widget-clock";
++      instance->state.cx = surfaceW * 0.5F;
++      instance->state.cy = surfaceH * (clock ? (compact ? 0.22F : 0.30F) : (compact ? 0.34F : 0.36F));
++    }
+     instance->transformNode->setFrameSize(instance->intrinsicWidth, instance->intrinsicHeight);
+     instance->transformNode->setPosition(
+         instance->state.cx - instance->intrinsicWidth * 0.5F, instance->state.cy - instance->intrinsicHeight * 0.5F
+--- a/src/shell/desktop/widgets/desktop_clock_widget.cpp
++++ b/src/shell/desktop/widgets/desktop_clock_widget.cpp
+@@ -18,7 +18,7 @@
+
+ namespace {
+
+-  float clockFontSize(float contentScale) { return Style::fontSizeBody * 4.0F * contentScale; }
++  float clockFontSize(float contentScale, float authSize) { return (authSize > 0.0F ? authSize : Style::fontSizeBody * 4.0F) * contentScale; }
+
+   float analogClockSize(float contentScale) { return Style::fontSizeBody * 5.25F * contentScale; }
+
+@@ -215,8 +215,8 @@
+   m_digitalRoot = digitalRoot.get();
+   auto label = ui::label({
+       .out = &m_label,
+-      .fontSize = clockFontSize(contentScale()),
+-      .fontWeight = FontWeight::Bold,
++      .fontSize = clockFontSize(contentScale(), m_authFontSize),
++      .fontWeight = m_authFontSize > 0.0F ? FontWeight::Normal : FontWeight::Bold,
+       .fontFeatures = "tnum",
+       .color = m_color,
+   });
+@@ -414,7 +414,7 @@
+     return;
+   }
+
+-  m_label->setFontSize(clockFontSize(contentScale()));
++  m_label->setFontSize(clockFontSize(contentScale(), m_authFontSize));
+   applyShadow();
+   update(renderer);
+   m_label->measure(renderer);
+@@ -583,7 +583,7 @@
+     return;
+   }
+
+-  const float fontSize = clockFontSize(contentScale());
++  const float fontSize = clockFontSize(contentScale(), m_authFontSize);
+
+   // Re-pick the widest digit only when the font identity (size or family) changes.
+   if (fontSize != m_metricsFontSize || m_fontFamily != m_metricsFontFamily) {
+@@ -592,7 +592,7 @@
+     float widest = -1.0F;
+     for (char digit = '0'; digit <= '9'; ++digit) {
+       const std::string glyph(1, digit);
+-      const float advance = renderer.measureText(glyph, fontSize, {FontWeight::Bold, m_fontFamily, "tnum"}).width;
++      const float advance = renderer.measureText(glyph, fontSize, {m_authFontSize > 0.0F ? FontWeight::Normal : FontWeight::Bold, m_fontFamily, "tnum"}).width;
+       if (advance > widest) {
+         widest = advance;
+         m_widestDigit = digit;
+@@ -614,7 +614,7 @@
+   }
+   m_stableSample = sample;
+
+-  const float width = renderer.measureText(sample, fontSize, {FontWeight::Bold, m_fontFamily, "tnum"}).width;
++  const float width = renderer.measureText(sample, fontSize, {m_authFontSize > 0.0F ? FontWeight::Normal : FontWeight::Bold, m_fontFamily, "tnum"}).width;
+   if (std::abs(width - m_stableWidth) > 0.5F) {
+     m_stableWidth = width;
+     m_label->setMinWidth(m_stableWidth);
+@@ -640,7 +640,7 @@
+     return;
+   }
+
+-  m_label->setFontSize(clockFontSize(contentScale()));
++  m_label->setFontSize(clockFontSize(contentScale(), m_authFontSize));
+   const std::string text = formatText();
+   updateStableDigitalWidth(renderer, text);
+   if (text == m_lastText) {
+--- a/src/shell/desktop/widgets/desktop_clock_widget.h
++++ b/src/shell/desktop/widgets/desktop_clock_widget.h
+@@ -30,6 +30,8 @@
+
+   explicit DesktopClockWidget(Options options);
+
++  // R41: used only by the lockscreen's managed clock/date, before create().
++  void setAuthenticationFontSize(float size) { m_authFontSize = size; }
+   void create() override;
+   [[nodiscard]] bool wantsSecondTicks() const override;
+   bool applySetting(
+@@ -57,6 +59,7 @@
+   void updateAnalogHands();
+   [[nodiscard]] static Style styleFromSetting(std::string_view value);
+
++  float m_authFontSize = 0.0F;
+   Style m_style;
+   std::string m_format;
+   ColorSpec m_color;

@@ -1,11 +1,34 @@
 # Greeter
 
-Configures the Noctalia greeter as the login screen, with Mango as the default session. Inputs are `host.appearance` and host display facts (output name and scale); the default wallpaper comes from the public `appearance/resources/wallpaper/package.nix` factory using the host palette. The date is Chinese, and the greetd command sets `LC_TIME=zh_CN.UTF-8` while preserving the upstream session data directories and arguments. Greeter v1.7.0 exposes one `appearance.font_family` field for the whole screen, so it uses the palette's monospace family for the clock and date as well as the surrounding controls.
+Noctalia Greeter 1.7.0 provides the system login screen, defaulting to Mango with
+Xorg available in a small session dropdown. Inputs are the host appearance and
+display name/scale. `default.nix` is public; `greeter.nix`, `package.nix` and
+`tech-greeter.patch` are private. `checks.nix` exposes `{ pkgs, nixos, appearance, ... }`.
 
-Outputs include the system greeter module, synced palette, fonts/cursor assets, login clock/date, keyboard layout, and per-output scaling. `default.nix` is the public entry; `greeter.nix`, `package.nix` and `tech-greeter.patch` privately implement these declarations. `checks.nix` is the public `{ pkgs, nixos, appearance, ... }` test hook. The greeter's settings are system-side because it runs before the user's Home Manager session.
+R41 shares the lockscreen's Inter clock (72px), Chinese date (16px), 56px circular
+account avatar and compact password row. `LC_TIME=zh_CN.UTF-8` is passed on the
+existing greetd command. Inter uses installed Noto Sans CJK SC fallback for Chinese.
+The greeter exposes one font field; no extra font configuration API is patched.
+It lacks wallpaper blur/tint settings, so ImageMagick preprocesses the public
+factory wallpaper 005 with blur/darkening. It cannot follow a private user's
+mutable wallpaper before login; lockscreen still follows the current desktop.
+No user wallpaper or account data is copied into the store.
 
-Removing the feature withdraws the greeter declarations and assets from the system generation. It does not delete user accounts, saved credentials, or other session data. A replacement login manager must be selected separately before applying such a removal.
+Configuration alone retains a large login card and full-width session row. The
+minimal surface patch clears that card, keeps the original avatar/authentication,
+places the clock at the shared vertical anchor and narrows the native session
+selector to 160px. The original panel draws only the 40px password row with an 8px radius;
+the field is flat within it and the arrow uses a neutral ghost button. The
+session dropdown uses neutral selection with blue text/border. Small screens
+use separate clock and identity anchors below 700 logical pixels. It removes the former
+tech frame, gradient/glow and machine telemetry. The existing greetd protocol,
+PAM responses, session discovery, power controls and keyboard navigation remain
+upstream. Source anchors fail the package build on patch drift; `greeter-tech`
+checks the real executable, configured font/date and processed wallpaper.
 
-UI v4 uses the locked upstream derivation with `tech-greeter.patch`: palette Primary→Secondary gradient around the existing opaque login card and on the 2px password underline, a soft translucent underline halo, and a bottom monospace status line. The status reads the selected username, `uname` hostname/kernel, and public battery capacity/state from sysfs with a five-second cache. Ten filled/empty segments encode capacity; conservation first reads consistent `0`/`1` values from the generic `ideapad_acpi/*/conservation_mode` interface, then falls back to `charge_control_end_threshold` (valid range 1–100; at most 80 means on). Missing, conflicting or incompletely enumerated native values without a usable standard limit display `养护 --`. Missing telemetry is not replaced by a fictitious value. No authentication, session discovery, keyboard or power-action policy is changed; the original Mango/Xorg session selector remains available.
-
-The patch uses native `RectNode`, `Label` and `RoundedRectStyle::LinearGradient`; palette colors come from the configured Primary/Secondary/Surface roles. Its `postPatch` assertions and `checks.greeter-tech` force source/application drift to fail the build. When upgrading, review the two patched surface files, rebuild this check and the system toplevel, then visually inspect clock/date, gradient/halo, real telemetry, authentication failure, scaling and session selection in a cold login. No greeter process was started by these checks.
+The feature owns system greeter configuration, preprocessed public wallpaper and
+font/cursor assets. Removal withdraws those declarations, preserving accounts,
+credentials and user/session state; select a replacement display manager first.
+Isolated screenshots with a private fake greetd endpoint verify rendering, not
+cold login, actual PAM authentication, display scaling or successful session start.
+Those require integrator testing after deployment.
