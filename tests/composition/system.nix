@@ -39,6 +39,17 @@ let
     in
     {
       maintenanceSelected = !c.nix.channel.enable;
+      boundedStoreRetention =
+        !c.nix.settings.keep-outputs
+        && c.nix.optimise.automatic
+        && !c.nix.settings.auto-optimise-store
+        && c.programs.nh.clean.extraArgs == "--keep 5 --keep-since 14d"
+        &&
+          builtins.length (
+            builtins.filter (
+              key: pkgs.lib.hasPrefix "cache.nixos.org-1:" key
+            ) c.nix.settings.trusted-public-keys
+          ) == 1;
       sudoRsPolicy =
         c.security.sudo-rs.enable
         && !c.security.sudo.enable
@@ -85,6 +96,36 @@ let
         host.services.scx.enable
         && host.services.scx.scheduler == "scx_lavd"
         && builtins.all (arg: !(pkgs.lib.hasInfix "--autopower" arg)) host.services.scx.extraArgs;
+      singleOomPolicy =
+        host.services.earlyoom.enable
+        && !host.systemd.oomd.enable
+        && host.services.earlyoom.freeMemThreshold == 5
+        && host.services.earlyoom.freeSwapThreshold == 10;
+      zramReclaim =
+        host.zramSwap.enable
+        && host.zramSwap.algorithm == "zstd"
+        && host.zramSwap.memoryPercent == 50
+        && host.boot.kernel.sysctl."vm.swappiness" == 100
+        && host.boot.kernel.sysctl."vm.page-cluster" == 0;
+      buildConcurrency = host.nix.settings.max-jobs == 2 && host.nix.settings.cores == 8;
+      ext4ReadPolicy =
+        host.fileSystems."/".fsType == "ext4"
+        && builtins.elem "noatime" host.fileSystems."/".options
+        && host.services.fstrim.enable;
+      localSshOnly =
+        host.services.openssh.enable
+        && host.services.openssh.startWhenNeeded
+        && !host.services.openssh.openFirewall
+        &&
+          map (address: address.addr) host.services.openssh.listenAddresses == [
+            "127.0.0.1"
+            "[::1]"
+          ]
+        &&
+          host.systemd.sockets.sshd.socketConfig.ListenStream == [
+            "127.0.0.1:22"
+            "[::1]:22"
+          ];
     };
   };
   rejectsLaptopNetwork = !(builtins.all (v: v) (builtins.attrValues (inspect "x86_64-linux" true)));
