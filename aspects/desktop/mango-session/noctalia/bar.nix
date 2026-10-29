@@ -59,7 +59,7 @@
       style = "focus_hint";
       show_icons = false;
       show_labels = false;
-      hide_when_empty = false;
+      hide_when_empty = true;
       show_all_outputs = false;
       focused_output_only = true;
       pill_scale = 0.3;

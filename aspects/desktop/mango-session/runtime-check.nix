@@ -310,7 +310,7 @@ pkgs.runCommand "interactive-session-config"
         ("widget", "workspaces", "pill_scale"): 0.3,
         ("widget", "workspaces", "show_labels"): False,
         ("widget", "workspaces", "show_icons"): False,
-        ("widget", "workspaces", "hide_when_empty"): False,
+        ("widget", "workspaces", "hide_when_empty"): True,
         ("widget", "workspaces", "focused_color"): m["palette"]["brightFg"],
         ("widget", "battery", "display_mode"): "glyph",
         ("widget", "battery", "show_label"): True,
