@@ -1,4 +1,9 @@
-{ config, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 {
   assertions = [
     {
@@ -68,9 +73,8 @@
   # tmpfs /tmp is too small for large nixpkgs builds, so the daemon builds in /var/tmp
   systemd.services.nix-daemon.environment.TMPDIR = "/var/tmp";
 
-  zramSwap = {
-    enable = true;
-    algorithm = "zstd";
-  };
+  # Avoid access-time writes for source trees and store reads. Keep filesystem
+  # identity in inventory's scan; only this laptop's ext4 policy belongs here.
+  fileSystems."/".options = lib.mkIf (config.fileSystems."/".fsType == "ext4") [ "noatime" ];
   powerManagement.enable = true;
 }
