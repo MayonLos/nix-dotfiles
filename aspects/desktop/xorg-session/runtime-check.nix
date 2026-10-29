@@ -117,7 +117,8 @@ pkgs.runCommand "xorg-session-runtime"
     export HOME="$TMPDIR/home" XDG_CONFIG_HOME="$TMPDIR/config" XDG_DATA_HOME="$TMPDIR/data" XDG_CACHE_HOME="$TMPDIR/cache" XDG_STATE_HOME="$TMPDIR/state" XDG_RUNTIME_DIR="$TMPDIR/runtime"
     mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME" "$XDG_STATE_HOME" "$XDG_RUNTIME_DIR" "$out"
     test "$(magick identify -format '%wx%h' ${wallpapers.default})" = 2560x1600
-    test '${wallpapers.default}' = '${host.services.displayManager.noctalia-greeter.settings.appearance.wallpaper.path}'
+    # The greeter shows a blurred, dimmed derivative of the same default.
+    test "$(magick identify -format '%wx%h' '${host.services.displayManager.noctalia-greeter.settings.appearance.wallpaper.path}')" = 2560x1600
     chmod 700 "$XDG_RUNTIME_DIR"
     unset DISPLAY WAYLAND_DISPLAY DBUS_SESSION_BUS_ADDRESS
     export XORG_TEST_SHELL=${pkgs.bash}/bin/bash

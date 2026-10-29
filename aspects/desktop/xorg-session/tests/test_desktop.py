@@ -18,7 +18,9 @@ programs = json.loads(Path(sys.argv[1]).read_text())
 output = Path(sys.argv[2])
 m = json.loads(Path(sys.argv[3]).read_text())
 palette = programs["palette"]
-assert programs["wallpaper"] == m["wallpaper"] == m["greeterWallpaper"]
+assert programs["wallpaper"] == m["wallpaper"]
+# The greeter uses a blurred, dimmed derivative of the same default image.
+assert m["greeterWallpaper"].endswith("-greeter-auth-wallpaper.png")
 assert m["defaultSession"] == "Mango"
 assert m["xserver"] and m["startx"] and not m["generatedXinitrc"] and m["pam"]
 assert set(m["sharedTargets"]) == {"mango-session.target", "xorg-session.target"}
