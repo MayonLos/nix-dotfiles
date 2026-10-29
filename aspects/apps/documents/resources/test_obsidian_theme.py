@@ -74,12 +74,12 @@ class ObsidianThemeTest(unittest.TestCase):
         obsidian = self.vault / ".obsidian"
         obsidian.mkdir()
         appearance = obsidian / "appearance.json"
-        appearance.write_text(json.dumps({"theme": "obsidian", "enabledCssSnippets": ["custom"]}), encoding="utf-8")
+        appearance.write_text(json.dumps({"cssTheme": "Minimal", "enabledCssSnippets": ["vaults-ui"]}), encoding="utf-8")
         self.run_script("enable")
         first = appearance.read_bytes()
         self.run_script("enable")
         self.assertEqual(appearance.read_bytes(), first)
-        self.assertEqual(json.loads(first), {"theme": "obsidian", "enabledCssSnippets": ["custom", "noctalia"]})
+        self.assertEqual(json.loads(first), {"cssTheme": "Minimal", "enabledCssSnippets": ["vaults-ui", "noctalia"]})
 
     def test_bad_appearance_json_is_rejected_without_rewrite(self):
         obsidian = self.vault / ".obsidian"

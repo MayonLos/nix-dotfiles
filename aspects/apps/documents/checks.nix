@@ -109,6 +109,8 @@ in
         rules = tinycss2.parse_stylesheet(css, skip_comments=True, skip_whitespace=True)
         errors = [rule for rule in rules if rule.type == "error"]
         assert not errors, errors
+        assert len(rules) == 1, "Obsidian template must only declare palette variables"
+        assert tinycss2.serialize(rules[0].prelude).strip() == ".theme-dark"
         for rule in rules:
             if rule.type != "qualified-rule":
                 continue
@@ -117,6 +119,10 @@ in
             )
             errors = [declaration for declaration in declarations if declaration.type == "error"]
             assert not errors, (tinycss2.serialize(rule.prelude), errors)
+            assert all(d.type == "declaration" and d.name.startswith("--") for d in declarations)
+            names = {d.name for d in declarations}
+            assert {"--vault-blue", "--vault-cyan", "--vault-green", "--vault-yellow", "--vault-red",
+                    "--vault-blue-rgb", "--color-blue-rgb", "--modal-background"} <= names
 
         generated_colors = set(re.findall(r"#[0-9a-fA-F]{6}", zathura + css))
         assert generated_colors <= palette_colors, (generated_colors - palette_colors)

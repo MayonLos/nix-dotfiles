@@ -50,8 +50,33 @@ in
   '';
 
   obsidian = pkgs.writeText "documents-obsidian-palette.css" ''
-    /* Feature-owned One Dark palette for registered Obsidian vaults. */
+    /* Palette only. Minimal and vault-owned snippets supply components. */
     .theme-dark {
+      --vault-blue: ${palette.blue};
+      --vault-cyan: ${palette.cyan};
+      --vault-green: ${palette.green};
+      --vault-yellow: ${palette.yellow};
+      --vault-red: ${palette.red};
+      --vault-orange: ${palette.orange};
+      --vault-blue-rgb: ${hexToRgb palette.blue};
+      --vault-cyan-rgb: ${hexToRgb palette.cyan};
+      --vault-green-rgb: ${hexToRgb palette.green};
+      --vault-yellow-rgb: ${hexToRgb palette.yellow};
+      --vault-red-rgb: ${hexToRgb palette.red};
+      --color-red: ${palette.red};
+      --color-orange: ${palette.orange};
+      --color-yellow: ${palette.yellow};
+      --color-green: ${palette.green};
+      --color-cyan: ${palette.cyan};
+      --color-blue: ${palette.blue};
+      --color-purple: ${palette.fg};
+      --color-red-rgb: ${hexToRgb palette.red};
+      --color-orange-rgb: ${hexToRgb palette.orange};
+      --color-yellow-rgb: ${hexToRgb palette.yellow};
+      --color-green-rgb: ${hexToRgb palette.green};
+      --color-cyan-rgb: ${hexToRgb palette.cyan};
+      --color-blue-rgb: ${hexToRgb palette.blue};
+      --color-purple-rgb: ${hexToRgb palette.fg};
       --background-primary: ${palette.bg};
       --background-primary-alt: ${palette.deep};
       --background-secondary: ${palette.deep};
@@ -115,7 +140,7 @@ in
 
       --h1-color: ${palette.brightFg};
       --h2-color: ${palette.brightFg};
-      --h3-color: ${palette.brightFg};
+      --h3-color: ${palette.fg};
       --h4-color: ${palette.brightFg};
       --h5-color: ${palette.brightFg};
       --h6-color: ${palette.brightFg};
@@ -148,45 +173,5 @@ in
       --tag-background-hover: ${palette.selection};
     }
 
-    .theme-dark .workspace-tab-header,
-    .theme-dark .nav-file-title,
-    .theme-dark .nav-folder-title {
-      border-radius: 8px;
-    }
-
-    .theme-dark .workspace-tab-header.is-active {
-      background: ${palette.selection};
-      color: ${palette.brightFg};
-      box-shadow: inset 0 -1px ${palette.blue};
-    }
-
-    .theme-dark .nav-file-title.is-active,
-    .theme-dark .nav-folder-title.is-active {
-      background: ${palette.selection};
-      color: ${palette.brightFg};
-      box-shadow: inset 2px 0 ${palette.blue};
-    }
-
-    .theme-dark .mod-cta {
-      background: ${palette.selection};
-      border: 1px solid ${palette.blue};
-      color: ${palette.brightFg};
-    }
-
-    .theme-dark .internal-link.is-unresolved {
-      text-decoration: underline wavy ${palette.red};
-      text-underline-offset: 2px;
-    }
-
-    .theme-dark .workspace-ribbon.mod-left,
-    .theme-dark .workspace-sidedock-vault-profile {
-      background: ${palette.deep};
-    }
-
-    .theme-dark .workspace-toolbar,
-    .theme-dark .workspace-tab-header-container,
-    .theme-dark .status-bar {
-      background: ${palette.surface};
-    }
   '';
 }
