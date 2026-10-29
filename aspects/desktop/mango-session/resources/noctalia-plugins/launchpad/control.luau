@@ -78,7 +78,7 @@ noctalia.setUpdateInterval(30000)
 function update()
 	if #iconQueue > 0 then
 		-- Bound work per callback: resolving a whole icon theme exceeds Luau's CPU budget.
-		for _ = 1, math.min(2, #iconQueue) do
+		for _ = 1, math.min(1, #iconQueue) do
 			local app = table.remove(iconQueue, 1)
 			local icon = iconOverrides[string.lower(app.id)]
 			cachedIcons[app.id] = (icon and noctalia.appIconPath(icon, 114))

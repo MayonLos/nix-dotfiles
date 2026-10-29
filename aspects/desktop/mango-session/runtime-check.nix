@@ -400,28 +400,26 @@ pkgs.runCommand "interactive-session-config"
         assert not any(name.startswith(("monitor-", "separator-", "group:")) for name in root["widget"])
         assert root["battery"]["warning_threshold"] == 20
         assert root["dock"]["magnification_scale"] <= 1.25
-        assert [item["type"] for item in root["control_center"]["shortcuts"]] == ["wifi", "bluetooth", "system", "power_profile", "caffeine", "fel/quill:toggle", "notification"]
+        assert [item["type"] for item in root["control_center"]["shortcuts"]] == ["wifi", "bluetooth", "system", "power_profile", "caffeine", "notification"]
         assert root["notification"]["offset_y"] == 12
     assert "battery-charging" in patches["r44-status-icons.patch"]
     assert settings["bar"]["main"]["icon_color"] == m["palette"]["brightFg"]
     for name in ("network", "bluetooth", "volume", "battery", "tray", "notifications", "control-center"):
         assert settings["widget"][name]["scale"] == 1.125
     assert "workspaces_widget" not in patches["astra-selection.patch"]
-    enabled_plugins = settings["plugins"]["enabled"]
-    assert "tmelik/system-monitor" not in enabled_plugins
-    assert "mindnbytes/nix-status" not in enabled_plugins
-    assert "knyrps/nix-search" in enabled_plugins
-    assert "nix-dotfiles/legion-conservation" in enabled_plugins
-    assert "nix-dotfiles/launchpad" in enabled_plugins
-    assert "nix-dotfiles/desktop-menus" in enabled_plugins
+    local_ids = {"nix-dotfiles/legion-conservation", "nix-dotfiles/launchpad", "nix-dotfiles/desktop-menus"}
+    for root in (settings, generated):
+        assert set(root["plugins"]["enabled"]) == local_ids
+        assert len(root["plugins"]["enabled"]) == len(local_ids)
+        assert [source["name"] for source in root["plugins"]["source"]] == ["nix-dotfiles"]
+        assert set(root["plugin_settings"]) <= local_ids
+        assert root["shell"]["launcher"]["providers"] == {"calculator": {"global": False}}
+        assert not any("/" in name and not name.startswith("nix-dotfiles/") for name in root["widget"])
     assert {"base", "draw", "math", "startcenter", "rofi", "xterm", "thunar-bulk-rename", "thunar-volman-settings", "org.fcitx.Fcitx5"} <= set(settings["plugin_settings"]["nix-dotfiles/launchpad"]["hidden_apps"])
     icon_overrides = settings["plugin_settings"]["nix-dotfiles/launchpad"]["icon_overrides"]
     assert {entry.split("=", 1)[0] for entry in icon_overrides} == {"nvim", "workspace-task-terminal", "Dead by Daylight"}
     for entry in icon_overrides:
         assert Path(entry.split("=", 1)[1]).is_file(), entry
-    for root in (settings, generated):
-        assert "mindnbytes/nix-status" not in root["plugin_settings"]
-        assert "mindnbytes/nix-status:status" not in root["widget"]
     assert p["dark"]["mOutline"] == m["palette"]["border"]
     assert abs(settings["shell"]["corner_radius_scale"] - 4 / 3) < 1e-6
     assert settings["shell"]["corner_radius_scale"] == m["greeter"]["appearance"]["corner_radius_scale"]
@@ -462,8 +460,9 @@ pkgs.runCommand "interactive-session-config"
     assert "ALT,space,spawn,noctalia msg panel-toggle launcher" in mango["bind"]
     assert "force_tearing:0,no_blur:1,app_id:.*" in mango["window_rule"]
     assert mango["window_rule"][-1] == "no_blur:0,app_id:^dev[.]noctalia[.]Noctalia$"
-    for binding in ("SUPER+CTRL,D,spawn,noctalia msg panel-toggle 8bury/mini-docker:manager", "SUPER+CTRL,P,spawn,noctalia msg panel-toggle rxtsel/portctl:panel", "SUPER+CTRL,W,spawn,noctalia msg panel-toggle ezequiel/mango_layouts:panel"):
-        assert binding in mango["bind"]
+    for chord in ("SUPER+CTRL,D,", "SUPER+CTRL,P,", "SUPER+CTRL,W,"):
+        assert not any(binding.startswith(chord) for binding in mango["bind"])
+    assert "SUPER,R,setkeymode,resize" in mango["bind"]
     assert not settings["shell"]["panel"]["shadow"] and not settings["bar"]["main"]["shadow"]
     assert mango["border_px"] == 1 and mango["border_radius"] == 12
     assert mango["focus_color"] == "0x" + m["palette"]["blue"].removeprefix("#") + "ff"

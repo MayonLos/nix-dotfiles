@@ -96,7 +96,7 @@
 | Heirline | 已恢复固定插件 | 按旧 Nixvim 效果参考重建状态栏、标签和宽度收缩，保留同名消歧、未保存保护和 LSP/Git/AI 状态，主题保持 OneDark。 |
 | Kitty | 保留 | 图形协议、Yazi/Snacks Neovim 图片预览和主题已有接线；服务器终端可用 `kitten ssh` 处理 terminfo，不需换整个终端。 |
 | tmux | 保留 | 会话持久化和远程复用。passthrough 用于图像；后续按实际终端能力核对宽泛 overrides，而非直接关闭造成预览退化。 |
-| tmuxp | 保留 | Noctalia tmux provider 与项目工作台共用的会话布局工具；`workspace-project PROJECT workspace` 用它创建或复用编辑器加两个 shell 的 tmux 会话。tmux server 负责会话持久化。 |
+| tmuxp | 保留 | 项目工作台的会话布局工具；`workspace-project PROJECT workspace` 用它创建或复用编辑器加两个 shell 的 tmux 会话。tmux server 负责会话持久化。 |
 | Git | 保留 | 基础版本控制和 diff3 冲突上下文；现有编辑器/IDE 已有差异工具，不再默认添加另一个 diff GUI。 |
 | GitHub CLI（gh） | 保留 | PR、仓库等 GitHub 操作；与本地 Git 分工。只有不使用这些命令时才有删的理由。 |
 | lazygit | 保留 | 交互暂存、提交和 rebase；`lg` 已接线，和 gh 分工不同。 |
@@ -189,20 +189,10 @@
 
 ## Noctalia 插件与系统集成
 
-入口：[Noctalia 配置](../aspects/desktop/mango-session/noctalia.nix)、[输入法](../aspects/desktop/session-support/input-method.nix)、[Portal/keyring](../aspects/desktop/mango-session/host/portal.nix)。十个插件此前已确认全部保留，以下说明适合怎样优化。
+入口：[Noctalia 配置](../aspects/desktop/mango-session/noctalia.nix)、[输入法](../aspects/desktop/session-support/input-method.nix)、[Portal/keyring](../aspects/desktop/mango-session/host/portal.nix)。R47 按用户要求删除全部社区插件，仅保留本仓库 Launchpad、desktop-menus、legion-conservation；用户笔记、历史与其他运行时数据保留。Alt+Space 使用原生启动器。
 
 | 项目 | 结论 |
 |---|---|
-| IP Monitor | 保留连接状态展示，避免与状态栏其他网络读数重复占位。 |
-| mini-docker | 保留本机容器快操作；深度管理仍用 Docker CLI，不另添 Portainer 常驻服务。 |
-| JetBrains Provider | 保留项目入口；后续核对只显示仍安装的 IDEA/PyCharm/CLion，清理删除 IDE 的陈旧启动命令。 |
-| tmux Provider | 保留会话入口，tmuxp 是其依赖。 |
-| Bongocat | 2026-10-25 按用户要求移除（用处不大）；evtest 与 keyboardDevices 事实一并删除。 |
-| Prism Provider | 保留实例启动入口，与 Prism 本体互补。 |
-| Portctl | 保留端口检查与结束监听进程，不因有 btop 就视作完全重复。 |
-| Mango Layouts | 保留布局操作，仍依赖 mmsg/jq；不引入另一套并行布局脚本。 |
-| Quill | 保留快记/todo；AI 直接调用 OpenCode Go，无需安装 OpenCode CLI。 |
-| Mango Keymode | 保留当前键位模式提示，有助于可发现性。 |
 | Fcitx5 / Rime / rime-ice | 保留，后续统一候选框配色；GTK/Qt addon 为应用接入，不能因有 Wayland frontend 一并删除。 |
 | qt6ct / GTK 设置 | 保留现有外观桥接；One Dark 应集中提供语义颜色，再输出各应用格式，避免每个模块各写一份色值。 |
 | GNOME keyring | 保留应用 Secret Service；不是网站密码库或 sops 的替代。 |

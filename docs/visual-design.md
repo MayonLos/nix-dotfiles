@@ -167,15 +167,13 @@ Kitty 从 `font_size=11.0` pt 开始（约 14.67 CSS px），不是把 15 直接
 
 ## 4. Noctalia 顶栏
 
-采用 §1 的30逻辑像素紧凑栏。左侧依次为启动器、分隔线、1–9 工作区、分隔线、布局（图标+Tile 等原生英文）、Quill、播放中的媒体与频谱。mangowm-keymode 仅非默认模式出现。
+采用30逻辑像素紧凑栏：左侧为系统菜单、当前应用名和原生工作区；中间留空；右侧为内联托盘、网络/蓝牙/音量、电池、未读通知、控制中心和中文日期时间。具体值以 [Mango README](../aspects/desktop/mango-session/README.md) 为准。
 
-中部为中文日期和 Maple Mono 粗体时间。右侧为社区 system-monitor 的 CPU%，悬停展开 GPU/内存；插件不能直接展开时用 accordion 组合。随后为社区 nix-status（❄+当前世代，点开查看世代与输入更新）、仅占用时出现的内置 privacy、网络/蓝牙/音量百分比、常显 Fcitx 原生托盘状态图标、电池原生几何图形与百分比与绿色“养护”、通知及 Nix 控制中心入口。
-
-mini-docker、portctl、ip-monitor、tray、亮度、电源模式等低频项放入可展开组；亮度、电源模式在控制中心也保留入口，默认不让所有图标占满顶栏。不启用任何 AI 额度/用量组件。nix-search 启用 nixpkgs/NixOS/HM 查询，声明 `nix-search-tv` 与 fzf 运行依赖。
+仅启用本仓库 Launchpad、desktop-menus、legion-conservation；社区插件及其启动器 provider、控制中心入口、快捷键和渲染覆盖已移除。Alt+Space 保留原生应用搜索，Super+A 打开 Launchpad。Mango 原生布局与 resize 模式继续由 Super+W、Super+R 控制。
 
 养护权限归 `hardware/legion-laptop`：host 声明组和 ideapad_acpi udev 规则，user class 授权；桌面调用公开 CLI 读取/切换。禁止运行时 sudo、groupadd、usermod，不使用 ideapad-conservation-mode 插件。构建不改变当前 sysfs 及组权限。
 
-字段与渲染实现以锁定 Noctalia 5.3、官方和社区插件源为依据。补丁仅改此 package 的绘制/布局，不替换全局 Primary 的语义；palette 的 Primary 仍为 blue。
+字段与渲染实现以锁定 Noctalia 及本仓库三个插件源码为依据。补丁仅改此 package 的绘制/布局，不替换全局 Primary 的语义；palette 的 Primary 仍为 blue。
 
 ## 5. 启动器与控制中心
 

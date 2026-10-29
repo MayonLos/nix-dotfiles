@@ -22,7 +22,6 @@
 | 本地容器 | [local-containers](../aspects/dev/containers/default.nix) 与 container-client 分开。host 复用官方 rootless support，但关闭全局 daemon wants 和全局 socket 环境；所选 HM binding 提供完整 daemon unit 与 shell/environment.d 的 DOCKER_HOST。 | 第45轮声明改为所选账号的 `docker.socket` → `docker-proxy.service` → 私有 socket 的 rootless daemon，daemon 不再有登录 wants，保留官方 `Restart=always`/2 秒和限制。默认不 idle stop；容器 restart policy 在 daemon 首次按需启动时恢复，而非登录立即恢复。未新增 linger，最后注销后不能承诺容器继续。该声明尚未应用。安装 CLI 不启 daemon。 |
 | Docker prune | 只由 local-containers binding 声明每周、Persistent timer，拉起 oneshot `docker --host unix://%t/docker.sock builder prune -f --filter until=168h`。 | 2026-10-20 起自动清理限于一周未使用的构建缓存，停止容器、镜像与卷不属于该命令清理范围；保留原计时器名称和每周调度。没有手动执行 prune；清理不替代备份。 |
 | 本地虚拟机 | [local-virtual-machines](../aspects/dev/virtual-machines/default.nix) 授予所选 binding 的 libvirtd/kvm，host 配置 QEMU KVM、runAsRoot=false、swtpm、SPICE USB。virt-manager 客户端可单选。 | `libvirtd.service` 的开机 wants 明确清空，保留 Unix sockets；旧实现同时有 multi-user wants，故本轮显式修正。`libvirt-guests` 保持关闭，不设置或改变 domain autostart。镜像、TPM 和 guest 生命周期属用户数据。 |
-| 翻译 | Noctalia 使用锁定的官方 translator 插件，仅响应 `/tr` 前缀。 | 显式查询使用 Google 在线服务，不将普通启动器查询发送给它。录屏继续使用 OBS，本轮不启用会接管外部 GSR 的插件。 |
 | AI / 应用 | [AI workbench](../aspects/dev/ai-agents/default.nix) 和其他应用 feature 安装 CLI/desktop entry；认证与可变设置留给应用。 | 不新增开机 daemon。工具启动后自身的按需子进程不等同 Nix 服务；模型、OAuth、Codex/OpenCode 配置与历史保留。 |
 | 维护 | system-maintenance 提供 Nix optimise 和既有 NH 清理调度；真实 repo path 属于当前 host。 | 保留既有 generation 保留规则；本轮不手动 GC，不在回退验收前清理备份或构建产物。 |
 
