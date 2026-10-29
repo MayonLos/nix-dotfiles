@@ -159,7 +159,7 @@ systemctl --user restart noctalia.service fcitx5-daemon.service   # 外观/输�
 - **补丁型美化**（Mango、Noctalia 源码补丁）有维护成本；每个补丁必须配构建期检查，上游升级时失败而不是静默退化。用户不需要的效果（如焦点外发光）宁可删除。
 - **zsh 陷阱**：交互 shell 是 zsh，`$var` 不按空格拆分（kill 多个 PID 用数组或 bash 脚本）；`pkill -f`/`pgrep -f` 的模式会匹配到自己的命令行，可能杀掉当前 shell。
 - **Home Manager 激活失败 “would be clobbered by backing up”**：目标文件旁已有 `*.backup`。先查看两份内容，把旧 `.backup` 改名加时间戳（不删除），再重新 switch。
-- **锁屏中重启 Noctalia 会“灰屏”**：Noctalia 持有 ext-session-lock 锁屏面；锁屏时它被重启（例如 switch 激活或手动 `systemctl --user restart`），锁会被遗弃，Mango 只显示纯色且无法用密码解开（2026-10-29 实际发生）。现在 noctalia.service 设了 `X-RestartIfChanged=false`，switch 不再重启它；手动重启前先 `loginctl show-session <id> -p LockedHint` 确认为 no。已经出现时：`WAYLAND_DISPLAY=<该会话的 wayland-N> noctalia msg session lock` 让该会话的 Noctalia 重新接管，再切回该 tty 输入密码。
+- **锁屏中重启 Noctalia 会“灰屏”**：Noctalia 持有 ext-session-lock 锁屏面；锁屏时它被重启（例如 switch 激活或手动 `systemctl --user restart`），锁会被遗弃，Mango 只显示纯色且无法用密码解开（2026-10-29 实际发生）。现在 noctalia.service 设了 Home Manager 的 `X-SwitchMethod = "keep-old"`，switch 不再停止或重启它（`X-RestartIfChanged` 只对 NixOS 系统服务有效，HM 用户服务会忽略，2026-10-29 曾因此误判）；手动重启前先 `loginctl show-session <id> -p LockedHint` 确认为 no。已经出现时：`WAYLAND_DISPLAY=<该会话的 wayland-N> noctalia msg session lock` 让该会话的 Noctalia 重新接管，再切回该 tty 输入密码。
 - **Noctalia 服务起不来（start-limit-hit / “Noctalia is still running”）**：有不在服务 cgroup 下的手动启动实例；`kill -TERM` 该 PID → `systemctl --user reset-failed noctalia.service` → `start`。
 - **sudo**：执行代理不得 sudo；主代理应用配置需用户提供密码或用户自己执行 `! sudo nixos-rebuild switch --flake .#nixos-btw`。不要把密码写进任何文件或记忆。
 - **独显**：用户经常主动给 NVIDIA 独显断电，`nvidia-smi` 报 No devices 属正常；顶栏 GPU 项应隐藏而不是显示 “--”。

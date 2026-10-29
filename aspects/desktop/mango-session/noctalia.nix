@@ -625,8 +625,9 @@ in
         # activation while the session is locked abandons the lock and Mango
         # shows a solid fill that no password can clear. Config changes are
         # hot-reloaded; a new binary takes effect on the next login or an
-        # explicit restart while unlocked.
-        X-RestartIfChanged = false;
+        # explicit restart while unlocked. Home Manager's sd-switch honours
+        # X-SwitchMethod (X-RestartIfChanged is NixOS-only and is ignored).
+        X-SwitchMethod = "keep-old";
       };
       Service = {
         ExecStartPre = "${reconcileOverrides}";
