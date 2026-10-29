@@ -16,6 +16,7 @@ let
     "SUPER+SHIFT,Return,toggle_named_scratchpad,mayon-scratch,none,${lib.getExe pkgs.kitty} --class=mayon-scratch"
     "SUPER+ALT,E,toggle_named_scratchpad,mayon-files,none,${lib.getExe pkgs.kitty} --class=mayon-files ${lib.getExe pkgs.yazi}"
     "SUPER+ALT,M,toggle_named_scratchpad,mayon-monitor,none,${lib.getExe pkgs.kitty} --class=mayon-monitor btop"
+    "SUPER+ALT,C,toggle_named_scratchpad,mayon-clash,none,${lib.getExe pkgs.kitty} --class=mayon-clash clashtui-mayon"
     "SUPER+CTRL,G,toggleglobal"
     "SUPER+ALT,G,toggleoverlay"
     "SUPER+CTRL,S,tag_special_silent"
@@ -277,6 +278,7 @@ let
         mayon-scratch = "临时终端";
         mayon-files = "临时文件 Yazi";
         mayon-monitor = "系统监视 btop";
+        mayon-clash = "Clash 代理";
       };
       args =
         if action == "toggle_named_scratchpad" then

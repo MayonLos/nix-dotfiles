@@ -2,7 +2,7 @@
 
 Configures NetworkManager, IPv6, firewall trust for the Clash TUN interfaces, Clash Verge service mode (the privileged service owns Mihomo/TUN), and proxy variables for the Nix daemon. A paired user aspect grants the NetworkManager group. It consumes no appearance or user profile data.
 
-`default.nix`, `network.nix`, and `clash.nix` own the host network declarations; all Nix files are private. This feature assumes Clash's local SOCKS listener on port 7897 and keeps systemd-resolved enabled for DNS inside the tunnel.
+`default.nix`, `network.nix`, and `clash.nix` own the host network declarations; all Nix files are private. Clash is started and stopped by hand by opening or quitting Verge; nothing is forced through its local listener (port 7897), so the system works with Clash off. systemd-resolved stays enabled for DNS inside the tunnel.
 
 Removing the feature withdraws these network and proxy declarations on activation. It does not erase NetworkManager connection profiles, Clash configuration/subscriptions, credentials, or network history.
 

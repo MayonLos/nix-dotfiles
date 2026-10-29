@@ -54,7 +54,7 @@ in
 
     settings = {
       monitor_rule = [
-        "name:^${display.name}$,width:${toString display.width},height:${toString display.height},refresh:${toString display.refresh},x:0,y:0,scale:${toString display.scale},vrr:1"
+        "name:^${display.name}$,width:${toString display.width},height:${toString display.height},refresh:${toString display.refresh},x:0,y:0,scale:${toString display.scale},vrr:0"
       ];
 
       # Let X11 clients render at real pixels instead of being upscaled.

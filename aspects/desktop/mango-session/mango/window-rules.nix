@@ -41,12 +41,12 @@ let
   forTitles =
     apps: actions: titles:
     builtins.concatMap (app: map (title: "${actions},app_id:^(${app})$,title:${title}") titles) apps;
-  game = "^(steam_app_[0-9]+|Minecraft.*|minecraft.*|com[.]mojang[.]Minecraft.*)$";
+  game = "^(steam_app_[0-9]+|Minecraft.*|minecraft.*|com[.]mojang[.]Minecraft.*|gamescope|Gamescope)$";
   rules = [
     # allow_tearing=2: opt normal clients out; only games opt in below.
     "force_tearing:0,no_blur:1,app_id:.*"
     # Kitty supplies its own translucent background; preserve native frost.
-    "no_blur:0,app_id:^(kitty|Neovim|mayon-scratch|mayon-files|mayon-monitor|mayon-herdr)$"
+    "no_blur:0,app_id:^(kitty|Neovim|mayon-scratch|mayon-files|mayon-monitor|mayon-clash|mayon-herdr)$"
 
     # Native transients / X11 modal, splash, utility types already float.
     # These standalone portal windows have no reliable transient parent.
@@ -84,7 +84,7 @@ let
 
     # Game launch transitions lose borders/shadows, but helpers are never
     # forced fullscreen. Fullscreen border/dim/shadow removal is native Mango.
-    "no_border:1,no_shadow:1,no_radius:1,no_animation:1,force_tearing:1,vrr_only_fullscreen:1,app_id:${game}"
+    "no_blur:1,no_border:1,no_shadow:1,no_radius:1,no_animation:1,force_tearing:1,vrr_only_fullscreen:1,app_id:${game}"
     "${float},width:0.32,height:0.60,app_id:^(${steam})$,title:^(Friends List|Steam - Friends|好友列表|好友与聊天)$"
     "${settings},app_id:^(${steam})$,title:^(Steam Settings|Settings|Steam Login|Sign in to Steam|Steam 登录|设置)$"
     "${float},${silent},no_focus:1,no_animation:1,app_id:^(${steam})$,title:^(Notification|Steam Notification|通知)"
@@ -105,10 +105,11 @@ let
     "${settings},app_id:^(virt-manager|[.]virt-manager-wrapped)$,title:^(Connection Details|Virtual Machine Details|New VM|New Connection|连接详情|新建虚拟机)$"
 
     # Preserve named scratch launch identities and their established sizes.
-    "${opaque},app_id:^(kitty|mayon-scratch|mayon-files|mayon-monitor)$"
+    "${opaque},app_id:^(kitty|mayon-scratch|mayon-files|mayon-monitor|mayon-clash)$"
     "is_named_scratchpad:1,width:0.78,height:0.78,app_id:^mayon-scratch$"
     "is_named_scratchpad:1,width:0.78,height:0.78,app_id:^mayon-files$"
     "is_named_scratchpad:1,width:0.72,height:0.74,app_id:^mayon-monitor$"
+    "is_named_scratchpad:1,width:0.62,height:0.72,app_id:^mayon-clash$"
   ]
   # Community modal/chooser patterns, scoped to apps and anchored to avoid
   # floating tabs such as "Save As - documentation — Mozilla Firefox".
