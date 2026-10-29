@@ -49,12 +49,16 @@ in
             export NVIM_APPNAME=nvim
             unset VIMINIT
             mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"
-            # Round 43 exercises the quiet canvas, top picker, single/deep floats and
-            # native completion before the language/debug/AI integration fixtures.
-            for test in overhaul startup completion completion_ui integration workflow fileops lua_workspace modern interface ai native codediff panels_picker panels_ai panels_aux panels_surface picker_lsp embedded refinement runtime_smoke debug debug_gdb java_debug keymap_discovery; do
+            # Round 44 exercises the document workbench, responsive outline,
+            # same-canvas float surfaces and native completion before integrations.
+            for test in overhaul startup completion completion_ui integration workflow document_workbench fileops lua_workspace modern interface ai native codediff panels_picker panels_ai panels_aux panels_surface picker_lsp embedded refinement runtime_smoke debug debug_gdb java_debug keymap_discovery; do
               export NVIM_TEST_FILE="${neovim.configDir}/tests/$test.lua"
               ${neovim.normal}/bin/nvim --headless -c 'luafile ${neovim.configDir}/tests/run.lua'
             done
+            # Passing a file on argv is a different lazy-loading path from :edit.
+            printf 'int main(void) { return 0; }\n' > "$TMPDIR/workbench-startup.c"
+            NVIM_TEST_FILE="${neovim.configDir}/tests/document_startup.lua" ${neovim.normal}/bin/nvim --headless \
+              "$TMPDIR/workbench-startup.c" -c 'luafile ${neovim.configDir}/tests/run.lua'
             export NVIM_TEST_FILE="${neovim.configDir}/tests/samples.lua"
             for sample in lua cpp python toml markdown nix tex rust go; do
               NVIM_SAMPLE="$sample" ${neovim.normal}/bin/nvim --headless -c 'luafile ${neovim.configDir}/tests/run.lua'

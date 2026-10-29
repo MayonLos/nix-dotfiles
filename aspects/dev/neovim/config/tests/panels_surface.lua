@@ -12,7 +12,7 @@ assert(
 )
 assert(neogit_border.fg == float_border.fg and neogit_border.bg == float_border.bg)
 assert(
-	vim.api.nvim_get_hl(0, { name = "NeogitNormalFloat", link = false }).bg == tonumber(palette.deep:sub(2), 16),
+	vim.api.nvim_get_hl(0, { name = "NeogitNormalFloat", link = false }).bg == tonumber(palette.bg:sub(2), 16),
 	"Neogit's private namespace must retain the unified editor floating surface"
 )
 -- Every opaque layer (title chunks, virtual padding and parent layouts too)
@@ -32,7 +32,7 @@ for _, group in ipairs({
 	"SnacksNotifierIconError",
 }) do
 	assert(
-		vim.api.nvim_get_hl(0, { name = group, link = false }).bg == tonumber(palette.deep:sub(2), 16),
+		vim.api.nvim_get_hl(0, { name = group, link = false }).bg == tonumber(palette.bg:sub(2), 16),
 		group .. " must share the editor canvas"
 	)
 end
@@ -72,7 +72,7 @@ for _, reload in ipairs({ false, true }) do
 	for index, severity in ipairs({ "Error", "Warn", "Info", "Hint" }) do
 		local body = vim.api.nvim_get_hl(0, { name = "DiagnosticFloating" .. severity, link = false })
 		assert(body.fg == tonumber(palette.brightFg:sub(2), 16), "floating prose must stay neutral: " .. severity)
-		assert(body.bg == tonumber(palette.deep:sub(2), 16), "diagnostic float surface mismatch")
+		assert(body.bg == tonumber(palette.bg:sub(2), 16), "diagnostic float surface mismatch")
 		local found_body, found_marker = false, false
 		for _, mark in ipairs(marks) do
 			local detail = mark[4]
@@ -95,10 +95,10 @@ assert(vim.diagnostic.config().virtual_text == diagnostic_config.virtual_text)
 assert(vim.diagnostic.config().virtual_lines == diagnostic_config.virtual_lines)
 assert(vim.deep_equal(vim.diagnostic.config().float, diagnostic_config.float), "theme reload changed float options")
 for group, color in pairs({
-	MayonModeBlockVisual = palette.blue,
+	MayonModeBlockVisual = palette.yellow,
 	OilSocket = palette.cyan,
-	DropBarIconKindFunction = palette.blue,
-	DropBarCurrentContextIcon = palette.blue,
+	MayonHeaderFile = palette.brightFg,
+	MayonHeaderMuted = palette.muted,
 }) do
 	assert(vim.api.nvim_get_hl(0, { name = group, link = false }).fg == tonumber(color:sub(2), 16))
 end

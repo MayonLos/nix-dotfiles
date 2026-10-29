@@ -54,6 +54,7 @@ vim.lsp.get_client_by_id = function(id)
 		return {
 			id = id,
 			name = "offline-fixture",
+			server_capabilities = {},
 			supports_method = function()
 				return false
 			end,
@@ -152,7 +153,7 @@ for _, name in ipairs({
 	"WhichKeyBorder",
 }) do
 	local hl = vim.api.nvim_get_hl(0, { name = name, link = false })
-	assert(hl.bg == tonumber(palette.deep:sub(2), 16), "which-key surface must match One Dark deep: " .. name)
+	assert(hl.bg == tonumber(palette.bg:sub(2), 16), "which-key surface must match the editor: " .. name)
 end
 
 -- Descriptions are short English action labels. Inspect all modes after lazy

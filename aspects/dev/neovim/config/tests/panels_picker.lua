@@ -1,20 +1,22 @@
--- Snacks pickers use a full-width top shelf; previews are opt-in and the
--- Project tool keeps an on-demand file navigation entry.
+-- Snacks pickers keep the document visible above a bottom result/preview workbench.
 local pickers = require("mayon.ui.pickers")
 local files = pickers.configure({ source = "files" })
 assert(files.prompt == "❯ ", "general picker input should retain its prompt")
-assert(files.layout().preview == false, "general picker should not open a default preview")
+assert(files.layout().preview == (vim.o.columns >= 120), "file picker preview should follow the wide-window default")
 assert(
-	files.layout().layout.width == 0 and files.layout().layout.col == 0 and files.layout().layout.row == 0,
-	"picker should occupy the top width"
+	files.layout().layout.width == 0 and files.layout().layout.position == "bottom",
+	"picker should occupy the bottom width"
 )
-assert(files.layout().layout.height == math.floor(vim.o.lines * 0.28), "picker height should use 28% of the editor")
-assert(files.layout().layout.border == "none", "picker should not add an outer frame")
-assert(files.layout().layout[1][1].border == "bottom", "picker input should use a fine lower rule")
+assert(
+	files.layout().layout.height == math.floor(vim.o.lines * (vim.o.columns >= 120 and 0.42 or 0.52)),
+	"picker height should adapt to the editor"
+)
+assert(files.layout().layout.border == "top", "picker should use a fine top frame")
+assert(files.layout().layout[1].border == "bottom", "picker input should use a fine lower rule")
 assert(files.win.list.wo.cursorline and files.win.list.wo.cursorlineopt == "line")
 assert(files.win.list.wo.winhighlight:find("SnacksPickerListCursorLine", 1, true))
 local file_layout = vim.inspect(files.layout().layout)
-assert(file_layout:find('win = "preview"', 1, true), "hidden preview must remain available to Alt-p")
+assert(file_layout:find('win = "preview"', 1, true), "preview must remain available to Alt-p")
 local long_path = "/tmp/workspace/" .. string.rep("long-parent-name/", 5) .. "math_preview.lua"
 local file_picker = {
 	list = { win = {
@@ -79,6 +81,11 @@ for _, source in ipairs({
 end
 local explorer_opts = pickers.configure({ source = "explorer" })
 assert(explorer_opts.prompt == "⌕ ", "Project should expose the native filter input")
+assert(explorer_opts.win.list.keys["/"] == "explorer_filter", "Project slash should reveal its one-line filter")
+assert(
+	explorer_opts.win.input.keys["<Esc>"][1] == "explorer_filter_close",
+	"Project Escape should clear and hide its filter"
+)
 
 -- Open a real Project tool and verify its fixed-width input/list surface.
 vim.api.nvim_exec_autocmds("User", { pattern = "MayonVeryLazy" })
@@ -87,6 +94,7 @@ vim.fn.mkdir(project .. "/.git", "p")
 vim.fn.mkdir(project .. "/nested", "p")
 local project_file = project .. "/nested/entry.lua"
 vim.fn.writefile({ "return true" }, project_file)
+vim.fn.writefile({ "return false" }, project .. "/outside.lua")
 vim.cmd.edit(vim.fn.fnameescape(project_file))
 vim.o.columns = 120
 local explorer_mapping = vim.fn.maparg("<leader>e", "n", false, true)
@@ -109,19 +117,61 @@ assert(
 assert(picker:cwd() == project, "Project root should follow the current git repository")
 local list_win = picker.list.win.win
 assert(
-	vim.api.nvim_win_is_valid(list_win) and vim.api.nvim_win_get_width(list_win) == 34,
-	"Project rail should be 34 columns"
+	vim.api.nvim_win_is_valid(list_win) and vim.api.nvim_win_get_width(list_win) == 28,
+	"wide Project rail should be 28 columns"
 )
 assert(picker.opts.prompt == "⌕ ", "Project filter prompt should be the native search input")
-assert(not picker.layout:is_hidden("input"), "Project input should be visible by default")
+assert(picker.layout:is_hidden("input"), "Project filter should be hidden by default")
 assert(picker.layout:is_hidden("preview") or not picker.preview.win:valid(), "Project should not open a preview pane")
 local visible = {}
 for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
 	visible[win] = true
 end
-assert(visible[picker.input.win.win], "native Project input window is not visible")
+assert(not visible[picker.input.win.win], "native Project filter should not occupy a visible row by default")
 assert(visible[list_win], "Project list window is not visible")
 assert(not visible[picker.preview.win.win], "Project unexpectedly displayed a preview")
+picker:action("explorer_filter")
+assert(not picker.layout:is_hidden("input"), "slash should reveal the Project filter")
+assert(
+	vim.wait(500, function()
+		return vim.api.nvim_get_current_win() == picker.input.win.win
+	end),
+	"slash should focus the Project filter"
+)
+picker.input:set("entry")
+vim.api.nvim_exec_autocmds("TextChangedI", { buffer = picker.input.win.buf })
+assert(
+	vim.wait(2000, function()
+		for _, item in ipairs(picker:items()) do
+			if item.file == project .. "/outside.lua" then
+				return false
+			end
+		end
+		return #picker:items() > 0
+	end),
+	"recursive filter should narrow the visible file set"
+)
+picker:action("explorer_filter_close")
+assert(
+	vim.wait(2000, function()
+		for _, item in ipairs(picker:items()) do
+			if item.file == project .. "/outside.lua" then
+				return true
+			end
+		end
+		return false
+	end),
+	"Escape should restore the unfiltered project tree"
+)
+assert(picker.layout:is_hidden("input"), "Escape should hide the Project filter after clearing it")
+assert(vim.api.nvim_get_current_win() == list_win, "Escape should return focus to Project results")
+assert(picker.input:get() == "", "Escape should clear the one-line Project filter")
+vim.o.columns = 90
+picker:set_layout()
+assert(vim.api.nvim_win_get_width(list_win) == 24, "narrow Project rail should shrink to 24 columns")
+vim.o.columns = 120
+picker:set_layout()
+assert(vim.api.nvim_win_get_width(list_win) == 28, "wide Project rail should recover to 28 columns")
 local item
 for _, candidate in ipairs(picker:items()) do
 	if candidate.file == project_file then
@@ -133,7 +183,7 @@ assert(item, "Project list did not include the fixture file")
 local formatted = picker.opts.format(item, picker)
 local icon, icon_hl = require("mayon.ui.icons").get(project_file)
 assert(formatted[2][1] == icon and icon_hl:match("^DevIcon"), "Project file should keep its colored type icon")
-assert(formatted[1][1] == "  ", "Project indentation should use two-column increments")
+assert(formatted[1][1] == "│ ", "Project indentation should use two-column increments")
 local short_name = "math_preview.lua"
 local short_item = {
 	file = project .. "/nested/" .. short_name,
@@ -194,20 +244,27 @@ vim.wait(100)
 assert(vim.v.errmsg == "", "closed picker resize callback failed: " .. vim.v.errmsg)
 print("Project input, compact pickers, native grep rows and resize-close passed")
 
--- Every picker starts without a preview; Alt-p adds context and survives resize.
+-- Wide file pickers open with context; Alt-p toggles it and survives resize.
 vim.o.columns, vim.o.lines = 180, 50
-for _, name in ipairs({ "grep", "lsp_references", "lsp_symbols", "git_log", "diagnostics" }) do
+for _, name in ipairs({ "buffers", "lsp_references", "lsp_symbols", "git_log", "diagnostics" }) do
 	assert(not pickers.configure({ source = name }).layout().preview, name .. " should stay compact")
 end
 local preview = Snacks.picker.files({ cwd = project, show_delay = 0 })
 assert(vim.wait(1000, function()
 	return preview.layout ~= nil
 end))
-preview:action("toggle_preview")
-assert(preview.preview.win:valid() and not preview.layout:is_hidden("preview"), "Alt-p did not open files preview")
+assert(
+	vim.wait(1500, function()
+		return preview.preview.win:valid() and not preview.layout:is_hidden("preview")
+	end),
+	"wide files picker should start with preview"
+)
+local list_pos = vim.api.nvim_win_get_position(preview.list.win.win)
+local preview_pos = vim.api.nvim_win_get_position(preview.preview.win.win)
+assert(preview_pos[2] > list_pos[2], "wide picker should place the preview to the right of the results")
 vim.o.columns = 90
 preview:set_layout()
-assert(not preview.layout:is_hidden("preview"), "narrow picker should keep an explicitly opened preview")
+assert(not preview.layout:is_hidden("preview"), "narrow picker should retain explicit preview preference")
 vim.o.columns = 180
 preview:set_layout()
 assert(not preview.layout:is_hidden("preview"), "resize lost the explicit preview preference")

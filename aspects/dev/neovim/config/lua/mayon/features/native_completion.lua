@@ -427,6 +427,7 @@ function M.convert(item)
 	return {
 		abbr = item.label,
 		kind = kind_icons[kind] or "",
+		kind_hlgroup = "MayonCompletion" .. kind,
 		menu = detail ~= "" and detail or kind,
 	}
 end

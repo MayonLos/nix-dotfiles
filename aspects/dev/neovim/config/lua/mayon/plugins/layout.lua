@@ -31,7 +31,7 @@ local function setup_edgy()
 	vim.opt.splitkeep = "screen"
 	local palette = require("mayon.generated").palette
 	vim.api.nvim_set_hl(0, "EdgyNormal", { fg = palette.brightFg, bg = palette.bg })
-	vim.api.nvim_set_hl(0, "EdgyWinBar", { fg = palette.blue, bg = palette.deep, bold = true })
+	vim.api.nvim_set_hl(0, "EdgyWinBar", { fg = palette.blue, bg = palette.bg, bold = true })
 	local ai_winbar = "%!v:lua.require'mayon.ui.ai_panels'.winbar()"
 	require("edgy").setup({
 		right = {
@@ -163,22 +163,34 @@ local smart_split_keys = {
 
 return {
 	{
-		"dropbar.nvim",
+		"aerial.nvim",
 		event = { "BufReadPost", "BufNewFile" },
 		after = function()
-			require("mayon.ui.breadcrumbs").setup()
-		end,
-	},
-	{
-		"aerial.nvim",
-		cmd = { "AerialToggle", "AerialOpen", "AerialClose" },
-		after = function()
+			local outline = require("mayon.ui.outline")
 			require("aerial").setup({
-				layout = { default_direction = "left", min_width = 28 },
-				attach_mode = "global",
+				-- lz.n already deferred the plugin until a document exists.
+				lazy_load = false,
+				layout = {
+					default_direction = "right",
+					placement = "edge",
+					min_width = 26,
+					max_width = 30,
+					resize_to_content = false,
+				},
+				attach_mode = "window",
+				close_automatic_events = {},
 				show_guides = false,
 				filter_kind = false,
+				highlight_mode = "full_width",
+				highlight_closest = true,
+				-- The workbench owns opening/closing, including per-tab manual intent.
+				open_automatic = false,
+				post_add_all_symbols = function(bufnr, items)
+					outline.on_symbols(bufnr)
+					return items
+				end,
 			})
+			outline.setup()
 		end,
 	},
 	{ "edgy.nvim", event = "User MayonVeryLazy", after = setup_edgy },

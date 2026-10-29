@@ -18,8 +18,8 @@ for name, value in pairs(float_before) do
 end
 local ai_surface = vim.api.nvim_get_hl(0, { name = "MayonAIPanel", link = false })
 assert(
-	ai_surface.bg == tonumber(require("mayon.generated").palette.deep:sub(2), 16),
-	"AI split panels should use the shared deep surface color"
+	ai_surface.bg == tonumber(require("mayon.generated").palette.bg:sub(2), 16),
+	"AI split panels should use the editor canvas color"
 )
 assert(
 	vim.deep_equal(original_diff_add, vim.api.nvim_get_hl(0, { name = "DiffAdd" })),
@@ -61,12 +61,12 @@ assert(
 	"CodeCompanion float should stay within the current editor width"
 )
 assert(chat_config.border[1] == "┌", "CodeCompanion float should use the shared single-line border")
-local deep = tonumber(require("mayon.generated").palette.deep:sub(2), 16)
-assert(vim.api.nvim_get_hl(0, { name = "FloatBorder", link = false }).bg == deep)
-assert(vim.api.nvim_get_hl(0, { name = "FloatTitle", link = false }).bg == deep)
+local surface = tonumber(require("mayon.generated").palette.bg:sub(2), 16)
+assert(vim.api.nvim_get_hl(0, { name = "FloatBorder", link = false }).bg == surface)
+assert(vim.api.nvim_get_hl(0, { name = "FloatTitle", link = false }).bg == surface)
 assert(
 	vim.wo[chat_win].winhighlight:find("Normal:NormalFloat", 1, true),
-	"CodeCompanion float should use the shared deep surface"
+	"CodeCompanion float should use the editor canvas"
 )
 assert(panels.winbar(chat_buf):find("DeepSeek", 1, true), "CodeCompanion float should retain its provider label")
 local previous_win = vim.api.nvim_get_current_win()

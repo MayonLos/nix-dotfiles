@@ -6,13 +6,13 @@ end
 
 local function apply_highlights()
 	local c = palette()
-	vim.api.nvim_set_hl(0, "MayonPanelRail", { fg = c.blue, bg = c.deep, bold = true })
-	vim.api.nvim_set_hl(0, "MayonPanelFile", { fg = c.brightFg, bg = c.deep, bold = true })
-	vim.api.nvim_set_hl(0, "MayonPanelPosition", { fg = c.muted, bg = c.deep })
-	vim.api.nvim_set_hl(0, "MayonPanelNormal", { fg = c.fg, bg = c.deep })
+	vim.api.nvim_set_hl(0, "MayonPanelRail", { fg = c.blue, bg = c.bg, bold = true })
+	vim.api.nvim_set_hl(0, "MayonPanelFile", { fg = c.brightFg, bg = c.bg, bold = true })
+	vim.api.nvim_set_hl(0, "MayonPanelPosition", { fg = c.muted, bg = c.bg })
+	vim.api.nvim_set_hl(0, "MayonPanelNormal", { fg = c.fg, bg = c.bg })
 	vim.api.nvim_set_hl(0, "MayonPanelSelection", { fg = c.brightFg, bg = c.selection })
-	local edge = require("mayon.ui.theme").blend(c.border, c.deep, 0.28)
-	vim.api.nvim_set_hl(0, "MayonPanelEdge", { fg = edge, bg = c.deep })
+	local edge = require("mayon.ui.theme").float_edge()
+	vim.api.nvim_set_hl(0, "MayonPanelEdge", { fg = edge, bg = c.bg })
 end
 
 local function location(entry)

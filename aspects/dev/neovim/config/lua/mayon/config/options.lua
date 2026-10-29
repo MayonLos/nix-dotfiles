@@ -21,9 +21,9 @@ function M.setup()
 		-- Keep the block/beam/bar shapes aligned with the mode-color palette.
 		guicursor = "n:block-Cursor,v-ve:block-Cursor,i-ci:ver25-Cursor,r-cr-o:hor20-Cursor,c:ver25-Cursor,sm:block-Cursor",
 		pumborder = "single",
-		pumwidth = 36,
-		pummaxwidth = 72,
-		pumheight = 10,
+		pumwidth = 28,
+		pummaxwidth = 52,
+		pumheight = 9,
 		wildoptions = "pum,fuzzy",
 		breakindent = true,
 		breakindentopt = "shift:2,min:20",

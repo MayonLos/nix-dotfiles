@@ -12,15 +12,15 @@ end
 
 local function apply_highlights()
 	local c = require("mayon.generated").palette
-	vim.api.nvim_set_hl(0, "WhichKey", { fg = c.blue, bg = c.deep, bold = true })
-	vim.api.nvim_set_hl(0, "WhichKeyDesc", { fg = c.fg, bg = c.deep })
-	vim.api.nvim_set_hl(0, "WhichKeyGroup", { fg = c.muted, bg = c.deep })
-	vim.api.nvim_set_hl(0, "WhichKeySeparator", { fg = c.muted, bg = c.deep })
-	vim.api.nvim_set_hl(0, "WhichKeyTitle", { fg = c.muted, bg = c.deep, bold = true })
-	vim.api.nvim_set_hl(0, "WhichKeyNormal", { fg = c.fg, bg = c.deep })
-	vim.api.nvim_set_hl(0, "WhichKeyIcon", { fg = c.blue, bg = c.deep })
+	vim.api.nvim_set_hl(0, "WhichKey", { fg = c.blue, bg = c.bg, bold = true })
+	vim.api.nvim_set_hl(0, "WhichKeyDesc", { fg = c.fg, bg = c.bg })
+	vim.api.nvim_set_hl(0, "WhichKeyGroup", { fg = c.muted, bg = c.bg })
+	vim.api.nvim_set_hl(0, "WhichKeySeparator", { fg = c.muted, bg = c.bg })
+	vim.api.nvim_set_hl(0, "WhichKeyTitle", { fg = c.muted, bg = c.bg, bold = true })
+	vim.api.nvim_set_hl(0, "WhichKeyNormal", { fg = c.fg, bg = c.bg })
+	vim.api.nvim_set_hl(0, "WhichKeyIcon", { fg = c.blue, bg = c.bg })
 	local edge = require("mayon.ui.theme").float_edge()
-	vim.api.nvim_set_hl(0, "WhichKeyBorder", { fg = edge, bg = c.deep })
+	vim.api.nvim_set_hl(0, "WhichKeyBorder", { fg = edge, bg = c.bg })
 end
 
 local groups = {

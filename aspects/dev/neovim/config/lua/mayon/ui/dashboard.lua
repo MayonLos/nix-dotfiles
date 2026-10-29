@@ -159,7 +159,8 @@ function M.config()
 			then
 				return
 			end
-			vim.o.laststatus, vim.o.showtabline = 3, 0
+			vim.o.laststatus = 3
+			require("mayon.ui.tabline").refresh()
 			vim.wo[d.win].winbar = ""
 			vim.wo[d.win].spell = false
 			vim.wo[d.win].cursorline = false

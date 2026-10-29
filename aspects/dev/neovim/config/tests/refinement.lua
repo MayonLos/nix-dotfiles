@@ -37,8 +37,8 @@ end
 local border = highlight("FloatBorder")
 local title = highlight("FloatTitle")
 assert(border.fg == color(require("mayon.ui.theme").float_edge()), "global float border must use the quiet edge")
-assert(border.bg == color(palette.deep), "global float border must share the deep surface")
-assert(title.fg == color(palette.muted) and title.bg == color(palette.deep), "global float title palette mismatch")
+assert(border.bg == color(palette.bg), "global float border must share the editor surface")
+assert(title.fg == color(palette.muted) and title.bg == color(palette.bg), "global float title palette mismatch")
 local popup_border = highlight("MayonPopupBorder")
 local popup_title = highlight("MayonPopupTitle")
 assert(popup_border.fg == border.fg and popup_border.bg == border.bg, "input border must match FloatBorder")
@@ -120,8 +120,8 @@ local chat_config = assert_single_surface(chat_win, "AI chat")
 assert(type(chat_config.title) == "table", "AI chat should render title chunks")
 border = highlight("FloatBorder")
 title = highlight("FloatTitle")
-assert(border.fg == color(require("mayon.ui.theme").float_edge()) and border.bg == color(palette.deep))
-assert(title.fg == color(palette.muted) and title.bg == color(palette.deep), "AI loading changed FloatTitle")
+assert(border.fg == color(require("mayon.ui.theme").float_edge()) and border.bg == color(palette.bg))
+assert(title.fg == color(palette.muted) and title.bg == color(palette.bg), "AI loading changed FloatTitle")
 assert(highlight("CodeCompanionVirtualText").fg == color(palette.muted), "AI hints should remain muted")
 local ai_border_group = vim.wo[chat_win].winhighlight:match("FloatBorder:([^,]+)") or "FloatBorder"
 local ai_border = highlight(ai_border_group)
@@ -193,6 +193,7 @@ vim.lsp.get_client_by_id = function(id)
 		return {
 			id = id,
 			name = "fixture",
+			server_capabilities = {},
 			supports_method = function()
 				return false
 			end,
