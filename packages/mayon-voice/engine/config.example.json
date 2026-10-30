@@ -1,0 +1,11 @@
+{
+  "engine": "sensevoice",
+  "provider": "cpu",
+  "model_dir": "~/.local/share/mayon-voice/models/sensevoice-small-int8",
+  "model": "~/.local/share/mayon-voice/models/sensevoice-small-int8/model.int8.onnx",
+  "tokens": "~/.local/share/mayon-voice/models/sensevoice-small-int8/tokens.txt",
+  "num_threads": 4,
+  "language": "auto",
+  "use_itn": true,
+  "hotwords": ["Neovim", "NixOS", "Wayland"]
+}

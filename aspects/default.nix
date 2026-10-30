@@ -30,6 +30,7 @@ _: {
     ./apps/documents
     ./apps/file-manager
     ./apps/media
+    ./apps/voice-input
     ./apps/gaming
     ./dev/containers
     ./dev/virtual-machines
