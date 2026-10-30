@@ -41,6 +41,27 @@ in
   imports = [ inputs.mango.hmModules.mango ];
   xdg.dataFile."mango/keybindings.txt".text = helpText;
 
+  # Append-only export of the final merged settings, including future key modes.
+  # Keep raw rows (and their store dependencies) exactly as Mango receives them.
+  xdg.configFile."keys-mayon/bindings.json".text = builtins.toJSON {
+    version = 1;
+    bindings =
+      let
+        settings = config.wayland.windowManager.mango.settings;
+        rows =
+          mode: values:
+          lib.concatMap (kind: map (raw: { inherit mode kind raw; }) (lib.toList values.${kind})) (
+            lib.filter (kind: builtins.match "(bind[a-z]*|mousebind[a-z]*|gesturebind[a-z]*)" kind != null) (
+              builtins.attrNames values
+            )
+          );
+      in
+      rows "default" settings
+      ++ lib.concatMap (mode: rows mode settings.key_mode.${mode}) (
+        builtins.attrNames (settings.key_mode or { })
+      );
+  };
+
   wayland.windowManager.mango = {
     enable = true;
 

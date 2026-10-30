@@ -3,6 +3,7 @@
     personal-desktop.includes = with den.aspects; [
       interactive-session
       terminal
+      keys-mayon
       default-tools
       firefox
       communication
