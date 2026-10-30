@@ -82,3 +82,26 @@ first_outline = assert(outline_window(first_tab))
 assert(vim.w[first_outline].source_win == selected_source, "background reconcile rebound the wrong source split")
 assert(vim.api.nvim_get_current_tabpage() == second_tab, "background reconcile changed foreground tab")
 print("Outline same-buffer background-tab source split passed")
+
+-- :q on the last source window closes the outline first, so Neovim can exit.
+vim.cmd.tabnew()
+local quit_tab = vim.api.nvim_get_current_tabpage()
+local quit_source = vim.api.nvim_get_current_win()
+vim.cmd("rightbelow vsplit")
+local quit_outline = vim.api.nvim_get_current_win()
+vim.api.nvim_win_set_buf(quit_outline, vim.api.nvim_create_buf(false, true))
+vim.bo.filetype = "aerial"
+vim.api.nvim_set_current_win(quit_source)
+vim.api.nvim_exec_autocmds("QuitPre", { modeline = false })
+assert(not vim.api.nvim_win_is_valid(quit_outline), "QuitPre must close the outline beside the last source")
+assert(vim.api.nvim_get_current_tabpage() == quit_tab, "QuitPre must stay on the quitting tab")
+
+-- The outline alone in the only tab must not raise E444 while reconciling.
+vim.cmd.only()
+vim.cmd.tabonly()
+vim.api.nvim_win_set_buf(0, vim.api.nvim_create_buf(false, true))
+vim.bo.filetype = "aerial"
+local lone_outline = vim.api.nvim_get_current_win()
+assert(outline.reconcile(nil, quit_tab) == false, "A lone outline cannot be closed")
+assert(vim.api.nvim_win_is_valid(lone_outline), "The lone outline stays valid")
+print("Outline quit handling passed")

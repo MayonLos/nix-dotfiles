@@ -199,9 +199,23 @@ local function open_for(tabpage, bufnr, focus)
 	return opened ~= nil
 end
 
+local function has_other_window(tabpage, ...)
+	local excluded = { ... }
+	for _, win in ipairs(vim.api.nvim_tabpage_list_wins(tabpage)) do
+		if vim.api.nvim_win_get_config(win).relative == "" and not vim.tbl_contains(excluded, win) then
+			return true
+		end
+	end
+	return false
+end
+
 local function close_in(tabpage)
 	local win = aerial_win(tabpage)
 	if not win then
+		return false
+	end
+	-- Neovim refuses to close the last window of the last tab (E444).
+	if #vim.api.nvim_list_tabpages() == 1 and not has_other_window(tabpage, win) then
 		return false
 	end
 	managed_closes[win] = true
@@ -341,6 +355,24 @@ function M.setup()
 					remember_aerial_window(tabpage)
 				end
 			end)
+		end,
+	})
+	-- Quitting the last source window must also end the outline, or :q would
+	-- leave the sidebar alone in the tab instead of exiting.
+	vim.api.nvim_create_autocmd("QuitPre", {
+		group = group,
+		callback = function()
+			local tabpage = tab()
+			local current = vim.api.nvim_get_current_win()
+			local outline = aerial_win(tabpage)
+			if
+				outline
+				and outline ~= current
+				and vim.api.nvim_win_get_config(current).relative == ""
+				and not has_other_window(tabpage, outline, current)
+			then
+				close_in(tabpage)
+			end
 		end,
 	})
 	vim.api.nvim_create_autocmd("WinClosed", {
