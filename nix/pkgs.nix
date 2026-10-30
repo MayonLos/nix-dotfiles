@@ -43,6 +43,7 @@
             seek = import ../packages/seek { pkgs = final; };
             bilitui = import ../packages/bilitui { pkgs = final; };
             mcsrvMayon = import ../packages/mcsrv-mayon { pkgs = final; };
+            powerMayon = import ../packages/power-mayon { pkgs = final; };
             studyMayon = import ../packages/study-mayon { pkgs = final; };
             # Explicit exceptions to stable; each consumer uses this shared instance.
             unstable = {

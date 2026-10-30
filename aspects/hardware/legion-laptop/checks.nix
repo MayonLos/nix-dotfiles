@@ -1,9 +1,21 @@
-{ pkgs, nixos, ... }:
+{
+  pkgs,
+  nixos,
+  home,
+  ...
+}:
 let
   tool = import ./conservation.nix { inherit pkgs; };
 in
 {
   legion-conservation =
+    assert builtins.elem pkgs.powerMayon home.home.packages;
+    assert home.systemd.user.timers.power-mayon-auto.Timer.OnCalendar == "*-*-* *:*:00,30";
+    assert home.systemd.user.services.power-mayon-auto.Service.NoNewPrivileges;
+    assert nixos.services.power-profiles-daemon.enable;
+    assert !nixos.services.tlp.enable;
+    assert builtins.elem "power-mayon" nixos.users.users.mayon.extraGroups;
+    assert pkgs.lib.hasInfix pkgs.powerMayon.profilePolicy nixos.security.polkit.extraConfig;
     assert nixos.users.groups ? legion-conservation;
     assert builtins.elem "legion-conservation" nixos.users.users.mayon.extraGroups;
     assert pkgs.lib.hasInfix "DRIVER==\"ideapad_acpi\"" nixos.services.udev.extraRules;
@@ -31,6 +43,14 @@ in
       if "$TMPDIR/tool" toggle; then exit 1; fi
       test "$(cat "$TMPDIR/sys/device/conservation_mode")" = 0
       test "$(cat "$TMPDIR/sys/second/conservation_mode")" = 0
+      rm "$TMPDIR/sys/second/conservation_mode"
+      "$TMPDIR/tool" on
+      test "$(cat "$TMPDIR/sys/device/conservation_mode")" = 1
+      "$TMPDIR/tool" on
+      test "$(cat "$TMPDIR/sys/device/conservation_mode")" = 1
+      "$TMPDIR/tool" off
+      "$TMPDIR/tool" off
+      test "$(cat "$TMPDIR/sys/device/conservation_mode")" = 0
       touch "$out"
     '';
 }

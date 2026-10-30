@@ -1,0 +1,13 @@
+[package]
+name = "power-mayon"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[workspace]
+
+[dependencies]
+mayon-ui = { path = "../mayon-tui/crates/ui" }
+ratatui = "0.29"
+crossterm = "0.29"
+serde_json = "1"

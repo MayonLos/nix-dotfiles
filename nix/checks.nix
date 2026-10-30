@@ -206,6 +206,8 @@
               "Bilibili TUI must be installed by media";
             pkgs.bilitui;
           mcsrv-mayon = pkgs.mcsrvMayon;
+          power-mayon = pkgs.powerMayon;
+          power-mayon-vm = import ../packages/power-mayon/vm.nix { inherit pkgs; };
           architecture = pkgs.runCommand "architecture-check" { } "touch $out";
           palette-contrast = paletteContrast;
           statix = pkgs.runCommand "statix-check" { nativeBuildInputs = [ pkgs.statix ]; } ''
