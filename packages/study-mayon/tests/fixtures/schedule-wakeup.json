@@ -1,6 +1,0 @@
-{
-  "courses": [
-    {"name":"高等数学","teacher":"张老师","room":"教1-201","weekday":1,"periods":[1,2],"weeks":"1-16","parity":"every"},
-    {"name":"英语","teacher":"李老师","room":"外语楼302","weekday":3,"periods":"3-4","weeks":[1,3,5,7],"parity":"odd"}
-  ]
-}

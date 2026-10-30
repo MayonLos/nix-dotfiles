@@ -65,3 +65,25 @@ Clash accepts `--data-dir`, `--socket`, `--mihomo`, `--systemctl`, and `--config
 paths for isolated data and service fixtures;
 Docker accepts `--host`; ports can run in an unprivileged user/network
 namespace for synthetic listeners and process actions.
+
+## 搜索与输入约定
+
+保留的 TUI 使用 `mayon_ui::search` 和 `mayon_ui::input::TextInput`，共享库也供
+keys、shots、serial 和 voice dashboard 使用。页面布局可独立演进，搜索匹配与
+编辑状态不依赖布局。
+
+- `/` 打开本地过滤并实时更新；Enter 保留过滤回到列表；输入中的 Esc 恢复打开前的
+  过滤。列表中的 Esc 先清除已有过滤，再执行该页原有的返回或退出行为。
+- 输入中 ↑/↓ 可以直接移动列表选择。列表支持 PgUp/PgDn、g/G 和滚轮；筛选和刷新按
+  稳定 ID 保留选中项，被移除或不再匹配时选择第一项。无匹配时显示空状态和 Esc 提示。
+- 过滤值在标题或状态行持续显示，列表显示匹配数/总数。命中字符使用 One Dark 黄色。
+  查询按空白拆词并执行 AND，忽略 Unicode 大小写；每词依次尝试字面、拼音全拼、
+  拼音首字母和短文本子序列（最多 80 个字符）。长日志与命令行不进行子序列匹配。
+  `SearchText` 可缓存预处理，`SearchCache` 提供有界缓存；Latin 文本不计算拼音。
+- TextInput 支持 ←/→、Home/End、Ctrl+A/E、Backspace/Delete、Ctrl+U（清光标前）、
+  Ctrl+K（清光标后）、Ctrl+W/Alt+Backspace（删前词）。真实终端光标跟随字符与显示
+  宽度，横向滚动不截断 UTF-8。未知 Ctrl/Alt 组合不插入字母。
+- 终端启用 bracketed paste。粘贴只交给当前输入框；换行转空格，控制字符被过滤，
+  单行长度上限 4096 个字符；没有输入框时忽略粘贴。表单与确认文本也使用相同编辑器。
+- Serial 的 `/`（或 `f`）过滤记录，Ctrl+f 搜索命中位置，n/N 向后/向前循环定位，
+  状态显示第 x/共 y 个。搜索与记录过滤分别保留状态。

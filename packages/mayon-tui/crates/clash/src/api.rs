@@ -546,6 +546,8 @@ pub struct RuleExtra {
 }
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct LogEntry {
+    #[serde(skip)]
+    pub id: u64,
     #[serde(default, rename = "type")]
     pub level: String,
     #[serde(default)]

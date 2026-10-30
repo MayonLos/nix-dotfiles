@@ -1,6 +1,7 @@
 //! Disk accounting and a frozen, explicitly reviewed cleanup plan.
 use crate::api::{self, Disk, Engine};
-use crossterm::event::KeyCode;
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use mayon_ui::input::TextInput;
 use serde_json::Value;
 use std::collections::HashSet;
 
@@ -214,7 +215,7 @@ pub struct Flow {
     pub stage: Stage,
     pub cursor: usize,
     seen: usize,
-    pub input: String,
+    pub input: TextInput,
     volume_cursor: usize,
 }
 impl Flow {
@@ -224,7 +225,7 @@ impl Flow {
             stage: Stage::Preview,
             cursor: 0,
             seen: 0,
-            input: String::new(),
+            input: TextInput::default(),
             volume_cursor: 0,
         })
     }
@@ -240,7 +241,19 @@ impl Flow {
         )
     }
     /// Returns an authorized frozen plan only after preview AND second confirmation.
+    #[cfg(test)]
     pub fn key(&mut self, key: KeyCode) -> Option<Vec<Entry>> {
+        self.handle_key(KeyEvent::new(key, KeyModifiers::NONE))
+    }
+    pub fn handle_key(&mut self, event: KeyEvent) -> Option<Vec<Entry>> {
+        let key = event.code;
+        if self.stage != Stage::Volumes
+            && event
+                .modifiers
+                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
+        {
+            return None;
+        }
         match self.stage {
             Stage::Preview => match key {
                 KeyCode::Down | KeyCode::Char('j') => {
@@ -261,7 +274,7 @@ impl Flow {
                 }
             }
             Stage::Volumes => match key {
-                KeyCode::Enter if self.input == self.volume_phrase() => {
+                KeyCode::Enter if self.input.as_str() == self.volume_phrase() => {
                     self.volume_cursor += 1;
                     if self.volume_cursor
                         == self.plan.iter().filter(|e| e.kind == Kind::Volume).count()
@@ -270,11 +283,9 @@ impl Flow {
                     }
                     self.input.clear();
                 }
-                KeyCode::Backspace => {
-                    self.input.pop();
+                _ => {
+                    self.input.handle_key(event);
                 }
-                KeyCode::Char(c) if !c.is_control() => self.input.push(c),
-                _ => (),
             },
             _ => (),
         }
@@ -284,7 +295,7 @@ impl Flow {
         match self.stage {
             Stage::Preview => format!("预览准确清单 {}/{} · 总预计释放 {}\n\n{}\n\n只删除清单内 ID，不停止容器，不删除容器关联卷。\n卷数据不可恢复；卷需要另行输入名称确认。\n\nj/k 逐项查看 · 查看全部后 y 进入二次确认 · Esc 取消", self.cursor+1, self.plan.len(), estimate(&self.plan), self.plan[self.cursor].description()),
             Stage::Confirm => format!("二次确认：删除已预览的 {} 项？\n预计释放 {}（共享层、并发活动可能影响实际值）\n\n容器 writable layer、卷内数据删除后不可恢复。\n执行前重新验证引用状态；状态改变的项目跳过。\n\ny 确认 · Esc 取消", self.plan.len(), estimate(&self.plan)),
-            Stage::Volumes => format!("卷数据不可恢复！每个卷均需单独确认。\n输入以下完整文本，再按 Enter：\n\n{}\n\n输入：{}▏\n\nEsc 取消", self.volume_phrase(), self.input),
+            Stage::Volumes => format!("卷数据不可恢复！每个卷均需单独确认。\n输入以下完整文本，再按 Enter：\n\n{}\n\n输入：\n\nEsc 取消", self.volume_phrase()),
         }
     }
 }

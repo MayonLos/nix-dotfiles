@@ -427,9 +427,6 @@ fn describe_spawn(args: &[String], binding: &Binding) -> String {
     if lower.contains("brightness-down") {
         return "调暗屏幕".into();
     }
-    if raw.contains("--class=mayon-bili") {
-        return "打开 Bilibili TUI".into();
-    }
     if raw.contains("mayon-voice") || raw.contains("toggle") && binding.raw.contains("mayonVoice") {
         return "开始或停止语音输入".into();
     }
@@ -459,9 +456,6 @@ fn scratchpad_description(args: &[String]) -> String {
         "mayon-clash" => "呼出或隐藏 Clash TUI".into(),
         "mayon-docker" => "呼出或隐藏 Docker TUI".into(),
         "mayon-ports" => "呼出或隐藏端口监视 TUI".into(),
-        "seek" => "呼出或隐藏文件搜索 TUI".into(),
-        "study-mayon" => "呼出或隐藏学习 TUI".into(),
-        "mcsrv-mayon" => "呼出或隐藏 Minecraft 服务器 TUI".into(),
         _ => {
             if args.is_empty() {
                 "toggle_named_scratchpad".to_owned()
@@ -486,9 +480,6 @@ fn group_for(parsed: &Parsed, description: &str) -> usize {
         return 1;
     }
     if parsed.action == "toggle_named_scratchpad" {
-        return 3;
-    }
-    if parsed.action == "spawn" && description.contains("Bilibili TUI") {
         return 3;
     }
     if parsed.action == "spawn" && description.contains("切换窗口") {
@@ -598,19 +589,9 @@ fn arg<'a>(parsed: &'a Parsed, index: usize, default: &'a str) -> &'a str {
         .unwrap_or(default)
 }
 
+#[cfg(test)]
 pub fn fuzzy(query: &str, text: &str) -> bool {
-    let haystack = text.to_lowercase();
-    query
-        .to_lowercase()
-        .split_whitespace()
-        .all(|word| is_subsequence(word, &haystack))
-}
-
-fn is_subsequence(needle: &str, haystack: &str) -> bool {
-    let mut candidate = haystack.chars();
-    needle
-        .chars()
-        .all(|wanted| candidate.by_ref().any(|found| found == wanted))
+    mayon_ui::search::Matcher::new(query).matches(text)
 }
 
 #[cfg(test)]

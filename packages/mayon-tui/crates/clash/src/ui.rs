@@ -36,17 +36,35 @@ fn title(app: &App, text: &str, area: Rect) -> String {
             if app.filter().is_empty() && !app.filtering {
                 String::new()
             } else {
-                format!(
-                    " · /{}{}",
-                    app.filter(),
-                    if app.filtering { "▏" } else { "" }
-                )
+                format!(" · /{}", app.filter())
             }
         ),
         area.width.saturating_sub(2) as usize,
     )
 }
-fn pane(frame: &mut Frame, area: Rect, title: String, text: Vec<Line<'static>>) {
+fn pane(frame: &mut Frame, app: &App, area: Rect, title: String, text: Vec<Line<'static>>) {
+    let matcher = mayon_ui::search::Matcher::new(app.filter());
+    let text: Vec<_> = text
+        .into_iter()
+        .map(|mut line| {
+            line.spans = line
+                .spans
+                .into_iter()
+                .flat_map(|span| {
+                    matcher
+                        .highlight(&span.content)
+                        .spans
+                        .into_iter()
+                        .map(move |mut hit| {
+                            hit.style = span.style.patch(hit.style);
+                            hit
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect();
+            line
+        })
+        .collect();
     frame.render_widget(Paragraph::new(text).style(base()).block(block(title)), area);
 }
 fn visible(area: Rect, selected: usize, len: usize, row_height: usize) -> std::ops::Range<usize> {
@@ -105,6 +123,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
         let progress = app.launch_progress();
         pane(
             frame,
+            app,
             chunks[2],
             " Clash 未运行 ".into(),
             vec![
@@ -151,6 +170,19 @@ pub fn draw(frame: &mut Frame, app: &App) {
         Page::Tools => " j/k 移动  Enter 执行 / 编辑  m 模式  ? 帮助",
     };
     mayon_ui::footer(frame, chunks[3], hint, &format!(" {}", app.status));
+    if app.filtering {
+        frame.render_widget(Paragraph::new(" 过滤 /").style(base().fg(BLUE)), chunks[3]);
+        app.filters[app.page as usize].render(
+            frame,
+            Rect::new(
+                chunks[3].x.saturating_add(7),
+                chunks[3].y,
+                chunks[3].width.saturating_sub(8),
+                1,
+            ),
+            base().fg(BLUE),
+        );
+    }
     if app.help {
         help(frame, app);
     }
@@ -206,7 +238,7 @@ fn overview(frame: &mut Frame, app: &App, area: Rect) {
             ))));
         }
     }
-    pane(frame, sections[0], " 代理状态与出口 ".into(), state);
+    pane(frame, app, sections[0], " 代理状态与出口 ".into(), state);
     let traffic = sections[1];
     frame.render_widget(
         Block::default()
@@ -292,6 +324,7 @@ fn overview(frame: &mut Frame, app: &App, area: Rect) {
     };
     pane(
         frame,
+        app,
         sections[2],
         " 当前订阅 · 3 查看所有订阅 ".into(),
         text,
@@ -323,6 +356,7 @@ fn proxies(frame: &mut Frame, app: &App, area: Rect) {
     }
     pane(
         frame,
+        app,
         columns[0],
         format!(" 代理组 {} ", app.group_names.len()),
         groups,
@@ -372,12 +406,16 @@ fn proxies(frame: &mut Frame, app: &App, area: Rect) {
         .unwrap_or_default();
     pane(
         frame,
+        app,
         columns[1],
         title(
             app,
             &format!(
-                "节点 {} · {}{}{}",
+                "节点 {}/{} · {}{}{}",
                 app.node_names.len(),
+                app.group_name()
+                    .and_then(|g| app.proxies.get(g))
+                    .map_or(0, |p| p.all.len()),
                 app.sort.label(),
                 if app.hide_timeout {
                     " · 隐藏超时"
@@ -522,6 +560,7 @@ fn profiles(frame: &mut Frame, app: &App, area: Rect) {
     }
     pane(
         frame,
+        app,
         area,
         if app.native_busy {
             " 订阅 · 下载 / 校验 / 应用中… ".into()
@@ -582,6 +621,7 @@ fn connections(frame: &mut Frame, app: &App, area: Rect) {
     }
     pane(
         frame,
+        app,
         area,
         title(
             app,
@@ -663,13 +703,22 @@ fn providers(frame: &mut Frame, app: &App, area: Rect) {
     }
     pane(
         frame,
+        app,
         area,
         title(
             app,
-            if app.page == Page::Rules {
-                "规则源 · u 更新 / p 返回"
+            &if app.page == Page::Rules {
+                format!(
+                    "规则源 {}/{} · u 更新 / p 返回",
+                    app.provider_view.len(),
+                    app.rule_providers.len()
+                )
             } else {
-                "节点源 · t 健康检查 / u 更新 / p 返回"
+                format!(
+                    "节点源 {}/{} · t 健康检查 / u 更新 / p 返回",
+                    app.provider_view.len(),
+                    app.providers.len()
+                )
             },
             area,
         ),
@@ -709,10 +758,11 @@ fn rules(frame: &mut Frame, app: &App, area: Rect) {
         ))));
     }
     if lines.is_empty() {
-        lines.push(Line::from(muted(" 无匹配规则")));
+        lines.push(Line::from(muted(" 无匹配规则 · Esc 清除过滤")));
     }
     pane(
         frame,
+        app,
         area,
         title(
             app,
@@ -746,16 +796,18 @@ fn logs(frame: &mut Frame, app: &App, area: Rect) {
         ));
     }
     if lines.is_empty() {
-        lines.push(Line::from(muted(" 等待匹配日志 · L 切级别 · / 搜索")));
+        lines.push(Line::from(muted(" 无匹配日志 · Esc 清除过滤 · L 切级别")));
     }
     pane(
         frame,
+        app,
         area,
         title(
             app,
             &format!(
-                "日志 {} · {}+ · {}",
+                "日志 {}/{} · {}+ · {}",
                 app.log_view.len(),
+                app.logs.len(),
                 ["debug", "info", "warning", "error"][app.log_level],
                 if app.logs_paused {
                     "已暂停（丢弃新日志）"
@@ -829,6 +881,7 @@ fn tools(frame: &mut Frame, app: &App, area: Rect) {
     }
     pane(
         frame,
+        app,
         area,
         " 工具 / 设置 · Enter 应用 · 保存后重启仍保留 ".into(),
         lines,
@@ -879,21 +932,14 @@ fn dialog_view(frame: &mut Frame, dialog: &Dialog, scroll: u16) {
     match dialog {
         Dialog::Edit {
             title,
-            value,
-            action,
+            value: _,
+            action: _,
         } => modal(
             frame,
             title,
             vec![
                 Line::from(""),
-                Line::from(blue(format!(
-                    "  {}▏",
-                    if matches!(action, crate::app::EditAction::Url(_)) {
-                        crate::native::redact_url(value)
-                    } else {
-                        clip(value, 68)
-                    }
-                ))),
+                Line::from(""),
                 Line::from(""),
                 Line::from(muted("  Enter 保存 · Esc 取消")),
             ],
@@ -919,14 +965,22 @@ fn dialog_view(frame: &mut Frame, dialog: &Dialog, scroll: u16) {
                 Line::from(""),
                 Line::from(blue(format!(
                     "  {}URL：{}",
-                    if !field { "▏" } else { " " },
-                    crate::native::redact_url(url)
+                    if !field { ">" } else { " " },
+                    if !field {
+                        String::new()
+                    } else {
+                        crate::native::redact_url(url)
+                    }
                 ))),
                 Line::from(""),
                 Line::from(format!(
                     "  {}名称：{}",
-                    if *field { "▏" } else { " " },
-                    clip(name, 50)
+                    if *field { ">" } else { " " },
+                    if *field {
+                        String::new()
+                    } else {
+                        clip(name, 50)
+                    }
                 )),
                 Line::from(""),
                 Line::from(muted("  名称留空：响应头标题 / 文件名，再回退主机名。")),
@@ -951,6 +1005,31 @@ fn dialog_view(frame: &mut Frame, dialog: &Dialog, scroll: u16) {
         Dialog::Detail(_) => 22,
     };
     let a = mayon_ui::centered(frame.area(), 80, height);
+    let input_area = |row, prefix| {
+        Rect::new(
+            a.x.saturating_add(prefix),
+            a.y.saturating_add(row),
+            a.width.saturating_sub(prefix + 2),
+            1,
+        )
+    };
+    match dialog {
+        Dialog::Edit { value, action, .. } => {
+            if matches!(action, crate::app::EditAction::Url(_)) {
+                value.render_masked(frame, input_area(2, 3), base().fg(BLUE));
+            } else {
+                value.render(frame, input_area(2, 3), base().fg(BLUE));
+            }
+        }
+        Dialog::Import { url, name, field } => {
+            if *field {
+                name.render(frame, input_area(4, 10), base().fg(BLUE));
+            } else {
+                url.render_masked(frame, input_area(2, 9), base().fg(BLUE));
+            }
+        }
+        _ => {}
+    }
     let buttons = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(Rect::new(
             a.x + 1,
@@ -1015,8 +1094,8 @@ mod tests {
                 body: "test".into(),
             },
             Dialog::Import {
-                url: String::new(),
-                name: String::new(),
+                url: Default::default(),
+                name: Default::default(),
                 field: false,
             },
             Dialog::Detail("test".into()),

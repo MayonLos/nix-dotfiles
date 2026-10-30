@@ -17,7 +17,6 @@ _: {
       };
       home.packages = with pkgs; [
         ffmpeg
-        bilitui
         gimp
         kdePackages.kdenlive
         imagemagick

@@ -123,7 +123,7 @@ try:
     payload.write_bytes(b"FILE-PAYLOAD\x00\xff\r\n")
     send("F" + str(payload) + "\r")
     shot("01b-send-timer-file")
-    send("/WARN\r")
+    send("\x06WARN\r")
     shot("02-search-round1")
     send("\x1b[F")
     send("3")

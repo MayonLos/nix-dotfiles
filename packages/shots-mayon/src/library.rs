@@ -45,6 +45,7 @@ pub struct Library {
     home: PathBuf,
     config_home: PathBuf,
     db_path: PathBuf,
+    search: mayon_ui::search::SearchCache,
 }
 
 impl Library {
@@ -64,7 +65,7 @@ impl Library {
     }
 
     #[cfg(test)]
-    fn open_under(home: PathBuf) -> Result<Self> {
+    pub(crate) fn open_under(home: PathBuf) -> Result<Self> {
         Self::open_at(
             home.clone(),
             home.join(".local/share"),
@@ -84,6 +85,7 @@ impl Library {
             home,
             config_home,
             db_path,
+            search: Default::default(),
         };
         library.with_db(|db| {
             db.execute_batch(
@@ -251,8 +253,8 @@ impl Library {
                     favorite: row.get::<_, i64>(6)? != 0,
                 })
             })?;
-            let query = query.to_lowercase();
-            let source = source.map(str::to_lowercase);
+            let matcher = mayon_ui::search::Matcher::new(query);
+            let source = source.map(mayon_ui::search::Matcher::new);
             let mut entries = Vec::new();
             for row in rows {
                 let item = row?;
@@ -260,8 +262,8 @@ impl Library {
                     continue;
                 }
                 if source
-                    .as_deref()
-                    .is_some_and(|wanted| !item.source.to_lowercase().contains(wanted))
+                    .as_ref()
+                    .is_some_and(|wanted| !self.search.matches(wanted, &item.source))
                 {
                     continue;
                 }
@@ -280,11 +282,7 @@ impl Library {
                     item.text.as_str(),
                     date.as_str(),
                 ];
-                if !query.is_empty()
-                    && !fields
-                        .iter()
-                        .any(|field| field.to_lowercase().contains(&query))
-                {
+                if !self.search.matches(&matcher, &fields.join(" ")) {
                     continue;
                 }
                 entries.push(item);
@@ -748,6 +746,11 @@ mod tests {
             })
             .unwrap();
         assert_eq!(library.entries("计划文字", None, false).unwrap().len(), 1);
+        assert_eq!(library.entries("jihua", None, false).unwrap().len(), 1);
+        assert_eq!(
+            library.entries("window jihua", None, false).unwrap().len(),
+            1
+        );
         assert_eq!(
             library
                 .entries("editor", Some("window"), false)

@@ -10,6 +10,10 @@ use crate::{
 };
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use futures_util::StreamExt;
+use mayon_ui::{
+    input::TextInput,
+    search::{Matcher, SearchCache},
+};
 use std::{
     collections::{BTreeMap, HashMap, VecDeque},
     path::PathBuf,
@@ -96,14 +100,14 @@ pub enum Dialog {
         body: String,
     },
     Import {
-        url: String,
-        name: String,
+        url: TextInput,
+        name: TextInput,
         field: bool,
     },
     Detail(String),
     Edit {
         title: &'static str,
-        value: String,
+        value: TextInput,
         action: EditAction,
     },
 }
@@ -139,7 +143,7 @@ pub struct App {
     pub proxies: BTreeMap<String, Proxy>,
     pub group_names: Vec<String>,
     pub node_names: Vec<String>,
-    search_keys: HashMap<String, String>,
+    pub search_cache: SearchCache,
     pub config: RuntimeConfig,
     pub connections: Vec<Connection>,
     pub connection_view: Vec<usize>,
@@ -166,7 +170,8 @@ pub struct App {
     pub log: usize,
     pub tool: usize,
     pub nodes_focus: bool,
-    pub filters: [String; 7],
+    pub filters: [TextInput; 7],
+    filter_before: TextInput,
     pub filtering: bool,
     pub dialog: Option<Dialog>,
     pub detail_scroll: u16,
@@ -195,6 +200,7 @@ pub struct App {
     pub hide_timeout: bool,
     pub logs: VecDeque<LogEntry>,
     pub log_view: Vec<usize>,
+    next_log_id: u64,
     pub log_level: usize,
     pub logs_paused: bool,
     pub logs_live: bool,
@@ -233,7 +239,7 @@ impl App {
             proxies: BTreeMap::new(),
             group_names: vec![],
             node_names: vec![],
-            search_keys: HashMap::new(),
+            search_cache: SearchCache::default(),
             config: RuntimeConfig::default(),
             connections: vec![],
             connection_view: vec![],
@@ -261,6 +267,7 @@ impl App {
             tool: 0,
             nodes_focus: true,
             filters: Default::default(),
+            filter_before: TextInput::default(),
             filtering: false,
             dialog: None,
             detail_scroll: 0,
@@ -289,6 +296,7 @@ impl App {
             hide_timeout: false,
             logs: VecDeque::new(),
             log_view: vec![],
+            next_log_id: 0,
             log_level: 0,
             logs_paused: false,
             logs_live: false,
@@ -328,7 +336,8 @@ impl App {
         })
     }
     pub fn rebuild_nodes(&mut self) {
-        let key = self.filters[Page::Proxies as usize].to_lowercase();
+        let selected = self.node_names.get(self.node).cloned();
+        let matcher = Matcher::new(&self.filters[Page::Proxies as usize]);
         let mut nodes: Vec<_> = self
             .group_name()
             .and_then(|g| self.proxies.get(g))
@@ -337,10 +346,7 @@ impl App {
                     .iter()
                     .filter(|n| {
                         (!self.hide_timeout || self.delay(n) != Some(None))
-                            && self
-                                .search_keys
-                                .get(*n)
-                                .is_some_and(|s| search::matches(s, &key))
+                            && self.search_cache.matches(&matcher, n)
                     })
                     .cloned()
                     .collect()
@@ -356,17 +362,25 @@ impl App {
             }),
         }
         self.node_names = nodes;
-        self.node = self.node.min(self.node_names.len().saturating_sub(1));
+        self.node = selected
+            .and_then(|name| self.node_names.iter().position(|n| n == &name))
+            .unwrap_or(0);
     }
     fn rebuild_views(&mut self) {
-        let query = self.filter().to_lowercase();
+        let connection = self.selected_connection().map(|c| c.id.clone());
+        let rule = self
+            .selected_rule()
+            .map(|r| (r.kind.clone(), r.payload.clone(), r.proxy.clone()));
+        let provider = self.provider_view.get(self.provider).cloned();
+        let matcher = Matcher::new(self.filter());
         self.rebuild_nodes();
         self.connection_view = self
             .connections
             .iter()
             .enumerate()
             .filter(|(_, c)| {
-                search::matches(
+                self.search_cache.matches(
+                    &Matcher::new(&self.filters[Page::Connections as usize]),
                     &format!(
                         "{} {} {} {} {} {}",
                         c.metadata.host,
@@ -375,9 +389,7 @@ impl App {
                         c.rule_payload,
                         c.metadata.process,
                         c.chains.join(" ")
-                    )
-                    .to_lowercase(),
-                    &self.filters[Page::Connections as usize],
+                    ),
                 )
             })
             .map(|(i, _)| i)
@@ -399,37 +411,53 @@ impl App {
             };
             order.then_with(|| a.id.cmp(&b.id))
         });
-        self.connection = self
-            .connection
-            .min(self.connection_view.len().saturating_sub(1));
+        self.connection = connection
+            .and_then(|id| {
+                self.connection_view
+                    .iter()
+                    .position(|i| self.connections[*i].id == id)
+            })
+            .unwrap_or(0);
         self.rule_view = self
             .rules
             .iter()
             .enumerate()
             .filter(|(_, r)| {
-                search::matches(
-                    &format!("{} {} {}", r.kind, r.payload, r.proxy).to_lowercase(),
-                    &self.filters[Page::Rules as usize],
+                self.search_cache.matches(
+                    &Matcher::new(&self.filters[Page::Rules as usize]),
+                    &format!("{} {} {}", r.kind, r.payload, r.proxy),
                 )
             })
             .map(|(i, _)| i)
             .collect();
-        self.rule = self.rule.min(self.rule_view.len().saturating_sub(1));
+        self.rule = rule
+            .and_then(|key| {
+                self.rule_view.iter().position(|i| {
+                    let r = &self.rules[*i];
+                    (r.kind.clone(), r.payload.clone(), r.proxy.clone()) == key
+                })
+            })
+            .unwrap_or(0);
         self.provider_view = if self.page == Page::Rules {
             &self.rule_providers
         } else {
             &self.providers
         }
         .keys()
-        .filter(|n| search::matches(&search::search_key(n), &query))
+        .filter(|n| self.search_cache.matches(&matcher, n))
         .cloned()
         .collect();
-        self.provider = self
-            .provider
-            .min(self.provider_view.len().saturating_sub(1));
+        self.provider = provider
+            .and_then(|name| self.provider_view.iter().position(|n| n == &name))
+            .unwrap_or(0);
         self.rebuild_logs();
     }
     fn rebuild_logs(&mut self) {
+        let selected = self
+            .log_view
+            .get(self.log)
+            .and_then(|i| self.logs.get(*i))
+            .map(|l| l.id);
         self.log_view = self
             .logs
             .iter()
@@ -443,14 +471,16 @@ impl App {
                     _ => 1,
                 };
                 level >= self.log_level
-                    && search::matches(
-                        &l.payload.to_lowercase(),
-                        &self.filters[Page::Logs as usize],
+                    && self.search_cache.matches(
+                        &Matcher::new(&self.filters[Page::Logs as usize]),
+                        &l.payload,
                     )
             })
             .map(|(i, _)| i)
             .collect();
-        self.log = self.log.min(self.log_view.len().saturating_sub(1));
+        self.log = selected
+            .and_then(|key| self.log_view.iter().position(|i| self.logs[*i].id == key))
+            .unwrap_or(0);
     }
     pub fn proxy_chain(&self, start: &str) -> String {
         let mut chain = vec![start.to_string()];
@@ -640,6 +670,11 @@ impl App {
         // Filter a log burst once per frame, not once per incoming record.
         let follow_logs = self.log + 1 >= self.log_view.len();
         let mut logs_changed = false;
+        let log_identity = self
+            .log_view
+            .get(self.log)
+            .and_then(|i| self.logs.get(*i))
+            .map(|l| l.id);
         // Cap work per frame even when the log producer is busy.
         for _ in 0..128 {
             let update = if let Ok(result) = self.native_rx.try_recv() {
@@ -705,17 +740,6 @@ impl App {
                             .unwrap_or(0);
                     }
                     self.group = self.group.min(self.group_names.len().saturating_sub(1));
-                    // GLOBAL order mirrors the user's configuration, with unknown groups stable by name.
-                    self.search_keys.retain(|n, _| self.proxies.contains_key(n));
-                    for n in self
-                        .proxies
-                        .keys()
-                        .chain(self.proxies.values().flat_map(|p| p.all.iter()))
-                    {
-                        self.search_keys
-                            .entry(n.clone())
-                            .or_insert_with(|| search::search_key(n));
-                    }
                     self.rebuild_views();
                     if let Some(i) = self
                         .node_names
@@ -754,10 +778,21 @@ impl App {
                     }
                 }
                 Update::Resources(Ok((providers, rules, list))) => {
+                    let selected = self
+                        .selected_rule()
+                        .map(|r| (r.kind.clone(), r.payload.clone(), r.proxy.clone()));
                     self.providers = providers;
                     self.rule_providers = rules;
                     self.rules = list;
                     self.rebuild_views();
+                    self.rule = selected
+                        .and_then(|key| {
+                            self.rule_view.iter().position(|i| {
+                                let r = &self.rules[*i];
+                                (r.kind.clone(), r.payload.clone(), r.proxy.clone()) == key
+                            })
+                        })
+                        .unwrap_or(0);
                 }
                 Update::Resources(Err(e)) => self.status = format!("规则/provider 刷新失败：{e}"),
                 Update::Connections(s) => {
@@ -784,13 +819,13 @@ impl App {
                     self.totals = (s.upload_total, s.download_total);
                     self.connections_live = true;
                     self.rebuild_views();
-                    if let Some(i) = self
-                        .connection_view
-                        .iter()
-                        .position(|i| Some(&self.connections[*i].id) == selected.as_ref())
-                    {
-                        self.connection = i;
-                    }
+                    self.connection = selected
+                        .and_then(|id| {
+                            self.connection_view
+                                .iter()
+                                .position(|i| self.connections[*i].id == id)
+                        })
+                        .unwrap_or(0);
                 }
                 Update::ConnectionsOffline => {
                     self.connections_live = false;
@@ -809,7 +844,9 @@ impl App {
                     self.traffic = None;
                     self.history.clear();
                 }
-                Update::Log(value) if !self.logs_paused => {
+                Update::Log(mut value) if !self.logs_paused => {
+                    value.id = self.next_log_id;
+                    self.next_log_id += 1;
                     if self.logs.len() == 2000 {
                         self.logs.pop_front();
                         self.log = self.log.saturating_sub(1);
@@ -877,9 +914,13 @@ impl App {
         }
         if logs_changed {
             self.rebuild_logs();
-            if follow_logs {
-                self.log = self.log_view.len().saturating_sub(1);
-            }
+            self.log = if follow_logs {
+                self.log_view.len().saturating_sub(1)
+            } else {
+                log_identity
+                    .and_then(|key| self.log_view.iter().position(|i| self.logs[*i].id == key))
+                    .unwrap_or(0)
+            };
         }
         if let Some((_, time)) = self.lifecycle_pending {
             if time.elapsed() > Duration::from_secs(120) {
@@ -1061,7 +1102,7 @@ impl App {
             _ => {
                 self.dialog = Some(Dialog::Edit {
                     title: "Mixed port · 1–65535",
-                    value: self.native_settings.mixed_port.to_string(),
+                    value: self.native_settings.mixed_port.to_string().into(),
                     action: EditAction::Setting("mixed-port".into()),
                 });
                 return;
@@ -1203,12 +1244,6 @@ impl App {
         }
     }
     pub fn paste(&mut self, value: &str) {
-        // A bracketed paste is text input, never a sequence of global actions.
-        let input: String = value
-            .chars()
-            .filter(|c| !c.is_control())
-            .take(16384)
-            .collect();
         let target = match self.dialog.as_mut() {
             Some(Dialog::Import { url, name, field }) => Some(if *field { name } else { url }),
             Some(Dialog::Edit { value, .. }) => Some(value),
@@ -1216,15 +1251,9 @@ impl App {
             _ => None,
         };
         if let Some(target) = target {
-            let capacity = 16384usize.saturating_sub(target.len());
-            for ch in input.chars() {
-                if ch.len_utf8() + target.len() > 16384 {
-                    break;
-                }
-                target.push(ch);
-            }
-            if capacity > 0 {
+            if target.paste(value) {
                 self.dirty = true;
+                self.rebuild_views();
             }
         }
     }
@@ -1234,47 +1263,26 @@ impl App {
             self.quit = true;
             return;
         }
-        if key.code == KeyCode::Char('u') && key.modifiers.contains(KeyModifiers::CONTROL) {
-            match self.dialog.as_mut() {
-                Some(Dialog::Import { url, name, field }) => {
-                    if *field {
-                        name.clear()
-                    } else {
-                        url.clear()
-                    }
-                }
-                Some(Dialog::Edit { value, .. }) => value.clear(),
-                _ if self.filtering => self.filters[self.page as usize].clear(),
-                _ => {}
-            }
-            return;
-        }
         if let Some(mut dialog) = self.dialog.take() {
             match &mut dialog {
                 Dialog::Edit { value, action, .. } => match key.code {
                     KeyCode::Esc => return,
-                    KeyCode::Backspace => {
-                        value.pop();
-                    }
-                    KeyCode::Char(c)
-                        if !c.is_control()
-                            && !key
-                                .modifiers
-                                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
-                            && value.len() < 16384 =>
-                    {
-                        value.push(c)
-                    }
                     KeyCode::Enter => {
                         let action = match action.clone() {
-                            EditAction::Rename(id) => NativeAction::Rename(id, value.clone()),
-                            EditAction::Url(id) => NativeAction::Update(id, Some(value.clone())),
-                            EditAction::Setting(key) => NativeAction::Change(key, value.clone()),
+                            EditAction::Rename(id) => NativeAction::Rename(id, value.to_string()),
+                            EditAction::Url(id) => {
+                                NativeAction::Update(id, Some(value.to_string()))
+                            }
+                            EditAction::Setting(key) => {
+                                NativeAction::Change(key, value.to_string())
+                            }
                         };
                         self.native_command(action);
                         return;
                     }
-                    _ => {}
+                    _ => {
+                        value.handle_key(key);
+                    }
                 },
                 Dialog::Confirm { action, .. } => match key.code {
                     KeyCode::Enter | KeyCode::Char('y') => {
@@ -1287,39 +1295,27 @@ impl App {
                 Dialog::Import { url, name, field } => match key.code {
                     KeyCode::Esc => return,
                     KeyCode::Tab | KeyCode::BackTab => *field = !*field,
-                    KeyCode::Backspace => {
-                        if *field {
-                            name.pop();
-                        } else {
-                            url.pop();
-                        }
-                    }
-                    KeyCode::Char(ch)
-                        if !ch.is_control()
-                            && !key
-                                .modifiers
-                                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
-                            && url.len() < 16384
-                            && name.len() < 400 =>
-                    {
-                        if *field {
-                            name.push(ch);
-                        } else {
-                            url.push(ch);
-                        }
-                    }
                     KeyCode::Enter => {
                         if let Some(url) = reqwest::Url::parse(url)
                             .ok()
                             .filter(|u| matches!(u.scheme(), "http" | "https"))
                         {
-                            self.native_command(NativeAction::Add(url.to_string(), name.clone()));
+                            self.native_command(NativeAction::Add(
+                                url.to_string(),
+                                name.to_string(),
+                            ));
                             return;
                         } else {
                             self.status = "请输入有效 http(s) 订阅 URL（内容隐藏）".into();
                         }
                     }
-                    _ => {}
+                    _ => {
+                        if *field {
+                            name.handle_key(key);
+                        } else {
+                            url.handle_key(key);
+                        }
+                    }
                 },
                 Dialog::Detail(text) => match key.code {
                     KeyCode::Esc | KeyCode::Enter | KeyCode::Char('q') => return,
@@ -1359,25 +1355,29 @@ impl App {
             return;
         }
         if self.filtering {
-            let filter = &mut self.filters[self.page as usize];
             match key.code {
                 KeyCode::Esc => {
                     self.filtering = false;
-                    filter.clear();
+                    self.filters[self.page as usize] = self.filter_before.clone();
+                    self.rebuild_views();
                 }
                 KeyCode::Enter => self.filtering = false,
-                KeyCode::Backspace => {
-                    filter.pop();
+                KeyCode::Down => self.move_selection(1, false),
+                KeyCode::Up => self.move_selection(-1, false),
+                KeyCode::PageDown => self.move_selection(10, false),
+                KeyCode::PageUp => self.move_selection(-10, false),
+                _ => {
+                    if self.filters[self.page as usize].handle_key(key) {
+                        self.rebuild_views();
+                    }
                 }
-                KeyCode::Char(ch) if !ch.is_control() => filter.push(ch),
-                _ => {}
             }
-            self.node = 0;
-            self.connection = 0;
-            self.rule = 0;
-            self.provider = 0;
-            self.log = 0;
-            self.rebuild_views();
+            return;
+        }
+        if key
+            .modifiers
+            .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
+        {
             return;
         }
         match key.code {
@@ -1422,8 +1422,8 @@ impl App {
                 if self.page == Page::Profiles || (!self.online && self.page == Page::Overview) =>
             {
                 self.dialog = Some(Dialog::Import {
-                    url: String::new(),
-                    name: String::new(),
+                    url: TextInput::default(),
+                    name: TextInput::default(),
                     field: false,
                 })
             }
@@ -1438,7 +1438,11 @@ impl App {
                     Page::Proxies | Page::Connections | Page::Rules | Page::Logs
                 ) =>
             {
-                self.filtering = true
+                self.filter_before = self.filters[self.page as usize].clone();
+                self.filtering = true;
+                if self.page == Page::Proxies {
+                    self.nodes_focus = true;
+                }
             }
             KeyCode::Esc => {
                 self.cancel_measure();
@@ -1594,14 +1598,15 @@ impl App {
                                 value: self.store.items[self.profile]
                                     .name
                                     .clone()
-                                    .unwrap_or_default(),
+                                    .unwrap_or_default()
+                                    .into(),
                                 action: EditAction::Rename(id),
                             })
                         }
                         _ => {
                             self.dialog = Some(Dialog::Edit {
                                 title: "编辑订阅 URL · 内容脱敏",
-                                value: String::new(),
+                                value: TextInput::default(),
                                 action: EditAction::Url(id),
                             })
                         }
@@ -1961,20 +1966,67 @@ mod tests {
     async fn paste_is_text_and_control_u_clears_only_the_active_field() {
         let mut app = fixture_app();
         app.dialog = Some(Dialog::Import {
-            url: String::new(),
+            url: TextInput::default(),
             name: "name".into(),
             field: false,
         });
         app.paste("http://example.invalid/sub?token=fixture\n");
-        assert!(matches!(&app.dialog,Some(Dialog::Import{url,..}) if url.ends_with("fixture")));
+        assert!(
+            matches!(&app.dialog,Some(Dialog::Import{url,..}) if url.trim_end().ends_with("fixture"))
+        );
         app.key(KeyEvent::new(KeyCode::Char('u'), KeyModifiers::CONTROL));
         assert!(
-            matches!(&app.dialog,Some(Dialog::Import{url,name,..}) if url.is_empty()&&name=="name")
+            matches!(&app.dialog,Some(Dialog::Import{url,name,..}) if url.is_empty()&&name.as_str()=="name")
         );
         app.dialog = None;
         app.paste("Xsq");
         assert!(!app.quit);
         assert!(app.lifecycle_pending.is_none());
+    }
+    #[tokio::test]
+    async fn incremental_filter_preserves_identity_and_escape_snapshot() {
+        let mut app = fixture_app();
+        app.page = Page::Proxies;
+        app.group = app
+            .group_names
+            .iter()
+            .position(|g| g == "手动选择")
+            .unwrap();
+        app.rebuild_nodes();
+        app.node = 1;
+        let selected = app.node_names[1].clone();
+        app.key(KeyEvent::new(KeyCode::Char('/'), KeyModifiers::NONE));
+        app.paste(&selected);
+        assert_eq!(app.node_names[app.node], selected);
+        app.key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+        app.key(KeyEvent::new(KeyCode::Char('u'), KeyModifiers::CONTROL));
+        app.paste("绝对不存在的节点");
+        assert!(app.node_names.is_empty());
+        assert_eq!(app.node, 0);
+        let mut terminal =
+            ratatui::Terminal::new(ratatui::backend::TestBackend::new(100, 30)).unwrap();
+        terminal.draw(|f| crate::ui::draw(f, &app)).unwrap();
+        let screen = terminal
+            .backend()
+            .buffer()
+            .content
+            .iter()
+            .map(|c| c.symbol())
+            .filter(|s| *s != " ")
+            .collect::<String>();
+        assert!(screen.contains("无匹配节点"));
+        app.key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+        assert!(app.filter().is_empty());
+        app.key(KeyEvent::new(KeyCode::Char('/'), KeyModifiers::NONE));
+        app.paste("xianggang");
+        assert!(app.node_names.iter().all(|s| s.contains("香港")));
+        app.key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+        app.key(KeyEvent::new(KeyCode::Char('/'), KeyModifiers::NONE));
+        app.paste("bad");
+        app.key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+        assert_eq!(app.filter(), "xianggang");
+        app.key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+        assert!(app.filter().is_empty());
     }
     #[tokio::test]
     async fn replay_sorts_filters_and_cancels() {
@@ -2022,6 +2074,11 @@ mod tests {
         app.page = Page::Connections;
         app.connection_sort = 1;
         app.rebuild_views();
+        app.connection = app
+            .connection_view
+            .iter()
+            .position(|i| app.connections[*i].id == "b")
+            .unwrap();
         assert_eq!(app.selected_connection().unwrap().id, "b");
         app.key(KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE));
         assert!(
@@ -2050,8 +2107,6 @@ mod tests {
         let mut app = fixture_app();
         for n in 0..360 {
             let name = format!("🇭🇰 香港 合成节点 {n:03} 👩‍💻");
-            app.search_keys
-                .insert(name.clone(), search::search_key(&name));
             app.proxies.insert(
                 name.clone(),
                 Proxy {
@@ -2087,6 +2142,35 @@ mod tests {
         assert_eq!(app.history.len(), 60);
     }
     #[tokio::test]
+    async fn repeated_logs_keep_their_own_identity_through_filter_and_refresh() {
+        let mut app = fixture_app();
+        for _ in 0..2000 {
+            app.tx
+                .try_send(Update::Log(LogEntry {
+                    level: "info".into(),
+                    payload: "Apple 相同日志".into(),
+                    ..Default::default()
+                }))
+                .unwrap();
+            app.tick();
+        }
+        app.log = 10;
+        let id = app.logs[app.log_view[app.log]].id;
+        app.filters[Page::Logs as usize].set("apple");
+        app.rebuild_logs();
+        assert_eq!(app.logs[app.log_view[app.log]].id, id);
+        app.tx
+            .try_send(Update::Log(LogEntry {
+                level: "info".into(),
+                payload: "Apple 相同日志".into(),
+                ..Default::default()
+            }))
+            .unwrap();
+        app.tick();
+        assert_eq!(app.logs[app.log_view[app.log]].id, id);
+        assert_eq!(app.logs.len(), 2000);
+    }
+    #[tokio::test]
     async fn log_buffer_is_bounded_and_pause_discards() {
         let mut app = fixture_app();
         for i in 0..2100 {
@@ -2094,6 +2178,7 @@ mod tests {
                 .try_send(Update::Log(LogEntry {
                     level: "info".into(),
                     payload: format!("message {i}"),
+                    ..Default::default()
                 }))
                 .unwrap();
             app.tick();

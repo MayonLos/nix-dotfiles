@@ -30,9 +30,7 @@
         ../aspects/apps/voice-input/checks.nix
         ../aspects/apps/gaming/checks.nix
         ../aspects/apps/gaming/runtime-checks.nix
-        ../aspects/apps/gaming/mcsrv-checks.nix
         ../aspects/cli/keys-mayon/checks.nix
-        ../aspects/apps/gaming/mcsrv-runtime-checks.nix
         ../aspects/cli/shell/checks.nix
         ../aspects/cli/herdr/checks.nix
         ../aspects/desktop/mango-session/checks.nix
@@ -46,8 +44,6 @@
         ../aspects/hardware/legion-laptop/checks.nix
         ../aspects/network/laptop-network/checks.nix
         ../aspects/workspace/project-workbench/checks.nix
-        ../aspects/workspace/seek/checks.nix
-        ../aspects/workspace/study/checks.nix
       ];
       featureChecks = builtins.foldl' (acc: path: acc // import path args) { } registry;
       embedded = import ../tests/composition/embedded.nix { inherit inputs pkgs; };
@@ -203,13 +199,6 @@
               ]
             ) "TUI outputs must be installed by their selected features";
             pkgs.mayonTui;
-          bilitui =
-            assert lib.assertMsg (builtins.elem pkgs.bilitui home.home.packages)
-              "Bilibili TUI must be installed by media";
-            pkgs.bilitui;
-          mcsrv-mayon = pkgs.mcsrvMayon;
-          power-mayon = pkgs.powerMayon;
-          power-mayon-vm = import ../packages/power-mayon/vm.nix { inherit pkgs; };
           shots-mayon =
             assert lib.assertMsg (builtins.elem pkgs.shotsMayon home.home.packages)
               "Shots library must be installed by the screenshot feature";

@@ -20,14 +20,9 @@ let
     "SUPER+SHIFT,C,toggle_named_scratchpad,mayon-clash,none,${lib.getExe pkgs.kitty} --class=mayon-clash clashtui-mayon"
     "SUPER+SHIFT,D,toggle_named_scratchpad,mayon-docker,none,${lib.getExe pkgs.kitty} --class=mayon-docker dockertui-mayon"
     "SUPER+CTRL,P,toggle_named_scratchpad,mayon-ports,none,${lib.getExe pkgs.kitty} --class=mayon-ports portstui-mayon"
-    "SUPER+ALT,F,toggle_named_scratchpad,seek,none,${lib.getExe pkgs.kitty} --class=seek --title=Seek ${lib.getExe pkgs.seek} tui --viewer zathura"
-    "SUPER+ALT,S,toggle_named_scratchpad,study-mayon,none,${lib.getExe pkgs.kitty} --class=study-mayon --title=学习 ${pkgs.studyMayon}/bin/study-mayon"
-    "SUPER+SHIFT,M,toggle_named_scratchpad,mcsrv-mayon,none,${lib.getExe pkgs.kitty} --class=mcsrv-mayon ${lib.getExe pkgs.mcsrvMayon}"
     "SUPER+SHIFT,Y,toggle_named_scratchpad,serial-mayon,none,${lib.getExe pkgs.kitty} --class=serial-mayon --title=串口监视 ${lib.getExe pkgs.serialMayon}"
-    "SUPER+SHIFT,Z,toggle_named_scratchpad,power-mayon,none,${lib.getExe pkgs.kitty} --class=power-mayon --title=电源 ${lib.getExe pkgs.powerMayon}"
     "SUPER+SHIFT,X,toggle_named_scratchpad,shots-mayon,none,${lib.getExe pkgs.kitty} --class=shots-mayon ${lib.getExe pkgs.shotsMayon}"
     "SUPER+SHIFT,F1,toggle_named_scratchpad,keys-mayon,none,${lib.getExe pkgs.kitty} --class=keys-mayon ${lib.getExe pkgs.keysMayon}"
-    "SUPER+SHIFT,B,spawn,${lib.getExe pkgs.kitty} --class=mayon-bili ${lib.getExe pkgs.bilitui}"
     # Press once to start dictation, again to stop and type the text.
     "SUPER+SHIFT,V,spawn,${lib.getExe pkgs.mayonVoice} toggle"
     "SUPER+CTRL,G,toggleglobal"
@@ -288,11 +283,7 @@ let
         mayon-clash = "Clash 代理";
         mayon-docker = "Docker 容器与镜像";
         mayon-ports = "监听端口与进程";
-        seek = "文件搜索 seek";
-        study-mayon = "背单词与课表";
-        mcsrv-mayon = "Minecraft 服务器";
         serial-mayon = "串口监视";
-        power-mayon = "电量与性能";
         shots-mayon = "截图库";
         keys-mayon = "快捷键速查";
       };

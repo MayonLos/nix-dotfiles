@@ -182,7 +182,7 @@ for app, title, size in (
     row = resolve(app, title)
     assert (float(row["width"]), float(row["height"])) == size, (app, title, row)
     assert not {"offset_x", "offset_y", "no_force_center"} & row.keys(), row
-for app in ("mayon-scratch", "mayon-files", "mayon-monitor", "mayon-clash", "mayon-docker", "mayon-ports", "seek", "study-mayon", "mcsrv-mayon"):
+for app in ("mayon-scratch", "mayon-files", "mayon-monitor", "mayon-clash", "mayon-docker", "mayon-ports"):
     row = resolve(app, app)
     assert (float(row["width"]), float(row["height"])) == (0.78, 0.78), row
     assert row["focused_opacity"] == row["unfocused_opacity"] == "1.0", row

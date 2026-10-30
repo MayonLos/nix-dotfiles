@@ -1,9 +1,19 @@
-use crossterm::event::{self, Event, KeyCode, KeyEventKind, MouseEventKind};
-use mayon_ui::{base, block, chrome, dialog, help, marker, terminal, theme::*, Refresh};
-use ratatui::layout::{Constraint, Rect};
+use crossterm::event::{
+    self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEventKind,
+};
+use mayon_ui::{
+    base, block, chrome, dialog, help,
+    input::TextInput,
+    marker,
+    search::{Matcher, SearchCache},
+    terminal,
+    theme::*,
+    Refresh,
+};
+use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::{
     style::Style,
-    text::Span,
+    text::Line,
     widgets::{Cell, Paragraph, Row, Table, TableState, Wrap},
 };
 use serde::Serialize;
@@ -257,11 +267,15 @@ enum Sort {
     Process,
     Address,
 }
+type SelectionKey = (String, u16, Option<i32>, u64);
+type FilterSnapshot = (String, Option<SelectionKey>);
 struct App {
     rows: Vec<Listener>,
     selected: usize,
-    filter: String,
+    filter: TextInput,
     filtering: bool,
+    filter_snapshot: Option<FilterSnapshot>,
+    search_cache: SearchCache,
     sort: Sort,
     message: String,
     help: bool,
@@ -272,31 +286,33 @@ struct App {
     last_table_offset: usize,
     last_table_rows: usize,
 }
+fn search_text(row: &Listener) -> String {
+    format!(
+        "{} {} {} {} {} {} {}",
+        row.protocol,
+        row.address,
+        row.port,
+        row.process,
+        row.command,
+        row.pid.map(|pid| pid.to_string()).unwrap_or_default(),
+        row.user
+    )
+}
+
 impl App {
     fn visible(&self) -> Vec<usize> {
+        let matcher = Matcher::new(self.filter.as_str());
         self.rows
             .iter()
             .enumerate()
-            .filter(|(_, r)| {
-                let q = self.filter.to_lowercase();
-                q.is_empty()
-                    || format!(
-                        "{} {} {} {} {} {} {}",
-                        r.protocol,
-                        r.address,
-                        r.port,
-                        r.process,
-                        r.command,
-                        r.pid.map(|x| x.to_string()).unwrap_or_default(),
-                        r.user
-                    )
-                    .to_lowercase()
-                    .contains(&q)
+            .filter(|(_, row)| {
+                self.filter.is_empty() || self.search_cache.matches(&matcher, &search_text(row))
             })
-            .map(|(i, _)| i)
+            .map(|(index, _)| index)
             .collect()
     }
     fn resort(&mut self) {
+        let key = self.selected_row().map(Listener::key);
         match self.sort {
             Sort::Port => self.rows.sort_by_key(|r| r.port),
             Sort::Protocol => self.rows.sort_by(|a, b| a.protocol.cmp(&b.protocol)),
@@ -304,10 +320,24 @@ impl App {
             Sort::Process => self.rows.sort_by(|a, b| a.process.cmp(&b.process)),
             Sort::Address => self.rows.sort_by(|a, b| a.address.cmp(&b.address)),
         }
+        self.keep_selection(key);
     }
     fn selected_row(&self) -> Option<&Listener> {
         let ids = self.visible();
         ids.get(self.selected).and_then(|i| self.rows.get(*i))
+    }
+    fn keep_selection(&mut self, key: Option<SelectionKey>) {
+        let visible = self.visible();
+        self.selected = key
+            .and_then(|key| {
+                visible
+                    .iter()
+                    .position(|index| self.rows[*index].key() == key)
+            })
+            .unwrap_or(0);
+        if !visible.is_empty() {
+            self.selected = self.selected.min(visible.len() - 1);
+        }
     }
     fn merge(&mut self, mut rows: Vec<Listener>) {
         let key = self.selected_row().map(Listener::key);
@@ -319,18 +349,34 @@ impl App {
             Sort::Address => a.address.cmp(&b.address),
         });
         self.rows = rows;
-        if let Some(k) = key {
-            if let Some(i) = self.visible().iter().position(|n| self.rows[*n].key() == k) {
-                self.selected = i;
-            }
-        }
-        self.selected = self.selected.min(self.visible().len().saturating_sub(1));
+        self.keep_selection(key);
     }
     fn move_by(&mut self, n: isize) {
         let len = self.visible().len();
         if len > 0 {
             self.selected = (self.selected as isize + n).clamp(0, len as isize - 1) as usize;
         }
+    }
+    fn begin_filter(&mut self) {
+        self.filter_snapshot = Some((
+            self.filter.to_string(),
+            self.selected_row().map(Listener::key),
+        ));
+        self.filtering = true;
+    }
+    fn cancel_filter(&mut self) {
+        if let Some((filter, key)) = self.filter_snapshot.take() {
+            self.filter.set(filter);
+            self.keep_selection(key);
+        }
+        self.filtering = false;
+    }
+    fn finish_filter(&mut self) {
+        self.filtering = false;
+        self.filter_snapshot = None;
+    }
+    fn filter_changed(&mut self, selected: Option<(String, u16, Option<i32>, u64)>) {
+        self.keep_selection(selected);
     }
     fn signal(&mut self) {
         let Some(r) = self.selected_row().cloned() else {
@@ -388,7 +434,34 @@ impl App {
             format!("发送信号失败：{}", io::Error::last_os_error())
         };
     }
+    #[cfg(test)]
     fn key(&mut self, k: KeyCode) {
+        self.handle_key(KeyEvent::new(k, KeyModifiers::NONE));
+    }
+    fn handle_key(&mut self, key: KeyEvent) {
+        let k = key.code;
+        if self.filtering {
+            match k {
+                KeyCode::Esc => self.cancel_filter(),
+                KeyCode::Enter => self.finish_filter(),
+                KeyCode::Up if key.modifiers.is_empty() => self.move_by(-1),
+                KeyCode::Down if key.modifiers.is_empty() => self.move_by(1),
+                _ => {
+                    let selected = self.selected_row().map(Listener::key);
+                    if self.filter.handle_key(key) {
+                        self.filter_changed(selected);
+                    }
+                }
+            }
+            return;
+        }
+        if matches!(k, KeyCode::Char(_))
+            && key
+                .modifiers
+                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SUPER)
+        {
+            return;
+        }
         if self.help {
             if matches!(k, KeyCode::Esc | KeyCode::Char('?')) {
                 self.help = false
@@ -423,32 +496,14 @@ impl App {
             }
             return;
         }
-        if self.filtering {
-            match k {
-                KeyCode::Esc => {
-                    self.filtering = false;
-                    self.filter.clear();
-                    self.selected = 0
-                }
-                KeyCode::Enter => self.filtering = false,
-                KeyCode::Backspace => {
-                    self.filter.pop();
-                    self.selected = 0
-                }
-                KeyCode::Char(c) if !c.is_control() => {
-                    self.filter.push(c);
-                    self.selected = 0
-                }
-                _ => {}
-            }
-            return;
-        }
         match k {
             KeyCode::Char('q') => {}
             KeyCode::Char('?') => self.help = true,
-            KeyCode::Char('/') => self.filtering = true,
+            KeyCode::Char('/') => self.begin_filter(),
             KeyCode::Char('j') | KeyCode::Down => self.move_by(1),
             KeyCode::Char('k') | KeyCode::Up => self.move_by(-1),
+            KeyCode::PageUp => self.move_by(-(self.last_table_rows.max(1) as isize)),
+            KeyCode::PageDown => self.move_by(self.last_table_rows.max(1) as isize),
             KeyCode::Char('g') => self.selected = 0,
             KeyCode::Char('G') => self.selected = self.visible().len().saturating_sub(1),
             KeyCode::Char('d') | KeyCode::Enter => {
@@ -496,12 +551,12 @@ impl App {
                     Sort::Process => Sort::Address,
                     Sort::Address => Sort::Port,
                 };
-                self.resort();
-                self.selected = 0
+                self.resort()
             }
-            KeyCode::Esc => {
+            KeyCode::Esc if !self.filter.is_empty() => {
+                let selected = self.selected_row().map(Listener::key);
                 self.filter.clear();
-                self.selected = 0
+                self.keep_selection(selected);
             }
             _ => {}
         }
@@ -564,10 +619,12 @@ fn detail_text(r: &Listener) -> String {
     )
 }
 fn render(f: &mut ratatui::Frame, app: &mut App) {
+    let ids = app.visible();
     let body = chrome(
         f,
         &format!(
-            " 󰈀 端口监听  ·  {} 项  ·  排序 {}",
+            " 󰈀 端口监听  ·  {}/{} 匹配  ·  排序 {}",
+            ids.len(),
             app.rows.len(),
             match app.sort {
                 Sort::Port => "端口",
@@ -582,7 +639,15 @@ fn render(f: &mut ratatui::Frame, app: &mut App) {
         "j/k 选择  / 过滤  s 排序  d 详情  o 浏览器  c 复制  x 确认结束  ? 帮助  q 退出",
         &app.message,
     );
-    let ids = app.visible();
+    let (filter_area, table_area) = if app.filtering {
+        let areas = Layout::vertical([Constraint::Length(1), Constraint::Min(0)]).split(body);
+        (Some(areas[0]), areas[1])
+    } else {
+        (None, body)
+    };
+    if let Some(area) = filter_area {
+        app.filter.render(f, area, base().fg(BRIGHTFG));
+    }
     let compact = f.area().width < 108;
     let widths = if compact {
         [5, 22, 5, 14, 8, 6, 9]
@@ -591,88 +656,132 @@ fn render(f: &mut ratatui::Frame, app: &mut App) {
     };
     let headers = ["协议", "监听地址", "PID", "进程", "用户", "时长", "范围"];
     let column_widths = widths.map(|w| Constraint::Length(w as u16));
-    let rows = ids.iter().enumerate().map(|(visible_index, i)| {
-        let r = &app.rows[*i];
-        let dev = matches!(
-            r.port,
-            3000 | 5173 | 8000 | 8080 | 8081 | 4200 | 5000 | 9000
-        );
-        let label = scope(&r.address);
-        let scope_color = if label == "对外" {
-            RED
-        } else if label == "本机" {
-            GREEN
+    let matcher = Matcher::new(app.filter.as_str());
+    if ids.is_empty() {
+        let text = if app.filter.is_empty() {
+            "没有监听项"
         } else {
-            YELLOW
+            "没有匹配的监听项 · Esc 清除过滤"
         };
-        let address = format!(
-            "{}:{}{}",
-            r.address,
-            r.port,
-            if dev { " · DEV" } else { "" }
+        f.render_widget(
+            Paragraph::new(text)
+                .style(Style::default().fg(MUTED))
+                .block(block(
+                    format!(
+                        " {}/{} 匹配{} ",
+                        ids.len(),
+                        app.rows.len(),
+                        if app.filter.is_empty() {
+                            String::new()
+                        } else {
+                            format!("· /{}", app.filter)
+                        }
+                    ),
+                    true,
+                )),
+            table_area,
         );
-        let address_style = if dev {
-            Style::default().fg(CYAN)
-        } else if label == "对外" {
-            Style::default().fg(RED)
-        } else {
-            Style::default().fg(FG)
-        };
-        let mut cells = vec![
-            Cell::from(r.protocol.clone()),
-            Cell::from(Span::styled(address, address_style)),
-            Cell::from(
-                r.pid
-                    .map(|x| x.to_string())
-                    .unwrap_or_else(|| "系统".into()),
-            ),
-            Cell::from(if r.docker.is_empty() {
+        app.last_table_offset = 0;
+        app.last_table_rows = 0;
+    } else {
+        let rows = ids.iter().enumerate().map(|(visible_index, i)| {
+            let r = &app.rows[*i];
+            let label = scope(&r.address);
+            let address = format!(
+                "{}:{}{}",
+                r.address,
+                r.port,
+                if matches!(
+                    r.port,
+                    3000 | 5173 | 8000 | 8080 | 8081 | 4200 | 5000 | 9000
+                ) {
+                    " · DEV"
+                } else {
+                    ""
+                }
+            );
+            let process = if r.docker.is_empty() {
                 r.process.clone()
             } else {
                 format!("{} · {}", r.process, r.docker)
-            }),
-            Cell::from(r.user.clone()),
-            Cell::from(r.age.clone()),
-            Cell::from(Span::styled(label, Style::default().fg(scope_color))),
-        ];
-        let mut all = vec![Cell::from(marker(visible_index == app.selected))];
-        all.append(&mut cells);
-        Row::new(all).style(if visible_index == app.selected {
-            base().bg(SELECTION)
-        } else {
-            base()
-        })
-    });
-    let mut table_widths = vec![Constraint::Length(1)];
-    table_widths.extend(column_widths);
-    let mut table_headers = vec![Cell::from("")];
-    table_headers.extend(headers.map(Cell::from));
-    let table = Table::new(rows, table_widths)
-        .header(Row::new(table_headers).style(Style::default().fg(MUTED)))
-        .column_spacing(1)
-        .block(block(
-            format!(
-                " {}{} ",
-                ids.len(),
-                if app.filter.is_empty() {
-                    String::new()
+            };
+            let pid = r
+                .pid
+                .map(|x| x.to_string())
+                .unwrap_or_else(|| "系统".into());
+            let dev = matches!(
+                r.port,
+                3000 | 5173 | 8000 | 8080 | 8081 | 4200 | 5000 | 9000
+            );
+            let address_style = if dev {
+                Style::default().fg(CYAN)
+            } else if scope(&r.address) == "对外" {
+                Style::default().fg(RED)
+            } else {
+                Style::default().fg(FG)
+            };
+            let scope_style = if label == "对外" {
+                RED
+            } else if label == "本机" {
+                GREEN
+            } else {
+                YELLOW
+            };
+            let mut cells = vec![
+                Cell::from(app.search_cache.highlight(&matcher, &r.protocol)),
+                Cell::from(if app.filter.is_empty() {
+                    Line::styled(address, address_style)
                 } else {
-                    format!(" · /{}", app.filter)
-                }
-            ),
-            true,
-        ));
-    let mut table_state =
-        TableState::default().with_selected((!ids.is_empty()).then_some(app.selected));
-    f.render_stateful_widget(table, body, &mut table_state);
-    app.last_body = body;
-    app.last_table_offset = table_state.offset();
-    app.last_table_rows = body.height.saturating_sub(4) as usize;
+                    app.search_cache.highlight(&matcher, &address)
+                }),
+                Cell::from(app.search_cache.highlight(&matcher, &pid)),
+                Cell::from(app.search_cache.highlight(&matcher, &process)),
+                Cell::from(app.search_cache.highlight(&matcher, &r.user)),
+                Cell::from(app.search_cache.highlight(&matcher, &r.age)),
+                Cell::from(if app.filter.is_empty() {
+                    Line::styled(label, Style::default().fg(scope_style))
+                } else {
+                    app.search_cache.highlight(&matcher, label)
+                }),
+            ];
+            let mut all = vec![Cell::from(marker(visible_index == app.selected))];
+            all.append(&mut cells);
+            Row::new(all).style(if visible_index == app.selected {
+                base().bg(SELECTION)
+            } else {
+                base()
+            })
+        });
+        let mut table_widths = vec![Constraint::Length(1)];
+        table_widths.extend(column_widths);
+        let mut table_headers = vec![Cell::from("")];
+        table_headers.extend(headers.map(Cell::from));
+        let table = Table::new(rows, table_widths)
+            .header(Row::new(table_headers).style(Style::default().fg(MUTED)))
+            .column_spacing(1)
+            .block(block(
+                format!(
+                    " {}/{} 匹配{} ",
+                    ids.len(),
+                    app.rows.len(),
+                    if app.filter.is_empty() {
+                        String::new()
+                    } else {
+                        format!("· /{}", app.filter)
+                    }
+                ),
+                true,
+            ));
+        let mut state = TableState::default()
+            .with_selected(Some(app.selected.min(ids.len().saturating_sub(1))));
+        f.render_stateful_widget(table, table_area, &mut state);
+        app.last_table_offset = state.offset();
+        app.last_table_rows = table_area.height.saturating_sub(3) as usize;
+    }
+    app.last_body = table_area;
     if app.help {
-        help(
-            f,
-            "j/k 或 ↑↓ 选择；滚轮滚动。/ 输入过滤；s 循环按端口/协议/PID/进程/地址排序。d/Enter 查看完整命令、cwd 与父进程。o 打开 localhost:<port>，c 复制端口。x 进入确认；确认中 y 发 SIGTERM，k 再确认后才能发 SIGKILL。系统进程显示为“系统”，不发送信号。\nIPv4/IPv6 TCP 与 UDP 来自 /proc/net；每 2 秒刷新并按 socket 保留选择。0.0.0.0/:: 标为对外，127/8 与 ::1 标为本机，其他绑定标为指定接口.",
-        );
+        help(f, "j/k 或 ↑↓ 选择；滚轮滚动。/ 输入过滤；输入中的 ↑↓ 仍可移动选中项，Enter 保留过滤，Esc 取消本次输入。列表 Esc 清除过滤。s 循环按端口/协议/PID/进程/地址排序。d/Enter 查看完整命令、cwd 与父进程。o 打开 localhost:<port>，c 复制端口。x 进入确认；确认中 y 发 SIGTERM，k 再确认后才能发 SIGKILL。系统进程显示为“系统”，不发送信号。
+IPv4/IPv6 TCP 与 UDP 来自 /proc/net；每 2 秒刷新并按 socket 保留选择。0.0.0.0/:: 标为对外，127/8 与 ::1 标为本机，其他绑定标为指定接口.");
     }
     if app.detail {
         if let Some(r) = app.selected_row() {
@@ -704,9 +813,10 @@ fn render(f: &mut ratatui::Frame, app: &mut App) {
                     "向当前用户的进程发送 SIGTERM。按 k 可进入 SIGKILL 二次确认。"
                 }
             ),
-        )
+        );
     }
 }
+
 fn clicked_visible_row(
     body: Rect,
     offset: usize,
@@ -749,8 +859,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut app = App {
         rows: scan_proc().unwrap_or_default(),
         selected: 0,
-        filter: String::new(),
+        filter: TextInput::default(),
         filtering: false,
+        filter_snapshot: None,
+        search_cache: SearchCache::default(),
         sort: Sort::Port,
         message: "/proc 扫描就绪".into(),
         help: false,
@@ -801,6 +913,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             match event::read()? {
                 Event::Key(k) if k.kind != KeyEventKind::Release => {
                     if k.code == KeyCode::Char('q')
+                        && k.modifiers.is_empty()
                         && !app.help
                         && !app.detail
                         && app.confirm.is_none()
@@ -808,7 +921,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     {
                         quit = true
                     } else {
-                        app.key(k.code)
+                        app.handle_key(k)
+                    }
+                }
+                Event::Paste(text)
+                    if app.filtering && !app.help && !app.detail && app.confirm.is_none() =>
+                {
+                    let selected = app.selected_row().map(Listener::key);
+                    if app.filter.paste(&text) {
+                        app.filter_changed(selected);
                     }
                 }
                 Event::Mouse(m)
@@ -972,6 +1093,96 @@ async fn docker_names(force: bool) -> DockerBindings {
 mod tests {
     use super::*;
     #[test]
+    fn filter_keeps_selection_cancel_restores_and_empty_state_is_safe() {
+        use ratatui::{backend::TestBackend, Terminal as TestTerminal};
+        let make = |port, process: &str| Listener {
+            protocol: "TCP".into(),
+            address: "127.0.0.1".into(),
+            port,
+            pid: Some(port as i32),
+            process: process.into(),
+            command: process.into(),
+            user: "me".into(),
+            age: "1s".into(),
+            inode: port as u64,
+            start_ticks: Some(1),
+            uid: Some(1000),
+            cwd: "/tmp".into(),
+            parent: None,
+            docker: String::new(),
+        };
+        let mut app = App {
+            rows: vec![make(1001, "alpha"), make(1002, "apple"), make(1003, "beta")],
+            selected: 1,
+            filter: TextInput::default(),
+            filtering: false,
+            filter_snapshot: None,
+            search_cache: SearchCache::default(),
+            sort: Sort::Port,
+            message: String::new(),
+            help: false,
+            detail: false,
+            confirm: None,
+            detail_scroll: 0,
+            last_body: Rect::default(),
+            last_table_offset: 0,
+            last_table_rows: 0,
+        };
+        app.handle_key(KeyEvent::new(KeyCode::Char('G'), KeyModifiers::SHIFT));
+        assert_eq!(app.selected_row().unwrap().process, "beta");
+        app.handle_key(KeyEvent::new(KeyCode::Char('g'), KeyModifiers::NONE));
+        app.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+        app.handle_key(KeyEvent::new(KeyCode::Char('/'), KeyModifiers::NONE));
+        app.handle_key(KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE));
+        app.handle_key(KeyEvent::new(KeyCode::Char('p'), KeyModifiers::NONE));
+        app.handle_key(KeyEvent::new(KeyCode::Char('p'), KeyModifiers::NONE));
+        app.handle_key(KeyEvent::new(KeyCode::Char('l'), KeyModifiers::NONE));
+        app.handle_key(KeyEvent::new(KeyCode::Char('e'), KeyModifiers::NONE));
+        assert_eq!(app.visible().len(), 1);
+        assert_eq!(app.selected_row().unwrap().process, "apple");
+        app.handle_key(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
+        app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+        assert_eq!(app.filter.as_str(), "");
+        assert_eq!(app.selected_row().unwrap().process, "apple");
+
+        app.handle_key(KeyEvent::new(KeyCode::Char('/'), KeyModifiers::NONE));
+        app.filter.paste("no-such-listener");
+        let selected_key = app.selected_row().map(Listener::key);
+        app.filter_changed(selected_key);
+        let mut term = TestTerminal::new(TestBackend::new(90, 20)).unwrap();
+        term.draw(|frame| render(frame, &mut app)).unwrap();
+        let text = term
+            .backend()
+            .buffer()
+            .content()
+            .iter()
+            .map(|cell| cell.symbol())
+            .collect::<String>()
+            .replace(' ', "");
+        assert!(app.visible().is_empty());
+        assert!(
+            text.contains("没有匹配的监听项"),
+            "empty state missing: {text:?}"
+        );
+        assert!(text.contains("Esc"));
+        assert!(text.contains("清除过滤"));
+        app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+        term.draw(|frame| render(frame, &mut app)).unwrap();
+        let committed = term
+            .backend()
+            .buffer()
+            .content()
+            .iter()
+            .map(|cell| cell.symbol())
+            .collect::<String>()
+            .replace(' ', "");
+        assert!(
+            committed.contains("no-such-listener"),
+            "committed filter disappeared: {committed:?}"
+        );
+    }
+
+    #[test]
     fn ipv4_and_ipv6_proc_hex_decode() {
         assert_eq!(decode_addr("0100007F", false).as_deref(), Some("127.0.0.1"));
         assert_eq!(
@@ -1093,8 +1304,10 @@ mod tests {
                 docker: String::new(),
             }],
             selected: 0,
-            filter: String::new(),
+            filter: TextInput::default(),
             filtering: false,
+            filter_snapshot: None,
+            search_cache: SearchCache::default(),
             sort: Sort::Port,
             message: String::new(),
             help: false,
@@ -1134,8 +1347,10 @@ mod tests {
                     docker: String::new(),
                 }],
                 selected: 0,
-                filter: String::new(),
+                filter: TextInput::default(),
                 filtering: false,
+                filter_snapshot: None,
+                search_cache: SearchCache::default(),
                 sort: Sort::Port,
                 message: String::new(),
                 help: false,
@@ -1227,6 +1442,8 @@ mod tests {
             selected: 0,
             filter: "unique-filter".into(),
             filtering: false,
+            filter_snapshot: None,
+            search_cache: SearchCache::default(),
             sort: Sort::Port,
             message: String::new(),
             help: false,
@@ -1260,7 +1477,8 @@ mod tests {
         assert_eq!(clicked_visible_row(body, 10, 40, 11, 3, 6), Some(11));
         assert_eq!(clicked_visible_row(body, 10, 40, 11, 3, 4), None); // table header
         assert_eq!(clicked_visible_row(body, 10, 40, 11, 3, 14), Some(19));
-        assert_eq!(clicked_visible_row(body, 10, 40, 11, 3, 16), None); // blank row after table data
+        assert_eq!(clicked_visible_row(body, 10, 40, 12, 3, 16), Some(21)); // last visible data row
+        assert_eq!(clicked_visible_row(body, 10, 40, 12, 3, 17), None); // blank row after table data
     }
     #[test]
     fn docker_mapping_respects_protocol_and_published_address() {

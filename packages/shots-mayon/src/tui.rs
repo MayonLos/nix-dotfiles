@@ -7,7 +7,7 @@ use anyhow::Result;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use chrono::{Local, TimeZone};
 use crossterm::event::{self, Event, KeyCode, KeyEventKind, MouseEventKind};
-use mayon_ui::{self as ui, theme::*};
+use mayon_ui::{self as ui, input::TextInput, search::Matcher, theme::*};
 use ratatui::{
     layout::{Constraint, Layout, Rect},
     widgets::{Paragraph, Wrap},
@@ -28,11 +28,13 @@ use std::{
 struct State {
     page: usize,
     selected: usize,
+    total: usize,
     offset: usize,
     query: String,
     source: String,
     date: String,
-    input: Option<(char, String)>,
+    input: Option<(char, TextInput)>,
+    previous_filter: String,
     help: bool,
     delete: u8,
     delete_target: Option<Entry>,
@@ -72,6 +74,26 @@ fn entries(lib: &Library, s: &State) -> Result<Vec<Entry>> {
         .into_iter()
         .filter(|e| s.date.is_empty() || date(e).starts_with(&s.date))
         .collect())
+}
+fn reload(lib: &Library, s: &mut State, data: &mut Vec<Entry>) -> Result<()> {
+    let keep = data.get(s.selected).map(|e| e.path.clone());
+    *data = entries(lib, s)?;
+    s.total = lib.entries("", None, s.page == 1)?.len();
+    s.selected = keep
+        .and_then(|id| data.iter().position(|e| e.path == id))
+        .unwrap_or(0);
+    s.offset = s.offset.min(s.selected);
+    Ok(())
+}
+fn update_filter(s: &mut State) {
+    if let Some((which, text)) = &s.input {
+        let value = text.as_str().to_owned();
+        match which {
+            's' => s.source = value,
+            'D' => s.date = value,
+            _ => s.query = value,
+        }
+    }
 }
 struct Preview {
     key: String,
@@ -204,6 +226,7 @@ pub fn run(lib: Library) -> Result<()> {
     let mut last_index = Instant::now();
     let mut index_job: Option<std::process::Child> = None;
     let mut data = entries(&lib, &s)?;
+    s.total = lib.entries("", None, s.page == 1)?.len();
     let mut list_area = Rect::default();
     let mut image_area = Rect::default();
     let kitty = std::env::var_os("KITTY_WINDOW_ID").is_some()
@@ -234,7 +257,7 @@ pub fn run(lib: Library) -> Result<()> {
             }
         }
         if last_refresh.elapsed() > Duration::from_secs(3) {
-            data = entries(&lib, &s)?;
+            reload(&lib, &mut s, &mut data)?;
             last_refresh = Instant::now();
         }
         s.selected = s.selected.min(data.len().saturating_sub(1));
@@ -254,9 +277,11 @@ pub fn run(lib: Library) -> Result<()> {
         }
         clear_image();
         terminal.draw(|f| {
+            let total = s.total;
             let title = format!(
-                " Shots · 截图库     {} 项 · OCR {}",
+                " Shots · 截图库     {}/{} 项 · OCR {}",
                 data.len(),
+                total,
                 if lib.paused() { "已暂停" } else { "后台" }
             );
             let body = ui::chrome(
@@ -323,9 +348,15 @@ pub fn run(lib: Library) -> Result<()> {
                         format!("{} {}", if e.favorite { "★" } else { " " }, time(e)),
                         clean(&e.name).replace('\n', " "),
                     ]
+                    .into_iter()
+                    .map(|text| {
+                        Matcher::new(&format!("{} {} {}", s.query, s.source, s.date))
+                            .highlight(&text)
+                    })
+                    .collect::<Vec<_>>()
                 })
                 .collect();
-            ui::table(
+            ui::table_highlighted(
                 f,
                 list_area,
                 " 时间线 ",
@@ -356,9 +387,16 @@ pub fn run(lib: Library) -> Result<()> {
                     }
                 );
                 f.render_widget(
-                    Paragraph::new(text)
-                        .style(ui::base().fg(MUTED))
-                        .wrap(Wrap { trim: false }),
+                    Paragraph::new(
+                        text.lines()
+                            .map(|line| {
+                                Matcher::new(&format!("{} {} {}", s.query, s.source, s.date))
+                                    .highlight(line)
+                            })
+                            .collect::<Vec<_>>(),
+                    )
+                    .style(ui::base().fg(MUTED))
+                    .wrap(Wrap { trim: false }),
                     pa[1],
                 );
                 if !kitty {
@@ -420,27 +458,36 @@ pub fn run(lib: Library) -> Result<()> {
         }
         match event::read()? {
             Event::Key(k) if k.kind == KeyEventKind::Press => {
-                if let Some((which, ref mut value)) = s.input {
+                if s.input.is_some() {
                     match k.code {
-                        KeyCode::Esc => s.input = None,
-                        KeyCode::Enter => {
-                            let v = value.clone();
+                        KeyCode::Esc => {
+                            let which = s.input.as_ref().unwrap().0;
+                            let value = s.previous_filter.clone();
                             match which {
-                                's' => s.source = v,
-                                'D' => s.date = v,
-                                _ => s.query = v,
+                                's' => s.source = value,
+                                'D' => s.date = value,
+                                _ => s.query = value,
                             }
                             s.input = None;
-                            s.selected = 0;
-                            s.offset = 0;
-                            data = entries(&lib, &s)?;
+                            reload(&lib, &mut s, &mut data)?;
                         }
-                        KeyCode::Backspace => {
-                            value.pop();
+                        KeyCode::Enter => s.input = None,
+                        KeyCode::Down => {
+                            s.selected = (s.selected + 1).min(data.len().saturating_sub(1))
                         }
-                        KeyCode::Char(c) => value.push(c),
-                        _ => {}
+                        KeyCode::Up => s.selected = s.selected.saturating_sub(1),
+                        _ => {
+                            if s.input.as_mut().unwrap().1.handle_key(k) {
+                                update_filter(&mut s);
+                                reload(&lib, &mut s, &mut data)?;
+                            }
+                        }
                     }
+                    continue;
+                }
+                if k.modifiers
+                    .intersects(event::KeyModifiers::CONTROL | event::KeyModifiers::ALT)
+                {
                     continue;
                 }
                 if s.help {
@@ -468,7 +515,7 @@ pub fn run(lib: Library) -> Result<()> {
                             }
                             s.delete = 0;
                             s.delete_target = None;
-                            data = entries(&lib, &s)?;
+                            reload(&lib, &mut s, &mut data)?;
                         }
                         _ => {}
                     }
@@ -481,28 +528,28 @@ pub fn run(lib: Library) -> Result<()> {
                         s.page = (c as u8 - b'1') as usize;
                         s.selected = 0;
                         s.offset = 0;
-                        data = entries(&lib, &s)?;
+                        reload(&lib, &mut s, &mut data)?;
                     }
                     KeyCode::Char(c @ ('/' | 's' | 'D')) => {
-                        s.input = Some((
-                            c,
-                            match c {
-                                's' => s.source.clone(),
-                                'D' => s.date.clone(),
-                                _ => s.query.clone(),
-                            },
-                        ));
+                        s.previous_filter = match c {
+                            's' => s.source.clone(),
+                            'D' => s.date.clone(),
+                            _ => s.query.clone(),
+                        };
+                        s.input = Some((c, TextInput::new(s.previous_filter.clone())));
                     }
                     KeyCode::Esc => {
                         s.query.clear();
                         s.source.clear();
                         s.date.clear();
-                        data = entries(&lib, &s)?;
+                        reload(&lib, &mut s, &mut data)?;
                     }
                     KeyCode::Down | KeyCode::Char('j') => {
                         s.selected = (s.selected + 1).min(data.len().saturating_sub(1))
                     }
                     KeyCode::Up | KeyCode::Char('k') => s.selected = s.selected.saturating_sub(1),
+                    KeyCode::Home | KeyCode::Char('g') => s.selected = 0,
+                    KeyCode::End | KeyCode::Char('G') => s.selected = data.len().saturating_sub(1),
                     KeyCode::PageDown => {
                         s.selected = (s.selected + list_area.height.saturating_sub(3) as usize)
                             .min(data.len().saturating_sub(1))
@@ -522,7 +569,7 @@ pub fn run(lib: Library) -> Result<()> {
                     KeyCode::Char('i') => {
                         s.message = format!("已索引 {} 项", lib.index()?);
                         start_ocr(&lib)?;
-                        data = entries(&lib, &s)?;
+                        reload(&lib, &mut s, &mut data)?;
                     }
                     KeyCode::Char('d') if selected.is_some() => {
                         s.delete_target = selected.cloned();
@@ -538,11 +585,20 @@ pub fn run(lib: Library) -> Result<()> {
                         if let Some(e) = selected {
                             s.message =
                                 actions::action(e, c, &lib).unwrap_or_else(|e| format!("{e:#}"));
-                            data = entries(&lib, &s)?;
+                            reload(&lib, &mut s, &mut data)?;
                         }
                     }
                     _ => {}
                 }
+            }
+            Event::Paste(text)
+                if s.input.is_some()
+                    && !s.help
+                    && s.delete == 0
+                    && s.input.as_mut().unwrap().1.paste(&text) =>
+            {
+                update_filter(&mut s);
+                reload(&lib, &mut s, &mut data)?;
             }
             Event::Mouse(m) if s.input.is_none() && !s.help && s.delete == 0 => match m.kind {
                 MouseEventKind::ScrollDown => {
@@ -570,4 +626,35 @@ pub fn run(lib: Library) -> Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn incremental_filter_preserves_path_and_empty_selection() {
+        let home = tempfile::tempdir().unwrap();
+        let root = home.path().join("Pictures/mark-shot");
+        fs::create_dir_all(&root).unwrap();
+        fs::write(root.join("Apple.png"), b"fixture").unwrap();
+        fs::write(root.join("中文.png"), b"fixture").unwrap();
+        let lib = Library::open_under(home.path().to_path_buf()).unwrap();
+        lib.index().unwrap();
+        let mut state = State::default();
+        let mut data = entries(&lib, &state).unwrap();
+        state.selected = data.iter().position(|e| e.name == "中文.png").unwrap();
+        state.input = Some(('/', TextInput::from("zhongwen")));
+        update_filter(&mut state);
+        reload(&lib, &mut state, &mut data).unwrap();
+        assert_eq!(data.len(), 1);
+        assert_eq!(data[state.selected].name, "中文.png");
+        state.input.as_mut().unwrap().1.set("没有匹配");
+        update_filter(&mut state);
+        reload(&lib, &mut state, &mut data).unwrap();
+        assert!(data.is_empty());
+        assert_eq!(state.selected, 0);
+        state.query.clear();
+        reload(&lib, &mut state, &mut data).unwrap();
+        assert_eq!(data.len(), 2);
+    }
 }

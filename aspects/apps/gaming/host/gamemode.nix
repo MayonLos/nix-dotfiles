@@ -9,6 +9,14 @@ let
   '';
 in
 {
+  security.polkit.extraConfig = ''
+    polkit.addRule(function(action, subject) {
+      if (action.id === "org.freedesktop.UPower.PowerProfiles.switch-profile" &&
+          subject.isInGroup("gamemode")) {
+        return polkit.Result.YES;
+      }
+    });
+  '';
   programs.gamemode = {
     enable = true;
     settings = {

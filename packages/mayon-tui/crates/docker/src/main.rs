@@ -173,6 +173,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             match event::read()? {
                 Event::Key(k) if k.kind != KeyEventKind::Release => app.key(k),
                 Event::Mouse(m) => app.mouse(m, terminal.size()?),
+                Event::Paste(value) => app.paste(&value),
                 _ => {}
             }
         }

@@ -1,7 +1,9 @@
 //! Shared One Dark widgets and terminal lifecycle for Mayon's small tools.
+pub mod input;
+pub mod search;
 pub mod theme;
 use crossterm::{
-    event::{DisableBracketedPaste, DisableMouseCapture, EnableMouseCapture},
+    event::{DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -150,9 +152,63 @@ pub fn dialog(frame: &mut Frame, title: &str, body: &str) {
 pub fn help(frame: &mut Frame, body: &str) {
     dialog(frame, " 帮助 · ? / Esc 关闭 ", body);
 }
-pub fn input(frame: &mut Frame, title: &str, value: &str) {
-    dialog(frame, title, &format!("{value}▏\n\nEnter 确认 · Esc 取消"));
+pub fn input(frame: &mut Frame, title: &str, value: &input::TextInput) {
+    let width = 76u16.min(frame.area().width.saturating_sub(2));
+    let height = 7u16.min(frame.area().height.saturating_sub(2));
+    let area = centered(frame.area(), width, height.max(5));
+    frame.render_widget(Clear, area);
+    frame.render_widget(block(title, true).style(base()), area);
+    let inner = Rect::new(
+        area.x.saturating_add(1),
+        area.y.saturating_add(1),
+        area.width.saturating_sub(2),
+        area.height.saturating_sub(2),
+    );
+    if inner.height > 0 {
+        frame.render_widget(
+            Paragraph::new("输入内容"),
+            Rect::new(inner.x, inner.y, inner.width, 1),
+        );
+    }
+    if inner.height > 1 {
+        value.render(
+            frame,
+            Rect::new(inner.x, inner.y + 1, inner.width, 1),
+            base(),
+        );
+    }
+    if inner.height > 3 {
+        frame.render_widget(
+            Paragraph::new(muted("Enter 确认 · Esc 取消")),
+            Rect::new(inner.x, inner.y + 3, inner.width, 1),
+        );
+    }
 }
+
+fn clip_line(line: Line<'static>, width: usize) -> Line<'static> {
+    use unicode_width::UnicodeWidthChar;
+    let mut remaining = width;
+    let mut spans = Vec::new();
+    for span in line.spans {
+        let mut text = String::new();
+        for ch in span.content.chars() {
+            let cells = ch.width().unwrap_or(0);
+            if cells > remaining {
+                break;
+            }
+            text.push(ch);
+            remaining -= cells;
+        }
+        if !text.is_empty() {
+            spans.push(Span::styled(text, span.style));
+        }
+        if remaining == 0 {
+            break;
+        }
+    }
+    Line::from(spans)
+}
+
 pub fn table(
     frame: &mut Frame,
     area: Rect,
@@ -162,19 +218,36 @@ pub fn table(
     widths: &[Constraint],
     selected: usize,
 ) {
+    let rows = rows
+        .into_iter()
+        .map(|row| row.into_iter().map(Line::raw).collect())
+        .collect();
+    table_highlighted(frame, area, title, headers, rows, widths, selected);
+}
+
+pub fn table_highlighted(
+    frame: &mut Frame,
+    area: Rect,
+    title: &str,
+    headers: Vec<&str>,
+    rows: Vec<Vec<Line<'static>>>,
+    widths: &[Constraint],
+    selected: usize,
+) {
     let usable = area.width.saturating_sub(2);
     let mut ws = vec![Constraint::Length(1)];
     ws.extend_from_slice(widths);
     let columns = Layout::horizontal(ws.clone())
         .spacing(1)
         .split(Rect::new(0, 0, usable, 1));
-    let rows = rows.into_iter().enumerate().map(|(i, mut r)| {
-        let mut cells: Vec<Cell<'static>> = r
-            .drain(..)
+    let row_count = rows.len();
+    let rows = rows.into_iter().enumerate().map(|(i, row)| {
+        let mut cells: Vec<Cell<'static>> = row
+            .into_iter()
             .enumerate()
-            .map(|(j, value)| {
-                Cell::from(clip(
-                    &value,
+            .map(|(j, line)| {
+                Cell::from(clip_line(
+                    line,
                     columns.get(j + 1).map_or(0, |c| c.width as usize),
                 ))
             })
@@ -192,7 +265,8 @@ pub fn table(
         .header(Row::new(hs).style(Style::default().fg(MUTED)))
         .column_spacing(1)
         .block(block(title, true));
-    let mut state = TableState::default().with_selected(Some(selected));
+    let mut state = TableState::default()
+        .with_selected((row_count > 0).then_some(selected.min(row_count.saturating_sub(1))));
     frame.render_stateful_widget(table, area, &mut state);
 }
 pub type Terminal = ratatui::Terminal<ratatui::backend::CrosstermBackend<io::Stdout>>;
@@ -219,7 +293,12 @@ pub fn terminal() -> io::Result<(Terminal, TerminalGuard)> {
     }));
     enable_raw_mode()?;
     let guard = TerminalGuard;
-    execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture)?;
+    execute!(
+        io::stdout(),
+        EnterAlternateScreen,
+        EnableBracketedPaste,
+        EnableMouseCapture
+    )?;
     Ok((
         Terminal::new(ratatui::backend::CrosstermBackend::new(io::stdout()))?,
         guard,

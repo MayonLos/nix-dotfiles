@@ -18,20 +18,4 @@ The upstream Swayimg 4.7 `exec` action substitutes `%` verbatim before invoking 
 
 Owned files are `default.nix`, `blender.nix`, `images.nix`, `swayimg-package.nix`, `checks.nix`, `mpv.nix`, `musicfox.nix`, `obs-studio.nix`, `resources/swayimg-shellcmd-safe-path.patch`, `resources/swayimg-shellcmd-check.c`, `resources/refine-uosc.py`, `resources/compact-uosc.py`, `resources/uosc-subtitle-margin.lua`, and `resources/test-uosc-subtitle-margin.lua`; these implementation files are private to the feature except `checks.nix`, the explicitly registered public test hook. `images.nix` owns the Swayimg INI and its three scoped helper executables (confirmed trash, clipboard conversion, and detached GIMP open). Removing the feature removes package, MIME, and configuration declarations, while media libraries, OBS profiles/recordings, Blender projects, images, and other user data remain on disk. The viewer check verifies the rendered configuration and the locked binary's advertised decoder formats; the shell check compiles the locked upstream helper with the local patch and tests safe path expansion. GUI appearance and decoder runtime still require the isolated screenshot/runtime verification for this round.
 
-## Bilibili terminal client
-
-Media additionally installs `pkgs.bilitui` (`bilitui-mayon`), the independent
-[packages/bilitui](../../../packages/bilitui/README.md) Rust package. It reuses
-Mayon UI, browses public/account pages, launches mpv with per-process HTTP/DASH
-and ASS options, and runs a serial FFmpeg download queue. Existing mpv settings
-above remain the only declarative mpv configuration; this client adds no service.
-Its desktop entry uses the configured terminal. Desktop key bindings/window rules
-are owned by the desktop feature and are not declared here.
-
-The application owns only its mutable `~/.config/bilitui/config.toml` (read-only
-from the program), `~/.local/share/bilitui/` (cookie and search history), private
-`~/.cache/bilitui/` player files, and `~/Videos/Bilibili/` downloads, with XDG
-location overrides respected. Cookie and search files are 0600 under a 0700
-application directory. Removing Media removes the package/desktop entry and
-preserves all these user files. See the package README for controls, API references,
-config defaults, anonymous-only probe and validation boundaries.
+The retired Bilibili terminal client is no longer installed. Its existing XDG config/data/cache directories and `~/Videos/Bilibili/` downloads remain user-owned and are not removed. mpv, FFmpeg and all media tools above remain installed for their independent use.

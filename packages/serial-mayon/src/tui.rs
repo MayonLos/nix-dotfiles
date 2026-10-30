@@ -6,7 +6,7 @@ use crate::{
 use crossterm::event::{
     self, Event, KeyCode as K, KeyEvent, KeyEventKind, KeyModifiers as M, MouseEventKind,
 };
-use mayon_ui::{self as ui, theme::*};
+use mayon_ui::{self as ui, search::Matcher, theme::*};
 use ratatui::{
     layout::{Constraint as C, Layout, Rect},
     style::{Modifier, Style},
@@ -17,11 +17,10 @@ use ratatui::{
 };
 use std::{io, time::Duration};
 
-const HELP:&str="1 监视  2 端口  3 参数  4 命令  5 烧录   q 退出\n\nEnter / i 发送输入 · ↑↓ 输入历史 · Esc 取消输入\nx 发送 TEXT/HEX · e 行尾 · F 发送文件（原字节 ≤1MiB）\nt 定时重复上次发送（毫秒；0 停止）\n/ 搜索 · n 下一条 · f 过滤 · 空内容清除\np / Space 暂停跟随 · PgUp/PgDn / 滚轮 回滚 · End 跟随\nv 接收 TEXT/HEX/MIX · T 时间戳 · g UTF-8/GBK\nw 波形开关 · l 日志开关 · c CSV（下次开始日志生效）\nb 常用波特率 · B 自定义 · s 全部参数 · h 高亮词\nd DTR · r RTS · D / R 脉冲100ms（恢复原电平）\n4 命令页：a 收藏 · ↑↓ 选择 · Enter 载入（不立即发送）\n5 烧录页：o 命令 · O 工作目录 · F5 执行 · Esc 取消\n2 端口页：↑↓/鼠标选择 · Enter 连接 · u 主动断开\n\n暂停仍接收/记日志。回滚默认10万行，上限32MiB；满后淘汰最旧行。\n原始 .bin 保留日志开启后的全部接收字节；.log 带时间戳。";
+const HELP:&str="1 监视  2 端口  3 参数  4 命令  5 烧录   q 退出\n\nEnter / i 发送输入 · ↑↓ 输入历史 · Esc 取消输入\nx 发送 TEXT/HEX · e 行尾 · F 发送文件（原字节 ≤1MiB）\nt 定时重复上次发送（毫秒；0 停止）\n/ / f 过滤 · Ctrl+f 搜索 · n / N 下 / 上一条 · 空内容清除\np / Space 暂停跟随 · PgUp/PgDn / 滚轮 回滚 · End 跟随\nv 接收 TEXT/HEX/MIX · T 时间戳 · g UTF-8/GBK\nw 波形开关 · l 日志开关 · c CSV（下次开始日志生效）\nb 常用波特率 · B 自定义 · s 全部参数 · h 高亮词\nd DTR · r RTS · D / R 脉冲100ms（恢复原电平）\n4 命令页：a 收藏 · ↑↓ 选择 · Enter 载入（不立即发送）\n5 烧录页：o 命令 · O 工作目录 · F5 执行 · Esc 取消\n2 端口页：↑↓/鼠标选择 · Enter 连接 · u 主动断开\n\n暂停仍接收/记日志。回滚默认10万行，上限32MiB；满后淘汰最旧行。\n原始 .bin 保留日志开启后的全部接收字节；.log 带时间戳。";
 
 pub fn run(mut app: App) -> io::Result<()> {
     let (mut terminal, _guard) = ui::terminal()?;
-    crossterm::execute!(io::stdout(), event::EnableBracketedPaste)?;
     loop {
         app.tick();
         terminal.draw(|f| draw(f, &app))?;
@@ -30,12 +29,7 @@ pub fn run(mut app: App) -> io::Result<()> {
                 Event::Key(k) if k.kind != KeyEventKind::Release && key(&mut app, k) => {
                     break;
                 }
-                Event::Paste(value) => {
-                    if let Some(input) = &mut app.input {
-                        let remaining = 65536usize.saturating_sub(input.text.len());
-                        input.text.extend(value.chars().take(remaining));
-                    }
-                }
+                Event::Paste(value) => paste(&mut app, &value),
                 Event::Mouse(mouse) => match mouse.kind {
                     MouseEventKind::ScrollUp => {
                         if app.page == 0 {
@@ -66,9 +60,19 @@ pub fn run(mut app: App) -> io::Result<()> {
                                 4
                             };
                             app.page = index;
-                        } else if app.page == 1 && mouse.row >= 5 {
-                            app.selected =
-                                (mouse.row as usize - 5).min(app.devices.len().saturating_sub(1));
+                        } else if matches!(app.page, 1 | 3) {
+                            let size = terminal.size()?;
+                            let visible = size.height.saturating_sub(8) as usize;
+                            if mouse.row >= 5 && mouse.row < size.height.saturating_sub(3) {
+                                let (selected, len) = if app.page == 1 {
+                                    (&mut app.selected, app.devices.len())
+                                } else {
+                                    (&mut app.favorite_index, app.store.config.favorites.len())
+                                };
+                                let offset = selected.saturating_add(1).saturating_sub(visible);
+                                *selected =
+                                    (offset + (mouse.row as usize - 5)).min(len.saturating_sub(1));
+                            }
                         }
                     }
                     _ => {}
@@ -79,6 +83,20 @@ pub fn run(mut app: App) -> io::Result<()> {
     }
     Ok(())
 }
+fn paste(app: &mut App, value: &str) {
+    if let Some(input) = &mut app.input {
+        if input.text.paste(value) {
+            match input.kind {
+                InputKind::Filter => app.filter = input.text.to_string(),
+                InputKind::Search => {
+                    app.search = input.text.to_string();
+                    app.found = None;
+                }
+                _ => {}
+            }
+        }
+    }
+}
 fn move_selection(app: &mut App, delta: i32) {
     let (index, len) = match app.page {
         1 => (&mut app.selected, app.devices.len()),
@@ -87,9 +105,11 @@ fn move_selection(app: &mut App, delta: i32) {
         _ => return,
     };
     *index = if delta > 0 {
-        (*index + 1).min(len.saturating_sub(1))
+        index
+            .saturating_add(delta as usize)
+            .min(len.saturating_sub(1))
     } else {
-        index.saturating_sub(1)
+        index.saturating_sub(delta.unsigned_abs() as usize)
     };
 }
 fn key(app: &mut App, k: KeyEvent) -> bool {
@@ -104,39 +124,63 @@ fn key(app: &mut App, k: KeyEvent) -> bool {
     }
     if let Some(mut input) = app.input.take() {
         match k.code {
-            K::Esc => return false,
+            K::Esc => {
+                match input.kind {
+                    InputKind::Filter => app.filter = input.before,
+                    InputKind::Search => app.search = input.before,
+                    _ => {}
+                }
+                return false;
+            }
             K::Enter => {
-                if let Err(error) = app.submit(input.kind, input.text.clone()) {
+                if let Err(error) = app.submit(input.kind, input.text.to_string()) {
                     app.status = error;
                     app.input = Some(input);
                 }
                 return false;
             }
-            K::Backspace => {
-                input.text.pop();
-            }
-            K::Char('u') if k.modifiers.contains(M::CONTROL) => input.text.clear(),
-            K::Char(c)
-                if !k.modifiers.intersects(M::CONTROL | M::ALT) && input.text.len() < 65536 =>
-            {
-                input.text.push(c);
-            }
             K::Up if input.kind == InputKind::Send => {
                 app.history_index = app.history_index.saturating_sub(1);
                 if let Some(value) = app.store.history.get(app.history_index) {
-                    input.text = value.clone();
+                    input.text.set(value.clone());
                 }
             }
             K::Down if input.kind == InputKind::Send => {
                 app.history_index = (app.history_index + 1).min(app.store.history.len());
-                input.text = app
-                    .store
-                    .history
-                    .get(app.history_index)
-                    .cloned()
-                    .unwrap_or_default();
+                input.text.set(
+                    app.store
+                        .history
+                        .get(app.history_index)
+                        .cloned()
+                        .unwrap_or_default(),
+                );
             }
-            _ => {}
+            K::Up if matches!(input.kind, InputKind::Filter | InputKind::Search) => {
+                if app.page == 0 {
+                    app.scroll_up(1);
+                } else {
+                    move_selection(app, -1);
+                }
+            }
+            K::Down if matches!(input.kind, InputKind::Filter | InputKind::Search) => {
+                if app.page == 0 {
+                    app.scroll = app.scroll.saturating_sub(1);
+                } else {
+                    move_selection(app, 1);
+                }
+            }
+            _ => {
+                if input.text.handle_key(k) {
+                    match input.kind {
+                        InputKind::Filter => app.filter = input.text.to_string(),
+                        InputKind::Search => {
+                            app.search = input.text.to_string();
+                            app.found = None;
+                        }
+                        _ => {}
+                    }
+                }
+            }
         }
         app.input = Some(input);
         return false;
@@ -160,10 +204,22 @@ fn key(app: &mut App, k: KeyEvent) -> bool {
             }
         }
         K::Enter | K::Char('i') => app.open(InputKind::Send, String::new()),
-        K::Char('/') => app.open(InputKind::Search, app.search.clone()),
-        K::Char('f') => app.open(InputKind::Filter, app.filter.clone()),
+        K::Char('f') if k.modifiers.contains(M::CONTROL) => {
+            app.open(InputKind::Search, app.search.clone())
+        }
+        K::Char('/' | 'f') => app.open(InputKind::Filter, app.filter.clone()),
         K::Char('n') => app.search_next(),
+        K::Char('N') => app.search_previous(),
+        K::Esc if !app.filter.is_empty() => app.filter.clear(),
+        K::Esc if !app.search.is_empty() => {
+            app.search.clear();
+            app.found = None;
+        }
         K::Char('p' | ' ') => app.pause(),
+        K::PageUp if app.page != 0 => move_selection(app, -20),
+        K::PageDown if app.page != 0 => move_selection(app, 20),
+        K::Home | K::Char('g') if app.page != 0 => move_selection(app, i32::MIN + 1),
+        K::End | K::Char('G') if app.page != 0 => move_selection(app, i32::MAX),
         K::PageUp => app.scroll_up(20),
         K::PageDown => app.scroll = app.scroll.saturating_sub(20),
         K::End => {
@@ -355,7 +411,7 @@ fn draw(f: &mut Frame, app: &App) {
         &title,
         &["监视", "端口", "参数", "命令", "烧录"],
         app.page,
-        "i 发送  / 搜索  p 暂停  l 日志  w 波形  F5 烧录  ? 帮助  q 退出",
+        "i 发送  / 过滤  Ctrl+f 搜索  p 暂停  l 日志  w 波形  F5 烧录  ? 帮助  q 退出",
         &app.status,
     );
     match app.page {
@@ -374,7 +430,7 @@ fn draw(f: &mut Frame, app: &App) {
                     "发送文本 · ↑↓ 历史"
                 }
             }
-            InputKind::Search => "搜索 · 空内容清除 · n 下一条",
+            InputKind::Search => "搜索 · 空内容清除 · n / N 下 / 上一条",
             InputKind::Filter => "过滤 · 空内容显示全部",
             InputKind::Baud => "自定义波特率",
             InputKind::Settings => "串口参数 · baud / bits / parity / stop / flow",
@@ -385,27 +441,11 @@ fn draw(f: &mut Frame, app: &App) {
             InputKind::FlashDir => "烧录工作目录 · 空值为启动目录",
             InputKind::Highlights => "高亮词 · 逗号分隔",
         };
-        ui::input(
-            f,
-            label,
-            &tail(&input.text, f.area().width.saturating_sub(8) as usize),
-        );
+        ui::input(f, label, &input.text);
     }
     if app.help {
         ui::help(f, HELP);
     }
-}
-fn tail(text: &str, width: usize) -> String {
-    use ratatui::text::Span;
-    let mut out = String::new();
-    for ch in text.chars().rev() {
-        let candidate = format!("{ch}{out}");
-        if Span::raw(&candidate).width() > width {
-            break;
-        }
-        out = candidate;
-    }
-    out
 }
 fn devices(f: &mut Frame, area: Rect, app: &App) {
     if app.devices.is_empty() {
@@ -600,17 +640,18 @@ fn monitor(f: &mut Frame, area: Rect, app: &App) {
     };
     let view = app.view_capture();
     let anchor = app.view_anchor();
+    let matcher = Matcher::new(&app.filter);
+    let total = view.records.len();
+    let matching = view
+        .records
+        .iter()
+        .filter(|r| r.kind != "RX" || matcher.matches_in(&r.search_text))
+        .count();
     let mut records: Vec<_> = view
         .records
         .iter()
         .filter(|r| anchor.is_none_or(|anchor| r.id <= anchor))
-        .filter(|r| {
-            r.kind != "RX"
-                || app.filter.is_empty()
-                || codec::plain(&r.text)
-                    .to_lowercase()
-                    .contains(&app.filter.to_lowercase())
-        })
+        .filter(|r| r.kind != "RX" || matcher.matches_in(&r.search_text))
         .collect();
     let height = capture.height.saturating_sub(2) as usize;
     let end = records.len().saturating_sub(app.scroll);
@@ -626,7 +667,7 @@ fn monitor(f: &mut Frame, area: Rect, app: &App) {
             2 => format!("{} │ {}", codec::plain(&text), hex(raw, 12)),
             _ => codec::plain(&text),
         };
-        if app.filter.is_empty() || preview.contains(&app.filter) {
+        if matcher.matches(&preview) {
             if lines.len() >= height && !lines.is_empty() {
                 lines.remove(0);
             }
@@ -644,7 +685,11 @@ fn monitor(f: &mut Frame, area: Rect, app: &App) {
         }
     }
     if lines.is_empty() {
-        lines.push(Line::from(ui::muted(" 等待数据 · i 发送命令 · 2 选择串口")));
+        lines.push(Line::from(ui::muted(if app.filter.is_empty() {
+            " 等待数据 · i 发送命令 · 2 选择串口"
+        } else {
+            " 没有匹配 · Esc 清除过滤"
+        })));
     }
     let paused = if let Some(anchor) = anchor {
         let overwritten = view.records.front().is_some_and(|r| r.id > anchor);
@@ -661,16 +706,32 @@ fn monitor(f: &mut Frame, area: Rect, app: &App) {
         "实时".into()
     };
     let title = format!(
-        " {} · {} · {} 行 · 淘汰 {} · 日志 {} {} ",
+        " {} · {} · {}/{} 行 · 淘汰 {} · 日志 {} {}{} ",
         ["TEXT", "HEX", "MIX"][app.mode],
         paused,
-        view.records.len(),
+        matching,
+        total,
         view.evicted,
         if app.logger.is_some() { "ON" } else { "OFF" },
         if app.filter.is_empty() {
             String::new()
         } else {
             format!("· 过滤 {}", app.filter)
+        },
+        if app.search.is_empty() {
+            String::new()
+        } else {
+            let matches = app.search_matches();
+            let position = app
+                .found
+                .and_then(|id| matches.iter().position(|n| *n == id))
+                .map_or(0, |n| n + 1);
+            format!(
+                " · 搜索 {} · 第 {}/共 {} 个",
+                app.search,
+                position,
+                matches.len()
+            )
         }
     );
     f.render_widget(
@@ -773,9 +834,19 @@ fn record_line(app: &App, r: &crate::app::Record, width: usize) -> Line<'static>
             }),
         ));
     }
+    let query = if !app.search.is_empty() {
+        &app.search
+    } else {
+        &app.filter
+    };
+    if !query.is_empty() {
+        let text = clip(&codec::plain(&body), remaining);
+        let mut highlighted = Matcher::new(query).highlight(&text).spans;
+        spans.truncate(1);
+        spans.append(&mut highlighted);
+    }
     let mut line = Line::from(spans);
-    let is_match =
-        !app.search.is_empty() && plain.to_lowercase().contains(&app.search.to_lowercase());
+    let is_match = !app.search.is_empty() && Matcher::new(&app.search).matches_in(&r.search_text);
     if app.found == Some(r.id) {
         line = line.style(Style::default().bg(SELECTION).fg(BLUE));
     } else if is_match {
@@ -872,4 +943,139 @@ fn graph(f: &mut Frame, area: Rect, app: &App) {
                 .labels([format!("{min:.1}"), format!("{max:.1}")]),
         );
     f.render_widget(chart, area);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{store::Store, transport::Device};
+    use ratatui::{backend::TestBackend, Terminal};
+
+    fn app(root: &std::path::Path) -> App {
+        let mut app = App::new(Store::at(root.join("config"), root.join("data")).unwrap());
+        app.page = 0;
+        app.graph = false;
+        app
+    }
+    fn press(app: &mut App, code: K) {
+        assert!(!key(app, KeyEvent::new(code, M::NONE)));
+    }
+    fn screen(app: &App, width: u16, height: u16) -> String {
+        let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
+        terminal.draw(|frame| draw(frame, app)).unwrap();
+        let mut output = String::new();
+        for row in terminal.backend().buffer().content().chunks(width as usize) {
+            let mut skip = 0;
+            for cell in row {
+                if skip > 0 {
+                    skip -= 1;
+                    continue;
+                }
+                output.push_str(cell.symbol());
+                skip = Span::raw(cell.symbol()).width().saturating_sub(1);
+            }
+            output.push('\n');
+        }
+        output
+    }
+    #[test]
+    fn local_filter_is_live_cancelable_and_has_empty_state() {
+        let root = tempfile::tempdir().unwrap();
+        let mut app = app(root.path());
+        app.receive("Apple 香港\n北京\n".as_bytes().to_vec());
+        app.filter = "apple".into();
+        press(&mut app, K::Char('/'));
+        key(&mut app, KeyEvent::new(K::Char('u'), M::CONTROL));
+        for c in "xianggang".chars() {
+            press(&mut app, K::Char(c));
+        }
+        assert_eq!(app.filter, "xianggang");
+        let text = screen(&app, 110, 24);
+        assert!(text.contains("1/2 行"));
+        press(&mut app, K::Esc);
+        assert_eq!(app.filter, "apple");
+        press(&mut app, K::Char('/'));
+        key(&mut app, KeyEvent::new(K::Char('u'), M::CONTROL));
+        paste(&mut app, "不存在\nqq");
+        assert_eq!(app.filter, "不存在 qq");
+        assert!(!app.connected);
+        assert!(app.capture.records.iter().all(|r| r.kind == "RX"));
+        press(&mut app, K::Enter);
+        let text = screen(&app, 110, 24);
+        assert!(text.contains("没有匹配 · Esc 清除过滤"));
+        assert!(text.contains("0/2 行"));
+        press(&mut app, K::Esc);
+        assert!(app.filter.is_empty());
+        let before = app.filter.clone();
+        paste(&mut app, "q\n");
+        assert_eq!(app.filter, before);
+        for (width, height) in [(1, 1), (10, 3), (40, 10)] {
+            screen(&app, width, height);
+        }
+    }
+    #[test]
+    fn n_and_uppercase_n_cycle_both_ways_and_keep_record_id() {
+        let root = tempfile::tempdir().unwrap();
+        let mut app = app(root.path());
+        app.receive("Apple 香港\n其他\nAPPLE 香港\n".as_bytes().to_vec());
+        key(&mut app, KeyEvent::new(K::Char('f'), M::CONTROL));
+        paste(&mut app, "apple xg");
+        key(&mut app, KeyEvent::new(K::Char('x'), M::CONTROL));
+        assert_eq!(app.search, "apple xg");
+        press(&mut app, K::Enter);
+        assert_eq!(app.found, Some(0));
+        press(&mut app, K::Char('n'));
+        assert_eq!(app.found, Some(2));
+        assert!(app.status.contains("第 2/共 2 个"));
+        press(&mut app, K::Char('N'));
+        assert_eq!(app.found, Some(0));
+        press(&mut app, K::Char('N'));
+        assert_eq!(app.found, Some(2));
+        app.receive("Apple 香港\n".as_bytes().to_vec());
+        assert_eq!(app.found, Some(2));
+        assert!(screen(&app, 150, 24).contains("第 2/共 3 个"));
+        let record = &app.capture.records[0];
+        let line = record_line(&app, record, 100);
+        assert!(line
+            .spans
+            .iter()
+            .any(|span| span.content == "香港" && span.style.fg == Some(YELLOW)));
+    }
+    #[test]
+    fn preview_matches_case_insensitively_and_device_refresh_keeps_identity() {
+        let root = tempfile::tempdir().unwrap();
+        let mut app = app(root.path());
+        app.receive(b"Apple preview".to_vec());
+        app.filter = "apple".into();
+        assert!(screen(&app, 110, 24).contains("Apple preview"));
+        let device = |path: &str, serial: &str| Device {
+            path: path.into(),
+            vid: 1,
+            pid: 2,
+            serial: Some(serial.into()),
+            product: "测试串口".into(),
+            interface: "0".into(),
+            topology: String::new(),
+        };
+        app.devices = vec![
+            device("/dev/ttyUSB0", "first"),
+            device("/dev/ttyUSB1", "second"),
+        ];
+        app.selected = 1;
+        app.replace_devices(vec![
+            device("/dev/ttyUSB2", "second"),
+            device("/dev/ttyUSB0", "first"),
+        ]);
+        assert_eq!(app.selected, 0);
+        assert_eq!(app.devices[app.selected].path, "/dev/ttyUSB2");
+        app.page = 1;
+        press(&mut app, K::PageDown);
+        assert_eq!(app.selected, 1);
+        press(&mut app, K::PageUp);
+        assert_eq!(app.selected, 0);
+        press(&mut app, K::Char('/'));
+        press(&mut app, K::Down);
+        assert_eq!(app.selected, 1);
+        assert!(app.input.is_some());
+    }
 }

@@ -5,6 +5,10 @@ use crate::{
     transport::{self, Command, Device, Event, Worker},
 };
 use chrono::{DateTime, Local};
+use mayon_ui::{
+    input::TextInput,
+    search::{Matcher, SearchText},
+};
 use std::{
     collections::{BTreeMap, VecDeque},
     fs::File,
@@ -25,6 +29,7 @@ pub struct Record {
     pub kind: &'static str,
     pub raw: Vec<u8>,
     pub text: String,
+    pub search_text: SearchText,
 }
 pub struct Capture {
     pub records: VecDeque<Record>,
@@ -38,6 +43,7 @@ impl Capture {
         for record in &mut self.records {
             if record.kind == "RX" {
                 record.text = encoding.decode(&record.raw);
+                record.search_text = SearchText::new(&codec::plain(&record.text));
             }
         }
         self.bytes = self
@@ -82,6 +88,7 @@ impl Capture {
             elapsed,
             kind,
             raw,
+            search_text: SearchText::new(&codec::plain(&text)),
             text,
         });
         self.next += 1;
@@ -152,7 +159,8 @@ pub enum InputKind {
 }
 pub struct Input {
     pub kind: InputKind,
-    pub text: String,
+    pub text: TextInput,
+    pub before: String,
 }
 pub struct Repeat {
     pub bytes: Vec<u8>,
@@ -443,8 +451,7 @@ impl App {
             }
         }
         if self.refresh_at.elapsed() > Duration::from_millis(750) {
-            self.devices = transport::discover();
-            self.selected = self.selected.min(self.devices.len().saturating_sub(1));
+            self.replace_devices(transport::discover());
             self.refresh_at = Instant::now();
         }
         let elapsed = self.rate_at.elapsed().as_secs_f64();
@@ -526,8 +533,24 @@ impl App {
         self.status = "已排队发送".into();
         Ok(())
     }
+    pub fn replace_devices(&mut self, devices: Vec<Device>) {
+        let selected = self.devices.get(self.selected).map(Device::key);
+        self.devices = devices;
+        self.selected = selected
+            .and_then(|id| self.devices.iter().position(|d| d.key() == id))
+            .unwrap_or(0);
+    }
     pub fn open(&mut self, kind: InputKind, text: String) {
-        self.input = Some(Input { kind, text });
+        let before = match kind {
+            InputKind::Filter => self.filter.clone(),
+            InputKind::Search => self.search.clone(),
+            _ => String::new(),
+        };
+        self.input = Some(Input {
+            kind,
+            text: text.into(),
+            before,
+        });
         self.history_index = self.store.history.len();
     }
     pub fn submit(&mut self, kind: InputKind, text: String) -> Result<(), String> {
@@ -682,24 +705,44 @@ impl App {
             .saturating_add(n)
             .min(self.view_capture().records.len().saturating_sub(1));
     }
-    pub fn search_next(&mut self) {
-        if self.search.is_empty() {
-            self.found = None;
-            return;
+    pub fn search_matches(&self) -> Vec<u64> {
+        if self.search.trim().is_empty() {
+            return Vec::new();
         }
-        let needle = self.search.to_lowercase();
-        let matches: Vec<u64> = self
-            .view_capture()
+        let matcher = Matcher::new(&self.search);
+        let filter = Matcher::new(&self.filter);
+        self.view_capture()
             .records
             .iter()
-            .filter(|r| codec::plain(&r.text).to_lowercase().contains(&needle))
+            .filter(|r| {
+                (r.kind != "RX" || filter.matches_in(&r.search_text))
+                    && matcher.matches_in(&r.search_text)
+            })
             .map(|r| r.id)
-            .collect();
-        self.found = matches
-            .iter()
-            .copied()
-            .find(|id| self.found.is_none_or(|last| *id > last))
-            .or_else(|| matches.first().copied());
+            .collect()
+    }
+    pub fn search_next(&mut self) {
+        self.search_move(false);
+    }
+    pub fn search_previous(&mut self) {
+        self.search_move(true);
+    }
+    fn search_move(&mut self, reverse: bool) {
+        let matches = self.search_matches();
+        self.found = if reverse {
+            matches
+                .iter()
+                .rev()
+                .copied()
+                .find(|id| self.found.is_none_or(|last| *id < last))
+                .or_else(|| matches.last().copied())
+        } else {
+            matches
+                .iter()
+                .copied()
+                .find(|id| self.found.is_none_or(|last| *id > last))
+                .or_else(|| matches.first().copied())
+        };
         if let Some(id) = self.found {
             if self.mode == 0 {
                 self.anchor = Some(id);
@@ -708,9 +751,13 @@ impl App {
                 self.anchor = self.capture.records.back().map(|r| r.id).or(Some(0));
             }
             self.scroll = 0;
-            self.status = format!("匹配 {} 条 · n 下一个", matches.len());
+            self.status = format!(
+                "第 {}/共 {} 个 · n 下一个 · N 上一个",
+                matches.iter().position(|n| *n == id).unwrap_or(0) + 1,
+                matches.len()
+            );
         } else {
-            self.status = "没有匹配".into();
+            self.status = "没有匹配 · Esc 清除".into();
         }
     }
     pub fn logging(&mut self) {

@@ -4,8 +4,13 @@ use anyhow::{bail, Context, Result};
 use crossterm::event::{
     self, Event, KeyCode, KeyEventKind, KeyModifiers, MouseButton, MouseEventKind,
 };
-use mayon_ui::{self as ui, theme::*};
-use model::{entries, fuzzy, Entry, Export, GROUPS};
+use mayon_ui::{
+    self as ui,
+    input::TextInput,
+    search::{Matcher, SearchText},
+    theme::*,
+};
+use model::{entries, Entry, Export, GROUPS};
 use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::Modifier,
@@ -90,7 +95,9 @@ fn main() -> Result<()> {
 #[derive(Default)]
 struct App {
     group: Option<usize>,
-    query: String,
+    search: Vec<SearchText>,
+    query: TextInput,
+    previous_query: TextInput,
     editing: bool,
     selected: usize,
     scroll: usize,
@@ -104,24 +111,41 @@ struct App {
 }
 
 impl App {
+    fn new(items: &[Entry]) -> Self {
+        Self {
+            search: items
+                .iter()
+                .map(|e| {
+                    SearchText::new(&format!(
+                        "{} {} {} {} {}",
+                        e.chord, e.description, e.binding.mode, e.binding.kind, e.binding.raw
+                    ))
+                })
+                .collect(),
+            ..Default::default()
+        }
+    }
     fn visible(&self, items: &[Entry]) -> Vec<usize> {
+        let matcher = Matcher::new(&self.query);
         let mut out = items
             .iter()
             .enumerate()
-            .filter(|(_, e)| {
+            .filter(|(i, e)| {
                 self.group.is_none_or(|g| e.group == g)
-                    && fuzzy(
-                        &self.query,
-                        &format!(
-                            "{} {} {} {} {}",
-                            e.chord, e.description, e.binding.mode, e.binding.kind, e.binding.raw
-                        ),
-                    )
+                    && self
+                        .search
+                        .get(*i)
+                        .is_some_and(|text| matcher.matches_in(text))
             })
             .map(|(i, _)| i)
             .collect::<Vec<_>>();
         out.sort_by_key(|i| items[*i].group);
         out
+    }
+    fn keep_selected(&mut self, items: &[Entry], selected: Option<usize>) {
+        self.selected = selected
+            .and_then(|id| self.visible(items).iter().position(|i| *i == id))
+            .unwrap_or(0);
     }
     fn reset(&mut self) {
         self.selected = 0;
@@ -232,19 +256,14 @@ fn draw(f: &mut Frame, app: &mut App, items: &[Entry], path: &std::path::Path, f
         app.tabs.push((r, group));
         x = x.saturating_add(width);
     }
-    f.render_widget(
-        Paragraph::new(clip(
-            &format!(
-                " {} {}{}",
-                if app.editing { "/ 搜索" } else { "/ 过滤" },
-                app.query,
-                if app.editing { "▏" } else { "" }
-            ),
-            area.width as usize,
-        ))
-        .style(ui::base().fg(if app.editing { BLUE } else { MUTED })),
-        c[2],
-    );
+    if app.editing {
+        app.query.render(f, c[2], ui::base().fg(BLUE));
+    } else {
+        f.render_widget(
+            Paragraph::new(format!(" / 过滤 {}", app.query)).style(ui::base().fg(MUTED)),
+            c[2],
+        );
+    }
     let columns = if c[3].width >= 138 {
         3
     } else if c[3].width >= 88 {
@@ -291,26 +310,18 @@ fn draw(f: &mut Frame, app: &mut App, items: &[Entry], path: &std::path::Path, f
                 let style = ui::base().bg(if selected { SELECTION } else { BG });
                 let color = if e.conflict { RED } else { BRIGHTFG };
                 let chord = format!("{}{}", if e.conflict { "! " } else { "" }, e.chord);
+                let matcher = Matcher::new(&app.query);
+                let mut first =
+                    matcher.highlight(&clip(&chord, inner.width.saturating_sub(1) as usize));
+                first.spans.insert(0, ui::marker(selected));
+                let mut second = matcher.highlight(&clip(
+                    &format!("{} · {}", e.description, e.binding.mode),
+                    inner.width.saturating_sub(1) as usize,
+                ));
+                second.spans.insert(0, Span::raw(" "));
                 vec![
-                    Line::from(vec![
-                        ui::marker(selected),
-                        Span::styled(
-                            clip(&chord, inner.width.saturating_sub(1) as usize),
-                            style.fg(color),
-                        ),
-                    ])
-                    .style(style),
-                    Line::from(vec![
-                        Span::raw(" "),
-                        Span::styled(
-                            clip(
-                                &format!("{} · {}", e.description, e.binding.mode),
-                                inner.width.saturating_sub(1) as usize,
-                            ),
-                            style.fg(if e.conflict { RED } else { FG }),
-                        ),
-                    ])
-                    .style(style),
+                    first.style(style.fg(color)),
+                    second.style(style.fg(if e.conflict { RED } else { FG })),
                 ]
             } else {
                 vec![
@@ -345,7 +356,7 @@ fn draw(f: &mut Frame, app: &mut App, items: &[Entry], path: &std::path::Path, f
     }
     if visible.is_empty() {
         f.render_widget(
-            Paragraph::new("没有匹配。按 / 修改搜索，Ctrl+U 清空；0 查看全部分组。")
+            Paragraph::new("没有匹配。Esc 清除过滤；/ 修改搜索；0 查看全部分组。")
                 .style(ui::base().fg(MUTED))
                 .wrap(Wrap { trim: false }),
             c[3],
@@ -379,7 +390,7 @@ fn draw(f: &mut Frame, app: &mut App, items: &[Entry], path: &std::path::Path, f
         ),
     );
     if app.help {
-        ui::help(f, &format!("0 全部 · 1 窗口 · 2 工作区 · 3 应用 · 4 TUI 工具\n5 截图 · 6 媒体 · 7 系统\n\n/ 按键名或中文说明模糊搜索（跨分组保留过滤）\nEnter 结束输入 · Ctrl+U 清空 · Backspace 删除\nj/k 或 ↑/↓ 选择 · PgUp/PgDn 翻页 · Home/End 首尾\n鼠标滚轮滚动 · 点击条目选择 · 点击顶部分组切页\nEnter 查看完整原始动作（↑/↓、滚轮可滚动）\n红色 ! = 同设备、重叠模式的相同组合\ncommon 在所有模式生效；resize 需先按 SUPER+R\n搜索输入时 q 为文本，Esc 关闭程序\n\n数据文件：{}", path.display()));
+        ui::help(f, &format!("0 全部 · 1 窗口 · 2 工作区 · 3 应用 · 4 TUI 工具\n5 截图 · 6 媒体 · 7 系统\n\n/ 按键名或中文说明模糊搜索（跨分组保留过滤）\nEnter 结束输入 · Ctrl+U 清到行首 · Backspace 删除\nj/k 或 ↑/↓ 选择 · PgUp/PgDn 翻页 · Home/End 首尾\n鼠标滚轮滚动 · 点击条目选择 · 点击顶部分组切页\nEnter 查看完整原始动作（↑/↓、滚轮可滚动）\n红色 ! = 同设备、重叠模式的相同组合\ncommon 在所有模式生效；resize 需先按 SUPER+R\n搜索输入时 ↑/↓ 选择；Esc 恢复编辑前过滤；列表 Esc 先清过滤再退出\n\n数据文件：{}", path.display()));
     } else if app.details {
         if let Some(i) = visible.get(app.selected) {
             let e = &items[*i];
@@ -429,7 +440,7 @@ impl Drop for BackgroundGuard {
 fn run(items: Vec<Entry>, path: PathBuf) -> Result<()> {
     let _background = BackgroundGuard::new()?;
     let (mut terminal, _guard) = ui::terminal()?;
-    let mut app = App::default();
+    let mut app = App::new(&items);
     let mut follow = true;
     loop {
         terminal.draw(|f| draw(f, &mut app, &items, &path, follow))?;
@@ -457,30 +468,45 @@ fn run(items: Vec<Entry>, path: PathBuf) -> Result<()> {
                         KeyCode::Down => app.detail_scroll = app.detail_scroll.saturating_add(1),
                         _ => {}
                     }
-                } else if key.code == KeyCode::Esc {
-                    break;
                 } else if app.editing {
+                    let selected = app.visible(&items).get(app.selected).copied();
                     match key.code {
+                        KeyCode::Esc => {
+                            app.query = app.previous_query.clone();
+                            app.editing = false;
+                            app.keep_selected(&items, selected);
+                        }
                         KeyCode::Enter => app.editing = false,
-                        KeyCode::Backspace => {
-                            app.query.pop();
-                            app.reset();
+                        KeyCode::Down => app.move_selection(1, count),
+                        KeyCode::Up => app.move_selection(-1, count),
+                        _ => {
+                            if app.query.handle_key(key) {
+                                app.keep_selected(&items, selected);
+                            }
                         }
-                        KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                            app.query.clear();
-                            app.reset();
-                        }
-                        KeyCode::Char(ch) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
-                            app.query.push(ch);
-                            app.reset();
-                        }
-                        _ => {}
                     }
                     follow = true;
+                } else if key.code == KeyCode::Esc {
+                    if app.query.is_empty() {
+                        break;
+                    }
+                    let selected = app.visible(&items).get(app.selected).copied();
+                    app.query.clear();
+                    app.keep_selected(&items, selected);
+                    follow = true;
                 } else {
+                    if key
+                        .modifiers
+                        .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
+                    {
+                        continue;
+                    }
                     match key.code {
                         KeyCode::Char('q') => break,
-                        KeyCode::Char('/') => app.editing = true,
+                        KeyCode::Char('/') => {
+                            app.previous_query = app.query.clone();
+                            app.editing = true;
+                        }
                         KeyCode::Char('?') => app.help = true,
                         KeyCode::Enter => {
                             app.details = true;
@@ -510,11 +536,11 @@ fn run(items: Vec<Entry>, path: PathBuf) -> Result<()> {
                         KeyCode::PageUp => {
                             app.scroll = app.scroll.saturating_sub(app.viewport.saturating_sub(2))
                         }
-                        KeyCode::Home => {
+                        KeyCode::Home | KeyCode::Char('g') => {
                             app.selected = 0;
                             follow = true;
                         }
-                        KeyCode::End => {
+                        KeyCode::End | KeyCode::Char('G') => {
                             app.selected = count.saturating_sub(1);
                             follow = true;
                         }
@@ -554,6 +580,13 @@ fn run(items: Vec<Entry>, path: PathBuf) -> Result<()> {
                     }
                 }
             }
+            Event::Paste(text) if app.editing && !app.help && !app.details => {
+                let selected = app.visible(&items).get(app.selected).copied();
+                if app.query.paste(&text) {
+                    app.keep_selected(&items, selected);
+                }
+                follow = true;
+            }
             Event::Resize(_, _) => follow = true,
             _ => {}
         }
@@ -582,7 +615,7 @@ mod tests {
         let items = sample();
         for width in [35, 60, 90, 140] {
             let mut terminal = Terminal::new(TestBackend::new(width, 30)).unwrap();
-            let mut app = App::default();
+            let mut app = App::new(&items);
             terminal
                 .draw(|f| {
                     draw(
@@ -638,9 +671,50 @@ mod tests {
         }
     }
     #[test]
+    fn filter_keeps_identity_and_reports_empty() {
+        let items = sample();
+        let mut app = App::new(&items);
+        app.selected = 1;
+        let keep = app.visible(&items).get(app.selected).copied();
+        app.query = "zhongwen".into();
+        app.keep_selected(&items, keep);
+        assert_eq!(app.visible(&items).len(), 1);
+        assert_eq!(app.visible(&items).get(app.selected).copied(), Some(1));
+        app.query = "zzzzzzzzzz".into();
+        app.keep_selected(&items, Some(1));
+        assert_eq!(app.selected, 0);
+        let mut terminal = Terminal::new(TestBackend::new(90, 30)).unwrap();
+        terminal
+            .draw(|f| draw(f, &mut app, &items, std::path::Path::new("fixture"), true))
+            .unwrap();
+        let text = terminal
+            .backend()
+            .buffer()
+            .content
+            .iter()
+            .map(|c| c.symbol())
+            .collect::<String>();
+        assert!(text.replace(' ', "").contains("没有匹配"));
+        assert!(text.contains("Esc"));
+    }
+    #[test]
+    fn tiny_windows_render_without_panicking() {
+        let items = sample();
+        for width in [1, 2, 8, 20] {
+            for height in [1, 2, 5] {
+                let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
+                let mut app = App::new(&items);
+                app.editing = true;
+                terminal
+                    .draw(|f| draw(f, &mut app, &items, std::path::Path::new("fixture"), true))
+                    .unwrap();
+            }
+        }
+    }
+    #[test]
     fn group_layout_covers_every_binding_once() {
         let items = sample();
-        let visible = App::default().visible(&items);
+        let visible = App::new(&items).visible(&items);
         for columns in 1..=3 {
             let (pos, _) = positions(&items, &visible, columns);
             let mut indices = pos
