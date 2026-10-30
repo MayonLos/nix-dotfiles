@@ -6,6 +6,7 @@ _: {
     ./system/default-tools
     ./workspace/workspace-task
     ./workspace/project-workbench
+    ./workspace/seek
     ./dev/languages
     ./system/maintenance
     ./network/port-tools

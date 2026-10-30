@@ -1,0 +1,4 @@
+{ pkgs, ... }:
+{
+  inherit (pkgs) seek;
+}

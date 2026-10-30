@@ -40,6 +40,7 @@
             # Local programs have a separate public entry; local remains upstream aliases.
             mayonTui = import ../packages/mayon-tui { pkgs = final; };
             mayonVoice = import ../packages/mayon-voice { pkgs = final; };
+            seek = import ../packages/seek { pkgs = final; };
             # Explicit exceptions to stable; each consumer uses this shared instance.
             unstable = {
               # unstable: Neovim 0.12.6 fixes TUI/runtime issues after stable 0.12.4.
