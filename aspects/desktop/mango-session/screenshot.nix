@@ -111,6 +111,7 @@ in
   # and long chat logs -- something the old pipeline could not do at all. It
   # needs slurp and grim at runtime.
   home.packages = [
+    pkgs.shotsMayon
     mark-shot
     screenshotScreen
     pkgs.local.wayscrollshot
