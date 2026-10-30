@@ -28,6 +28,7 @@
         ../aspects/apps/file-manager/checks.nix
         ../aspects/apps/media/checks.nix
         ../aspects/apps/gaming/checks.nix
+        ../aspects/apps/gaming/mcsrv-checks.nix
         ../aspects/cli/shell/checks.nix
         ../aspects/cli/herdr/checks.nix
         ../aspects/desktop/mango-session/checks.nix
@@ -195,6 +196,7 @@
               ]
             ) "TUI outputs must be installed by their selected features";
             pkgs.mayonTui;
+          mcsrv-mayon = pkgs.mcsrvMayon;
           architecture = pkgs.runCommand "architecture-check" { } "touch $out";
           palette-contrast = paletteContrast;
           statix = pkgs.runCommand "statix-check" { nativeBuildInputs = [ pkgs.statix ]; } ''
