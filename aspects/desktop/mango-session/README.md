@@ -25,7 +25,10 @@ Both surfaces request `compositor_blur=true`. Locked Mango 0.18.3 does not imple
 | Notifications | Control Center Notifications tab / Home DND shortcut; small bar icon appears only when unread |
 | Battery conservation | Battery left click still runs `legion-conservation toggle`; local conservation plugin remains enabled |
 
-Control Center Home has no sidebar; detailed sections keep compact navigation. The visible Home width is 348 px. Wi-Fi and Bluetooth are two device tiles; System, power profile, caffeine and DND remain neutral function rows. Nightlight is disabled (`enabled=false`, `force=false`), with no Home shortcut. Native network/Bluetooth/audio bar buttons open their detailed tabs. Existing hooks, services, secrets and application data are preserved.
+Control Center Home has no sidebar; detailed sections keep compact navigation. The visible Home width is 348 px. R50 lowers the upstream schema clamp so this
+declared width takes effect; native detail tabs keep at least 600 px for their
+two-column content, and direct Calendar keeps 320 px. Bar shortcuts between
+these contexts reopen through the native panel path to update surface geometry. Wi-Fi and Bluetooth are two device tiles; System, power profile, caffeine and DND remain neutral function rows. Nightlight is disabled (`enabled=false`, `force=false`), with no Home shortcut. Native network/Bluetooth/audio bar buttons open their detailed tabs. Existing hooks, services, secrets and application data are preserved.
 
 ## Source patches
 
@@ -36,6 +39,7 @@ The package overrides only the locked `pkgs.local.noctalia` derivation. Every re
 | `astra-selection.patch` | Launcher/shortcut selection styling and compact vertical Control Center Home with volume/brightness sliders; old workspace and media-widget changes removed |
 | `tech-lockscreen.patch` | Compact identity/password row, circular avatar and feedback below the field |
 | `r43-*.patch` | Independent Control Center, notification, continuous OSD, compact calendar, settings and wallpaper drawing (checked by `r43-check-panels.py`) |
+| `r50-panel-widths.patch` | Permits the declared 348px Home and 520px launcher; keeps detail tabs at least 600px and reopens changed Control Center contexts for correct geometry |
 | `nvidia-sampler.patch` | System-service portions extracted from old hud-sysmon: NVIDIA-only two-second sampling, suspended/unplugged GPU invalidation and short NVML sessions |
 | `active-app-name.patch` | Opt-in application-name label using native identity resolution |
 | `launchpad-native.patch` | Native application index/launch IPC, independent Dock Launchpad entry, opt-in layer capture keys and wheel events |
@@ -79,7 +83,22 @@ Native Soft surface mode is declared once beside its pinned 0.80 opacity; transi
 notification and OSD backgrounds consume the same value. Labels remain opaque.
 The OSD replaces the removed `tech-osd-segments.patch` with 246×46 horizontal
 geometry, an 18px neutral icon, 3px continuous rail, 13px percentage and 96px bottom
-offset. Notification width remains 320 with compact 13px metadata and 14px title/body.
+offset. R50 keeps this outer size and the native Tabler glyph viewport. The
+horizontal progress layout uses equal end cells (at least 36px, widened if the
+font needs more room for `100%`), 20px outer insets and 12px rail gaps. The native icon viewport
+aligns to the left inset and centers its glyph ink; percentages use `tnum` and a fixed right-aligned
+cell so 0/7/15/100% do not move the rail. The older layout had an 18px icon cell
+beside the font-dependent percentage cell, which offset the rail; this was a
+spacing issue, not a clipped glyph in the isolated reproduction. Text-only
+status messages retain their centered group and ellipsis, custom progress labels
+retain bounded expansion, and vertical OSD keeps its 16px inset and original font features so `100%`
+still fits its native 34px value budget.
+`noctalia-osd-pixels` renders the actual patched package in a private headless
+Sway at 2560×1600/1.5, with an unreachable system bus and isolated session bus,
+and checks screenshot pixels for symmetric rail bounds, complete icons with symmetric visible outer insets
+and stable percentage alignment. This renderer check is independent of the
+Mango visual audit and does not prove physical-display behavior.
+Notification width remains 320 with compact 13px metadata and 14px title/body.
 Direct calendar opens at 320, without a navigation rail, with the month above agenda
 and an independent 1px today outline (it does not rely on global button borders).
 Settings keeps native categories/groups and neutral 20/14/13 typography. Wallpaper

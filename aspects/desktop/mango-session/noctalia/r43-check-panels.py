@@ -7,6 +7,10 @@ def source(path):
     return Path('src', path).read_text()
 
 
+ranges = source('config/schema/ranges.h')
+assert 'kControlCenterWidthRange{348, 1200, 10}' in ranges
+assert 'kLauncherWidthRange{520, 1100, 10}' in ranges
+
 types = source('config/config_types.cpp')
 assert 'case PanelTransparencyMode::Soft:\n    return 0.80F;' in types
 scene = source('shell/settings/settings_window_scene.cpp')
@@ -24,6 +28,10 @@ assert 'userCard->setParticipatesInLayout(false)' in home
 assert 'dateTimeCard->setParticipatesInLayout(false)' in home
 panel = source('shell/control_center/control_center_panel.cpp')
 assert 'return fullSize * m_contentScale' in panel
+assert 'std::max(600.0F, fullSize) * m_contentScale' in panel
+manager = source('shell/panel/panel_manager.cpp')
+assert 'if (panelId == "control-center") {' in manager
+assert 'request.context = context;\n              request.sourceBarName = sourceBarName;\n              openPanel(panelId, request);' in manager
 assert 'return 320.0F * m_contentScale' in panel
 assert 'tabFromContext(context) == TabId::Calendar) return ControlCenterSidebarMode::None' in panel
 assert 'fullSize * 0.85F' not in panel
@@ -45,6 +53,11 @@ assert 'constexpr int kProgressHeight = 1' in notification
 osd = source('shell/osd/osd_overlay.cpp')
 for literal in ['return 246.0F * s', 'return 46.0F * s', 'return 3.0F * s', 'return 18.0F * s']:
     assert literal in osd, literal
+assert 'return (vertical ? 16.0F : 20.0F) * s' in osd
+assert '.fontFeatures = vertical ? "" : "tnum"' in osd
+assert 'std::max(36.0F * s, value->width())' in osd
+assert 'iconCell = ui::row({' in osd
+assert 'm_content.value.size() <= 4' in osd
 assert 'progressTicks' not in osd
 assert ': ColorRole::Primary;' not in osd
 settings = source('shell/settings/settings_content.cpp')
