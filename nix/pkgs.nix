@@ -33,6 +33,7 @@
           (final: _: {
             # Local programs have a separate public entry; local remains upstream aliases.
             mayonTui = import ../packages/mayon-tui { pkgs = final; };
+            bilitui = import ../packages/bilitui { pkgs = final; };
             # Explicit exceptions to stable; each consumer uses this shared instance.
             unstable = {
               # unstable: Neovim 0.12.6 fixes TUI/runtime issues after stable 0.12.4.
