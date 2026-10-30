@@ -1,48 +1,8 @@
 _: {
   perSystem =
     { pkgs, ... }:
-    let
-      # User accepted the SDK license on 2026-10-30. Scope acceptance to this
-      # androidenv value; reuse the repository's existing nixpkgs instance.
-      androidEnv = pkgs.androidenv.override { licenseAccepted = true; };
-      androidPackages = androidEnv.composeAndroidPackages {
-        platformVersions = [ "35" ];
-        buildToolsVersions = [ "35.0.0" ];
-        includeEmulator = true;
-        includeSystemImages = true;
-        systemImageTypes = [ "default" ];
-        abiVersions = [ "x86_64" ];
-        includeNDK = false;
-        includeCmake = false;
-      };
-      androidSdk = "${androidPackages.androidsdk}/libexec/android-sdk";
-    in
     {
       devShells = {
-        android = pkgs.mkShell {
-          name = "timetable-android";
-          packages = [
-            pkgs.gradle
-            pkgs.jdk17
-            androidPackages.androidsdk
-          ];
-          JAVA_HOME = "${pkgs.jdk17}";
-          ANDROID_HOME = androidSdk;
-          ANDROID_SDK_ROOT = androidSdk;
-          ORG_GRADLE_PROJECT_enableAndroid = "true";
-          GRADLE_OPTS = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidSdk}/build-tools/35.0.0/aapt2";
-        };
-
-        # Phase one is JVM-only: no SDK, NDK, emulator or license acceptance.
-        timetable-android-core = pkgs.mkShell {
-          name = "timetable-android-core";
-          packages = [
-            pkgs.gradle
-            pkgs.jdk17
-          ];
-          JAVA_HOME = "${pkgs.jdk17}";
-        };
-
         default = pkgs.mkShell {
           name = "default-dev";
           packages = with pkgs; [

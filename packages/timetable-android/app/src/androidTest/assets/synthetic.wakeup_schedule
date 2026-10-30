@@ -1,5 +1,0 @@
-{"courseLen":2,"id":1,"name":"八节制","sameBreakLen":true,"sameLen":true,"theBreakLen":10}
-[{"endTime":"08:45","node":1,"startTime":"08:00","timeTable":1},{"endTime":"09:40","node":2,"startTime":"08:55","timeTable":1},{"endTime":"10:45","node":3,"startTime":"10:00","timeTable":1},{"endTime":"11:40","node":4,"startTime":"10:55","timeTable":1}]
-{"id":7,"maxWeek":16,"nodes":4,"showOtherWeekCourse":true,"showSat":false,"showSun":false,"sundayFirst":false,"startDate":"2026-09-07","tableName":"自建离线课表","timeTable":1}
-[{"courseName":"测试物理","credit":3,"id":42,"note":"实验报告","tableId":7}]
-[{"day":3,"endWeek":16,"id":42,"level":0,"ownTime":false,"room":"实验楼 2","startNode":3,"startWeek":2,"step":2,"tableId":7,"teacher":"样例老师","type":2},{"day":5,"endWeek":16,"id":42,"level":0,"ownTime":false,"room":"实验楼 3","startNode":1,"startWeek":1,"step":1,"tableId":7,"teacher":"助教","type":1}]
