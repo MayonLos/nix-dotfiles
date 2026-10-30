@@ -88,6 +88,7 @@ let
       ./noctalia/r43-calendar.patch
       ./noctalia/r43-settings.patch
       ./noctalia/r43-wallpaper.patch
+      ./noctalia/r50-panel-widths.patch
       ./noctalia/r44-status-icons.patch
     ];
     # Fail on source drift, including the independently maintained panel patches.

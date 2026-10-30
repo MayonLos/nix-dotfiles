@@ -286,7 +286,7 @@ pkgs.runCommand "interactive-session-config"
     assert p["dark"]["mSurface"] == m["palette"]["bg"]
     settings = m["settings"]
     patches = {patch["name"]: patch["content"] for patch in m["noctaliaPatches"]}
-    assert set(patches) == {"astra-selection.patch", "tech-lockscreen.patch", "nvidia-sampler.patch", "active-app-name.patch", "launchpad-native.patch", "desktop-menus.patch", "r43-control-center.patch", "r43-notifications.patch", "r43-osd.patch", "r43-calendar.patch", "r43-settings.patch", "r43-wallpaper.patch", "r44-status-icons.patch"}
+    assert set(patches) == {"astra-selection.patch", "tech-lockscreen.patch", "nvidia-sampler.patch", "active-app-name.patch", "launchpad-native.patch", "desktop-menus.patch", "r43-control-center.patch", "r43-notifications.patch", "r43-osd.patch", "r43-calendar.patch", "r43-settings.patch", "r43-wallpaper.patch", "r44-status-icons.patch", "r50-panel-widths.patch"}
     for name, marker in {"astra-selection.patch": "syncCompactControls", "tech-lockscreen.patch": "m_identityAvatar->setRadius(28.0F)", "nvidia-sampler.patch": "gpuOnlyNvidia", "active-app-name.patch": "resolveRunningDesktopEntry", "launchpad-native.patch": "provider.activate(result)", "desktop-menus.patch": "workspaceWindowAssignments(it->output)"}.items():
         assert marker in patches[name], name
     # Check serialized settings too: validating the Nix attrset alone would

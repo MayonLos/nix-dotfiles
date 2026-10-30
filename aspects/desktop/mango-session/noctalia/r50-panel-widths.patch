@@ -1,0 +1,53 @@
+--- a/src/config/schema/ranges.h
++++ b/src/config/schema/ranges.h
+@@ -20,8 +20,9 @@
+   // Shell.
+   inline constexpr Range<float> kAnimationSpeedRange{0.1F, 4.0F, 0.05F};
+   inline constexpr Range<float> kCornerRadiusScaleRange{0.0F, 2.0F, 0.05F};
+-  inline constexpr Range<std::int64_t> kControlCenterWidthRange{600, 1200, 10};
+-  inline constexpr Range<std::int64_t> kLauncherWidthRange{560, 1100, 10};
++  // R50: allow the declared compact panel widths instead of silently clamping.
++  inline constexpr Range<std::int64_t> kControlCenterWidthRange{348, 1200, 10};
++  inline constexpr Range<std::int64_t> kLauncherWidthRange{520, 1100, 10};
+   inline constexpr Range<std::int64_t> kNotificationWidthRange{240, 500, 10};
+   inline constexpr Range<std::int64_t> kScreenCornersSizeRange{1, 100, 1};
+   inline constexpr Range<std::int64_t> kHotCornersDelayMsRange{0, 2000, 50};
+--- a/src/shell/control_center/control_center_panel.cpp
++++ b/src/shell/control_center/control_center_panel.cpp
+@@ -83,7 +83,11 @@
+   }
+   const float fullSize = m_config != nullptr ? static_cast<float>(m_config->config().controlCenter.width)
+                                              : static_cast<float>(ControlCenterConfig::kDefaultWidth);
+-  // R43: width is the visible panel width, independent of navigation mode.
++  // R50: compact Home must not compress the native two-column detail tabs.
++  // Direct Calendar has its own 320px layout above.
++  if (isDirectSectionOpenContext(pendingOpenContext())) {
++    return std::max(600.0F, fullSize) * m_contentScale;
++  }
+   return fullSize * m_contentScale;
+ }
+
+--- a/src/shell/panel/panel_manager.cpp
++++ b/src/shell/panel/panel_manager.cpp
+@@ -1709,6 +1709,21 @@
+         closePanel();
+         return;
+       }
++      // R50: Home, Calendar and detail sections have different preferred widths.
++      // Reuse the normal open path so a bar shortcut cannot keep Home's narrow surface.
++      if (panelId == "control-center") {
++        // A Home shortcut may be inside the scene being replaced. Finish its
++        // input callback before destroying that scene, and own the view strings.
++        DeferredCall::callLater(
++            [this, panelId, request, context = std::string(request.context),
++             sourceBarName = std::string(request.sourceBarName)]() mutable {
++              request.context = context;
++              request.sourceBarName = sourceBarName;
++              openPanel(panelId, request);
++            }
++        );
++        return;
++      }
+       // Panels placed near the clicked widget must fully reopen so geometry
+       // and bar decoration track the new anchor.
+       if (request.hasAnchorPosition && openNearClickEnabled(m_activePanel, panelId, m_config)) {

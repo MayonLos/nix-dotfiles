@@ -1,14 +1,14 @@
 --- a/src/shell/osd/osd_overlay.cpp
 +++ b/src/shell/osd/osd_overlay.cpp
 @@ -126,7 +126,8 @@
- 
+
    // Base units at ui_scale=1; passive overlay (no hit targets), between bar and old OSD size.
    [[nodiscard]] float horizontalCardLength(float s) {
 -    return (Style::controlHeight * 6 + Style::spaceMd + Style::spaceSm + Style::spaceXs) * s;
 +    // R43: continuous compact OSD, 246 x 46 logical pixels.
 +    return 246.0F * s;
    }
- 
+
    [[nodiscard]] float cardWidth(float s, const std::string& orientation) {
 @@ -143,7 +144,7 @@
        }
@@ -17,12 +17,12 @@
 -    return (Style::controlHeight + Style::spaceSm) * s;
 +    return 46.0F * s;
    }
- 
+
    [[nodiscard]] std::uint32_t osdSurfaceWidth(float s, const std::string& orientation, float innerPadX) {
 @@ -156,17 +157,17 @@
      return static_cast<std::uint32_t>(std::max(1, static_cast<int>(std::ceil(h))));
    }
- 
+
 -  [[nodiscard]] float glyphSize(float s) { return (Style::fontSizeTitle + Style::borderWidth * 4) * s; }
 -
 -  [[nodiscard]] float valueFontSize(float s) { return Style::fontSizeBody * s; }
@@ -33,18 +33,27 @@
 +  [[nodiscard]] float valueFontSize(float s) { return Style::fontSizeCaption * s; }
 +
 +  [[nodiscard]] float progressHeight(float s) { return 3.0F * s; }
- 
+
    [[nodiscard]] float verticalProgressWidth(float s) { return progressHeight(s) * 1.75F; }
- 
+
 -  [[nodiscard]] float cardPadding(float s) { return Style::spaceMd * s; }
 -
 -  [[nodiscard]] float innerGap(float s) { return (Style::spaceSm + Style::spaceXs * 0.5F) * s; }
-+  [[nodiscard]] float cardPadding(float s) { return 16.0F * s; }
++  [[nodiscard]] float cardPadding(float s, bool vertical) { return (vertical ? 16.0F : 20.0F) * s; }
 +
 +  [[nodiscard]] float innerGap(float s) { return 12.0F * s; }
- 
+
    [[nodiscard]] float osdCardRadius(float cw, float ch, float layoutScale) {
      const float maxR = std::min(cw, ch) * 0.5F;
+@@ -716,7 +717,7 @@
+   const bool vertical = isVerticalOrientation(m_lastOrientation);
+   const float cw = cardWidth(s, m_lastOrientation);
+   const float ch = cardHeight(s, m_lastOrientation, m_lastShowProgress);
+-  const float pad = cardPadding(s);
++  const float pad = cardPadding(s, vertical);
+   const float gap = innerGap(s);
+
+   inst.sceneRoot = ui::node({});
 @@ -770,7 +771,7 @@
    auto icon = ui::glyph({
        .out = &inst.glyph,
@@ -53,17 +62,26 @@
 +      .color = colorSpecFromRole(ColorRole::OnSurface),
        .configure = [](Glyph& glyph) { glyph.setZIndex(1); },
    });
- 
-@@ -778,7 +779,7 @@
+
+@@ -778,7 +779,8 @@
        .out = &inst.value,
        .text = "100%",
        .fontSize = valueFontSize(s),
 -      .fontWeight = FontWeight::Bold,
 +      .fontWeight = FontWeight::Normal,
++      .fontFeatures = vertical ? "" : "tnum",
        .color = colorSpecFromRole(ColorRole::OnSurface),
        .maxWidth = vertical ? cw - pad * 2.0F : 0.0F,
        .maxLines = 1,
-@@ -793,8 +794,8 @@
+@@ -787,14 +789,15 @@
+   });
+   // Reserve enough width for "100%" so the progress bar doesn't shrink at max values.
+   value->measure(renderer);
+-  inst.progressValueMinWidth = value->width();
++  // R50: equal end cells keep the rail centered, independent of digit count/font.
++  inst.progressValueMinWidth = std::max(36.0F * s, value->width());
+   value->setMinWidth(vertical ? 0.0F : inst.progressValueMinWidth);
+
    const float ph = progressHeight(s);
    auto progress = ui::progressBar({
        .out = &inst.progress,
@@ -74,8 +92,35 @@
        .radius = osdProgressRadius(s),
        .orientation = vertical ? ProgressBarOrientation::Vertical : ProgressBarOrientation::Horizontal,
        .width = vertical ? verticalProgressWidth(s) : 0.0F,
-@@ -838,7 +839,7 @@
- 
+@@ -803,11 +806,24 @@
+       .configure = [](ProgressBar& progressBar) { progressBar.setZIndex(1); },
+   });
+
++  // R50: keep the 18px Tabler viewport at the outer inset, vertically centered.
++  // Status-only OSDs keep the native compact, centered icon/text group.
++  std::unique_ptr<Node> iconCell;
++  if (!vertical && m_content.showProgress) {
++    iconCell = ui::row({
++        .align = FlexAlign::Center,
++        .justify = FlexJustify::Start,
++        .width = inst.progressValueMinWidth,
++        .height = glyphSize(s),
++    }, std::move(icon));
++  } else {
++    iconCell = std::move(icon);
++  }
+   std::unique_ptr<Flex> row;
+   if (vertical) {
+-    row = ui::column(rowProps, std::move(icon), std::move(progress), std::move(value));
++    row = ui::column(rowProps, std::move(iconCell), std::move(progress), std::move(value));
+   } else {
+-    row = ui::row(rowProps, std::move(icon), std::move(progress), std::move(value));
++    row = ui::row(rowProps, std::move(iconCell), std::move(progress), std::move(value));
+   }
+   card->addChild(std::move(row));
+
+@@ -838,7 +854,7 @@
+
    const ColorRole accentRole = m_content.overLimit ? ColorRole::Error
        : m_content.inactive                         ? ColorRole::OnSurfaceVariant
 -                                                   : ColorRole::Primary;
@@ -83,3 +128,37 @@
    inst.glyph->setGlyph(m_content.icon);
    inst.glyph->setColor(colorSpecFromRole(accentRole));
    inst.progress->setVisible(m_content.showProgress);
+@@ -854,16 +870,21 @@
+   // Text OSDs (media title, device name, ...) carry arbitrary-length values; cap them to the card
+   // interior so they ellipsize within the padding instead of overflowing. Progress OSDs keep the
+   // uncapped "100%" value so it can reserve minWidth beside the bar.
+-  const float horizontalValueMax = cw - cardPadding(s) * 2.0F - glyphSize(s) - innerGap(s);
++  const float horizontalValueMax = cw - cardPadding(s, vertical) * 2.0F - (!vertical && m_content.showProgress ? inst.progressValueMinWidth : glyphSize(s)) - innerGap(s);
+
+   // Progress OSDs: cap the label so a long custom label can't squeeze the bar to nothing.
+   // Built-in "100%" values are far below this cap, so they are unaffected.
+-  const float fullBar = cw - cardPadding(s) * 2.0F - glyphSize(s) - innerGap(s) * 2.0F - inst.progressValueMinWidth;
++  const float fullBar = cw - cardPadding(s, vertical) * 2.0F - inst.progressValueMinWidth * 2.0F - innerGap(s) * 2.0F;
+   const float minBar = fullBar / 3.0F;
+   const float progressValueMax = std::max(inst.progressValueMinWidth, horizontalValueMax - innerGap(s) - minBar);
+
++  // Only ordinary percentage readouts have a fixed cell. Custom progress labels
++  // retain the upstream bounded expansion and text-only labels still ellipsize.
++  const bool percentage = !m_content.value.empty() && m_content.value.size() <= 4 && m_content.value.back() == '%'
++      && m_content.value.find_first_not_of("0123456789", 0) == m_content.value.size() - 1;
+   inst.value->setMaxWidth(
+-      vertical                      ? cw - cardPadding(s) * 2.0F
++      !vertical && m_content.showProgress && percentage ? inst.progressValueMinWidth :
++      vertical                      ? cw - cardPadding(s, vertical) * 2.0F
+           : !m_content.showProgress ? std::max(0.0F, horizontalValueMax)
+                                     : progressValueMax
+   );
+@@ -875,7 +896,7 @@
+   inst.row->layout(renderer);
+   const float rowX = std::round((cw - inst.row->width()) * 0.5F);
+   const float rowY = std::round((ch - inst.row->height()) * 0.5F);
+-  inst.rowBaseX = vertical ? rowX : cardPadding(s);
++  inst.rowBaseX = vertical ? rowX : cardPadding(s, vertical);
+   inst.rowBaseY = rowY;
+   inst.row->setPosition(inst.rowBaseX, inst.rowBaseY);
+ }
