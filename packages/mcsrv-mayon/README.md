@@ -49,7 +49,7 @@ mcsrv-mayon frp off friends             # 撤销配置；已有子进程随实�
 
 界面显示可发给朋友的 `frps地址:远端端口`，标记为请求地址；frpc子进程存活不代表已注册成功，必须从外部验证。远端端口冲突、token错误、frps端口限制、路由均会影响连通。使用现行 [frp TOML 配置](https://gofrp.org/en/docs/features/common/configure/) 的 `serverAddr/serverPort/auth.token/[[proxies]]`，启用 TLS；如需校验服务端证书，可传 `--trusted-ca /绝对路径/ca.pem`（参考[官方 TLS 说明](https://gofrp.org/en/docs/features/common/network/network-tls/)）。不打开 frp 管理 API 或 RCON。
 
-**Clash TUN**：把 frps 的域名 `DOMAIN,relay.example.org,DIRECT` 和所有解析出的公网 IP `IP-CIDR,<IP>/32,DIRECT,no-resolve`（IPv6用 `/128`）放在代理规则之前；域名规则便于DNS变化，IP规则覆盖应用直连IP路径。frpc子进程会清除HTTP(S)/ALL_PROXY及其小写环境变量，但这不能绕过系统 TUN；必须由用户自己的 Mihomo 路由规则直连。状态页持续提示，本程序不改写 Clash/Verge。
+**Clash TUN**：把 frps 的域名 `DOMAIN,relay.example.org,DIRECT` 和所有解析出的公网 IP `IP-CIDR,<IP>/32,DIRECT,no-resolve`（IPv6用 `/128`）放在代理规则之前；域名规则便于DNS变化，IP规则覆盖应用直连IP路径。frpc子进程会清除HTTP(S)/ALL_PROXY及其小写环境变量，但这不能绕过系统 TUN；必须由用户自己的 Mihomo 路由规则直连。状态页持续提示，本程序不改写用户的 Mihomo 配置。
 
 可选“用这台云主机当中转”只在本机联机/LAN页按 `F`，确认SSH目标两次后部署独立用户 frps；云服务器主页没有此入口：
 
@@ -199,7 +199,7 @@ rules:
   - IP-CIDR6,fd7a:115c:a1e0::/48,DIRECT,no-resolve
 ```
 
-本功能不改写 Clash/Verge 配置。若要按进程直连，进程规则可能同时覆盖 Prism、游戏和其他 Java 程序；不要把它当成只匹配某个服务器的精确开关。TUN 入站、同机本地回连及实际路由需结合本机配置验证，直连规则本身不证明玩家已可连入。
+本功能不改写 Mihomo 配置。若要按进程直连，进程规则可能同时覆盖 Prism、游戏和其他 Java 程序；不要把它当成只匹配某个服务器的精确开关。TUN 入站、同机本地回连及实际路由需结合本机配置验证，直连规则本身不证明玩家已可连入。
 
 ## 设计依据和当前限制
 

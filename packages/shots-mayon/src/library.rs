@@ -16,7 +16,6 @@ use std::{
 };
 
 const IMAGE_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff", "avif"];
-const VIDEO_EXTENSIONS: &[&str] = &["mp4", "mkv", "webm", "mov", "avi", "m4v"];
 const OCR_TIMEOUT: Duration = Duration::from_secs(120);
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -146,7 +145,6 @@ impl Library {
                 pictures.join("MarkShot"),
                 pictures.join("mark-shot"),
                 pictures.join("wayscrollshot"),
-                self.home.join("Videos/Recordings"),
             ]
             .into_iter()
             .collect(),
@@ -167,7 +165,7 @@ impl Library {
                 continue;
             }
             active_roots.push(root.clone());
-            walk_media(&root, &mut records)?;
+            walk_images(&root, &mut records)?;
         }
 
         self.with_db(|db| {
@@ -236,17 +234,11 @@ impl Library {
         })
     }
 
-    pub fn entries(
-        &self,
-        query: &str,
-        kind: Option<&str>,
-        source: Option<&str>,
-        favorite: bool,
-    ) -> Result<Vec<Entry>> {
+    pub fn entries(&self, query: &str, source: Option<&str>, favorite: bool) -> Result<Vec<Entry>> {
         self.with_db(|db| {
             let mut stmt = db.prepare(
                 "SELECT path,name,kind,source,modified,text,favorite
-                 FROM entries ORDER BY modified DESC, path ASC",
+                 FROM entries WHERE kind='image' ORDER BY modified DESC, path ASC",
             )?;
             let rows = stmt.query_map([], |row| {
                 Ok(Entry {
@@ -265,9 +257,6 @@ impl Library {
             for row in rows {
                 let item = row?;
                 if favorite && !item.favorite {
-                    continue;
-                }
-                if kind.is_some_and(|wanted| item.kind != wanted) {
                     continue;
                 }
                 if source
@@ -591,7 +580,7 @@ fn deduplicate(roots: Vec<PathBuf>) -> Vec<PathBuf> {
         .collect()
 }
 
-fn walk_media(root: &Path, records: &mut Vec<FileRecord>) -> Result<()> {
+fn walk_images(root: &Path, records: &mut Vec<FileRecord>) -> Result<()> {
     let entries = match fs::read_dir(root) {
         Ok(entries) => entries,
         Err(error) => return Err(error).with_context(|| format!("scanning {}", root.display())),
@@ -604,7 +593,7 @@ fn walk_media(root: &Path, records: &mut Vec<FileRecord>) -> Result<()> {
             continue;
         }
         if metadata.is_dir() {
-            walk_media(&path, records)?;
+            walk_images(&path, records)?;
             continue;
         }
         if !metadata.is_file() {
@@ -615,13 +604,9 @@ fn walk_media(root: &Path, records: &mut Vec<FileRecord>) -> Result<()> {
             .and_then(|extension| extension.to_str())
             .unwrap_or_default()
             .to_ascii_lowercase();
-        let kind = if IMAGE_EXTENSIONS.contains(&extension.as_str()) {
-            "image"
-        } else if VIDEO_EXTENSIONS.contains(&extension.as_str()) {
-            "video"
-        } else {
+        if !IMAGE_EXTENSIONS.contains(&extension.as_str()) {
             continue;
-        };
+        }
         let metadata = fs::symlink_metadata(&path)?;
         let name = path
             .file_name()
@@ -631,7 +616,7 @@ fn walk_media(root: &Path, records: &mut Vec<FileRecord>) -> Result<()> {
         records.push(FileRecord {
             path: path.to_string_lossy().into_owned(),
             name,
-            kind: kind.to_string(),
+            kind: "image".to_string(),
             source: sidecar_source(&path),
             modified: modified_seconds(&metadata),
             mtime_ns: modified_nanoseconds(&metadata),
@@ -693,7 +678,6 @@ mod tests {
     fn open_fixture() -> (TempDir, Library) {
         let home = tempfile::tempdir().unwrap();
         fs::create_dir_all(home.path().join("Pictures/mark-shot")).unwrap();
-        fs::create_dir_all(home.path().join("Videos/Recordings")).unwrap();
         let library = Library::open_under(home.path().to_path_buf()).unwrap();
         (home, library)
     }
@@ -733,7 +717,7 @@ mod tests {
         fs::set_permissions(&hidden, fs::Permissions::from_mode(0o700)).unwrap();
         assert!(failed);
         assert!(ocr_failed);
-        assert_eq!(library.entries("", None, None, true).unwrap().len(), 1);
+        assert_eq!(library.entries("", None, true).unwrap().len(), 1);
     }
 
     #[test]
@@ -746,9 +730,14 @@ mod tests {
             br#"{"source":"Editor Window"}"#,
         )
         .unwrap();
-        let video = library.home.join("Videos/Recordings/demo.mp4");
-        fs::write(&video, b"synthetic").unwrap();
+        let video = library.home.join("Pictures/mark-shot/demo.mp4");
+        fs::write(&video, b"synthetic video; never indexed").unwrap();
         library.index().unwrap();
+        assert!(library
+            .entries("", None, false)
+            .unwrap()
+            .iter()
+            .all(|entry| entry.path != video.to_string_lossy().as_ref()));
         library
             .with_db(|db| {
                 db.execute(
@@ -758,41 +747,17 @@ mod tests {
                 Ok(())
             })
             .unwrap();
+        assert_eq!(library.entries("计划文字", None, false).unwrap().len(), 1);
         assert_eq!(
             library
-                .entries("计划文字", None, None, false)
+                .entries("editor", Some("window"), false)
                 .unwrap()
                 .len(),
             1
         );
-        assert_eq!(
-            library
-                .entries("editor", None, Some("window"), false)
-                .unwrap()
-                .len(),
-            1
-        );
-        assert_eq!(
-            library
-                .entries("window", Some("image"), None, false)
-                .unwrap()
-                .len(),
-            1
-        );
-        assert_eq!(
-            library
-                .entries("2020-01-01", None, None, false)
-                .unwrap()
-                .len(),
-            0
-        );
-        assert_eq!(
-            library
-                .entries("demo", Some("video"), None, false)
-                .unwrap()
-                .len(),
-            1
-        );
+        assert_eq!(library.entries("window", None, false).unwrap().len(), 1);
+        assert_eq!(library.entries("2020-01-01", None, false).unwrap().len(), 0);
+        assert_eq!(library.entries("demo", None, false).unwrap().len(), 0);
     }
 
     #[test]
@@ -815,7 +780,7 @@ mod tests {
         let link = library.home.join("Pictures/mark-shot/linked.png");
         std::os::unix::fs::symlink(&image, &link).unwrap();
         assert_eq!(library.index().unwrap(), 1);
-        let entries = library.entries("", None, None, false).unwrap();
+        let entries = library.entries("", None, false).unwrap();
         assert_eq!(entries.len(), 1);
         assert!(entries[0].text.is_empty());
         let ocr_done = library
@@ -849,7 +814,7 @@ mod tests {
             .unwrap();
         fs::write(&sidecar, br#"{"source":"New Window"}"#).unwrap();
         assert_eq!(library.index().unwrap(), 1);
-        let entries = library.entries("", None, Some("new"), false).unwrap();
+        let entries = library.entries("", Some("new"), false).unwrap();
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].text, "recognized");
     }
@@ -864,6 +829,6 @@ mod tests {
         library.set_paused(true).unwrap();
         assert!(library.paused());
         library.favorite(image.to_string_lossy().as_ref()).unwrap();
-        assert_eq!(library.entries("", None, None, true).unwrap().len(), 1);
+        assert_eq!(library.entries("", None, true).unwrap().len(), 1);
     }
 }

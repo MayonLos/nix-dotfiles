@@ -27,9 +27,6 @@ let
     "SUPER+SHIFT,Z,toggle_named_scratchpad,power-mayon,none,${lib.getExe pkgs.kitty} --class=power-mayon --title=电源 ${lib.getExe pkgs.powerMayon}"
     "SUPER+SHIFT,X,toggle_named_scratchpad,shots-mayon,none,${lib.getExe pkgs.kitty} --class=shots-mayon ${lib.getExe pkgs.shotsMayon}"
     "SUPER+SHIFT,F1,toggle_named_scratchpad,keys-mayon,none,${lib.getExe pkgs.kitty} --class=keys-mayon ${lib.getExe pkgs.keysMayon}"
-    "SUPER+SHIFT,F10,spawn,${lib.getExe pkgs.shotsMayon} record toggle"
-    "SUPER+SHIFT,F11,spawn,${lib.getExe pkgs.shotsMayon} record toggle --window"
-    "SUPER+SHIFT,F12,spawn,${lib.getExe pkgs.shotsMayon} record toggle --region"
     "SUPER+SHIFT,B,spawn,${lib.getExe pkgs.kitty} --class=mayon-bili ${lib.getExe pkgs.bilitui}"
     # Press once to start dictation, again to stop and type the text.
     "SUPER+SHIFT,V,spawn,${lib.getExe pkgs.mayonVoice} toggle"
@@ -296,7 +293,7 @@ let
         mcsrv-mayon = "Minecraft 服务器";
         serial-mayon = "串口监视";
         power-mayon = "电量与性能";
-        shots-mayon = "截图与录屏";
+        shots-mayon = "截图库";
         keys-mayon = "快捷键速查";
       };
       args =

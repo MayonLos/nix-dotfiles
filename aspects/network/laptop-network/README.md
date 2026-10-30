@@ -1,13 +1,9 @@
 # Laptop network
 
-NetworkManager、IPv6、resolved、防火墙和两套手动 Clash 入口。`default.nix`
+NetworkManager、IPv6、resolved、防火墙和手动原生 Clash 入口。`default.nix`
 登记 `laptop-network`、`network-manager-user` 与 `clash-tui`；不新增 aspect。
 `clash-tui` 的 Den 用户绑定以 `user.name` 选择 native 服务 owner，home/group
 从 NixOS `users.users` 取得，不闭包捕获真实主机事实。只支持一个服务 owner。
-
-Verge 2.4.7 保留，`serviceMode=true`、`tunMode=false`、`autoStart=false` 均不改变。
-`tunMode` 只给 GUI capability，serviceMode helper 才提供 TUN 权限。用户既有
-Verge auto-launch 是应用设置，需在 GUI 自行确认关闭。两套内核不得同时运行。
 
 `native-clash.nix` 声明 `services.mayon-clash.user` 选项与系统
 `mayon-clash.service`：没有 wantedBy、timer、socket activation 或自动重启；
@@ -16,14 +12,12 @@ Verge auto-launch 是应用设置，需在 GUI 自行确认关闭。两套内核
 使用锁定 `pkgs.mihomo` 1.19.24，capability 仅 NET_ADMIN/BIND_SERVICE。
 上游 tunMode 的 PrivateDevices/PrivateUsers 放宽保留；controller 另需 AF_UNIX。
 ProtectHome=read-only，数据目录是唯一额外 ReadWritePaths；RuntimeDirectory
-由 systemd 单独管理。配置不存在、校验失败或该 UID 的 Verge socket 可连时
+由 systemd 单独管理。配置不存在或校验失败时
 preflight 拒绝启动，只输出固定中文诊断，不回显配置或内核校验输出。
 
 `~/.local/share/mayon-clash/` 由 TUI 初始化，属绑定用户，0700；索引、订阅、
-设置与配置 0600。Nix 不包含订阅内容/URL。TUI 首次写入时用 yq 只选取 Verge
-runtime 的 tun/dns/sniffer/profile/ipv6/mode/log-level 作为基础设置；没有读取
-其他 runtime 字段。完整 remote 缓存导入是用户主动按 `I` 后的独立操作，
-不执行 Verge 增强项。数据与移除后的保留边界见
+设置与配置 0600。Nix 不包含订阅内容/URL。基础设置沿用 settings.toml 中的
+baseline；缺失时使用内置默认值。已有订阅、配置与选择保持兼容。数据与移除后的保留边界见
 [Clash README](../../../packages/mayon-tui/crates/clash/README.md)。
 
 GeoIP.dat、GeoSite.dat、Country.mmdb 缺失时从锁定的 v2ray-geoip、
@@ -36,18 +30,18 @@ v2ray-domain-list-community、dbip-country-lite **复制**，随后属于用户�
 127.0.0.1:7897。allow-lan 是用户可显式修改的设置，不自动放行防火墙。
 
 不设置系统代理、不向 nix-daemon 添加代理环境。native 开启 TUN 时接管网络，
-停止后回到直连；resolved 保留默认 stub listener。防火墙信任 native
-`mayon-clash` 与 Verge `Meta`/`Mihomo` 接口。polkit 只允许该服务单元把 TUN 注册为
+停止后回到直连；resolved 保留默认 stub listener。防火墙只信任原生
+`mayon-clash` 接口。polkit 只允许该服务单元把 TUN 注册为
 resolved 的默认 DNS 链路（dns-servers/domains/default-route）；resolved 的上游查询绑定物理
 网卡，不注册就绕过 dns-hijack。真实 TUN/休眠恢复需在应用后验收。
 
 本目录所有 Nix 文件私有，`checks.nix` 是显式公开测试钩子，登记于
 `nix/checks.nix`：`laptop-network` 验证生产声明，`mayon-clash-vm` 在 2048 MiB VM
 内检查 inactive、polkit、合成 HTTP 订阅、TUN 流量/API、socket 隔离、stop 后路由
-恢复、Verge socket 冲突。程序与 preflight 源码统一在 `packages/mayon-tui/`，服务仅调用公开 clash 输出的
+恢复。程序与 preflight 源码统一在 `packages/mayon-tui/`，服务仅调用公开 clash 输出的
 `bin/mayon-clash-preflight`，不跨目录引用包内私有源码。
 
-移除 feature 只撤回声明与包；不会删除 NetworkManager profiles、Verge 数据、
+移除 feature 只撤回声明与包；不会删除 NetworkManager profiles、旧 GUI 数据、
 native 订阅/设置/缓存、凭据或历史。移除前应手动停止 native 服务。
 
 锁定 1.19.24 的 `main.go` 在 `hub.Parse`（含 TUN 构造、provider 初始化）结束后
@@ -55,3 +49,7 @@ native 订阅/设置/缓存、凭据或历史。移除前应手动停止 native 
 向自己的 Unix API PATCH `tun.enable=false`，经内核 tunMux 等待构造并清理后再
 由 systemd 结束进程；不改持久 TUN 设置、不清理别的服务或接口。VM 重复三次
 “接口出现即停止”，并比较停止前后路由与策略规则；只忽略 DHCP/IPv6 过期时钟。
+
+Clash Verge 包、helper 与桌面入口已移除。旧 `~/.local/share/io.github.clash-verge-rev.*`
+及 `~/.config` 下对应数据保留，其中可能含订阅与登录状态；是否手动删除由用户决定，
+仓库不提供自动清理逻辑。

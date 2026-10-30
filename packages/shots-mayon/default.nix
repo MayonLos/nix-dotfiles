@@ -51,11 +51,7 @@ pkgs.rustPlatform.buildRustPackage {
       --prefix PATH : ${
         pkgs.lib.makeBinPath [
           pkgs.ffmpeg
-          pkgs.wf-recorder
-          pkgs.slurp
           pkgs.wl-clipboard
-          pkgs.libnotify
-          pkgs.pulseaudio
           pkgs.glib
           pkgs.xdg-utils
           pkgs.trash-cli
@@ -66,7 +62,7 @@ pkgs.rustPlatform.buildRustPackage {
       }
   '';
   meta = {
-    description = "Private screenshot and recording library with local OCR and Kitty previews";
+    description = "Private screenshot library with local OCR and Kitty previews";
     license = pkgs.lib.licenses.mit;
     platforms = pkgs.lib.platforms.linux;
     mainProgram = "shots-mayon";

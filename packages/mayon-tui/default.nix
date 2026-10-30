@@ -34,7 +34,6 @@ pkgs.rustPlatform.buildRustPackage {
           --prefix PATH : ${
             pkgs.lib.makeBinPath [
               pkgs.mihomo
-              pkgs.yq-go
               pkgs.systemd
             ]
           } \

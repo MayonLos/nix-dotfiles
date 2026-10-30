@@ -65,14 +65,7 @@ Noctalia/Mango 只消费 [白名单投影](../aspects/desktop/mango-session/sess
 第45轮性能/游戏声明（尚未应用）：rootless Docker 使用 systemd-socket-proxyd 转发至私有 daemon socket，避免 RootlessKit 的 fd:// 边界；weekly builder prune 保留且可触发 daemon。GameMode 首/末客户端钩子保存并恢复 PPD 原 profile，CPU governor 仅由 PPD 管理（锁定 1.8.2 包补充 ignore 开关）；关闭 GPU 调频、split-lock 和 ioprio 改写，按需持有独立 logind idle inhibitor，gamemoded 退出时执行恢复；不阻止手动锁屏/显式休眠，也不重启 scx。Steam 不再全局 preload（该方式会使 steam-runtime lsof 崩溃）；每个游戏设置 `gamemoderun %command%`，helper blacklist 只处理显式包装链；Prism 在实际游戏启动边界包装 game-run。NVIDIA 模块加载与 persistence 关机规避保持。隔离测试不等同应用后冷登录、真实游戏与容器验证，细节见 [Gaming](../aspects/apps/gaming/README.md) 与 [Containers](../aspects/dev/containers/README.md)。
 
 
-第47轮 TUI 声明（尚未应用）：自写程序集中在
-[mayon-tui](../packages/mayon-tui/README.md)，不新增后台服务。Clash GUI 的 Nix
-`autoStart` 显式关闭；serviceMode root helper 仍提供 TUN 权限，GUI 打开后请求启动
-内核、退出或 SIGTERM 时由 Verge 2.4.7 清理系统代理/TUN/内核。GUI 自己既有的
-mutable auto-launch 设置不在 Nix writer 范围，需实机在 Verge 设置中确认关闭。
-TUI 的 `s` 复用 Noctalia 原生 app-launch 策略，`X` 只向本 UID、验证 executable
-路径并固定 pidfd 的 GUI 发 SIGTERM。只验证过私有 mihomo 与编译替身，真实 GUI
-启动、TUN/DNS 恢复仍待应用后验收。
+自写 TUI 位于 [mayon-tui](../packages/mayon-tui/README.md)，不新增后台服务。
 
 Docker TUI 使用公开 `%t/docker.sock`，首次请求可能启动 daemon；确认停止时先取消
 并等待自身所有 API 请求，再执行 user docker/docker-proxy stop，并暂停刷新直到
@@ -81,17 +74,15 @@ Docker TUI 使用公开 `%t/docker.sock`，首次请求可能启动 daemon；确
 socket 已存在）；`--docker-map` 是显式强制查询。隔离真实 rootless daemon 仍受
 newuidmap 权限限制，Docker 交互证据来自私有 API fixture，不代表实机已运行。
 
-第49轮 native Clash 试用声明（尚未应用）：[mayon-clash.service](../aspects/network/laptop-network/README.md)
-与保留的 Verge 可切换。没有 wantedBy、timer、socket 激活或自动重启，开机 inactive；
+原生 [mayon-clash.service](../aspects/network/laptop-network/README.md)
+没有 wantedBy、timer、socket 激活或自动重启，开机 inactive；
 TUI `s` 手动 start，`X` 确认 stop，退出 TUI 不停服务。绑定用户只有此单元的
 start/stop/restart 免密码权限，后台执行内核仍是该用户，capabilities 仅
 NET_ADMIN/BIND_SERVICE。network-online 是排序/请求依赖，不反向启动 Clash。
-preflight 在同 UID Verge socket 可连、配置缺失或校验失败时拒绝启动。
+preflight 在配置缺失或校验失败时拒绝启动。
 TUN 接管网络，不设系统代理或 nix-daemon 代理环境；停止后移除 TUN、恢复直连。
-订阅后台更新仅在 TUI 打开且 native 内核运行时执行，没有新常驻服务。
-旧第47轮“Clash TUI 仅由 Verge 管理”的描述只适用于显式 Verge 后端。
-集成后需主代理先退出 Verge再试 native，核对 TUN/DNS/路由/关闭恢复，切回时先 X
-停止 native；不可同时开两个内核。构建与隔离 VM 证据不代表真实主机已应用。
+订阅后台更新仅在 TUI 打开且内核运行时执行，没有新常驻服务。
+构建与隔离 VM 证据不代表真实主机已应用，TUN/DNS/路由/关闭恢复仍需应用后验收。
 
 native ExecStop 先通过自己的私有 controller 关闭运行中 TUN，再由 systemd
 结束内核；这规避 mihomo 1.19.24 在 `hub.Parse` 结束前尚未安装 SIGTERM 清理

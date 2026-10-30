@@ -24,10 +24,8 @@ pub const SERVICE: &str = "mayon-clash.service";
 pub struct Native {
     pub data: PathBuf,
     pub socket: PathBuf,
-    pub verge_profiles: PathBuf,
     pub mihomo: PathBuf,
     pub systemctl: PathBuf,
-    pub yq: PathBuf,
 }
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -38,7 +36,7 @@ pub struct Settings {
     pub allow_lan: bool,
     pub log_level: String,
     pub mixed_port: u16,
-    /// Only the seven permitted top-level keys, captured by yq on first mutation.
+    /// Saved base settings; built-in defaults fill this field when it is absent.
     pub baseline: String,
 }
 impl Default for Settings {
@@ -50,7 +48,7 @@ impl Default for Settings {
             allow_lan: false,
             log_level: "info".into(),
             mixed_port: 7897,
-            baseline: String::new(),
+            baseline: "tun: {stack: mixed, auto-route: true, auto-detect-interface: true, strict-route: false, dns-hijack: ['any:53']}\ndns: {enable: true, listen: ':53', enhanced-mode: fake-ip, fake-ip-range: 198.18.0.1/16, nameserver: [223.5.5.5, 8.8.8.8]}\nsniffer: {enable: false}\nprofile: {}".into(),
         }
     }
 }
@@ -97,8 +95,10 @@ pub struct Subscription {
     pub interval_hours: u64,
     pub usage: Option<Usage>,
     pub nodes: usize,
-    #[serde(default)]
-    pub verge_current: bool,
+    // Keep this retired key round-trippable so existing subscriptions.toml files
+    // are not rewritten into a different on-disk schema during ordinary edits.
+    #[serde(default, rename = "verge_current")]
+    pub legacy_current_marker: bool,
 }
 impl Store {
     pub fn view(&self) -> ProfileStore {
@@ -109,7 +109,6 @@ impl Store {
                 .iter()
                 .map(|s| ProfileItem {
                     uid: Some(s.id.clone()),
-                    kind: Some("remote".into()),
                     name: Some(s.name.clone()),
                     url: Some(s.url.clone()),
                     updated: Some(s.updated),
@@ -239,32 +238,7 @@ impl Native {
         if self.data.join("settings.toml").exists() {
             return self.settings();
         }
-        let mut settings = Settings::default();
-        if let Some(parent) = self.verge_profiles.parent() {
-            let path = parent.join("clash-verge.yaml");
-            if path.is_file() {
-                let out=tokio::process::Command::new(&self.yq).args(["-o=json", "pick([\"tun\", \"dns\", \"sniffer\", \"profile\", \"ipv6\", \"mode\", \"log-level\"])"]).arg(path).stderr(Stdio::null()).output().await.map_err(|_|"读取 Verge 基础设置需要 yq")?;
-                if !out.status.success() {
-                    return Err("无法读取 Verge 基础设置".into());
-                }
-                let v: Value =
-                    serde_yaml::from_slice(&out.stdout).map_err(|_| "Verge 基础设置格式无效")?;
-                settings.baseline = serde_yaml::to_string(&v).map_err(|_| "基础设置编码失败")?;
-                if let Some(v) = v["tun"]["enable"].as_bool() {
-                    settings.tun = v;
-                }
-                if let Some(v) = v["ipv6"].as_bool() {
-                    settings.ipv6 = v;
-                }
-                if let Some(v) = v["mode"].as_str() {
-                    settings.mode = v.into();
-                }
-                if let Some(v) = v["log-level"].as_str() {
-                    settings.log_level = v.into();
-                }
-            }
-        }
-        Ok(settings)
+        Ok(Settings::default())
     }
     pub async fn validate(&self, bytes: &[u8]) -> Result<()> {
         self.seed_geo()?;
@@ -427,7 +401,7 @@ impl Native {
             interval_hours: downloaded.interval,
             usage: downloaded.usage,
             nodes: node_count(&downloaded.bytes),
-            verge_current: false,
+            legacy_current_marker: false,
         });
         if store.current.is_none() {
             store.current = Some(id.clone());
@@ -503,118 +477,10 @@ impl Native {
         let _lock = self.lock()?;
         let store = self.store()?;
         if store.current.is_none() {
-            return Err("尚无订阅；请到 3 订阅添加或从 Verge 导入".into());
+            return Err("尚无订阅；请到 3 订阅添加".into());
         }
         self.commit(&store, &self.initial_settings().await?, None, false)
             .await
-    }
-    pub async fn import_verge(&self, running: bool) -> Result<String> {
-        let _lock = self.lock()?;
-        let mut store = self.store()?;
-        let settings = self.initial_settings().await?;
-        let raw =
-            fs::read_to_string(&self.verge_profiles).map_err(|_| "无法读取 Verge 订阅索引")?;
-        let source: Value = serde_yaml::from_str(&raw).map_err(|_| "Verge 索引格式无效")?;
-        let items = source["items"].as_sequence().ok_or("Verge 无订阅")?;
-        let enhancements = items.iter().any(|i| {
-            matches!(
-                i["type"].as_str(),
-                Some("merge" | "script" | "rules" | "proxies" | "groups")
-            )
-        });
-        let mut count = 0;
-        let mut caches = Vec::new();
-        for item in items
-            .iter()
-            .filter(|i| i["type"].as_str() == Some("remote"))
-        {
-            let raw = item["url"].as_str().ok_or("Verge 远程订阅缺 URL")?;
-            url(raw)?;
-            let uid = item["uid"].as_str().ok_or("Verge 订阅缺 ID")?;
-            let filename = item["file"].as_str().ok_or("Verge 订阅缺缓存路径")?;
-            if !matches!(
-                Path::new(filename)
-                    .components()
-                    .collect::<Vec<_>>()
-                    .as_slice(),
-                [std::path::Component::Normal(_)]
-            ) {
-                return Err("Verge 缓存路径无效".into());
-            }
-            let path = self
-                .verge_profiles
-                .parent()
-                .ok_or("Verge 路径无效")?
-                .join("profiles")
-                .join(filename);
-            if fs::symlink_metadata(&path).is_ok_and(|m| m.file_type().is_symlink()) {
-                return Err("拒绝导入符号链接缓存".into());
-            }
-            if fs::metadata(&path)
-                .map_err(|_| "Verge 缓存缺失；没有联网下载")?
-                .len()
-                > MAX_BODY as u64
-            {
-                return Err("Verge 缓存超过 32 MiB".into());
-            }
-            let bytes = fs::read(path).map_err(|_| "Verge 缓存缺失；没有联网下载")?;
-            self.validate(&merge(&bytes, &settings, &self.socket)?)
-                .await?;
-            let current = source["current"].as_str() == Some(uid);
-            if let Some(old) = store.items.iter_mut().find(|s| s.url == raw) {
-                old.verge_current = current;
-                if current {
-                    store.current = Some(old.id.clone());
-                }
-                continue;
-            }
-            let id = format!(
-                "v{}-{count}",
-                chrono::Utc::now().timestamp_nanos_opt().unwrap_or_default()
-            );
-            store.items.push(Subscription {
-                id: id.clone(),
-                name: safe_name(item["name"].as_str().unwrap_or("Verge 导入")),
-                url: raw.into(),
-                updated: item["updated"].as_i64().unwrap_or(0),
-                interval_hours: item["option"]["update_interval"]
-                    .as_u64()
-                    .map(|n| n.div_ceil(60))
-                    .unwrap_or(24)
-                    .clamp(1, 8760),
-                usage: serde_yaml::from_value(item["extra"].clone()).ok(),
-                nodes: node_count(&bytes),
-                verge_current: current,
-            });
-            if current || store.current.is_none() {
-                store.current = Some(id.clone());
-            }
-            caches.push((id, bytes));
-            count += 1;
-        }
-        // Stage all caches before publishing the index; on failure remove only files created in this import.
-        for (id, bytes) in &caches {
-            if let Err(e) = replace(&self.profile_path(id)?, bytes) {
-                for (id, _) in &caches {
-                    let _ = fs::remove_file(self.profile_path(id)?);
-                }
-                return Err(e);
-            }
-        }
-        if let Err(e) = self.commit(&store, &settings, None, running).await {
-            for (id, _) in &caches {
-                let _ = fs::remove_file(self.profile_path(id)?);
-            }
-            return Err(e);
-        }
-        Ok(format!(
-            "已从缓存导入 {count} 个订阅，● 标出原当前项；{}",
-            if enhancements {
-                "检测到增强项；未执行 merge/script/rules/proxies/groups 增强"
-            } else {
-                "无增强项"
-            }
-        ))
     }
     pub async fn service(&self, verb: &str) -> Result<()> {
         if !matches!(verb, "start" | "stop" | "restart") {
@@ -655,9 +521,7 @@ impl Native {
         let logs = journal
             .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
             .unwrap_or_default();
-        let reason = if logs.contains("Verge") {
-            "Verge 内核仍在运行，请先退出 Verge"
-        } else if logs.contains("校验") || logs.contains("config") {
+        let reason = if logs.contains("校验") || logs.contains("config") {
             "配置缺失或校验失败，请重新选择/更新订阅"
         } else if logs.contains("permission") || logs.contains("Operation not permitted") {
             "权限不足，请检查服务 capability 与 polkit"
@@ -916,7 +780,7 @@ async fn download(raw: &str, proxy_port: Option<u16>) -> Result<Download> {
         async move {
             let mut builder = reqwest::Client::builder()
                 .no_proxy()
-                .user_agent("clash-verge/v2.4.7")
+                .user_agent("clash.meta/mayon-clash")
                 .timeout(Duration::from_secs(25))
                 .redirect(reqwest::redirect::Policy::limited(5));
             if let Some(port) = proxy {
@@ -994,10 +858,8 @@ mod tests {
             fs::set_permissions(&validator, fs::Permissions::from_mode(0o700)).unwrap();
             Self(Native {
                 socket: data.join("api.sock"),
-                verge_profiles: data.join("verge/profiles.yaml"),
                 mihomo: validator,
                 systemctl: "/not-used".into(),
-                yq: "/not-used".into(),
                 data,
             })
         }
@@ -1013,7 +875,7 @@ mod tests {
                     interval_hours: 24,
                     usage: None,
                     nodes: 1,
-                    verge_current: false,
+                    legacy_current_marker: false,
                 }],
             };
             replace(&self.0.data.join("subscriptions/a.yaml"), SUB).unwrap();
@@ -1113,38 +975,55 @@ mod tests {
         );
         assert!(!redact_url("bad token").contains("token"));
     }
-    #[tokio::test]
-    async fn import_offline_current_and_enhancement_warning() {
-        let f = Fixture::new();
-        let parent = f.0.verge_profiles.parent().unwrap();
-        fs::create_dir_all(parent.join("profiles")).unwrap();
-        fs::write(
-            &f.0.verge_profiles,
-            include_str!("../tests/fixtures/verge-profiles.yaml"),
+    #[test]
+    fn subscription_index_round_trips_retired_marker_without_interpreting_it() {
+        let value: Store = toml::from_str(
+            "current = 'a'\n[[items]]\nid = 'a'\nname = 'A'\nurl = 'https://example.invalid'\nupdated = 0\ninterval_hours = 24\nnodes = 0\nverge_current = true\n",
         )
         .unwrap();
-        for name in ["a.yaml", "b.yaml"] {
-            fs::write(parent.join("profiles").join(name), SUB).unwrap();
-        }
-        let original = fs::read(&f.0.verge_profiles).unwrap();
-        let message = f.0.import_verge(false).await.unwrap();
-        assert!(message.contains("未执行"));
-        let s = f.0.store().unwrap();
-        assert_eq!(s.items.len(), 2);
-        assert_eq!(s.items[0].interval_hours, 2);
-        assert_eq!(s.current.as_deref(), Some(s.items[1].id.as_str()));
-        assert!(s.items[1].verge_current);
-        assert_eq!(fs::read(&f.0.verge_profiles).unwrap(), original);
-        f.0.import_verge(false).await.unwrap();
-        assert_eq!(f.0.store().unwrap().items.len(), 2);
-        assert!(f.0.delete(s.current.as_deref().unwrap()).is_err());
+        assert_eq!(value.current.as_deref(), Some("a"));
+        assert_eq!(value.items[0].id, "a");
+        assert_eq!(value.items[0].url, "https://example.invalid");
+        assert!(value.items[0].legacy_current_marker);
+        let saved = encoded(&value).unwrap();
+        let saved = String::from_utf8(saved).unwrap();
+        assert!(saved.contains("verge_current = true"));
+        let restored: Store = toml::from_str(&saved).unwrap();
+        assert_eq!(restored.current.as_deref(), Some("a"));
+        assert_eq!(restored.items[0].id, "a");
+        assert_eq!(restored.items[0].url, "https://example.invalid");
+    }
+    #[test]
+    fn saved_baseline_round_trips_and_is_used_for_generation() {
+        let f = Fixture::new();
+        let baseline = "tun: {stack: system, strict-route: false}\ndns: {nameserver: [1.1.1.1], enhanced-mode: fake-ip}\nsniffer: {enable: false}\nprofile: {store-fake-ip: true}";
+        let settings = Settings {
+            baseline: baseline.into(),
+            ..Settings::default()
+        };
+        replace(
+            &f.0.data.join("settings.toml"),
+            &encoded(&settings).unwrap(),
+        )
+        .unwrap();
+
+        let loaded = f.0.settings().unwrap();
+        assert_eq!(loaded.baseline, baseline);
+        let generated = merge(SUB, &loaded, &f.0.socket).unwrap();
+        let generated: Value = serde_yaml::from_slice(&generated).unwrap();
+        assert_eq!(generated["tun"]["stack"].as_str(), Some("system"));
+        assert_eq!(generated["dns"]["nameserver"][0].as_str(), Some("1.1.1.1"));
+    }
+    #[test]
+    fn absent_saved_baseline_uses_built_in_defaults() {
+        let settings: Settings = toml::from_str("tun = true\nmode = 'rule'\n").unwrap();
+        assert_eq!(settings.baseline, Settings::default().baseline);
+        let generated = merge(SUB, &settings, Path::new("/private/api.sock")).unwrap();
+        let generated: Value = serde_yaml::from_slice(&generated).unwrap();
+        assert_eq!(generated["tun"]["stack"].as_str(), Some("mixed"));
         assert_eq!(
-            fs::metadata(f.0.data.join("subscriptions.toml"))
-                .unwrap()
-                .permissions()
-                .mode()
-                & 0o777,
-            0o600
+            generated["dns"]["nameserver"][0].as_str(),
+            Some("223.5.5.5")
         );
     }
     #[tokio::test]
@@ -1241,7 +1120,9 @@ mod tests {
             let n = s.read(&mut b).await.unwrap();
             let r = String::from_utf8_lossy(&b[..n]);
             assert!(r.starts_with("GET http://127.0.0.1:1/sub"));
-            assert!(r.to_lowercase().contains("user-agent: clash-verge/v2.4.7"));
+            assert!(r
+                .to_lowercase()
+                .contains("user-agent: clash.meta/mayon-clash"));
             s.write_all(format!("HTTP/1.1 200 OK\r\nContent-Length: {}\r\nProfile-title: Example\r\nSubscription-userinfo: upload=1;total=10\r\n\r\n",SUB.len()).as_bytes()).await.unwrap();
             s.write_all(SUB).await.unwrap();
         });

@@ -88,7 +88,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
         chunks[0],
         &format!(
             " 󰒍 Clash · {} · {} · {} · {rate}",
-            app.opts.backend.label(),
+            "mayon-clash",
             if app.online { "运行" } else { "未运行" },
             if app.online {
                 app.config.mode.as_str()
@@ -101,7 +101,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
         Paragraph::new(mayon_ui::tabs_line(&TABS, app.page as usize)),
         chunks[1],
     );
-    if !app.online && app.page != Page::Profiles && !(app.is_native() && app.page == Page::Tools) {
+    if !app.online && app.page != Page::Profiles && app.page != Page::Tools {
         let progress = app.launch_progress();
         pane(
             frame,
@@ -111,25 +111,13 @@ pub fn draw(frame: &mut Frame, app: &App) {
                 Line::from(""),
                 Line::from(blue(format!("  {progress}"))),
                 Line::from(""),
-                Line::from(if app.is_native() {
-                    "  s 启动服务    3 订阅    7 设置    ? 新手指引"
-                } else {
-                    "  s 启动 Verge    3 订阅 / 导入    ? 新手指引"
-                }),
+                Line::from("  s 启动服务    3 订阅    7 设置    ? 新手指引"),
                 Line::from(""),
-                Line::from(muted(if app.is_native() {
-                    "  手动开、手动关；服务不随开机启动。"
+                Line::from(muted("  手动开、手动关；服务不随开机启动。")),
+                Line::from(muted(if app.store.items.is_empty() {
+                    "  首次使用：i 添加订阅。"
                 } else {
-                    "  打开 Verge 即启动；退出 Verge 时清理代理和 TUN。"
-                })),
-                Line::from(muted(if app.is_native() {
-                    if app.store.items.is_empty() {
-                        "  首次使用：3 → I 从 Verge 缓存导入，或 i 添加订阅。"
-                    } else {
-                        "  订阅已就绪；s 启动后由 TUN 接管流量，X 关闭后直连。"
-                    }
-                } else {
-                    "  如需静默启动，请在 Verge 设置开启「静默启动」。"
+                    "  订阅已就绪；s 启动后由 TUN 接管流量，X 关闭后直连。"
                 })),
             ],
         );
@@ -147,32 +135,27 @@ pub fn draw(frame: &mut Frame, app: &App) {
         }
     }
     let hint = match app.page {
-        Page::Overview if app.is_native() => {
-            " 2 选节点  3 订阅  7 设置  m 模式  X 关闭  ? 帮助  q 退出"
-        }
-        Page::Profiles if app.is_native() => {
-            " i 添加  I 导入 Verge  u/U 更新  Enter 切换  n 改名  e URL  d 删除  ? 帮助"
-        }
-        Page::Tools if app.is_native() => " j/k 移动  Enter 切换 / 编辑  m 模式  ? 帮助",
-        Page::Overview => " 2 选节点  3 订阅用量  m 模式  o Verge 设置  X 关闭  ? 帮助  q 退出",
+        Page::Overview => " 2 选节点  3 订阅  7 设置  m 模式  X 关闭  ? 帮助  q 退出",
         Page::Proxies if app.provider_mode => {
             " j/k 移动  t 健康检查  u 更新  p 返回节点  / 过滤  ? 帮助"
         }
         Page::Proxies => " j/k 移动  Tab 面板  Enter 选节点  t/T 测速  S 排序  / 过滤  ? 帮助",
-        Page::Profiles => " j/k 移动  i 导入  f 刷新用量  u 更新  Enter 切换  o Verge  ? 帮助",
+        Page::Profiles => {
+            " j/k 移动  i 添加  f 刷新用量  u 更新  Enter 切换  n 改名  e URL  d 删除  ? 帮助"
+        }
         Page::Connections => {
             " j/k 移动  Enter 详情  S 排序  / 过滤  x 关闭  d 关闭过滤  D 全关  ? 帮助"
         }
         Page::Rules => " j/k 移动  / 过滤  Enter 命中详情  p 规则源  u 更新源  ? 帮助",
         Page::Logs => " j/k 滚动  / 搜索  L 级别  空格 暂停  g/G 首尾  ? 帮助",
-        Page::Tools => " j/k 移动  Enter 执行（确认）  m 模式  o Verge 设置  ? 帮助",
+        Page::Tools => " j/k 移动  Enter 执行 / 编辑  m 模式  ? 帮助",
     };
     mayon_ui::footer(frame, chunks[3], hint, &format!(" {}", app.status));
     if app.help {
         help(frame, app);
     }
     if let Some(dialog) = &app.dialog {
-        dialog_view(frame, dialog, app.detail_scroll, app.is_native());
+        dialog_view(frame, dialog, app.detail_scroll);
     }
 }
 fn overview(frame: &mut Frame, app: &App, area: Rect) {
@@ -194,16 +177,8 @@ fn overview(frame: &mut Frame, app: &App, area: Rect) {
             } else {
                 "关闭"
             },
-            if app.is_native() {
-                "系统代理未设置 · 7 工具 / 设置"
-            } else {
-                "系统代理 "
-            },
-            if app.is_native() {
-                ""
-            } else {
-                app.system_proxy.as_deref().unwrap_or("未知")
-            }
+            "系统代理未设置 · 7 工具 / 设置",
+            ""
         )),
         Line::from(format!(
             "  {} 条连接{}   内核连接内存 {}",
@@ -311,7 +286,7 @@ fn overview(frame: &mut Frame, app: &App, area: Rect) {
         None => vec![
             Line::from("  尚无当前订阅 · 3 订阅 → i 导入"),
             Line::from(muted(
-                "  订阅提供节点和规则。输入服务商的订阅链接，由 Verge 导入。",
+                "  订阅提供节点和规则。粘贴服务商提供的订阅链接添加。",
             )),
         ],
     };
@@ -500,21 +475,7 @@ fn profiles(frame: &mut Frame, app: &App, area: Rect) {
                 marker(i == app.profile),
                 blue(if current { "● " } else { "  " }),
                 Span::raw(clip(
-                    &format!(
-                        "{}{}",
-                        item.name.as_deref().unwrap_or("未命名订阅"),
-                        if app.is_native()
-                            && app
-                                .native_store
-                                .items
-                                .get(i)
-                                .is_some_and(|s| s.verge_current)
-                        {
-                            " · Verge 原当前"
-                        } else {
-                            ""
-                        }
-                    ),
+                    &format!("{}{}", item.name.as_deref().unwrap_or("未命名订阅"), ""),
                     width.saturating_sub(3),
                 )),
             ],
@@ -531,22 +492,12 @@ fn profiles(frame: &mut Frame, app: &App, area: Rect) {
             u.push(Line::from(""));
         }
         lines.extend(u);
-        let count = if app.is_native() {
-            app.native_store
-                .items
-                .get(i)
-                .map(|s| format!("{}（配置内）", s.nodes))
-                .unwrap_or_else(|| "未知".into())
-        } else {
-            app.providers
-                .iter()
-                .find(|(n, _)| {
-                    Some(n.as_str()) == item.uid.as_deref()
-                        || Some(n.as_str()) == item.name.as_deref()
-                })
-                .map(|(_, p)| p.proxies.len().to_string())
-                .unwrap_or_else(|| "未知（内核无对应源）".into())
-        };
+        let count = app
+            .native_store
+            .items
+            .get(i)
+            .map(|s| format!("{}（配置内）", s.nodes))
+            .unwrap_or_else(|| "未知".into());
         lines.push(Line::from(muted(clip(
             &format!(
                 "  节点 {count} · 上次更新 {}",
@@ -563,31 +514,19 @@ fn profiles(frame: &mut Frame, app: &App, area: Rect) {
             Line::from(blue("  还没有订阅 · i 导入")),
             Line::from(""),
             Line::from("  1. 向服务商获取订阅链接"),
-            Line::from(if app.is_native() {
-                "  2. 按 i 添加，或 I 从 Verge 缓存导入（不联网）"
-            } else {
-                "  2. 按 i 粘贴 URL，由 Verge 完成导入"
-            }),
+            Line::from("  2. 按 i 粘贴订阅链接，下载并校验后添加"),
             Line::from("  3. 回到 TUI 自动刷新，再到 2 代理选择节点"),
             Line::from(""),
-            Line::from(muted(if app.is_native() {
-                "  订阅不会自动启动服务；准备好后 s 手动启动。"
-            } else {
-                "  TUN / 系统代理请在 Verge 设置中管理（o 打开）。"
-            })),
+            Line::from(muted("  订阅不会自动启动服务；准备好后 s 手动启动。")),
         ];
     }
     pane(
         frame,
         area,
-        if app.is_native() {
-            if app.native_busy {
-                " 订阅 · 下载 / 校验 / 应用中… ".into()
-            } else {
-                " 订阅 · ● 当前 · I 从 Verge 缓存导入 ".into()
-            }
+        if app.native_busy {
+            " 订阅 · 下载 / 校验 / 应用中… ".into()
         } else {
-            " 订阅 · Verge 管理，返回后自动刷新 ".into()
+            " 订阅 · ● 当前 · 仅保存在本机私有目录 ".into()
         },
         lines,
     );
@@ -843,7 +782,7 @@ fn tools(frame: &mut Frame, app: &App, area: Rect) {
             "通过 mihomo 下载并重载，数据保存在私有目录".into(),
         ),
     ];
-    if app.is_native() {
+    {
         let s = &app.native_settings;
         entries.extend([
             (
@@ -891,11 +830,7 @@ fn tools(frame: &mut Frame, app: &App, area: Rect) {
     pane(
         frame,
         area,
-        if app.is_native() {
-            " 工具 / 设置 · Enter 应用 · 保存后重启仍保留 ".into()
-        } else {
-            " 工具 · 缓存与规则数据库 ".into()
-        },
+        " 工具 / 设置 · Enter 应用 · 保存后重启仍保留 ".into(),
         lines,
     );
 }
@@ -913,16 +848,13 @@ fn modal(frame: &mut Frame, title: &str, text: Vec<Line<'static>>, height: u16, 
 }
 fn help(frame: &mut Frame, app: &App) {
     let body = match Page::ALL[app.help_page] {
-        Page::Overview if app.is_native()=>"native：系统 mayon-clash.service 运行 mihomo，TUI 管配置与启停。\n服务不随开机启动：先 3 → i 添加 / I 导入，再 s 启动；X 确认关闭。\nTUN 接管 IP 流量，DNS hijack 交给内核；7 工具可调整并持久保存。\n不设置系统代理：TUN 已接管流量；显式程序可用本机 mixed-port。\nrule 按规则分流；global 全部走 GLOBAL；direct 绕过代理。\n关闭服务后 TUN 消失、网络直连；退出 TUI 本身不会关闭服务。",
-        Page::Profiles if app.is_native()=>"i 添加：粘贴 URL（仅显示脱敏地址），Tab 可选名称，Enter 下载校验。\nI 从 Verge remote 索引与缓存导入，不联网；原当前项设为当前。\n导入不执行 Verge merge/script/rules/proxies/groups 增强。\nEnter 切换 · u 单个更新 · U 全部更新 · n 重命名 · e 编辑 URL。\nd 确认删除；当前项须先切换。用量、到期、配置内节点数显示于列表。\n先直连，失败且内核运行时经 mixed-port 重试；默认每 24h 更新。\nTUI 打开且内核运行时后台检查更新间隔；链接只存在私有 0600 索引。",
-        Page::Tools if app.is_native()=>"前三项工具需要内核运行，执行前确认；Geo 数据存于可写私有目录。\nj/k 移动、Enter 修改 TUN / 模式 / IPv6 / allow-lan / 日志级别。\nmixed-port 用输入框编辑，范围 1–65535。\n设置经 mihomo -t 校验、原子写入、热加载，失败自动回滚。\n离线设置同样保存，下次 s 启动继续使用。\nallow-lan 默认 false；无需系统代理，停止服务后网络直连。",
-        Page::Overview => "上手：先 s 启动，3 订阅 → i 导入，2 代理 → Enter 选节点。\n订阅是服务商提供的节点与规则；节点是具体代理服务器。\n规则模式按网站分流，全局模式全部走 GLOBAL，直连模式绕过代理。\nTUN 接管 IP 流量；系统代理供遵守系统设置的应用使用，两者独立。\n由 Verge 统一管理开关；o 打开设置，X 确认退出 Verge。\n概览累计流量属于本次内核进程；断流时显示未知。",
+        Page::Overview => "mayon-clash.service 运行 mihomo，TUI 管配置与启停。\n服务不随开机启动：先 3 → i 添加，再 s 启动；X 确认关闭。\nTUN 接管 IP 流量，DNS hijack 交给内核；7 工具可调整并持久保存。\n不设置系统代理：TUN 已接管流量；显式程序可用本机 mixed-port。\nrule 按规则分流；global 全部走 GLOBAL；direct 绕过代理。\n关闭服务后 TUN 消失、网络直连；退出 TUI 本身不会关闭服务。",
         Page::Proxies => "组是节点的选择策略。Tab / h/l 切组与节点面板，Enter 选中。\n↦ Selector 手动；↯ URLTest 自动最快；↪ Fallback 首个可用。\nURLTest/Fallback 允许临时手动指定；T 整组测速会恢复自动选择。\n⇄ LoadBalance 按连接分配，⇢ Relay 串联；无固定节点，不能手动选。\nt 单测 · T 内核组测 · b 测过滤列表（配置并发）· Esc 取消本地队列。\nS 默认/延迟/名称排序 · H 隐藏超时 · c 跳当前 · / 拼音首字母/中英模糊过滤。\np 节点源：t 健康检查，u 更新（源内并发与测试 URL 由内核管理）。",
-        Page::Profiles => "订阅显示用量、剩余、到期；7 天内到期高亮。未知配额不代表无限。\ni 导入：URL 隐藏；留空名称交给 Verge，指定名称在 Verge 完成。\nf 经代理只读用量响应头，未写回元数据，绝不下载订阅正文。\nEnter 切换 / u 更新：先说明并打开 Verge，返回后 2 秒内重读。\n未激活订阅的节点数可能未知：不会为计数读取订阅正文。\nVerge 2.4.7 会在其日志记录导入链接，请知悉后使用。",
+        Page::Profiles => "i 添加：粘贴 URL（仅显示脱敏地址），Tab 可选名称，Enter 下载校验。\nEnter 切换 · u 单个更新 · U 全部更新 · n 重命名 · e 编辑 URL。\nd 确认删除；当前项须先切换。用量、到期、配置内节点数显示于列表。\n先直连，失败且内核运行时经 mixed-port 重试；默认每 24h 更新。\nTUI 打开且内核运行时后台检查更新间隔；链接只存在私有 0600 索引。",
         Page::Connections => "连接是应用访问目标的一次会话；规则决定它走哪个组与节点。\nS 按速率/总量/时长/主机排序 · / 主机、IP、进程、规则、链路过滤。\nEnter 查看目标、规则、链路、进程、开始时间；j/k 可滚动详情。\nx 关闭单个 · d 关闭过滤结果快照 · D 全部关闭，均先确认。\n速率由连续快照差值得到，首帧和断流时未知；WebSocket 每秒更新。",
-        Page::Rules => "规则从上至下决定目标的出站策略；/ 搜索类型、内容或策略。\nEnter 看完整规则及命中；内核提供累计命中时优先显示。\n否则显示当前连接匹配数，并非历史累计。p 查看规则源，u 更新。\n规则源与 Verge 订阅不同：规则源属于当前内核配置。",
+        Page::Rules => "规则从上至下决定目标的出站策略；/ 搜索类型、内容或策略。\nEnter 看完整规则及命中；内核提供累计命中时优先显示。\n否则显示当前连接匹配数，并非历史累计。p 查看规则源，u 更新。\n规则源属于当前内核配置。",
         Page::Logs => "日志流来自当前内核，最多保留 2000 条，仅在进程内存。\nL 循环 debug/info/warning/error 最低级别 · / 搜索。\n空格暂停（丢弃新日志，界面停止追随）；再次空格恢复。\nj/k、PageUp/PageDown、g/G 滚动；G 回到追随。\n链接与常见凭据字段会隐藏；本程序不将日志写盘。",
-        Page::Tools => "Enter 选择工具并确认，Esc 取消；联网与文件错误会显示在底部。\nfake-ip 缓存存虚拟地址映射，DNS 缓存存解析结果。\nGeoIP/GeoSite 更新由内核处理；Nix store 资源只读时可能失败。\nm 循环 rule/global/direct。TUN 与系统代理请用 o 到 Verge 修改。",
+        Page::Tools => "Enter 选择工具并确认，Esc 取消；联网与文件错误会显示在底部。\nfake-ip 缓存存虚拟地址映射，DNS 缓存存解析结果。\nGeoIP/GeoSite 更新由内核处理；Nix store 资源只读时可能失败。\nm 循环 rule/global/direct。TUN 设置可在本页修改。",
     };
     let mut text = vec![
         Line::from(""),
@@ -943,7 +875,7 @@ fn help(frame: &mut Frame, app: &App) {
     )));
     modal(frame, " 新手指引与按页帮助 ", text, 23, 0);
 }
-fn dialog_view(frame: &mut Frame, dialog: &Dialog, scroll: u16, native: bool) {
+fn dialog_view(frame: &mut Frame, dialog: &Dialog, scroll: u16) {
     match dialog {
         Dialog::Edit {
             title,
@@ -980,21 +912,6 @@ fn dialog_view(frame: &mut Frame, dialog: &Dialog, scroll: u16, native: bool) {
             9,
             0,
         ),
-        Dialog::Verge { reason } => modal(
-            frame,
-            " 在 Verge 中完成 ",
-            vec![
-                Line::from(""),
-                Line::from(format!("  {reason}")),
-                Line::from(""),
-                Line::from(muted(
-                    "  即将打开 Verge 窗口；完成后返回 TUI，自动重读订阅。",
-                )),
-                Line::from(blue("  Enter / o 打开 Verge · Esc 返回")),
-            ],
-            10,
-            0,
-        ),
         Dialog::Import { url, name, field } => modal(
             frame,
             " 导入订阅 ",
@@ -1003,11 +920,7 @@ fn dialog_view(frame: &mut Frame, dialog: &Dialog, scroll: u16, native: bool) {
                 Line::from(blue(format!(
                     "  {}URL：{}",
                     if !field { "▏" } else { " " },
-                    if native {
-                        crate::native::redact_url(url)
-                    } else {
-                        format!("{} 个字符（内容隐藏）", url.chars().count())
-                    }
+                    crate::native::redact_url(url)
                 ))),
                 Line::from(""),
                 Line::from(format!(
@@ -1016,22 +929,10 @@ fn dialog_view(frame: &mut Frame, dialog: &Dialog, scroll: u16, native: bool) {
                     clip(name, 50)
                 )),
                 Line::from(""),
-                Line::from(muted(if native {
-                    "  名称留空：响应头标题 / 文件名，再回退主机名。"
-                } else {
-                    "  名称留空可直接交给 Verge；命名导入需在 Verge 完成。"
-                })),
-                Line::from(muted(if native {
-                    "  URL 仅保存到私有索引，不写日志。"
-                } else {
-                    "  Verge 2.4.7 会将完整导入链接写进它自己的日志。"
-                })),
+                Line::from(muted("  名称留空：响应头标题 / 文件名，再回退主机名。")),
+                Line::from(muted("  URL 仅保存到私有索引，不写日志。")),
                 Line::from(""),
-                Line::from(blue(if native {
-                    "  Tab 切字段 · Enter 下载并校验 · Esc 取消"
-                } else {
-                    "  Tab 切字段 · Enter 交给 Verge · Esc 取消"
-                })),
+                Line::from(blue("  Tab 切字段 · Enter 下载并校验 · Esc 取消")),
             ],
             13,
             0,
@@ -1046,7 +947,6 @@ fn dialog_view(frame: &mut Frame, dialog: &Dialog, scroll: u16, native: bool) {
     }
     let height = match dialog {
         Dialog::Confirm { .. } | Dialog::Edit { .. } => 9,
-        Dialog::Verge { .. } => 10,
         Dialog::Import { .. } => 13,
         Dialog::Detail(_) => 22,
     };
@@ -1060,14 +960,7 @@ fn dialog_view(frame: &mut Frame, dialog: &Dialog, scroll: u16, native: bool) {
         ));
     let primary = match dialog {
         Dialog::Detail(_) => " [ Enter 返回 ]",
-        Dialog::Verge { .. } => " [ Enter 打开 Verge ]",
-        Dialog::Import { .. } => {
-            if native {
-                " [ Enter 添加订阅 ]"
-            } else {
-                " [ Enter 交给 Verge ]"
-            }
-        }
+        Dialog::Import { .. } => " [ Enter 添加订阅 ]",
         Dialog::Edit { .. } => " [ Enter 保存 ]",
         Dialog::Confirm { .. } => " [ Enter 确认 ]",
     };
@@ -1086,7 +979,6 @@ pub fn dialog_click(
     use crossterm::event::KeyCode;
     let height = match dialog {
         Dialog::Confirm { .. } | Dialog::Edit { .. } => 9,
-        Dialog::Verge { .. } => 10,
         Dialog::Import { .. } => 13,
         Dialog::Detail(_) => 22,
     };
@@ -1122,7 +1014,6 @@ mod tests {
                 action: Action::Tool(0),
                 body: "test".into(),
             },
-            Dialog::Verge { reason: "test" },
             Dialog::Import {
                 url: String::new(),
                 name: String::new(),
@@ -1132,7 +1023,6 @@ mod tests {
         ] {
             let height = match &dialog {
                 Dialog::Confirm { .. } | Dialog::Edit { .. } => 9,
-                Dialog::Verge { .. } => 10,
                 Dialog::Import { .. } => 13,
                 Dialog::Detail(_) => 22,
             };
