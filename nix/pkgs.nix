@@ -38,6 +38,7 @@
           })
           (final: _: {
             # Local programs have a separate public entry; local remains upstream aliases.
+            keysMayon = import ../packages/keys-mayon { pkgs = final; };
             mayonTui = import ../packages/mayon-tui { pkgs = final; };
             mayonVoice = import ../packages/mayon-voice { pkgs = final; };
             seek = import ../packages/seek { pkgs = final; };

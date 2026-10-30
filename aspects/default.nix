@@ -15,6 +15,7 @@ _: {
     ./network/remote-access
     ./hardware/legion-laptop
     ./cli/shell
+    ./cli/keys-mayon
     ./cli/terminal
     ./cli/herdr
     ./dev/neovim
