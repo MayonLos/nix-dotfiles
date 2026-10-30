@@ -165,6 +165,8 @@ let
   # readFile so large assets and invalid UTF-8 never enter the evaluator.
   binarySuffixes = [
     ".png"
+    ".onnx"
+    ".wakeup_schedule"
     ".jpg"
     ".jpeg"
     ".webp"
