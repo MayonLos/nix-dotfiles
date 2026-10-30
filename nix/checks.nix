@@ -32,6 +32,8 @@
         ../aspects/apps/gaming/runtime-checks.nix
         ../aspects/apps/gaming/mcsrv-checks.nix
         ../aspects/cli/keys-mayon/checks.nix
+||||||| f286a0c
+        ../aspects/apps/gaming/mcsrv-runtime-checks.nix
         ../aspects/cli/shell/checks.nix
         ../aspects/cli/herdr/checks.nix
         ../aspects/desktop/mango-session/checks.nix

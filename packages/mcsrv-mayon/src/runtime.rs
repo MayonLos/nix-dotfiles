@@ -207,7 +207,7 @@ pub fn status(root: &Path, name: &str) -> Result<Value> {
         number(overall, "Mean tick time:")
     };
     Ok(
-        json!({"state":if up {if ready{"运行中"}else{"启动中"}}else{"已停止"},"players":players,"players_text":player_text,"memory":mem.unwrap_or_else(||"—".into()),"tps":tps,"mspt":mspt,"tps_text":tps_text,"mspt_text":mspt_text,"addresses":addresses().lines().map(str::to_owned).collect::<Vec<_>>(),"port":c.port}),
+        json!({"state":if up {if ready{"运行中"}else{"启动中"}}else{"已停止"},"players":players,"players_text":player_text,"memory":mem.unwrap_or_else(||"—".into()),"tps":tps,"mspt":mspt,"tps_text":tps_text,"mspt_text":mspt_text,"addresses":addresses().lines().map(str::to_owned).collect::<Vec<_>>(),"port":c.port,"tunnel":crate::frp::load_settings(root,name)?.map(|c|crate::frp::address(&c))}),
     )
 }
 
@@ -428,6 +428,7 @@ pub fn run(root: &Path, name: &str) -> Result<()> {
             )),
         )?;
     }
+    let mut tunnel = crate::frp::start(root, name, c.port, &c.bind)?;
     let mut child = ChildGuard(process.spawn().context("Java 启动失败")?);
     write_private(&dir.join("java.pid"), child.id().to_string().as_bytes())?;
     let lines = Arc::new(Mutex::new(VecDeque::new()));
@@ -461,6 +462,12 @@ pub fn run(root: &Path, name: &str) -> Result<()> {
     let mut stopping = None;
     let mut saving = false;
     loop {
+        if let Some(link) = tunnel.as_mut() {
+            if let Err(e) = link.check() {
+                eprintln!("公网隧道中断，本机服务继续运行：{e}");
+                tunnel = None;
+            }
+        }
         if let Some(exit) = child.try_wait()? {
             if !exit.success() {
                 bail!("Java 退出: {exit}");

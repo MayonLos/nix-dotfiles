@@ -23,7 +23,7 @@ use serde_json::Value;
 use std::{
     io,
     path::PathBuf,
-    process::{Command, Stdio},
+    process::{Child, Command, Stdio},
     sync::mpsc::{self, Receiver, Sender},
     thread,
     time::{Duration, Instant},
@@ -37,12 +37,17 @@ mod palette {
 }
 use palette::*;
 
-const PAGES: [&str; 6] = ["实例", "控制台", "玩家", "备份", "模组", "联机"];
-const HELP: &str = "数字键 1–6 切页 · j/k 或 ↑/↓ 选择 · 鼠标点击\n\
-n 新建实例 · s 启动 · x 停止 · b 立即备份 · r 回滚\n\
-/ 过滤/搜索 · Enter 执行 · Ctrl+A 清空默认项 · ? 帮助 · q 退出\n\
-控制台输入指令后 Enter 发送；玩家页 Enter 预填 op，a 自定义命令；支持 whitelist/op/kick/ban。\n\
-备份页 v 设置保留数；联机页 l/L 切换局域网，c 设置备份间隔，t 显示 Tailscale 接入说明。回滚要输入快照 ID。";
+const PAGES: [&str; 8] = [
+    "主页",
+    "控制台",
+    "玩家",
+    "备份",
+    "模组",
+    "联机",
+    "LAN",
+    "云服",
+];
+const HELP: &str = "1–8 / Tab 切页 · j/k 选择 · 鼠标可用 · / 过滤 · q 退出\n主页：n 创建 · w 从单人存档开服 · s/x 启停\n7 LAN：s 检测并共享一小时 · x 撤销 · f 配置frp（token只填文件路径）\n8 云服：a 添加SSH目标 · e 选择目标/实例 · s/x 启停 · l 日志 · c 命令\nu 上传单一服务端（确认） · w 上传原版世界（确认） · b 备份下载 · d 远端下载创建\n6 联机：f 配置frp · F 可选SSH中转（确认） · l/L 本机防火墙 · t Tailscale · c 备份间隔\n备份：b 备份 · r 确认回滚 · v 保留数；模组：/ 搜索 · i 安装 · u 更新 · d 比较\nEnter 控制台/玩家命令 · Ctrl+A 清空输入 · Esc 取消 · 公网安全组需自行放行";
 
 #[derive(Clone, Debug, Deserialize)]
 struct Instance {
@@ -93,6 +98,7 @@ enum Modal {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum InputKind {
+    Flow,
     Filter,
     Create,
     Console,
@@ -200,6 +206,15 @@ struct App {
     output_title: String,
     output_lines: Vec<String>,
     output_scroll: usize,
+    flow: String,
+    flow_values: Vec<String>,
+    lan_child: Option<Child>,
+    lan_worlds: Vec<crate::lan::LanWorld>,
+    lan_output: Option<tempfile::NamedTempFile>,
+    cloud_target: String,
+    cloud_name: String,
+    cloud_endpoint: String,
+    local_addresses: String,
 }
 impl App {
     fn new(root: PathBuf, demo: bool, executable: PathBuf) -> Self {
@@ -234,6 +249,19 @@ impl App {
             output_title: String::new(),
             output_lines: Vec::new(),
             output_scroll: 0,
+            flow: String::new(),
+            flow_values: Vec::new(),
+            lan_child: None,
+            lan_worlds: Vec::new(),
+            lan_output: None,
+            cloud_target: String::new(),
+            cloud_name: String::new(),
+            cloud_endpoint: "按 r 获取实际公网地址与端口".into(),
+            local_addresses: if demo {
+                "192.168.1.20/24".into()
+            } else {
+                crate::runtime::addresses()
+            },
         }
     }
     fn selected_instance(&self) -> Option<&Instance> {
@@ -341,7 +369,7 @@ impl App {
         if self.demo {
             if !matches!(
                 action,
-                "读取实例" | "刷新状态" | "读取控制台" | "读取备份" | "读取模组"
+                "读取实例" | "刷新状态" | "读取控制台" | "读取备份" | "读取模组" | "LAN检测"
             ) {
                 self.message = format!("演示操作：模拟 {action}，未执行真实操作");
             }
@@ -390,10 +418,15 @@ impl App {
     }
     fn refresh_selected(&mut self) {
         self.next_refresh = Instant::now() + Duration::from_secs(3);
+        if self.page == 6 {
+            self.spawn("LAN检测", vec!["lan".into(), "list".into()]);
+            return;
+        }
         let Some(name) = self.selected_name() else {
             return;
         };
         match self.page {
+            7 => {}
             1 => self.spawn("读取控制台", vec!["logs".into(), name]),
             3 => self.spawn("读取备份", vec!["backups".into(), name]),
             _ => self.spawn("刷新状态", vec!["status".into(), name]),
@@ -404,12 +437,17 @@ impl App {
             self.busy = false;
             match reply.result {
                 Ok(output) => {
-                    if is_mod_result_action(&reply.action) {
+                    if is_mod_result_action(&reply.action) || reply.action == "联机结果" {
                         self.show_output(&reply.action, &output);
                     } else {
                         self.message = if matches!(
                             reply.action.as_str(),
-                            "读取实例" | "刷新状态" | "读取控制台" | "读取备份" | "读取模组"
+                            "读取实例"
+                                | "刷新状态"
+                                | "读取控制台"
+                                | "读取备份"
+                                | "读取模组"
+                                | "LAN检测"
                         ) {
                             format!("{}：已更新", reply.action)
                         } else if output.is_empty() {
@@ -426,7 +464,7 @@ impl App {
                         reply.action,
                         error.lines().next().unwrap_or("操作失败")
                     );
-                    if is_mod_result_action(&reply.action) {
+                    if is_mod_result_action(&reply.action) || reply.action == "联机结果" {
                         self.show_output(&reply.action, &error);
                     }
                 }
@@ -435,6 +473,13 @@ impl App {
         }
     }
     fn accept_output(&mut self, action: &str, output: &str) {
+        if action == "LAN检测" {
+            match serde_json::from_str(output) {
+                Ok(worlds) => self.lan_worlds = worlds,
+                Err(e) => self.message = format!("LAN检测格式错误：{e}"),
+            }
+            return;
+        }
         if is_mod_result_action(action) {
             self.show_output(action, output);
             return;
@@ -500,6 +545,9 @@ impl App {
         }
     }
     fn show_output(&mut self, action: &str, output: &str) {
+        if let Some(line) = output.lines().find(|line| line.starts_with("直连 ")) {
+            self.cloud_endpoint = line.to_owned();
+        }
         self.output_title = match action {
             "比较 Prism 模组" => "Prism 模组差异".into(),
             "更新模组" => "模组更新结果".into(),
@@ -517,8 +565,19 @@ impl App {
     }
     fn poll_tick(&mut self) {
         self.pull();
-        if Instant::now() >= self.next_refresh && !self.busy {
-            if self.instances.is_empty() {
+        if let Some(child) = self.lan_child.as_mut() {
+            if child.try_wait().ok().flatten().is_some() {
+                self.lan_child = None;
+                self.message = "LAN共享已结束；可再次 s 检测".into();
+                if let Some(file) = self.lan_output.as_ref() {
+                    let output = std::fs::read_to_string(file.path()).unwrap_or_default();
+                    self.show_output("LAN共享结果", &output);
+                }
+                self.lan_output = None;
+            }
+        }
+        if Instant::now() >= self.next_refresh && !self.busy && self.page != 7 {
+            if self.instances.is_empty() && self.page != 6 {
                 self.list();
             } else {
                 self.refresh_selected();
@@ -639,6 +698,269 @@ impl App {
         args.push("--accept-eula".into());
         self.spawn("创建实例", args);
     }
+    fn start_flow(&mut self, flow: &str) {
+        self.flow = flow.into();
+        self.flow_values.clear();
+        self.flow_prompt();
+    }
+    fn flow_fields(&self) -> Vec<(&'static str, &'static str)> {
+        match self.flow.as_str() {
+            "world" => vec![
+                ("新实例名称", "friends"),
+                ("原版单人存档完整路径（须已退出世界；模组存档拒绝）", ""),
+                ("服务端：vanilla / paper", "vanilla"),
+                ("Minecraft 版本（留空从level.dat识别）", ""),
+                ("接受 Minecraft EULA？请输入 YES", ""),
+            ],
+            "frp" => vec![
+                ("frps 地址（域名 / IP）", ""),
+                ("frps 控制端口", "7000"),
+                ("发给朋友的远端端口", "25565"),
+                ("token 文件绝对路径（0600；请勿填token本身）", ""),
+                ("受信 CA 文件（留空用frp默认TLS）", ""),
+            ],
+            "target" => vec![
+                ("目标名称（仅本机标签）", "cloud"),
+                ("SSH Host（沿用 ~/.ssh/config 与密钥）", ""),
+                ("SSH 端口（留空沿用 ~/.ssh/config）", ""),
+                ("云主机公网地址（SSH别名时填写真实IP/DNS）", ""),
+                ("远端数据目录（相对于远端HOME）", ".local/share/mcsrv-cloud"),
+            ],
+            "select-cloud" => vec![
+                ("已配置的 SSH 目标名称", "cloud"),
+                ("远端实例名称", "friends"),
+            ],
+            "upload-world" => vec![
+                ("已停止的原版世界绝对路径（只读快照）", ""),
+                ("确认替换：输入当前云端实例名（旧世界会完整保留）", ""),
+            ],
+            "upload" => vec![
+                ("上传已停止的本机 Vanilla/Paper/Fabric 实例名称", "friends"),
+                ("确认上传：请输入同一实例名（不覆盖已有远端实例）", ""),
+            ],
+            "cloud-create" => vec![
+                ("服务端：vanilla / paper / fabric", "vanilla"),
+                ("Minecraft版本", "latest"),
+                ("接受 Minecraft EULA？请输入 YES", ""),
+            ],
+            "cloud-command" => vec![("发送单行服务端命令", "list")],
+            "cloud-backup" => vec![("先停止远端实例，再下载一致性世界快照；输入 BACKUP", "")],
+            "frps" => vec![
+                ("可选：用哪台SSH云主机当本机frp中转？填目标名", "cloud"),
+                ("明确确认部署frps：再次输入目标名", ""),
+            ],
+            _ => vec![],
+        }
+    }
+    fn flow_prompt(&mut self) {
+        if let Some((prompt, default)) = self.flow_fields().get(self.flow_values.len()) {
+            self.prompt = (*prompt).into();
+            self.input = (*default).into();
+            self.modal = Some(Modal::Input(InputKind::Flow));
+        }
+    }
+    fn next_flow(&mut self, value: String) {
+        self.flow_values.push(value);
+        if self.flow_values.len() < self.flow_fields().len() {
+            self.flow_prompt();
+            return;
+        }
+        self.modal = None;
+        let v = self.flow_values.clone();
+        match self.flow.as_str() {
+            "world" => {
+                if v[4] != "YES" {
+                    self.message = "未接受EULA，已取消".into();
+                    return;
+                }
+                let mut args = vec![
+                    "create".into(),
+                    v[0].clone(),
+                    "--kind".into(),
+                    v[2].clone(),
+                    "--world".into(),
+                    v[1].clone(),
+                    "--memory".into(),
+                    "4096".into(),
+                    "--whitelist".into(),
+                    "--accept-eula".into(),
+                ];
+                if !v[3].is_empty() {
+                    args.extend(["--version".into(), v[3].clone()]);
+                }
+                self.spawn("创建实例", args);
+            }
+            "frp" => {
+                let key = if self.page == 6 {
+                    "lan".into()
+                } else {
+                    self.selected_name().unwrap_or_default()
+                };
+                let mut args = vec![
+                    "frp".into(),
+                    "set".into(),
+                    key,
+                    "--server".into(),
+                    v[0].clone(),
+                    "--server-port".into(),
+                    v[1].clone(),
+                    "--remote-port".into(),
+                    v[2].clone(),
+                    "--token-file".into(),
+                    v[3].clone(),
+                ];
+                if !v[4].is_empty() {
+                    args.extend(["--trusted-ca".into(), v[4].clone()]);
+                }
+                self.spawn("联机结果", args);
+            }
+            "target" => {
+                let mut args = vec![
+                    "target".into(),
+                    "add".into(),
+                    v[0].clone(),
+                    v[1].clone(),
+                    "--directory".into(),
+                    v[4].clone(),
+                ];
+                if !v[2].is_empty() {
+                    args.extend(["--port".into(), v[2].clone()]);
+                }
+                if !v[3].is_empty() {
+                    args.extend(["--public-address".into(), v[3].clone()]);
+                }
+                self.spawn("联机结果", args);
+            }
+            "select-cloud" => {
+                self.cloud_target = v[0].clone();
+                self.cloud_name = v[1].clone();
+                self.cloud_endpoint = "按 r 获取实际公网地址与端口".into();
+                self.message = "已选择目标；r 查看状态，s 启动，d 创建，u 上传".into();
+            }
+            "upload" => self.spawn(
+                "联机结果",
+                vec![
+                    "cloud".into(),
+                    self.cloud_target.clone(),
+                    "deploy".into(),
+                    v[0].clone(),
+                    "--confirm".into(),
+                    v[1].clone(),
+                ],
+            ),
+            "cloud-create" => {
+                if v[2] != "YES" {
+                    self.message = "未接受EULA，已取消".into();
+                    return;
+                }
+                self.spawn(
+                    "联机结果",
+                    vec![
+                        "cloud".into(),
+                        self.cloud_target.clone(),
+                        "create".into(),
+                        self.cloud_name.clone(),
+                        "--kind".into(),
+                        v[0].clone(),
+                        "--version".into(),
+                        v[1].clone(),
+                        "--accept-eula".into(),
+                    ],
+                );
+            }
+            "upload-world" => self.spawn(
+                "联机结果",
+                vec![
+                    "cloud".into(),
+                    self.cloud_target.clone(),
+                    "upload-world".into(),
+                    self.cloud_name.clone(),
+                    v[0].clone(),
+                    "--confirm".into(),
+                    v[1].clone(),
+                ],
+            ),
+            "cloud-command" => self.spawn(
+                "联机结果",
+                vec![
+                    "cloud".into(),
+                    self.cloud_target.clone(),
+                    "command".into(),
+                    self.cloud_name.clone(),
+                    v[0].clone(),
+                ],
+            ),
+            "cloud-backup" if v[0] == "BACKUP" => self.cloud_action("backup"),
+            "frps" => self.spawn(
+                "联机结果",
+                vec![
+                    "frp".into(),
+                    "relay".into(),
+                    v[0].clone(),
+                    "--confirm".into(),
+                    v[1].clone(),
+                ],
+            ),
+            _ => self.message = "已取消".into(),
+        }
+    }
+    fn cloud_action(&mut self, action: &str) {
+        if self.cloud_target.is_empty() || self.cloud_name.is_empty() {
+            self.message = "请先按 e 选择SSH目标与远端实例".into();
+            return;
+        }
+        self.spawn(
+            "联机结果",
+            vec![
+                "cloud".into(),
+                self.cloud_target.clone(),
+                action.into(),
+                self.cloud_name.clone(),
+            ],
+        );
+    }
+    fn lan_start(&mut self) {
+        if self.demo {
+            self.message = "演示：已检测 Minecraft LAN 端口49152，租约30秒续期/90秒上限".into();
+            return;
+        }
+        if self.lan_child.is_some() {
+            self.message = "LAN共享已在运行；x 停止".into();
+            return;
+        }
+        let launched = (|| -> Result<(Child, tempfile::NamedTempFile)> {
+            let output = tempfile::NamedTempFile::new()?;
+            let mut cmd = Command::new(&self.executable);
+            crate::model::parent_death_signal(&mut cmd);
+            let child = cmd
+                .arg("--root")
+                .arg(&self.root)
+                .args(["lan", "share"])
+                .stdin(Stdio::null())
+                .stdout(Stdio::from(output.reopen()?))
+                .stderr(Stdio::from(output.reopen()?))
+                .spawn()?;
+            Ok((child, output))
+        })();
+        match launched {
+            Ok((child, output)) => {
+                self.lan_child = Some(child);
+                self.lan_output = Some(output);
+                self.message = "正在检测并共享；到期/退出自动撤销，失败时显示原因".into();
+            }
+            Err(e) => self.message = format!("启动共享失败：{e}"),
+        }
+    }
+
+    fn lan_stop(&mut self) {
+        if let Some(mut child) = self.lan_child.take() {
+            unsafe {
+                libc::kill(child.id() as i32, libc::SIGTERM);
+            }
+            let _ = child.wait();
+        }
+        self.message = "LAN共享已撤销".into();
+    }
     fn open_input(&mut self, kind: InputKind, prompt: &str) {
         self.input.clear();
         self.prompt = prompt.to_string();
@@ -666,6 +988,7 @@ impl App {
     fn handle_input_submit(&mut self, kind: InputKind) {
         let value = self.input.trim().to_owned();
         match kind {
+            InputKind::Flow => self.next_flow(value),
             InputKind::Filter => {
                 self.modal = None;
                 self.apply_filter((!value.is_empty()).then_some(value));
@@ -853,6 +1176,22 @@ impl App {
                     self.open_input(InputKind::Filter, "过滤实例名称、类型或版本");
                 }
             }
+            KeyCode::Char('w') if self.page == 0 => self.start_flow("world"),
+            KeyCode::Char('f') if self.page == 5 || self.page == 6 => self.start_flow("frp"),
+            KeyCode::Char('s') if self.page == 6 => self.lan_start(),
+            KeyCode::Char('x') if self.page == 6 => self.lan_stop(),
+            KeyCode::Char('a') if self.page == 7 => self.start_flow("target"),
+            KeyCode::Char('e') if self.page == 7 => self.start_flow("select-cloud"),
+            KeyCode::Char('u') if self.page == 7 => self.start_flow("upload"),
+            KeyCode::Char('w') if self.page == 7 => self.start_flow("upload-world"),
+            KeyCode::Char('d') if self.page == 7 => self.start_flow("cloud-create"),
+            KeyCode::Char('F') if self.page == 5 || self.page == 6 => self.start_flow("frps"),
+            KeyCode::Char('c') if self.page == 7 => self.start_flow("cloud-command"),
+            KeyCode::Char('b') if self.page == 7 => self.start_flow("cloud-backup"),
+            KeyCode::Char('s') if self.page == 7 => self.cloud_action("start"),
+            KeyCode::Char('x') if self.page == 7 => self.cloud_action("stop"),
+            KeyCode::Char('l') if self.page == 7 => self.cloud_action("logs"),
+            KeyCode::Char('r') if self.page == 7 => self.cloud_action("status"),
             KeyCode::Char('n') if self.page == 0 => self.start_create(),
             KeyCode::Char('s') if self.page == 0 => {
                 if let Some(name) = self.selected_name() {
@@ -937,7 +1276,7 @@ impl App {
                     self.prompt = format!("修改 {name} 的定时备份间隔；输入分钟数后 Enter 保存");
                 }
             }
-            KeyCode::Char(character @ '1'..='6') => {
+            KeyCode::Char(character @ '1'..='8') => {
                 self.switch_page((character as usize) - ('1' as usize))
             }
             KeyCode::Tab => self.switch_page((self.page + 1) % PAGES.len()),
@@ -1031,12 +1370,19 @@ impl App {
         }
         if kind == MouseEventKind::Down(MouseButton::Left) {
             if row <= 3 {
-                let page = (column / 12) as usize;
+                let mut edge = 0;
+                let page = PAGES
+                    .iter()
+                    .position(|name| {
+                        edge += name.width() as u16 + 4;
+                        column < edge
+                    })
+                    .unwrap_or(PAGES.len());
                 if page < PAGES.len() {
                     self.switch_page(page);
                 }
-            } else if self.page == 0 {
-                let index = row.saturating_sub(6) as usize;
+            } else if self.page == 0 && row >= 12 {
+                let index = row.saturating_sub(12) as usize;
                 self.select_instance_row(index);
             }
         }
@@ -1080,6 +1426,9 @@ pub fn run(root: PathBuf, demo: bool) -> Result<()> {
     let executable = std::env::current_exe().context("定位 mcsrv-mayon 可执行文件")?;
     let mut app = App::new(root, demo, executable);
     if demo {
+        app.cloud_target = "cloud-demo".into();
+        app.cloud_name = "friends".into();
+        app.cloud_endpoint = "203.0.113.40:25565（演示）".into();
         app.message = "演示数据已载入 · 所有操作均为模拟".into();
         app.instances = vec![
             Instance {
@@ -1192,7 +1541,11 @@ fn draw(frame: &mut Frame, app: &App) {
             Constraint::Length(2),
         ])
         .split(area);
-    let instance_label = app.selected_name().unwrap_or_else(|| "未选择实例".into());
+    let instance_label = match app.page {
+        6 => "Minecraft LAN 世界".into(),
+        7 => format!("{} / {}", app.cloud_target, app.cloud_name),
+        _ => app.selected_name().unwrap_or_else(|| "未选择实例".into()),
+    };
     let state = if app.demo {
         "演示模式 · 无真实操作"
     } else {
@@ -1228,15 +1581,19 @@ fn draw(frame: &mut Frame, app: &App) {
         2 => draw_players(frame, layout[2], app),
         3 => draw_backups(frame, layout[2], app),
         4 => draw_mods(frame, layout[2], app),
-        _ => draw_network(frame, layout[2], app),
+        5 => draw_network(frame, layout[2], app),
+        6 => draw_lan(frame, layout[2], app),
+        _ => draw_cloud(frame, layout[2], app),
     }
     let hint = match app.page {
-        0 => "n 新建  s 启动  x 停止  / 过滤",
+        0 => "w 原版存档开服  n 新建  s/x 启停  7 LAN  8 云服",
         1 => "Enter 命令  j/k 浏览日志",
         2 => "Enter 玩家命令  a 输入自定义管理命令",
         3 => "b 备份  r 回滚（需输入快照 ID）",
         4 => "/ 搜索  Enter/i 安装  u 更新  d 比较 Prism",
-        _ => "l/L 切换局域网  t Tailscale说明  c 备份间隔  ? 帮助",
+        6 => "s 检测并共享  x 撤销  f 公网隧道  ? 帮助",
+        7 => "a 添加目标  e 选择云服  s/x 启停  l 日志  ? 全部操作",
+        _ => "f 公网隧道  l/L 切换局域网  t Tailscale说明  c 备份间隔  ? 帮助",
     };
     frame.render_widget(
         Paragraph::new(Text::from(vec![
@@ -1257,6 +1614,13 @@ fn draw(frame: &mut Frame, app: &App) {
 }
 
 fn draw_instances(frame: &mut Frame, area: Rect, app: &App) {
+    let sections = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(7), Constraint::Min(6)])
+        .split(area);
+    frame.render_widget(Paragraph::new("局域网世界   7 → s  检测游戏内随机端口，临时放行；f 接公网隧道\n本机服务器   n 创建服务端 → s 启动 · 6 → f 公网隧道\n             w 原版单人存档 → 只读复制 → Vanilla / Paper\n云服务器     8 → a 添加目标 → e 选择 → d 创建 / u 上传 → s 启动\n             公网直连 · SSH 管理 / 日志 / 世界备份 · 安全组自行放行")
+        .style(Style::default().fg(FG)).block(block("选择联机方式",false)).wrap(Wrap{trim:false}),sections[0]);
+    let area = sections[1];
     let visible = app.visible_instances();
     let short_info = app
         .selected_instance()
@@ -1571,6 +1935,15 @@ fn draw_network(frame: &mut Frame, area: Rect, app: &App) {
         server.name, server.port, yes_no(server.lan),
         if app.status.addresses.is_empty() { "按 l 刷新本机地址".into() } else { app.status.addresses.clone() },
     )).unwrap_or_else(|| "请选择一个实例以查看网络与联机选项。".into());
+    let tunnel = app
+        .selected_name()
+        .and_then(|n| crate::frp::load_settings(&app.root, &n).ok().flatten())
+        .map(|c| crate::frp::address(&c))
+        .unwrap_or_else(|| "未配置".into());
+    let info = format!(
+        "公网隧道：{tunnel} · f 配置 · F 可选云主机作中转\n{}\n\n{info}",
+        crate::frp::ROUTING_HINT
+    );
     frame.render_widget(
         Paragraph::new(info)
             .block(block("局域网与远程联机", true))
@@ -1578,10 +1951,49 @@ fn draw_network(frame: &mut Frame, area: Rect, app: &App) {
         area,
     );
 }
+fn draw_lan(frame: &mut Frame, area: Rect, app: &App) {
+    let worlds = if app.demo {
+        "Minecraft · Prism · Java 21\nPID 24801 · TCP 49152 · UDP 4445 MOTD: Friends".into()
+    } else {
+        if app.lan_worlds.is_empty() {
+            "未发现已确认的LAN世界（每3秒检测）".into()
+        } else {
+            app.lan_worlds
+                .iter()
+                .map(|w| {
+                    format!(
+                        "Minecraft PID {} · TCP {} · {}",
+                        w.pid,
+                        w.port,
+                        w.motd.as_deref().unwrap_or("等待MOTD")
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+        }
+    };
+    let tunnel = crate::frp::load_settings(&app.root, "lan")
+        .ok()
+        .flatten()
+        .map(|c| crate::frp::address(&c))
+        .unwrap_or_else(|| "未配置（f 配置；F 可选将SSH主机用作中转）".into());
+    frame.render_widget(Paragraph::new(format!("局域网世界 · 游戏内对局域网开放\n\n1  在 Minecraft 暂停菜单选择“对局域网开放”\n2  按 s 检测并共享一小时；不启动或更改你的游戏\n3  将本机IP:下方随机端口发给同网朋友\n\n本机地址（加上检测端口）\n{}\n{worlds}\n\n共享：{}\n防火墙：当前用户 + Prism客户端 + LISTEN socket校验\n续租30秒 · 上限90秒 · 游戏退出/到期自动收回 · x 手动撤销\n\n公网隧道：{tunnel}\n{}",app.local_addresses,if app.lan_child.is_some(){"已请求；系统持续复核"}else{"未运行"},crate::frp::ROUTING_HINT)).block(block("局域网世界",true)).wrap(Wrap{trim:false}),area);
+}
+fn draw_cloud(frame: &mut Frame, area: Rect, app: &App) {
+    frame.render_widget(Paragraph::new(format!("云服务器 · 公网直连\n\n目标：{}    实例：{}\n\na  添加 SSH 目标（系统ssh，沿用已有密钥与config）\ne  选择目标和实例 → d 下载 Vanilla/Paper/Fabric\nu  上传本机单一服务端（停止后确认；整合包不支持）\ns / x  启动 / 停止 · r 状态和公网地址 · l 日志 · c 控制台命令\nb  停服后备份并下载 · w 上传原版世界（确认后整体替换）\n\n托管：优先 systemd --user，缺失时 tmux\n如需退出SSH后保持运行，请检查用户 linger\n\n朋友直接连接 {}\n请自行在云厂商安全组与云主机防火墙放行该TCP端口\n数据位于远端私有目录；本机不保存SSH私钥或密码。",if app.cloud_target.is_empty(){"尚未选择"}else{&app.cloud_target},if app.cloud_name.is_empty(){"尚未选择"}else{&app.cloud_name},app.cloud_endpoint)).block(block("云服务器",true)).wrap(Wrap{trim:false}),area);
+}
+impl Drop for App {
+    fn drop(&mut self) {
+        if self.lan_child.is_some() {
+            self.lan_stop();
+        }
+    }
+}
+
 fn draw_modal(frame: &mut Frame, modal: Modal, app: &App) {
     let width = 74.min(frame.area().width.saturating_sub(4));
     let height = match modal {
-        Modal::Help => 12.min(frame.area().height.saturating_sub(2)),
+        Modal::Help => 14.min(frame.area().height.saturating_sub(2)),
         Modal::Output => 22.min(frame.area().height.saturating_sub(2)),
         Modal::Input(_) | Modal::ConfirmCreate | Modal::ConfirmRestore => {
             8.min(frame.area().height.saturating_sub(2))

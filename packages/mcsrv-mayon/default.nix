@@ -34,6 +34,10 @@ pkgs.rustPlatform.buildRustPackage {
           pkgs.restic
           pkgs.systemd
           pkgs.iproute2
+          pkgs.frp
+          pkgs.openssh
+          pkgs.rsync
+          pkgs.tmux
           pkgs.tailscale
         ]
       } \
