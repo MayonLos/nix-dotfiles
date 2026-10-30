@@ -1,0 +1,5 @@
+{
+  "status": 1,
+  "message": "success",
+  "data": "{\"timeTable\":[{\"endTime\":\"08:45\",\"node\":1,\"startTime\":\"08:00\",\"timeTable\":1},{\"endTime\":\"09:40\",\"node\":2,\"startTime\":\"08:55\",\"timeTable\":1},{\"endTime\":\"10:45\",\"node\":3,\"startTime\":\"10:00\",\"timeTable\":1},{\"endTime\":\"11:40\",\"node\":4,\"startTime\":\"10:55\",\"timeTable\":1}],\"settings\":{\"id\":7,\"maxWeek\":16,\"nodes\":4,\"startDate\":\"2026-09-07\",\"tableName\":\"自建分享课表\"},\"courses\":[{\"courseName\":\"测试数学\",\"credit\":3,\"id\":42,\"note\":\"课程说明\",\"tableId\":7}],\"schedule\":[{\"day\":1,\"endWeek\":16,\"id\":42,\"level\":0,\"ownTime\":false,\"room\":\"教室 A\",\"startNode\":1,\"startWeek\":1,\"step\":2,\"tableId\":7,\"teacher\":\"测试老师\",\"type\":1},{\"day\":3,\"endWeek\":16,\"id\":42,\"level\":0,\"ownTime\":false,\"room\":\"教室 B\",\"startNode\":3,\"startWeek\":2,\"step\":2,\"tableId\":7,\"teacher\":\"测试老师\",\"type\":2}]}"
+}

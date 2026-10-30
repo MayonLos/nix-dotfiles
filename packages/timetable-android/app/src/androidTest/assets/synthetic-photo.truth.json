@@ -1,0 +1,38 @@
+{
+  "schema": "synthetic-timetable-photo-v1",
+  "seed": 20261030,
+  "image": "synthetic-photo.png",
+  "width": 1440,
+  "height": 900,
+  "occupiedCells": [
+    {
+      "weekday": 3,
+      "periodStart": 2,
+      "periodEnd": 2,
+      "courseName": "高等数学",
+      "teacher": "王老师",
+      "classroom": "A203",
+      "weeks": "1-16周(单)",
+      "lines": [
+        "高等数学",
+        "教师：王老师",
+        "教室：A203",
+        "周次：1-16周(单)"
+      ]
+    }
+  ],
+  "weekdayHeaders": [
+    "周一",
+    "周二",
+    "周三",
+    "周四",
+    "周五"
+  ],
+  "periodHeaders": [
+    "第1节",
+    "第2节",
+    "第3节"
+  ],
+  "font": "/nix/store/zsqnqrsvryxsa5xhy44y9szvqcmd9628-source-han-sans-2.005/share/fonts/opentype/source-han-sans/SourceHanSans.ttc",
+  "notes": "程序合成印刷体课表；无真实用户数据；所有文字字号至少 32 px。"
+}
