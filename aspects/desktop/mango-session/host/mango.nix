@@ -1,5 +1,13 @@
 { inputs, pkgs, ... }:
 
+let
+  # Keep Mango's locked wlroots/scenefx package set; only patch its blur sampler.
+  scenefx =
+    inputs.mango.inputs.scenefx.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs
+      (old: {
+        patches = (old.patches or [ ]) ++ [ ../mango/scenefx-blur-level-clamp.patch ];
+      });
+in
 {
   imports = [ inputs.mango.nixosModules.mango ];
 
@@ -8,13 +16,20 @@
     # Noctalia's user service has no logind scope. Import the greetd-provided
     # session ID in Mango's early C hook, before it starts the session target.
     # This same list is cleared on exit; no ID is captured at Nix evaluation.
-    package = inputs.mango.packages.${pkgs.stdenv.hostPlatform.system}.mango.overrideAttrs (old: {
-      postPatch = (old.postPatch or "") + ''
-        substituteInPlace src/main.c \
-          --replace-fail '"XDG_SESSION_TYPE",' '"XDG_SESSION_TYPE", "XDG_SESSION_ID",'
-        grep -F '"XDG_SESSION_TYPE", "XDG_SESSION_ID",' src/main.c
-      '';
-    });
+    package =
+      (inputs.mango.packages.${pkgs.stdenv.hostPlatform.system}.mango.override {
+        inherit scenefx;
+      }).overrideAttrs
+        (old: {
+          passthru = (old.passthru or { }) // {
+            barBlurScenefx = scenefx;
+          };
+          postPatch = (old.postPatch or "") + ''
+            substituteInPlace src/main.c \
+              --replace-fail '"XDG_SESSION_TYPE",' '"XDG_SESSION_TYPE", "XDG_SESSION_ID",'
+            grep -F '"XDG_SESSION_TYPE", "XDG_SESSION_ID",' src/main.c
+          '';
+        });
   };
 
   # mango's module turns on services.graphical-desktop, and

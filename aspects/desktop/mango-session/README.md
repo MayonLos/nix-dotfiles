@@ -214,3 +214,37 @@ Tray items render inline (`drawer=false`), which removes the attached reverse-co
 Launchpad's `icon_overrides` string list accepts `desktop-id=icon-name-or-absolute-path`; it changes artwork only (absolute paths bypass desktop-ID fuzzy matching) and falls back to native lookup if the override is unavailable. Neovim uses its packaged upstream icon, long-task terminal uses the original `resources/terminal-clock.svg`, and the user's Dead by Daylight launcher uses its actual Steam app icon instead of the Steam logo. No desktop files, launch commands, histories or GUI state are rewritten. `resources/dead-by-daylight.jpg` is the unmodified 32×32 public app thumbnail from Steam's library cache for app 381210 (Behaviour Interactive artwork; SHA256 `2f308ff02f87f002d757a24f54e590118ad3e13ac5e860a3fe2bd5f25af5de93`). Yazi and Legion GUI already resolve their package pixmaps and retain them.
 
 The complete host desktop/icon audit and private Sway shots are under `.work/r44/desk/`. They verify rendering at 2560×1600/scale 1.5 with synthetic private D-Bus devices, not application of this worktree or physical hardware transitions. Removal withdraws these package/settings/plugin assets and leaves user desktop entries and application data intact.
+
+## R50 blur edge sampling
+
+Mango's locked scenefx (`37ccd723bef49e6891156ffafce8f549f01446cc`)
+uses full-output-size ping-pong FBOs for the dual-Kawase pyramid. Each reduced
+level populates only its top-left rectangle. `GL_CLAMP_TO_EDGE` is already set
+in `render/fx_renderer/fx_texture.c`, but protects the whole allocation rather
+than that rectangle. Upsample taps at its right/bottom boundary can therefore
+read stale pixels from a previous pass. A bright-center/dark-right wallpaper
+reproduces the right-edge light band in isolated Mango at 2560×1600, scale 1.5.
+This is a reduced-level sampling defect, not evidence of `GL_REPEAT` or a
+Noctalia bar width mismatch; fractional scaling exposes it in the reported setup.
+
+`mango/scenefx-blur-level-clamp.patch` adds populated-level texel-center bounds
+to both blur shaders; `fx_pass.c` supplies the source level for each down/up pass.
+Where supported, the new sampling bounds use high precision so rounding cannot
+move a texel-center limit into the stale region (the poison fixture also
+detects this with mediump bounds).
+`host/mango.nix` overrides only the locked Mango dependency, preserving its
+wlroots package set. Radius 5, two passes, optimized wallpaper caching, bar
+opacity 0.62, flush geometry and Dock opacity 0.80/radius 16/margin 8 remain.
+No Noctalia source or configuration writer changes are required. Removal
+withdraws the renderer patch on the next compositor restart and touches no state.
+
+`mango-blur-sampling` renders the actual upstream and patched fragment shaders
+through surfaceless Mesa GLES with deliberately poisoned unused FBO regions.
+It checks edge color differences and preservation of blur at the physical
+2560×1600 size and an odd-size fixture. This sandboxed shader regression does
+not start a compositor or connect to a desktop session. Full compositor and
+Noctalia screenshots are a separate isolated runtime check; `grim -s 1`
+resamples the 2560×1600 output to 1707×1067, so the final row/column can have
+resampling alpha and should also be inspected in `grim -s 1.5` physical pixels.
+Apply the built system through the normal main-agent workflow and log out/in
+before checking the new Mango renderer on the real display.

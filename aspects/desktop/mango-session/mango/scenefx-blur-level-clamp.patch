@@ -1,0 +1,163 @@
+Subject: [PATCH] Clamp dual-Kawase taps to the populated pyramid level
+
+Upstream: wlrfx/scenefx, locked 37ccd723bef49e6891156ffafce8f549f01446cc
+Location: render/fx_renderer/{fx_pass.c,shaders/blur{1,2}.frag}
+
+Full-output FBOs are reused for every reduced blur level. GL_CLAMP_TO_EDGE
+only protects the allocation boundary, so an upsample tap near the right or
+bottom of a reduced level reads stale content outside that level. Clamp to
+the populated texel centers, retaining the radius, passes and optimized cache.
+Reproduced with Mango 0.18.3, 2560x1600 at scale 1.5 and a bright center/dark
+right wallpaper. No Noctalia geometry or opacity changes are needed.
+
+--- a/include/render/fx_renderer/shaders.h
++++ b/include/render/fx_renderer/shaders.h
+@@ -157,6 +157,7 @@
+ 	GLint pos_attrib;
+ 	GLint radius;
+ 	GLint halfpixel;
++	GLint sample_bounds;
+ };
+ 
+ bool link_blur1_program(struct blur_shader *shader);
+--- a/render/fx_renderer/shaders.c
++++ b/render/fx_renderer/shaders.c
+@@ -322,6 +322,7 @@
+ 	shader->tex_proj = glGetUniformLocation(prog, "tex_proj");
+ 	shader->radius = glGetUniformLocation(prog, "radius");
+ 	shader->halfpixel = glGetUniformLocation(prog, "halfpixel");
++	shader->sample_bounds = glGetUniformLocation(prog, "sample_bounds");
+ 
+ 	return true;
+ }
+@@ -338,6 +339,7 @@
+ 	shader->tex_proj = glGetUniformLocation(prog, "tex_proj");
+ 	shader->radius = glGetUniformLocation(prog, "radius");
+ 	shader->halfpixel = glGetUniformLocation(prog, "halfpixel");
++	shader->sample_bounds = glGetUniformLocation(prog, "sample_bounds");
+ 
+ 	return true;
+ }
+--- a/render/fx_renderer/shaders/blur1.frag
++++ b/render/fx_renderer/shaders/blur1.frag
+@@ -5,15 +5,27 @@
+ 
+ uniform float radius;
+ uniform vec2 halfpixel;
++// The pyramid occupies only the top-left part of a full-size texture.
++// GL_CLAMP_TO_EDGE clamps to the allocation, not the populated level.
++#ifdef GL_FRAGMENT_PRECISION_HIGH
++#define SAMPLING_PRECISION highp
++#else
++#define SAMPLING_PRECISION mediump
++#endif
++uniform SAMPLING_PRECISION vec4 sample_bounds;
++
++vec4 sample_level(SAMPLING_PRECISION vec2 uv) {
++    return texture2D(tex, clamp(uv, sample_bounds.xy, sample_bounds.zw));
++}
+ 
+ void main() {
+     vec2 uv = v_texcoord * 2.0;
+ 
+-    vec4 sum = texture2D(tex, uv) * 4.0;
+-    sum += texture2D(tex, uv - halfpixel.xy * radius);
+-    sum += texture2D(tex, uv + halfpixel.xy * radius);
+-    sum += texture2D(tex, uv + vec2(halfpixel.x, -halfpixel.y) * radius);
+-    sum += texture2D(tex, uv - vec2(halfpixel.x, -halfpixel.y) * radius);
++    vec4 sum = sample_level(uv) * 4.0;
++    sum += sample_level(uv - halfpixel.xy * radius);
++    sum += sample_level(uv + halfpixel.xy * radius);
++    sum += sample_level(uv + vec2(halfpixel.x, -halfpixel.y) * radius);
++    sum += sample_level(uv - vec2(halfpixel.x, -halfpixel.y) * radius);
+ 
+     gl_FragColor = sum / 8.0;
+ }
+--- a/render/fx_renderer/shaders/blur2.frag
++++ b/render/fx_renderer/shaders/blur2.frag
+@@ -5,19 +5,31 @@
+ 
+ uniform float radius;
+ uniform vec2 halfpixel;
++// The pyramid occupies only the top-left part of a full-size texture.
++// GL_CLAMP_TO_EDGE clamps to the allocation, not the populated level.
++#ifdef GL_FRAGMENT_PRECISION_HIGH
++#define SAMPLING_PRECISION highp
++#else
++#define SAMPLING_PRECISION mediump
++#endif
++uniform SAMPLING_PRECISION vec4 sample_bounds;
++
++vec4 sample_level(SAMPLING_PRECISION vec2 uv) {
++    return texture2D(tex, clamp(uv, sample_bounds.xy, sample_bounds.zw));
++}
+ 
+ void main() {
+     vec2 uv = v_texcoord / 2.0;
+ 
+-    vec4 sum = texture2D(tex, uv + vec2(-halfpixel.x * 2.0, 0.0) * radius);
++    vec4 sum = sample_level(uv + vec2(-halfpixel.x * 2.0, 0.0) * radius);
+ 
+-    sum += texture2D(tex, uv + vec2(-halfpixel.x, halfpixel.y) * radius) * 2.0;
+-    sum += texture2D(tex, uv + vec2(0.0, halfpixel.y * 2.0) * radius);
+-    sum += texture2D(tex, uv + vec2(halfpixel.x, halfpixel.y) * radius) * 2.0;
+-    sum += texture2D(tex, uv + vec2(halfpixel.x * 2.0, 0.0) * radius);
+-    sum += texture2D(tex, uv + vec2(halfpixel.x, -halfpixel.y) * radius) * 2.0;
+-    sum += texture2D(tex, uv + vec2(0.0, -halfpixel.y * 2.0) * radius);
+-    sum += texture2D(tex, uv + vec2(-halfpixel.x, -halfpixel.y) * radius) * 2.0;
++    sum += sample_level(uv + vec2(-halfpixel.x, halfpixel.y) * radius) * 2.0;
++    sum += sample_level(uv + vec2(0.0, halfpixel.y * 2.0) * radius);
++    sum += sample_level(uv + vec2(halfpixel.x, halfpixel.y) * radius) * 2.0;
++    sum += sample_level(uv + vec2(halfpixel.x * 2.0, 0.0) * radius);
++    sum += sample_level(uv + vec2(halfpixel.x, -halfpixel.y) * radius) * 2.0;
++    sum += sample_level(uv + vec2(0.0, -halfpixel.y * 2.0) * radius);
++    sum += sample_level(uv + vec2(-halfpixel.x, -halfpixel.y) * radius) * 2.0;
+ 
+     gl_FragColor = sum / 12.0;
+ }
+--- a/render/fx_renderer/fx_pass.c
++++ b/render/fx_renderer/fx_pass.c
+@@ -832,7 +832,8 @@
+ 
+ // Renders the blur for each damaged rect and swaps the buffer
+ static void render_blur_segments(struct fx_gles_render_pass *pass,
+-		struct fx_render_blur_pass_options *fx_options, struct blur_shader* shader) {
++		struct fx_render_blur_pass_options *fx_options, struct blur_shader* shader,
++		int source_level) {
+ 	struct fx_render_texture_options *tex_options = &fx_options->tex_options;
+ 	struct wlr_render_texture_options *options = &tex_options->base;
+ 	struct fx_renderer *renderer = pass->buffer->renderer;
+@@ -884,6 +885,16 @@
+ 
+ 	glUniform1i(shader->tex, 0);
+ 	glUniform1f(shader->radius, blur_data->radius);
++
++	// Clamp every tap to texel centers of the populated pyramid level.
++	// Offscreen buffers keep the full output size at every level; sampling
++	// outside the scaled region otherwise reads stale pixels from another pass.
++	const float width = options->texture->width;
++	const float height = options->texture->height;
++	const int divisor = 1 << source_level;
++	glUniform4f(shader->sample_bounds, 0.5f / width, 0.5f / height,
++			(ceilf(width / divisor) - 0.5f) / width,
++			(ceilf(height / divisor) - 0.5f) / height);
+ 
+ 	if (shader == &renderer->shaders.blur1) {
+ 		glUniform2f(shader->halfpixel,
+@@ -1056,14 +1067,14 @@
+ 	// Downscale
+ 	for (int i = 0; i < blur_data.num_passes; ++i) {
+ 		wlr_region_scale(&scaled_damage, &damage, 1.0f / (1 << (i + 1)));
+-		render_blur_segments(pass, fx_options, &renderer->shaders.blur1);
++		render_blur_segments(pass, fx_options, &renderer->shaders.blur1, i);
+ 	}
+ 
+ 	// Upscale
+ 	for (int i = blur_data.num_passes - 1; i >= 0; --i) {
+ 		// when upsampling we make the region twice as big
+ 		wlr_region_scale(&scaled_damage, &damage, 1.0f / (1 << i));
+-		render_blur_segments(pass, fx_options, &renderer->shaders.blur2);
++		render_blur_segments(pass, fx_options, &renderer->shaders.blur2, i + 1);
+ 	}
+ 
+ 	pixman_region32_fini(&scaled_damage);
