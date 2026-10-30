@@ -14,4 +14,7 @@ in
 {
   embedded-udev = checks.udev;
   embedded-tools = checks.tools;
+  serial-mayon =
+    assert builtins.elem pkgs.serialMayon home.home.packages;
+    pkgs.serialMayon;
 }
