@@ -37,7 +37,7 @@ pkgs.runCommand "office-fonts-check"
 
     root = ET.parse(os.environ["OFFICE_FONT_ALIASES"]).getroot()
     assert root.tag == "fontconfig", root.tag
-    expected = {"Calibri": "Carlito", "Cambria": "Caladea", "Arial": "Liberation Sans", "Times New Roman": "Liberation Serif", "Courier New": "Liberation Mono", "SimSun": "Noto Serif CJK SC", "Microsoft YaHei": "Noto Sans CJK SC", "Source Han Sans SC": "Source Han Sans SC", "Source Han Serif SC": "Source Han Serif SC"}
+    expected = {"Calibri": "Carlito", "Cambria": "Caladea", "Arial": "Liberation Sans", "Times New Roman": "Liberation Serif", "Courier New": "Liberation Mono", "SimSun": "Noto Serif CJK SC", "Microsoft YaHei": "Noto Sans CJK SC", "Source Han Sans SC": "Noto Sans CJK SC", "Source Han Serif SC": "Noto Serif CJK SC"}
     for requested, family in expected.items():
         result = subprocess.run(
             ["fc-match", "-f", "%{family}", requested],
