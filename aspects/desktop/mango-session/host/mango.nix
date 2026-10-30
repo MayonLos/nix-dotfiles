@@ -21,6 +21,7 @@ in
         inherit scenefx;
       }).overrideAttrs
         (old: {
+          patches = (old.patches or [ ]) ++ [ ../mango/r52-center-rule-sized-floats.patch ];
           passthru = (old.passthru or { }) // {
             barBlurScenefx = scenefx;
           };
@@ -28,6 +29,7 @@ in
             substituteInPlace src/main.c \
               --replace-fail '"XDG_SESSION_TYPE",' '"XDG_SESSION_TYPE", "XDG_SESSION_ID",'
             grep -F '"XDG_SESSION_TYPE", "XDG_SESSION_ID",' src/main.c
+            grep -Fq 'R52: an explicit rule size also declares a centered role' src/manage/client.c
           '';
         });
   };

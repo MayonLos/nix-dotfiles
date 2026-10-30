@@ -129,6 +129,8 @@ in
       blur_optimized = 1;
       blur_params_radius = 5;
       blur_params_num_passes = 2;
+      # Noctalia animates its own panel/notification layer surfaces. Keeping
+      # Mango layer animations off avoids a second compositor transition.
       layer_animations = 0;
       shadows = 1;
       layer_shadows = 0;
@@ -158,7 +160,8 @@ in
       global_color = "${color palette.blue}";
       overlay_color = "${color palette.blue}";
       maximized_screen_color = "${color palette.blue}";
-      border_radius = 12;
+      # Match Noctalia's 16px panel/Dock outer radius.
+      border_radius = 16;
       gap_inner_horizontal = 8;
       gap_inner_vertical = 8;
       gap_outer_horizontal = 12;
@@ -178,10 +181,10 @@ in
       fade_out_begin_opacity = 0.5;
       zoom_initial_ratio = 0.985;
       zoom_end_ratio = 0.98;
-      animation_duration_move = 180;
-      animation_duration_open = 140;
-      animation_duration_tag = 150;
-      animation_duration_close = 110;
+      animation_duration_move = 200;
+      animation_duration_open = 190;
+      animation_duration_tag = 190;
+      animation_duration_close = 150;
       animation_duration_focus = 0;
       # One ease-out curve across opens/closes/moves/tags; no overshoot.
       # Focus still responds immediately and reducedMotion disables animations.

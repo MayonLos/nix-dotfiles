@@ -7,7 +7,7 @@
 -  inline constexpr Range<std::int64_t> kControlCenterWidthRange{600, 1200, 10};
 -  inline constexpr Range<std::int64_t> kLauncherWidthRange{560, 1100, 10};
 +  // R50: allow the declared compact panel widths instead of silently clamping.
-+  inline constexpr Range<std::int64_t> kControlCenterWidthRange{348, 1200, 10};
++  inline constexpr Range<std::int64_t> kControlCenterWidthRange{360, 1200, 10};
 +  inline constexpr Range<std::int64_t> kLauncherWidthRange{520, 1100, 10};
    inline constexpr Range<std::int64_t> kNotificationWidthRange{240, 500, 10};
    inline constexpr Range<std::int64_t> kScreenCornersSizeRange{1, 100, 1};

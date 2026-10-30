@@ -12,23 +12,50 @@ The approved G1/G2 design replaces the dense HUD with a flush 30 logical pixel t
 
 The floating bottom Dock uses native Smart auto-hide: empty workspace shows it, occupied workspace hides it, and the bottom edge reveals it again. `reserve_space=false` means its exclusive zone is zero. `layer=overlay` keeps the reveal strip and Dock reachable over fullscreen clients. It uses 44 px icons, 8 px edge gap, 16 px corners, opacity 0.80, native running dots and active accent, a leading grid launcher, and restrained 1.2× magnification. Dock client shadow is disabled: isolated Mango tests with both Pixman and GLES2 showed a thick black fringe when client shadow and native layer blur were combined; the fine capsule outline stays. Pinned order is kitty, firefox, obsidian, thunar, code, qq, musicfox; running apps are added natively. The launcher's application icons retain their source colors (`app_icon_colorize=false`); Dock also uses native application icons rather than replacing them with hand-drawn glyphs.
 
-Both surfaces request `compositor_blur=true`. Locked Mango 0.18.3 does not implement `ext-background-effect-v1`; its native blur supplies the actual effect. Blur and layer blur are enabled with optimized wallpaper caching, radius 5 and two passes. Ordered `layer_rule` entries first disable blur everywhere, then enable it for `noctalia-bar-*` and `noctalia-dock`. The focused-output Launchpad layer additionally opts into blur by its exact namespace `noctalia-plugin:nix-dotfiles/launchpad:drawer`. A catch-all window rule keeps normal clients unblurred. R43 extends the blur opt-in to native panels, attached panels, notifications and OSD. Their shared native Soft surface has opacity 0.80 and one outline; native panel client shadow is disabled because it creates an opaque fringe with Mango layer blur, as already observed for Dock; settings uses its native translucent-window option plus a dedicated Mango app-id blur rule. The bar reserves exactly its own height; native floating panels follow the usable edge plus 12 px. Notifications use their native usable-edge positioning plus 12 px (the old absolute-edge SYSTEM-tooltip avoidance is gone). OSD stays bottom-center with a 96 px offset so even a revealed Dock remains below it.
+Both surfaces request `compositor_blur=true`. Locked Mango 0.18.3 does not implement `ext-background-effect-v1`; its native blur supplies the actual effect. Blur and layer blur are enabled with optimized wallpaper caching, radius 5 and two passes. Ordered `layer_rule` entries first disable blur everywhere, then enable it for `noctalia-bar-*` and `noctalia-dock`. The focused-output Launchpad layer additionally opts into blur by its exact namespace `noctalia-plugin:nix-dotfiles/launchpad:drawer`. A catch-all window rule keeps normal clients unblurred. R43 extends the blur opt-in to native panels, attached panels, notifications and OSD. Their shared native Soft surface has opacity 0.80 and one outline; native panel client shadow is disabled because it creates an opaque fringe with Mango layer blur, as already observed for Dock; settings uses its native translucent-window option plus a dedicated Mango app-id blur rule. The bar reserves exactly its own height; native floating panels follow the usable edge plus 12 px. Notifications use their native usable-edge positioning plus 28 px horizontally / 24 px vertically (the old absolute-edge SYSTEM-tooltip avoidance is gone). OSD stays bottom-center with a 96 px offset so even a revealed Dock remains below it.
 
 ### Function entry points
 
 | Previous bar entry | Current entry |
 | --- | --- |
-| CPU/MEM/GPU/temperature SYSTEM hover | Control Center → System shortcut or sidebar; full native graphs/details; `Super+Alt+M` still toggles btop |
+| CPU/MEM/GPU/temperature SYSTEM hover | Control Center → native detail navigation → System; full native graphs/details; `Super+Alt+M` still toggles btop |
 | Brightness | Control Center Home slider and Monitor tab; hardware keys remain |
-| Power profile / caffeine | Control Center Home shortcuts; `Super+Alt+I` toggles caffeine |
+| Power profile / caffeine | Control Center Home performance row; `Super+Alt+I` toggles caffeine |
 | Tile / layout button | `Super+W` cycles Mango layout; native `Super+R` enters resize mode; `Super+F1` shows key help |
 | Notifications | Control Center Notifications tab / Home DND shortcut; small bar icon appears only when unread |
 | Battery conservation | Battery left click still runs `legion-conservation toggle`; local conservation plugin remains enabled |
 
-Control Center Home has no sidebar; detailed sections keep compact navigation. The visible Home width is 348 px. R50 lowers the upstream schema clamp so this
-declared width takes effect; native detail tabs keep at least 600 px for their
-two-column content, and direct Calendar keeps 320 px. Bar shortcuts between
-these contexts reopen through the native panel path to update surface geometry. Wi-Fi and Bluetooth are two device tiles; System, power profile, caffeine and DND remain neutral function rows. Nightlight is disabled (`enabled=false`, `force=false`), with no Home shortcut. Native network/Bluetooth/audio bar buttons open their detailed tabs. Existing hooks, services, secrets and application data are preserved.
+Control Center Home has no sidebar and a visible width of 360 logical px. Its
+four two-column tiles are Wi-Fi, Clash, Bluetooth and DND: solid palette blue
+with dark text when active, quiet surface fill otherwise, and separate title /
+live status text. The Home header uses the neutral “Control Center” title. Left click toggles the native Wi-Fi, Bluetooth or DND service;
+right click opens its existing details tab. Clash reads only `/version` and one
+`/traffic` sample from the native `/run/mayon-clash/mihomo.sock` and per-user
+Verge Unix socket. No socket means “controller disconnected”, not proof that a
+service or GUI has stopped. Conflicting controllers are labelled explicitly.
+Clicking Clash closes Home and reuses the existing named `mayon-clash` scratchpad;
+the TUI owns backend selection, start/stop confirmation and configuration. The
+tile never guesses a lifecycle command or starts/stops Verge automatically.
+The public package factory is `packages/noctalia-clash-status/default.nix`;
+its `tests.status` checks delayed traffic, conflict, stale socket and bad data.
+
+The volume and brightness sliders retain native service bindings and use an
+opt-in Primary→Tertiary (One Dark blue→purple) fill added to the native Slider;
+other sliders and OSD are unchanged. Battery, power profile and instantaneous
+Clash rates use thin separator rows and disappear when data is unavailable.
+Battery opens Power details, performance cycles the native profile, and traffic
+opens the same Clash scratchpad. Unavailable sliders show a dash rather than a
+measured zero.
+Native detail tabs retain at least 600 px and direct Calendar 320 px. Bar
+shortcuts reopen the native panel path when contexts change. Existing hooks,
+services, secrets and application data are preserved.
+
+Notifications share Home's 360 px width and use a 34 px rounded square gradient badge for fallback/native
+glyphs, dark ink, and original application images when supplied. Bold titles
+and muted body text share one text column; the separate bottom-right app-name
+footer and top progress accent are removed. Action buttons retain the native
+click/reply handlers. Offsets stay 28/24, outline/radius/input/blur geometry stays
+in the native card implementation, and the 0.80 Soft surface remains shared.
 
 ## Source patches
 
@@ -39,7 +66,7 @@ The package overrides only the locked `pkgs.local.noctalia` derivation. Every re
 | `astra-selection.patch` | Launcher/shortcut selection styling and compact vertical Control Center Home with volume/brightness sliders; old workspace and media-widget changes removed |
 | `tech-lockscreen.patch` | Compact identity/password row, circular avatar and feedback below the field |
 | `r43-*.patch` | Independent Control Center, notification, continuous OSD, compact calendar, settings and wallpaper drawing (checked by `r43-check-panels.py`) |
-| `r50-panel-widths.patch` | Permits the declared 348px Home and 520px launcher; keeps detail tabs at least 600px and reopens changed Control Center contexts for correct geometry |
+| `r50-panel-widths.patch` | Permits the declared 360px Home and 520px launcher; keeps detail tabs at least 600px and reopens changed Control Center contexts for correct geometry |
 | `nvidia-sampler.patch` | System-service portions extracted from old hud-sysmon: NVIDIA-only two-second sampling, suspended/unplugged GPU invalidation and short NVML sessions |
 | `active-app-name.patch` | Opt-in application-name label using native identity resolution |
 | `launchpad-native.patch` | Native application index/launch IPC, independent Dock Launchpad entry, opt-in layer capture keys and wheel events |
@@ -139,21 +166,48 @@ percentages of the remaining half-screen, not pixels.
 
 | Windows | Match / behavior |
 |---|---|
-| File choosers, Open/Save | Native transients plus exact English/Chinese title fallbacks scoped to browser, mail, file manager, editors, office, graphics and chat apps; centered about 1024×694 at 1707×1067 |
-| Preferences/Settings/Properties, About/confirmation | App-scoped exact titles; settings about 922×683, compact dialogs about 717×405; document/tab titles with application suffixes stay tiled |
-| Portal, polkit, pinentry | Portal app IDs float at chooser size; authentication IDs about 649×341; parented native dialogs retain client hints |
-| Firefox | `firefox` / Library, Downloads and About float; PiP starts 480×270 near bottom right, `is_overlay` + `is_global` + silent opening |
-| Thunar | `thunar` / File Operation Progress (about 717×192), properties, preferences and Bulk Rename float; main directory windows remain tiled |
-| Audio/Bluetooth/network | `org.pulseaudio.pavucontrol`, `blueman-manager` / `org.blueman.Manager`, `nm-connection-editor`: about 683×598 near top right |
-| CopyQ, Clash, calculator/color tools | `com.github.hluk.copyq`, `clash-verge`, calculator/color-picker IDs: floating, with separate practical sizes; no fixed tag or persistent no-focus |
-| Qt/Fcitx settings | `qt6ct`, `qt5ct`, `org.fcitx.*`, `fcitx5-config-qt`; File Roller, keyboard-layout viewer and Legion controls: floating settings size; observed Fcitx ID is `org.fcitx.` |
-| QQ/WeChat/Tencent Meeting/Vesktop | Distinct login, image-viewer and call titles float; passive notifications open silently; sharing-toolbar titles additionally use persistent `no_focus`; main chats stay tiled |
-| JetBrains/LibreOffice/Zotero/GIMP/Prism | Agreement/splash, Prism Quick Setup and specific tool/dialog titles float (JetBrains agreements retain client size to avoid empty Wayland frames); project, document, library and image main windows stay tiled |
-| Thunderbird/Obsidian/VS Code/MATLAB/OBS/Kdenlive/Blender/virt-manager | Native transients and app-scoped dialog fallbacks; compose windows, projects, VMs and other main windows keep their native behavior |
-| mpv/swayimg/imv/feh, games | Players/viewers float and receive compositor opacity 1; games matching `steam_app_[0-9]+` or Minecraft keep border/shadow/radius/animation removal, fullscreen-only tearing and the existing VRR hint (the host output enables VRR globally); never force helpers fullscreen |
-| Steam | Friends List narrow floating window, Settings/Login floating, notifications silent and unfocusable; main client tiled |
-| Capture tools | mark-shot editor toplevel floats; capture overlays and wayscrollshot layer surfaces keep full-output geometry |
-| Kitty/scratchpads | Existing Kitty frosting (`no_blur:0`), opacity and named scratch identities/sizes remain intact |
+| File choosers, Open/Save | Native transients plus app-scoped exact English/Chinese fallback titles; `dialog` |
+| Preferences/Settings/Properties | App-scoped exact titles; `dialog`; document/tab titles with application suffixes stay tiled |
+| About/confirmation, polkit/pinentry | `compact`; authentication focus stays native; Noctalia's built-in agent is a native panel layer |
+| Firefox | Library/Downloads `dialog`, About `compact`; PiP retains its 480×270 size, offsets and overlay/global/silent behavior |
+| Thunar | Progress/rename `compact`, properties/preferences/Bulk Rename `dialog`; main directories tiled |
+| Audio/Bluetooth/network, CopyQ, calculator/color tools | One centered `tools` size; no former top-right offset |
+| Clash Verge / Noctalia settings | `panel`; `clash-verge` desktop WM_CLASS / Tauri ID and native `dev.noctalia.Noctalia` ID |
+| Qt/Fcitx, File Roller, keyboard-layout and Legion settings | `dialog`; existing observed Fcitx `org.fcitx.` identity retained |
+| QQ/WeChat/Tencent Meeting/Vesktop | Login `compact`, call/image viewer `dialog`; existing notification/sharing silent/focus semantics retained |
+| JetBrains/LibreOffice/Zotero/GIMP/Prism | Existing scoped modal/splash rules; JetBrains agreements retain client size workaround |
+| virt-manager | Main “Virtual Machine Manager” / “虚拟系统管理器” `workspace`; Add Connection / New VM and connection-name + Connection Details `dialog` |
+| mpv/swayimg/imv/feh | Centered `workspace`, compositor opacity 1; swayimg was already matched and now shares this size |
+| Steam / games | Friends `tools`, Settings/Login `dialog`, main Steam tiled; notifications and games retain `no_animation` and existing focus/tearing policy |
+| Capture tools | mark-shot editor floats; full-output selection layers retain native geometry |
+| Kitty/scratchpads | Named TUI scratchpads share `workspace` ratios and compositor opacity 1, with native Kitty alpha + blur opt-in |
+
+| Size | Width × height ratio | Use |
+|---|---|---|
+| `compact` | 0.42 × 0.42 | Authentication, confirmation, small progress/rename |
+| `dialog` | 0.56 × 0.64 | Choosers, preferences and modal editors |
+| `tools` | 0.46 × 0.58 | Audio/network and small standalone tools |
+| `panel` | 0.68 × 0.78 | Noctalia settings and Clash Verge |
+| `workspace` | 0.78 × 0.78 | Viewers, VM manager and named TUI scratchpads |
+
+Every named size is centered without offsets. PiP remains an explicit exception.
+Locked Mango `client.c:set_float_malposition` otherwise cascades a new floating
+window when another has a nearby origin. An isolated real Mango run reproduced
+a 52px displacement for workspace-sized swayimg opened over a scratchpad.
+`r52-center-rule-sized-floats.patch` skips that cascade only for explicit rule
+sizes (`iscustomsize`) and lets those declared sizes center XWayland clients too,
+retaining native placement for windows without a size rule and preserving
+explicit PiP offsets. Its source marker is checked at build
+time and the real host package's patch list is asserted by the runtime check.
+The locked virt-manager package's `share/virt-manager/ui/manager.ui` supplies its
+translatable main title; its desktop entry supplies `.virt-manager-wrapped`.
+`ui/createconn.ui`, `ui/createvm.ui` and `virtManager/host.py` supply the actual
+Add Connection / New VM / connection-name + Connection Details titles; the
+locked zh_CN gettext catalogue supplies their translations. Generic old
+“New Connection” / “Virtual Machine Details” matches are removed.
+Noctalia's `settings_window.cpp` declares `dev.noctalia.Noctalia`. Title fixtures
+cover both English and Simplified Chinese; proprietary post-login windows still
+need real-session acceptance.
 
 There is no Mango rule for `keep_aspect_ratio`, `opaque`, window role/type criteria,
 min/max size or dynamic title matching. PiP retains client size/aspect hints, but
@@ -183,7 +237,12 @@ float natively through fixed-size hints); `Super+Space`
 provides the existing manual floating toggle. Distinct login-title fallbacks are
 conditional, not a claim that post-login chat/call/share windows were observed.
 
-Mango still uses 12 px outer / 8 px inner gaps, 12 px client corners and a native 1 px blue focus border. Only floating clients receive shadows; inactive clients have 6.3% dim and fullscreen is exempt. Opens/closes/tag changes use 140/110/150 ms, moves 180 ms, focus 0 ms, and the existing ease-out curve; opening zoom begins at 0.985; `reducedMotion` disables animation. `focus_on_activate=0` prevents unsolicited activation jumps. Tearing remains restricted to fullscreen games by the existing rules. These choices are based on locked Mango 0.18.3 sources, not newer documentation.
+Mango still uses 12 px outer / 8 px inner gaps, 16 px client corners matching panel/Dock outlines and a native 1 px blue focus border. Only floating clients receive shadows; inactive clients have 6.3% dim and fullscreen is exempt. Opens/closes/tag changes use 190/150/190 ms, moves 200 ms, focus 0 ms, and the existing ease-out curve; opening zoom begins at 0.985; `reducedMotion` disables animation. `focus_on_activate=0` prevents unsolicited activation jumps. Tearing remains restricted to fullscreen games by the existing rules. Noctalia panels/notifications keep their native 200 ms ease-out motion and
+100 ms hover/press feedback (active tiles use subtle same-blue alpha changes); its MotionService observes `shell.animation.enabled`
+from `reducedMotion`. Sliders follow direct input immediately. `layer_animations=0`
+is retained because locked Mango `manage/layer.c` gates compositor layer animation
+on that flag and Noctalia already animates its content/clip/input regions; enabling
+both would animate the same surface twice. These choices use the locked sources.
 
 Fcitx keeps `ClassicUI.PreferTextIcon=True` and the bar's pinned `fcitx` SNI, so the native tray image can express Rime's Chinese/English submode. No polling service or synthetic real-session keys are added. Bibata-Modern-Ice 24 (nixpkgs bibata-cursors) is shared by Mango, HM session environment, GTK, Xresources and Xorg; at 1.5 scale this is nominally 36 device pixels.
 

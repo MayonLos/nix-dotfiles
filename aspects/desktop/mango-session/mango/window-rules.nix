@@ -7,10 +7,13 @@
 }:
 let
   float = "is_floating:1";
-  centered = "${float},width:0.60,height:0.65"; # ~1024 x 694 at 1707 x 1067
-  compact = "${float},width:0.42,height:0.38"; # ~717 x 405
-  settings = "${float},width:0.54,height:0.64";
-  tools = "${float},width:0.40,height:0.56,offset_x:92,offset_y:-90";
+  # One centered scale per role; Mango centers floated clients when no offset
+  # is supplied. client.c:1698/1702 multiplies ratios by the full logical output area.
+  dialog = "${float},width:0.56,height:0.64";
+  compact = "${float},width:0.42,height:0.42";
+  tools = "${float},width:0.46,height:0.58";
+  panel = "${float},width:0.68,height:0.78";
+  workspace = "${float},width:0.78,height:0.78";
   silent = "is_open_silent:1,is_tag_silent:1";
   opaque = "focused_opacity:1.0,unfocused_opacity:1.0";
   browser = "[Ff]irefox|org[.]mozilla[.]firefox";
@@ -50,47 +53,50 @@ let
 
     # Native transients / X11 modal, splash, utility types already float.
     # These standalone portal windows have no reliable transient parent.
-    "${centered},app_id:^(xdg-desktop-portal-(gtk|gnome)|org[.]gtk[.]GtkFileChooserDialog)$"
-    "${float},width:0.38,height:0.32,app_id:^(polkit-gnome-authentication-agent-1|lxqt-policykit-agent|org[.]kde[.]polkit-kde-authentication-agent-1|pinentry.*)$"
-    "${float},width:0.68,height:0.82,app_id:^dev[.]noctalia[.]Noctalia$"
+    "${dialog},app_id:^(xdg-desktop-portal-(gtk|gnome)|org[.]gtk[.]GtkFileChooserDialog)$"
+    # Keep authentication prompts small while leaving their focus behavior native.
+    "${compact},app_id:^(polkit-gnome-authentication-agent-1|lxqt-policykit-agent|org[.]kde[.]polkit-kde-authentication-agent-1|pinentry.*)$"
+    "${panel},app_id:^dev[.]noctalia[.]Noctalia$"
 
     # Browser utility windows; Firefox's actual native app_id is "firefox".
-    "${settings},app_id:^(${browser})$,title:^(Library|Downloads|下载|我的足迹|资料库)$"
+    "${dialog},app_id:^(${browser})$,title:^(Library|Downloads|下载|我的足迹|资料库)$"
     "${compact},app_id:^(${browser})$,title:^(About (Mozilla )?Firefox|关于.*Firefox|Profile Missing)$"
     # No forced aspect rule exists in Mango. Retain the client's size/aspect
     # hints (no_size_hint remains unset); 480 x 270 is only the initial size.
     "${float},is_global:1,is_overlay:1,${silent},width:480,height:270,offset_x:96,offset_y:92,app_id:^(${browser})$,title:^(Picture-in-Picture|画中画)$"
     "${float},no_focus:1,${silent},app_id:^(${browser})$,title:^.*(Sharing Indicator|共享指示器)$"
-    "${float},width:0.60,height:0.64,app_id:^(mpv|imv|swayimg|feh)$"
+    # Image viewers own one centered workspace-sized surface when launched.
+    "${workspace},app_id:^(mpv|imv|swayimg|feh)$"
     "${opaque},app_id:^(mpv|imv|swayimg|feh|[Bb]lender|gimp.*|org[.]gimp[.]GIMP|com[.]obsproject[.]Studio|org[.]kde[.]kdenlive)$"
 
-    # Standalone controls: upstream end-4 / HyDE / JaKooLit use the same set.
+    # Standalone controls retain their application-scoped IDs from the existing table.
     "${tools},app_id:^(org[.]pulseaudio[.]pavucontrol|pavucontrol|[Bb]lueman-manager|org[.]blueman[.]Manager|[.]blueman-manager-wrapped|nm-connection-editor)$"
-    "${float},width:0.26,height:0.46,app_id:^(org[.]gnome[.]Calculator|qalculate-gtk|qalculate-qt|Qalculate-gtk|kcalc)$"
-    "${float},width:0.38,height:0.48,app_id:^(gcolor3|org[.]gnome[.]Gcolor3|org[.]kde[.]kcolorchooser|hyprpicker)$"
-    "${settings},app_id:^(qt[56]ct|fcitx5-config-qt|org[.]fcitx[.].*|org[.]fcitx[.]Fcitx5[.]Config)$"
-    "${settings},app_id:^(org[.]gnome[.]FileRoller|file-roller|kbd-layout-viewer5?|legion_gui)$"
-    "${float},width:0.40,height:0.54,app_id:^(com[.]github[.]hluk[.]copyq|copyq|CopyQ)$"
-    "${float},width:0.60,height:0.68,app_id:^(clash-verge|Clash-verge|io[.]github[.]clash-verge-rev[.]clash-verge-rev)$"
+    "${tools},app_id:^(org[.]gnome[.]Calculator|qalculate-gtk|qalculate-qt|Qalculate-gtk|kcalc)$"
+    "${tools},app_id:^(gcolor3|org[.]gnome[.]Gcolor3|org[.]kde[.]kcolorchooser|hyprpicker)$"
+    "${dialog},app_id:^(qt[56]ct|fcitx5-config-qt|org[.]fcitx[.].*|org[.]fcitx[.]Fcitx5[.]Config)$"
+    "${dialog},app_id:^(org[.]gnome[.]FileRoller|file-roller|kbd-layout-viewer5?|legion_gui)$"
+    "${tools},app_id:^(com[.]github[.]hluk[.]copyq|copyq|CopyQ)$"
+    # Clash Verge's app ID follows its Linux desktop entry.
+    "${panel},app_id:^(clash-verge|Clash-verge|io[.]github[.]clash-verge-rev[.]clash-verge-rev)$"
     # mark-shot capture and wayscrollshot selection are layer surfaces. Do not
     # resize their full-output capture areas; this only catches editor toplevels.
     "${float},no_animation:1,app_id:^(mark-shot|markshot|MarkShot)$"
 
     # Thunar: exact progress/preferences/bulk rename titles, main view tiled.
-    "${float},width:0.42,height:0.30,app_id:^([Tt]hunar|org[.]xfce[.]Thunar)$,title:^(Rename|重命名)"
-    "${float},width:0.42,height:0.18,app_id:^([Tt]hunar|org[.]xfce[.]Thunar)$,title:^(File Operation Progress|文件操作进度)$"
-    "${settings},app_id:^([Tt]hunar|org[.]xfce[.]Thunar)$,title:^(Bulk Rename.*|批量重命名.*|Thunar Preferences|Thunar 首选项|文件管理器首选项)$"
-    "${settings},app_id:^([Tt]hunar|org[.]xfce[.]Thunar)$,title:^.*( - Properties| Properties|属性)$"
+    "${compact},app_id:^([Tt]hunar|org[.]xfce[.]Thunar)$,title:^(Rename|重命名)"
+    "${compact},app_id:^([Tt]hunar|org[.]xfce[.]Thunar)$,title:^(File Operation Progress|文件操作进度)$"
+    "${dialog},app_id:^([Tt]hunar|org[.]xfce[.]Thunar)$,title:^(Bulk Rename.*|批量重命名.*|Thunar Preferences|Thunar 首选项|文件管理器首选项)$"
+    "${dialog},app_id:^([Tt]hunar|org[.]xfce[.]Thunar)$,title:^.*( - Properties| Properties|属性)$"
 
     # Game launch transitions lose borders/shadows, but helpers are never
     # forced fullscreen. Fullscreen border/dim/shadow removal is native Mango.
     "no_blur:1,no_border:1,no_shadow:1,no_radius:1,no_animation:1,force_tearing:1,vrr_only_fullscreen:1,app_id:${game}"
-    "${float},width:0.32,height:0.60,app_id:^(${steam})$,title:^(Friends List|Steam - Friends|好友列表|好友与聊天)$"
-    "${settings},app_id:^(${steam})$,title:^(Steam Settings|Settings|Steam Login|Sign in to Steam|Steam 登录|设置)$"
+    "${tools},app_id:^(${steam})$,title:^(Friends List|Steam - Friends|好友列表|好友与聊天)$"
+    "${dialog},app_id:^(${steam})$,title:^(Steam Settings|Settings|Steam Login|Sign in to Steam|Steam 登录|设置)$"
     "${float},${silent},no_focus:1,no_animation:1,app_id:^(${steam})$,title:^(Notification|Steam Notification|通知)"
-    "${centered},app_id:^(org[.]prismlauncher[.]PrismLauncher|PrismLauncher|prismlauncher)$,title:^(Console|Minecraft Log|Edit Instance|Instance Settings|实例设置|控制台)(.*)$"
+    "${dialog},app_id:^(org[.]prismlauncher[.]PrismLauncher|PrismLauncher|prismlauncher)$,title:^(Console|Minecraft Log|Edit Instance|Instance Settings|实例设置|控制台)(.*)$"
 
-    "${centered},app_id:^(org[.]prismlauncher[.]PrismLauncher|PrismLauncher|prismlauncher)$,title:^Prism Launcher Quick Setup(.*)$"
+    "${dialog},app_id:^(org[.]prismlauncher[.]PrismLauncher|PrismLauncher|prismlauncher)$,title:^Prism Launcher Quick Setup(.*)$"
 
     # IDE startup / agreement and genuine tool windows, never all IDE windows.
     # JetBrains Wayland dialogs retain a fixed client buffer: forcing a larger
@@ -98,35 +104,33 @@ let
     "${float},app_id:^(${jetbrains})$,title:^.*(User Agreement|License Activation|License Agreement)$"
     "${float},no_animation:1,app_id:^(${jetbrains})$,title:^(splash|Splash|win[0-9]+)$"
     "${compact},app_id:^(libreoffice.*|soffice)$,title:^(About LibreOffice|关于 LibreOffice|Welcome to LibreOffice[.])$"
-    "${centered},app_id:^(libreoffice.*|soffice)$,title:^(Database Wizard|数据库向导)$"
-    "${settings},app_id:^(Zotero|zotero)$,title:^(Zotero (LibreOffice Integration|Preferences|Settings)|Document Preferences)$"
+    "${dialog},app_id:^(libreoffice.*|soffice)$,title:^(Database Wizard|数据库向导)$"
+    "${dialog},app_id:^(Zotero|zotero)$,title:^(Zotero (LibreOffice Integration|Preferences|Settings)|Document Preferences)$"
     "${float},app_id:^(gimp.*|Gimp.*|org[.]gimp[.]GIMP)$,title:^(Toolbox|工具箱|.* - (Brushes|Layers|Tool Options))$"
-    "${centered},app_id:^(com[.]obsproject[.]Studio|obs)$,title:^(Auto-Configuration Wizard|自动配置向导)$"
-    "${settings},app_id:^(virt-manager|[.]virt-manager-wrapped)$,title:^(Connection Details|Virtual Machine Details|New VM|New Connection|连接详情|新建虚拟机)$"
+    "${dialog},app_id:^(com[.]obsproject[.]Studio|obs)$,title:^(Auto-Configuration Wizard|自动配置向导)$"
+    # Locked virt-manager ui/createconn.ui + createvm.ui; zh_CN catalogue.
+    "${dialog},app_id:^(virt-manager|[.]virt-manager-wrapped)$,title:^(Add Connection|添加连接|New VM|新建虚拟机)$"
+    # virtManager/host.py adds the connection name before the translated suffix.
+    "${dialog},app_id:^(virt-manager|[.]virt-manager-wrapped)$,title:^.* - (Connection Details|连接详情)$"
+    # The locked virt-manager UI title is translated by GtkBuilder; include its
+    # Chinese catalogue string so the main-window rule survives zh_CN sessions.
+    "${workspace},app_id:^(virt-manager|[.]virt-manager-wrapped)$,title:^(Virtual Machine Manager|虚拟系统管理器)$"
 
     # Preserve named scratch launch identities and their established sizes.
-    "${opaque},app_id:^(kitty|mayon-scratch|mayon-files|mayon-monitor|mayon-clash|mayon-docker|mayon-docker-exec|mayon-ports|seek|study-mayon|mcsrv-mayon|mayon-bili)$"
-    "is_named_scratchpad:1,width:0.78,height:0.78,app_id:^mayon-scratch$"
-    "is_named_scratchpad:1,width:0.78,height:0.78,app_id:^mayon-files$"
-    "is_named_scratchpad:1,width:0.72,height:0.74,app_id:^mayon-monitor$"
-    "is_named_scratchpad:1,width:0.62,height:0.72,app_id:^mayon-clash$"
-    "is_named_scratchpad:1,width:0.62,height:0.72,app_id:^mayon-docker$"
-    "is_named_scratchpad:1,width:0.62,height:0.72,app_id:^mayon-ports$"
-    "is_floating:1,width:0.62,height:0.72,app_id:^mayon-docker-exec$"
-    "is_named_scratchpad:1,width:0.72,height:0.74,app_id:^seek$"
-    "is_named_scratchpad:1,width:0.82,height:0.88,app_id:^study-mayon$"
-    "is_named_scratchpad:1,width:0.72,height:0.78,app_id:^mcsrv-mayon$"
-    "is_floating:1,width:0.86,height:0.82,app_id:^mayon-bili$"
+    "${opaque},app_id:^(kitty|mayon-scratch|mayon-files|mayon-monitor|mayon-clash|mayon-docker|mayon-docker-exec|mayon-ports|mayon-herdr|seek|study-mayon|mcsrv-mayon|mayon-bili)$"
+    # TUI scratchpads share one centered, opaque Kitty window ratio.
+    "is_named_scratchpad:1,width:0.78,height:0.78,app_id:^(mayon-scratch|mayon-files|mayon-monitor|mayon-clash|mayon-docker|mayon-ports|seek|study-mayon|mcsrv-mayon)$"
+    "${workspace},app_id:^(mayon-docker-exec|mayon-bili)$"
   ]
   # Community modal/chooser patterns, scoped to apps and anchored to avoid
   # floating tabs such as "Save As - documentation — Mozilla Firefox".
-  ++ forTitles dialogApps centered [
+  ++ forTitles dialogApps dialog [
     "^(Open|Open File|Open Files|Open Folder|Save|Save As|Save File|File Upload)$"
     "^(Select a File|Select Folder|Choose File|Choose Files|Choose Folder)$"
     "^(打开|打开文件|保存|保存文件|另存为|选择文件|选择文件夹)$"
     "^(Add Folder to Workspace|添加文件夹到工作区)$"
   ]
-  ++ forTitles dialogApps settings [
+  ++ forTitles dialogApps dialog [
     "^(Preferences|Settings|Options|Properties)$"
     "^(首选项|偏好设置|设置|选项|属性)$"
   ]
@@ -140,7 +144,7 @@ let
     "^(Login|Log [Ii]n|Sign [Ii]n|QQ Login|WeChat Login|登录|扫码登录)$"
     "^(Vesktop Setup)$"
   ]
-  ++ forTitles communicationGroups centered [
+  ++ forTitles communicationGroups dialog [
     "^(Image Viewer|Photo Viewer|图片查看器|图片预览|查看图片)$"
     "^(Voice Call|Video Call|语音通话|视频通话|通话窗口)$"
   ]

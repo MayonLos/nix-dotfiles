@@ -1,0 +1,26 @@
+--- a/src/manage/client.c
++++ b/src/manage/client.c
+@@ -1738,8 +1738,10 @@
+
+ 	// if no geom rule hit and is normal winodw, use the center pos and record
+ 	// the hit size
++	// R52: explicit role sizes center XWayland too, unless a position rule exists.
+ 	if (!c->iscustompos &&
+-		(!client_is_x11(c) || (c->geom.x == 0 && c->geom.y == 0))) {
++		(c->iscustomsize || !client_is_x11(c) ||
++		 (c->geom.x == 0 && c->geom.y == 0))) {
+ 		struct wlr_box pending_center_geom =
+ 			c->iscustomsize ? c->float_geom : c->geom;
+ 		c->float_geom = c->geom =
+@@ -1823,7 +1825,10 @@
+
+ 	if (c->isfloating && !c->iscustompos && !c->isnamedscratchpad) {
+ 		wl_list_safe_reinsert_prev(&server.clients, &c->link);
+-		set_float_malposition(c);
++		// R52: an explicit rule size also declares a centered role. Keep the
++		// native stacking order, but skip the collision cascade for these roles.
++		if (!c->iscustomsize)
++			set_float_malposition(c);
+ 	}
+
+ 	// apply named scratchpad rule

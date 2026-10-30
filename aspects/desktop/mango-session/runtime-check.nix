@@ -36,6 +36,10 @@ let
       wallpaperRoot = "${home.home.homeDirectory}/Pictures/Wallpapers";
       wallpaperActivation = home.home.activation.wallpaperLocalDirectory.data;
       mango = home.wayland.windowManager.mango.settings;
+      mangoPatches = map (path: {
+        name = builtins.baseNameOf path;
+        content = builtins.readFile path;
+      }) home.wayland.windowManager.mango.package.patches;
       mangoSessionVariables = home.wayland.windowManager.mango.systemd.variables;
       units = pkgs.lib.getAttrs [
         "noctalia"
@@ -299,8 +303,12 @@ pkgs.runCommand "interactive-session-config"
         ("shell", "app_icon_colorize"): False,
         ("control_center", "sidebar"): "none",
         ("control_center", "sidebar_section"): "compact",
-        ("control_center", "width"): 348,
-        ("notification", "width"): 320,
+        ("control_center", "width"): 360,
+        ("notification", "width"): 360,
+        ("notification", "offset_x"): 28,
+        ("notification", "offset_y"): 24,
+        ("shell", "animation", "enabled"): not m["palette"]["reducedMotion"],
+        ("shell", "animation", "speed"): 1.0,
         ("nightlight", "enabled"): False,
         ("nightlight", "force"): False,
         ("shell", "panel", "transparency_mode"): "soft",
@@ -400,7 +408,7 @@ pkgs.runCommand "interactive-session-config"
         assert not any(name.startswith(("monitor-", "separator-", "group:")) for name in root["widget"])
         assert root["battery"]["warning_threshold"] == 20
         assert root["dock"]["magnification_scale"] <= 1.25
-        assert [item["type"] for item in root["control_center"]["shortcuts"]] == ["wifi", "bluetooth", "system", "power_profile", "caffeine", "notification"]
+        assert [item["type"] for item in root["control_center"]["shortcuts"]] == ["wifi", "clash", "bluetooth", "notification"]
         assert root["notification"]["offset_y"] == 24
     assert "battery-charging" in patches["r44-status-icons.patch"]
     assert settings["bar"]["main"]["icon_color"] == m["palette"]["brightFg"]
@@ -447,6 +455,9 @@ pkgs.runCommand "interactive-session-config"
     for key, role, alpha in (("root_color", "bg", "ff"), ("drop_color", "blue", "80"), ("split_color", "cyan", "ff")):
         value = "0x" + m["palette"][role].removeprefix("#") + alpha
         assert mango[key] == parsed[key] == value, (key, value)
+    center_patch = next(p for p in m["mangoPatches"] if p["name"] == "r52-center-rule-sized-floats.patch")
+    assert "!c->iscustomsize" in center_patch["content"]
+    assert "c->iscustomsize || !client_is_x11(c)" in center_patch["content"]
     assert mango["blur"] == mango["blur_layer"] == 1
     assert mango["layer_shadows"] == mango["layer_animations"] == 0
     assert mango["blur_optimized"] == 1
@@ -468,7 +479,7 @@ pkgs.runCommand "interactive-session-config"
         assert f"toggle_named_scratchpad,{scratch}," in matches[0] and matches[0].endswith(f"--class={scratch} {tool}")
     assert "SUPER,R,setkeymode,resize" in mango["bind"]
     assert not settings["shell"]["panel"]["shadow"] and not settings["bar"]["main"]["shadow"]
-    assert mango["border_px"] == 1 and mango["border_radius"] == 12
+    assert mango["border_px"] == 1 and mango["border_radius"] == 16
     assert mango["focus_color"] == "0x" + m["palette"]["blue"].removeprefix("#") + "ff"
     assert mango["gap_inner_horizontal"] == mango["gap_inner_vertical"] == 8
     assert mango["gap_outer_horizontal"] == mango["gap_outer_vertical"] == 12
@@ -482,7 +493,7 @@ pkgs.runCommand "interactive-session-config"
     assert mango["focus_on_activate"] == 0
     assert mango["allow_tearing"] == 2
     assert mango["animations"] == (0 if m["palette"]["reducedMotion"] else 1)
-    for event, duration in {"open": 140, "close": 110, "move": 180, "tag": 150, "focus": 0}.items():
+    for event, duration in {"open": 190, "close": 150, "move": 200, "tag": 190, "focus": 0}.items():
         assert mango["animation_duration_" + event] == duration
         assert mango["animation_curve_" + event] == "0.16,1.0,0.3,1.0"
     assert m["fcitxClassicUI"]["PreferTextIcon"] == "True"

@@ -110,6 +110,9 @@ for app, title in (
     ("gimp", "Toolbox"),
     ("Blender", "Preferences"),
     ("virt-manager", "New VM"),
+    (".virt-manager-wrapped", "添加连接"),
+    ("virt-manager", "QEMU/KVM - Connection Details"),
+    (".virt-manager-wrapped", "QEMU/KVM - 连接详情"),
 ):
     row = resolve(app, title)
     assert row.get("is_floating") == "1", (app, title, row)
@@ -148,7 +151,7 @@ for app in ("QQ", "wechat", "vesktop", "discord", "wemeetapp"):
     assert "no_focus" not in resolve(app, "Video Call"), app
 
 progress = resolve("Thunar", "文件操作进度")
-assert float(progress["height"]) <= 0.20, progress
+assert (float(progress["width"]), float(progress["height"])) == (0.42, 0.42), progress
 agreement = resolve("jetbrains-pycharm", "PyCharm User Agreement")
 assert "width" not in agreement and "height" not in agreement, agreement
 
@@ -167,4 +170,23 @@ for app in ("mayon-scratch", "mayon-files", "mayon-monitor"):
     row = resolve(app, app)
     assert row["is_named_scratchpad"] == "1" and row["no_blur"] == "0", row
 assert all("tags" not in row and "monitor" not in row for row in RULES)
+# R52 role sizes and centering are deliberate policies, checked after Mango's parser.
+for app, title, size in (
+    ("firefox", "Open File", (0.56, 0.64)),
+    ("pinentry-qt", "Authentication Required", (0.42, 0.42)),
+    ("org.pulseaudio.pavucontrol", "Volume Control", (0.46, 0.58)),
+    ("clash-verge", "Clash Verge", (0.68, 0.78)),
+    ("dev.noctalia.Noctalia", "Noctalia Settings", (0.68, 0.78)),
+    ("swayimg", "image.png", (0.78, 0.78)),
+    ("virt-manager", "Virtual Machine Manager", (0.78, 0.78)),
+    (".virt-manager-wrapped", "虚拟系统管理器", (0.78, 0.78)),
+):
+    row = resolve(app, title)
+    assert (float(row["width"]), float(row["height"])) == size, (app, title, row)
+    assert not {"offset_x", "offset_y", "no_force_center"} & row.keys(), row
+for app in ("mayon-scratch", "mayon-files", "mayon-monitor", "mayon-clash", "mayon-docker", "mayon-ports", "seek", "study-mayon", "mcsrv-mayon"):
+    row = resolve(app, app)
+    assert (float(row["width"]), float(row["height"])) == (0.78, 0.78), row
+    assert row["focused_opacity"] == row["unfocused_opacity"] == "1.0", row
+    assert row["no_blur"] == "0", row
 print(f"window rule policy: {len(RULES)} rules; valid fields, UTF-8 limits, dialogs, main-window exclusions, PiP, silent toolbar and fullscreen fixtures passed")

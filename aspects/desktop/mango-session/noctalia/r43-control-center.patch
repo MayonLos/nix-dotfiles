@@ -1,84 +1,156 @@
---- a/src/shell/control_center/control_center_panel.h
-+++ b/src/shell/control_center/control_center_panel.h
-@@ -97,7 +97,7 @@
-   [[nodiscard]] bool deferExternalRefresh() const override;
-   [[nodiscard]] bool deferPointerRelayout() const override;
-   [[nodiscard]] float preferredWidth() const override;
--  [[nodiscard]] float preferredHeight() const override { return scaled(tabFromContext(pendingOpenContext()) == TabId::Home ? 420.0F : 520.0F); }
-+  [[nodiscard]] float preferredHeight() const override { return scaled(tabFromContext(pendingOpenContext()) == TabId::Home ? 540.0F : 520.0F); }
-   [[nodiscard]] PanelPlacement panelPlacement() const noexcept override;
-   [[nodiscard]] bool showsSidebar() const noexcept { return m_showSidebar; }
- 
 --- a/src/shell/control_center/tabs/home_tab.cpp
 +++ b/src/shell/control_center/tabs/home_tab.cpp
-@@ -53,7 +53,8 @@
+@@ -32,6 +32,13 @@
+ #include "ui/dialogs/file_dialog.h"
+ #include "ui/palette.h"
+
++#include "core/process/process.h"
++#include "dbus/network/inetwork_service.h"
++#include "dbus/bluetooth/bluetooth_service.h"
++#include "dbus/upower/upower_service.h"
++#include "dbus/power/power_profiles_service.h"
++#include <nlohmann/json.hpp>
++
+ #include <algorithm>
+ #include <cmath>
+ #include <cstdint>
+@@ -53,9 +60,8 @@
    // Avatar sources above this size decode noticeably slowly; warn so users
    // understand why.
    constexpr std::uintmax_t kHomeAvatarSourceWarnBytes = 8ULL * 1024ULL * 1024ULL;
 -  constexpr std::size_t kHomeShortcutGridColumns = 3;
-+  // R43: two device tiles followed by neutral full-width function rows.
+-  // Keep the sparse shortcut set in a single column; six configured items use the
+-  // 3x2 grid.
 +  constexpr std::size_t kHomeShortcutGridColumns = 2;
-   // Keep the sparse shortcut set in a single column; six configured items use the
-   // 3x2 grid.
++  // Four status tiles keep two columns; a single configured tile can stack.
    constexpr std::size_t kHomeStackedShortcutMax = 2;
-@@ -110,6 +111,15 @@
- 
-   void applyShortcutButtonStyle(Button& button, bool enabled, bool active, float fillOpacity) {
-     const bool on = enabled && active;
-+    // R43: keep full-width function rows neutral during every service-driven sync.
-+    if (button.direction() == FlexDirection::Horizontal) {
-+      auto rowPalette = Button::defaultPalette(ButtonVariant::Ghost);
-+      rowPalette.normal.label = colorSpecFromRole(on ? ColorRole::Primary : ColorRole::OnSurface);
-+      button.setCustomPalette(std::move(rowPalette));
-+      button.setSurfaceOpacity(1.0F);
-+      button.setEnabled(enabled);
-+      return;
-+    }
+   constexpr auto kHomeTransientPositionRegressionWindow = std::chrono::milliseconds(1500);
+   constexpr std::int64_t kHomeTransientPositionRegressionFloorUs = 5'000'000;
+@@ -108,25 +114,78 @@
+     card.setGap(Style::spaceSm * scale);
+   }
+
+-  void applyShortcutButtonStyle(Button& button, bool enabled, bool active, float fillOpacity) {
+-    const bool on = enabled && active;
++  // R52: every toggle shares the same solid blue / quiet surface treatment.
++  void applyShortcutButtonStyle(Button& button, bool enabled, bool active, float /*fillOpacity*/) {
      button.setVariant(ButtonVariant::Default);
      auto palette = Button::defaultPalette(ButtonVariant::Default);
-     if (on) {
-@@ -377,6 +387,8 @@
+-    if (on) {
+-      const auto selected = Button::ButtonStateColors{
+-          .bg = colorSpecFromRole(ColorRole::Hover, 0.35F),
+-          .border = clearColorSpec(),
+-          .label = colorSpecFromRole(ColorRole::Primary),
+-      };
+-      palette.normal = selected;
+-      palette.hover = selected;
+-      palette.pressed = selected;
+-      palette.selected = selected;
+-    }
++    const auto fill = active ? colorSpecFromRole(ColorRole::Primary) : colorSpecFromRole(ColorRole::OnSurface, 0.06F);
++    const auto ink = colorSpecFromRole(active ? ColorRole::OnPrimary : ColorRole::OnSurface);
++    palette.normal = {.bg = fill, .border = clearColorSpec(), .label = ink};
++    palette.hover = palette.normal;
++    palette.hover.bg = colorSpecFromRole(active ? ColorRole::Primary : ColorRole::Hover);
++    if (active) palette.hover.bg = colorSpecFromRole(ColorRole::Primary, 0.92F);
++    palette.pressed = palette.hover;
++    palette.pressed.bg = colorSpecFromRole(active ? ColorRole::Primary : ColorRole::Hover, 0.84F);
++    palette.selected = palette.normal;
+     button.setCustomPalette(std::move(palette));
+-    button.setSurfaceOpacity(on ? 1.0F : fillOpacity);
++    button.setSurfaceOpacity(1.0F);
+     button.setEnabled(enabled);
+   }
++
++  // R52: the helper exports a tiny allow-listed read-only snapshot, never secrets.
++  // Lifecycle stays in the existing TUI, which owns confirmation/backend safety.
++  class ClashShortcut final : public Shortcut {
++    struct State {
++      std::string label = "正在检测";
++      std::string traffic;
++      bool active = false;
++      bool pending = false;
++      std::chrono::steady_clock::time_point next;
++    };
++    std::shared_ptr<State> m_state = std::make_shared<State>();
++  public:
++    std::string_view id() const override { return "clash"; }
++    std::string defaultLabel() const override { return "Clash"; }
++    std::string displayLabel() const override { return m_state->label; }
++    std::string_view iconOn() const override { return "network"; }
++    std::string_view iconOff() const override { return "network"; }
++    bool isToggle() const override { return true; }
++    bool active() const override { return m_state->active; }
++    const std::string& traffic() const { return m_state->traffic; }
++    void onClick() override {
++      DeferredCall::callLater([] {
++        PanelManager::instance().closePanel();
++        (void)process::runAsync(std::vector<std::string>{"@R52_CLASH_OPEN@"});
++      });
++    }
++    void onRightClick() override { onClick(); }
++    void poll() {
++      const auto now = std::chrono::steady_clock::now();
++      if (m_state->pending || now < m_state->next) return;
++      m_state->pending = true;
++      m_state->next = now + std::chrono::seconds(2);
++      const auto state = m_state;
++      const bool launched = process::runAsync(
++          std::vector<std::string>{"@R52_CLASH_STATUS@"},
++          {.onExit = [state](process::RunResult result) {
++            DeferredCall::callLater([state, result = std::move(result)] {
++              state->pending = false;
++              state->active = false;
++              state->label = "状态不可用";
++              state->traffic.clear();
++              const auto data = nlohmann::json::parse(result.out, nullptr, false);
++              if (result && data.is_object()) {
++                state->label = data.value("label", std::string("状态不可用"));
++                state->active = data.value("active", false);
++                state->traffic = data.value("traffic", std::string{});
++              }
++              PanelManager::instance().requestUpdateOnly();
++            });
++          }},
++          {.timeout = std::chrono::milliseconds(2500), .maxOutputBytes = 4096});
++      if (!launched) { m_state->pending = false; m_state->label = "状态不可用"; }
++    }
++  };
+
+   // The whole home cards are clickable; on hover swap the card outline to the
+   // hover colour. No fill change: the user card's fill sits behind the wallpaper,
+@@ -165,7 +224,7 @@
+ } // namespace
+
+ HomeTab::HomeTab(const ControlCenterServices& services)
+-    : m_audio(services.audio), m_brightness(services.brightness), m_mpris(services.mpris),
++    : m_upower(services.upower), m_audio(services.audio), m_brightness(services.brightness), m_mpris(services.mpris),
+       m_httpClient(services.httpClient), m_weather(services.weather), m_config(services.config),
+       m_accounts(services.accounts), m_wallpaper(services.wallpaper), m_thumbnails(services.thumbnails),
+       m_asyncTextures(services.asyncTextures), m_services(services.shortcutServices()) {
+@@ -377,6 +436,8 @@
        label->setParticipatesInLayout(false);
      }
    }
 +  userCard->setVisible(false);
 +  userCard->setParticipatesInLayout(false);
    tab->addChild(std::move(userCard));
- 
+
    auto bottomRow = ui::column({
-@@ -402,10 +414,10 @@
-       .fillWidth = true,
-       .height = 64.0F * scale,
-       .flexGrow = 0.0F,
--      .configure = [scale, opacity = panelCardOpacity()](Flex& card) { applyHomeCardStyle(card, scale, opacity); },
-+      .configure = [scale, opacity = panelCardOpacity()](Flex& card) { applyHomeCardStyle(card, scale, opacity); card.clearFill(); card.clearBorder(); },
-   });
- 
--  const float artSize = Style::controlHeightLg * 1.22F * scale;
-+  const float artSize = 40.0F * scale;
-   auto mediaContent = ui::row(
-       {.align = FlexAlign::Center, .gap = Style::spaceSm * scale},
-       ui::column(
-@@ -528,13 +540,16 @@
-   });
- 
-   leftColumn->addChild(std::move(mediaCard));
-+  dateTimeCard->setVisible(false);
-+  dateTimeCard->setParticipatesInLayout(false);
-   leftColumn->addChild(std::move(dateTimeCard));
- 
+@@ -533,17 +594,17 @@
    // --- Shortcuts (right of media + clock) ---
    const auto& shortcuts =
        m_config != nullptr ? m_config->config().controlCenter.shortcuts : std::vector<ShortcutConfig>{};
 -  const std::size_t count = std::min(shortcuts.size(), std::size_t{6});
--
-+  const std::size_t count = std::min(shortcuts.size(), std::size_t{7});
-+
-+  auto functionRows = ui::column({.align = FlexAlign::Stretch, .gap = 4.0F * scale, .fillWidth = true});
++  const std::size_t count = std::min(shortcuts.size(), std::size_t{4});
+
    auto grid = std::make_unique<GridView>();
    grid->setColumns(kHomeShortcutGridColumns);
-   grid->setColumnGap(6.0F * scale);
-@@ -543,7 +558,7 @@
+-  grid->setColumnGap(6.0F * scale);
+-  grid->setRowGap(6.0F * scale);
++  grid->setColumnGap(8.0F * scale);
++  grid->setRowGap(8.0F * scale);
+   grid->setPadding(0.0F);
    grid->setUniformCellSize(true);
    grid->setStretchItems(true);
    grid->setSquareCells(false);
@@ -87,108 +159,381 @@
    grid->setSpanLastItem(true);
    grid->setFlexGrow(0.0F);
    m_shortcutsGrid = grid.get();
-@@ -607,7 +622,7 @@
-         .glyph = shortcut->displayIcon(),
-         .glyphSize = 18.0F * scale,
+@@ -587,7 +648,7 @@
+     }
+     const bool reused = shortcut != nullptr;
+     if (!reused) {
+-      shortcut = ShortcutRegistry::create(sc.type, m_services);
++      shortcut = sc.type == "clash" ? std::make_unique<ClashShortcut>() : ShortcutRegistry::create(sc.type, m_services);
+     }
+     if (shortcut == nullptr) {
+       continue;
+@@ -597,18 +658,17 @@
+     }
+
+     const bool showLabels = m_config != nullptr ? m_config->config().controlCenter.showShortcutLabels : true;
+-    const std::string label = shortcut->displayLabel();
++    const std::string label = shortcut->defaultLabel();
+     const bool enabled = shortcut->enabled();
+     const bool isActive = shortcut->isToggle() && shortcut->active();
+
+     const std::size_t padIdx = m_shortcutPads.size();
+     auto btn = ui::button({
+         .text = showLabels ? std::optional<std::string>{label} : std::nullopt,
+-        .glyph = shortcut->displayIcon(),
+-        .glyphSize = 18.0F * scale,
++        .glyph = std::nullopt,
          .contentAlign = showLabels ? ButtonContentAlign::Start : ButtonContentAlign::Center,
--        .minHeight = 0.0F,
-+        .minHeight = i < 2 ? 60.0F * scale : 34.0F * scale,
-         .padding = Style::spaceSm * scale,
+         .minHeight = 0.0F,
+-        .padding = Style::spaceSm * scale,
++        .padding = 12.0F * scale,
          .gap = Style::spaceXs * scale,
          .radius = Style::scaledRadiusXl(scale),
-@@ -624,22 +639,28 @@
-               }
-             },
-         .configure =
--            [enabled, isActive, showLabels, fillOpacity = panelCardOpacity(), scale](Button& button) {
--              button.setDirection(FlexDirection::Vertical);
--              button.setJustify(FlexJustify::Center);
-+            [enabled, isActive, showLabels, fillOpacity = panelCardOpacity(), scale, i](Button& button) {
-+              button.setDirection(i < 2 ? FlexDirection::Vertical : FlexDirection::Horizontal);
-+              button.setJustify(i < 2 ? FlexJustify::Center : FlexJustify::Start);
-               if (showLabels) {
-                 // Stretch so the label width follows the cell; Center uses
+         .onClick =
+@@ -632,9 +692,10 @@
                  // intrinsic text width and fights setMaxWidth.
                  button.setAlign(FlexAlign::Stretch);
                  if (button.label() != nullptr) {
 -                  button.label()->setFontSize(Style::fontSizeMini * scale);
 +                  button.label()->setFontSize(14.0F * scale);
-+                  button.label()->setFontWeight(FontWeight::Medium);
++                  button.label()->setFontWeight(FontWeight::SemiBold);
                    button.label()->setMaxLines(1);
 -                  button.label()->setTextAlign(TextAlign::Center);
-+                  button.label()->setTextAlign(i < 2 ? TextAlign::Center : TextAlign::Start);
++                  button.label()->setTextAlign(TextAlign::Start);
                  }
                } else {
                  button.setAlign(FlexAlign::Center);
-               }
-               applyShortcutButtonStyle(button, enabled, isActive, fillOpacity);
-+              if (i >= 2) {
-+                auto rowPalette = Button::defaultPalette(ButtonVariant::Ghost);
-+                rowPalette.normal.label = colorSpecFromRole(isActive ? ColorRole::Primary : ColorRole::OnSurface);
-+                button.setCustomPalette(std::move(rowPalette));
-+              }
+@@ -643,6 +704,10 @@
              },
      });
- 
-@@ -665,10 +686,15 @@
-     pad.glyph = btnPtr->glyph();
+
++    Label* subtitle = nullptr;
++    btn->addChild(ui::label({.out = &subtitle, .text = "", .fontSize = 12.0F * scale,
++      .color = colorSpecFromRole(isActive ? ColorRole::OnPrimary : ColorRole::OnSurfaceVariant),
++      .maxLines = 1}));
+     Button* btnPtr = btn.get();
+     if (auto* ia = btnPtr->inputArea(); ia != nullptr) {
+       ia->setOnAxisHandler([this, padIdx](const InputArea::PointerData& data) -> bool {
+@@ -662,13 +727,14 @@
+     ShortcutPad pad;
+     pad.shortcut = std::move(shortcut);
+     pad.button = btnPtr;
+-    pad.glyph = btnPtr->glyph();
++    pad.glyph = nullptr;
      pad.label = btnPtr->label();
++    pad.subtitle = subtitle;
      m_shortcutPads.push_back(std::move(pad));
--    grid->addChild(std::move(btn));
--  }
--
+     grid->addChild(std::move(btn));
+   }
+
 -  if (m_shortcutPads.size() <= kHomeStackedShortcutMax) {
-+    if (i < 2) {
-+      grid->addChild(std::move(btn));
-+    } else {
-+      btn->setFillWidth(true);
-+      functionRows->addChild(std::move(btn));
-+    }
-+  }
-+
 +  if (m_shortcutPads.size() < kHomeStackedShortcutMax) {
      grid->setColumns(1);
      grid->setFlexGrow(0.0F);
    }
-@@ -678,6 +704,7 @@
-   } else {
+@@ -679,7 +745,11 @@
      m_shortcutsGrid = nullptr;
    }
-+  bottomRow->addChild(std::move(functionRows));
    bottomRow->addChild(createCompactControls());
++  // Keep ownership of the native media nodes: existing sync callbacks use them.
++  leftColumn->setVisible(false);
++  leftColumn->setParticipatesInLayout(false);
    bottomRow->addChild(std::move(leftColumn));
++  bottomRow->addChild(createInformationRows());
    tab->addChild(std::move(bottomRow));
-@@ -706,7 +733,7 @@
-             .maxValue = 1.0,
+
+   return tab;
+@@ -692,11 +762,9 @@
+                           &controls](const std::string& title, Slider** slider, Label** value, bool volume) {
+     auto row = ui::row({.align = FlexAlign::Center, .gap = Style::spaceSm * scale});
+     row->addChild(
+-        ui::label(
+-            {.text = title,
+-             .fontSize = Style::fontSizeCaption * scale,
+-             .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
+-             .width = 36.0F * scale}
++        ui::glyph(
++            {.glyph = title, .glyphSize = 16.0F * scale,
++             .color = colorSpecFromRole(ColorRole::OnSurfaceVariant)}
+         )
+     );
+     row->addChild(
+@@ -707,7 +775,7 @@
              .step = 0.01,
              .value = 0.0,
--            .trackHeight = 4.0F * scale,
-+            .trackHeight = 3.0F * scale,
-             .thumbSize = 14.0F * scale,
+             .trackHeight = 4.0F * scale,
+-            .thumbSize = 14.0F * scale,
++            .thumbSize = 4.0F * scale,
              .controlHeight = 28.0F * scale,
              .flexGrow = 1.0F,
-@@ -820,9 +847,9 @@
+             .onValueChanged =
+@@ -738,8 +806,10 @@
+     );
+     controls->addChild(std::move(row));
+   };
+-  addSlider("音量", &m_compactVolume, &m_compactVolumeValue, true);
+-  addSlider("亮度", &m_compactBrightness, &m_compactBrightnessValue, false);
++  addSlider("volume", &m_compactVolume, &m_compactVolumeValue, true);
++  addSlider("brightness-high", &m_compactBrightness, &m_compactBrightnessValue, false);
++  m_compactVolume->setGradientFill(true);
++  m_compactBrightness->setGradientFill(true);
+   syncCompactControls();
+   return controls;
+ }
+@@ -749,7 +819,8 @@
+   if (m_compactVolume != nullptr) {
+     const auto* sink = m_audio != nullptr ? m_audio->defaultSink() : nullptr;
+     m_compactVolume->setEnabled(sink != nullptr && sink->available);
+-    if (sink != nullptr && !m_compactVolume->dragging()) {
++    if (sink == nullptr || !sink->available) m_compactVolumeValue->setText("—");
++    if (sink != nullptr && sink->available && !m_compactVolume->dragging()) {
+       m_compactVolume->setValue(std::clamp(sink->volume, 0.0F, 1.0F));
+       m_compactVolumeValue->setText(
+           sink->muted ? "静音" : std::format("{}%", static_cast<int>(std::lround(sink->volume * 100.0F)))
+@@ -767,6 +838,7 @@
+       }
+     }
+     m_compactBrightness->setEnabled(display != nullptr);
++    if (display == nullptr) m_compactBrightnessValue->setText("—");
+     if (display != nullptr
+         && !m_compactBrightness->dragging()
+         && std::chrono::steady_clock::now() >= m_compactBrightnessHoldUntil) {
+@@ -777,6 +849,65 @@
+     }
    }
-   if (m_shortcutsGrid != nullptr && !m_shortcutPads.empty()) {
+   m_syncingCompact = false;
++}
++
++// R52: absent telemetry contributes no empty or invented information row.
++std::unique_ptr<Flex> HomeTab::createInformationRows() {
++  const float s = contentScale();
++  auto rows = ui::column({.align = FlexAlign::Stretch, .fillWidth = true});
++  auto add = [&](const std::string& title, Flex** row, Label** value) {
++    auto block = ui::column({.out = row, .align = FlexAlign::Stretch, .fillWidth = true});
++    block->addChild(ui::column({.fill = colorSpecFromRole(ColorRole::OutlineVariant, 0.35F), .fillWidth = true, .height = 1.0F * s}));
++    auto button = ui::button({.text = title, .fontSize = 13.0F * s,
++      .variant = ButtonVariant::Ghost, .padding = 8.0F * s,
++      .onClick = [this, title] {
++        if (title == "性能模式") {
++          if (m_services.powerProfiles != nullptr) (void)m_services.powerProfiles->cycleActiveProfile();
++        } else if (title == "Clash 流量") {
++          for (auto& pad : m_shortcutPads) if (pad.shortcut->id() == "clash") pad.shortcut->onClick();
++        } else {
++          PanelManager::instance().togglePanel("control-center", PanelOpenRequest{.context = "power"});
++        }
++      },
++      .configure = [](Button& rowButton) {
++        rowButton.setDirection(FlexDirection::Horizontal);
++        if (rowButton.label() != nullptr) rowButton.label()->setFlexGrow(1.0F);
++      }});
++    button->addChild(ui::label({.out = value, .text = "", .fontSize = 13.0F * s,
++      .color = colorSpecFromRole(ColorRole::OnSurfaceVariant), .textAlign = TextAlign::End}));
++    block->addChild(std::move(button));
++    rows->addChild(std::move(block));
++  };
++  add("电池", &m_batteryRow, &m_batteryValue);
++  add("性能模式", &m_profileRow, &m_profileValue);
++  add("Clash 流量", &m_trafficRow, &m_trafficValue);
++  syncInformationRows();
++  return rows;
++}
++
++void HomeTab::syncInformationRows() {
++  auto set = [](Flex* row, Label* value, const std::string& text) {
++    if (row == nullptr || value == nullptr) return;
++    row->setVisible(!text.empty());
++    row->setParticipatesInLayout(!text.empty());
++    value->setText(text);
++  };
++  std::string battery;
++  if (m_upower != nullptr && m_upower->state().isPresent) {
++    const auto& state = m_upower->state();
++    battery = std::format("{}% · {}", static_cast<int>(std::lround(state.percentage)), batteryStateLabel(state.state));
++  }
++  set(m_batteryRow, m_batteryValue, battery);
++  std::string profile;
++  if (m_services.powerProfiles != nullptr && m_services.powerProfiles->hasStateSnapshot()) {
++    profile = profileLabel(m_services.powerProfiles->activeProfile());
++  }
++  set(m_profileRow, m_profileValue, profile);
++  std::string traffic;
++  for (const auto& pad : m_shortcutPads) {
++    if (pad.shortcut->id() == "clash") traffic = static_cast<ClashShortcut&>(*pad.shortcut).traffic();
++  }
++  set(m_trafficRow, m_trafficValue, traffic);
+ }
+
+ std::unique_ptr<Flex> HomeTab::createHeaderActions() {
+@@ -822,7 +953,7 @@
      const auto cols = std::max<std::size_t>(1, m_shortcutsGrid->columns());
--    const auto rows = (m_shortcutPads.size() + cols - 1) / cols;
-+    const auto rows = (std::min(m_shortcutPads.size(), std::size_t{2}) + cols - 1) / cols;
+     const auto rows = (m_shortcutPads.size() + cols - 1) / cols;
      const float height =
 -        static_cast<float>(rows) * 52.0F * contentScale() + static_cast<float>(rows - 1) * m_shortcutsGrid->rowGap();
 +        static_cast<float>(rows) * 60.0F * contentScale() + static_cast<float>(rows - 1) * m_shortcutsGrid->rowGap();
      m_shortcutsGrid->setSize(contentWidth, height);
    }
    m_rootLayout->setSize(contentWidth, bodyHeight);
-@@ -1446,7 +1473,8 @@
+@@ -849,6 +980,7 @@
+         inner = std::max(1.0F, cellWidth - 2.0F * Style::spaceSm * scale);
+       }
+       pad.label->setMaxWidth(inner);
++      if (pad.subtitle != nullptr) pad.subtitle->setMaxWidth(inner);
+     }
+   }
+
+@@ -1323,7 +1455,9 @@
+       if (!m_active) {
+         return;
+       }
+-      bool changed = false;
++      syncShortcuts();
++      syncInformationRows();
++      bool changed = true;
+       if (m_timeLabel != nullptr) {
+         changed = m_timeLabel->setText(formatShellTime(m_config)) || changed;
+       }
+@@ -1346,6 +1480,8 @@
+   m_compactBrightness = nullptr;
+   m_compactVolumeValue = nullptr;
+   m_compactBrightnessValue = nullptr;
++  m_batteryRow = m_profileRow = m_trafficRow = nullptr;
++  m_batteryValue = m_profileValue = m_trafficValue = nullptr;
+   m_bottomRow = nullptr;
+   m_dateTimeCard = nullptr;
+   m_mediaCard = nullptr;
+@@ -1405,6 +1541,7 @@
+     pad.button = nullptr;
+     pad.glyph = nullptr;
+     pad.label = nullptr;
++    pad.subtitle = nullptr;
+   }
+ }
+
+@@ -1446,7 +1583,7 @@
    }
    for (auto& pad : m_shortcutPads) {
      if (pad.label != nullptr) {
 -      pad.label->setFontSize(Style::fontSizeMini * s);
 +      pad.label->setFontSize(14.0F * s);
-+      pad.label->setFontWeight(FontWeight::Medium);
      }
      // Icon-only glyphs are sized from cell side in doLayout.
      if (pad.glyph != nullptr && (m_config == nullptr || m_config->config().controlCenter.showShortcutLabels)) {
+@@ -1457,6 +1594,7 @@
+
+ void HomeTab::sync(Renderer& renderer) {
+   syncCompactControls();
++  syncInformationRows();
+   syncScaledFonts();
+   syncShortcuts();
+
+@@ -1719,11 +1857,26 @@
+     if (pad.glyph != nullptr) {
+       pad.glyph->setGlyph(sc.displayIcon());
+     }
+-    if (pad.button != nullptr && pad.label != nullptr) {
+-      const std::string label = sc.displayLabel();
+-      if (pad.label->text() != label) {
+-        pad.button->setText(label);
+-      }
+-    }
+-  }
+-}
++    if (pad.subtitle != nullptr) {
++      std::string state = sc.displayLabel();
++      if (sc.id() == "clash") {
++        auto& clash = static_cast<ClashShortcut&>(sc);
++        clash.poll();
++        state = clash.displayLabel();
++      } else if (sc.id() == "wifi") {
++        if (m_services.network == nullptr || !m_services.network->available()) state = "不可用";
++        else if (!on) state = "关闭";
++        else if (!m_services.network->state().connected) state = "未连接";
++        else if (state == sc.defaultLabel()) state = "已开启";
++      } else if (sc.id() == "bluetooth") {
++        state = on ? "未连接" : "关闭";
++        if (m_services.bluetooth == nullptr || !m_services.bluetooth->state().adapterPresent) state = "不可用";
++        else for (const auto& device : m_services.bluetooth->devices()) {
++          if (device.connected) { state = device.alias; break; }
++        }
++      } else if (sc.id() == "notification") state = on ? "已开启" : "关闭";
++      pad.subtitle->setText(state);
++      pad.subtitle->setColor(colorSpecFromRole(on ? ColorRole::OnPrimary : ColorRole::OnSurfaceVariant, 0.8F));
++    }
++  }
++}
+--- a/src/shell/control_center/tabs/home_tab.h
++++ b/src/shell/control_center/tabs/home_tab.h
+@@ -42,6 +42,7 @@
+   Button* button = nullptr;
+   Glyph* glyph = nullptr;
+   Label* label = nullptr;
++  Label* subtitle = nullptr;
+ };
+
+ class HomeTab : public Tab {
+@@ -85,11 +86,20 @@
+   void syncShortcuts();
+   std::unique_ptr<Flex> createCompactControls();
+   void syncCompactControls();
++  std::unique_ptr<Flex> createInformationRows();
++  void syncInformationRows();
+   void syncHeaderActions();
+   void syncAvatarChrome();
+   bool resizeMediaArtToCard();
+   void onPanelCardOpacityChanged(float opacity) override;
+
++  UPowerService* m_upower = nullptr;
++  Flex* m_batteryRow = nullptr;
++  Flex* m_profileRow = nullptr;
++  Flex* m_trafficRow = nullptr;
++  Label* m_batteryValue = nullptr;
++  Label* m_profileValue = nullptr;
++  Label* m_trafficValue = nullptr;
+   PipeWireService* m_audio = nullptr;
+   BrightnessService* m_brightness = nullptr;
+   Slider* m_compactVolume = nullptr;
+--- a/src/ui/controls/slider.h
++++ b/src/ui/controls/slider.h
+@@ -12,6 +12,7 @@
+ public:
+   Slider();
+
++  void setGradientFill(bool enabled);
+   void setRange(double minValue, double maxValue);
+   void setStep(double step);
+   void setValue(double value);
+@@ -51,6 +52,7 @@
+   double m_max = 100.0;
+   double m_step = 1.0;
+   double m_value = 50.0;
++  bool m_gradientFill = false;
+   bool m_enabled = true;
+   bool m_wheelAdjustEnabled = true;
+   float m_trackHeight = Style::sliderTrackHeight;
+--- a/src/ui/controls/slider.cpp
++++ b/src/ui/controls/slider.cpp
+@@ -160,6 +160,8 @@
+   applyVisualState();
+ }
+
++void Slider::setGradientFill(bool enabled) { m_gradientFill = enabled; applyVisualState(); markPaintDirty(); }
++
+ void Slider::setRange(double minValue, double maxValue) {
+   if (maxValue < minValue) {
+     std::swap(minValue, maxValue);
+@@ -319,6 +321,12 @@
+   m_track->setStyle(trackStyle);
+
+   auto fillStyle = solidStyle(fillColor, m_trackHeight * 0.5F);
++  if (m_gradientFill && m_enabled) {
++    fillStyle.fillMode = FillMode::LinearGradient;
++    fillStyle.gradientDirection = GradientDirection::Horizontal;
++    fillStyle.gradientStops = {{{0.0F, fillColor}, {1.0F, resolved(ColorRole::Tertiary)},
++      {1.0F, resolved(ColorRole::Tertiary)}, {1.0F, resolved(ColorRole::Tertiary)}}};
++  }
+   m_fill->setStyle(fillStyle);
+
+   auto thumbStyle = solidStyle(thumbColor, m_thumbSizePx * 0.5F);
 --- a/src/shell/control_center/control_center_panel.cpp
 +++ b/src/shell/control_center/control_center_panel.cpp
 @@ -79,15 +79,8 @@
@@ -207,5 +552,45 @@
 +  // R43: width is the visible panel width, independent of navigation mode.
 +  return fullSize * m_contentScale;
  }
- 
+
  PanelPlacement ControlCenterPanel::panelPlacement() const noexcept {
+@@ -250,7 +243,7 @@
+   header->addChild(
+       ui::label({
+           .out = &m_contentTitle,
+-          .text = i18n::tr("control-center.tabs.home"),
++          .text = i18n::tr("settings.navigation.sections.control-center"),
+           .fontSize = Style::fontSizeTitle * scale,
+           .fontWeight = FontWeight::Bold,
+           .color = colorSpecFromRole(ColorRole::Primary),
+@@ -598,7 +591,9 @@
+       m_tabButtons[idx]->setVariant(meta.id == tab ? ButtonVariant::TabActive : ButtonVariant::Tab);
+     }
+     if (meta.id == tab && m_contentTitle != nullptr) {
+-      m_contentTitle->setText(i18n::tr(meta.titleKey));
++      m_contentTitle->setText(i18n::tr(tab == TabId::Home ? "settings.navigation.sections.control-center" : meta.titleKey));
++      m_contentTitle->setFontSize((tab == TabId::Home ? 14.0F : Style::fontSizeTitle) * m_contentScale);
++      m_contentTitle->setColor(colorSpecFromRole(tab == TabId::Home ? ColorRole::OnSurface : ColorRole::Primary));
+     }
+     if (m_tabHeaderActions[idx] != nullptr) {
+       m_tabHeaderActions[idx]->setVisible(tabEnabled && meta.id == tab);
+--- a/src/shell/panel/panel_manager.cpp
++++ b/src/shell/panel/panel_manager.cpp
+@@ -1515,7 +1515,7 @@
+     if (m_attachedToBar && m_attachedRevealClipNode != nullptr) {
+       m_animations.cancelForOwner(m_attachedRevealClipNode);
+       m_animations.animate(
+-          m_attachedRevealProgress, 0.0F, Style::animNormal, Easing::EaseInOutQuad,
++          m_attachedRevealProgress, 0.0F, Style::animNormal, m_activePanelId == "control-center" ? Easing::EaseOutCubic : Easing::EaseInOutQuad,
+           [this](float v) { applyAttachedReveal(v); },
+           [this, gen] {
+             DeferredCall::callLater([this, gen] {
+@@ -1529,7 +1529,7 @@
+     } else {
+       m_animations.cancelForOwner(m_sceneRoot.get());
+       m_animations.animate(
+-          m_detachedRevealProgress, 0.0F, Style::animNormal, Easing::EaseInQuad,
++          m_detachedRevealProgress, 0.0F, Style::animNormal, m_activePanelId == "control-center" ? Easing::EaseOutCubic : Easing::EaseInQuad,
+           [this](float v) { applyDetachedReveal(v); },
+           [this, gen] {
+             DeferredCall::callLater([this, gen] {

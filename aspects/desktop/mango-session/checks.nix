@@ -6,6 +6,9 @@
   ...
 }:
 {
+  noctalia-clash-status =
+    (import ../../../packages/noctalia-clash-status { inherit pkgs; }).tests.status;
+
   mango-blur-sampling = import ./mango/blur-check.nix {
     inherit pkgs;
     mango = nixos.programs.mango.package;

@@ -8,7 +8,7 @@ def source(path):
 
 
 ranges = source('config/schema/ranges.h')
-assert 'kControlCenterWidthRange{348, 1200, 10}' in ranges
+assert 'kControlCenterWidthRange{360, 1200, 10}' in ranges
 assert 'kLauncherWidthRange{520, 1100, 10}' in ranges
 
 types = source('config/config_types.cpp')
@@ -17,19 +17,30 @@ scene = source('shell/settings/settings_window_scene.cpp')
 assert 'cfg.shell.settingsWindowTranslucent ? 0.8F : 1.0F' in scene
 home = source('shell/control_center/tabs/home_tab.cpp')
 assert 'kHomeShortcutGridColumns = 2' in home
-assert 'std::size_t{7}' in home
-assert 'if (i < 2)' in home and 'functionRows->addChild(std::move(btn))' in home
-assert '.trackHeight = 3.0F * scale' in home
-assert 'const float artSize = 40.0F * scale' in home
-assert 'if (button.direction() == FlexDirection::Horizontal)' in home
-assert 'pad.label->setFontSize(14.0F * s)' in home
-assert 'pad.label->setFontSize(Style::fontSizeMini * s)' not in home
+assert 'std::size_t{4}' in home
+assert 'functionRows' not in home
+assert '.trackHeight = 4.0F * scale' in home
+assert 'setGradientFill(true)' in home
+assert 'colorSpecFromRole(ColorRole::OnSurface, 0.06F)' in home
+assert 'pad.subtitle->setText(state)' in home
 assert 'userCard->setParticipatesInLayout(false)' in home
-assert 'dateTimeCard->setParticipatesInLayout(false)' in home
+assert 'createInformationRows()' in home and 'syncInformationRows()' in home
+assert 'm_upower->state().isPresent' in home
+assert 'hasStateSnapshot()' in home
+assert 'const bool launched = process::runAsync' in home
+assert 'std::chrono::milliseconds(2500)' in home
+assert '@R52_CLASH_' not in home
+slider = source('ui/controls/slider.cpp')
+assert 'if (m_gradientFill && m_enabled)' in slider
+assert 'fillStyle.fillMode = FillMode::LinearGradient' in slider
+assert 'resolved(ColorRole::Tertiary)' in slider
 panel = source('shell/control_center/control_center_panel.cpp')
 assert 'return fullSize * m_contentScale' in panel
+assert 'settings.navigation.sections.control-center' in panel
+assert 'tab == TabId::Home ? ColorRole::OnSurface' in panel
 assert 'std::max(600.0F, fullSize) * m_contentScale' in panel
 manager = source('shell/panel/panel_manager.cpp')
+assert manager.count('m_activePanelId == "control-center" ? Easing::EaseOutCubic') == 2
 assert 'if (panelId == "control-center") {' in manager
 assert 'request.context = context;\n              request.sourceBarName = sourceBarName;\n              openPanel(panelId, request);' in manager
 assert 'return 320.0F * m_contentScale' in panel
@@ -47,10 +58,19 @@ assert 'outline.setHitTestVisible(false)' in calendar
 assert 'day.normal.border = colorSpecFromRole(ColorRole::Primary)' not in calendar
 assert 'button->setVariant(ButtonVariant::Primary)' not in calendar
 notification = source('shell/notification/notification_toast.cpp')
-assert 'constexpr float kMetaFontSize = 13.0F' in notification
+assert 'constexpr float kMetaFontSize = 12.0F' in notification
 assert 'constexpr float kSummaryFontSize = 14.0F' in notification
-assert 'constexpr int kProgressHeight = 1' in notification
-assert 'the accent sat on the card' in notification
+assert 'constexpr int kProgressHeight = 0' in notification
+assert 'kNotificationIconSize = 34.0F' in notification
+assert 'kNotificationIconGlyphSize = 18.0F' in notification
+assert 'kBodyFontSize = 13.0F' in notification
+assert '11.0F * scale' in notification
+assert 'FillMode::LinearGradient' in notification
+assert 'ColorRole::Tertiary' in notification
+assert 'ColorRole::OnPrimary' in notification
+assert '.text = appName' not in notification and '.text = entry.appName' not in notification
+assert 'respectMotionEnabled && !motion.enabled()' in source('render/animation/animation_manager.cpp')
+assert 'return false;' in notification[notification.index('bool showToastProgressAccent'):notification.index('bool showToastProgressAccent') + 300]
 osd = source('shell/osd/osd_overlay.cpp')
 for literal in ['return 246.0F * s', 'return 46.0F * s', 'return 3.0F * s', 'return 18.0F * s']:
     assert literal in osd, literal

@@ -74,6 +74,11 @@ let
     (import ./session-environment.nix { inherit lib; })
       config.systemd.user.sessionVariables;
 
+  clashStatus = import ../../../packages/noctalia-clash-status { inherit pkgs; };
+  clashOpen = pkgs.writeShellScript "noctalia-clash-open" ''
+    exec ${config.wayland.windowManager.mango.package}/bin/mmsg dispatch ${lib.escapeShellArg "toggle_named_scratchpad,mayon-clash,none,${pkgs.kitty}/bin/kitty --class=mayon-clash ${pkgs.mayonTui.clash}/bin/clashtui-mayon"}
+  '';
+
   noctaliaPackage = pkgs.local.noctalia.overrideAttrs (old: {
     patches = (old.patches or [ ]) ++ [
       ./noctalia/astra-selection.patch
@@ -93,6 +98,9 @@ let
     ];
     # Fail on source drift, including the independently maintained panel patches.
     postPatch = (old.postPatch or "") + ''
+      substituteInPlace src/shell/control_center/tabs/home_tab.cpp \
+        --replace-fail '@R52_CLASH_STATUS@' '${clashStatus}/bin/noctalia-clash-status' \
+        --replace-fail '@R52_CLASH_OPEN@' '${clashOpen}'
       ${pkgs.python3}/bin/python3 ${./noctalia/r43-check-panels.py}
       ${pkgs.python3}/bin/python3 ${./noctalia/r44-check-status.py}
       grep -Fq 'R39: reuse native desktop scanning' src/app/application_ipc.cpp
@@ -462,7 +470,7 @@ in
             show_actions = true;
             position = "top_right";
             layer = "overlay";
-            width = 320;
+            width = 360;
             # Clear the focused window's border, which runs at 13/42 logical px;
             # flush cards left its blue corner showing behind their own.
             offset_x = 28;
@@ -522,16 +530,14 @@ in
             sidebar = "none";
             # Direct section entry keeps a compact icon rail for navigation.
             sidebar_section = "compact";
-            width = 348;
+            width = 360;
             show_shortcut_labels = true;
             circular_avatar = false;
             show_session_button = true;
             shortcuts = map (type: { inherit type; }) [
               "wifi"
+              "clash"
               "bluetooth"
-              "system"
-              "power_profile"
-              "caffeine"
               "notification"
             ];
           };
