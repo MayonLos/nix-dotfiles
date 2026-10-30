@@ -199,6 +199,10 @@
               ]
             ) "TUI outputs must be installed by their selected features";
             pkgs.mayonTui;
+          bilitui =
+            assert lib.assertMsg (builtins.elem pkgs.bilitui home.home.packages)
+              "Bilibili TUI must be installed by media";
+            pkgs.bilitui;
           architecture = pkgs.runCommand "architecture-check" { } "touch $out";
           palette-contrast = paletteContrast;
           statix = pkgs.runCommand "statix-check" { nativeBuildInputs = [ pkgs.statix ]; } ''
