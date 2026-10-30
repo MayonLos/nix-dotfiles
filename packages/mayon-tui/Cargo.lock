@@ -133,6 +133,7 @@ dependencies = [
 name = "clashtui-mayon"
 version = "0.2.0"
 dependencies = [
+ "base64 0.22.1",
  "chrono",
  "crossterm 0.29.0",
  "futures-util",

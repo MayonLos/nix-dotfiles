@@ -1,111 +1,150 @@
 # Clash TUI
 
-`clashtui-mayon` 是已有 Verge / mihomo 的日常控制面板：概览、代理、订阅、连接、规则、日志、工具。
-默认从概览回答“开着吗、走哪条链路、还剩多少”。首次使用按 `?`，帮助随页面给出概念与操作。
-Den `clash-tui` aspect 由 laptop-network 登记，只安装公开 `pkgs.mayonTui.clash`。
-包工厂、测试、palette 与另外两个工具共用 [Rust workspace](../../README.md)。
+`clashtui-mayon` 提供七页：概览、代理、订阅、连接、规则、日志、工具/设置。
+Super+Alt+C 的桌面入口不变。第49轮试用版保留 Verge，新增独立 native 后端；
+不自动启动内核，`s` 手动开、`X` 确认关。退出 TUI 本身保留运行的服务。
 
-## 输入、输出与归属
+## 后端与归属
 
-- Unix controller 默认为 `$XDG_RUNTIME_DIR/clash-verge-rev/verge-mihomo.sock`，不回退 TCP，不读取密钥。
-- 订阅元数据默认为 `$HOME/.local/share/io.github.clash-verge-rev.clash-verge-rev/profiles.yaml`。
-  仅使用现有只读解析路径，在启动、每两秒和返回订阅页时重读 remote/local 项；URL 不显示、不记录。
-  不读取配置中指向的订阅文件或订阅正文。节点数只在 provider 名能对应订阅 UID/名称时显示，否则明确未知。
-- `/configs`、`/proxies`、`/version` 每两秒刷新；规则和 providers 每 30 秒或 `r` 刷新。
-  `/traffic` 为每秒 HTTP JSON 行流；连接使用 Unix socket WebSocket，每秒快照。
-  内存为内核快照的连接缓冲占用，累计流量为本次内核进程累计，不是订阅账单或 TUI 启动后累计。
-  规则模式没有单一出口，概览显示参考组，实际链路在连接详情；global 模式从 GLOBAL 逐级展开。
-- 系统代理只读查询 `gsettings get org.gnome.system.proxy mode`，不可用则显示未知；这不保证每个应用都遵守该设置。
-  TUN 只读 `/configs`。**两个开关均由 Verge 管理**，TUI 只提供 `o` 打开设置，绝不 PATCH TUN。
-- 日志在首次打开日志页后订阅 `/logs?level=debug`，最多 2000 条，仅存内存；隐藏 URL 与常见凭据赋值。
-  暂停会丢弃新日志。流断开会重连，连接速率与流量状态明确标注未知/断开。
-- 可选配置是用户自己维护的 `$XDG_CONFIG_HOME/mayon-tui/clash.toml`（默认 `~/.config/...`），TUI 只读，HM 不管理。
-
-输出是终端画面、用户触发的 API 操作、经启动器交给 Verge 的导入请求和经身份校验的 GUI 退出请求。
-用量刷新经显式代理 HEAD→GET 仅读取 `subscription-userinfo` 响应头，不消费正文、不跟随重定向、不回退直连、不写回 YAML。
-没有新增服务或状态 writer。移除 feature 仅卸载程序，保留配置、订阅、凭据与所有应用数据。
-
-## 使用与键位
-
-```sh
-clashtui-mayon
-clashtui-mayon --help
-# 全部使用合成数据和私有服务；禁止开发测试连接用户 controller。
-clashtui-mayon --socket /private/runtime/mihomo.sock \
-  --profiles /private/profiles.yaml --test-url http://127.0.0.1:32110/generate_204 \
-  --usage-proxy http://127.0.0.1:32100 --no-verge
-```
-
-| 页面 / 范围 | 键与行为 |
-| --- | --- |
-| 所有页面 | `1–7` 切页；`j/k` / 方向键；`g/G`；PageUp/PageDown；`/` 过滤，Enter 接受，Esc 清除；`?` 按页帮助；`q` 退出 |
-| 生命周期 | `s` 离线启动；`X` 确认退出 Verge；`m` rule/global/direct；`o` 打开 Verge 设置 |
-| 代理（2） | Tab、h/l 切面板；Enter 选节点；`v` 完整名称/类型说明；`S` 默认/延迟/名称排序；`H` 隐藏超时；`c` 跳当前 |
-| 测速 | `t` 单节点；`T` 内核组测速；`b` 对过滤列表按配置并发测试；Esc 取消本地队列/忽略过期结果 |
-| 节点源 | `p` 进入/返回；`t` provider 健康检查；`u` provider 更新；Enter 详情 |
-| 订阅（3） | `i` 导入，Tab 切隐藏 URL/名称；`f` 用量响应头；`u` 更新 / Enter 切换经 Verge 回退 |
-| 连接（4） | `S` 速率/总量/时长/主机排序；Enter 完整详情；`x` 单个、`d` 过滤结果快照、`D` 所有连接，均需确认 |
-| 规则（5） | `/` 类型/内容/策略过滤；Enter 完整规则和命中；`p` 规则源；`u` 更新所选源 |
-| 日志（6） | `L` 最低级别；空格暂停；`/` 搜索；`G` 追随尾部 |
-| 工具（7） | Enter 确认清 fake-ip / DNS 缓存或更新 GeoIP/GeoSite |
-| 鼠标 | 点击页签/行选择，双击行执行 Enter，滚轮移动；弹窗底部左右按钮确认/取消，导入字段可点击；帮助滚轮切页 |
-
-代理过滤支持中文、英文和拼音首字母，允许模糊子序列（如 `xg` 匹配香港）。默认节点顺序保留配置顺序。
-延迟配色按 Verge 2.4.7 `src/services/delay.ts::formatDelayColor`：`<250ms` 绿、`250–399ms` 蓝、
-`>=400ms` 黄，达到测试超时或 10000ms 红；零/失败红，未测 `--`。
-Selector、URLTest 和 Fallback 支持选择；后两者临时指定后，`T` 会清除强制选择并恢复自动策略。
-LoadBalance 按连接分配，不能指定单一节点。Relay 在 mihomo 1.19.24 已移除，兼容 fixture 仍覆盖其显示。
-
-## 可选配置
+`~/.config/mayon-tui/clash.toml`（尊重 XDG_CONFIG_HOME）是用户维护的只读偏好：
 
 ```toml
-# ~/.config/mayon-tui/clash.toml （无需创建，不存在时用以下默认值）
+backend = "auto"         # auto / native / verge
 test_url = "https://www.gstatic.com/generate_204"
-timeout_ms = 5000       # 100–30000
-concurrency = 4         # 1–32，仅控制 b 的客户端并发
+timeout_ms = 5000        # 100–30000
+concurrency = 4          # 1–32，b 批量测速
 default_sort = "default" # default / delay / name
-default_page = 1         # 1 概览至 7 工具
+default_page = 1        # 1–7
 ```
 
-`--config PATH` 指定其他文件，`--test-url` 可覆盖测试目标。格式或范围错误用中文报错，不输出输入内容。
-组测速的并发由 mihomo `GroupBase.URLTest` 管理，接口没有并发参数；provider 健康检查使用 provider 自己的 URL/超时。
-URLTest/Fallback 的组测 URL 也以组配置为准。取消请求不能保证撤回已到达内核的测试。
-Geo 更新走 `POST /configs/geo`（等待上限 180s），Nix store 中的资源可能只读，此时明确显示失败，不改包或权限。
+auto 在**启动 TUI 时**探测 Verge Unix socket：可连则使用 Verge，否则 native。
+native controller 为 `/run/mayon-clash/mihomo.sock`；Verge 为
+`$XDG_RUNTIME_DIR/clash-verge-rev/verge-mihomo.sock`。状态行标记后端。
+`--backend` 覆盖偏好，`--socket` 显式指定私有 controller，绝不回退 TCP。
 
-## Verge 2.4.7 边界与启动
+native 服务由 laptop-network 声明，以绑定用户运行锁定 mihomo 1.19.24，
+只具备 CAP_NET_ADMIN/BIND_SERVICE；polkit 只授权该用户 start/stop/restart
+`mayon-clash.service`。没有 boot wants/timer/自动重启，不设置系统代理或
+nix-daemon 代理环境。TUN 开时接管流量，关服务后直连；显式代理默认
+127.0.0.1:7897。allow-lan 默认 false，显式开启会监听所有地址，但不放行防火墙。
+停止时服务先 PATCH 运行中 TUN 为 false，再由 systemd 结束内核，规避锁定版本
+在初始化完成前尚未注册 SIGTERM 清理处理的竞态；持久 TUN 设置保留。
+启动前拒绝可连的同 UID Verge socket；切回 Verge 前须先 X 关闭 native。
 
-依据锁定 nixpkgs：Verge 2.4.7，`verge-mihomo` 链接同一 nixpkgs 的 mihomo 1.19.24。
-API 以该版本 `hub/route/{server,proxies,groups,provider,connections,rules,cache,configs}.go` 为准。
-参考 [MetaCubeXD](https://github.com/MetaCubeX/metacubexd)、[zashboard](https://github.com/Zephyruso/zashboard)
-的概览、筛选、provider/连接管理，以及 [JohanChane/clashtui](https://github.com/JohanChane/clashtui) 的终端导航；
-生命周期和订阅写入保持本仓库 Verge 的归属边界。
+## native 数据和配置
 
-- URL-only 导入用 `clash://install-config?url=<encoded>` 交给已运行 Verge。
-  `utils/server.rs` singleton 只有 scheme/visible/pac 路由；Tauri `update_profile` / `patch_profiles_config` 属内部 IPC，无安全外部订阅更新/切换入口。
-- 名称编码仍有上游缺陷（server 未将整个 link 编码，scheme 提取 url 后全部后缀），命名导入改为说明后打开 Verge。
-  回退明确说明会打开窗口；用户完成后返回，TUI 每两秒只读重载。请求发出不代表导入成功。
-- Verge 自己会将完整导入链接写日志（`utils/resolve/scheme.rs:15`），导入弹窗提示此事实；TUI 不记录 URL。
-- `s` 保留 `noctalia msg app-launch <desktop>` 原生 AppProvider，继承其 app.slice / activation 策略；不复制或输出环境。
-  可通过 `MAYON_CLASH_DESKTOP` 指定 desktop 文件。
-  **静默启动已由 Verge 支持**：设置中的 `enable_silent_start` 控制 `utils/resolve/mod.rs::init_window` 的窗口显示。
-  没有一次性 CLI 参数或可安全调用的外部设置接口；先在 Verge 开启该设置，之后 `s` 可按它的设置启动。
-  TUI 不改用户设置，也不通过隐藏窗口命令干扰用户会话。
-- 启动显示“已请求 → 等待 helper/socket → API 就绪”；无法从公开 API 单独证明 helper 健康，30s 超时会说明等待阶段。
-- `X` 通过 pidfd 固定并校验同 UID、Nix store Verge GUI 可执行路径后发 SIGTERM，由 Verge 清理 TUN、系统代理、内核。
-  不信号匹配 service/mihomo，不使用 pkill。`--no-verge` 禁止全部外部启动/停止。
-  隔离验证使用成对、绝对路径 `--test-verge-executable` / `--test-launcher`，精确匹配编译替身。
+TUI 是 `~/.local/share/mayon-clash/` 的唯一配置 writer，HM 不管理这些文件：
 
-Nix `autoStart=false` 只关闭 Nix 自启动项；用户既有 Verge auto-launch 设置仍需在 GUI 自行确认。
-构建不应用配置，真实 helper/TUN/DNS/系统代理清理与静默启动须主代理实机核对。
+| 路径 | 归属和权限 |
+| --- | --- |
+| 数据根与 subscriptions/ | 当前用户，0700 |
+| subscriptions.toml | URL、ID、当前项、标题、用量、更新时间、间隔与节点数；0600 |
+| subscriptions/ID.yaml | 完整订阅缓存，0600 |
+| settings.toml | TUN、mode、IPv6、allow-lan、log-level、mixed-port、允许的基础覆盖；0600 |
+| config.yaml / config.previous.yaml | 已校验 runtime / 上一份配置；0600 |
+| writer.lock / 临时文件 | 多进程写入锁 / 同目录原子替换；0600 |
+| GeoIP.dat / GeoSite.dat / Country.mmdb | 初次从 Nix store 复制，随后可更新，0600 |
+| cache.db、providers 等 | mihomo 运行时拥有，服务 umask 0077；保留所选节点 |
+| /run/mayon-clash/ | systemd 管理，0700，属绑定用户；停止后移除 |
 
-## 维护与验证
+mihomo 主动 chmod socket 为 0666；0700 runtime 目录阻止其他用户连接。
+不启 TCP controller，不设 secret。Nix store 没有订阅 URL 或正文。
 
-`api.rs` 管类型、Unix HTTP/WebSocket 与固定中文错误；`profiles.rs` 管只读元数据/用量；
-`settings.rs` 管可选配置；`search.rs` 管拼音与日志脱敏；`app.rs` 管状态和有界后台任务；`ui.rs` 仅绘制可见行。
-共享 `mayon-ui` 按 grapheme cluster 截断，保留旗帜/组合 emoji；footer 只保留完整键动作并追加 `? 更多`。
-每次数据/输入变化才重绘，缓存节点检索键；日志最多 2000 条，更新队列最多 128 条，避免忙流无限增长。
+首次写入用 yq 精确读取 Verge `clash-verge.yaml` 的
+`tun/dns/sniffer/profile/ipv6/mode/log-level`，没有读其他 runtime 字段或 secret。
+若文件不存在则使用内建 mixed TUN/fake-ip DNS 默认值；读取失败时报错，不静默
+替换。sniffer 缺省按关闭处理，TUN device 固定为 `mayon-clash`。用户后续设置
+优先于基础值，DNS IPv6 随 IPv6 设置同步。第一次导入/添加后即保存基础值，后续
+不再读取 Verge runtime。非本机首次使用者应在工具页核对 TUN/DNS 需求。
 
-工作区 `cargo test --workspace --locked`、`cargo clippy --workspace --all-targets --locked -- -D warnings`、
-`cargo fmt --all --check` 与三个 release 构建纳入既有 `checks.mayon-tui`。
-合成 controller 回放、360 节点 / 1200 连接绘制、排序/拼音、宽字符/emoji、用量、路由方法、Unix WebSocket、确认取消均有测试。
-交互与截图必须用私有 mihomo、独立 HOME/XDG/D-Bus、headless Sway 和真实 Kitty；不得对用户内核测试写操作。
+保留订阅 proxies/proxy-groups/rules/rule-providers/proxy-providers；覆盖本地
+监听、controller、TUN、DNS、sniffer、profile.store-selected、IPv6、模式和日志。
+移除订阅带来的额外监听/TCP controller/secret/UI/认证/iptables/ntp，避免引入
+非预期入口。Geo 用 `-d` 下固定文件名，`geodata-mode=true`；文件可写，工具页
+更新不写 Nix store。provider 路径仍受 mihomo safe-path 检查。
+
+每次操作持有 flock；临时文件 0600 → `mihomo -t`（45s 上限，输出不回显）→
+fsync → rename。校验子进程用 seccomp 拒绝 IPv4/IPv6 socket，保证离线导入不因
+mihomo 的缺失 Geo 自动下载而联网；缺少规则所需数据时校验失败并保留原文件。
+运行中 `PUT /configs?force=true`，再读取实际 TUN/模式/监听端口，避免把内核的
+HTTP 204 误当成监听成功；失败恢复旧文件并重载、核对旧配置，
+回滚失败明确提示。跨多个文件不是系统级原子事务，进程崩溃/掉电仍需检查索引与
+runtime；每个单文件替换原子，正常错误有回滚。正常退出 TUI 会等待已发起的
+native 事务结束，粘贴仅作为输入文本处理，不触发全局快捷键。
+
+## 订阅与设置
+
+- `i` 添加：粘贴 URL（只显示 scheme://host/…），Tab 可选名称。
+  名称默认 profile-title（含 base64）、content-disposition，再用主机名。
+- `u/f` 更新所选，`U` 更新全部，Enter 切换；`n` 重命名、`e` 编辑 URL。
+  下载采用 Verge 2.4.7 的 `clash-verge/v2.4.7` User-Agent，记录用量、到期、
+  profile-update-interval（小时，默认24h）。先直连，失败且内核运行时经当前
+  本机 mixed-port 重试；最多32 MiB，25s 请求上限，跟随最多5次重定向。
+- TUI 打开且内核运行时每分钟检查超期项，后台串行更新，不阻塞绘制；没有服务外
+  常驻 updater 或 timer。直连意味着不使用 HTTP 代理，仍可能经过已开启的 TUN。
+- `I` 从 Verge profiles.yaml 的 remote 项和缓存离线导入，不联网；原当前项标记
+  `Verge 原当前` 并设为当前，重复 URL 跳过。URL 不输出、不写日志、不放截图。
+  **不执行 merge/script/rules/proxies/groups 增强**，导入前确认、导入后提示。
+  缓存缺失或校验失败整次拒绝；不写 Verge 文件。重新导入同 URL 不覆盖已有缓存。
+- `d` 确认删除非当前项；当前项需先切换。用量条、7天内到期高亮、配置内节点数、
+  上次更新时间显示于订阅页；外部 provider 内的节点不算进“配置内”数量。
+- `7` 工具/设置：j/k、Enter 切换 TUN、模式、IPv6、allow-lan、日志级别；mixed-port
+  用弹窗编辑。离线同样保存，有当前订阅时重新校验，运行中立即热加载。
+- `s` 没订阅时引导去订阅页；有订阅则生成配置、请求服务、等 socket/API。
+  后台更新中确认 X 会排队关闭，等当前写入结束即停止，无需重复按 X。
+  失败读取 Result/ExecMainStatus 和最后20条 journal，仅分类成中文原因，原日志
+  不显示（可含节点/URL）。`X` 停服务，等 socket 消失；不会启动或停止 Verge。
+
+## 其余页面与 Verge 兼容
+
+`1–7` 切页，j/k/方向键、g/G、PgUp/PgDn、鼠标点击/滚轮，`/` 过滤，`?` 按页帮助。
+代理页：Tab/h/l 面板，Enter 选节点，t 单测、T 组测、b 并发批测、Esc 取消，
+S 默认/延迟/名称，H 隐藏超时，c 跳当前，v 详情，p 节点源。
+支持中英/拼音首字母模糊过滤，按 grapheme 截断，延迟色与 Verge 一致。
+Selector/URLTest/Fallback 可选，组测速恢复自动策略；LoadBalance 不能选单节点。
+
+连接页：S 排序，Enter 详情，x/d/D 确认关闭单个/过滤快照/全部；Unix WebSocket
+每秒更新。规则页：p 规则源，u 更新，Enter 命中详情；累计计数缺省时显示当前
+连接匹配数量。日志页：L 最低级别、空格暂停、G 追随、最多2000条，仅内存，
+隐藏链接/常见凭据。工具前三项确认后清 fake-ip/DNS 或更新 Geo，需内核运行。
+概览累计是内核本次运行流量，订阅用量来自响应头，二者不同。
+
+Verge 后端保持 r48：profiles 只读，每2秒刷新；TUN/系统代理只显示，o 打开
+Verge；订阅更新/切换回退到 GUI，URL-only deep link 导入，命名导入回退。
+Verge 2.4.7 自身会记录导入链接；TUI 提示这一限制。s 复用 Noctalia app-launch，
+X 只对同 UID、固定 pidfd 且 executable 匹配的 GUI 发 SIGTERM，由它清理。
+`--no-verge` 禁止这些外部 Verge 操作；不禁止 native 试验替身。
+
+## 非交互入口与隔离
+
+CLI 使用与 TUI 相同的事务；URL 从 stdin 读取，避免进入 argv：
+
+```sh
+# 在用户自己的终端输入；本例不会把真实 URL 放进 shell history
+read -r -s subscription
+printf '%s' "$subscription" | clashtui-mayon profile add '我的订阅'
+unset subscription
+clashtui-mayon profile list                 # ID + 名称，不输出 URL
+clashtui-mayon profile update ID            # 或 all
+clashtui-mayon profile use ID
+clashtui-mayon profile rename ID '新名称'
+# profile url ID 从 stdin 接收新 URL，下载校验成功后才替换
+clashtui-mayon profile delete ID --yes      # 当前项不可删除
+clashtui-mayon profile import-verge
+clashtui-mayon profile generate
+clashtui-mayon settings tun false
+clashtui-mayon service start                # generate + systemctl start
+clashtui-mayon service stop
+```
+
+CLI 公共参数：`--data-dir`、`--socket`、`--profiles`（Verge 索引）、`--mihomo`、
+`--systemctl`。TUI 另支持 `--backend/--config/--test-url/--usage-proxy`。
+开发必须从 env -i 启动，独立 HOME/XDG/D-Bus/headless Sway；真实 Kitty 宽窗与
+90列截图。显式 private socket、测试 systemctl/journalctl 和纯用户 mihomo，关闭
+TUN；不能连接真实 controller、系统服务或用户 Wayland。配对 Verge 替身参数保留。
+
+`backend.rs` 选后端，`native.rs` 管订阅/配置/事务，`cli.rs` 暴露脚本入口；
+api/profiles/search/settings/app/ui 保持各自模型、传输、过滤、状态和绘制职责。
+单测覆盖合并、头解析/脱敏、导入 fixture、探测、并发锁、校验失败与热加载回滚；
+workspace clippy/test/release 和 NixOS VM check 登记于仓库 checks。
+移除程序/feature 不清理 native 或 Verge 数据，下一轮确认满意后才删除 Verge 代码。

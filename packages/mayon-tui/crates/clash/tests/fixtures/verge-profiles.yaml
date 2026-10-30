@@ -1,0 +1,19 @@
+current: demo-b
+items:
+  - {uid: Merge, type: merge, file: Merge.yaml}
+  - {uid: Script, type: script, file: Script.js}
+  - uid: demo-a
+    type: remote
+    name: Demo A
+    file: a.yaml
+    url: http://example.invalid/a?token=fixture
+    option: {update_interval: 120}
+    updated: 1793232000
+  - uid: demo-b
+    type: remote
+    name: Demo B
+    file: b.yaml
+    url: http://example.invalid/b?token=fixture
+    option: {update_interval: 1440}
+    extra: {upload: 1, download: 2, total: 100, expire: 2000000000}
+    updated: 1793232000

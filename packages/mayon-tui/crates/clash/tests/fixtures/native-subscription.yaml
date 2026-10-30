@@ -1,0 +1,17 @@
+external-controller: 0.0.0.0:9090
+external-controller-tls: 0.0.0.0:9091
+secret: fixture-secret
+mixed-port: 9999
+allow-lan: true
+tun: {enable: false}
+proxies:
+  - {name: Synthetic A, type: http, server: 127.0.0.1, port: 18080}
+proxy-groups:
+  - {name: Select, type: select, proxies: [Synthetic A, DIRECT]}
+proxy-providers:
+  Source: {type: http, url: 'http://example.invalid/provider', path: providers/source.yaml, interval: 86400}
+rule-providers:
+  Rules: {type: http, url: 'http://example.invalid/rules', path: rules/source.yaml, behavior: classical, interval: 86400}
+rules:
+  - RULE-SET,Rules,Select
+  - MATCH,Select

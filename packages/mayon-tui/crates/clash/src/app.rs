@@ -27,6 +27,8 @@ pub struct Options {
     pub usage_proxy: Option<String>,
     pub no_verge: bool,
     pub lifecycle: crate::lifecycle::Lifecycle,
+    pub backend: crate::backend::Backend,
+    pub native: crate::native::Native,
 }
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(usize)]
@@ -71,6 +73,28 @@ pub enum Action {
     Close(Vec<String>),
     CloseAll,
     Tool(usize),
+    DeleteProfile(String),
+    ImportNative,
+}
+#[derive(Clone)]
+pub enum NativeAction {
+    Add(String, String),
+    Update(String, Option<String>),
+    Use(String),
+    Rename(String, String),
+    Delete(String),
+    Import,
+    Change(String, String),
+    Start,
+    Stop,
+    Diagnose,
+    UpdateMany(Vec<String>),
+}
+#[derive(Clone)]
+pub enum EditAction {
+    Rename(String),
+    Url(String),
+    Setting(String),
 }
 pub enum Dialog {
     Confirm {
@@ -86,6 +110,11 @@ pub enum Dialog {
         reason: &'static str,
     },
     Detail(String),
+    Edit {
+        title: &'static str,
+        value: String,
+        action: EditAction,
+    },
 }
 struct Snapshot {
     proxies: BTreeMap<String, Proxy>,
@@ -111,6 +140,7 @@ enum Update {
     Delay(u64, String, Option<u64>),
     DelayDone(u64),
     Usage(String, Result<Usage, String>),
+    NativeDone(Result<String, String>),
 }
 pub struct App {
     pub opts: Options,
@@ -156,6 +186,15 @@ pub struct App {
     pub dirty: bool,
     pub status: String,
     pub online: bool,
+    pub native_store: crate::native::Store,
+    pub native_settings: crate::native::Settings,
+    pub native_error: Option<String>,
+    pub native_busy: bool,
+    native_job: Option<JoinHandle<()>>,
+    queued_stop: bool,
+    native_tx: mpsc::UnboundedSender<Result<String, String>>,
+    native_rx: mpsc::UnboundedReceiver<Result<String, String>>,
+    last_auto: Instant,
     pub system_proxy: Option<String>,
     pub traffic: Option<Traffic>,
     pub history: VecDeque<(u64, u64)>,
@@ -189,6 +228,9 @@ impl App {
     pub fn new(opts: Options) -> Result<Self, reqwest::Error> {
         let client = Client::new(opts.socket.clone())?;
         let (tx, rx) = mpsc::channel(128);
+        // Only one native task can be in flight; its single completion must not
+        // be dropped when a log burst fills the shared bounded stream queue.
+        let (native_tx, native_rx) = mpsc::unbounded_channel();
         let page = Page::ALL[opts.settings.default_page.saturating_sub(1).min(6)];
         let sort = match opts.settings.default_sort.as_str() {
             "delay" => Sort::Delay,
@@ -239,6 +281,15 @@ impl App {
             dirty: true,
             status: "正在连接内核…".into(),
             online: false,
+            native_store: Default::default(),
+            native_settings: Default::default(),
+            native_error: None,
+            native_busy: false,
+            native_job: None,
+            queued_stop: false,
+            native_tx,
+            native_rx,
+            last_auto: Instant::now() - Duration::from_secs(61),
             system_proxy: None,
             traffic: None,
             history: VecDeque::with_capacity(60),
@@ -543,7 +594,34 @@ impl App {
             }
         }));
     }
+    pub fn is_native(&self) -> bool {
+        self.opts.backend == crate::backend::Backend::Native
+    }
+    pub fn tools_len(&self) -> usize {
+        if self.is_native() {
+            9
+        } else {
+            3
+        }
+    }
     fn reload_profiles(&mut self) {
+        if self.is_native() {
+            match self.opts.native.store() {
+                Ok(store) => {
+                    self.store = store.view();
+                    self.native_store = store;
+                    self.profile = self.profile.min(self.store.items.len().saturating_sub(1));
+                }
+                Err(e) => {
+                    self.status = e;
+                }
+            }
+            match self.opts.native.settings() {
+                Ok(settings) => self.native_settings = settings,
+                Err(e) => self.status = e,
+            }
+            return;
+        }
         match std::fs::read_to_string(&self.opts.profiles) {
             Ok(text) => match ProfileStore::from_yaml(&text) {
                 Ok(mut store) => {
@@ -587,6 +665,7 @@ impl App {
             return;
         }
         self.last_resources = Instant::now();
+        let native = self.is_native();
         let client = self.client.clone();
         let tx = self.tx.clone();
         self.resources_job = Some(tokio::spawn(async move {
@@ -596,6 +675,9 @@ impl App {
                 client.rules()
             );
             let _ = tx.send(Update::Resources(data)).await;
+            if native {
+                return;
+            }
             // GSettings returns only proxy mode, never URLs, credentials or an environment dump.
             let output = tokio::time::timeout(
                 Duration::from_secs(2),
@@ -624,7 +706,11 @@ impl App {
         let mut logs_changed = false;
         // Cap work per frame even when the log producer is busy.
         for _ in 0..128 {
-            let Ok(update) = self.rx.try_recv() else {
+            let update = if let Ok(result) = self.native_rx.try_recv() {
+                Update::NativeDone(result)
+            } else if let Ok(update) = self.rx.try_recv() {
+                update
+            } else {
                 break;
             };
             self.dirty = true;
@@ -635,8 +721,15 @@ impl App {
                     }
                     self.online = true;
                     if self.lifecycle_pending.is_some_and(|(on, _)| on) {
-                        self.lifecycle_pending = None;
-                        self.status = "Clash 已就绪".into();
+                        if self.is_native()
+                            && (s.config.tun.enable != self.native_settings.tun
+                                || s.config.mixed_port != Some(self.native_settings.mixed_port))
+                        {
+                            self.status = "API 已连接 → 等待 TUN / 监听端口就绪…".into();
+                        } else {
+                            self.lifecycle_pending = None;
+                            self.status = "Clash 已就绪".into();
+                        }
                     }
                     let group = self.group_name().map(str::to_string);
                     let node = self.node_names.get(self.node).cloned();
@@ -698,16 +791,27 @@ impl App {
                     }
                 }
                 Update::Snapshot(Err(e)) => {
+                    let was_online = self.online;
                     self.online = false;
                     self.traffic = None;
                     self.connections_live = false;
-                    self.status = if self.lifecycle_pending.is_some() {
-                        self.launch_progress()
-                    } else if matches!(e, ApiError::Transport) {
-                        "Clash 未运行 · s 启动".into()
-                    } else {
-                        e.to_string()
-                    };
+                    if self.is_native() && (self.native_busy || self.native_error.is_some()) {
+                        if !self.native_busy {
+                            self.status = self.native_error.clone().unwrap_or_default();
+                        }
+                    } else if !self.is_native()
+                        || was_online
+                        || self.lifecycle_pending.is_some()
+                        || self.status == "正在连接内核…"
+                    {
+                        self.status = if self.lifecycle_pending.is_some() {
+                            self.launch_progress()
+                        } else if matches!(e, ApiError::Transport) {
+                            "Clash 未运行 · s 启动".into()
+                        } else {
+                            e.to_string()
+                        };
+                    }
                     if self.lifecycle_pending.is_some_and(|(on, _)| !on)
                         && !self.opts.socket.exists()
                     {
@@ -807,6 +911,27 @@ impl App {
                         self.status = "测速完成 · 延迟仅代表此测试目标".into();
                     }
                 }
+                Update::NativeDone(result) => {
+                    self.native_busy = false;
+                    match result {
+                        Ok(message) => {
+                            self.native_error = None;
+                            self.status = message;
+                        }
+                        Err(e) => {
+                            self.native_error = Some(e.clone());
+                            self.status = e;
+                            self.lifecycle_pending = None;
+                        }
+                    }
+                    self.reload_profiles();
+                    self.last_refresh = Instant::now() - Duration::from_secs(3);
+                    self.last_resources = Instant::now() - Duration::from_secs(31);
+                    if self.queued_stop {
+                        self.queued_stop = false;
+                        self.native_command(NativeAction::Stop);
+                    }
+                }
                 Update::Usage(uid, value) => match value {
                     Ok(u) => {
                         self.usage.insert(uid, u);
@@ -824,13 +949,27 @@ impl App {
             }
         }
         if let Some((_, time)) = self.lifecycle_pending {
-            if time.elapsed() > Duration::from_secs(30) {
+            if time.elapsed() > Duration::from_secs(if self.is_native() { 120 } else { 30 }) {
                 self.status = format!(
-                    "启动/关闭等待超时：{}；请在 Verge 检查 helper 与内核",
+                    "启动/关闭等待超时：{}；请检查服务状态",
                     self.launch_progress()
                 );
                 self.lifecycle_pending = None;
                 self.dirty = true;
+                if self.is_native() && !self.native_busy {
+                    self.native_command(NativeAction::Diagnose);
+                }
+            }
+        }
+        if self.is_native()
+            && self.online
+            && !self.native_busy
+            && self.last_auto.elapsed() >= Duration::from_secs(60)
+        {
+            self.last_auto = Instant::now();
+            let due = self.native_store.due();
+            if !due.is_empty() {
+                self.native_command(NativeAction::UpdateMany(due));
             }
         }
         if self.last_refresh.elapsed() >= Duration::from_secs(2) {
@@ -842,6 +981,22 @@ impl App {
         }
     }
     pub fn launch_progress(&self) -> String {
+        if self.is_native() {
+            return match self.lifecycle_pending {
+                Some((false, _)) => "正在停止服务 → 等待 socket 与 TUN 清理…".into(),
+                Some((true, _)) if self.opts.socket.exists() => {
+                    "服务 activating → socket 已出现 → 等待 API 就绪…".into()
+                }
+                Some((true, _)) => "正在生成配置 → 服务 activating → 等待 socket…".into(),
+                None => self.native_error.clone().unwrap_or_else(|| {
+                    if self.store.items.is_empty() {
+                        "尚无订阅 · 3 → i 添加 / I 从 Verge 导入".into()
+                    } else {
+                        "服务未运行 · s 手动启动 · 当前网络直连".into()
+                    }
+                }),
+            };
+        }
         match self.lifecycle_pending {
             Some((false, _)) => "正在等待 Verge 清理 TUN 与内核…".into(),
             Some((true, _)) if self.opts.socket.exists() => {
@@ -868,6 +1023,134 @@ impl App {
             };
             let _ = tx.send(Update::Message(message)).await;
         }));
+    }
+    pub fn native_command(&mut self, action: NativeAction) {
+        if self.native_busy {
+            if matches!(action, NativeAction::Stop) {
+                self.queued_stop = true;
+                self.lifecycle_pending = Some((false, Instant::now()));
+                self.status = "已接受关闭请求 · 等待当前写入完成后停止服务…".into();
+            } else {
+                self.status = "订阅/服务操作正在进行，请稍候".into();
+            }
+            return;
+        }
+        self.native_busy = true;
+        self.native_error = None;
+        self.status = match &action {
+            NativeAction::Start => "正在校验配置并启动服务…",
+            NativeAction::Stop => "正在关闭服务…",
+            NativeAction::Import => "正在从 Verge 缓存导入（不联网）…",
+            NativeAction::Add(..) => "正在下载并校验订阅…",
+            NativeAction::Update(..) | NativeAction::UpdateMany(..) => {
+                "正在更新订阅：直连失败时经本地代理重试…"
+            }
+            _ => "正在保存并应用…",
+        }
+        .into();
+        if matches!(action, NativeAction::Start | NativeAction::Stop) {
+            self.lifecycle_pending = Some((matches!(action, NativeAction::Start), Instant::now()));
+        }
+        let native = self.opts.native.clone();
+        let running = self.online;
+        let tx = self.native_tx.clone();
+        self.native_job = Some(tokio::spawn(async move {
+            let result = async {
+                match action {
+                    NativeAction::Add(url, name) => native.add(&url, &name, running).await?,
+                    NativeAction::Update(id, url) => {
+                        native.update(&id, running, url.as_deref()).await?
+                    }
+                    NativeAction::Use(id) => native.select(&id, running).await?,
+                    NativeAction::Rename(id, name) => native.rename(&id, &name).await?,
+                    NativeAction::Delete(id) => native.delete(&id)?,
+                    NativeAction::Import => return native.import_verge(running).await,
+                    NativeAction::Change(key, value) => {
+                        native.change(&key, &value, running).await?
+                    }
+                    NativeAction::Diagnose => return Err(native.failure().await),
+                    NativeAction::Start => {
+                        native.generate().await?;
+                        native.service("start").await?;
+                        return Ok("服务已启动 → 等待 API 就绪".into());
+                    }
+                    NativeAction::Stop => {
+                        native.service("stop").await?;
+                        return Ok("服务已停止 → 等待 socket 消失".into());
+                    }
+                    NativeAction::UpdateMany(ids) => {
+                        let mut failed = 0;
+                        let count = ids.len();
+                        for id in ids {
+                            if native.update(&id, running, None).await.is_err() {
+                                failed += 1;
+                            }
+                        }
+                        return if failed == 0 {
+                            Ok(format!("已更新 {count} 个订阅"))
+                        } else {
+                            Err(format!(
+                                "更新完成：{count} 个中 {failed} 个失败，失败项保留原缓存"
+                            ))
+                        };
+                    }
+                }
+                Ok("操作完成 · 已保存，下次启动继续使用".into())
+            }
+            .await;
+            let _ = tx.send(result);
+        }));
+    }
+    pub async fn finish_native(&mut self) {
+        if let Some(job) = self.native_job.take() {
+            let _ = job.await;
+        }
+        if self.queued_stop {
+            self.queued_stop = false;
+            let _ = self.opts.native.service("stop").await;
+        }
+    }
+    fn selected_profile_id(&self) -> Option<String> {
+        self.store
+            .items
+            .get(self.profile)
+            .and_then(|s| s.uid.clone())
+    }
+    fn edit_setting(&mut self) {
+        let (key, value) = match self.tool {
+            3 => ("tun", (!self.native_settings.tun).to_string()),
+            4 => (
+                "mode",
+                match self.native_settings.mode.as_str() {
+                    "rule" => "global",
+                    "global" => "direct",
+                    _ => "rule",
+                }
+                .into(),
+            ),
+            5 => ("ipv6", (!self.native_settings.ipv6).to_string()),
+            6 => ("allow-lan", (!self.native_settings.allow_lan).to_string()),
+            7 => (
+                "log-level",
+                match self.native_settings.log_level.as_str() {
+                    "info" => "debug",
+                    "debug" => "warning",
+                    "warning" => "error",
+                    "error" => "silent",
+                    _ => "info",
+                }
+                .into(),
+            ),
+            _ => {
+                self.dialog = Some(Dialog::Edit {
+                    title: "Mixed port · 1–65535",
+                    value: self.native_settings.mixed_port.to_string(),
+                    action: EditAction::Setting("mixed-port".into()),
+                });
+                return;
+            }
+        };
+        self.native_command(NativeAction::Change(key.into(), value));
     }
     fn cancel_measure(&mut self) {
         if let Some(job) = self.delay_job.take() {
@@ -1009,6 +1292,9 @@ impl App {
     fn execute(&mut self, action: Action) {
         let client = self.client.clone();
         match action {
+            Action::DeleteProfile(id) => self.native_command(NativeAction::Delete(id)),
+            Action::ImportNative => self.native_command(NativeAction::Import),
+            Action::Stop if self.is_native() => self.native_command(NativeAction::Stop),
             Action::Stop => {
                 if self.opts.no_verge {
                     self.status = "隔离模式：Verge 生命周期已禁用".into();
@@ -1038,14 +1324,80 @@ impl App {
             Action::Tool(i) => self.command(async move { client.tool(i).await }),
         }
     }
+    pub fn paste(&mut self, value: &str) {
+        // A bracketed paste is text input, never a sequence of global actions.
+        let input: String = value
+            .chars()
+            .filter(|c| !c.is_control())
+            .take(16384)
+            .collect();
+        let target = match self.dialog.as_mut() {
+            Some(Dialog::Import { url, name, field }) => Some(if *field { name } else { url }),
+            Some(Dialog::Edit { value, .. }) => Some(value),
+            _ if self.filtering => Some(&mut self.filters[self.page as usize]),
+            _ => None,
+        };
+        if let Some(target) = target {
+            let capacity = 16384usize.saturating_sub(target.len());
+            for ch in input.chars() {
+                if ch.len_utf8() + target.len() > 16384 {
+                    break;
+                }
+                target.push(ch);
+            }
+            if capacity > 0 {
+                self.dirty = true;
+            }
+        }
+    }
     pub fn key(&mut self, key: KeyEvent) {
         self.dirty = true;
         if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
             self.quit = true;
             return;
         }
+        if key.code == KeyCode::Char('u') && key.modifiers.contains(KeyModifiers::CONTROL) {
+            match self.dialog.as_mut() {
+                Some(Dialog::Import { url, name, field }) => {
+                    if *field {
+                        name.clear()
+                    } else {
+                        url.clear()
+                    }
+                }
+                Some(Dialog::Edit { value, .. }) => value.clear(),
+                _ if self.filtering => self.filters[self.page as usize].clear(),
+                _ => {}
+            }
+            return;
+        }
         if let Some(mut dialog) = self.dialog.take() {
             match &mut dialog {
+                Dialog::Edit { value, action, .. } => match key.code {
+                    KeyCode::Esc => return,
+                    KeyCode::Backspace => {
+                        value.pop();
+                    }
+                    KeyCode::Char(c)
+                        if !c.is_control()
+                            && !key
+                                .modifiers
+                                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
+                            && value.len() < 16384 =>
+                    {
+                        value.push(c)
+                    }
+                    KeyCode::Enter => {
+                        let action = match action.clone() {
+                            EditAction::Rename(id) => NativeAction::Rename(id, value.clone()),
+                            EditAction::Url(id) => NativeAction::Update(id, Some(value.clone())),
+                            EditAction::Setting(key) => NativeAction::Change(key, value.clone()),
+                        };
+                        self.native_command(action);
+                        return;
+                    }
+                    _ => {}
+                },
                 Dialog::Confirm { action, .. } => match key.code {
                     KeyCode::Enter | KeyCode::Char('y') => {
                         self.execute(action.clone());
@@ -1064,7 +1416,14 @@ impl App {
                             url.pop();
                         }
                     }
-                    KeyCode::Char(ch) if !ch.is_control() => {
+                    KeyCode::Char(ch)
+                        if !ch.is_control()
+                            && !key
+                                .modifiers
+                                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
+                            && url.len() < 16384
+                            && name.len() < 400 =>
+                    {
                         if *field {
                             name.push(ch);
                         } else {
@@ -1076,6 +1435,13 @@ impl App {
                             .ok()
                             .filter(|u| matches!(u.scheme(), "http" | "https"))
                         {
+                            if self.is_native() {
+                                self.native_command(NativeAction::Add(
+                                    url.to_string(),
+                                    name.clone(),
+                                ));
+                                return;
+                            }
                             if !name.is_empty() {
                                 self.dialog = Some(Dialog::Verge {
                                     reason: "此版本无法可靠传递名称；将打开 Verge 完成命名导入。",
@@ -1173,11 +1539,14 @@ impl App {
                 self.reload_profiles();
             }
             KeyCode::Char('s') if !self.online && self.lifecycle_pending.is_none() => {
-                self.open_verge(None)
+                if self.is_native() {
+                    if self.store.current.is_none(){self.page=Page::Profiles;self.status="请先 i 添加或 I 从 Verge 导入订阅".into();}
+                    else{self.native_command(NativeAction::Start);}
+                }else{self.open_verge(None);}
             }
-            KeyCode::Char('X') if self.online && self.lifecycle_pending.is_none() => self.confirm(
+            KeyCode::Char('X') if self.online && (self.lifecycle_pending.is_none() || self.is_native() && self.lifecycle_pending.is_some_and(|(on,_)|on)) => self.confirm(
                 Action::Stop,
-                "退出本用户的 Verge GUI，由 Verge 清理系统代理、TUN 和内核。".into(),
+                if self.is_native(){"停止 mayon-clash 服务并移除 TUN；之后网络直连。".into()}else{"退出本用户的 Verge GUI，由 Verge 清理系统代理、TUN 和内核。".into()},
             ),
             KeyCode::Char('r') => {
                 self.reload_profiles();
@@ -1193,13 +1562,14 @@ impl App {
                     field: false,
                 })
             }
+            KeyCode::Char('o') if self.is_native()=>{self.page=Page::Tools;self.tool=3;},
             KeyCode::Char('o') => {
                 self.dialog = Some(Dialog::Verge {
                     reason:
                         "将打开 Verge 设置；TUN 与系统代理由 Verge 管理。完成后返回 TUI 自动刷新。",
                 })
             }
-            _ if !self.online && self.page != Page::Profiles => {}
+            _ if !self.online && self.page != Page::Profiles && !(self.is_native() && self.page==Page::Tools) => {}
             KeyCode::Char('/')
                 if matches!(
                     self.page,
@@ -1277,6 +1647,7 @@ impl App {
                     if provider
                         .is_some_and(|p| matches!(p.vehicle_type.as_str(), "Compatible" | "Inline"))
                     {
+                        if self.is_native(){self.page=Page::Profiles;self.status="嵌入源请在订阅页 u 更新当前订阅".into();return;}
                         self.dialog = Some(Dialog::Verge {
                             reason: "此源嵌入当前配置，没有独立远程地址；请在 Verge 更新所属订阅。",
                         });
@@ -1289,6 +1660,10 @@ impl App {
             KeyCode::Char('t') if self.page == Page::Proxies => self.measure(0),
             KeyCode::Char('T') if self.page == Page::Proxies => self.measure(1),
             KeyCode::Char('b') if self.page == Page::Proxies => self.measure(2),
+            KeyCode::Char('m') if self.is_native()=>{
+                let mode=match self.native_settings.mode.as_str(){"rule"=>"global","global"=>"direct",_=>"rule"};
+                self.native_command(NativeAction::Change("mode".into(),mode.into()));
+            }
             KeyCode::Char('m') => {
                 let mode = match self.config.mode.as_str() {
                     "rule" => "global",
@@ -1335,6 +1710,18 @@ impl App {
                         self.dialog = Some(Dialog::Detail(format!("源：{name}\n类型：{} / {}\n更新：{}\n节点：{}\n规则：{}\n注意：Compatible 源来自配置，不能远程更新。", p.vehicle_type, p.kind, p.updated_at, p.proxies.len(), p.rule_count)));
                     }
                 }
+            }
+            KeyCode::Char('I') if self.is_native() && self.page==Page::Profiles=>self.confirm(Action::ImportNative,"读取 Verge remote 索引与缓存，不联网。原当前订阅将设为当前；不执行 merge/script 等增强。".into()),
+            KeyCode::Char('U') if self.is_native() && self.page==Page::Profiles=>self.native_command(NativeAction::UpdateMany(self.native_store.items.iter().map(|s|s.id.clone()).collect())),
+            KeyCode::Char('n'|'e'|'d') if self.is_native() && self.page==Page::Profiles=>{
+                if let Some(id)=self.selected_profile_id(){match key.code {
+                    KeyCode::Char('d')=>{if self.store.current.as_ref()==Some(&id){self.status="当前订阅不能删除；请先切换".into();}else{self.confirm(Action::DeleteProfile(id),"删除所选订阅及它的缓存？".into());}},
+                    KeyCode::Char('n')=>self.dialog=Some(Dialog::Edit{title:"重命名订阅",value:self.store.items[self.profile].name.clone().unwrap_or_default(),action:EditAction::Rename(id)}),
+                    _=>self.dialog=Some(Dialog::Edit{title:"编辑订阅 URL · 内容脱敏",value:String::new(),action:EditAction::Url(id)}),
+                }}
+            }
+            KeyCode::Char('f'|'u') | KeyCode::Enter if self.is_native() && self.page==Page::Profiles=>{
+                if let Some(id)=self.selected_profile_id(){self.native_command(if key.code==KeyCode::Enter{NativeAction::Use(id)}else{NativeAction::Update(id,None)});}
             }
             KeyCode::Char('f') if self.page == Page::Profiles => self.refresh_usage(),
             KeyCode::Char('u') | KeyCode::Enter if self.page == Page::Profiles => {
@@ -1403,7 +1790,9 @@ impl App {
                 self.log_level = (self.log_level + 1) % 4;
                 self.rebuild_logs();
             }
+            KeyCode::Enter if self.page==Page::Tools && self.is_native() && self.tool>=3=>self.edit_setting(),
             KeyCode::Enter if self.page == Page::Tools => {
+                if self.is_native() && !self.online {self.status="此工具需要服务运行；s 手动启动".into();return;}
                 let body = match self.tool { 0 => "清空 fake-ip 缓存？已建立的映射会被丢弃。", 1 => "清空 DNS 缓存？之后的解析会重新查询。", _ => "更新 GeoIP/GeoSite 数据库？内核将联网下载并重载规则；Nix store 内资源可能只读。" };
                 self.confirm(Action::Tool(self.tool), body.into());
             }
@@ -1425,7 +1814,14 @@ impl App {
                 Page::Connections => (&mut self.connection, self.connection_view.len()),
                 Page::Rules => (&mut self.rule, self.rule_view.len()),
                 Page::Logs => (&mut self.log, self.log_view.len()),
-                Page::Tools => (&mut self.tool, 3),
+                Page::Tools => {
+                    let len = if self.opts.backend == crate::backend::Backend::Native {
+                        9
+                    } else {
+                        3
+                    };
+                    (&mut self.tool, len)
+                }
                 Page::Overview => return,
             }
         };
@@ -1521,7 +1917,14 @@ impl App {
                         Page::Connections => (&mut self.connection, self.connection_view.len(), 2),
                         Page::Rules => (&mut self.rule, self.rule_view.len(), 2),
                         Page::Logs => (&mut self.log, self.log_view.len(), 1),
-                        Page::Tools => (&mut self.tool, 3, 3),
+                        Page::Tools => {
+                            let len = if self.opts.backend == crate::backend::Backend::Native {
+                                9
+                            } else {
+                                3
+                            };
+                            (&mut self.tool, len, 3)
+                        }
                         _ => return,
                     }
                 };
@@ -1610,6 +2013,15 @@ mod tests {
             usage_proxy: None,
             no_verge: true,
             lifecycle: Default::default(),
+            backend: crate::backend::Backend::Verge,
+            native: crate::native::Native {
+                data: "/nonexistent".into(),
+                socket: "/nonexistent.sock".into(),
+                verge_profiles: "/nonexistent.yaml".into(),
+                mihomo: "mihomo".into(),
+                systemctl: "systemctl".into(),
+                yq: "yq".into(),
+            },
         })
         .unwrap();
         let value: serde_json::Value =
@@ -1628,6 +2040,48 @@ mod tests {
             .unwrap();
         app.tick();
         app
+    }
+    #[tokio::test]
+    async fn native_completion_survives_a_full_stream_queue() {
+        let mut app = fixture_app();
+        app.native_busy = true;
+        for _ in 0..128 {
+            app.tx
+                .try_send(Update::Message("stream burst".into()))
+                .unwrap();
+        }
+        app.native_tx.send(Ok("native complete".into())).unwrap();
+        app.tick();
+        assert!(!app.native_busy);
+    }
+    #[tokio::test]
+    async fn stop_requested_during_a_transaction_is_accepted() {
+        let mut app = fixture_app();
+        app.native_busy = true;
+        app.native_command(NativeAction::Stop);
+        assert!(app.queued_stop);
+        assert!(app.lifecycle_pending.is_some_and(|(on, _)| !on));
+        assert!(app.status.contains("已接受关闭请求"));
+        assert!(app.native_job.is_none());
+    }
+    #[tokio::test]
+    async fn paste_is_text_and_control_u_clears_only_the_active_field() {
+        let mut app = fixture_app();
+        app.dialog = Some(Dialog::Import {
+            url: String::new(),
+            name: "name".into(),
+            field: false,
+        });
+        app.paste("http://example.invalid/sub?token=fixture\n");
+        assert!(matches!(&app.dialog,Some(Dialog::Import{url,..}) if url.ends_with("fixture")));
+        app.key(KeyEvent::new(KeyCode::Char('u'), KeyModifiers::CONTROL));
+        assert!(
+            matches!(&app.dialog,Some(Dialog::Import{url,name,..}) if url.is_empty()&&name=="name")
+        );
+        app.dialog = None;
+        app.paste("Xsq");
+        assert!(!app.quit);
+        assert!(app.lifecycle_pending.is_none());
     }
     #[tokio::test]
     async fn replay_sorts_filters_and_cancels() {

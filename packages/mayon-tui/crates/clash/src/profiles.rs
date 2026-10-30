@@ -5,7 +5,7 @@
 
 use chrono::{DateTime, Local, TimeZone, Utc};
 use reqwest::Url;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// The subset of Verge's `profiles.yaml` needed by the TUI.
 #[derive(Clone, Deserialize, Default)]
@@ -60,7 +60,7 @@ impl ProfileItem {
 }
 
 /// Usage values in Verge's `extra` field and Mihomo's `subscription-userinfo` header.
-#[derive(Debug, Clone, Copy, Deserialize, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, Default, PartialEq, Eq)]
 pub struct Usage {
     #[serde(default)]
     pub upload: u64,
