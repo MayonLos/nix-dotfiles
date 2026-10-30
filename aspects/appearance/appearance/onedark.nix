@@ -7,7 +7,7 @@
     sans = "Inter";
     cjk = "Noto Sans CJK SC";
     mono = "Maple Mono NF CN";
-    serif = "Noto Serif CJK SC";
+    serif = "LXGW WenKai Screen";
   };
   cursor = {
     name = "Bibata-Modern-Ice";

@@ -16,8 +16,8 @@
       noto-fonts-cjk-sans
       noto-fonts-cjk-serif
       noto-fonts-color-emoji
-      source-han-sans
-      source-han-serif
+      # Generic serif, which reading views resolve to. SimSun stays Noto below.
+      lxgw-wenkai-screen
       # Metric-compatible Office fallbacks, shared by both office suites.
       carlito
       caladea
@@ -34,6 +34,8 @@
           <alias binding="same"><family>Times New Roman</family><prefer><family>Liberation Serif</family></prefer></alias>
           <alias binding="same"><family>Courier New</family><prefer><family>Liberation Mono</family></prefer></alias>
           <alias binding="same"><family>SimSun</family><prefer><family>Noto Serif CJK SC</family></prefer></alias>
+          <alias binding="same"><family>Source Han Sans SC</family><prefer><family>Noto Sans CJK SC</family></prefer></alias>
+          <alias binding="same"><family>Source Han Serif SC</family><prefer><family>Noto Serif CJK SC</family></prefer></alias>
           <alias binding="same"><family>Microsoft YaHei</family><prefer><family>Noto Sans CJK SC</family></prefer></alias>
         </fontconfig>
       '';

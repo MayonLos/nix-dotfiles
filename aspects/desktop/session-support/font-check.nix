@@ -6,8 +6,7 @@ let
     liberation_ttf
     noto-fonts-cjk-sans
     noto-fonts-cjk-serif
-    source-han-sans
-    source-han-serif
+    lxgw-wenkai-screen
   ];
   # Exercise the exact value NixOS writes to /etc/fonts/local.conf. Wrapping
   # this fragment here would hide a missing document root in localConf.
