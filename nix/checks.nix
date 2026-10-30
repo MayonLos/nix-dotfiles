@@ -45,6 +45,7 @@
         ../aspects/network/laptop-network/checks.nix
         ../aspects/workspace/project-workbench/checks.nix
         ../aspects/workspace/seek/checks.nix
+        ../aspects/workspace/study/checks.nix
       ];
       featureChecks = builtins.foldl' (acc: path: acc // import path args) { } registry;
       embedded = import ../tests/composition/embedded.nix { inherit inputs pkgs; };
