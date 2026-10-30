@@ -1,6 +1,89 @@
 # mcsrv-mayon
 
-`mcsrv-mayon` 是本机 Minecraft Java 服务端的 Rust CLI/TUI 管理器，目标是让用户在不记启动命令的情况下创建实例、启动服务、查看控制台、管理玩家、备份世界并配置联机。实例互相独立，服务按需启动，不设置开机自启。
+`mcsrv-mayon` 覆盖三种联机方式：**局域网世界 / 本机服务器 / 云服务器**。主页提供最短操作路径；原有本机 Vanilla、Paper、Fabric、Forge、NeoForge、GTNH、mrpack 与 Prism 导入功能保持原有行为。
+
+| 用法 | 最短路径 | 朋友使用的地址 |
+| --- | --- | --- |
+| 客户端局域网世界 | 游戏内对局域网开放 → `7` → `s` 检测并共享 | 本机局域网 IP:随机端口；可选本机 frp |
+| 本机服务器 | `n` 新建 / `w` 从原版存档开服 → `s` 启动 | 本机 IP:游戏端口；可选本机 frp |
+| 云服务器 | `8` → `a` 添加 SSH 目标 → `e` 选择实例 → `d` 创建 → `s` 启动 | 云主机公网 IP:游戏端口，默认直连 |
+
+云端只部署 Vanilla / Paper / Fabric 单一服务端，不自动迁移整合包、不做模组同步。从 Prism 一键开服没有新增；原有显式 `create --kind prism` 是独立的本机流程。
+
+## 客户端局域网世界
+
+```sh
+mcsrv-mayon lan list
+mcsrv-mayon lan share                     # 仅一个已确认世界时自动选择，共享一小时
+mcsrv-mayon lan share --port 49152 --seconds 1800
+```
+
+先在游戏中“对局域网开放”，无需退出游戏或把随机端口改成固定端口。检测读取 `/proc/net/tcp{,6}` 的 LISTEN socket inode、UID、进程 fd、启动时间、Java executable、客户端 main class 和 Prism 工作目录。只接受包提供的 Temurin Java 及当前用户 `~/.local/share/PrismLauncher/instances/<实例>/{.minecraft,minecraft}` 下的客户端；自定义 Prism 数据目录/其他 JDK 暂不授权，不能改环境变量绕过 root 校验。UDP 4445 的 `[MOTD]…[/MOTD][AD]端口[/AD]` 广播仅补充显示，不作为授权依据。没有广播时仍可由 socket 证据识别；其他 Java 服务、他人进程、回环监听、低于1024的端口、不同网络命名空间均拒绝。
+
+host 的 `mcsrv-lan@UID_PID_STARTTIME_PORT.service` 使用不可变程序再次验证，不接受用户脚本。Polkit 限制组成员只能申请自己的 UID。端口扩展到 TCP 1024–65535，但必须对应上述已确认监听；不是按端口白名单任意申请。系统每秒复核进程与 socket；前台程序每30秒续租，root unit 最长90秒，nft set 另有90秒到期。退出游戏、共享到期、Ctrl+C 或 TUI 的 `x/q` 撤销租约；进程崩溃后上限仍是90秒。该功能不是恶意同 UID Java 模组的沙箱：受信 JDK 内执行的第三方代码可模仿客户端参数，故只为本机受信游戏使用，不能把客户端标记当成代码签名。防火墙开放到所有可路由来源，保留游戏自身的访问控制。
+
+## 原版单人存档开服
+
+```sh
+mcsrv-mayon create friends --kind vanilla --world /绝对路径/saves/世界名 --memory 4096 --whitelist --accept-eula
+mcsrv-mayon create friends-paper --kind paper --version 1.21.1 --world /绝对路径/saves/世界名 --memory 4096 --whitelist --accept-eula
+```
+
+TUI `w` 只需名称、存档路径、Vanilla/Paper、可选版本及 EULA 确认，默认4 GiB、Java按版本、TCP25565、正版验证与白名单开启。原有 `create` 的默认值保持不变。世界来自只读源，目标是新的实例 `world/`；源文件从不以写模式打开，拒绝链接、特殊文件、活跃 session lock、复制期间变化和覆盖目标。无法确认版本时要求明确版本，避免默默升级；含 Forge/FML/Fabric/mods 等模组记录的世界明确拒绝，不能用指定版本强行绕过。缺少 `WasModded=false` / `DataVersion` 的旧存档，以及带 Paper/Fabric 等非 vanilla ServerBrands 的世界也会保守拒绝自动上传/导入；其备份归档仍可下载并手动管理。请先退出所选单人世界。
+
+白名单开启后先在本机控制台 `whitelist add 玩家名`；云端使用 `cloud <目标> command <实例> 'whitelist add 玩家名'`。4 GiB 是普通原版世界的起点，可按负载调整；不会根据存档猜测整合包依赖。
+
+## 本机 frp 公网隧道
+
+```sh
+# token 文件由你提供，当前用户所有、0600，绝不把 token 直接填入命令
+mcsrv-mayon frp set friends --server relay.example.org --server-port 7000 --remote-port 25565 --token-file /绝对路径/frp.token
+mcsrv-mayon frp show friends
+# name=lan 对应客户端局域网世界
+mcsrv-mayon frp set lan --server relay.example.org --remote-port 25566 --token-file /绝对路径/frp.token
+mcsrv-mayon lan share
+mcsrv-mayon frp off friends             # 撤销配置；已有子进程随实例停止撤销
+```
+
+每个本机实例独立配置；配置后下次启动生效。程序启动 Nixpkgs `frpc -c <私有运行目录>/frpc.toml`，只把配置路径放入 argv，token 只从指定0600普通文件读取，写入0600 TOML，父目录0700。frpc stdout/stderr 全部丢弃，避免第三方报错输出凭据；TUI不显示token。停止服务器/LAN共享会终止frpc并清理临时配置，监督进程意外退出时 Linux parent-death signal 结束子进程；运行目录属于当前登录会话。TUI退出不会停掉已托管的本机服务器，它的隧道随该服务器监督进程存活。frpc异常退出只报告中断，本机服务继续运行；重启实例重新建立隧道。
+
+界面显示可发给朋友的 `frps地址:远端端口`，标记为请求地址；frpc子进程存活不代表已注册成功，必须从外部验证。远端端口冲突、token错误、frps端口限制、路由均会影响连通。使用现行 [frp TOML 配置](https://gofrp.org/en/docs/features/common/configure/) 的 `serverAddr/serverPort/auth.token/[[proxies]]`，启用 TLS；如需校验服务端证书，可传 `--trusted-ca /绝对路径/ca.pem`（参考[官方 TLS 说明](https://gofrp.org/en/docs/features/common/network/network-tls/)）。不打开 frp 管理 API 或 RCON。
+
+**Clash TUN**：把 frps 的域名 `DOMAIN,relay.example.org,DIRECT` 和所有解析出的公网 IP `IP-CIDR,<IP>/32,DIRECT,no-resolve`（IPv6用 `/128`）放在代理规则之前；域名规则便于DNS变化，IP规则覆盖应用直连IP路径。frpc子进程会清除HTTP(S)/ALL_PROXY及其小写环境变量，但这不能绕过系统 TUN；必须由用户自己的 Mihomo 路由规则直连。状态页持续提示，本程序不改写 Clash/Verge。
+
+可选“用这台云主机当中转”只在本机联机/LAN页按 `F`，确认SSH目标两次后部署独立用户 frps；云服务器主页没有此入口：
+
+```sh
+mcsrv-mayon target add relay user@relay.example.org
+mcsrv-mayon frp relay relay --confirm relay --bind-port 7000 --allow-start 25565 --allow-end 25575
+mcsrv-mayon frp relay-stop relay
+```
+
+远端需已有 `frps`，不提权、不修改系统防火墙。本机生成随机token到 `frps-secrets/relay.token`（0600），通过SSH stdin写远端0600配置，不放进命令参数或Nix；再用该文件配置本机隧道。[frps allowPorts](https://gofrp.org/en/docs/features/common/server-manage/)限制可映射游戏端口，控制端口与映射端口需用户在安全组放行。云端Minecraft直连不依赖此服务。
+
+## SSH 云服务器（默认公网直连）
+
+```sh
+mcsrv-mayon target add cloud user@cloud.example.org --public-address cloud.example.org
+mcsrv-mayon target list
+mcsrv-mayon cloud cloud probe
+mcsrv-mayon cloud cloud create friends --kind vanilla --version 1.21.1 --accept-eula
+# 或 --kind paper / fabric；已有停止的本机单一服务端可明确上传
+mcsrv-mayon cloud cloud deploy friends --confirm friends
+mcsrv-mayon cloud cloud start friends
+mcsrv-mayon cloud cloud status friends
+mcsrv-mayon cloud cloud logs friends
+mcsrv-mayon cloud cloud command friends 'whitelist add Alex'
+mcsrv-mayon cloud cloud stop friends
+mcsrv-mayon cloud cloud backup friends
+mcsrv-mayon cloud cloud upload-world friends /绝对路径/saves/原版世界 --confirm friends
+```
+
+目标只存SSH Host/端口、远端目录、Java命令和公网地址设置，文件0600，不保存私钥、密码，不读取私钥内容；系统 `ssh` 使用已有 `~/.ssh/config`、agent、known_hosts 和密钥。BatchMode 禁止后台TUI卡在密码提示；首次主机信任需你先按正常SSH流程核验。云端需Java、rsync、Python3、tar、timeout、flock及systemd用户会话或tmux；`probe`报告依赖与linger。传给远端的每一个用户输入均作严格shell单词引用，控制台文本通过stdin传递。
+
+云端直接显示公网地址与游戏端口，只提示安全组/主机防火墙，不配置隧道。创建默认4GiB、25565、正版认证和白名单，检查Java版本、下载官方单一服务端；Vanilla在远端下载，Paper/Fabric复用已有安装器在本机私有临时目录准备后上传；上传只接受本机 Vanilla/Paper/Fabric，拒绝GTNH/mrpack/Prism和含模组目录的实例。部署到新目录，不覆盖已有实例，不删除原本机实例。上传世界需要确认、先停服；本机先取稳定只读快照，上传到新目录后在远端锁内整体替换，并完整保留旧世界与旧维度；下载备份也要求停服，得到一致性 `.tar.gz`，下载到 `cloud-backups/<目标>/`（0700目录/0600归档）。远端数据默认在 `~/.local/share/mcsrv-cloud/`。
+
+启动按需托管，优先 `systemd --user`，否则 `tmux`；不设开机启动。systemd用户管理器退出时服务也会退出，长驻需云管理员按需要配置linger；tmux也受主机登录会话策略影响。停止只发Minecraft `stop` 并等待，不在超时后强杀世界。云端日志只读尾部，备份下载不自动解压；不提供整合包远端部署、模组同步、云商安全组API或自动提权。
 
 ## 使用范围与安装来源
 
@@ -14,7 +97,7 @@ GTNH 版本号是整合包版本，不是 Minecraft 版本。比如 `2.9.0-RC-2`
 java -Dfml.readTimeout=180 -Duser.language=en @java9args.txt -jar lwjgl3ify-forgePatches.jar nogui
 ```
 
-内存由管家在 `java` 后注入，保留 `@java9args.txt`、forgePatches JAR 与 `nogui` 参数。GTNH 默认选 Java 21；若包内启动布局与上述文件不符，创建会报错。本轮隔离验证已下载该官方包并以 Java 21 启动到 `Done`；这不代表现有用户存档的升级迁移已验证。
+内存由管家在 `java` 后注入，保留 `@java9args.txt`、forgePatches JAR 与 `nogui` 参数。GTNH 默认选 Java 21；若包内启动布局与上述文件不符，创建会报错。此前功能实现的隔离验证曾下载该官方包并以 Java 21 启动到 `Done`（非 r51 验证）；这不代表现有用户存档的升级迁移已验证。
 
 Prism 导入需要提供实例根目录（含 `mmc-pack.json`）。程序读取 Minecraft 与 loader 组件，复制其 `mods/` 和 `config/`；若发现 `lwjgl3ify` Prism 客户端组件，则拒绝把 1.7.10 客户端当成普通 Forge 服务端，GTNH 请用官方 Server ZIP。JAR 的 `fabric.mod.json` 明确写有 `environment: "client"` 时会自动排除；无 Fabric 元数据的 JAR 会尝试以 SHA-1 查询 Modrinth，只有项目明确标记 `server_side=unsupported` 才排除。404、兼容状态未知或 API/网络错误都会保留并写入报告，不会因查询失败丢弃文件。未知 Forge/其他格式需用户手工核对服务端兼容性。每次导入的依据与保留/排除清单写入实例私有文件 `import-report.txt`；源 Prism 实例只读。
 
@@ -57,7 +140,7 @@ mcsrv-mayon network friends --connect
 
 | 页面/操作 | 按键 | 行为 |
 | --- | --- | --- |
-| 全局 | `1`–`6`、`Tab` / `Shift+Tab` | 切换实例、控制台、玩家、备份、模组、联机页 |
+| 全局 | `1`–`8`、`Tab` / `Shift+Tab` | 切换主页、控制台、玩家、备份、模组、联机、LAN、云服页 |
 | 全局 | `j` / `k`、`↑` / `↓`、鼠标滚轮/点击 | 移动选择、浏览日志或表格 |
 | 全局 | `/`、`?`、`q` | 过滤实例（模组页 `/` 搜索 Modrinth）、帮助、退出 |
 | 实例 | `n`、`s`、`x` | 新建向导、启动、停止 |
@@ -94,14 +177,14 @@ restic 对仓库作内容去重；`keep_last` 默认 20，用于忘记较旧快�
 
 ## 局域网、防火墙与外网联机
 
-默认局域网共享关闭。使用 `config <名字> --lan` 后，启动时申请临时放行 TCP 25565–25575 中实例所用端口，关服时撤销；应用每 30 秒续租，NixOS host unit 和 nftables set 都以 90 秒为上限。系统侧 `mcsrv-firewall@<端口>.service` 只放行游戏端口 TCP；RCON 端口不对外开放。Polkit 仅允许 `mcsrv-firewall` 组成员对允许范围内模板单元执行 `start`、`stop`、`restart`。不支持的 NixOS 防火墙后端会 fail closed。规则开放时该端口对所有可路由来源地址可达，可能包括 WAN 和 VPN；不要无意配置路由器端口转发。停止规则后，已建立连接可能仍由 conntrack 保留到连接跟踪状态超时。
+本机服务端默认局域网共享关闭。使用 `config <名字> --lan` 后，启动时申请临时放行 TCP 25565–25575 中实例所用端口，关服时撤销；应用每 30 秒续租，NixOS host unit 和 nftables set 都以 90 秒为上限。系统侧 `mcsrv-firewall@<端口>.service` 只放行游戏端口 TCP；RCON 端口不对外开放。Polkit 仅允许 `mcsrv-firewall` 组成员对允许范围内模板单元执行 `start`、`stop`、`restart`。不支持的 NixOS 防火墙后端会 fail closed。规则开放时该端口对所有可路由来源地址可达，可能包括 WAN 和 VPN；不要无意配置路由器端口转发。停止规则后，已建立连接可能仍由 conntrack 保留到连接跟踪状态超时。
 
 外网联机推荐 Tailscale 私有 tailnet：双方设备加入受控 tailnet 后使用 100.x 地址和游戏端口，无需路由器转发。NixOS 的 Tailscale daemon 必须由系统配置启用，并完成设备登录/组织策略授权；`t` 只显示接入说明；执行 `network <名字> --connect` 才显式调用 `tailscale up`，可能改变现有 daemon 的连接状态或要求 operator 批准。管家运行时不启动或关闭 `tailscaled`；宿主可显式启用下述可选集成，不读取或保存 Tailscale 凭据；凭据留给 daemon。首次使用前先确认本机 operator 授权和 tailnet 访问策略。
 
 其他选项：
 
 - **playit.gg**：按其官方 Linux agent 流程安装并登录 agent，在 agent 控制台为 Minecraft Java TCP 服务创建 tunnel，目标填本机地址与端口。确认外部提供的域名/端口及账号访问策略；管家不安装 agent 或存储账号令牌。
-- **自建 frp**：在具备公网地址的 VPS 部署 `frps`，本机部署 `frpc` 将 Minecraft TCP 端口映射至 VPS。`frps`/`frpc` 配置与 token 由用户在 Nix/sops 运行时管理，不得写入 Nix 字符串、实例日志或本仓库明文。
+- **自建 frp**：使用上方本机 frp 配置，程序托管 frpc。可选将已配置SSH主机部署为frps中转；云端Minecraft本身仍默认公网直连。
 - **ZeroTier**：双方安装并启动各自系统服务，手动加入同一个受控网络并完成网络管理员授权，再用虚拟地址连接。需要自行评估第三方控制面和网段路由策略。
 
 Clash/Mihomo TUN 的本地或 overlay 流量需确保走 `DIRECT`；建议至少对 `127.0.0.0/8`、RFC1918 私网、Tailscale `100.64.0.0/10` 和 ULA `fd7a:115c:a1e0::/48` 配置直连规则。`network` 页面显示系统接口报告的全局地址；若 Tailscale 地址已由系统呈现，也会出现在其中。Mihomo 规则结构示意如下，合并前按现有规则顺序核对：
@@ -150,3 +233,9 @@ services.mcsrv-mayon.tailscale = {
 整合包的 `server.properties` 中未由管家管理的设置（例如 `allow-flight`、`level-type`）会保留。mrpack 按标准下载服务端文件，再依次应用 `overrides/`、`server-overrides/`，不应用 `client-overrides/`。两个覆盖层允许服务端覆盖通用配置，均拒绝路径越界和符号链接。
 
 模组搜索、安装/更新与 Prism 差异的完整结果显示在可滚动弹窗，使用 `j/k` 或滚轮移动、`Esc` / `q` / `?` 关闭。实例选择与页内玩家/快照选择独立；后台操作期间不可切换实例，避免向错误实例发出管理命令。
+
+## r51 验证边界
+
+`mcsrv-network-runtime` 在两个隔离NixOS VM中验证：SSH上传单一服务端、systemd用户托管启停、真实TCP直连、日志/控制台转义、停服备份下载；独立验证真实frps/frpc的TCP回传与停服撤销，并检查token不在argv或服务日志。Minecraft内容使用合成stdin/TCP服务fixture，不启动用户游戏，不联系真实SSH主机。功能单测覆盖proc/socket授权、广播解析、只读世界复制/模组拒绝、frp凭据权限及输出隔离、远端命令引用。是否执行成功以本轮执行报告为准，不把定义测试写成测试通过。
+
+实机仍需核对：Prism实际Java路径与cwd、游戏LAN随机端口跨设备可达、真实Mod/Java兼容、Mihomo TUN路由、云端SSH用户策略/linger与安全组、公网玩家连接。host模块需重建后才生效；本轮不应用系统配置。截图位于 `/home/mayon/nix-dotfiles/.work/r51/shots-mc/`，使用私有headless sway与真实Kitty。

@@ -1,10 +1,14 @@
 mod backup;
+mod frp;
 mod install;
+mod lan;
 mod model;
 mod mods;
 mod protocol;
+mod remote;
 mod runtime;
 mod tui;
+mod world;
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 use model::*;
@@ -22,6 +26,28 @@ struct Cli {
 #[derive(Subcommand)]
 enum Action {
     List,
+    /// Minecraft 客户端局域网世界
+    Lan {
+        #[command(subcommand)]
+        action: LanAction,
+    },
+    #[command(hide = true)]
+    LanValidate {
+        id: String,
+    },
+    Frp {
+        #[command(subcommand)]
+        action: frp::FrpAction,
+    },
+    Target {
+        #[command(subcommand)]
+        action: remote::TargetAction,
+    },
+    Cloud {
+        target: String,
+        #[command(subcommand)]
+        action: remote::CloudAction,
+    },
     Create {
         name: String,
         #[arg(long, default_value = "paper")]
@@ -36,6 +62,8 @@ enum Action {
         offline: bool,
         #[arg(long)]
         whitelist: bool,
+        #[arg(long)]
+        world: Option<PathBuf>,
         #[arg(long)]
         source: Option<String>,
         #[arg(long)]
@@ -108,6 +136,16 @@ enum Action {
     },
 }
 #[derive(Subcommand)]
+enum LanAction {
+    List,
+    Share {
+        #[arg(long)]
+        port: Option<u16>,
+        #[arg(long, default_value_t = 3600)]
+        seconds: u64,
+    },
+}
+#[derive(Subcommand)]
 enum ModAction {
     Search { query: String },
     Install { project: String },
@@ -130,6 +168,9 @@ fn main() {
 }
 fn execute() -> Result<()> {
     let cli = Cli::parse();
+    if let Some(Action::LanValidate { id }) = cli.command.as_ref() {
+        return lan::validate_id(id);
+    }
     let root = cli.root.unwrap_or(
         PathBuf::from(std::env::var("HOME").context("HOME 未设置")?).join(".local/share/mcsrv"),
     );
@@ -143,6 +184,26 @@ fn execute() -> Result<()> {
         return tui::run(root, cli.demo);
     };
     match action {
+        Action::Frp { action } => frp::action(&root, action),
+        Action::Target { action } => remote::targets(&root, &action),
+        Action::Cloud { target, action } => remote::cloud(&root, &target, &action),
+        Action::LanValidate { id } => lan::validate_id(&id),
+        Action::Lan { action } => match action {
+            LanAction::List => json(&lan::discover()?),
+            LanAction::Share { port, seconds } => {
+                let mut worlds = lan::discover()?;
+                if let Some(port) = port {
+                    worlds.retain(|w| w.port == port);
+                }
+                if worlds.len() != 1 {
+                    bail!(
+                        "发现{}个 LAN 世界；请在游戏中对局域网开放，或用 --port 明确选择。",
+                        worlds.len()
+                    );
+                }
+                lan::watch(&root, &worlds.remove(0), seconds)
+            }
+        },
         Action::List => {
             let mut list = Vec::new();
             for e in fs::read_dir(&root)? {
@@ -164,6 +225,7 @@ fn execute() -> Result<()> {
             port,
             offline,
             whitelist,
+            world,
             source,
             java,
             accept_eula,
@@ -172,6 +234,9 @@ fn execute() -> Result<()> {
             aikar,
         } => {
             valid_name(&name)?;
+            if world.is_some() && !matches!(kind.as_str(), "vanilla" | "paper") {
+                bail!("单人世界开服仅支持原版存档 → Vanilla/Paper；模组世界请使用原有本地创建流程手动管理");
+            }
             if !accept_eula {
                 bail!(
                     "请阅读 https://aka.ms/MinecraftEULA，接受后传 --accept-eula；向导也会明确询问"
@@ -195,6 +260,15 @@ fn execute() -> Result<()> {
                 bail!("实例目录已存在，拒绝覆盖");
             }
             let explicit_java = java.clone();
+            let imported_version = world
+                .as_ref()
+                .map(|path| world::validate_vanilla(path))
+                .transpose()?;
+            let version = if version == "latest" {
+                imported_version.unwrap_or(version)
+            } else {
+                version
+            };
             let (java_kind, java_mc) = install::java_hint(&kind, &version, source.as_deref())?;
             let java = java_path(
                 java.as_deref()
@@ -216,6 +290,9 @@ fn execute() -> Result<()> {
                     .as_deref()
                     .unwrap_or(java_version(&kind, &version)),
             )?;
+            if let Some(world) = world {
+                world::copy_world(&world, &temp.path().join("world"))?;
+            }
             let c = Config {
                 name,
                 kind,
