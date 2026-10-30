@@ -23,6 +23,13 @@ let
     "SUPER+ALT,F,toggle_named_scratchpad,seek,none,${lib.getExe pkgs.kitty} --class=seek --title=Seek ${lib.getExe pkgs.seek} tui --viewer zathura"
     "SUPER+ALT,S,toggle_named_scratchpad,study-mayon,none,${lib.getExe pkgs.kitty} --class=study-mayon --title=学习 ${pkgs.studyMayon}/bin/study-mayon"
     "SUPER+SHIFT,M,toggle_named_scratchpad,mcsrv-mayon,none,${lib.getExe pkgs.kitty} --class=mcsrv-mayon ${lib.getExe pkgs.mcsrvMayon}"
+    "SUPER+SHIFT,Y,toggle_named_scratchpad,serial-mayon,none,${lib.getExe pkgs.kitty} --class=serial-mayon --title=串口监视 ${lib.getExe pkgs.serialMayon}"
+    "SUPER+SHIFT,Z,toggle_named_scratchpad,power-mayon,none,${lib.getExe pkgs.kitty} --class=power-mayon --title=电源 ${lib.getExe pkgs.powerMayon}"
+    "SUPER+SHIFT,X,toggle_named_scratchpad,shots-mayon,none,${lib.getExe pkgs.kitty} --class=shots-mayon ${lib.getExe pkgs.shotsMayon}"
+    "SUPER+SHIFT,F1,toggle_named_scratchpad,keys-mayon,none,${lib.getExe pkgs.kitty} --class=keys-mayon ${lib.getExe pkgs.keysMayon}"
+    "SUPER+SHIFT,F10,spawn,${lib.getExe pkgs.shotsMayon} record toggle"
+    "SUPER+SHIFT,F11,spawn,${lib.getExe pkgs.shotsMayon} record toggle --window"
+    "SUPER+SHIFT,F12,spawn,${lib.getExe pkgs.shotsMayon} record toggle --region"
     "SUPER+SHIFT,B,spawn,${lib.getExe pkgs.kitty} --class=mayon-bili ${lib.getExe pkgs.bilitui}"
     # Press once to start dictation, again to stop and type the text.
     "SUPER+SHIFT,V,spawn,${lib.getExe pkgs.mayonVoice} toggle"
@@ -287,6 +294,10 @@ let
         seek = "文件搜索 seek";
         study-mayon = "背单词与课表";
         mcsrv-mayon = "Minecraft 服务器";
+        serial-mayon = "串口监视";
+        power-mayon = "电量与性能";
+        shots-mayon = "截图与录屏";
+        keys-mayon = "快捷键速查";
       };
       args =
         if action == "toggle_named_scratchpad" then

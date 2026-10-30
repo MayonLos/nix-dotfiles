@@ -120,6 +120,10 @@ let
     "${opaque},app_id:^(kitty|mayon-scratch|mayon-files|mayon-monitor|mayon-clash|mayon-docker|mayon-docker-exec|mayon-ports|mayon-herdr|seek|study-mayon|mcsrv-mayon|mayon-bili)$"
     # TUI scratchpads share one centered, opaque Kitty window ratio.
     "is_named_scratchpad:1,width:0.78,height:0.78,app_id:^(mayon-scratch|mayon-files|mayon-monitor|mayon-clash|mayon-docker|mayon-ports|seek|study-mayon|mcsrv-mayon)$"
+    # Standalone mayon TUIs share the workspace size and scratchpad surface.
+    "no_blur:0,app_id:^(serial-mayon|power-mayon|shots-mayon|keys-mayon)$"
+    "${opaque},app_id:^(serial-mayon|power-mayon|shots-mayon|keys-mayon)$"
+    "is_named_scratchpad:1,width:0.78,height:0.78,app_id:^(serial-mayon|power-mayon|shots-mayon|keys-mayon)$"
     "${workspace},app_id:^(mayon-docker-exec|mayon-bili)$"
   ]
   # Community modal/chooser patterns, scoped to apps and anchored to avoid

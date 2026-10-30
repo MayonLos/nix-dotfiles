@@ -32,7 +32,6 @@
         ../aspects/apps/gaming/runtime-checks.nix
         ../aspects/apps/gaming/mcsrv-checks.nix
         ../aspects/cli/keys-mayon/checks.nix
-||||||| f286a0c
         ../aspects/apps/gaming/mcsrv-runtime-checks.nix
         ../aspects/cli/shell/checks.nix
         ../aspects/cli/herdr/checks.nix
@@ -211,7 +210,6 @@
           mcsrv-mayon = pkgs.mcsrvMayon;
           power-mayon = pkgs.powerMayon;
           power-mayon-vm = import ../packages/power-mayon/vm.nix { inherit pkgs; };
-||||||| f286a0c
           shots-mayon =
             assert lib.assertMsg (builtins.elem pkgs.shotsMayon home.home.packages)
               "Shots library must be installed by the screenshot feature";
