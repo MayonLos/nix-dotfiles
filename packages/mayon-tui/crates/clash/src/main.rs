@@ -9,8 +9,9 @@ mod theme;
 mod ui;
 
 use app::{App, Options};
-use crossterm::event::{self, Event, KeyEventKind};
-use std::{env, io, path::PathBuf, time::Duration};
+use crossterm::event::{Event, EventStream, KeyEventKind};
+use futures_util::StreamExt;
+use std::{env, io, path::PathBuf};
 
 fn options() -> Result<Option<Options>, &'static str> {
     let home = env::var_os("HOME").map(PathBuf::from).unwrap_or_default();
@@ -94,24 +95,32 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     };
     let mut app = App::new(opts).map_err(|_| io::Error::other("无法创建内核客户端"))?;
     let (mut terminal, _guard) = mayon_ui::terminal()?;
-    crossterm::execute!(io::stdout(), crossterm::event::EnableBracketedPaste)?;
+    let mut events = EventStream::new();
+    let mut focused = true;
     app.start();
     while !app.quit {
         app.tick();
-        if app.dirty {
+        if app.dirty && focused {
             terminal.draw(|frame| ui::draw(frame, &app))?;
             app.dirty = false;
         }
-        if event::poll(Duration::from_millis(50))? {
-            match event::read()? {
-                Event::Key(key) if key.kind != KeyEventKind::Release => app.key(key),
-                Event::Paste(value) => app.paste(&value),
-                Event::Mouse(mouse) => app.mouse(mouse, terminal.size()?),
-                Event::Resize(_, _) => app.dirty = true,
-                _ => {}
+        let deadline = app.deadline();
+        tokio::select! {
+            event = events.next() => {
+                match event.transpose()? {
+                    Some(Event::Key(key)) if focused && key.kind != KeyEventKind::Release => app.key(key),
+                    Some(Event::Paste(value)) if focused => app.paste(&value),
+                    Some(Event::Mouse(mouse)) if focused => app.mouse(mouse,terminal.size()?),
+                    Some(Event::Resize(_, _)) => app.dirty = true,
+                    Some(Event::FocusLost) => { focused = false; app.suspend(); }
+                    Some(Event::FocusGained) if !focused => { focused = true; app.start(); }
+                    None => break,
+                    _ => {}
+                }
             }
+            _ = app.wait_for_update() => {}
+            _ = async { if let Some(time) = deadline { tokio::time::sleep_until(time.into()).await; } else { std::future::pending::<()>().await; } } => {}
         }
-        tokio::task::yield_now().await;
     }
     app.finish_native().await;
     app.stop();

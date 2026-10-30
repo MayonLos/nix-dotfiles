@@ -1,6 +1,6 @@
 # Listening port tools
 
-`port-tools` installs the public `pkgs.mayonTui.ports` output (`portstui-mayon`).
+`port-tools` installs the public `pkgs.mayonTui.tools` output (`mayon-tools ports`).
 It belongs to network diagnostics: listeners exist independently of Docker and
 of a desktop session. The user binding selects it beside the host’s `laptop-network`; other
 accounts may select it independently. There are no schema inputs, persistent configuration or services.

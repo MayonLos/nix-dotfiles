@@ -9,7 +9,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect, Size},
     style::Style,
     text::{Line, Span},
-    widgets::{Block, Clear, Paragraph, Sparkline, Wrap},
+    widgets::{Block, Paragraph, Sparkline, Wrap},
     Frame,
 };
 use unicode_width::UnicodeWidthStr;
@@ -25,9 +25,6 @@ pub fn tab_at(column: u16) -> Option<char> {
         x += width + 2;
     }
     None
-}
-fn block(title: impl Into<String>) -> Block<'static> {
-    mayon_ui::block(title, true)
 }
 fn title(app: &App, text: &str, area: Rect) -> String {
     clip(
@@ -65,7 +62,15 @@ fn pane(frame: &mut Frame, app: &App, area: Rect, title: String, text: Vec<Line<
             line
         })
         .collect();
-    frame.render_widget(Paragraph::new(text).style(base()).block(block(title)), area);
+    let focused = app.page != Page::Proxies
+        || app.provider_mode
+        || (area.x == frame.area().x) != app.nodes_focus;
+    frame.render_widget(
+        Paragraph::new(text)
+            .style(base())
+            .block(mayon_ui::block(title, focused)),
+        area,
+    );
 }
 fn visible(area: Rect, selected: usize, len: usize, row_height: usize) -> std::ops::Range<usize> {
     let count = area.height.saturating_sub(2) as usize / row_height;
@@ -101,19 +106,27 @@ pub fn draw(frame: &mut Frame, app: &App) {
         .as_ref()
         .map(|t| format!("↑{}/s ↓{}/s", bytes(t.up), bytes(t.down)))
         .unwrap_or_else(|| "流量 --".into());
-    mayon_ui::status(
-        frame,
+    let (phase, tone) = if app.online {
+        ("● 运行", mayon_ui::Tone::Success)
+    } else if app.loading() {
+        ("◌ 连接中", mayon_ui::Tone::Info)
+    } else {
+        ("○ 未运行", mayon_ui::Tone::Warning)
+    };
+    frame.render_widget(
+        Paragraph::new(Line::from(vec![
+            Span::styled(" Clash  ", base().fg(BRIGHTFG)),
+            Span::styled(phase, base().fg(tone.color())),
+            muted(format!(
+                "  {}  {rate}",
+                if app.online {
+                    app.config.mode.as_str()
+                } else {
+                    "s 启动"
+                }
+            )),
+        ])),
         chunks[0],
-        &format!(
-            " 󰒍 Clash · {} · {} · {} · {rate}",
-            "mayon-clash",
-            if app.online { "运行" } else { "未运行" },
-            if app.online {
-                app.config.mode.as_str()
-            } else {
-                "s 启动"
-            }
-        ),
     );
     frame.render_widget(
         Paragraph::new(mayon_ui::tabs_line(&TABS, app.page as usize)),
@@ -125,7 +138,11 @@ pub fn draw(frame: &mut Frame, app: &App) {
             frame,
             app,
             chunks[2],
-            " Clash 未运行 ".into(),
+            if app.loading() {
+                " 正在连接内核 ".into()
+            } else {
+                " Clash 未运行 ".into()
+            },
             vec![
                 Line::from(""),
                 Line::from(blue(format!("  {progress}"))),
@@ -169,7 +186,32 @@ pub fn draw(frame: &mut Frame, app: &App) {
         Page::Logs => " j/k 滚动  / 搜索  L 级别  空格 暂停  g/G 首尾  ? 帮助",
         Page::Tools => " j/k 移动  Enter 执行 / 编辑  m 模式  ? 帮助",
     };
-    mayon_ui::footer(frame, chunks[3], hint, &format!(" {}", app.status));
+    let hint = if app.dialog.is_some() {
+        "Enter 确认  Esc 取消"
+    } else if app.help {
+        "1–7 切页  ←/→ 切页  Esc 返回"
+    } else if app.filtering {
+        "↑/↓ 选择  Enter 保留  Esc 恢复"
+    } else if !app.online && app.page != Page::Profiles && app.page != Page::Tools {
+        "3 订阅  i 添加  s 启动  ? 帮助  q 退出"
+    } else {
+        hint
+    };
+    mayon_ui::footer(frame, chunks[3], hint, "");
+    if let Some((text, tone)) = app.notice.visible() {
+        frame.render_widget(
+            Paragraph::new(mayon_ui::style::message(
+                clip(text, chunks[3].width.saturating_sub(2) as usize),
+                tone,
+            )),
+            Rect::new(
+                chunks[3].x,
+                chunks[3].y.saturating_add(1),
+                chunks[3].width,
+                1,
+            ),
+        );
+    }
     if app.filtering {
         frame.render_widget(Paragraph::new(" 过滤 /").style(base().fg(BLUE)), chunks[3]);
         app.filters[app.page as usize].render(
@@ -398,7 +440,11 @@ fn proxies(frame: &mut Frame, app: &App, area: Rect) {
         ));
     }
     if nodes.is_empty() {
-        nodes.push(Line::from(muted(" 无匹配节点 · Esc 清除过滤")));
+        nodes.push(Line::from(muted(if !app.filter().is_empty() {
+            "无匹配节点 · Esc 清除过滤"
+        } else {
+            "暂无节点 · r 刷新或 3 检查订阅"
+        })));
     }
     let measuring = app
         .measuring
@@ -758,7 +804,13 @@ fn rules(frame: &mut Frame, app: &App, area: Rect) {
         ))));
     }
     if lines.is_empty() {
-        lines.push(Line::from(muted(" 无匹配规则 · Esc 清除过滤")));
+        lines.push(Line::from(muted(if !app.filter().is_empty() {
+            "没有匹配规则 · Esc 清除过滤"
+        } else if app.resources_loading() {
+            "正在加载规则…"
+        } else {
+            "暂无规则 · r 刷新或检查当前订阅"
+        })));
     }
     pane(
         frame,
@@ -888,15 +940,20 @@ fn tools(frame: &mut Frame, app: &App, area: Rect) {
     );
 }
 fn modal(frame: &mut Frame, title: &str, text: Vec<Line<'static>>, height: u16, scroll: u16) {
-    let a = mayon_ui::centered(frame.area(), 80, height);
-    frame.render_widget(Clear, a);
+    let tone = if title.contains("错误") || title.contains("失败") {
+        mayon_ui::Tone::Error
+    } else if title.contains("确认") {
+        mayon_ui::Tone::Warning
+    } else {
+        mayon_ui::Tone::Action
+    };
+    let inner = mayon_ui::modal(frame, title, 80, height, tone);
     frame.render_widget(
         Paragraph::new(text)
             .style(base().bg(SURFACE))
-            .block(block(title.to_string()))
             .wrap(Wrap { trim: false })
             .scroll((scroll, 0)),
-        a,
+        inner,
     );
 }
 fn help(frame: &mut Frame, app: &App) {
@@ -1016,16 +1073,16 @@ fn dialog_view(frame: &mut Frame, dialog: &Dialog, scroll: u16) {
     match dialog {
         Dialog::Edit { value, action, .. } => {
             if matches!(action, crate::app::EditAction::Url(_)) {
-                value.render_masked(frame, input_area(2, 3), base().fg(BLUE));
+                value.render_masked(frame, input_area(2, 4), base().fg(BLUE));
             } else {
-                value.render(frame, input_area(2, 3), base().fg(BLUE));
+                value.render(frame, input_area(2, 4), base().fg(BLUE));
             }
         }
         Dialog::Import { url, name, field } => {
             if *field {
-                name.render(frame, input_area(4, 10), base().fg(BLUE));
+                name.render(frame, input_area(4, 11), base().fg(BLUE));
             } else {
-                url.render_masked(frame, input_area(2, 9), base().fg(BLUE));
+                url.render_masked(frame, input_area(2, 10), base().fg(BLUE));
             }
         }
         _ => {}

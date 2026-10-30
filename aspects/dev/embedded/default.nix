@@ -1,6 +1,7 @@
 { den, ... }:
 {
   den.aspects.embedded-workbench = { host, ... }: {
+    includes = [ den.aspects.mayon-tools ];
     homeManager = { pkgs, ... }: {
       imports = [ ./home.nix ];
       # The old module relied on llvm.nix for these common build tools. Make

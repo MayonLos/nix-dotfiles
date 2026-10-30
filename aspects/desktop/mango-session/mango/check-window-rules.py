@@ -182,9 +182,12 @@ for app, title, size in (
     row = resolve(app, title)
     assert (float(row["width"]), float(row["height"])) == size, (app, title, row)
     assert not {"offset_x", "offset_y", "no_force_center"} & row.keys(), row
-for app in ("mayon-scratch", "mayon-files", "mayon-monitor", "mayon-clash", "mayon-docker", "mayon-ports"):
+for app in ("mayon-scratch", "mayon-files", "mayon-monitor", "mayon-clash", "mayon-tools", "mayon-bili"):
     row = resolve(app, app)
     assert (float(row["width"]), float(row["height"])) == (0.78, 0.78), row
     assert row["focused_opacity"] == row["unfocused_opacity"] == "1.0", row
     assert row["no_blur"] == "0", row
+for app in ("mayon-docker", "mayon-ports", "serial-mayon", "shots-mayon", "keys-mayon"):
+    row = resolve(app, app)
+    assert "is_named_scratchpad" not in row, (app, row)
 print(f"window rule policy: {len(RULES)} rules; valid fields, UTF-8 limits, dialogs, main-window exclusions, PiP, silent toolbar and fullscreen fixtures passed")

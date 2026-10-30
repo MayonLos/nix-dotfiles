@@ -38,10 +38,8 @@
           })
           (final: _: {
             # Local programs have a separate public entry; local remains upstream aliases.
-            keysMayon = import ../packages/keys-mayon { pkgs = final; };
+            bilitui = import ../packages/bilitui { pkgs = final; };
             mayonTui = import ../packages/mayon-tui { pkgs = final; };
-            serialMayon = import ../packages/serial-mayon { pkgs = final; };
-            shotsMayon = import ../packages/shots-mayon { pkgs = final; };
             mayonVoice = import ../packages/mayon-voice { pkgs = final; };
             # Explicit exceptions to stable; each consumer uses this shared instance.
             unstable = {

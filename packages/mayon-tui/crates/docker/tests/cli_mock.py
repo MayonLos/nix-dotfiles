@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """End-to-end CLI safety tests using only the in-memory Unix-socket mock Engine.
 
-Usage: python -B packages/mayon-tui/crates/docker/tests/cli_mock.py /path/to/dockertui-mayon
+Usage: python -B packages/mayon-tui/crates/docker/tests/cli_mock.py /path/to/mayon-tools
 No Docker executable or user Docker socket is read or invoked.
 """
 from __future__ import annotations
@@ -53,7 +53,7 @@ def reset_fixture(server: mock_engine.MockEngine, log_path: Path) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("binary", type=Path, help="built dockertui-mayon executable")
+    parser.add_argument("binary", type=Path, help="built mayon-tools executable")
     args = parser.parse_args()
     binary = args.binary.expanduser().resolve(strict=True)
     if not binary.is_file():
@@ -89,7 +89,7 @@ def main() -> int:
 
             def run(*arguments: str, input_text: str = ""):
                 return subprocess.run(
-                    [str(binary), "--host", endpoint, *arguments],
+                    [str(binary), "docker", "--host", endpoint, *arguments],
                     input=input_text,
                     text=True,
                     stdout=subprocess.PIPE,
@@ -211,7 +211,7 @@ def main() -> int:
             reset_fixture(server, log_path)
             container_id = "container-stopped-001"
             process = subprocess.Popen(
-                [str(binary), "--host", endpoint, "clean", "--yes", "--container", container_id],
+                [str(binary), "docker", "--host", endpoint, "clean", "--yes", "--container", container_id],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,

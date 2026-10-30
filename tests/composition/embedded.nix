@@ -13,6 +13,7 @@ let
       {
         imports = [
           inputs.den.flakeModule
+          ../../aspects/cli/mayon-tools
           ../../aspects/dev/embedded
           ../../aspects/cli/shell
         ];

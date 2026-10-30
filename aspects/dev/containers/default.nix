@@ -1,11 +1,9 @@
 { den, ... }:
 {
   den.aspects = {
-    container-client.homeManager = { pkgs, ... }: {
-      home.packages = [
-        pkgs.docker
-        pkgs.mayonTui.docker
-      ];
+    container-client = {
+      includes = [ den.aspects.mayon-tools ];
+      homeManager = { pkgs, ... }: { home.packages = [ pkgs.docker ]; };
     };
 
     local-containers = { host, ... }: {

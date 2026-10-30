@@ -3,16 +3,16 @@
 All custom TUI source lives here. `default.nix` is the public Nix package
 factory (`{ pkgs }`); `nix/pkgs.nix` publishes `pkgs.mayonTui`. One locked
 `buildRustPackage` builds all binaries and runs workspace tests and clippy.
-The `out` output contains all three commands; the `clash` output also exposes
-`mayon-clash-preflight` for the network service (source in `scripts/`). Separate `clash`, `docker`, and
-`ports` outputs allow features to install only their owned command.
+The `out` output contains both commands; the `clash` output also exposes
+`mayon-clash-preflight` for the network service (source in `scripts/`). Separate `clash` and `tools` outputs allow features to install the independent
+Clash client or the shared toolbox.
 
 | Crate | Command | Installation owner |
 | --- | --- | --- |
 | [ui](crates/ui/README.md) | shared library | all tools |
 | [clash](crates/clash/README.md) | `clashtui-mayon` | `clash-tui` aspect in laptop-network |
-| [docker](crates/docker/README.md) | `dockertui-mayon` | container-client |
-| [ports](crates/ports/README.md) | `portstui-mayon` | port-tools (selected by the user binding) |
+| [tools](crates/tools/README.md) | `mayon-tools` | mayon-tools aspect |
+| docker / ports / serial / keys / voice | toolbox pages and CLI subcommands | existing features include mayon-tools |
 
 Features use `pkgs.mayonTui.<output>`; they never import a sibling feature's
 private source. They own installation and configuration; desktops own their
@@ -28,7 +28,7 @@ From the repository root:
 ```sh
 nix develop
 cd packages/mayon-tui
-cargo run -p portstui-mayon -- --help
+cargo run -p mayon-tools -- --help
 cargo test --workspace --locked
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo fmt --all --check
@@ -63,13 +63,13 @@ and D-Bus/Wayland session. Never inspect or log an inherited environment. See
 [agent workflow](../../docs/agent-workflow.md), sections 3 and 8, for screenshots.
 Clash accepts `--data-dir`, `--socket`, `--mihomo`, `--systemctl`, and `--config`
 paths for isolated data and service fixtures;
-Docker accepts `--host`; ports can run in an unprivileged user/network
+`mayon-tools docker` accepts `--host`; ports can run in an unprivileged user/network
 namespace for synthetic listeners and process actions.
 
 ## 搜索与输入约定
 
 保留的 TUI 使用 `mayon_ui::search` 和 `mayon_ui::input::TextInput`，共享库也供
-keys、shots、serial 和 voice dashboard 使用。页面布局可独立演进，搜索匹配与
+keys、serial、bilitui 和 voice dashboard 使用。页面布局可独立演进，搜索匹配与
 编辑状态不依赖布局。
 
 - `/` 打开本地过滤并实时更新；Enter 保留过滤回到列表；输入中的 Esc 恢复打开前的
@@ -87,3 +87,23 @@ keys、shots、serial 和 voice dashboard 使用。页面布局可独立演进�
   单行长度上限 4096 个字符；没有输入框时忽略粘贴。表单与确认文本也使用相同编辑器。
 - Serial 的 `/`（或 `f`）过滤记录，Ctrl+f 搜索命中位置，n/N 向后/向前循环定位，
   状态显示第 x/共 y 个。搜索与记录过滤分别保留状态。
+
+## 工具箱与样式
+
+Clash 和 bilitui 保留独立窗口。`mayon-tools` 用 `[` / `]` 切换 docker、ports、
+serial、keys、voice；页面内部数字键保持各自含义。输入框编辑时方括号正常输入。
+默认打开 ports，首次切换到 docker 才连接 Docker；只有显式 `ports --docker-map`
+才查询 Docker 端口映射。每页首次打开才初始化，切走和 FocusLost 暂停被动刷新、
+任务和流，返回时保留过滤、选中和子页。已明确启动的外部事务遵循各工具原有语义。
+非交互子命令使用 `mayon-tools keys list --json`、`mayon-tools serial ...` 等形式。
+
+公共 One Dark 样式用中性边框和三级文字色；键名蓝色、说明弱化，窄窗口只保留完整
+键值对。弹窗有统一内边距，状态同时使用符号和文字；临时消息 5 秒后消失。
+`Notice`、`Tone`、`modal`、`list_state` 和数值右对齐 helper 供页面复用。
+终端启用焦点事件，事件循环仅在输入、数据变化或实际到期时唤醒和绘制。
+日志、串口记录与搜索索引都有容量限制；空查询不建立拼音索引。
+
+桌面 `Super+Shift+T` 已用于 switcher，工具箱采用 `Super+Shift+D`；
+Clash 为 `Super+Shift+C`，bilitui 为 `Super+Shift+B`。录音改为专用
+`Super+Shift+XF86Assistant` 松开触发，旧 `Super+Shift+V` 已移除。
+截图功能仍由 Mango 的截图脚本提供，图库 TUI 已移除，原截图文件不作清理。

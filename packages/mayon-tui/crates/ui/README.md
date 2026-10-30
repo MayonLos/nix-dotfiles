@@ -30,3 +30,9 @@ Ctrl+A/E/U/K/W and Alt+Backspace edits, and bounded single-line paste. The
 shared `input` overlay accepts this type. `terminal()` enables bracketed paste;
 applications should pass `Event::Paste` to an active `TextInput` and ignore it
 when no input is open.
+
+`style` supplies shared neutral borders, padded modals, status tones with symbols,
+complete key/action hint clipping, list states and five-second notices.
+`SearchCache` defaults to 8192 rows and a 16 MiB index budget; empty queries skip
+index construction. `terminal()` also enables focus events; pages suspend passive
+work on FocusLost and redraw only when state changes.

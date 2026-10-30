@@ -87,6 +87,7 @@ pub struct App {
     message: String,
     message_until: Option<Instant>,
     online: bool,
+    load_error: Option<String>,
     confirm: Option<Confirm>,
     help: bool,
     details: bool,
@@ -98,6 +99,7 @@ pub struct App {
     log_job: Option<JoinHandle<()>>,
     tx: mpsc::Sender<Update>,
     rx: mpsc::Receiver<Update>,
+    pending_update: Option<Update>,
     refresh: Option<JoinHandle<()>>,
     last_refresh: Instant,
     action: Option<JoinHandle<()>>,
@@ -149,6 +151,7 @@ impl App {
             message: "Docker 启动中…".into(),
             message_until: None,
             online: false,
+            load_error: None,
             confirm: None,
             help: false,
             details: false,
@@ -160,6 +163,7 @@ impl App {
             log_job: None,
             tx,
             rx,
+            pending_update: None,
             refresh: None,
             last_refresh: Instant::now() - Duration::from_secs(5),
             action: None,
@@ -309,20 +313,20 @@ impl App {
     }
     fn poll(&mut self) {
         while self.stats_jobs.try_join_next().is_some() {}
-        while let Ok(u) = self.rx.try_recv() {
+        while let Some(u) = self
+            .pending_update
+            .take()
+            .or_else(|| self.rx.try_recv().ok())
+        {
             match u {
                 Update::Data(epoch, Ok(d))
                     if api_update_is_current(epoch, self.api_epoch, self.stopped_by_user) =>
                 {
                     let keep = self.selected_id();
                     self.online = true;
+                    self.load_error = None;
                     if !self.has_temporary_message() {
-                        self.message = format!(
-                            "{} 容器 · {} 镜像 · {} 卷",
-                            d.containers.len(),
-                            d.images.len(),
-                            d.volumes.len()
-                        );
+                        self.message.clear();
                     }
                     self.containers = d.containers;
                     self.containers.sort_by(|a, b| {
@@ -367,12 +371,13 @@ impl App {
                         });
                     }
                 }
-                Update::Data(epoch, Err(_))
+                Update::Data(epoch, Err(reason))
                     if api_update_is_current(epoch, self.api_epoch, self.stopped_by_user)
                         && !self.has_temporary_message() =>
                 {
+                    self.load_error = Some(reason);
                     if !self.online {
-                        self.message = "Docker 启动中…".into()
+                        self.message = "Docker 连接失败；检查服务或 socket".into()
                     } else {
                         self.message = "Docker API 暂时不可用".into()
                     }
@@ -429,8 +434,19 @@ impl App {
                         );
                     }
                     self.log_lines.extend(s.lines().map(str::to_owned));
-                    if self.log_lines.len() > 4000 {
-                        self.log_lines.drain(..self.log_lines.len() - 4000);
+                    let mut bytes = self.log_lines.iter().map(String::len).sum::<usize>();
+                    let mut discard = 0;
+                    while self.log_lines.len().saturating_sub(discard) > 4000
+                        || bytes > 4 * 1024 * 1024
+                    {
+                        let Some(line) = self.log_lines.get(discard) else {
+                            break;
+                        };
+                        bytes = bytes.saturating_sub(line.len());
+                        discard += 1;
+                    }
+                    if discard > 0 {
+                        self.log_lines.drain(..discard);
                     }
                     if self.log_follow {
                         self.log_scroll = 0;
@@ -505,21 +521,24 @@ impl App {
         };
         let id = c.id.clone();
         let display = c.names.first().cloned().unwrap_or_else(|| id.clone());
-        let e = self.engine.clone();
-        let tx = self.tx.clone();
         self.log_lines.clear();
         self.logs = Some(id.clone());
         self.log_filter.clear();
         self.message = format!("正在跟随 {display} 日志");
         self.log_follow = true;
         self.log_scroll = 0;
+        self.follow_logs(id, true);
+    }
+    fn follow_logs(&mut self, id: String, history: bool) {
+        let e = self.engine.clone();
+        let tx = self.tx.clone();
         if let Some(job) = self.log_job.take() {
             job.abort();
         }
         let epoch = self.api_epoch;
         self.log_job = Some(tokio::spawn(async move {
             let result = async {
-                let (r, tty) = e.logs(&id).await?;
+                let (r, tty) = e.logs(&id, if history { 500 } else { 0 }).await?;
                 if !r.status().is_success() {
                     return Err("读取日志失败".to_owned());
                 }
@@ -1031,7 +1050,12 @@ impl App {
             self.quit = true;
             return;
         }
-        self.action_key(k)
+        let before = self.message.clone();
+        self.action_key(k);
+        if self.message != before {
+            self.message_until = Some(Instant::now() + Duration::from_secs(5));
+        }
+        self.pause_hidden_vm();
     }
     pub fn mouse(&mut self, m: MouseEvent, size: ratatui::layout::Size) {
         if self.confirm.is_some()
@@ -1094,8 +1118,77 @@ impl App {
             _ => {}
         }
     }
-    pub fn tick(&mut self) {
-        if self.last_vm.elapsed() >= Duration::from_secs(30)
+    fn pause_hidden_vm(&mut self) {
+        if !(self.page == Page::Cleanup && self.vm_section) {
+            if let Some(job) = self.vm_job.take() {
+                job.abort();
+            }
+        }
+    }
+    pub async fn changed(&mut self) {
+        self.pending_update = self.rx.recv().await;
+    }
+    pub fn deadline(&self) -> Instant {
+        let mut deadline = if self.refresh.is_none() && !self.stopped_by_user {
+            self.last_refresh + Duration::from_secs(2)
+        } else {
+            Instant::now() + Duration::from_secs(3600)
+        };
+        if self.page == Page::Cleanup && self.vm_section && self.vm_job.is_none() {
+            deadline = deadline.min(self.last_vm + Duration::from_secs(30));
+        }
+        if let Some(until) = self.message_until {
+            deadline = deadline.min(until);
+        }
+        deadline
+    }
+    pub fn suspend(&mut self) {
+        self.api_epoch = self.api_epoch.wrapping_add(1);
+        for job in [
+            &mut self.refresh,
+            &mut self.vm_job,
+            &mut self.log_job,
+            &mut self.exec_job,
+        ] {
+            if let Some(job) = job.take() {
+                job.abort();
+            }
+        }
+        self.stats_jobs.abort_all();
+        self.stats_pending.clear();
+        // A confirmed mutation is allowed to finish; no new requests start while this page is hidden.
+    }
+    pub fn resume(&mut self) {
+        self.last_refresh = Instant::now() - Duration::from_secs(3);
+        self.last_vm = Instant::now() - Duration::from_secs(31);
+        if let Some(id) = self.logs.clone() {
+            self.follow_logs(id, false);
+        }
+    }
+    pub fn editing(&self) -> bool {
+        self.filtering || self.cleanup_flow.is_some() || self.confirm.is_some()
+    }
+    pub fn tick(&mut self) -> bool {
+        self.pause_hidden_vm();
+        let expired = self
+            .message_until
+            .is_some_and(|until| Instant::now() >= until);
+        if self.refresh.as_ref().is_some_and(|j| j.is_finished()) {
+            self.refresh = None;
+        }
+        if self.vm_job.as_ref().is_some_and(|j| j.is_finished()) {
+            self.vm_job = None;
+        }
+        if self
+            .message_until
+            .is_some_and(|until| Instant::now() >= until)
+        {
+            self.message.clear();
+            self.message_until = None;
+        }
+        if self.page == Page::Cleanup
+            && self.vm_section
+            && self.last_vm.elapsed() >= Duration::from_secs(30)
             && self.vm_job.as_ref().is_none_or(|j| j.is_finished())
         {
             let tx = self.tx.clone();
@@ -1105,12 +1198,17 @@ impl App {
                 let _ = tx.send(Update::Vm(inventory)).await;
             }));
         }
-        self.poll()
+        self.poll();
+        expired
     }
     pub fn draw(&mut self, f: &mut Frame) {
+        let area = f.area();
+        self.draw_in(f, area);
+    }
+    pub fn draw_in(&mut self, f: &mut Frame, viewport: ratatui::layout::Rect) {
         let (title, tabs, page) = (
             format!(
-                " 󰡨 {} · Docker {} · {}",
+                " 󰡨 {} · {} · {}",
                 if self.page == Page::Cleanup {
                     "Docker + VM"
                 } else {
@@ -1149,7 +1247,7 @@ impl App {
         } else {
             "o 排序  j/k 选择  Enter 详情  1-5 页签  / 过滤  s 启停  r 单重启  p 项目启停  R 项目重启  l 日志  e exec  d 删除  ? 帮助"
         };
-        let area = ui::chrome(f, &title, &tabs, page, hint, &self.message);
+        let area = ui::chrome_in(f, viewport, &title, &tabs, page, hint, &self.message);
         if self.logs.is_some() {
             self.draw_logs(f, area);
             return;
@@ -1239,7 +1337,7 @@ impl App {
             Page::Cleanup => self.draw_cleanup(f, area),
         }
         if self.filtering {
-            self.draw_filter(f, &self.filter);
+            self.draw_filter(f, &self.filter, viewport);
         }
         if self.help {
             ui::help(
@@ -1256,8 +1354,7 @@ impl App {
             ui::dialog(f, " 确认操作 ", &confirm_body(c))
         }
     }
-    fn draw_filter(&self, f: &mut Frame, input: &TextInput) {
-        let area = f.area();
+    fn draw_filter(&self, f: &mut Frame, input: &TextInput, area: ratatui::layout::Rect) {
         let row = area.bottom().saturating_sub(2);
         f.render_widget(
             Paragraph::new(" 过滤 /").style(ui::base().fg(BLUE)),
@@ -1350,7 +1447,20 @@ impl App {
             .into_iter()
             .map(|row| {
                 row.into_iter()
-                    .map(|cell| self.search_cache.highlight(&matcher, &cell))
+                    .enumerate()
+                    .map(|(index, cell)| {
+                        let line = self.search_cache.highlight(&matcher, &cell);
+                        if headers.get(index).is_some_and(|label| {
+                            matches!(
+                                *label,
+                                "大小" | "占用" | "可回收" | "CPU" | "内存" | "虚拟" | "引用"
+                            )
+                        }) {
+                            line.right_aligned()
+                        } else {
+                            line
+                        }
+                    })
                     .collect()
             })
             .collect();
@@ -1372,15 +1482,41 @@ impl App {
             selected,
         );
         if self.len() == 0 {
-            f.render_widget(
-                Paragraph::new("无匹配项 · Esc 清除过滤").style(ui::base().fg(MUTED)),
-                ratatui::layout::Rect::new(
-                    area.x.saturating_add(2),
-                    area.y.saturating_add(3),
-                    area.width.saturating_sub(4),
-                    area.height.saturating_sub(4),
-                ),
+            let inner = ratatui::layout::Rect::new(
+                area.x.saturating_add(1),
+                area.y.saturating_add(2),
+                area.width.saturating_sub(2),
+                area.height.saturating_sub(3),
             );
+            if self.page == Page::Cleanup && self.vm_section {
+                ui::list_state(
+                    f,
+                    inner,
+                    ui::ListState::Empty,
+                    "暂无 VM 项目 · r 刷新 · Tab 返回 Docker",
+                );
+            } else if let Some(reason) = &self.load_error {
+                ui::list_state(
+                    f,
+                    inner,
+                    ui::ListState::Error,
+                    &format!("{reason} · 检查 Docker socket；自动重试中"),
+                );
+            } else if !self.online {
+                ui::list_state(
+                    f,
+                    inner,
+                    ui::ListState::Loading,
+                    "正在连接 Docker · 可用 1–5 切换子页",
+                );
+            } else {
+                ui::list_state(
+                    f,
+                    inner,
+                    ui::ListState::Empty,
+                    "无匹配项 · Esc 清除过滤；1–5 切换子页",
+                );
+            }
         }
     }
     fn draw_images(&self, f: &mut Frame, a: ratatui::layout::Rect) {
@@ -1706,7 +1842,11 @@ impl App {
             a,
         );
         if self.filtering {
-            self.draw_filter(f, &self.log_filter);
+            self.draw_filter(
+                f,
+                &self.log_filter,
+                ratatui::layout::Rect::new(a.x, a.y, a.width, a.height.saturating_add(2)),
+            );
         }
     }
 }
@@ -1788,6 +1928,7 @@ mod stop_policy_tests {
     fn filtering_images_is_incremental_and_keeps_stable_ids() {
         let mut app = test_app();
         app.page = Page::Images;
+        app.online = true;
         app.images = vec![
             serde_json::from_value(serde_json::json!({"Id":"a","RepoTags":["北京 Apple"]}))
                 .unwrap(),
@@ -1853,6 +1994,52 @@ mod stop_policy_tests {
         assert_eq!(anchor(&app), before);
         assert_eq!(app.log_lines.len(), 4000);
         assert_eq!(app.log_scroll, 21);
+    }
+    #[tokio::test]
+    async fn suspend_keeps_log_view_state_and_cancels_background_jobs() {
+        let mut app = test_app();
+        app.filter.set("容器");
+        app.log_filter.set("apple");
+        app.logs = Some("fixture".into());
+        app.log_lines = vec!["Apple retained".into()];
+        app.log_scroll = 1;
+        app.refresh = Some(tokio::spawn(std::future::pending()));
+        app.log_job = Some(tokio::spawn(std::future::pending()));
+        app.suspend();
+        assert!(app.refresh.is_none());
+        assert!(app.log_job.is_none());
+        app.resume();
+        assert_eq!(app.filter.as_str(), "容器");
+        assert_eq!(app.log_filter.as_str(), "apple");
+        assert_eq!(app.log_lines, vec!["Apple retained"]);
+        assert_eq!(app.log_scroll, 1);
+        assert!(app.log_job.is_some());
+    }
+    #[tokio::test]
+    async fn vm_jobs_only_exist_while_the_vm_inventory_is_visible() {
+        let mut app = test_app();
+        app.last_refresh = Instant::now();
+        app.tick();
+        assert!(app.vm_job.is_none());
+        app.page = Page::Cleanup;
+        app.vm_section = true;
+        app.vm_job = Some(tokio::spawn(std::future::pending()));
+        app.key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+        assert!(app.vm_job.is_none());
+        app.vm_section = true;
+        app.vm_job = Some(tokio::spawn(std::future::pending()));
+        app.key(key('1'));
+        assert!(app.vm_job.is_none());
+    }
+    #[test]
+    fn log_capture_has_a_byte_budget_even_for_large_lines() {
+        let mut app = test_app();
+        app.last_refresh = Instant::now();
+        app.tx
+            .try_send(Update::Log(app.api_epoch, "x".repeat(5 * 1024 * 1024)))
+            .unwrap();
+        app.poll();
+        assert!(app.log_lines.iter().map(String::len).sum::<usize>() <= 4 * 1024 * 1024);
     }
     #[test]
     fn vm_section_never_enters_docker_cleanup_or_selects_resources() {

@@ -479,7 +479,7 @@ in
             border = true;
             border_color = "outline_variant";
             border_width = 1;
-            background_opacity = panelSurface.opacity;
+            background_opacity = 1.0;
             # Keep transient messages on the output currently being used.
             follow_focused_output = true;
           };

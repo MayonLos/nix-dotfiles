@@ -1,4 +1,4 @@
-# dockertui-mayon
+# Docker 页
 
 Rust Docker Engine API 终端客户端，沿用 mayon-tui 的 One Dark、细线框、淡底选中行和蓝色侧标。轮询与日志使用 Tokio，不自行启动 daemon。`--host unix:///path/docker.sock` 优先于 `DOCKER_HOST`，否则使用 `$XDG_RUNTIME_DIR/docker.sock`；只接受 Unix socket。
 
@@ -27,16 +27,16 @@ Rust Docker Engine API 终端客户端，沿用 mayon-tui 的 One Dark、细线�
 
 ```sh
 # 只读，打印四类总览和完整明细；不创建终端、不提交 mutation
- dockertui-mayon df
+ mayon-tools docker df
 
 # 仅预览明确 ID（必须完整匹配，不接受前缀或通配符）
- dockertui-mayon clean --image sha256:FULL_ID --container FULL_ID --cache FULL_ID
+ mayon-tools docker clean --image sha256:FULL_ID --container FULL_ID --cache FULL_ID
 
 # 执行必须显式 --yes，打印准确清单后还需输入 DELETE 二次确认
- dockertui-mayon clean --image sha256:FULL_ID --yes
+ mayon-tools docker clean --image sha256:FULL_ID --yes
 
 # 卷必须显式给名字；还需单独输入 DELETE 与所有完整卷名
- dockertui-mayon clean --volume NAME --yes
+ mayon-tools docker clean --volume NAME --yes
 ```
 
 选择器可重复使用；普通清理不会包含未指定的卷。无选择器的 `clean`、`df --yes` 等非法组合在连接 daemon 前拒绝。取消不提交删除请求；部分失败返回非零退出码。`--help`、`--version` 无需 socket，直接退出。`df` 即使 Docker 不可用，也会继续输出 VM 数据和各连接的不可用原因。`clean` 仍只接受 Docker 选择器，没有 VM 删除选项。
@@ -49,10 +49,10 @@ Rust Docker Engine API 终端客户端，沿用 mayon-tui 的 One Dark、细线�
 
 ```sh
 CARGO_BUILD_JOBS=6 cargo test -p dockertui-mayon
-CARGO_BUILD_JOBS=6 cargo clippy -p dockertui-mayon --all-targets -- -D warnings
+CARGO_BUILD_JOBS=6 cargo clippy -p mayon-tools docker --all-targets -- -D warnings
 cargo fmt --all -- --check
-CARGO_BUILD_JOBS=6 cargo build -p dockertui-mayon
-python crates/docker/tests/cli_mock.py target/debug/dockertui-mayon
+CARGO_BUILD_JOBS=6 cargo build -p mayon-tools
+python crates/docker/tests/cli_mock.py target/debug/mayon-tools
 ```
 
 `cleanup_tests.rs` 覆盖运行状态、引用保护、默认空选择、共享层/未知大小/饱和计算和确认流程。`tests/mock_engine.py` 是线程化 Unix socket fixture，只允许在本 worktree `.work/` 监听；所有删除仅改变内存数据。`cli_mock.py` 验证真实二进制与该 fixture 的预览、取消、参数、防误删、卷输入和执行报告。视觉验证使用隔离 headless sway + 真实 Kitty + mock socket；不连接用户桌面或真实 Docker。
@@ -74,7 +74,9 @@ python crates/docker/tests/cli_mock.py target/debug/dockertui-mayon
 `vm.rs` 负责只读盘点与路径复制，`vm_xml.rs` 解析 XML 元数据，`vm_tests.rs` 覆盖稀疏大小、路径空格、引用完整性与去重。`tests/mock_virsh.py` 只响应本地 fixture 的只读白名单；`tests/vm_mock.py` 创建无价值稀疏文件，以私有 PATH 和不可用 Docker socket 验证 `df`、未知链和权限降级。不会连接真实 libvirt 或读取真实镜像内容：
 
 ```sh
-python -B crates/docker/tests/vm_mock.py target/debug/dockertui-mayon
+python -B crates/docker/tests/vm_mock.py target/debug/mayon-tools
 ```
 
 VM 盘点每 30 秒刷新，单次 virsh 查询超时 3 秒，每个连接总超时 30 秒，超限则显示原因。选择与结果只存在内存，没有新增持久配置；路径复制需要当前调用用户已有的剪贴板能力，失败时完整路径仍可在详情/CLI 查看。
+
+工具箱首次进入 Docker 页才连接 Docker；切走或失焦取消数据、统计和日志任务，保留筛选、子页与日志缓冲。VM 只在空间页的 VM 区域可见时采集。日志保留最多4000行且不超过4MiB。顶层 `[ / ]` 切换工具。

@@ -60,7 +60,6 @@
     # reconnects when the adapter is re-enumerated, which is what happens on
     # every reset of a board whose USB-serial is on the same chip.
     tio
-    serialMayon
   ];
 
   # Per-project builds should go through direnv (`use flake` in the project's

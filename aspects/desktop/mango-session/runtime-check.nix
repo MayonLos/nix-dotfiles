@@ -312,7 +312,7 @@ pkgs.runCommand "interactive-session-config"
         ("nightlight", "enabled"): False,
         ("nightlight", "force"): False,
         ("shell", "panel", "transparency_mode"): "soft",
-        ("notification", "background_opacity"): 0.80,
+        ("notification", "background_opacity"): 1.0,
         ("osd", "background_opacity"): 0.80,
         ("bar", "main", "thickness"): 30,
         ("bar", "main", "radius"): 0,
@@ -464,7 +464,8 @@ pkgs.runCommand "interactive-session-config"
     assert mango["layer_rule"][:2] == ["layer_name:.*,no_blur:1", "layer_name:^noctalia-(bar-.*|dock)$,no_blur:0,no_animation:1,no_shadow:1"]
     assert "noctalia-system-menu" in mango["layer_rule"][2]
     assert mango["layer_rule"][3] == "layer_name:^noctalia-plugin:nix-dotfiles/launchpad:drawer$,no_blur:0,no_animation:1,no_shadow:1"
-    assert mango["layer_rule"][4] == "layer_name:^noctalia-(panel|attached-panel|notification|osd)$,no_animation:1,no_blur:0,no_shadow:1"
+    assert mango["layer_rule"][4] == "layer_name:^noctalia-(panel|attached-panel|osd)$,no_animation:1,no_blur:0,no_shadow:1"
+    assert mango["layer_rule"][5] == "layer_name:^noctalia-notification$,no_animation:1,no_blur:1,no_shadow:1"
     assert mango["zoom_initial_ratio"] == 0.985
     assert "tech-osd-segments.patch" not in patches
     assert "SUPER,A,spawn,noctalia msg plugin nix-dotfiles/launchpad:control all toggle" in mango["bind"]
@@ -473,12 +474,16 @@ pkgs.runCommand "interactive-session-config"
     assert "force_tearing:0,no_blur:1,app_id:.*" in mango["window_rule"]
     assert mango["window_rule"][-1] == "no_blur:0,app_id:^dev[.]noctalia[.]Noctalia$"
     assert not any(binding.startswith("SUPER+CTRL,W,") for binding in mango["bind"])
-    assert any(binding.startswith("SUPER+SHIFT,X,toggle_named_scratchpad,shots-mayon,") for binding in mango["bind"])
-    assert not any(binding.startswith(("SUPER+SHIFT,F10,", "SUPER+SHIFT,F11,", "SUPER+SHIFT,F12,")) for binding in mango["bind"])
-    for chord, scratch, tool in (("SUPER+SHIFT,D,", "mayon-docker", "dockertui-mayon"), ("SUPER+CTRL,P,", "mayon-ports", "portstui-mayon")):
+    assert not any(binding.startswith(("SUPER+SHIFT,X,", "SUPER+CTRL,P,", "SUPER+SHIFT,Y,", "SUPER+SHIFT,F1,", "SUPER+SHIFT,V,", "SUPER+SHIFT,F10,", "SUPER+SHIFT,F11,", "SUPER+SHIFT,F12,")) for binding in mango["bind"])
+    assert "SUPER+SHIFT,T,switcher,next" in mango["bind"]
+    for chord, scratch, tool in (("SUPER+SHIFT,D,", "mayon-tools", "mayon-tools"), ("SUPER+SHIFT,B,", "mayon-bili", "bilitui-mayon")):
         matches = [binding for binding in mango["bind"] if binding.startswith(chord)]
         assert len(matches) == 1 and "noctalia" not in matches[0]
-        assert f"toggle_named_scratchpad,{scratch}," in matches[0] and matches[0].endswith(f"--class={scratch} {tool}")
+        assert f"toggle_named_scratchpad,{scratch}," in matches[0] and f"--class={scratch} " in matches[0]
+        assert matches[0].split()[-1].endswith(tool)
+    voice = [binding for binding in mango["bindr"] if binding.startswith("SUPER+SHIFT,XF86Assistant,")]
+    assert len(voice) == 1 and voice[0].endswith("/bin/mayon-voice toggle")
+    assert not any("XF86Assistant" in binding for binding in mango["bind"])
     assert "SUPER,R,setkeymode,resize" in mango["bind"]
     assert not settings["shell"]["panel"]["shadow"] and not settings["bar"]["main"]["shadow"]
     assert mango["border_px"] == 1 and mango["border_radius"] == 16

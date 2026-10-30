@@ -4,7 +4,7 @@ use ratatui::{
     text::{Line, Span},
 };
 use std::{
-    cell::RefCell,
+    cell::{Cell, RefCell},
     collections::{HashMap, VecDeque},
     ops::Range,
 };
@@ -104,8 +104,8 @@ pub struct SearchText {
 impl SearchText {
     pub fn new(text: &str) -> Self {
         use pinyin::ToPinyin;
-        let han: Vec<char> = text.chars().filter(|ch| is_han(*ch)).collect();
-        let pinyin = if han.is_empty() {
+        let has_han = text.chars().any(is_han);
+        let pinyin = if !has_han {
             None
         } else {
             let mut full = Vec::new();
@@ -135,6 +135,19 @@ impl SearchText {
             short: text.chars().count() <= 80,
         }
     }
+    fn bytes(&self) -> usize {
+        fn index_bytes(index: &IndexedText) -> usize {
+            index.chars.capacity() * size_of::<char>() + index.map.capacity() * size_of::<usize>()
+        }
+        size_of::<Self>()
+            + self.original.capacity()
+            + index_bytes(&self.literal)
+            + self
+                .pinyin
+                .as_ref()
+                .map_or(0, |p| index_bytes(&p.full) + index_bytes(&p.initials))
+    }
+
     pub fn as_str(&self) -> &str {
         &self.original
     }
@@ -160,10 +173,16 @@ impl Matcher {
     }
 
     pub fn find(&self, text: &str) -> Option<Match> {
+        if self.terms.is_empty() {
+            return Some(Match::default());
+        }
         self.find_in(&SearchText::new(text))
     }
 
     pub fn highlight(&self, text: &str) -> Line<'static> {
+        if self.terms.is_empty() {
+            return Line::from(text.to_owned());
+        }
         self.highlight_in(&SearchText::new(text))
     }
 
@@ -253,10 +272,12 @@ fn merge_ranges(mut ranges: Vec<Range<usize>>) -> Vec<Range<usize>> {
     merged
 }
 
-/// A small bounded cache for row text, including its transliteration indexes.
+/// A bounded cache for row text and its transliteration indexes.
 #[derive(Debug)]
 pub struct SearchCache {
     capacity: usize,
+    byte_limit: usize,
+    bytes: Cell<usize>,
     entries: RefCell<HashMap<String, SearchText>>,
     order: RefCell<VecDeque<String>>,
 }
@@ -269,30 +290,52 @@ impl Default for SearchCache {
 
 impl SearchCache {
     pub fn new(capacity: usize) -> Self {
+        Self::with_limits(capacity, 16 * 1024 * 1024)
+    }
+
+    pub fn with_limits(capacity: usize, byte_limit: usize) -> Self {
         Self {
             capacity,
+            byte_limit,
+            bytes: Cell::new(0),
             entries: RefCell::new(HashMap::new()),
             order: RefCell::new(VecDeque::new()),
         }
     }
 
-    pub fn find(&self, matcher: &Matcher, text: &str) -> Option<Match> {
-        if let Some(found) = self.entries.borrow().get(text) {
-            return matcher.find_in(found);
+    fn indexed<T>(&self, text: &str, apply: impl FnOnce(&SearchText) -> T) -> T {
+        if let Some(indexed) = self.entries.borrow().get(text) {
+            return apply(indexed);
         }
-        if self.capacity == 0 {
-            return matcher.find(text);
+        let indexed = SearchText::new(text);
+        let bytes = indexed.bytes() + text.len() * 2 + size_of::<String>() * 2;
+        if self.capacity == 0 || bytes > self.byte_limit {
+            return apply(&indexed);
         }
-        let value = SearchText::new(text);
         let mut entries = self.entries.borrow_mut();
-        if entries.len() >= self.capacity {
-            if let Some(oldest) = self.order.borrow_mut().pop_front() {
-                entries.remove(&oldest);
+        let mut order = self.order.borrow_mut();
+        while entries.len() >= self.capacity || self.bytes.get() + bytes > self.byte_limit {
+            let Some(oldest) = order.pop_front() else {
+                break;
+            };
+            if let Some(old) = entries.remove(&oldest) {
+                self.bytes.set(
+                    self.bytes
+                        .get()
+                        .saturating_sub(old.bytes() + oldest.len() * 2 + size_of::<String>() * 2),
+                );
             }
         }
-        self.order.borrow_mut().push_back(text.to_owned());
-        entries.insert(text.to_owned(), value);
-        entries.get(text).and_then(|value| matcher.find_in(value))
+        self.bytes.set(self.bytes.get() + bytes);
+        order.push_back(text.to_owned());
+        apply(entries.entry(text.to_owned()).or_insert(indexed))
+    }
+
+    pub fn find(&self, matcher: &Matcher, text: &str) -> Option<Match> {
+        if matcher.terms.is_empty() {
+            return Some(Match::default());
+        }
+        self.indexed(text, |indexed| matcher.find_in(indexed))
     }
 
     pub fn matches(&self, matcher: &Matcher, text: &str) -> bool {
@@ -300,27 +343,16 @@ impl SearchCache {
     }
 
     pub fn highlight(&self, matcher: &Matcher, text: &str) -> Line<'static> {
-        if let Some(indexed) = self.entries.borrow().get(text) {
-            return matcher.highlight_in(indexed);
+        if matcher.terms.is_empty() {
+            return Line::from(text.to_owned());
         }
-        if self.capacity == 0 {
-            return matcher.highlight(text);
-        }
-        let indexed = SearchText::new(text);
-        let mut entries = self.entries.borrow_mut();
-        if entries.len() >= self.capacity {
-            if let Some(oldest) = self.order.borrow_mut().pop_front() {
-                entries.remove(&oldest);
-            }
-        }
-        self.order.borrow_mut().push_back(text.to_owned());
-        entries.insert(text.to_owned(), indexed);
-        matcher.highlight_in(entries.get(text).expect("inserted search text"))
+        self.indexed(text, |indexed| matcher.highlight_in(indexed))
     }
 
     pub fn clear(&self) {
         self.entries.borrow_mut().clear();
         self.order.borrow_mut().clear();
+        self.bytes.set(0);
     }
 }
 
@@ -418,6 +450,21 @@ mod tests {
         assert_eq!(cache.find(&query, "香港").unwrap().ranges, vec![0..1]);
         cache.matches(&query, "上海");
         assert!(cache.matches(&query, "香港"));
+    }
+
+    #[test]
+    fn cache_skips_empty_queries_and_bounds_index_bytes() {
+        let cache = SearchCache::with_limits(8192, 2048);
+        assert!(cache.matches(&Matcher::new(""), "香港"));
+        cache.highlight(&Matcher::new(""), "香港");
+        assert!(cache.entries.borrow().is_empty());
+        for i in 0..100 {
+            cache.matches(&Matcher::new("香港"), &format!("香港节点 {i}"));
+        }
+        assert!(cache.bytes.get() <= 2048);
+        assert!(cache.entries.borrow().len() < 100);
+        cache.clear();
+        assert_eq!(cache.bytes.get(), 0);
     }
 
     #[test]

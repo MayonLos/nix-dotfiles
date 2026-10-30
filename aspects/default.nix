@@ -14,6 +14,7 @@ _: {
     ./hardware/legion-laptop
     ./cli/shell
     ./cli/keys-mayon
+    ./cli/mayon-tools
     ./cli/terminal
     ./cli/herdr
     ./dev/neovim

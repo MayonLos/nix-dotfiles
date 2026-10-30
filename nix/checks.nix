@@ -194,15 +194,15 @@
               (output: builtins.elem output.outPath (map (package: package.outPath) home.home.packages))
               [
                 pkgs.mayonTui.clash
-                pkgs.mayonTui.docker
-                pkgs.mayonTui.ports
+                pkgs.mayonTui.tools
               ]
             ) "TUI outputs must be installed by their selected features";
             pkgs.mayonTui;
-          shots-mayon =
-            assert lib.assertMsg (builtins.elem pkgs.shotsMayon home.home.packages)
-              "Shots library must be installed by the screenshot feature";
-            pkgs.shotsMayon;
+          bilitui =
+            assert lib.assertMsg (builtins.elem pkgs.bilitui.outPath (
+              map (package: package.outPath) home.home.packages
+            )) "Bilibili TUI must be installed by media";
+            pkgs.bilitui;
           architecture = pkgs.runCommand "architecture-check" { } "touch $out";
           palette-contrast = paletteContrast;
           statix = pkgs.runCommand "statix-check" { nativeBuildInputs = [ pkgs.statix ]; } ''

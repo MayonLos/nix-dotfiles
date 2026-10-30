@@ -65,9 +65,13 @@ assert 'kNotificationIconSize = 34.0F' in notification
 assert 'kNotificationIconGlyphSize = 18.0F' in notification
 assert 'kBodyFontSize = 13.0F' in notification
 assert '11.0F * scale' in notification
-assert 'FillMode::LinearGradient' in notification
-assert 'ColorRole::Tertiary' in notification
-assert 'ColorRole::OnPrimary' in notification
+assert 'FillMode::LinearGradient' not in notification
+assert 'ColorRole::Tertiary' not in notification
+assert 'ColorRole::OnPrimary' not in notification
+assert notification.count('.fill = colorForRole(ColorRole::SurfaceContainerHigh)') == 2
+assert '1.0F / std::max(0.1F, outputScale)' in notification
+assert 'toastBorderWidth(m_config, renderer.renderScale())' in notification
+assert 'std::ceil(std::min(maxCardHeight, foreground->height()) * outputScale) / outputScale' in notification
 assert '.text = appName' not in notification and '.text = entry.appName' not in notification
 assert 'respectMotionEnabled && !motion.enabled()' in source('render/animation/animation_manager.cpp')
 assert 'return false;' in notification[notification.index('bool showToastProgressAccent'):notification.index('bool showToastProgressAccent') + 300]

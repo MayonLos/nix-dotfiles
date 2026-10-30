@@ -13,6 +13,7 @@ use futures_util::StreamExt;
 use mayon_ui::{
     input::TextInput,
     search::{Matcher, SearchCache},
+    Notice, Tone,
 };
 use std::{
     collections::{BTreeMap, HashMap, VecDeque},
@@ -180,6 +181,13 @@ pub struct App {
     pub quit: bool,
     pub dirty: bool,
     pub status: String,
+    pub notice: Notice,
+    noticed_status: String,
+    active: bool,
+    pending: VecDeque<Update>,
+    last_api_error: Option<String>,
+    first_snapshot: bool,
+    last_clock: Instant,
     pub online: bool,
     pub native_store: crate::native::Store,
     pub native_settings: crate::native::Settings,
@@ -199,6 +207,7 @@ pub struct App {
     pub sort: Sort,
     pub hide_timeout: bool,
     pub logs: VecDeque<LogEntry>,
+    log_bytes: usize,
     pub log_view: Vec<usize>,
     next_log_id: u64,
     pub log_level: usize,
@@ -276,6 +285,13 @@ impl App {
             quit: false,
             dirty: true,
             status: "正在连接内核…".into(),
+            notice: Notice::default(),
+            noticed_status: String::new(),
+            active: true,
+            pending: VecDeque::new(),
+            last_api_error: None,
+            first_snapshot: false,
+            last_clock: Instant::now(),
             online: false,
             native_store: Default::default(),
             native_settings: Default::default(),
@@ -295,6 +311,7 @@ impl App {
             sort,
             hide_timeout: false,
             logs: VecDeque::new(),
+            log_bytes: 0,
             log_view: vec![],
             next_log_id: 0,
             log_level: 0,
@@ -518,6 +535,8 @@ impl App {
             .and_then(|i| self.rules.get(*i))
     }
     pub fn start(&mut self) {
+        self.active = true;
+        self.dirty = true;
         self.reload_profiles();
         self.refresh();
         let client = self.client.clone();
@@ -528,6 +547,9 @@ impl App {
                     let mut stream = response.bytes_stream();
                     let mut buffer = Vec::new();
                     while let Some(Ok(chunk)) = stream.next().await {
+                        if buffer.len().saturating_add(chunk.len()) > 65536 {
+                            break;
+                        }
                         buffer.extend_from_slice(&chunk);
                         while let Some(end) = buffer.iter().position(|b| *b == b'\n') {
                             if let Ok(value) = serde_json::from_slice::<Traffic>(&buffer[..end]) {
@@ -588,6 +610,9 @@ impl App {
                     let mut stream = response.bytes_stream();
                     let mut buffer = Vec::new();
                     while let Some(Ok(chunk)) = stream.next().await {
+                        if buffer.len().saturating_add(chunk.len()) > 65536 {
+                            break;
+                        }
                         buffer.extend_from_slice(&chunk);
                         while let Some(end) = buffer.iter().position(|b| *b == b'\n') {
                             if let Ok(mut value) =
@@ -677,16 +702,74 @@ impl App {
             .map(|l| l.id);
         // Cap work per frame even when the log producer is busy.
         for _ in 0..128 {
-            let update = if let Ok(result) = self.native_rx.try_recv() {
+            let update = if let Some(update) = self.pending.pop_front() {
+                update
+            } else if let Ok(result) = self.native_rx.try_recv() {
                 Update::NativeDone(result)
             } else if let Ok(update) = self.rx.try_recv() {
                 update
             } else {
                 break;
             };
-            self.dirty = true;
+            match &update {
+                Update::Snapshot(Ok(s))
+                    if self.online
+                        && self.lifecycle_pending.is_none()
+                        && self.proxies == s.proxies
+                        && self.config == s.config
+                        && self.version == s.version =>
+                {
+                    continue
+                }
+                Update::Snapshot(Err(e))
+                    if !self.online
+                        && self.lifecycle_pending.is_none()
+                        && self.last_api_error.as_deref() == Some(e.to_string().as_str()) =>
+                {
+                    continue
+                }
+                Update::Resources(Ok((providers, rules, list)))
+                    if self.providers == *providers
+                        && self.rule_providers == *rules
+                        && self.rules == *list =>
+                {
+                    continue
+                }
+                Update::Connections(value)
+                    if self.connections_live
+                        && self.connections == value.connections
+                        && self.memory == value.memory
+                        && self.totals == (value.upload_total, value.download_total)
+                        && self.rates.values().all(|r| *r == 0) =>
+                {
+                    continue
+                }
+                Update::ConnectionsOffline if !self.connections_live && self.rates.is_empty() => {
+                    continue
+                }
+                Update::TrafficOffline if self.traffic.is_none() && self.history.is_empty() => {
+                    continue
+                }
+                Update::LogsState(on) if self.logs_live == *on => continue,
+                _ => {}
+            }
+            let repaint = match &update {
+                Update::Traffic(value) => {
+                    self.traffic.as_ref() != Some(value)
+                        || self.page == Page::Overview
+                            && (self.history.len() < 60
+                                || self
+                                    .history
+                                    .iter()
+                                    .any(|pair| *pair != (value.up, value.down)))
+                }
+                _ => true,
+            };
+            self.dirty |= repaint;
             match update {
                 Update::Snapshot(Ok(s)) => {
+                    self.first_snapshot = true;
+                    self.last_api_error = None;
                     if !self.online {
                         self.status = "内核已连接 · ? 查看上手指引".into();
                     }
@@ -750,6 +833,8 @@ impl App {
                     }
                 }
                 Update::Snapshot(Err(e)) => {
+                    self.first_snapshot = true;
+                    self.last_api_error = Some(e.to_string());
                     let was_online = self.online;
                     self.online = false;
                     self.traffic = None;
@@ -847,11 +932,16 @@ impl App {
                 Update::Log(mut value) if !self.logs_paused => {
                     value.id = self.next_log_id;
                     self.next_log_id += 1;
-                    if self.logs.len() == 2000 {
-                        self.logs.pop_front();
-                        self.log = self.log.saturating_sub(1);
-                    }
+                    self.log_bytes += value.payload.len() + value.level.len();
                     self.logs.push_back(value);
+                    while self.logs.len() > 2000 || self.log_bytes > 4 * 1024 * 1024 {
+                        if let Some(line) = self.logs.pop_front() {
+                            self.log_bytes -= line.payload.len() + line.level.len();
+                            self.log = self.log.saturating_sub(1);
+                        } else {
+                            break;
+                        }
+                    }
                     logs_changed = true;
                 }
                 Update::LogsState(on) => self.logs_live = on,
@@ -922,6 +1012,20 @@ impl App {
                     .unwrap_or(0)
             };
         }
+        self.sync_notice();
+        if self.notice.expire() {
+            self.dirty = true;
+        }
+        if !self.active {
+            return;
+        }
+        if (self.lifecycle_pending.is_some()
+            || self.page == Page::Connections && !self.connection_view.is_empty())
+            && self.last_clock.elapsed() >= Duration::from_secs(1)
+        {
+            self.last_clock = Instant::now();
+            self.dirty = true;
+        }
         if let Some((_, time)) = self.lifecycle_pending {
             if time.elapsed() > Duration::from_secs(120) {
                 self.status = format!(
@@ -949,6 +1053,90 @@ impl App {
         if self.online && self.last_resources.elapsed() >= Duration::from_secs(30) {
             self.refresh_resources();
         }
+    }
+    pub fn sync_notice(&mut self) {
+        if self.status != self.noticed_status {
+            self.noticed_status.clone_from(&self.status);
+            let tone = if self.status.contains("失败")
+                || self.status.contains("无效")
+                || self.status.contains("不可用")
+                || self.status.contains("超时")
+            {
+                Tone::Error
+            } else if self.status.contains("完成")
+                || self.status.contains("就绪")
+                || self.status.contains("已连接")
+            {
+                Tone::Success
+            } else if self.status.contains("请") || self.status.contains("未运行") {
+                Tone::Warning
+            } else {
+                Tone::Action
+            };
+            self.notice.set(self.status.clone(), tone);
+            self.dirty = true;
+        }
+    }
+    pub fn loading(&self) -> bool {
+        !self.first_snapshot && self.refresh.as_ref().is_some_and(|j| !j.is_finished())
+    }
+    pub fn resources_loading(&self) -> bool {
+        self.resources_job
+            .as_ref()
+            .is_some_and(|j| !j.is_finished())
+    }
+    pub async fn wait_for_update(&mut self) {
+        tokio::select! {
+            Some(value) = self.rx.recv() => self.pending.push_back(value),
+            Some(value) = self.native_rx.recv() => self.pending.push_back(Update::NativeDone(value)),
+        }
+    }
+    pub fn deadline(&self) -> Option<Instant> {
+        if !self.active {
+            return None;
+        }
+        let mut deadlines = Vec::with_capacity(6);
+        if self.refresh.as_ref().is_none_or(|j| j.is_finished()) {
+            deadlines.push(self.last_refresh + Duration::from_secs(2));
+        }
+        if self.online && self.resources_job.as_ref().is_none_or(|j| j.is_finished()) {
+            deadlines.push(self.last_resources + Duration::from_secs(30));
+        }
+        if self.online && !self.native_busy {
+            deadlines.push(self.last_auto + Duration::from_secs(60));
+        }
+        if let Some((_, time)) = self.lifecycle_pending {
+            deadlines.push(time + Duration::from_secs(120));
+        }
+        if self.lifecycle_pending.is_some()
+            || self.page == Page::Connections && !self.connection_view.is_empty()
+        {
+            deadlines.push(self.last_clock + Duration::from_secs(1));
+        }
+        if let Some(time) = self.notice.deadline() {
+            deadlines.push(time);
+        }
+        deadlines.into_iter().min()
+    }
+    pub fn suspend(&mut self) {
+        self.active = false;
+        self.cancel_measure();
+        for task in [
+            &mut self.refresh,
+            &mut self.resources_job,
+            &mut self.log_job,
+            &mut self.usage_job,
+        ]
+        .into_iter()
+        .filter_map(Option::take)
+        {
+            task.abort();
+        }
+        for task in self.streams.drain(..) {
+            task.abort();
+        }
+        self.connections_live = false;
+        self.logs_live = false;
     }
     pub fn launch_progress(&self) -> String {
         match self.lifecycle_pending {
@@ -1923,6 +2111,58 @@ mod tests {
             .unwrap();
         app.tick();
         app
+    }
+    #[tokio::test]
+    async fn focus_pause_cancels_passive_work_but_preserves_view_and_transactions() {
+        let mut app = fixture_app();
+        app.filters[Page::Proxies as usize].set("香港");
+        app.native_busy = true;
+        app.native_job = Some(tokio::spawn(std::future::pending::<()>()));
+        app.suspend();
+        assert!(app.deadline().is_none());
+        assert!(app.streams.is_empty());
+        assert!(app.refresh.is_none());
+        assert!(!app.native_job.as_ref().unwrap().is_finished());
+        assert_eq!(app.filters[Page::Proxies as usize].as_str(), "香港");
+        app.native_job.take().unwrap().abort();
+    }
+    #[tokio::test]
+    async fn identical_snapshots_do_not_request_another_frame() {
+        let mut app = fixture_app();
+        app.sync_notice();
+        app.dirty = false;
+        app.tx
+            .try_send(Update::Snapshot(Ok(Snapshot {
+                proxies: app.proxies.clone(),
+                config: app.config.clone(),
+                version: app.version.clone(),
+            })))
+            .unwrap();
+        app.tick();
+        assert!(!app.dirty);
+        let next = app.deadline().unwrap();
+        assert!(next > Instant::now());
+    }
+    #[tokio::test]
+    async fn oversized_logs_obey_byte_and_record_limits() {
+        let mut app = fixture_app();
+        for _ in 0..6 {
+            app.tx
+                .try_send(Update::Log(LogEntry {
+                    level: "info".into(),
+                    payload: "中".repeat(400_000),
+                    ..Default::default()
+                }))
+                .unwrap();
+            app.tick();
+        }
+        assert!(
+            app.logs
+                .iter()
+                .map(|line| line.payload.len() + line.level.len())
+                .sum::<usize>()
+                <= 4 * 1024 * 1024
+        );
     }
     #[tokio::test]
     async fn native_completion_survives_a_full_stream_queue() {

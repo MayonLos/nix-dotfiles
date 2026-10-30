@@ -30,6 +30,7 @@ let
   } config.systemd.user.sessionVariables;
   inherit (import ./mango/keybinds.nix { inherit lib pkgs display; })
     defaultBinds
+    releaseBinds
     commonBinds
     hardwareBinds
     resizeBinds
@@ -352,7 +353,8 @@ in
         "layer_name:^noctalia-(bar-.*|dock)$,no_blur:0,no_animation:1,no_shadow:1"
         "layer_name:^(noctalia-system-menu|noctalia-plugin:nix-dotfiles/desktop-menus:preview)$,no_blur:0,no_animation:1,no_shadow:1"
         "layer_name:^noctalia-plugin:nix-dotfiles/launchpad:drawer$,no_blur:0,no_animation:1,no_shadow:1"
-        "layer_name:^noctalia-(panel|attached-panel|notification|osd)$,no_animation:1,no_blur:0,no_shadow:1"
+        "layer_name:^noctalia-(panel|attached-panel|osd)$,no_animation:1,no_blur:0,no_shadow:1"
+        "layer_name:^noctalia-notification$,no_animation:1,no_blur:1,no_shadow:1"
         "layer_name:^noctalia-(window-switcher|panel-click-shield)$,no_animation:1,no_blur:1,no_shadow:1"
         "layer_name:^noctalia-(screenshot-region|annotate)$,no_animation:1,no_blur:1,no_shadow:1"
       ];
@@ -369,6 +371,7 @@ in
       # Launches, Noctalia shell controls, tag navigation, and dwm-style
       # master-stack operations.
       bind = map renderBind defaultBinds;
+      bindr = map renderBind releaseBinds;
 
       # Default-mode gestures. none is a real modifier token and sets no
       # bits. Four-finger left/right switch occupied tags; both vertical

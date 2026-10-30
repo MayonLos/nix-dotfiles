@@ -23,3 +23,5 @@ socket 随所选图形 target 启停，`0600`；service 无登录 wants，仅 so
 
 移除 feature 撤回包、addon 和 unit，不删除用户配置、模型或下载；需应用后确认服务
 与 Fcitx addon 已退出。真实桌面环境、麦克风、QQ/微信输入仍须实机核验。
+
+状态界面由 `mayon-tools voice` 提供；本 feature 保留 daemon、socket、Fcitx addon 和模型工具，不再安装单独 dashboard。录音使用 `Super+Shift+XF86Assistant` 松开触发，daemon 对 toggle 额外执行 500ms 滑动防抖。通知 ID 以 0600 存在私有 runtime，绑定通知服务 owner，替换同一张瞬态通知；启动和正常退出清理旧 ID，不触碰其他应用通知。
