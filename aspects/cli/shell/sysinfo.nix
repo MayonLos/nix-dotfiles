@@ -72,9 +72,7 @@ in
           percent = {
             type = 3;
             color = {
-              green = colors.green;
-              yellow = colors.yellow;
-              red = colors.red;
+              inherit (colors) green yellow red;
             };
           };
           key = {
