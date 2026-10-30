@@ -209,6 +209,11 @@
           mcsrv-mayon = pkgs.mcsrvMayon;
           power-mayon = pkgs.powerMayon;
           power-mayon-vm = import ../packages/power-mayon/vm.nix { inherit pkgs; };
+||||||| f286a0c
+          shots-mayon =
+            assert lib.assertMsg (builtins.elem pkgs.shotsMayon home.home.packages)
+              "Shots library must be installed by the screenshot feature";
+            pkgs.shotsMayon;
           architecture = pkgs.runCommand "architecture-check" { } "touch $out";
           palette-contrast = paletteContrast;
           statix = pkgs.runCommand "statix-check" { nativeBuildInputs = [ pkgs.statix ]; } ''

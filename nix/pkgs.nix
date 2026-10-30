@@ -41,6 +41,8 @@
             keysMayon = import ../packages/keys-mayon { pkgs = final; };
             mayonTui = import ../packages/mayon-tui { pkgs = final; };
             serialMayon = import ../packages/serial-mayon { pkgs = final; };
+||||||| f286a0c
+            shotsMayon = import ../packages/shots-mayon { pkgs = final; };
             mayonVoice = import ../packages/mayon-voice { pkgs = final; };
             seek = import ../packages/seek { pkgs = final; };
             bilitui = import ../packages/bilitui { pkgs = final; };
