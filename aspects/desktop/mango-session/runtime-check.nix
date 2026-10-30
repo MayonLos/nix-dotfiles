@@ -462,7 +462,7 @@ pkgs.runCommand "interactive-session-config"
     assert "force_tearing:0,no_blur:1,app_id:.*" in mango["window_rule"]
     assert mango["window_rule"][-1] == "no_blur:0,app_id:^dev[.]noctalia[.]Noctalia$"
     assert not any(binding.startswith("SUPER+CTRL,W,") for binding in mango["bind"])
-    for chord, scratch, tool in (("SUPER+CTRL,D,", "mayon-docker", "dockertui-mayon"), ("SUPER+CTRL,P,", "mayon-ports", "portstui-mayon")):
+    for chord, scratch, tool in (("SUPER+SHIFT,D,", "mayon-docker", "dockertui-mayon"), ("SUPER+CTRL,P,", "mayon-ports", "portstui-mayon")):
         matches = [binding for binding in mango["bind"] if binding.startswith(chord)]
         assert len(matches) == 1 and "noctalia" not in matches[0]
         assert f"toggle_named_scratchpad,{scratch}," in matches[0] and matches[0].endswith(f"--class={scratch} {tool}")

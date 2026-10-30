@@ -1,7 +1,7 @@
 # Clash TUI
 
 `clashtui-mayon` 提供七页：概览、代理、订阅、连接、规则、日志、工具/设置。
-Super+Alt+C 的桌面入口不变。第49轮试用版保留 Verge，新增独立 native 后端；
+Super+Shift+C 打开。第49轮试用版保留 Verge，新增独立 native 后端；
 不自动启动内核，`s` 手动开、`X` 确认关。退出 TUI 本身保留运行的服务。
 
 ## 后端与归属

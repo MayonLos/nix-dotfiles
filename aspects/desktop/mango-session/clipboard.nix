@@ -38,6 +38,7 @@ let
       xclip
       clipnotify
       coreutils
+      gnugrep
     ];
     text = ''
       STATE_DIR="''${XDG_RUNTIME_DIR:-/tmp}/clipboard-bridge"

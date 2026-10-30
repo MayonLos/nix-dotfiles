@@ -26,7 +26,7 @@ tmux 保留前缀窗口管理；无前缀 `Ctrl+h/j/k/l` 根据 smart-splits 维
 |---|---|---|
 | 终端 / 文件 / 浏览器 | `Super+Enter` / `Super+E` / `Super+B` | 调用统一默认工具，禁止各入口独立硬编码应用 |
 | 临时终端 | `Super+Shift+Enter` | Kitty 命名 scratchpad，首次启动，再次显示/隐藏 |
-| 临时文件 / 系统监视 | `Super+Alt+E` / `Super+Alt+M` | 分别呼出独立 Kitty class 的 Yazi / btop；普通 Kitty 不受匹配 |
+| 临时文件 / 系统监视 | `Super+Shift+E` / `Ctrl+Shift+Esc` | 分别呼出独立 Kitty class 的 Yazi / btop；普通 Kitty 不受匹配 |
 | 特殊工具工作区 | `Super+Shift+S` | 显示/隐藏 Tag 0，默认 scroller |
 | 停放 / 取回特殊窗口 | `Super+Ctrl+S` | 将当前窗口放入 Tag 0；在 Tag 0 使用时送回先前普通 tag，不主动跟随 |
 | 跨工作区可见 / 置顶 | `Super+Ctrl+G` / `Super+Alt+G` | 两个独立手动状态；前者限窗口所在输出，后者可能覆盖全屏窗口 |
@@ -40,7 +40,7 @@ tmux 保留前缀窗口管理；无前缀 `Ctrl+h/j/k/l` 根据 smart-splits 维
 | 移窗口并跟随 | `Super+Shift+1…9` | 保留 Mango `tag` 的实际语义 |
 | 停放窗口、不跟随 | `Super+Ctrl+1…9` | 保留 `tagsilent`，帮助中说清差异 |
 | 最近窗口 / 概览 | `Super+Tab` / `Super+0` | 保留 |
-| 带标题预览 / 原生切换器 | `Super+Alt+J/K` / `Super+Alt+T` | 保留当前 tag 的 overcircle 前后与 switcher；新标题条使用 One Dark |
+| 带标题预览 / 原生切换器 | `Super+Alt+J/K` / `Super+Shift+T` | 保留当前 tag 的 overcircle 前后与 switcher；新标题条使用 One Dark |
 | 跳转标签 | `Super+Shift+0` | 保留 togglejump，按 US 布局 HJKL 优先的字母标签选择窗口 |
 | 调整大小 | `Super+R`，随后 HJKL/方向键 | 保留模式；模式内 Esc 退出，所有模式下 `Super+Esc` 可退出 |
 | 最大化 / 真全屏 | `Super+F` / `Super+Shift+F` | 保留二者差异 |

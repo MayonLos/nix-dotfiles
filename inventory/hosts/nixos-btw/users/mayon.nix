@@ -69,6 +69,9 @@ in
           gaming
           local-containers
           local-virtual-machines
+          voice-input
+          seek
+          study
         ];
       };
     };

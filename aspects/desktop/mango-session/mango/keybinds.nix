@@ -14,11 +14,18 @@ let
     # A unique app id distinguishes each tool from ordinary Kitty windows.
     # Title argument "none" means match by app id only.
     "SUPER+SHIFT,Return,toggle_named_scratchpad,mayon-scratch,none,${lib.getExe pkgs.kitty} --class=mayon-scratch"
-    "SUPER+ALT,E,toggle_named_scratchpad,mayon-files,none,${lib.getExe pkgs.kitty} --class=mayon-files ${lib.getExe pkgs.yazi}"
-    "SUPER+ALT,M,toggle_named_scratchpad,mayon-monitor,none,${lib.getExe pkgs.kitty} --class=mayon-monitor btop"
-    "SUPER+ALT,C,toggle_named_scratchpad,mayon-clash,none,${lib.getExe pkgs.kitty} --class=mayon-clash clashtui-mayon"
-    "SUPER+CTRL,D,toggle_named_scratchpad,mayon-docker,none,${lib.getExe pkgs.kitty} --class=mayon-docker dockertui-mayon"
+    "SUPER+SHIFT,E,toggle_named_scratchpad,mayon-files,none,${lib.getExe pkgs.kitty} --class=mayon-files ${lib.getExe pkgs.yazi}"
+    # Ctrl+Shift+Esc, as on other desktops.
+    "CTRL+SHIFT,Escape,toggle_named_scratchpad,mayon-monitor,none,${lib.getExe pkgs.kitty} --class=mayon-monitor btop"
+    "SUPER+SHIFT,C,toggle_named_scratchpad,mayon-clash,none,${lib.getExe pkgs.kitty} --class=mayon-clash clashtui-mayon"
+    "SUPER+SHIFT,D,toggle_named_scratchpad,mayon-docker,none,${lib.getExe pkgs.kitty} --class=mayon-docker dockertui-mayon"
     "SUPER+CTRL,P,toggle_named_scratchpad,mayon-ports,none,${lib.getExe pkgs.kitty} --class=mayon-ports portstui-mayon"
+    "SUPER+ALT,F,toggle_named_scratchpad,seek,none,${lib.getExe pkgs.kitty} --class=seek --title=Seek ${lib.getExe pkgs.seek} tui --viewer zathura"
+    "SUPER+ALT,S,toggle_named_scratchpad,study-mayon,none,${lib.getExe pkgs.kitty} --class=study-mayon --title=学习 ${pkgs.studyMayon}/bin/study-mayon"
+    "SUPER+SHIFT,M,toggle_named_scratchpad,mcsrv-mayon,none,${lib.getExe pkgs.kitty} --class=mcsrv-mayon ${lib.getExe pkgs.mcsrvMayon}"
+    "SUPER+SHIFT,B,spawn,${lib.getExe pkgs.kitty} --class=mayon-bili ${lib.getExe pkgs.bilitui}"
+    # Press once to start dictation, again to stop and type the text.
+    "SUPER+SHIFT,V,spawn,${lib.getExe pkgs.mayonVoice} toggle"
     "SUPER+CTRL,G,toggleglobal"
     "SUPER+ALT,G,toggleoverlay"
     "SUPER+CTRL,S,tag_special_silent"
@@ -152,6 +159,8 @@ let
     "SUPER+SHIFT,Print,spawn,ocr-screen"
     "CTRL+ALT,Delete,spawn,noctalia msg panel-toggle session"
     "SUPER,V,spawn,noctalia msg panel-toggle clipboard"
+    # Bluetooth headset mic: HFP on/off (A2DP otherwise; no autoswitch).
+    "SUPER+SHIFT,N,spawn,headset-mic toggle"
     "SUPER+SHIFT,P,sleep_monitor,${display.name}"
     "SUPER+SHIFT,O,wakeup_monitor,${display.name}"
     "SUPER+SHIFT,W,spawn,noctalia msg wallpaper-random"
@@ -165,7 +174,7 @@ let
     # by hand returned `{"success":true}` and changed nothing.
     "SUPER+SHIFT,grave,minimized"
     "SUPER,grave,toggle_scratchpad"
-    "SUPER+ALT,T,switcher,next"
+    "SUPER+SHIFT,T,switcher,next"
 
   ];
   commonBinds = [
@@ -275,6 +284,9 @@ let
         mayon-clash = "Clash 代理";
         mayon-docker = "Docker 容器与镜像";
         mayon-ports = "监听端口与进程";
+        seek = "文件搜索 seek";
+        study-mayon = "背单词与课表";
+        mcsrv-mayon = "Minecraft 服务器";
       };
       args =
         if action == "toggle_named_scratchpad" then

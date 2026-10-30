@@ -19,8 +19,11 @@ impl Lifecycle {
     pub fn launch(&self, link: Option<&str>) -> Result<(), String> {
         let mut cmd = if let Some(launcher) = &self.test_launcher {
             Command::new(launcher)
-        } else if link.is_some() {
-            // URL deep links are handled by Verge's documented singleton endpoint.
+        } else if link.is_some()
+            || std::env::var("XDG_SESSION_TYPE").is_ok_and(|session| session == "x11")
+        {
+            // Xorg has no Noctalia provider. Deep links and Xorg use
+            // Verge's native singleton launcher instead.
             Command::new("clash-verge")
         } else {
             // Use exactly the native provider, including systemd app.slice and the
