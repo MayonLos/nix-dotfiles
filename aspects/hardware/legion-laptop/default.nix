@@ -10,13 +10,6 @@ _: {
         (import ./bluetooth.nix host.facts.bluetooth)
         ./power.nix
         ./memory.nix
-        {
-          programs.gamemode.settings.gpu = {
-            apply_gpu_optimisations = "accept-responsibility";
-            gpu_device = host.facts.gpu.gameModeDevice;
-            nv_powermizer_mode = 1;
-          };
-        }
       ];
     };
     legion-laptop-user = { host, ... }: {

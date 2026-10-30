@@ -1,6 +1,6 @@
 # Legion laptop hardware
 
-Configures the Lenovo Legion hardware stack: boot/kernel settings, firmware, Intel video, NVIDIA PRIME offload, Bluetooth, power, memory, and hardware-specific GPU policy. Inputs are host facts from `host.facts`, including system, Intel/NVIDIA bus IDs, GameMode GPU index, and mpv hardware decoder. The feature does not embed a host's measured values.
+Configures the Lenovo Legion hardware stack: boot/kernel settings, firmware, Intel video, NVIDIA PRIME offload, Bluetooth, power, memory, and hardware-specific GPU policy. GameMode clock/PowerMizer optimization is disabled by the gaming feature: the Wayland laptop lacks the required NV-CONTROL clock attributes. Inputs are host facts from `host.facts`, including system, Intel/NVIDIA bus IDs, the legacy GameMode GPU index schema, and mpv hardware decoder. The index remains accepted as inventory data but is no longer used to enable GPU overclocking. The feature does not embed a host's measured values.
 
 `host.facts.bluetooth.{onboard,dongle}` (USB `vvvv:pppp`) selects the Bluetooth radio: while the dongle is plugged in, a udev rule deauthorizes only the onboard Bluetooth USB device (Wi-Fi is a separate PCIe function), and authorizes it again when the dongle is removed. Empty IDs disable the swap. Pairings are per controller, so devices must be paired again on the dongle.
 

@@ -11,9 +11,10 @@ in
       # for native and Proton games.
       extraLibraries = p: [ p.gamemode.lib ];
       # No session-wide LD_PRELOAD of libgamemodeauto: every Steam helper then
-      # registers with gamemoded, and a blacklisted client aborts inside
-      # libdbus. The client's own `lsof` websocket check died that way and
-      # startup failed with "Unexpected Transport Error (0x3008)".
+      # registers with gamemoded. steam-runtime lsof closes the library's
+      # cached D-Bus socket before its destructor, exposing the old client's
+      # NULL-pending-call assertion and breaking the websocket check (0x3008).
+      # Even with that library bug fixed, helpers shouldn't request GameMode.
       extraProfile = ''
         eval "$(${tools.game-run}/bin/game-run --env)"
       '';

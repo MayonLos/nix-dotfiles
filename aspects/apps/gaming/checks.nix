@@ -45,6 +45,12 @@ assert builtins.length withoutAppearance.config.home.packages == 1;
     assert nixos.systemd.user.services.gaming-idle-inhibit.partOf == [ "gamemoded.service" ];
     assert nixos.systemd.user.services.gaming-idle-inhibit.serviceConfig.Type == "notify";
     assert nixos.programs.gamemode.settings.custom.script_timeout >= 150;
+    assert nixos.programs.gamemode.settings.general.desiredgov == "ignore";
+    assert nixos.programs.gamemode.settings.general.disable_splitlock == 0;
+    assert nixos.programs.gamemode.settings.general.ioprio == "off";
+    assert nixos.programs.gamemode.settings.gpu.apply_gpu_optimisations == "";
+    assert lib.hasInfix "\${NOTIFY_SOCKET}"
+      nixos.systemd.user.services.gaming-idle-inhibit.serviceConfig.ExecStart;
     assert lib.hasInfix "gaming-mode-hook start" nixos.programs.gamemode.settings.custom.start;
     assert lib.hasInfix "gaming-mode-hook end" nixos.programs.gamemode.settings.custom.end;
     assert lib.hasInfix "gaming-mode-hook end"
@@ -53,6 +59,12 @@ assert builtins.length withoutAppearance.config.home.packages == 1;
       { nativeBuildInputs = [ pkgs.python3 ] ++ builtins.attrValues tools; }
       ''
         python3 ${./resources}/test_gaming.py
+        mkdir -p "$TMPDIR/home"
+        # No bus is available here: this checks command/library discovery and
+        # passthrough, while gaming-runtime checks successful registration.
+        ${pkgs.coreutils}/bin/env -i PATH= HOME="$TMPDIR/home" \
+          XDG_RUNTIME_DIR="$TMPDIR" GAME_RUN_GPU=integrated \
+          ${tools.game-run}/bin/game-run ${pkgs.coreutils}/bin/true
         touch "$out"
       '';
   # Building the patched launcher checks the exact replacement against the

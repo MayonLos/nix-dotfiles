@@ -2,7 +2,9 @@
 let
   tools = import ../tools.nix { inherit pkgs; };
   inhibitorReady = pkgs.writeShellScript "gaming-inhibitor-ready" ''
-    ${pkgs.systemd}/bin/systemd-notify --ready
+    # systemd's safe_fork clears NOTIFY_SOCKET in systemd-inhibit's child.
+    # The manager expands it into an argument before that fork occurs.
+    NOTIFY_SOCKET="$1" ${pkgs.systemd}/bin/systemd-notify --ready
     exec ${pkgs.coreutils}/bin/sleep infinity
   '';
 in
@@ -10,6 +12,17 @@ in
   programs.gamemode = {
     enable = true;
     settings = {
+      general = {
+        # PPD owns the governor; the package adds an explicit opt-out to 1.8.2.
+        desiredgov = "ignore";
+        igpu_power_threshold = 10000;
+        disable_splitlock = 0;
+        ioprio = "off";
+        # The logind inhibitor below replaces GameMode's desktop-specific one.
+        inhibit_screensaver = 0;
+      };
+      # NV-CONTROL clock attributes aren't supported by this Wayland laptop.
+      gpu.apply_gpu_optimisations = "";
       custom = {
         # Allow inner command timeouts plus rollback to finish before GameMode
         # terminates a hook. Each subprocess is bounded by fifteen seconds.
@@ -45,7 +58,7 @@ in
       NotifyAccess = "all";
       TimeoutStartSec = 10;
       TimeoutStopSec = 5;
-      ExecStart = "${pkgs.systemd}/bin/systemd-inhibit --what=idle --mode=block --who=GameMode --why=Gaming ${inhibitorReady}";
+      ExecStart = "${pkgs.systemd}/bin/systemd-inhibit --no-ask-password --what=idle --mode=block --who=GameMode --why=Gaming ${inhibitorReady} \${NOTIFY_SOCKET}";
       Restart = "on-failure";
     };
   };

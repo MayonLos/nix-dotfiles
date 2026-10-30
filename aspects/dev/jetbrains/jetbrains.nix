@@ -14,6 +14,7 @@ let
     fontconfig
     stdenv.cc.cc.lib
   ];
+  desktopSchemas = "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}";
 
   fixSkiko =
     ide:
@@ -32,6 +33,8 @@ let
         fi
         wrapProgram "$out/bin/${ide.meta.mainProgram}" \
           --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath skikoLibs}" \
+          --prefix PATH : "${lib.makeBinPath [ pkgs.glib ]}" \
+          --prefix XDG_DATA_DIRS : "${desktopSchemas}" \
           --add-flags '-Dide.expansion.hints.enabled=false'
       '';
       inherit (ide) meta;

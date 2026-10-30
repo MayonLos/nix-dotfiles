@@ -6,7 +6,11 @@ let
       inherit name runtimeInputs;
       text = ''exec ${pkgs.python3}/bin/python3 ${source} "$@"'';
     };
-  gameRun = pythonTool "game-run" ./resources/game-run.py [ pkgs.gamemode ];
+  # gamemoderun itself execs `env`; don't rely on the launcher's inherited PATH.
+  gameRun = pythonTool "game-run" ./resources/game-run.py [
+    pkgs.gamemode
+    pkgs.coreutils
+  ];
 in
 {
   game-run = gameRun;

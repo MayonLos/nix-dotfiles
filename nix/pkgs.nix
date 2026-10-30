@@ -30,6 +30,12 @@
           (_: _: {
             inherit (u) xdg-desktop-portal-wlr;
           })
+          (final: previous: {
+            gamemode = import ../packages/gamemode {
+              inherit (previous) gamemode;
+              inherit (final) runCommandCC;
+            };
+          })
           (final: _: {
             # Local programs have a separate public entry; local remains upstream aliases.
             mayonTui = import ../packages/mayon-tui { pkgs = final; };
