@@ -1,0 +1,11 @@
+[Addon]
+Name=Mayon Voice Commit Bridge
+Type=@FCITX_ADDON_TYPE@
+Library=libmayonvoice
+Category=Module
+Version=@FCITX_VERSION@
+OnDemand=False
+
+[Addon/Dependencies]
+0=dbus:@FCITX_VERSION@
+1=core:@FCITX_VERSION@

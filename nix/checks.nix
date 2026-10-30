@@ -27,6 +27,7 @@
         ../aspects/apps/communication/checks.nix
         ../aspects/apps/file-manager/checks.nix
         ../aspects/apps/media/checks.nix
+        ../aspects/apps/voice-input/checks.nix
         ../aspects/apps/gaming/checks.nix
         ../aspects/apps/gaming/runtime-checks.nix
         ../aspects/cli/shell/checks.nix
