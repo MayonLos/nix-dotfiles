@@ -37,7 +37,9 @@ v2ray-domain-list-community、dbip-country-lite **复制**，随后属于用户�
 
 不设置系统代理、不向 nix-daemon 添加代理环境。native 开启 TUN 时接管网络，
 停止后回到直连；resolved 保留默认 stub listener。防火墙信任 native
-`mayon-clash` 与 Verge `Meta`/`Mihomo` 接口。真实 TUN/DNS/休眠恢复需在应用后验收。
+`mayon-clash` 与 Verge `Meta`/`Mihomo` 接口。polkit 只允许该服务单元把 TUN 注册为
+resolved 的默认 DNS 链路（dns-servers/domains/default-route）；resolved 的上游查询绑定物理
+网卡，不注册就绕过 dns-hijack。真实 TUN/休眠恢复需在应用后验收。
 
 本目录所有 Nix 文件私有，`checks.nix` 是显式公开测试钩子，登记于
 `nix/checks.nix`：`laptop-network` 验证生产声明，`mayon-clash-vm` 在 2048 MiB VM

@@ -463,8 +463,10 @@ in
             position = "top_right";
             layer = "overlay";
             width = 320;
-            offset_x = 16;
-            offset_y = 12;
+            # Clear the focused window's border, which runs at 13/42 logical px;
+            # flush cards left its blue corner showing behind their own.
+            offset_x = 28;
+            offset_y = 24;
             max_visible = 3;
             border = true;
             border_color = "outline_variant";

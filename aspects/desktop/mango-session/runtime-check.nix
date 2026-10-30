@@ -401,7 +401,7 @@ pkgs.runCommand "interactive-session-config"
         assert root["battery"]["warning_threshold"] == 20
         assert root["dock"]["magnification_scale"] <= 1.25
         assert [item["type"] for item in root["control_center"]["shortcuts"]] == ["wifi", "bluetooth", "system", "power_profile", "caffeine", "notification"]
-        assert root["notification"]["offset_y"] == 12
+        assert root["notification"]["offset_y"] == 24
     assert "battery-charging" in patches["r44-status-icons.patch"]
     assert settings["bar"]["main"]["icon_color"] == m["palette"]["brightFg"]
     for name in ("network", "bluetooth", "volume", "battery", "tray", "notifications", "control-center"):

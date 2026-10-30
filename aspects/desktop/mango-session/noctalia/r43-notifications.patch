@@ -26,7 +26,7 @@
    constexpr float kBodyFontSize = Style::fontSizeBody;
    constexpr int kMaxSummaryLines = 2;
    constexpr int kToastMaxBodyLines = 3;
-@@ -343,7 +344,7 @@
+@@ -343,11 +344,12 @@
        return colorSpecFromRole(ColorRole::OnSurface, 0.9F);
      case Urgency::Normal:
      default:
@@ -35,7 +35,14 @@
      }
    }
  
-@@ -439,7 +440,7 @@
+-  bool showToastProgressAccent(Urgency urgency, int displayDurationMs) {
+-    return displayDurationMs >= 0 || urgency == Urgency::Critical;
++  bool showToastProgressAccent(Urgency /*urgency*/, int /*displayDurationMs*/) {
++    // R51: the accent sat on the card's top border as a brighter segment.
++    return false;
+   }
+ 
+@@ -439,7 +441,7 @@
          ui::label({
              .text = StringUtils::trimLeadingBlankLines(summary),
              .fontSize = summaryFontSize(scale),
@@ -44,7 +51,7 @@
              .color = colorSpecFromRole(ColorRole::OnSurface),
              .maxWidth = topTextMaxWidth,
              .maxLines = std::max(1, summaryLines),
-@@ -2585,7 +2586,7 @@
+@@ -2585,7 +2588,7 @@
        ui::label({
            .text = displaySummary,
            .fontSize = summaryFontSize(scale),

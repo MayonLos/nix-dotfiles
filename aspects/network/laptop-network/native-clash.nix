@@ -34,6 +34,16 @@ in
             ["start", "stop", "restart"].indexOf(action.lookup("verb")) !== -1) {
           return polkit.Result.YES;
         }
+        // Mihomo registers its TUN as resolved's default DNS link. Without this
+        // resolved keeps asking the Wi-Fi resolver over the bound uplink, which
+        // bypasses dns-hijack and fails for blocked names.
+        if (subject.user === ${builtins.toJSON cfg.user} &&
+            subject.system_unit === "mayon-clash.service" &&
+            ["org.freedesktop.resolve1.set-dns-servers",
+             "org.freedesktop.resolve1.set-domains",
+             "org.freedesktop.resolve1.set-default-route"].indexOf(action.id) !== -1) {
+          return polkit.Result.YES;
+        }
       });
     '';
     # The TUI creates the private data directory before producing a config.

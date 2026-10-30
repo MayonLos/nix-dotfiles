@@ -50,6 +50,7 @@ notification = source('shell/notification/notification_toast.cpp')
 assert 'constexpr float kMetaFontSize = 13.0F' in notification
 assert 'constexpr float kSummaryFontSize = 14.0F' in notification
 assert 'constexpr int kProgressHeight = 1' in notification
+assert 'the accent sat on the card' in notification
 osd = source('shell/osd/osd_overlay.cpp')
 for literal in ['return 246.0F * s', 'return 46.0F * s', 'return 3.0F * s', 'return 18.0F * s']:
     assert literal in osd, literal
