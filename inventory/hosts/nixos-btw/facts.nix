@@ -6,6 +6,10 @@
     intelBusId = "PCI:0:2:0";
     nvidiaBusId = "PCI:1:0:0";
   };
+  bluetooth = {
+    onboard = "8087:0033"; # Intel CNVi radio; stalls A2DP to the Edifier headset.
+    dongle = "2b89:6275"; # UGREEN CM390, RTL8761BU.
+  };
   display = {
     name = "eDP-1";
     scale = 1.5;

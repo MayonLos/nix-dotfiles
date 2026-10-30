@@ -32,6 +32,23 @@
             };
           };
         };
+        bluetooth = lib.mkOption {
+          default = { };
+          type = lib.types.submodule {
+            options = {
+              # "vvvv:pppp" USB IDs. When `dongle` is plugged in, the `onboard`
+              # Bluetooth USB device is deauthorized; empty disables the swap.
+              onboard = lib.mkOption {
+                type = lib.types.str;
+                default = "";
+              };
+              dongle = lib.mkOption {
+                type = lib.types.str;
+                default = "";
+              };
+            };
+          };
+        };
         display = lib.mkOption {
           default = { };
           type = lib.types.submodule {

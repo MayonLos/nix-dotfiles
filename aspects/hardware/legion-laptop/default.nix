@@ -7,7 +7,7 @@ _: {
         ./firmware.nix
         ./intel-video.nix
         ./nvidia.nix
-        ./bluetooth.nix
+        (import ./bluetooth.nix host.facts.bluetooth)
         ./power.nix
         ./memory.nix
         {
