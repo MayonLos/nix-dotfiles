@@ -23,6 +23,9 @@ let
     "SUPER+ALT,G,toggleoverlay"
     "SUPER+CTRL,S,tag_special_silent"
     "ALT,space,spawn,noctalia msg panel-toggle launcher"
+    # Noctalia's switcher: hold Alt and press Tab to cycle (Shift+Tab back),
+    # release Alt to focus; a quick tap returns to the previous window.
+    "ALT,Tab,spawn,noctalia msg window-switcher hold"
     "SUPER,A,spawn,noctalia msg plugin nix-dotfiles/launchpad:control all toggle"
     "SUPER+ALT,D,spawn,noctalia msg notification-dnd-toggle"
     "SUPER+ALT,I,spawn,noctalia msg caffeine-toggle"

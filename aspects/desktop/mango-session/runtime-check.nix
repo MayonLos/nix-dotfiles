@@ -458,6 +458,7 @@ pkgs.runCommand "interactive-session-config"
     assert "tech-osd-segments.patch" not in patches
     assert "SUPER,A,spawn,noctalia msg plugin nix-dotfiles/launchpad:control all toggle" in mango["bind"]
     assert "ALT,space,spawn,noctalia msg panel-toggle launcher" in mango["bind"]
+    assert "ALT,Tab,spawn,noctalia msg window-switcher hold" in mango["bind"]
     assert "force_tearing:0,no_blur:1,app_id:.*" in mango["window_rule"]
     assert mango["window_rule"][-1] == "no_blur:0,app_id:^dev[.]noctalia[.]Noctalia$"
     assert not any(binding.startswith("SUPER+CTRL,W,") for binding in mango["bind"])

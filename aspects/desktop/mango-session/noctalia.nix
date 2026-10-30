@@ -242,6 +242,18 @@ in
             # cliphist watchers. The X11/Wayland bridge is a separate service.
             clipboard_enabled = true;
             show_location = true;
+            # Alt+Tab (keybinds.nix). Most-recently-used order like other
+            # desktops, every window on every tag. Mango 0.18 has no toplevel
+            # image capture, so cards show application icons.
+            window_switcher = {
+              style = "carousel";
+              mru = true;
+              show_all_outputs = true;
+              current_workspace_only = false;
+              show_caption = true;
+              show_count = true;
+              show_app_icon = true;
+            };
             # New in noctalia 5.2.1: readline-style editing (Ctrl+A/E/U/K) in
             # the shell's own text inputs.
             readline_shortcuts = true;
