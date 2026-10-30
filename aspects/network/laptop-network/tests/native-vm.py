@@ -60,9 +60,3 @@ machine.succeed("ip -j rule show > /tmp/rules-after.json")
 # DHCP/IPv6 lifetimes vary with time; compare routes after removing only expiry clocks.
 machine.succeed("python3 -c 'import json; a=lambda p: sorted([{k:v for k,v in r.items() if k not in (\"expires\",\"cache\")} for r in json.load(open(p))],key=str); b=a(\"/tmp/routes-before.json\"); c=a(\"/tmp/routes-after.json\"); print(b,c) if b!=c else None; assert b==c; d=a(\"/tmp/rules-before.json\"); e=a(\"/tmp/rules-after.json\"); print(d,e) if d!=e else None; assert d==e'")
 machine.fail("curl --max-time 2 http://198.19.0.2:18081/")
-# A live Verge-shaped socket blocks the privileged service before mihomo starts.
-machine.succeed("install -d -o trial -g users -m 700 /run/user/1000/clash-verge-rev")
-machine.succeed(user("python3 -c 'import socket,time; s=socket.socket(socket.AF_UNIX); s.bind(\"/run/user/1000/clash-verge-rev/verge-mihomo.sock\"); s.listen(); time.sleep(60)' >/tmp/verge-fixture.log 2>&1 &"))
-machine.wait_until_succeeds("test -S /run/user/1000/clash-verge-rev/verge-mihomo.sock")
-machine.fail(user("systemctl --no-ask-password start mayon-clash.service"))
-machine.wait_until_succeeds("journalctl -u mayon-clash.service --no-pager -o cat | grep 'Verge 内核仍在运行'")

@@ -37,10 +37,6 @@ struct State {
     delete: u8,
     delete_target: Option<Entry>,
     message: String,
-    recording: bool,
-    mode: usize,
-    system: bool,
-    mic: bool,
 }
 fn clean(s: &str) -> String {
     s.chars()
@@ -62,21 +58,16 @@ fn time(e: &Entry) -> String {
         .unwrap_or_default()
 }
 fn entries(lib: &Library, s: &State) -> Result<Vec<Entry>> {
-    let kind = match s.page {
-        1 => Some("image"),
-        2 => Some("video"),
-        _ => None,
-    };
+    let favorite = s.page == 1;
     Ok(lib
         .entries(
             &s.query,
-            kind,
             if s.source.is_empty() {
                 None
             } else {
                 Some(&s.source)
             },
-            s.page == 3,
+            favorite,
         )?
         .into_iter()
         .filter(|e| s.date.is_empty() || date(e).starts_with(&s.date))
@@ -115,7 +106,6 @@ fn thumbnail(dir: &Path, e: &Entry) -> Result<Preview> {
             "-protocol_whitelist",
             "file,pipe",
         ]);
-        // The first frame works for very short recordings too.
         let out = c
             .args([
                 "-i",
@@ -183,7 +173,7 @@ fn draw_image(p: &Preview, a: Rect) -> io::Result<()> {
     stdout.write_all(b"\x1b8")?;
     stdout.flush()
 }
-const HELP:&str="1 全部  2 截图  3 录屏  4 收藏\nj/k 或 ↑/↓ 移动 · PgUp/PgDn 翻页 · 鼠标选中/滚动\n/ 文件名 / OCR / 时间 / 类型搜索 · s 来源过滤 · D 日期前缀\nEsc 清空过滤 · Enter/o 打开 · y 复制路径 · c 复制图片\nf 文件管理器定位 · e 标注 · * 收藏 · t 复制 OCR 文字\nd 删除：先确认对象，再按 Y 移入回收站（不会永久删除）\np 暂停/恢复后台 OCR · i 增量索引 · r 录屏控制\n? 帮助 · q 退出\n\n未知来源不会猜测；已有截图通常没有来源窗口元数据。\n窗口录屏固定初始矩形，不会跟随窗口移动。";
+const HELP: &str = "1 截图  2 收藏\nj/k 或 ↑/↓ 移动 · PgUp/PgDn 翻页 · 鼠标选中/滚动\n/ 文件名 / OCR / 日期搜索 · s 来源过滤 · D 日期前缀\nEsc 清空过滤 · Enter/o 打开 · y 复制路径 · c 复制图片\nf 文件管理器定位 · e 标注 · * 收藏 · t 复制 OCR 文字\nd 删除：先确认对象，再按大写 Y 移入回收站（不会永久删除）\np 暂停/恢复后台 OCR · i 增量索引\n? 帮助 · q 退出\n\n未知来源不会猜测；已有截图通常没有来源窗口元数据。";
 
 pub fn run(lib: Library) -> Result<()> {
     lib.index()?;
@@ -263,38 +253,164 @@ pub fn run(lib: Library) -> Result<()> {
             }
         }
         clear_image();
-        terminal.draw(|f|{
-            let title=format!(" Shots · 截图与录屏     {} 项 · OCR {}",data.len(),if lib.paused(){"已暂停"}else{"后台"});
-            let body=ui::chrome(f,&title,&["全部","截图","录屏","收藏"],s.page," / 搜索  Enter 打开  * 收藏  r 录屏  ? 帮助  q 退出",&s.message);
-            let chunks=Layout::vertical([Constraint::Length(1),Constraint::Min(4)]).split(body);
-            f.render_widget(Paragraph::new(ui::theme::clip(&format!(" 搜索 {}  来源 {}  日期 {}",if s.query.is_empty(){"全部"}else{&s.query},if s.source.is_empty(){"全部"}else{&s.source},if s.date.is_empty(){"全部"}else{&s.date}),chunks[0].width as usize)).style(ui::base().fg(MUTED)),chunks[0]);
-            let wide=body.width>=112;
-            let areas=if wide {Layout::horizontal([Constraint::Percentage(55),Constraint::Percentage(45)]).split(chunks[1])} else {Layout::vertical([Constraint::Percentage(58),Constraint::Percentage(42)]).split(chunks[1])};
-            list_area=areas[0];
-            let capacity=list_area.height.saturating_sub(3).max(1) as usize;
-            if s.selected<s.offset{s.offset=s.selected;}
-            if s.selected>=s.offset+capacity{s.offset=s.selected+1-capacity;}
-            let mut previous=String::new();
-            let rows=data.iter().skip(s.offset).take(capacity).map(|e|{
-                let day=date(e);let group=if day==previous{String::new()}else{previous=day.clone();day};
-                vec![group,format!("{} {}",if e.favorite{"★"}else{" "},time(e)),if e.kind=="video"{"REC".into()}else{"IMG".into()},clean(&e.name).replace('\n'," ")]
-            }).collect();
-            ui::table(f,list_area," 时间线 ",vec!["日期","时间","类型","文件"],rows,&[Constraint::Length(10),Constraint::Length(7),Constraint::Length(4),Constraint::Min(8)],s.selected.saturating_sub(s.offset));
-            let preview_box=ui::block(" 预览 · Kitty / OCR ",false);let inner=preview_box.inner(areas[1]);
-            f.render_widget(preview_box,areas[1]);
-            let pa=Layout::vertical([Constraint::Percentage(62),Constraint::Min(3)]).split(inner);
-            image_area=pa[0];
-            if let Some(e)=selected {
-                let text=format!("{}\n{}\n{}",clean(&e.source),clean(&e.path),if e.text.is_empty(){"OCR 待处理 / 无文字".into()}else{clean(&e.text)});
-                f.render_widget(Paragraph::new(text).style(ui::base().fg(MUTED)).wrap(Wrap{trim:false}),pa[1]);
-                if !kitty {f.render_widget(Paragraph::new("使用 Kitty 查看图形缩略图").style(ui::base()),pa[0]);}
-            }else{f.render_widget(Paragraph::new("没有匹配文件\n/ 搜索 · Esc 清空过滤").style(ui::base()),inner);}
-            if s.help {ui::help(f,HELP);}
-            if let Some((which,text))=&s.input {ui::input(f,match which{'s'=>" 来源窗口过滤 ",'D'=>" 日期前缀 YYYY-MM-DD ",_=>" 搜索 · 文件名 / OCR / 日期 "},text);}
-            if s.delete>0 {ui::dialog(f,if s.delete==1{" 确认删除对象 "}else{" 第二次确认 · 移入回收站 "},&format!("{}\n\n{}",s.delete_target.as_ref().map(|e|clean(&e.name)).unwrap_or_default(),if s.delete==1{"Enter 继续 · Esc 取消"}else{"大写 Y 移入回收站 · Esc 取消"}));}
-            if s.recording {ui::dialog(f," 录屏控制 ",&format!("1 当前输出  2 区域  3 窗口\n模式：{}\n[a] 系统声音 {}   [m] 麦克风 {}\n\nEnter 开始 / 停止 · Esc 取消\n默认无声音，软件编码。窗口固定初始区域。",["当前输出","区域","窗口"][s.mode],if s.system{"开"}else{"关"},if s.mic{"开"}else{"关"}));}
+        terminal.draw(|f| {
+            let title = format!(
+                " Shots · 截图库     {} 项 · OCR {}",
+                data.len(),
+                if lib.paused() { "已暂停" } else { "后台" }
+            );
+            let body = ui::chrome(
+                f,
+                &title,
+                &["截图", "收藏"],
+                s.page,
+                " / 搜索  Enter 打开  * 收藏  ? 帮助  q 退出",
+                &s.message,
+            );
+            let chunks = Layout::vertical([Constraint::Length(1), Constraint::Min(4)]).split(body);
+            f.render_widget(
+                Paragraph::new(ui::theme::clip(
+                    &format!(
+                        " 搜索 {}  来源 {}  日期 {}",
+                        if s.query.is_empty() {
+                            "全部"
+                        } else {
+                            &s.query
+                        },
+                        if s.source.is_empty() {
+                            "全部"
+                        } else {
+                            &s.source
+                        },
+                        if s.date.is_empty() { "全部" } else { &s.date }
+                    ),
+                    chunks[0].width as usize,
+                ))
+                .style(ui::base().fg(MUTED)),
+                chunks[0],
+            );
+            let wide = body.width >= 112;
+            let areas = if wide {
+                Layout::horizontal([Constraint::Percentage(55), Constraint::Percentage(45)])
+                    .split(chunks[1])
+            } else {
+                Layout::vertical([Constraint::Percentage(58), Constraint::Percentage(42)])
+                    .split(chunks[1])
+            };
+            list_area = areas[0];
+            let capacity = list_area.height.saturating_sub(3).max(1) as usize;
+            if s.selected < s.offset {
+                s.offset = s.selected;
+            }
+            if s.selected >= s.offset + capacity {
+                s.offset = s.selected + 1 - capacity;
+            }
+            let mut previous = String::new();
+            let rows = data
+                .iter()
+                .skip(s.offset)
+                .take(capacity)
+                .map(|e| {
+                    let day = date(e);
+                    let group = if day == previous {
+                        String::new()
+                    } else {
+                        previous = day.clone();
+                        day
+                    };
+                    vec![
+                        group,
+                        format!("{} {}", if e.favorite { "★" } else { " " }, time(e)),
+                        clean(&e.name).replace('\n', " "),
+                    ]
+                })
+                .collect();
+            ui::table(
+                f,
+                list_area,
+                " 时间线 ",
+                vec!["日期", "时间", "截图"],
+                rows,
+                &[
+                    Constraint::Length(10),
+                    Constraint::Length(7),
+                    Constraint::Min(8),
+                ],
+                s.selected.saturating_sub(s.offset),
+            );
+            let preview_box = ui::block(" 预览 · Kitty / OCR ", false);
+            let inner = preview_box.inner(areas[1]);
+            f.render_widget(preview_box, areas[1]);
+            let pa =
+                Layout::vertical([Constraint::Percentage(62), Constraint::Min(3)]).split(inner);
+            image_area = pa[0];
+            if let Some(e) = selected {
+                let text = format!(
+                    "{}\n{}\n{}",
+                    clean(&e.source),
+                    clean(&e.path),
+                    if e.text.is_empty() {
+                        "OCR 待处理 / 无文字".into()
+                    } else {
+                        clean(&e.text)
+                    }
+                );
+                f.render_widget(
+                    Paragraph::new(text)
+                        .style(ui::base().fg(MUTED))
+                        .wrap(Wrap { trim: false }),
+                    pa[1],
+                );
+                if !kitty {
+                    f.render_widget(
+                        Paragraph::new("使用 Kitty 查看图形缩略图").style(ui::base()),
+                        pa[0],
+                    );
+                }
+            } else {
+                f.render_widget(
+                    Paragraph::new("没有匹配文件\n/ 搜索 · Esc 清空过滤").style(ui::base()),
+                    inner,
+                );
+            }
+            if s.help {
+                ui::help(f, HELP);
+            }
+            if let Some((which, text)) = &s.input {
+                ui::input(
+                    f,
+                    match which {
+                        's' => " 来源窗口过滤 ",
+                        'D' => " 日期前缀 YYYY-MM-DD ",
+                        _ => " 搜索 · 文件名 / OCR / 日期 ",
+                    },
+                    text,
+                );
+            }
+            if s.delete > 0 {
+                ui::dialog(
+                    f,
+                    if s.delete == 1 {
+                        " 确认删除对象 "
+                    } else {
+                        " 第二次确认 · 移入回收站 "
+                    },
+                    &format!(
+                        "{}\n\n{}",
+                        s.delete_target
+                            .as_ref()
+                            .map(|e| clean(&e.name))
+                            .unwrap_or_default(),
+                        if s.delete == 1 {
+                            "Enter 继续 · Esc 取消"
+                        } else {
+                            "大写 Y 移入回收站 · Esc 取消"
+                        }
+                    ),
+                );
+            }
         })?;
-        if kitty && !s.help && s.input.is_none() && s.delete == 0 && !s.recording {
+        if kitty && !s.help && s.input.is_none() && s.delete == 0 {
             if let Some(p) = preview.as_ref().filter(|p| p.key == key) {
                 draw_image(p, image_area)?;
             }
@@ -358,45 +474,10 @@ pub fn run(lib: Library) -> Result<()> {
                     }
                     continue;
                 }
-                if s.recording {
-                    match k.code {
-                        KeyCode::Esc => s.recording = false,
-                        KeyCode::Char(c @ '1'..='3') => s.mode = (c as u8 - b'1') as usize,
-                        KeyCode::Char('a') => s.system = !s.system,
-                        KeyCode::Char('m') => s.mic = !s.mic,
-                        KeyCode::Enter => {
-                            let mut cmd = self_command()?;
-                            cmd.args(["record", "toggle"]);
-                            if s.mode == 1 {
-                                cmd.arg("--region");
-                            }
-                            if s.mode == 2 {
-                                cmd.arg("--window");
-                            }
-                            if s.system {
-                                cmd.arg("--system-audio");
-                            }
-                            if s.mic {
-                                cmd.arg("--mic");
-                            }
-                            // Run asynchronously: slurp needs user input outside the terminal.
-                            crate::spawn_reaped(
-                                cmd.stdin(Stdio::null())
-                                    .stdout(Stdio::null())
-                                    .stderr(Stdio::null()),
-                            )?;
-                            s.recording = false;
-                            s.message =
-                                "已提交录屏请求；开始/结束由桌面通知提示（CLI 可查看错误）".into();
-                        }
-                        _ => {}
-                    }
-                    continue;
-                }
                 match k.code {
                     KeyCode::Char('q') => break,
                     KeyCode::Char('?') => s.help = true,
-                    KeyCode::Char(c @ '1'..='4') => {
+                    KeyCode::Char(c @ '1'..='2') => {
                         s.page = (c as u8 - b'1') as usize;
                         s.selected = 0;
                         s.offset = 0;
@@ -443,7 +524,6 @@ pub fn run(lib: Library) -> Result<()> {
                         start_ocr(&lib)?;
                         data = entries(&lib, &s)?;
                     }
-                    KeyCode::Char('r') => s.recording = true,
                     KeyCode::Char('d') if selected.is_some() => {
                         s.delete_target = selected.cloned();
                         s.delete = 1;
@@ -464,34 +544,30 @@ pub fn run(lib: Library) -> Result<()> {
                     _ => {}
                 }
             }
-            Event::Mouse(m) if s.input.is_none() && !s.help && s.delete == 0 && !s.recording => {
-                match m.kind {
-                    MouseEventKind::ScrollDown => {
-                        s.selected = (s.selected + 1).min(data.len().saturating_sub(1))
-                    }
-                    MouseEventKind::ScrollUp => s.selected = s.selected.saturating_sub(1),
-                    MouseEventKind::Down(_)
-                        if s.input.is_none()
-                            && !s.help
-                            && s.delete == 0
-                            && !s.recording
-                            && m.column > list_area.x
-                            && m.column < list_area.right()
-                            && m.row >= list_area.y + 2
-                            && m.row < list_area.bottom() - 1 =>
-                    {
-                        s.selected = (s.offset + (m.row - list_area.y - 2) as usize)
-                            .min(data.len().saturating_sub(1));
-                    }
-                    _ => {}
+            Event::Mouse(m) if s.input.is_none() && !s.help && s.delete == 0 => match m.kind {
+                MouseEventKind::ScrollDown => {
+                    s.selected = (s.selected + 1).min(data.len().saturating_sub(1))
                 }
-            }
+                MouseEventKind::ScrollUp => s.selected = s.selected.saturating_sub(1),
+                MouseEventKind::Down(_)
+                    if s.input.is_none()
+                        && !s.help
+                        && s.delete == 0
+                        && m.column > list_area.x
+                        && m.column < list_area.right()
+                        && m.row >= list_area.y + 2
+                        && m.row < list_area.bottom() - 1 =>
+                {
+                    s.selected = (s.offset + (m.row - list_area.y - 2) as usize)
+                        .min(data.len().saturating_sub(1));
+                }
+                _ => {}
+            },
             Event::Resize(_, _) => {
                 terminal.clear()?;
             }
             _ => {}
         }
     }
-    // Recording has its own supervised lifetime; closing the library keeps it running.
     Ok(())
 }

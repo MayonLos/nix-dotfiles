@@ -31,7 +31,7 @@
 | QQ | 保留当前包与 wrapper | PipeWire、Wayland、输入法及桌面入口已有处理。官方 Linux 包仍维护，但换包装不等于解决当前 Nix 兼容问题。 |
 | 微信 Linux | 已替换 UOS | 使用 unstable 官方版 4.1.13.26；按锁定 AppImage/FHS wrapper 保留官方后端探测，登录、中文输入及剪贴板待实机回归。旧数据保留。 |
 | Vesktop | 已替换 Discord | 用户确认使用系统 Vencord；锁定包包含 PipeWire/venmic，Wayland wrapper 跟随会话环境。实际音频与屏幕分享仍待验证，Discord 数据保留。 |
-| Clash Verge Rev | 保留 | 当前 GUI + service + TUN 覆盖整机应用。浏览器代理不能覆盖相同场景；纯 CLI 会损失当前配置管理界面。 |
+| 原生 mayon-clash | 保留 | Mihomo service + TUN 覆盖整机应用，TUI 管理订阅、节点和设置。 |
 | Thunar | 保留 | GUI 拖放、GVFS、缩略图及自定义菜单有独立价值。换 Dolphin 要迁移菜单、快捷键、终端及 MIME，未发现足够收益。 |
 | Yazi | 保留 | 终端文件管理、Git/文档预览和 Kitty 图像与 Thunar 互补。换 lf/ranger 要重写插件与预览，不是现成精简。 |
 | Swayimg | 保留，完善现有配置 | 锁定版本是 **4.7、INI 配置**，已有 gallery、动画及多格式支持。不要直接套主线新版 Lua；可在当前版本内调整缩放、背景、导航和 MIME。 |
@@ -51,7 +51,7 @@
 | playerctl | 保留 | MPRIS 媒体控制接线，不是另一个播放器。 |
 | Lenovo Legion 工具 | 保留主机专属 | 面向该笔记本；后续放入 host 硬件能力，服务器不继承。不能仅凭包名判断硬件功能已生效。 |
 
-资料：[Mozilla 定制](https://support.mozilla.org/en-US/kb/firefox-advanced-customization-and-configuration)、[QQ Linux](https://im.qq.com/linuxqq/index.shtml)、[Discord 分享限制](https://support.discord.com/hc/en-us/articles/360040816151-Go-Live-and-Screen-Share)、[Vesktop 排障](https://vesktop.dev/wiki/linux/troubleshooting/)、[Clash TUN](https://github.com/clash-verge-rev/clash-verge-rev.github.io/blob/main/docs/guide/quickstart.md)、[Yazi](https://yazi-rs.github.io/docs/configuration/yazi/)、[Swayimg v4.7](https://github.com/artemsen/swayimg/blob/v4.7/README.md)、[mpv 手册](https://mpv.io/manual/stable/)、[btop](https://github.com/aristocratos/btop)。
+资料：[Mozilla 定制](https://support.mozilla.org/en-US/kb/firefox-advanced-customization-and-configuration)、[QQ Linux](https://im.qq.com/linuxqq/index.shtml)、[Discord 分享限制](https://support.discord.com/hc/en-us/articles/360040816151-Go-Live-and-Screen-Share)、[Vesktop 排障](https://vesktop.dev/wiki/linux/troubleshooting/)、[Mihomo TUN](https://wiki.metacubex.one/config/inbound/tun/)、[Yazi](https://yazi-rs.github.io/docs/configuration/yazi/)、[Swayimg v4.7](https://github.com/artemsen/swayimg/blob/v4.7/README.md)、[mpv 手册](https://mpv.io/manual/stable/)、[btop](https://github.com/aristocratos/btop)。
 
 版本证据：[锁定 Noctalia 的 clipboard 配置说明](https://raw.githubusercontent.com/noctalia-dev/noctalia-shell/5f864d472676c77e5310881b243f15cc371bb223/docs/user/configuration/shell.mdx)、[锁定 mark-shot](https://raw.githubusercontent.com/jswysnemc/mark-shot/fd481ed87902a26600b872ed33a9e951dd637423/README.md)、[锁定 wayscrollshot](https://raw.githubusercontent.com/jswysnemc/wayscrollshot/703474ad7b94a504306d7a93d21668ee162ebf1c/README.md)、[Noctalia Audio](https://docs.noctalia.dev/noctalia/control-center/)。音频文档的控件范围不能代替本机面板验证。
 

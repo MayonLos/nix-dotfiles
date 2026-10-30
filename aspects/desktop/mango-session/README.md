@@ -30,14 +30,13 @@ four two-column tiles are Wi-Fi, Clash, Bluetooth and DND: solid palette blue
 with dark text when active, quiet surface fill otherwise, and separate title /
 live status text. The Home header uses the neutral “Control Center” title. Left click toggles the native Wi-Fi, Bluetooth or DND service;
 right click opens its existing details tab. Clash reads only `/version` and one
-`/traffic` sample from the native `/run/mayon-clash/mihomo.sock` and per-user
-Verge Unix socket. No socket means “controller disconnected”, not proof that a
-service or GUI has stopped. Conflicting controllers are labelled explicitly.
+`/traffic` sample from `/run/mayon-clash/mihomo.sock`. No socket means
+“controller disconnected”, not proof that the service has stopped.
 Clicking Clash closes Home and reuses the existing named `mayon-clash` scratchpad;
-the TUI owns backend selection, start/stop confirmation and configuration. The
-tile never guesses a lifecycle command or starts/stops Verge automatically.
+the TUI owns start/stop confirmation and configuration. The
+tile only reads status and opens the TUI.
 The public package factory is `packages/noctalia-clash-status/default.nix`;
-its `tests.status` checks delayed traffic, conflict, stale socket and bad data.
+its `tests.status` checks delayed traffic, stale socket and bad data.
 
 The volume and brightness sliders retain native service bindings and use an
 opt-in Primary→Tertiary (One Dark blue→purple) fill added to the native Slider;
@@ -172,7 +171,7 @@ percentages of the remaining half-screen, not pixels.
 | Firefox | Library/Downloads `dialog`, About `compact`; PiP retains its 480×270 size, offsets and overlay/global/silent behavior |
 | Thunar | Progress/rename `compact`, properties/preferences/Bulk Rename `dialog`; main directories tiled |
 | Audio/Bluetooth/network, CopyQ, calculator/color tools | One centered `tools` size; no former top-right offset |
-| Clash Verge / Noctalia settings | `panel`; `clash-verge` desktop WM_CLASS / Tauri ID and native `dev.noctalia.Noctalia` ID |
+| Noctalia settings | `panel`; native `dev.noctalia.Noctalia` ID |
 | Qt/Fcitx, File Roller, keyboard-layout and Legion settings | `dialog`; existing observed Fcitx `org.fcitx.` identity retained |
 | QQ/WeChat/Tencent Meeting/Vesktop | Login `compact`, call/image viewer `dialog`; existing notification/sharing silent/focus semantics retained |
 | JetBrains/LibreOffice/Zotero/GIMP/Prism | Existing scoped modal/splash rules; JetBrains agreements retain client size workaround |
@@ -187,7 +186,7 @@ percentages of the remaining half-screen, not pixels.
 | `compact` | 0.42 × 0.42 | Authentication, confirmation, small progress/rename |
 | `dialog` | 0.56 × 0.64 | Choosers, preferences and modal editors |
 | `tools` | 0.46 × 0.58 | Audio/network and small standalone tools |
-| `panel` | 0.68 × 0.78 | Noctalia settings and Clash Verge |
+| `panel` | 0.68 × 0.78 | Noctalia settings |
 | `workspace` | 0.78 × 0.78 | Viewers, VM manager and named TUI scratchpads |
 
 Every named size is centered without offsets. PiP remains an explicit exception.

@@ -432,7 +432,7 @@ fn execute() -> Result<()> {
                 "临时防火墙: {}；仅开游戏 TCP 端口，不开 RCON。正版={} 白名单={}。",
                 c.lan, c.online_mode, c.whitelist
             );
-            println!("推荐 Tailscale：双方安装并加入受控 tailnet，访问 100.x 地址；无需端口转发。先在系统配置启用 services.tailscale.enable，再显式连接。凭据归 tailscaled，管家不读取凭据。\nClash：为 127.0.0.0/8、RFC1918、100.64.0.0/10、fd7a:115c:a1e0::/48 设 DIRECT；入站路由需实测。不重写 Verge 配置。");
+            println!("推荐 Tailscale：双方安装并加入受控 tailnet，访问 100.x 地址；无需端口转发。先在系统配置启用 services.tailscale.enable，再显式连接。凭据归 tailscaled，管家不读取凭据。\nClash：为 127.0.0.0/8、RFC1918、100.64.0.0/10、fd7a:115c:a1e0::/48 设 DIRECT；入站路由需实测。不重写 Mihomo 配置。");
             if let Ok(output) = Command::new("tailscale")
                 .args(["status", "--json"])
                 .output()

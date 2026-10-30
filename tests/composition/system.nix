@@ -71,10 +71,10 @@ let
       noPersonalAccount = !(c.users.users ? mayon);
       noLaptopPower = !c.services.thermald.enable && !c.services.upower.enable && !c.services.scx.enable;
       noConservationGrant = !(c.users.groups ? legion-conservation);
+      noLaptopNetwork = !c.networking.networkmanager.enable && !c.services.resolved.enable;
       noProxy = !(c.systemd.services.nix-daemon.environment ? https_proxy);
       noTunTrust = builtins.all (i: !(builtins.elem i c.networking.firewall.trustedInterfaces)) [
-        "Meta"
-        "Mihomo"
+        "mayon-clash"
       ];
       noPersonalTrust = !(builtins.elem "mayon" c.nix.settings.trusted-users);
       noSecrets = !(c ? sops);
@@ -85,11 +85,16 @@ let
     arm = inspect "aarch64-linux" false;
     laptop = {
       clashServiceOwnsTun =
-        host.programs.clash-verge.serviceMode
-        && !host.programs.clash-verge.autoStart
-        && !host.programs.clash-verge.tunMode
-        && !(host.security.wrappers ? clash-verge)
-        && host.systemd.services.clash-verge.enable;
+        host.services.mayon-clash.user == "mayon"
+        && host.systemd.services.mayon-clash.enable
+        && host.systemd.services.mayon-clash.wantedBy == [ ]
+        && host.systemd.services.mayon-clash.serviceConfig.User == host.services.mayon-clash.user
+        &&
+          host.systemd.services.mayon-clash.serviceConfig.AmbientCapabilities == [
+            "CAP_NET_ADMIN"
+            "CAP_NET_BIND_SERVICE"
+          ]
+        && builtins.elem "mayon-clash" host.networking.firewall.trustedInterfaces;
       stableDefaultKernel = host.boot.kernelPackages.kernel.drvPath == pkgs.linuxPackages.kernel.drvPath;
       matchingStableNvidia =
         host.hardware.nvidia.package.drvPath == host.boot.kernelPackages.nvidiaPackages.stable.drvPath;

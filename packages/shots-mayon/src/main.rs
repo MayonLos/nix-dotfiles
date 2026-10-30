@@ -1,6 +1,5 @@
 mod actions;
 mod library;
-mod record;
 mod tui;
 
 use anyhow::Result;
@@ -13,7 +12,7 @@ use std::{
 };
 
 #[derive(Parser)]
-#[command(version, about = "截图与录屏库 · 本地 OCR / Kitty 预览")]
+#[command(version, about = "截图库 · 本地 OCR / Kitty 预览")]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -27,26 +26,18 @@ enum Commands {
         #[arg(long)]
         no_ocr: bool,
     },
-    /// 文件名、日期、类型、来源与 OCR 搜索，输出 JSON
+    /// 文件名、日期、来源与 OCR 搜索截图，输出 JSON
     Search {
         term: String,
-        #[arg(long)]
-        kind: Option<String>,
         #[arg(long)]
         source: Option<String>,
         #[arg(long)]
         favorite: bool,
     },
-    Record {
-        #[command(subcommand)]
-        command: record::RecordCommand,
-    },
     Ocr {
         #[command(subcommand)]
         command: OcrCommand,
     },
-    #[command(hide = true)]
-    RecordWorker { spec: String },
     #[command(hide = true)]
     OcrWorker,
 }
@@ -106,7 +97,7 @@ fn ocr_queue(lib: &Library) -> Result<()> {
     Ok(())
 }
 fn main() {
-    // Indexes, OCR and recording metadata contain private text.
+    // Indexes and OCR metadata contain private text.
     unsafe {
         libc::umask(0o077);
     }
@@ -117,9 +108,6 @@ fn main() {
 }
 fn run() -> Result<()> {
     let cli = Cli::parse();
-    if let Some(Commands::RecordWorker { spec }) = cli.command {
-        return record::worker(serde_json::from_str(&spec)?);
-    }
     let lib = Library::open()?;
     match cli.command.unwrap_or(Commands::Tui) {
         Commands::Tui => tui::run(lib),
@@ -132,27 +120,14 @@ fn run() -> Result<()> {
         }
         Commands::Search {
             term,
-            kind,
             source,
             favorite,
         } => {
             println!(
                 "{}",
-                serde_json::to_string_pretty(&lib.entries(
-                    &term,
-                    kind.as_deref(),
-                    source.as_deref(),
-                    favorite
-                )?)?
+                serde_json::to_string_pretty(&lib.entries(&term, source.as_deref(), favorite)?)?
             );
             Ok(())
-        }
-        Commands::Record { command } => {
-            let result = record::run(&lib, command);
-            if let Err(e) = &result {
-                record::notify(&format!("录制请求失败：{e:#}"), false);
-            }
-            result
         }
         Commands::Ocr { command } => {
             match command {
@@ -166,6 +141,5 @@ fn run() -> Result<()> {
             Ok(())
         }
         Commands::OcrWorker => ocr_queue(&lib),
-        Commands::RecordWorker { .. } => unreachable!(),
     }
 }

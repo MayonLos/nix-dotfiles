@@ -4,7 +4,9 @@ use std::path::Path;
 #[derive(Clone, Debug, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Settings {
-    pub backend: crate::backend::Preference,
+    // Read old preference files without making the retired backend selectable.
+    #[serde(default, rename = "backend")]
+    _legacy_backend: Option<String>,
     pub test_url: String,
     pub timeout_ms: u64,
     /// Limits client-side batch probes; Mihomo owns group/provider concurrency.
@@ -15,7 +17,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            backend: Default::default(),
+            _legacy_backend: None,
             test_url: "https://www.gstatic.com/generate_204".into(),
             timeout_ms: 5000,
             concurrency: 4,
@@ -58,7 +60,8 @@ mod tests {
     use super::*;
     #[test]
     fn preferences_validate_and_default() {
-        let s: Settings = toml::from_str("concurrency = 2\ndefault_sort = 'delay'").unwrap();
+        let s: Settings =
+            toml::from_str("backend = 'verge'\nconcurrency = 2\ndefault_sort = 'delay'").unwrap();
         assert!(s.validate().is_ok());
         assert_eq!(s.default_page, 1);
         let mut bad = s;

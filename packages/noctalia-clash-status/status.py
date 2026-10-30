@@ -6,7 +6,6 @@ subscriptions, credentials, connection lists or the TCP controller.
 
 import http.client
 import json
-import os
 import socket
 from pathlib import Path
 
@@ -41,21 +40,11 @@ def request(path, endpoint):
         conn.close()
 
 
-def probe(paths):
-    live = []
-    uncertain = False
-    for label, path in paths:
-        version = request(path, "/version")
-        if isinstance(version, dict) and isinstance(version.get("version"), str):
-            live.append((label, path))
-        elif path.exists():
-            uncertain = True
-    if len(live) > 1:
-        return {"label": "双内核运行 · 请检查", "active": True}
-    if not live:
-        return {"label": "状态不可用" if uncertain else "控制器未连接", "active": False}
-    label, path = live[0]
-    result = {"label": label + " · 运行中", "active": True}
+def probe(path):
+    version = request(path, "/version")
+    if not (isinstance(version, dict) and isinstance(version.get("version"), str)):
+        return {"label": "状态不可用" if path.exists() else "控制器未连接", "active": False}
+    result = {"label": "原生 · 运行中", "active": True}
     traffic = request(path, "/traffic")
     if isinstance(traffic, dict) and all(
         isinstance(traffic.get(k), (int, float)) and not isinstance(traffic[k], bool)
@@ -73,8 +62,5 @@ def rate(value):
 
 
 if __name__ == "__main__":
-    paths = [("原生", Path("/run/mayon-clash/mihomo.sock"))]
-    runtime = os.environ.get("XDG_RUNTIME_DIR")
-    if runtime:
-        paths.append(("Verge", Path(runtime) / "clash-verge-rev/verge-mihomo.sock"))
-    print(json.dumps(probe(paths), ensure_ascii=False))
+    path = Path("/run/mayon-clash/mihomo.sock")
+    print(json.dumps(probe(path), ensure_ascii=False))

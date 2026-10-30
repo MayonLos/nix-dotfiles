@@ -61,6 +61,7 @@ can change them. Run development against explicit private sockets and test
 processes. Start every isolated runtime from `env -i` with a private HOME/XDG
 and D-Bus/Wayland session. Never inspect or log an inherited environment. See
 [agent workflow](../../docs/agent-workflow.md), sections 3 and 8, for screenshots.
-Clash offers paired fixture executable/launcher options and `--no-verge`;
+Clash accepts `--data-dir`, `--socket`, `--mihomo`, `--systemctl`, and `--config`
+paths for isolated data and service fixtures;
 Docker accepts `--host`; ports can run in an unprivileged user/network
 namespace for synthetic listeners and process actions.

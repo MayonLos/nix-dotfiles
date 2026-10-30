@@ -15,7 +15,7 @@ in
   options.services.mayon-clash.user = lib.mkOption {
     type = lib.types.nullOr lib.types.str;
     default = null;
-    description = "The bound local account owning the manual native Clash trial.";
+    description = "The bound local account owning the manual native Clash service.";
   };
   config = lib.mkIf (cfg.user != null) {
     assertions = [
@@ -49,7 +49,7 @@ in
     # The TUI creates the private data directory before producing a config.
     # There is deliberately no wantedBy, timer, socket activation or restart policy.
     systemd.services.mayon-clash = {
-      description = "Manual Mayon Clash (Mihomo native trial)";
+      description = "Manual Mayon Clash (Mihomo)";
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
       serviceConfig = {

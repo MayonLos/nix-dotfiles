@@ -1,7 +1,7 @@
 //! Small, secret-free client for the Mihomo external controller API.
 //!
 //! The controller is reached only through the caller-provided Unix socket. We
-//! intentionally do not add an Authorization header: Verge's Unix socket is
+//! intentionally do not add an Authorization header: the Unix socket is
 //! already the supported local boundary and its API secret must stay private.
 
 use std::{collections::BTreeMap, path::PathBuf, time::Duration};
@@ -288,16 +288,6 @@ impl Client {
         } else {
             Err(ApiError::Rejected)
         }
-    }
-
-    /// Change global routing mode (`rule`, `global`, or `direct`).
-    pub async fn set_mode(&self, mode: &str) -> Result<(), ApiError> {
-        self.empty(
-            Method::PATCH,
-            &["configs"],
-            Some(serde_json::json!({ "mode": mode })),
-        )
-        .await
     }
 
     /// Probe one proxy and return its measured delay in milliseconds.

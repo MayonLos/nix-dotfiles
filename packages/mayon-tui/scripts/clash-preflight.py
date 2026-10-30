@@ -63,18 +63,8 @@ if len(sys.argv) > 1 and sys.argv[1] == "stop":
 
 data, mihomo, geoip, geosite, mmdb = sys.argv[1:]
 data = Path(data)
-# A system service has no XDG_RUNTIME_DIR; derive the owner runtime from its real UID.
-verge = Path(f"/run/user/{os.getuid()}/clash-verge-rev/verge-mihomo.sock")
-with socket.socket(socket.AF_UNIX) as probe:
-    probe.settimeout(1)
-    try:
-        probe.connect(str(verge))
-    except OSError:
-        pass
-    else:
-        fail("Verge 内核仍在运行；请先退出 Verge，再启动 mayon-clash。")
 if not data.is_dir():
-    fail("配置目录不存在；请先在 TUI 添加或导入订阅。")
+    fail("配置目录不存在；请先在 TUI 添加订阅。")
 for source, name in [(geoip, "GeoIP.dat"), (geosite, "GeoSite.dat"), (mmdb, "Country.mmdb")]:
     target = data / name
     if not target.exists():

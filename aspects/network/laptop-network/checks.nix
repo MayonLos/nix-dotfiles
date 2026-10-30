@@ -8,8 +8,9 @@ assert service.serviceConfig.User == nixos.services.mayon-clash.user;
 assert service.serviceConfig.RuntimeDirectoryMode == "0700";
 assert service.serviceConfig.NoNewPrivileges;
 assert service.serviceConfig.ProtectHome == "read-only";
-assert nixos.programs.clash-verge.enable;
-assert !nixos.programs.clash-verge.autoStart;
+assert service.enable;
+assert (service.serviceConfig.Restart or "no") == "no";
+assert builtins.elem "mayon-clash" nixos.networking.firewall.trustedInterfaces;
 assert !(nixos.systemd.services.nix-daemon.environment ? HTTPS_PROXY);
 {
   laptop-network = pkgs.runCommand "laptop-network-check" { } "touch $out";

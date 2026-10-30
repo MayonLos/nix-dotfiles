@@ -48,28 +48,25 @@ def controller(path, traffic=None, valid=True, delay=0):
 
 
 class StatusTests(unittest.TestCase):
-    def test_live_conflict_stale_and_absent(self):
+    def test_live_stale_and_absent(self):
         with tempfile.TemporaryDirectory() as folder:
-            native, verge = (Path(folder) / name for name in ("native", "verge"))
-            paths = [("原生", native), ("Verge", verge)]
-            self.assertFalse(status.probe(paths)["active"])
-            with controller(native, {"up": 1024, "down": 2048}, delay=1):
-                result = status.probe(paths)
+            path = Path(folder) / "native"
+            self.assertFalse(status.probe(path)["active"])
+            with controller(path, {"up": 1024, "down": 2048}, delay=1):
+                result = status.probe(path)
                 self.assertEqual(result, {"label": "原生 · 运行中", "active": True,
                                           "traffic": "↑1.0KiB/s  ↓2.0KiB/s"})
-                with controller(verge):
-                    self.assertEqual(status.probe(paths), {"label": "双内核运行 · 请检查", "active": True})
-            self.assertEqual(status.probe(paths)["label"], "状态不可用")
+            self.assertEqual(status.probe(path)["label"], "状态不可用")
 
     def test_bad_or_unavailable_data_never_invents_traffic(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "core"
             with controller(path, {"up": -1, "down": "secret"}):
-                self.assertNotIn("traffic", status.probe([("原生", path)]))
+                self.assertNotIn("traffic", status.probe(path))
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "core"
             with controller(path, valid=False):
-                self.assertEqual(status.probe([("原生", path)]), {"label": "状态不可用", "active": False})
+                self.assertEqual(status.probe(path), {"label": "状态不可用", "active": False})
 
 
 if __name__ == "__main__":

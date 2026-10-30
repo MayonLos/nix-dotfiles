@@ -114,34 +114,35 @@ def main():
         (root / "narrow-grid.txt").write_bytes(run("kitty", "@", "--to", "unix:" + str(remote), "get-text").stdout)
         run("swaymsg", "[app_id=shots-verify] move position center")
         shot("round1-narrow.png")
-        # Round 2 repeats after reviewing the first artifacts; -- reruns overwrite
-        # with new code, ensuring screenshots always represent the tested binary.
+        # Round 2 checks screenshot-only layout and the delete confirmation.
         run("swaymsg", "[app_id=shots-verify] resize set 1450 930, move position center")
-        key("2")
+        key("1")
         shot("round2-library.png")
         key("d")
         shot("round2-delete-first.png")
         key("Return")
         shot("round2-delete-second.png")
         key("Escape")
-        key("r")
-        shot("round2-record-dialog.png")
+        shot("round2-library-confirmation.png")
+
+        # Round 3 favorites a synthetic screenshot, checks the favorites page,
+        # then clears a search and returns to the screenshot page.
+        key("1")
         key("Escape")
-        # Isolated, silent recording only. No microphone/speaker daemon exists.
-        first = run(args.binary, "record", "toggle", "--output", "HEADLESS-1").stdout.decode()
-        time.sleep(2)
-        status = run(args.binary, "record", "status").stdout.decode()
-        stopped = run(args.binary, "record", "toggle").stdout.decode()
-        files = list((home / "Videos/Recordings").glob("*.mkv"))
-        assert len(files) == 1
-        probe = json.loads(run("ffprobe", "-v", "error", "-show_streams", "-show_format", "-of", "json", str(files[0])).stdout)
-        assert any(s["codec_type"] == "video" for s in probe["streams"])
-        assert not any(s["codec_type"] == "audio" for s in probe["streams"])
-        assert float(probe["format"]["duration"]) > 0
-        (root / "record-verification.json").write_text(json.dumps({"start": first,"status":status,"stop": stopped,"ffprobe": probe},indent=2))
-        key("3")
-        time.sleep(3)
-        shot("round2-recording-library.png")
+        key("*")
+        shot("round3-favorited-screenshot.png")
+        key("2")
+        shot("round3-favorites.png")
+        run("kitty", "@", "--to", "unix:" + str(remote), "send-text", "/")
+        run("kitty", "@", "--to", "unix:" + str(remote), "send-text", "SYNTHETIC")
+        key("Return")
+        filtered = run("kitty", "@", "--to", "unix:" + str(remote), "get-text").stdout.decode()
+        assert "SYNTHETIC" in filtered
+        key("Escape")
+        key("1")
+        shot("round3-library-cleared.png")
+        text = run("kitty", "@", "--to", "unix:" + str(remote), "get-text").stdout.decode()
+        assert "录屏" not in text and "record" not in text.lower(), "recording entry remains in TUI"
         key("q")
         kitty.wait(timeout=10)
     finally:

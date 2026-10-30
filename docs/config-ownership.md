@@ -39,7 +39,7 @@
 | Thunar actions 与快捷键 | `aspects/apps/file-manager/thunar-actions.nix` 生成完整 `~/.config/Thunar/uca.xml`；activation 只维护 `accels.scm` 中仓库 `copy-image-as-png-1` 的一行。`thunar-terminal.nix` 生成绝对路径 helper 与 XFCE terminal helper 选择；动作经 workspace terminal/editor 或显式包路径运行。 | `uca.xml` 不再由 Thunar GUI 保存；accels 其余行归 Thunar/用户。首次交接前须检查旧 action、ID 和 accel 行。 |
 | mark-shot 配置 | `aspects/desktop/mango-session/screenshot.nix` 的 activation 将 `~/.config/mark-shot/config.json` 的 `windowDetection.command` 指向 Mango 窗口检测 helper。 | mark-shot 对其他 JSON 设置拥有权。patch 应保持幂等并保留其余字段；实际既有文件尚未在新 generation 检查。 |
 | 用户 clipboard 与截图状态 | 交互会话声明 Mango session target 上的 Wayland/X11 clipboard bridge；截图使用 Mango 窗口检测 helper。Noctalia 原生 clipboard 功能由 Noctalia 自身管理。 | Noctalia 的剪贴板历史与应用数据是用户 state；配置不执行清空。service unit 构建/求值不能证明会话启动顺序或剪贴板双向传输有效。 |
-| 自写 TUI | `packages/mayon-tui` 独占程序源码、共享 UI 与 palette 构建；laptop-network 注册的 `clash-tui`、container-client、port-tools 分别只安装公开包的 clash/docker/ports 输出，桌面拥有快捷键与窗口规则。 | Clash native 独占 `~/.local/share/mayon-clash/` 的 subscriptions.toml、订阅缓存、settings.toml、runtime/上一份配置（文件0600、目录0700）；mihomo 拥有 Geo/cache/providers 运行数据。Verge 模式只读 Verge profiles，主动导入只复制 remote 缓存，不执行增强项、不回写 Verge。可选 TUI 偏好仍归用户只读消费。日志仅内存。Docker 数据仍归 Docker/用户；确认操作可删指定容器/镜像，卷需二次确认且不自动清理。端口信号只允许当前 UID 且复核启动时间/pidfd 的进程。移除工具仅撤回二进制，不清理应用数据。 |
+| 自写 TUI | `packages/mayon-tui` 独占程序源码、共享 UI 与 palette 构建；laptop-network 注册的 `clash-tui`、container-client、port-tools 分别只安装公开包的 clash/docker/ports 输出，桌面拥有快捷键与窗口规则。 | Clash native 独占 `~/.local/share/mayon-clash/` 的 subscriptions.toml、订阅缓存、settings.toml、runtime/上一份配置（文件0600、目录0700）；mihomo 拥有 Geo/cache/providers 运行数据。可选 TUI 偏好仍归用户只读消费。日志仅内存。Docker 数据仍归 Docker/用户；确认操作可删指定容器/镜像，卷需二次确认且不自动清理。端口信号只允许当前 UID 且复核启动时间/pidfd 的进程。移除工具仅撤回二进制，不清理应用数据。 |
 | rootless Docker | `local-containers` 将 Docker CLI、shell 与 systemd 的 DOCKER_HOST、选定账号的 user daemon 和 weekly `docker builder prune -f --filter until=168h` timer 绑定在一起；host support 复用锁定 NixOS rootless unit 的配置并取消全局 user-unit 自动拉起。 | Rootless Docker 数据目录、容器、镜像和 named volumes 留给 Docker/用户；自动 prune 仅清理旧构建缓存，不再清理停止容器及其可写层。运行态尚未专项核验，不声称 daemon/timer 已正常运行或数据已迁移。变更服务前核验真实 `docker info` 的 data-root、unit 和卷。 |
 | 本机 VM | `local-virtual-machines` 选择后安装 virt-manager、配置 `qemu:///system`、授予 `libvirtd`/`kvm` 组，并由 host support 配置 QEMU/KVM、swtpm 和 SPICE USB redirection。libvirtd 通过 socket 激活；`libvirt-guests` 被禁用。 | VM 镜像、快照、存储池和 guest state 归 libvirt/用户，当前 aspect 不迁移或删除它们。新组实际权限、socket activation 和存储池仍待专项核验。 |
 | Legion 电池养护 | `legion-laptop` host 声明 `legion-conservation` 组及 ideapad_acpi sysfs 属性 udev 权限；`legion-laptop-user` 的 user class 授予所选账号并安装 `legion-conservation status|toggle`。桌面仅调用 CLI，不获取管理权限。 | `/sys/bus/platform/drivers/ideapad_acpi/*/conservation_mode` 由内核/固件拥有；只有用户点击才写0/1，构建与激活不写养护值。移除配置保留固件现状；权限撤销需设备重建/重启、组变化需刷新登录。无额外 daemon。 |
@@ -64,11 +64,12 @@
 
 第 37 轮声明调整（尚未应用）：FileManager1 的唯一声明改由 file-manager 的 host Thunar 包拥有，撤回 HM 的重复 Thunar 包与 per-user service。Xorg 的 Dunst 包拥有规范命名的通知激活文件，HM 不再生成第二份。session-support 通过上游工厂生成并合并 `/etc/dbus-1` 的显式服务注册，保持 policy include 与标准用户 XDG 服务发现。上述移除仅涉及声明式服务文件，不删除 keyring、文件管理器状态、缩略图、通知历史或用户数据。
 
-第49轮 native Clash 试用声明（尚未应用）：[laptop-network](../aspects/network/laptop-network/README.md)
+原生 Clash 声明：[laptop-network](../aspects/network/laptop-network/README.md)
 拥有无 boot wants 的 `mayon-clash.service` 和绑定用户的单元专属 polkit。Nix 不渲染
-订阅或 mutable 配置。首次 native 写入用 yq 精确选取 Verge runtime 的七个允许键，
-之后 settings.toml 是独立数据源；TUI 与 CLI 共用 flock、临时文件校验、fsync/rename、
+订阅或 mutable 配置。settings.toml 中已有 baseline 继续使用，缺失时回退内置默认；
+TUI 与 CLI 共用 flock、临时文件校验、fsync/rename、
 失败回滚。跨文件不是掉电原子事务，`config.previous.yaml` 保留回退配置。
 Geo 从锁定 store 资源复制后可更新；服务只额外写入 native 数据目录和 systemd
 分配的 runtime。mihomo socket 自身为0666，父目录0700/绑定用户是访问边界。
-Verge 原文件、增强脚本、登录状态与 native 数据在移除 feature 后均保留。
+旧 GUI 原文件、增强脚本、登录状态与 native 数据在移除 feature 后均保留。
+旧 GUI 数据含订阅，用户可自行决定手动删除；仓库不执行清理。

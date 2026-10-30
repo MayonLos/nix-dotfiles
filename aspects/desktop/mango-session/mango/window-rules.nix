@@ -76,8 +76,6 @@ let
     "${dialog},app_id:^(qt[56]ct|fcitx5-config-qt|org[.]fcitx[.].*|org[.]fcitx[.]Fcitx5[.]Config)$"
     "${dialog},app_id:^(org[.]gnome[.]FileRoller|file-roller|kbd-layout-viewer5?|legion_gui)$"
     "${tools},app_id:^(com[.]github[.]hluk[.]copyq|copyq|CopyQ)$"
-    # Clash Verge's app ID follows its Linux desktop entry.
-    "${panel},app_id:^(clash-verge|Clash-verge|io[.]github[.]clash-verge-rev[.]clash-verge-rev)$"
     # mark-shot capture and wayscrollshot selection are layer surfaces. Do not
     # resize their full-output capture areas; this only catches editor toplevels.
     "${float},no_animation:1,app_id:^(mark-shot|markshot|MarkShot)$"

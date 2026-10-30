@@ -13,11 +13,8 @@ pub async fn run() -> Result<bool, String> {
     let mut ctx = Native {
         data: home.join(".local/share/mayon-clash"),
         socket: "/run/mayon-clash/mihomo.sock".into(),
-        verge_profiles: home
-            .join(".local/share/io.github.clash-verge-rev.clash-verge-rev/profiles.yaml"),
         mihomo: "mihomo".into(),
         systemctl: "systemctl".into(),
-        yq: "yq".into(),
     };
     let mut args = vec![];
     let mut iter = raw.into_iter();
@@ -25,7 +22,6 @@ pub async fn run() -> Result<bool, String> {
         match a.as_str() {
             "--data-dir" => ctx.data = iter.next().ok_or("缺少目录")?.into(),
             "--socket" => ctx.socket = iter.next().ok_or("缺少 socket")?.into(),
-            "--profiles" => ctx.verge_profiles = iter.next().ok_or("缺少 Verge 索引路径")?.into(),
             "--mihomo" => ctx.mihomo = iter.next().ok_or("缺少命令")?.into(),
             "--systemctl" => ctx.systemctl = iter.next().ok_or("缺少命令")?.into(),
             _ => args.push(a),
@@ -74,7 +70,6 @@ pub async fn run() -> Result<bool, String> {
             }
             ctx.delete(get(2)?)?;
         }
-        ("profile", "import-verge") => println!("{}", ctx.import_verge(running).await?),
         ("profile", "generate") => ctx.generate().await?,
         ("settings", key) => ctx.change(key, get(2)?, running).await?,
         ("service", "start") => {

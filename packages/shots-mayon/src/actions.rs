@@ -56,7 +56,7 @@ pub fn action(entry: &Entry, key: char, lib: &Library) -> Result<String> {
             }
             copy(&out.stdout, "image/png")?;
         }
-        'c' => bail!("录屏请使用 y 复制路径"),
+        'c' => bail!("只能复制截图"),
         't' => copy(entry.text.as_bytes(), "text/plain;charset=utf-8")?,
         'e' if entry.kind == "image" => {
             crate::spawn_reaped(
