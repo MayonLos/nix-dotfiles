@@ -18,7 +18,7 @@ The upstream Swayimg 4.7 `exec` action substitutes `%` verbatim before invoking 
 
 Owned files are `default.nix`, `blender.nix`, `images.nix`, `swayimg-package.nix`, `checks.nix`, `mpv.nix`, `musicfox.nix`, `obs-studio.nix`, `resources/swayimg-shellcmd-safe-path.patch`, `resources/swayimg-shellcmd-check.c`, `resources/refine-uosc.py`, `resources/compact-uosc.py`, `resources/uosc-subtitle-margin.lua`, and `resources/test-uosc-subtitle-margin.lua`; these implementation files are private to the feature except `checks.nix`, the explicitly registered public test hook. `images.nix` owns the Swayimg INI and its three scoped helper executables (confirmed trash, clipboard conversion, and detached GIMP open). Removing the feature removes package, MIME, and configuration declarations, while media libraries, OBS profiles/recordings, Blender projects, images, and other user data remain on disk. The viewer check verifies the rendered configuration and the locked binary's advertised decoder formats; the shell check compiles the locked upstream helper with the local patch and tests safe path expansion. GUI appearance and decoder runtime still require the isolated screenshot/runtime verification for this round.
 
-## Bilibili terminal client
+Bilibili 的 XDG config/data/cache 及 `~/Videos/Bilibili/` 下载均归用户所有，移除功能不会删除。mpv、FFmpeg 仍由 Media 独立安装。
 
 Media additionally installs `pkgs.bilitui` (`bilitui-mayon`), the independent
 [packages/bilitui](../../../packages/bilitui/README.md) Rust package. It reuses

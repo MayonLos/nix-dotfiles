@@ -5,11 +5,15 @@ use crate::cleanup::{self, Entry, Flow, Kind, Report};
 use crate::vm;
 use crossterm::event::{KeyCode, KeyEvent, MouseEvent, MouseEventKind};
 use futures_util::StreamExt;
-use mayon_ui::{self as ui, theme::*};
+use mayon_ui::{
+    self as ui,
+    input::TextInput,
+    search::{Matcher, SearchCache},
+    theme::*,
+};
 use ratatui::{
     layout::Constraint,
-    style::Style,
-    text::{Line, Span},
+    text::Line,
     widgets::{Paragraph, Wrap},
     Frame,
 };
@@ -66,7 +70,9 @@ pub struct App {
     page: Page,
     pub quit: bool,
     selected: usize,
-    filter: String,
+    filter: TextInput,
+    filter_before: TextInput,
+    search_cache: SearchCache,
     filtering: bool,
     sort: usize,
     containers: Vec<Container>,
@@ -81,17 +87,19 @@ pub struct App {
     message: String,
     message_until: Option<Instant>,
     online: bool,
+    load_error: Option<String>,
     confirm: Option<Confirm>,
     help: bool,
     details: bool,
     logs: Option<String>,
     log_lines: Vec<String>,
-    log_filter: String,
+    log_filter: TextInput,
     log_scroll: usize,
     log_follow: bool,
     log_job: Option<JoinHandle<()>>,
     tx: mpsc::Sender<Update>,
     rx: mpsc::Receiver<Update>,
+    pending_update: Option<Update>,
     refresh: Option<JoinHandle<()>>,
     last_refresh: Instant,
     action: Option<JoinHandle<()>>,
@@ -118,7 +126,9 @@ impl App {
             page: Page::Containers,
             quit: false,
             selected: 0,
-            filter: String::new(),
+            filter: TextInput::default(),
+            filter_before: TextInput::default(),
+            search_cache: SearchCache::default(),
             filtering: false,
             sort: 0,
             containers: vec![],
@@ -141,17 +151,19 @@ impl App {
             message: "Docker 启动中…".into(),
             message_until: None,
             online: false,
+            load_error: None,
             confirm: None,
             help: false,
             details: false,
             logs: None,
             log_lines: vec![],
-            log_filter: String::new(),
+            log_filter: TextInput::default(),
             log_scroll: 0,
             log_follow: true,
             log_job: None,
             tx,
             rx,
+            pending_update: None,
             refresh: None,
             last_refresh: Instant::now() - Duration::from_secs(5),
             action: None,
@@ -174,22 +186,23 @@ impl App {
         self.filtered_containers().get(self.selected).copied()
     }
     fn filtered_containers(&self) -> Vec<&Container> {
-        let q = self.filter.to_lowercase();
+        let matcher = Matcher::new(&self.filter);
         let mut xs: Vec<_> = self
             .containers
             .iter()
             .filter(|c| {
                 let n = c.names.first().map(String::as_str).unwrap_or(&c.id);
-                format!(
-                    "{n} {} {}",
-                    c.image,
-                    c.labels
-                        .get("com.docker.compose.project")
-                        .map(String::as_str)
-                        .unwrap_or("")
+                self.search_cache.matches(
+                    &matcher,
+                    &format!(
+                        "{n} {} {}",
+                        c.image,
+                        c.labels
+                            .get("com.docker.compose.project")
+                            .map(String::as_str)
+                            .unwrap_or("")
+                    ),
                 )
-                .to_lowercase()
-                .contains(&q)
             })
             .collect();
         if self.sort == 1 {
@@ -199,11 +212,74 @@ impl App {
         }
         xs
     }
+    fn filtered_images(&self) -> Vec<&Image> {
+        let matcher = Matcher::new(&self.filter);
+        self.images
+            .iter()
+            .filter(|i| {
+                self.search_cache
+                    .matches(&matcher, &format!("{} {}", i.id, i.tags.join(" ")))
+            })
+            .collect()
+    }
+    fn filtered_volumes(&self) -> Vec<&Volume> {
+        let matcher = Matcher::new(&self.filter);
+        self.volumes
+            .iter()
+            .filter(|v| self.search_cache.matches(&matcher, &v.name))
+            .collect()
+    }
+    fn keep_selection(&mut self, id: Option<String>) {
+        self.selected = id
+            .and_then(|id| self.ids().iter().position(|x| x == &id))
+            .unwrap_or(0);
+    }
+    fn move_logs(&mut self, delta: i32) {
+        let matcher = Matcher::new(&self.log_filter);
+        let len = self
+            .log_lines
+            .iter()
+            .filter(|s| self.search_cache.matches(&matcher, s))
+            .count();
+        self.log_scroll =
+            (self.log_scroll as i64 + delta as i64).clamp(0, len.saturating_sub(1) as i64) as usize;
+        self.log_follow = self.log_scroll == 0;
+    }
+    fn begin_filter(&mut self) {
+        self.filter_before = if self.logs.is_some() {
+            self.log_filter.clone()
+        } else {
+            self.filter.clone()
+        };
+        self.filtering = true;
+    }
+    pub fn paste(&mut self, value: &str) {
+        if let Some(flow) = &mut self.cleanup_flow {
+            if flow.stage == cleanup::Stage::Volumes {
+                flow.input.paste(value);
+            }
+        } else if self.filtering {
+            let id = self.selected_id();
+            if self.logs.is_some() {
+                self.log_filter.paste(value);
+            } else {
+                self.filter.paste(value);
+            }
+            self.keep_selection(id);
+            self.log_scroll = 0;
+        }
+    }
     fn selected_id(&self) -> Option<String> {
         match self.page {
             Page::Containers => self.selected_container().map(|c| c.id.clone()),
-            Page::Images => self.images.get(self.selected).map(|x| x.id.clone()),
-            Page::Volumes => self.volumes.get(self.selected).map(|x| x.name.clone()),
+            Page::Images => self
+                .filtered_images()
+                .get(self.selected)
+                .map(|x| x.id.clone()),
+            Page::Volumes => self
+                .filtered_volumes()
+                .get(self.selected)
+                .map(|x| x.name.clone()),
             Page::Overview => None,
             Page::Cleanup if self.vm_section => self.vm_rows().get(self.selected).map(|r| r.key()),
             Page::Cleanup => self.cleanup_entries().get(self.selected).map(Entry::key),
@@ -237,20 +313,20 @@ impl App {
     }
     fn poll(&mut self) {
         while self.stats_jobs.try_join_next().is_some() {}
-        while let Ok(u) = self.rx.try_recv() {
+        while let Some(u) = self
+            .pending_update
+            .take()
+            .or_else(|| self.rx.try_recv().ok())
+        {
             match u {
                 Update::Data(epoch, Ok(d))
                     if api_update_is_current(epoch, self.api_epoch, self.stopped_by_user) =>
                 {
                     let keep = self.selected_id();
                     self.online = true;
+                    self.load_error = None;
                     if !self.has_temporary_message() {
-                        self.message = format!(
-                            "{} 容器 · {} 镜像 · {} 卷",
-                            d.containers.len(),
-                            d.images.len(),
-                            d.volumes.len()
-                        );
+                        self.message.clear();
                     }
                     self.containers = d.containers;
                     self.containers.sort_by(|a, b| {
@@ -295,12 +371,13 @@ impl App {
                         });
                     }
                 }
-                Update::Data(epoch, Err(_))
+                Update::Data(epoch, Err(reason))
                     if api_update_is_current(epoch, self.api_epoch, self.stopped_by_user)
                         && !self.has_temporary_message() =>
                 {
+                    self.load_error = Some(reason);
                     if !self.online {
-                        self.message = "Docker 启动中…".into()
+                        self.message = "Docker 连接失败；检查服务或 socket".into()
                     } else {
                         self.message = "Docker API 暂时不可用".into()
                     }
@@ -348,12 +425,38 @@ impl App {
                 Update::Log(epoch, s)
                     if api_update_is_current(epoch, self.api_epoch, self.stopped_by_user) =>
                 {
+                    let matcher = Matcher::new(&self.log_filter);
+                    if !self.log_follow {
+                        self.log_scroll = self.log_scroll.saturating_add(
+                            s.lines()
+                                .filter(|line| self.search_cache.matches(&matcher, line))
+                                .count(),
+                        );
+                    }
                     self.log_lines.extend(s.lines().map(str::to_owned));
-                    if self.log_lines.len() > 4000 {
-                        self.log_lines.drain(..self.log_lines.len() - 4000);
+                    let mut bytes = self.log_lines.iter().map(String::len).sum::<usize>();
+                    let mut discard = 0;
+                    while self.log_lines.len().saturating_sub(discard) > 4000
+                        || bytes > 4 * 1024 * 1024
+                    {
+                        let Some(line) = self.log_lines.get(discard) else {
+                            break;
+                        };
+                        bytes = bytes.saturating_sub(line.len());
+                        discard += 1;
+                    }
+                    if discard > 0 {
+                        self.log_lines.drain(..discard);
                     }
                     if self.log_follow {
                         self.log_scroll = 0;
+                    } else {
+                        let count = self
+                            .log_lines
+                            .iter()
+                            .filter(|line| self.search_cache.matches(&matcher, line))
+                            .count();
+                        self.log_scroll = self.log_scroll.min(count.saturating_sub(1));
                     }
                 }
                 Update::LogEnded(epoch, id)
@@ -373,8 +476,8 @@ impl App {
     fn len(&self) -> usize {
         match self.page {
             Page::Containers => self.filtered_containers().len(),
-            Page::Images => self.images.len(),
-            Page::Volumes => self.volumes.len(),
+            Page::Images => self.filtered_images().len(),
+            Page::Volumes => self.filtered_volumes().len(),
             Page::Overview => 0,
             Page::Cleanup if self.vm_section => self.vm_rows().len(),
             Page::Cleanup => self.cleanup_entries().len(),
@@ -391,8 +494,16 @@ impl App {
                 .iter()
                 .map(|c| c.id.clone())
                 .collect(),
-            Page::Images => self.images.iter().map(|x| x.id.clone()).collect(),
-            Page::Volumes => self.volumes.iter().map(|x| x.name.clone()).collect(),
+            Page::Images => self
+                .filtered_images()
+                .iter()
+                .map(|x| x.id.clone())
+                .collect(),
+            Page::Volumes => self
+                .filtered_volumes()
+                .iter()
+                .map(|x| x.name.clone())
+                .collect(),
             Page::Overview => vec![],
             Page::Cleanup if self.vm_section => self.vm_rows().iter().map(|r| r.key()).collect(),
             Page::Cleanup => self.cleanup_entries().iter().map(Entry::key).collect(),
@@ -401,11 +512,7 @@ impl App {
     fn move_sel(&mut self, d: i32) {
         let n = self.len();
         if n > 0 {
-            self.selected = if d < 0 {
-                self.selected.saturating_sub(1)
-            } else {
-                (self.selected + 1).min(n - 1)
-            }
+            self.selected = (self.selected as i64 + d as i64).clamp(0, n as i64 - 1) as usize;
         }
     }
     fn start_logs(&mut self) {
@@ -414,21 +521,24 @@ impl App {
         };
         let id = c.id.clone();
         let display = c.names.first().cloned().unwrap_or_else(|| id.clone());
-        let e = self.engine.clone();
-        let tx = self.tx.clone();
         self.log_lines.clear();
         self.logs = Some(id.clone());
         self.log_filter.clear();
         self.message = format!("正在跟随 {display} 日志");
         self.log_follow = true;
         self.log_scroll = 0;
+        self.follow_logs(id, true);
+    }
+    fn follow_logs(&mut self, id: String, history: bool) {
+        let e = self.engine.clone();
+        let tx = self.tx.clone();
         if let Some(job) = self.log_job.take() {
             job.abort();
         }
         let epoch = self.api_epoch;
         self.log_job = Some(tokio::spawn(async move {
             let result = async {
-                let (r, tty) = e.logs(&id).await?;
+                let (r, tty) = e.logs(&id, if history { 500 } else { 0 }).await?;
                 if !r.status().is_success() {
                     return Err("读取日志失败".to_owned());
                 }
@@ -633,7 +743,7 @@ impl App {
         if let Some(flow) = &mut self.cleanup_flow {
             if k.code == KeyCode::Esc {
                 self.cleanup_flow = None;
-            } else if let Some(plan) = flow.key(k.code) {
+            } else if let Some(plan) = flow.handle_key(k) {
                 self.cleanup_flow = None;
                 self.execute_cleanup(plan);
             }
@@ -660,35 +770,64 @@ impl App {
             return;
         }
         if self.filtering {
+            let id = self.selected_id();
+            let mut changed = false;
             match k.code {
                 KeyCode::Esc => {
                     if self.logs.is_some() {
-                        self.log_filter.clear();
+                        self.log_filter = self.filter_before.clone();
                     } else {
-                        self.filter.clear();
+                        self.filter = self.filter_before.clone();
                     }
                     self.filtering = false;
-                    self.selected = 0
+                    changed = true;
                 }
                 KeyCode::Enter => self.filtering = false,
-                KeyCode::Backspace => {
+                KeyCode::Down => {
                     if self.logs.is_some() {
-                        self.log_filter.pop();
+                        self.move_logs(-1);
                     } else {
-                        self.filter.pop();
+                        self.move_sel(1);
                     }
-                    self.selected = 0
                 }
-                KeyCode::Char(c) if !c.is_control() => {
+                KeyCode::Up => {
                     if self.logs.is_some() {
-                        self.log_filter.push(c);
+                        self.move_logs(1);
                     } else {
-                        self.filter.push(c);
+                        self.move_sel(-1);
                     }
-                    self.selected = 0
                 }
-                _ => {}
+                KeyCode::PageDown => {
+                    if self.logs.is_some() {
+                        self.move_logs(-10);
+                    } else {
+                        self.move_sel(10);
+                    }
+                }
+                KeyCode::PageUp => {
+                    if self.logs.is_some() {
+                        self.move_logs(10);
+                    } else {
+                        self.move_sel(-10);
+                    }
+                }
+                _ => {
+                    changed = if self.logs.is_some() {
+                        self.log_filter.handle_key(k)
+                    } else {
+                        self.filter.handle_key(k)
+                    }
+                }
             }
+            if changed {
+                self.keep_selection(id);
+                self.log_scroll = 0;
+            }
+            return;
+        }
+        if k.modifiers.intersects(
+            crossterm::event::KeyModifiers::CONTROL | crossterm::event::KeyModifiers::ALT,
+        ) {
             return;
         }
         if self.details {
@@ -710,26 +849,26 @@ impl App {
         }
         if self.logs.is_some() {
             match k.code {
+                KeyCode::Esc if !self.log_filter.is_empty() => {
+                    self.log_filter.clear();
+                    self.log_scroll = 0;
+                }
                 KeyCode::Esc | KeyCode::Char('q') => {
                     self.logs = None;
                     if let Some(job) = self.log_job.take() {
                         job.abort();
                     }
                 }
-                KeyCode::Char('j') | KeyCode::Down => {
-                    self.log_follow = true;
-                    self.log_scroll = 0;
-                }
-                KeyCode::Char('k') | KeyCode::Up => {
-                    self.log_follow = false;
-                    self.log_scroll =
-                        (self.log_scroll + 1).min(self.log_lines.len().saturating_sub(1));
-                }
+                KeyCode::Char('j') | KeyCode::Down => self.move_logs(-1),
+                KeyCode::Char('k') | KeyCode::Up => self.move_logs(1),
+                KeyCode::PageDown => self.move_logs(-10),
+                KeyCode::PageUp => self.move_logs(10),
+                KeyCode::Char('g') | KeyCode::Home => self.move_logs(i32::MAX),
                 KeyCode::Char('G') => {
                     self.log_follow = true;
                     self.log_scroll = 0;
                 }
-                KeyCode::Char('/') => self.filtering = true,
+                KeyCode::Char('/') => self.begin_filter(),
                 _ => {}
             }
             return;
@@ -807,12 +946,22 @@ impl App {
                 let plan = cleanup::selected(&cleanup::entries(&self.disk), &self.picked);
                 self.preview_cleanup(plan);
             }
+            KeyCode::Esc => {
+                let id = self.selected_id();
+                self.filter.clear();
+                self.keep_selection(id);
+            }
+            KeyCode::PageDown => self.move_sel(10),
+            KeyCode::PageUp => self.move_sel(-10),
+            KeyCode::Char('g') | KeyCode::Home => self.selected = 0,
+            KeyCode::Char('G') | KeyCode::End => self.selected = self.len().saturating_sub(1),
             KeyCode::Char('j') | KeyCode::Down => self.move_sel(1),
             KeyCode::Char('k') | KeyCode::Up => self.move_sel(-1),
-            KeyCode::Char('/') => self.filtering = true,
+            KeyCode::Char('/') => self.begin_filter(),
             KeyCode::Char('o') => {
+                let id = self.selected_id();
                 self.sort = (self.sort + 1) % 3;
-                self.selected = 0;
+                self.keep_selection(id);
             }
             KeyCode::Char('s') if self.stopped_by_user => {
                 self.stopped_by_user = false;
@@ -901,7 +1050,12 @@ impl App {
             self.quit = true;
             return;
         }
-        self.action_key(k)
+        let before = self.message.clone();
+        self.action_key(k);
+        if self.message != before {
+            self.message_until = Some(Instant::now() + Duration::from_secs(5));
+        }
+        self.pause_hidden_vm();
     }
     pub fn mouse(&mut self, m: MouseEvent, size: ratatui::layout::Size) {
         if self.confirm.is_some()
@@ -929,17 +1083,14 @@ impl App {
         match m.kind {
             MouseEventKind::ScrollDown => {
                 if self.logs.is_some() {
-                    self.log_scroll = self.log_scroll.saturating_sub(3);
-                    self.log_follow = self.log_scroll == 0;
+                    self.move_logs(-3);
                 } else {
                     self.move_sel(1);
                 }
             }
             MouseEventKind::ScrollUp => {
                 if self.logs.is_some() {
-                    self.log_scroll =
-                        (self.log_scroll + 3).min(self.log_lines.len().saturating_sub(1));
-                    self.log_follow = false;
+                    self.move_logs(3);
                 } else {
                     self.move_sel(-1);
                 }
@@ -956,8 +1107,8 @@ impl App {
                         };
                         self.selected = 0
                     }
-                } else if m.row >= if self.page == Page::Cleanup { 15 } else { 5 } {
-                    let first = if self.page == Page::Cleanup { 15 } else { 5 };
+                } else if m.row >= if self.page == Page::Cleanup { 14 } else { 4 } {
+                    let first = if self.page == Page::Cleanup { 14 } else { 4 };
                     let visible_rows = size.height.saturating_sub(first + 3) as usize;
                     let visible_row = (m.row - first) as usize;
                     self.selected =
@@ -967,8 +1118,77 @@ impl App {
             _ => {}
         }
     }
-    pub fn tick(&mut self) {
-        if self.last_vm.elapsed() >= Duration::from_secs(30)
+    fn pause_hidden_vm(&mut self) {
+        if !(self.page == Page::Cleanup && self.vm_section) {
+            if let Some(job) = self.vm_job.take() {
+                job.abort();
+            }
+        }
+    }
+    pub async fn changed(&mut self) {
+        self.pending_update = self.rx.recv().await;
+    }
+    pub fn deadline(&self) -> Instant {
+        let mut deadline = if self.refresh.is_none() && !self.stopped_by_user {
+            self.last_refresh + Duration::from_secs(2)
+        } else {
+            Instant::now() + Duration::from_secs(3600)
+        };
+        if self.page == Page::Cleanup && self.vm_section && self.vm_job.is_none() {
+            deadline = deadline.min(self.last_vm + Duration::from_secs(30));
+        }
+        if let Some(until) = self.message_until {
+            deadline = deadline.min(until);
+        }
+        deadline
+    }
+    pub fn suspend(&mut self) {
+        self.api_epoch = self.api_epoch.wrapping_add(1);
+        for job in [
+            &mut self.refresh,
+            &mut self.vm_job,
+            &mut self.log_job,
+            &mut self.exec_job,
+        ] {
+            if let Some(job) = job.take() {
+                job.abort();
+            }
+        }
+        self.stats_jobs.abort_all();
+        self.stats_pending.clear();
+        // A confirmed mutation is allowed to finish; no new requests start while this page is hidden.
+    }
+    pub fn resume(&mut self) {
+        self.last_refresh = Instant::now() - Duration::from_secs(3);
+        self.last_vm = Instant::now() - Duration::from_secs(31);
+        if let Some(id) = self.logs.clone() {
+            self.follow_logs(id, false);
+        }
+    }
+    pub fn editing(&self) -> bool {
+        self.filtering || self.cleanup_flow.is_some() || self.confirm.is_some()
+    }
+    pub fn tick(&mut self) -> bool {
+        self.pause_hidden_vm();
+        let expired = self
+            .message_until
+            .is_some_and(|until| Instant::now() >= until);
+        if self.refresh.as_ref().is_some_and(|j| j.is_finished()) {
+            self.refresh = None;
+        }
+        if self.vm_job.as_ref().is_some_and(|j| j.is_finished()) {
+            self.vm_job = None;
+        }
+        if self
+            .message_until
+            .is_some_and(|until| Instant::now() >= until)
+        {
+            self.message.clear();
+            self.message_until = None;
+        }
+        if self.page == Page::Cleanup
+            && self.vm_section
+            && self.last_vm.elapsed() >= Duration::from_secs(30)
             && self.vm_job.as_ref().is_none_or(|j| j.is_finished())
         {
             let tx = self.tx.clone();
@@ -978,12 +1198,17 @@ impl App {
                 let _ = tx.send(Update::Vm(inventory)).await;
             }));
         }
-        self.poll()
+        self.poll();
+        expired
     }
     pub fn draw(&mut self, f: &mut Frame) {
+        let area = f.area();
+        self.draw_in(f, area);
+    }
+    pub fn draw_in(&mut self, f: &mut Frame, viewport: ratatui::layout::Rect) {
         let (title, tabs, page) = (
             format!(
-                " 󰡨 {} · Docker {} · {}",
+                " 󰡨 {} · {} · {}",
                 if self.page == Page::Cleanup {
                     "Docker + VM"
                 } else {
@@ -1022,7 +1247,7 @@ impl App {
         } else {
             "o 排序  j/k 选择  Enter 详情  1-5 页签  / 过滤  s 启停  r 单重启  p 项目启停  R 项目重启  l 日志  e exec  d 删除  ? 帮助"
         };
-        let area = ui::chrome(f, &title, &tabs, page, hint, &self.message);
+        let area = ui::chrome_in(f, viewport, &title, &tabs, page, hint, &self.message);
         if self.logs.is_some() {
             self.draw_logs(f, area);
             return;
@@ -1064,6 +1289,18 @@ impl App {
                     .wrap(Wrap { trim: false }),
                 area,
             );
+            if flow.stage == cleanup::Stage::Volumes {
+                flow.input.render(
+                    f,
+                    ratatui::layout::Rect::new(
+                        area.x.saturating_add(7),
+                        area.y.saturating_add(6),
+                        area.width.saturating_sub(8),
+                        1,
+                    ),
+                    ui::base().fg(BLUE),
+                );
+            }
             return;
         }
         if let Some(report) = &self.cleanup_report {
@@ -1099,6 +1336,9 @@ impl App {
             Page::Overview => self.draw_overview(f, area),
             Page::Cleanup => self.draw_cleanup(f, area),
         }
+        if self.filtering {
+            self.draw_filter(f, &self.filter, viewport);
+        }
         if self.help {
             ui::help(
                 f,
@@ -1113,6 +1353,27 @@ impl App {
         if let Some(c) = self.confirm.as_ref() {
             ui::dialog(f, " 确认操作 ", &confirm_body(c))
         }
+    }
+    fn draw_filter(&self, f: &mut Frame, input: &TextInput, area: ratatui::layout::Rect) {
+        let row = area.bottom().saturating_sub(2);
+        f.render_widget(
+            ratatui::widgets::Clear,
+            ratatui::layout::Rect::new(area.x, row, area.width, 1),
+        );
+        f.render_widget(
+            Paragraph::new(" 过滤 /").style(ui::base().fg(BLUE)),
+            ratatui::layout::Rect::new(area.x, row, area.width, 1),
+        );
+        input.render(
+            f,
+            ratatui::layout::Rect::new(
+                area.x.saturating_add(7),
+                row,
+                area.width.saturating_sub(8),
+                1,
+            ),
+            ui::base().fg(BLUE),
+        );
     }
     fn draw_containers(&self, f: &mut Frame, a: ratatui::layout::Rect) {
         let xs = self.filtered_containers();
@@ -1149,18 +1410,10 @@ impl App {
                 ]
             })
             .collect();
-        ui::table(
+        self.draw_table(
             f,
             a,
-            &format!(
-                " 容器 {}{} ",
-                xs.len(),
-                if self.filter.is_empty() {
-                    String::new()
-                } else {
-                    format!(" · /{}", self.filter)
-                }
-            ),
+            &format!(" 容器 {} ", xs.len()),
             vec!["项目 / 容器", "镜像", "状态", "端口", "CPU", "内存"],
             rows,
             &[
@@ -1174,9 +1427,101 @@ impl App {
             self.selected,
         )
     }
+    #[allow(clippy::too_many_arguments)]
+    fn draw_table(
+        &self,
+        f: &mut Frame,
+        area: ratatui::layout::Rect,
+        title: &str,
+        headers: Vec<&str>,
+        rows: Vec<Vec<String>>,
+        widths: &[Constraint],
+        selected: usize,
+    ) {
+        let matcher = Matcher::new(&self.filter);
+        let rows = rows
+            .into_iter()
+            .map(|row| {
+                row.into_iter()
+                    .enumerate()
+                    .map(|(index, cell)| {
+                        let line = self.search_cache.highlight(&matcher, &cell);
+                        if headers.get(index).is_some_and(|label| {
+                            matches!(
+                                *label,
+                                "大小" | "占用" | "可回收" | "CPU" | "内存" | "虚拟" | "引用"
+                            )
+                        }) {
+                            line.right_aligned()
+                        } else {
+                            line
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
+        let total = match self.page {
+            Page::Containers => self.containers.len(),
+            Page::Images => self.images.len(),
+            Page::Volumes => self.volumes.len(),
+            Page::Cleanup if self.vm_section => self.vm.rows.len(),
+            Page::Cleanup => cleanup::entries(&self.disk).len(),
+            Page::Overview => 0,
+        };
+        ui::table_highlighted(
+            f,
+            area,
+            &if self.filter.is_empty() {
+                format!("{title} · {}", self.len())
+            } else {
+                format!("{title} · {}/{} · /{}", self.len(), total, self.filter)
+            },
+            headers,
+            rows,
+            widths,
+            selected,
+        );
+        if self.len() == 0 {
+            let inner = ratatui::layout::Rect::new(
+                area.x.saturating_add(1),
+                area.y.saturating_add(2),
+                area.width.saturating_sub(2),
+                area.height.saturating_sub(3),
+            );
+            if self.page == Page::Cleanup && self.vm_section {
+                ui::list_state(
+                    f,
+                    inner,
+                    ui::ListState::Empty,
+                    "暂无 VM 项目 · r 刷新 · Tab 返回 Docker",
+                );
+            } else if let Some(reason) = &self.load_error {
+                ui::list_state(
+                    f,
+                    inner,
+                    ui::ListState::Error,
+                    &format!("{reason} · 检查 Docker socket；自动重试中"),
+                );
+            } else if !self.online {
+                ui::list_state(
+                    f,
+                    inner,
+                    ui::ListState::Loading,
+                    "正在连接 Docker · 可用 1–5 切换子页",
+                );
+            } else {
+                ui::list_state(
+                    f,
+                    inner,
+                    ui::ListState::Empty,
+                    "无匹配项 · Esc 清除过滤；1–5 切换子页",
+                );
+            }
+        }
+    }
     fn draw_images(&self, f: &mut Frame, a: ratatui::layout::Rect) {
         let rows = self
-            .images
+            .filtered_images()
             .iter()
             .map(|i| {
                 vec![
@@ -1191,7 +1536,7 @@ impl App {
                 ]
             })
             .collect();
-        ui::table(
+        self.draw_table(
             f,
             a,
             &format!(" 镜像 {} ", self.images.len()),
@@ -1208,7 +1553,7 @@ impl App {
     }
     fn draw_volumes(&self, f: &mut Frame, a: ratatui::layout::Rect) {
         let rows = self
-            .volumes
+            .filtered_volumes()
             .iter()
             .map(|v| {
                 vec![
@@ -1239,7 +1584,7 @@ impl App {
                 ]
             })
             .collect();
-        ui::table(
+        self.draw_table(
             f,
             a,
             &format!(" 卷 {}  · d 预览 · 卷需输入名称确认 ", self.volumes.len()),
@@ -1254,24 +1599,25 @@ impl App {
         )
     }
     fn vm_rows(&self) -> Vec<&vm::Row> {
-        let q = self.filter.to_lowercase();
+        let matcher = Matcher::new(&self.filter);
         self.vm
             .rows
             .iter()
             .filter(|r| {
-                format!(
-                    "{} {} {} {} {}",
-                    r.uri,
-                    r.owner,
-                    r.kind,
-                    r.path
-                        .as_ref()
-                        .map(|p| p.display().to_string())
-                        .unwrap_or_default(),
-                    r.note
+                self.search_cache.matches(
+                    &matcher,
+                    &format!(
+                        "{} {} {} {} {}",
+                        r.uri,
+                        r.owner,
+                        r.kind,
+                        r.path
+                            .as_ref()
+                            .map(|p| p.display().to_string())
+                            .unwrap_or_default(),
+                        r.note
+                    ),
                 )
-                .to_lowercase()
-                .contains(&q)
             })
             .collect()
     }
@@ -1291,13 +1637,12 @@ impl App {
         });
     }
     fn cleanup_entries(&self) -> Vec<Entry> {
-        let q = self.filter.to_lowercase();
+        let matcher = Matcher::new(&self.filter);
         cleanup::entries(&self.disk)
             .into_iter()
             .filter(|e| {
-                format!("{} {} {}", e.kind.label(), e.id, e.name)
-                    .to_lowercase()
-                    .contains(&q)
+                self.search_cache
+                    .matches(&matcher, &format!("{} {} {}", e.kind.label(), e.id, e.name))
             })
             .collect()
     }
@@ -1365,7 +1710,7 @@ impl App {
                     ]
                 })
                 .collect();
-            ui::table(
+            self.draw_table(
                 f,
                 areas[1],
                 &format!(" VM · 大小降序 · Tab 返回 Docker · /{} ", self.filter),
@@ -1424,7 +1769,7 @@ impl App {
                 ]
             })
             .collect();
-        ui::table(
+        self.draw_table(
             f,
             areas[1],
             &format!(
@@ -1455,39 +1800,54 @@ impl App {
         );
     }
     fn draw_logs(&self, f: &mut Frame, a: ratatui::layout::Rect) {
-        let q = self.log_filter.to_lowercase();
+        let matcher = Matcher::new(&self.log_filter);
         let visible: Vec<_> = self
             .log_lines
             .iter()
-            .filter(|s| s.to_lowercase().contains(&q))
+            .filter(|s| self.search_cache.matches(&matcher, s))
             .collect();
         let end = visible.len().saturating_sub(self.log_scroll);
         let start = end.saturating_sub((a.height as usize).saturating_sub(2));
-        let body = visible
+        let mut body = visible
             .iter()
             .skip(start)
             .take(end - start)
             .map(|s| {
-                Line::from(Span::styled(
-                    ui::theme::clip(s, (a.width as usize).saturating_sub(2)),
-                    Style::default().fg(FG),
-                ))
+                let text = ui::theme::clip(s, (a.width as usize).saturating_sub(2));
+                let ranges = self
+                    .search_cache
+                    .find(&matcher, &text)
+                    .map(|m| m.ranges)
+                    .unwrap_or_default();
+                ui::search::highlight(&text, &ranges)
             })
             .collect::<Vec<_>>();
+        if visible.is_empty() {
+            body.push(Line::from("无匹配日志 · Esc 清除过滤"));
+        }
         f.render_widget(
             Paragraph::new(body)
                 .style(ui::base())
                 .block(ui::block(
                     format!(
-                        " 实时日志 · {} · /{} ",
+                        " 实时日志 · {} · {}/{} · /{} ",
                         self.logs.as_deref().map(short).unwrap_or(""),
+                        visible.len(),
+                        self.log_lines.len(),
                         self.log_filter
                     ),
                     true,
                 ))
                 .wrap(Wrap { trim: false }),
             a,
-        )
+        );
+        if self.filtering {
+            self.draw_filter(
+                f,
+                &self.log_filter,
+                ratatui::layout::Rect::new(a.x, a.y, a.width, a.height.saturating_add(2)),
+            );
+        }
     }
 }
 fn compose_project_ids(containers: &[Container], project: &str) -> Vec<String> {
@@ -1564,6 +1924,123 @@ mod stop_policy_tests {
         KeyEvent::new(KeyCode::Char(ch), KeyModifiers::NONE)
     }
 
+    #[test]
+    fn filtering_images_is_incremental_and_keeps_stable_ids() {
+        let mut app = test_app();
+        app.page = Page::Images;
+        app.online = true;
+        app.images = vec![
+            serde_json::from_value(serde_json::json!({"Id":"a","RepoTags":["北京 Apple"]}))
+                .unwrap(),
+            serde_json::from_value(serde_json::json!({"Id":"b","RepoTags":["香港 Apple"]}))
+                .unwrap(),
+        ];
+        app.selected = 1;
+        app.key(key('/'));
+        app.paste("apple");
+        assert_eq!(app.selected_id().as_deref(), Some("b"));
+        app.key(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
+        assert_eq!(app.selected_id().as_deref(), Some("a"));
+        app.paste(" nonexistent");
+        assert_eq!(app.len(), 0);
+        assert_eq!(app.selected, 0);
+        let mut terminal =
+            ratatui::Terminal::new(ratatui::backend::TestBackend::new(100, 30)).unwrap();
+        terminal.draw(|f| app.draw(f)).unwrap();
+        let text = terminal
+            .backend()
+            .buffer()
+            .content
+            .iter()
+            .map(|c| c.symbol())
+            .filter(|s| *s != " ")
+            .collect::<String>();
+        assert!(text.contains("无匹配项"));
+        app.key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+        assert_eq!(app.len(), 2);
+        app.key(key('/'));
+        app.paste("xianggang apple");
+        assert_eq!(app.selected_id().as_deref(), Some("b"));
+        app.key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+        app.key(key('/'));
+        app.paste(" xyz");
+        app.key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+        assert_eq!(app.filter.as_str(), "xianggang apple");
+        app.key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+        assert_eq!(app.len(), 2);
+    }
+    #[test]
+    fn filtered_log_refresh_preserves_scrolled_record_even_at_buffer_limit() {
+        let mut app = test_app();
+        app.log_filter.set("keep");
+        app.log_lines = (0..4000).map(|i| format!("keep {i}")).collect();
+        app.log_follow = false;
+        app.log_scroll = 20;
+        let anchor = |app: &App| {
+            let matcher = Matcher::new(&app.log_filter);
+            let rows: Vec<_> = app
+                .log_lines
+                .iter()
+                .filter(|line| matcher.matches(line))
+                .collect();
+            rows[rows.len() - app.log_scroll - 1].to_owned()
+        };
+        let before = anchor(&app);
+        app.last_refresh = Instant::now();
+        app.tx
+            .try_send(Update::Log(app.api_epoch, "skip\nkeep 4000".into()))
+            .unwrap();
+        app.poll();
+        assert_eq!(anchor(&app), before);
+        assert_eq!(app.log_lines.len(), 4000);
+        assert_eq!(app.log_scroll, 21);
+    }
+    #[tokio::test]
+    async fn suspend_keeps_log_view_state_and_cancels_background_jobs() {
+        let mut app = test_app();
+        app.filter.set("容器");
+        app.log_filter.set("apple");
+        app.logs = Some("fixture".into());
+        app.log_lines = vec!["Apple retained".into()];
+        app.log_scroll = 1;
+        app.refresh = Some(tokio::spawn(std::future::pending()));
+        app.log_job = Some(tokio::spawn(std::future::pending()));
+        app.suspend();
+        assert!(app.refresh.is_none());
+        assert!(app.log_job.is_none());
+        app.resume();
+        assert_eq!(app.filter.as_str(), "容器");
+        assert_eq!(app.log_filter.as_str(), "apple");
+        assert_eq!(app.log_lines, vec!["Apple retained"]);
+        assert_eq!(app.log_scroll, 1);
+        assert!(app.log_job.is_some());
+    }
+    #[tokio::test]
+    async fn vm_jobs_only_exist_while_the_vm_inventory_is_visible() {
+        let mut app = test_app();
+        app.last_refresh = Instant::now();
+        app.tick();
+        assert!(app.vm_job.is_none());
+        app.page = Page::Cleanup;
+        app.vm_section = true;
+        app.vm_job = Some(tokio::spawn(std::future::pending()));
+        app.key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+        assert!(app.vm_job.is_none());
+        app.vm_section = true;
+        app.vm_job = Some(tokio::spawn(std::future::pending()));
+        app.key(key('1'));
+        assert!(app.vm_job.is_none());
+    }
+    #[test]
+    fn log_capture_has_a_byte_budget_even_for_large_lines() {
+        let mut app = test_app();
+        app.last_refresh = Instant::now();
+        app.tx
+            .try_send(Update::Log(app.api_epoch, "x".repeat(5 * 1024 * 1024)))
+            .unwrap();
+        app.poll();
+        assert!(app.log_lines.iter().map(String::len).sum::<usize>() <= 4 * 1024 * 1024);
+    }
     #[test]
     fn vm_section_never_enters_docker_cleanup_or_selects_resources() {
         let mut app = test_app();

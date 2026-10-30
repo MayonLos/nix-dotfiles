@@ -315,7 +315,7 @@ impl Engine {
             .await?;
         Ok(s.view())
     }
-    pub async fn logs(&self, id: &str) -> Result<(Response, bool), String> {
+    pub async fn logs(&self, id: &str, tail: usize) -> Result<(Response, bool), String> {
         #[derive(Deserialize)]
         struct Inspect {
             #[serde(rename = "Config")]
@@ -328,7 +328,7 @@ impl Engine {
         }
         let inspect: Inspect = self.json(&format!("/containers/{}/json", enc(id))).await?;
         let tty = inspect.config.is_some_and(|config| config.tty);
-        let response=self.client.get(format!("http://docker/v1.47/containers/{}/logs?follow=1&stdout=1&stderr=1&timestamps=1&tail=500",enc(id))).send().await.map_err(|_| "Docker 启动中…")?;
+        let response=self.client.get(format!("http://docker/v1.47/containers/{}/logs?follow=1&stdout=1&stderr=1&timestamps=1&tail={tail}",enc(id))).send().await.map_err(|_| "Docker 启动中…")?;
         Ok((response, tty))
     }
     pub async fn start(&self, id: &str) -> Result<(), String> {

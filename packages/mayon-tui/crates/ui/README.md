@@ -16,3 +16,23 @@ Change primitives here, keep application state in each tool, then inspect
 all tools at wide and approximately 90-column sizes in real Kitty. Prefer
 channel completion values to shared mutable rendering state. A new widget
 should have a small public API and must clip/wrap terminal cell widths safely.
+
+`search::{Matcher, SearchText, SearchCache}` provides case-insensitive AND
+search, Han pinyin/full-initial matching, short-label subsequence matching,
+character ranges for highlighting, and cached row preprocessing. Use one
+`SearchText` per stable row or a bounded `SearchCache` for lists that redraw
+frequently; `Matcher::highlight` highlights each present term in a cell, even
+when another AND term belongs to a different column.
+
+`input::TextInput` provides character-indexed editing, CJK-aware horizontal
+scrolling, a real terminal cursor, masked rendering for credentials, standard
+Ctrl+A/E/U/K/W and Alt+Backspace edits, and bounded single-line paste. The
+shared `input` overlay accepts this type. `terminal()` enables bracketed paste;
+applications should pass `Event::Paste` to an active `TextInput` and ignore it
+when no input is open.
+
+`style` supplies shared neutral borders, padded modals, status tones with symbols,
+complete key/action hint clipping, list states and five-second notices.
+`SearchCache` defaults to 8192 rows and a 16 MiB index budget; empty queries skip
+index construction. `terminal()` also enables focus events; pages suspend passive
+work on FocusLost and redraw only when state changes.

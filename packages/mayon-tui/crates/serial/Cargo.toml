@@ -1,0 +1,26 @@
+[package]
+autobins = false
+name = "serial-mayon"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "STM32 serial workbench with searchable capture, plotting and flash handoff"
+
+[dependencies]
+mayon-ui = { path = "../ui" }
+ratatui = "0.29"
+crossterm = "0.29"
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+encoding_rs = "0.8"
+serialport = { version = "4", default-features = false }
+libc = "0.2"
+
+tokio = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"
+
+[lib]
+path = "src/lib.rs"

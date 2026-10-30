@@ -40,6 +40,9 @@ assert withoutAppearance.config.xdg.dataFile == { };
 assert builtins.length withoutAppearance.config.home.packages == 1;
 {
   gaming-launch =
+    assert lib.hasInfix "org.freedesktop.UPower.PowerProfiles.switch-profile"
+      nixos.security.polkit.extraConfig;
+    assert lib.hasInfix ''subject.isInGroup("gamemode")'' nixos.security.polkit.extraConfig;
     assert builtins.elem pkgs.proton-ge-bin nixos.programs.steam.extraCompatPackages;
     assert nixos.systemd.user.services.gaming-idle-inhibit.wantedBy == [ ];
     assert nixos.systemd.user.services.gaming-idle-inhibit.partOf == [ "gamemoded.service" ];

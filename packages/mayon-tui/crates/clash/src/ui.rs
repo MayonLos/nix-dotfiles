@@ -9,7 +9,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect, Size},
     style::Style,
     text::{Line, Span},
-    widgets::{Block, Clear, Paragraph, Sparkline, Wrap},
+    widgets::{Block, Paragraph, Sparkline, Wrap},
     Frame,
 };
 use unicode_width::UnicodeWidthStr;
@@ -26,9 +26,6 @@ pub fn tab_at(column: u16) -> Option<char> {
     }
     None
 }
-fn block(title: impl Into<String>) -> Block<'static> {
-    mayon_ui::block(title, true)
-}
 fn title(app: &App, text: &str, area: Rect) -> String {
     clip(
         &format!(
@@ -36,18 +33,44 @@ fn title(app: &App, text: &str, area: Rect) -> String {
             if app.filter().is_empty() && !app.filtering {
                 String::new()
             } else {
-                format!(
-                    " · /{}{}",
-                    app.filter(),
-                    if app.filtering { "▏" } else { "" }
-                )
+                format!(" · /{}", app.filter())
             }
         ),
         area.width.saturating_sub(2) as usize,
     )
 }
-fn pane(frame: &mut Frame, area: Rect, title: String, text: Vec<Line<'static>>) {
-    frame.render_widget(Paragraph::new(text).style(base()).block(block(title)), area);
+fn pane(frame: &mut Frame, app: &App, area: Rect, title: String, text: Vec<Line<'static>>) {
+    let matcher = mayon_ui::search::Matcher::new(app.filter());
+    let text: Vec<_> = text
+        .into_iter()
+        .map(|mut line| {
+            line.spans = line
+                .spans
+                .into_iter()
+                .flat_map(|span| {
+                    matcher
+                        .highlight(&span.content)
+                        .spans
+                        .into_iter()
+                        .map(move |mut hit| {
+                            hit.style = span.style.patch(hit.style);
+                            hit
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect();
+            line
+        })
+        .collect();
+    let focused = app.page != Page::Proxies
+        || app.provider_mode
+        || (area.x == frame.area().x) != app.nodes_focus;
+    frame.render_widget(
+        Paragraph::new(text)
+            .style(base())
+            .block(mayon_ui::block(title, focused)),
+        area,
+    );
 }
 fn visible(area: Rect, selected: usize, len: usize, row_height: usize) -> std::ops::Range<usize> {
     let count = area.height.saturating_sub(2) as usize / row_height;
@@ -73,7 +96,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
     }
     let chunks = Layout::vertical([
         Constraint::Length(1),
-        Constraint::Length(2),
+        Constraint::Length(1),
         Constraint::Min(1),
         Constraint::Length(2),
     ])
@@ -83,19 +106,27 @@ pub fn draw(frame: &mut Frame, app: &App) {
         .as_ref()
         .map(|t| format!("↑{}/s ↓{}/s", bytes(t.up), bytes(t.down)))
         .unwrap_or_else(|| "流量 --".into());
-    mayon_ui::status(
-        frame,
+    let (phase, tone) = if app.online {
+        ("● 运行", mayon_ui::Tone::Success)
+    } else if app.loading() {
+        ("◌ 连接中", mayon_ui::Tone::Info)
+    } else {
+        ("○ 未运行", mayon_ui::Tone::Warning)
+    };
+    frame.render_widget(
+        Paragraph::new(Line::from(vec![
+            Span::styled(" Clash  ", base().fg(BRIGHTFG)),
+            Span::styled(phase, base().fg(tone.color())),
+            muted(format!(
+                "  {}  {rate}",
+                if app.online {
+                    app.config.mode.as_str()
+                } else {
+                    "s 启动"
+                }
+            )),
+        ])),
         chunks[0],
-        &format!(
-            " 󰒍 Clash · {} · {} · {} · {rate}",
-            "mayon-clash",
-            if app.online { "运行" } else { "未运行" },
-            if app.online {
-                app.config.mode.as_str()
-            } else {
-                "s 启动"
-            }
-        ),
     );
     frame.render_widget(
         Paragraph::new(mayon_ui::tabs_line(&TABS, app.page as usize)),
@@ -105,8 +136,13 @@ pub fn draw(frame: &mut Frame, app: &App) {
         let progress = app.launch_progress();
         pane(
             frame,
+            app,
             chunks[2],
-            " Clash 未运行 ".into(),
+            if app.loading() {
+                " 正在连接内核 ".into()
+            } else {
+                " Clash 未运行 ".into()
+            },
             vec![
                 Line::from(""),
                 Line::from(blue(format!("  {progress}"))),
@@ -150,7 +186,45 @@ pub fn draw(frame: &mut Frame, app: &App) {
         Page::Logs => " j/k 滚动  / 搜索  L 级别  空格 暂停  g/G 首尾  ? 帮助",
         Page::Tools => " j/k 移动  Enter 执行 / 编辑  m 模式  ? 帮助",
     };
-    mayon_ui::footer(frame, chunks[3], hint, &format!(" {}", app.status));
+    let hint = if app.dialog.is_some() {
+        "Enter 确认  Esc 取消"
+    } else if app.help {
+        "1–7 切页  ←/→ 切页  Esc 返回"
+    } else if app.filtering {
+        "↑/↓ 选择  Enter 保留  Esc 恢复"
+    } else if !app.online && app.page != Page::Profiles && app.page != Page::Tools {
+        "3 订阅  i 添加  s 启动  ? 帮助  q 退出"
+    } else {
+        hint
+    };
+    mayon_ui::footer(frame, chunks[3], hint, "");
+    if let Some((text, tone)) = app.notice.visible() {
+        frame.render_widget(
+            Paragraph::new(mayon_ui::style::message(
+                clip(text, chunks[3].width.saturating_sub(2) as usize),
+                tone,
+            )),
+            Rect::new(
+                chunks[3].x,
+                chunks[3].y.saturating_add(1),
+                chunks[3].width,
+                1,
+            ),
+        );
+    }
+    if app.filtering {
+        frame.render_widget(Paragraph::new(" 过滤 /").style(base().fg(BLUE)), chunks[3]);
+        app.filters[app.page as usize].render(
+            frame,
+            Rect::new(
+                chunks[3].x.saturating_add(7),
+                chunks[3].y,
+                chunks[3].width.saturating_sub(8),
+                1,
+            ),
+            base().fg(BLUE),
+        );
+    }
     if app.help {
         help(frame, app);
     }
@@ -206,7 +280,7 @@ fn overview(frame: &mut Frame, app: &App, area: Rect) {
             ))));
         }
     }
-    pane(frame, sections[0], " 代理状态与出口 ".into(), state);
+    pane(frame, app, sections[0], " 代理状态与出口 ".into(), state);
     let traffic = sections[1];
     frame.render_widget(
         Block::default()
@@ -292,6 +366,7 @@ fn overview(frame: &mut Frame, app: &App, area: Rect) {
     };
     pane(
         frame,
+        app,
         sections[2],
         " 当前订阅 · 3 查看所有订阅 ".into(),
         text,
@@ -323,6 +398,7 @@ fn proxies(frame: &mut Frame, app: &App, area: Rect) {
     }
     pane(
         frame,
+        app,
         columns[0],
         format!(" 代理组 {} ", app.group_names.len()),
         groups,
@@ -364,7 +440,11 @@ fn proxies(frame: &mut Frame, app: &App, area: Rect) {
         ));
     }
     if nodes.is_empty() {
-        nodes.push(Line::from(muted(" 无匹配节点 · Esc 清除过滤")));
+        nodes.push(Line::from(muted(if !app.filter().is_empty() {
+            "无匹配节点 · Esc 清除过滤"
+        } else {
+            "暂无节点 · r 刷新或 3 检查订阅"
+        })));
     }
     let measuring = app
         .measuring
@@ -372,12 +452,16 @@ fn proxies(frame: &mut Frame, app: &App, area: Rect) {
         .unwrap_or_default();
     pane(
         frame,
+        app,
         columns[1],
         title(
             app,
             &format!(
-                "节点 {} · {}{}{}",
+                "节点 {}/{} · {}{}{}",
                 app.node_names.len(),
+                app.group_name()
+                    .and_then(|g| app.proxies.get(g))
+                    .map_or(0, |p| p.all.len()),
                 app.sort.label(),
                 if app.hide_timeout {
                     " · 隐藏超时"
@@ -522,6 +606,7 @@ fn profiles(frame: &mut Frame, app: &App, area: Rect) {
     }
     pane(
         frame,
+        app,
         area,
         if app.native_busy {
             " 订阅 · 下载 / 校验 / 应用中… ".into()
@@ -582,6 +667,7 @@ fn connections(frame: &mut Frame, app: &App, area: Rect) {
     }
     pane(
         frame,
+        app,
         area,
         title(
             app,
@@ -663,13 +749,22 @@ fn providers(frame: &mut Frame, app: &App, area: Rect) {
     }
     pane(
         frame,
+        app,
         area,
         title(
             app,
-            if app.page == Page::Rules {
-                "规则源 · u 更新 / p 返回"
+            &if app.page == Page::Rules {
+                format!(
+                    "规则源 {}/{} · u 更新 / p 返回",
+                    app.provider_view.len(),
+                    app.rule_providers.len()
+                )
             } else {
-                "节点源 · t 健康检查 / u 更新 / p 返回"
+                format!(
+                    "节点源 {}/{} · t 健康检查 / u 更新 / p 返回",
+                    app.provider_view.len(),
+                    app.providers.len()
+                )
             },
             area,
         ),
@@ -709,10 +804,17 @@ fn rules(frame: &mut Frame, app: &App, area: Rect) {
         ))));
     }
     if lines.is_empty() {
-        lines.push(Line::from(muted(" 无匹配规则")));
+        lines.push(Line::from(muted(if !app.filter().is_empty() {
+            "没有匹配规则 · Esc 清除过滤"
+        } else if app.resources_loading() {
+            "正在加载规则…"
+        } else {
+            "暂无规则 · r 刷新或检查当前订阅"
+        })));
     }
     pane(
         frame,
+        app,
         area,
         title(
             app,
@@ -746,16 +848,18 @@ fn logs(frame: &mut Frame, app: &App, area: Rect) {
         ));
     }
     if lines.is_empty() {
-        lines.push(Line::from(muted(" 等待匹配日志 · L 切级别 · / 搜索")));
+        lines.push(Line::from(muted(" 无匹配日志 · Esc 清除过滤 · L 切级别")));
     }
     pane(
         frame,
+        app,
         area,
         title(
             app,
             &format!(
-                "日志 {} · {}+ · {}",
+                "日志 {}/{} · {}+ · {}",
                 app.log_view.len(),
+                app.logs.len(),
                 ["debug", "info", "warning", "error"][app.log_level],
                 if app.logs_paused {
                     "已暂停（丢弃新日志）"
@@ -829,21 +933,27 @@ fn tools(frame: &mut Frame, app: &App, area: Rect) {
     }
     pane(
         frame,
+        app,
         area,
         " 工具 / 设置 · Enter 应用 · 保存后重启仍保留 ".into(),
         lines,
     );
 }
 fn modal(frame: &mut Frame, title: &str, text: Vec<Line<'static>>, height: u16, scroll: u16) {
-    let a = mayon_ui::centered(frame.area(), 80, height);
-    frame.render_widget(Clear, a);
+    let tone = if title.contains("错误") || title.contains("失败") {
+        mayon_ui::Tone::Error
+    } else if title.contains("确认") {
+        mayon_ui::Tone::Warning
+    } else {
+        mayon_ui::Tone::Action
+    };
+    let inner = mayon_ui::modal(frame, title, 80, height, tone);
     frame.render_widget(
         Paragraph::new(text)
             .style(base().bg(SURFACE))
-            .block(block(title.to_string()))
             .wrap(Wrap { trim: false })
             .scroll((scroll, 0)),
-        a,
+        inner,
     );
 }
 fn help(frame: &mut Frame, app: &App) {
@@ -879,21 +989,14 @@ fn dialog_view(frame: &mut Frame, dialog: &Dialog, scroll: u16) {
     match dialog {
         Dialog::Edit {
             title,
-            value,
-            action,
+            value: _,
+            action: _,
         } => modal(
             frame,
             title,
             vec![
                 Line::from(""),
-                Line::from(blue(format!(
-                    "  {}▏",
-                    if matches!(action, crate::app::EditAction::Url(_)) {
-                        crate::native::redact_url(value)
-                    } else {
-                        clip(value, 68)
-                    }
-                ))),
+                Line::from(""),
                 Line::from(""),
                 Line::from(muted("  Enter 保存 · Esc 取消")),
             ],
@@ -919,14 +1022,22 @@ fn dialog_view(frame: &mut Frame, dialog: &Dialog, scroll: u16) {
                 Line::from(""),
                 Line::from(blue(format!(
                     "  {}URL：{}",
-                    if !field { "▏" } else { " " },
-                    crate::native::redact_url(url)
+                    if !field { ">" } else { " " },
+                    if !field {
+                        String::new()
+                    } else {
+                        crate::native::redact_url(url)
+                    }
                 ))),
                 Line::from(""),
                 Line::from(format!(
                     "  {}名称：{}",
-                    if *field { "▏" } else { " " },
-                    clip(name, 50)
+                    if *field { ">" } else { " " },
+                    if *field {
+                        String::new()
+                    } else {
+                        clip(name, 50)
+                    }
                 )),
                 Line::from(""),
                 Line::from(muted("  名称留空：响应头标题 / 文件名，再回退主机名。")),
@@ -951,6 +1062,31 @@ fn dialog_view(frame: &mut Frame, dialog: &Dialog, scroll: u16) {
         Dialog::Detail(_) => 22,
     };
     let a = mayon_ui::centered(frame.area(), 80, height);
+    let input_area = |row, prefix| {
+        Rect::new(
+            a.x.saturating_add(prefix),
+            a.y.saturating_add(row),
+            a.width.saturating_sub(prefix + 2),
+            1,
+        )
+    };
+    match dialog {
+        Dialog::Edit { value, action, .. } => {
+            if matches!(action, crate::app::EditAction::Url(_)) {
+                value.render_masked(frame, input_area(2, 4), base().fg(BLUE));
+            } else {
+                value.render(frame, input_area(2, 4), base().fg(BLUE));
+            }
+        }
+        Dialog::Import { url, name, field } => {
+            if *field {
+                name.render(frame, input_area(4, 11), base().fg(BLUE));
+            } else {
+                url.render_masked(frame, input_area(2, 10), base().fg(BLUE));
+            }
+        }
+        _ => {}
+    }
     let buttons = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(Rect::new(
             a.x + 1,
@@ -1015,8 +1151,8 @@ mod tests {
                 body: "test".into(),
             },
             Dialog::Import {
-                url: String::new(),
-                name: String::new(),
+                url: Default::default(),
+                name: Default::default(),
                 field: false,
             },
             Dialog::Detail("test".into()),

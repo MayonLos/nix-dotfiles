@@ -5,9 +5,7 @@ _: {
     ./appearance/appearance
     ./system/default-tools
     ./workspace/workspace-task
-    ./workspace/study
     ./workspace/project-workbench
-    ./workspace/seek
     ./dev/languages
     ./system/maintenance
     ./network/port-tools
@@ -16,6 +14,7 @@ _: {
     ./hardware/legion-laptop
     ./cli/shell
     ./cli/keys-mayon
+    ./cli/mayon-tools
     ./cli/terminal
     ./cli/herdr
     ./dev/neovim

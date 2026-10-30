@@ -292,7 +292,9 @@ let
     else
       lib.concatMap (
         color:
-        if lib.hasInfix color (lib.toLower source.text) then
+        if
+          builtins.replaceStrings [ color ] [ "" ] (lib.toLower source.text) != lib.toLower source.text
+        then
           [ (error "legacy-palette-color" source.path "contains removed palette color ${color}") ]
         else
           [ ]
@@ -738,6 +740,11 @@ let
     else
       [ ];
   fixtures = [
+    (fixtureAbsent "large non-Nix source does not overflow palette scanning" {
+      "packages/example/src/large.rs" = builtins.concatStringsSep "" (
+        builtins.genList (_: "plain source text\n") 8192
+      );
+    } { } "legacy-palette-color")
     (fixture "legacy palette color in non-Nix text" {
       "aspects/desktop/example/theme.css" =
         ".old { color: "

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Exercise df VM reporting using only sparse local fixtures and mock virsh.
 
-Usage: python -B packages/mayon-tui/crates/docker/tests/vm_mock.py /path/to/dockertui-mayon
+Usage: python -B packages/mayon-tui/crates/docker/tests/vm_mock.py /path/to/mayon-tools
 No real Docker or libvirt socket is opened.
 """
 from __future__ import annotations
@@ -75,12 +75,12 @@ def run(
         env["VM_MOCK_SNAPSHOT_UNKNOWN"] = "1"
     Path(env["HOME"]).mkdir(exist_ok=True)
     Path(env["XDG_RUNTIME_DIR"]).mkdir(exist_ok=True)
-    return subprocess.run([str(binary), "df"], text=True, capture_output=True, env=env, timeout=30)
+    return subprocess.run([str(binary), "docker", "df"], text=True, capture_output=True, env=env, timeout=30)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("binary", type=Path, help="built dockertui-mayon executable")
+    parser.add_argument("binary", type=Path, help="built mayon-tools executable")
     args = parser.parse_args()
     binary = args.binary.resolve()
     if not binary.is_file():

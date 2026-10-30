@@ -6,13 +6,21 @@ use crate::{
 };
 use anyhow::{bail, Context, Result};
 use base64::Engine;
-use crossterm::event::{self, Event, KeyCode, KeyEventKind, MouseEventKind};
-use mayon_ui::{self as ui, theme::*};
+use crossterm::event::{
+    self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEventKind,
+};
+use futures_util::StreamExt;
+use mayon_ui::{
+    self as ui,
+    input::TextInput,
+    search::{Matcher, SearchCache},
+    theme::*,
+};
 use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::Style,
     text::{Line, Span},
-    widgets::{Block, Clear, Paragraph, Wrap},
+    widgets::{Block, Paragraph, Wrap},
     Frame,
 };
 use serde_json::Value;
@@ -50,6 +58,7 @@ enum Message {
     Login(String),
     Suggestions(Vec<String>),
     Notice(String),
+    Error(String),
 }
 #[derive(Clone, Debug, Default)]
 struct Cursor {
@@ -60,9 +69,10 @@ struct Cursor {
 }
 enum Modal {
     Help,
+    Error(String),
     Input {
         kind: InputKind,
-        value: String,
+        value: TextInput,
         choices: Vec<String>,
         selected: Option<usize>,
     },
@@ -98,16 +108,27 @@ pub struct App {
     related: Vec<Video>,
     part: usize,
     quality: u64,
-    filter: String,
+    filter: TextInput,
+    filter_before: TextInput,
+    filtering: bool,
+    search: SearchCache,
+    loaded_page: (usize, u64),
     query: String,
     up_search: bool,
     heading: String,
     notice: String,
+    notice_display: ui::Notice,
+    last_notice: String,
+    loading: bool,
+    error: Option<String>,
     modal: Option<Modal>,
     tx: mpsc::UnboundedSender<Message>,
     rx: mpsc::UnboundedReceiver<Message>,
     jobs: Vec<tokio::task::JoinHandle<()>>,
     read_job: Option<tokio::task::JoinHandle<()>>,
+    cover_job: Option<tokio::task::JoinHandle<()>>,
+    focused: bool,
+    resume_read: bool,
     download: mpsc::UnboundedSender<Download>,
     progress: mpsc::UnboundedReceiver<Progress>,
     queue: Vec<QueueItem>,
@@ -135,6 +156,9 @@ impl Drop for App {
             job.abort();
         }
         if let Some(job) = &self.player {
+            job.abort();
+        }
+        if let Some(job) = &self.cover_job {
             job.abort();
         }
     }
@@ -170,7 +194,11 @@ impl App {
             related: vec![],
             part: 0,
             quality: 0,
-            filter: String::new(),
+            filter: TextInput::default(),
+            filter_before: TextInput::default(),
+            filtering: false,
+            search: SearchCache::default(),
+            loaded_page: (0, 1),
             query: String::new(),
             up_search: false,
             heading: "首页推荐".into(),
@@ -179,11 +207,18 @@ impl App {
             } else {
                 "正在加载…".into()
             },
+            notice_display: ui::Notice::default(),
+            last_notice: String::new(),
+            loading: false,
+            error: None,
             modal: None,
             tx,
             rx,
             jobs,
             read_job: None,
+            cover_job: None,
+            focused: true,
+            resume_read: false,
             download,
             progress,
             queue: vec![],
@@ -223,10 +258,12 @@ impl App {
         let generation = self.read_generation;
         let tx = self.tx.clone();
         self.notice = "加载中…".into();
+        self.loading = true;
+        self.error = None;
         self.read_job = Some(tokio::spawn(async move {
             let result = match future.await {
                 Ok(v) => v,
-                Err(e) => Message::Notice(e.to_string()),
+                Err(e) => Message::Error(e.to_string()),
             };
             let _ = tx.send(Message::Read(generation, Box::new(result)));
         }));
@@ -246,7 +283,7 @@ impl App {
         self.jobs.push(tokio::spawn(async move {
             let result = match future.await {
                 Ok(v) => v,
-                Err(e) => Message::Notice(e.to_string()),
+                Err(e) => Message::Error(e.to_string()),
             };
             let _ = tx.send(result);
         }));
@@ -261,15 +298,81 @@ impl App {
         Some(video)
     }
     fn filtered(&self) -> Vec<&Video> {
-        self.list
+        let matcher = Matcher::new(&self.filter);
+        let mut matches: Vec<_> = self
+            .list
             .iter()
-            .filter(|v| {
-                self.filter.is_empty()
-                    || format!("{} {}", v.title, v.up)
-                        .to_lowercase()
-                        .contains(&self.filter.to_lowercase())
+            .filter_map(|v| {
+                self.search
+                    .find(&matcher, &format!("{} {} {}", v.title, v.up, v.bvid))
+                    .map(|hit| (hit.score, v))
             })
+            .collect();
+        if !self.filter.is_empty() {
+            matches.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
+        }
+        matches.into_iter().map(|(_, video)| video).collect()
+    }
+    fn filtered_queue(&self) -> Vec<usize> {
+        let matcher = Matcher::new(&self.filter);
+        self.queue
+            .iter()
+            .enumerate()
+            .filter(|(_, q)| {
+                self.search
+                    .matches(&matcher, &format!("{} {}", q.title, q.state))
+            })
+            .map(|(i, _)| i)
             .collect()
+    }
+    fn selected_key(&self) -> Option<String> {
+        if self.page == 8 {
+            self.filtered_queue()
+                .get(self.selected)
+                .map(|id| format!("download:{id}"))
+        } else {
+            self.filtered().get(self.selected).map(|v| video_key(v))
+        }
+    }
+    fn keep_selection(&mut self, key: Option<String>) {
+        self.selected = if self.page == 8 {
+            key.and_then(|key| {
+                self.filtered_queue()
+                    .iter()
+                    .position(|id| format!("download:{id}") == key)
+            })
+            .unwrap_or(0)
+        } else {
+            key.and_then(|key| self.filtered().iter().position(|v| video_key(v) == key))
+                .unwrap_or(0)
+        };
+        self.detail = self
+            .detail
+            .take()
+            .filter(|v| self.selected_key().as_deref() == Some(video_key(v).as_str()));
+    }
+    fn replace_list(&mut self, list: Vec<Video>, title: String) {
+        let keep = (self.loaded_page == (self.page, self.pn))
+            .then(|| self.selected_key())
+            .flatten();
+        self.list = list;
+        self.heading = title;
+        self.loaded_page = (self.page, self.pn);
+        self.keep_selection(keep);
+        self.detail = None;
+    }
+    fn paste(&mut self, text: &str) {
+        if let Some(Modal::Input {
+            value, selected, ..
+        }) = &mut self.modal
+        {
+            value.paste(text);
+            *selected = None;
+        } else if self.filtering {
+            let keep = self.selected_key();
+            self.filter.paste(text);
+            self.keep_selection(keep);
+        }
     }
     fn require_login(&mut self) -> bool {
         if self.demo {
@@ -322,7 +425,7 @@ impl App {
     }
     fn select(&mut self, delta: isize) {
         let len = if self.page == 8 {
-            self.queue.len()
+            self.filtered_queue().len()
         } else {
             self.filtered().len()
         };
@@ -527,13 +630,14 @@ impl App {
         });
     }
     fn input(&mut self, kind: InputKind) {
+        if matches!(kind, InputKind::Filter) {
+            self.filter_before = self.filter.clone();
+            self.filtering = true;
+            return;
+        }
         self.modal = Some(Modal::Input {
             kind,
-            value: if matches!(kind, InputKind::Filter) {
-                self.filter.clone()
-            } else {
-                self.query.clone()
-            },
+            value: self.query.clone().into(),
             choices: if self.demo {
                 vec!["Rust 入门".into(), "终端工作流".into()]
             } else {
@@ -542,7 +646,8 @@ impl App {
             selected: None,
         });
     }
-    fn key_modal(&mut self, key: KeyCode) -> Result<()> {
+    fn key_modal(&mut self, event: KeyEvent) -> Result<()> {
+        let key = event.code;
         let Some(mut modal) = self.modal.take() else {
             return Ok(());
         };
@@ -553,8 +658,21 @@ impl App {
             }
             return Ok(());
         }
+        if !matches!(modal, Modal::Input { .. })
+            && event
+                .modifiers
+                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SUPER)
+        {
+            self.modal = Some(modal);
+            return Ok(());
+        }
         let mut keep = true;
         match &mut modal {
+            Modal::Error(_) => {
+                if matches!(key, KeyCode::Enter | KeyCode::Char('q')) {
+                    keep = false;
+                }
+            }
             Modal::Help => {
                 if matches!(key, KeyCode::Char('?') | KeyCode::Char('q')) {
                     keep = false;
@@ -569,12 +687,13 @@ impl App {
                 KeyCode::Enter => {
                     if let Some(i) = *selected {
                         if let Some(s) = choices.get(i) {
-                            *value = s.clone();
+                            value.set(s.clone());
                         }
                     }
                     if matches!(kind, InputKind::Filter) {
+                        let key = self.selected_key();
                         self.filter = value.clone();
-                        self.selected = 0;
+                        self.keep_selection(key);
                     } else {
                         self.query = value.trim().to_string();
                         self.page = 4;
@@ -590,16 +709,6 @@ impl App {
                     }
                     keep = false;
                 }
-                KeyCode::Backspace => {
-                    value.pop();
-                    *selected = None;
-                }
-                KeyCode::Char(c) => {
-                    if value.len() < 256 {
-                        value.push(c);
-                    }
-                    *selected = None;
-                }
                 KeyCode::Down if !choices.is_empty() => {
                     *selected = Some(selected.map_or(0, |i| (i + 1).min(choices.len() - 1)));
                 }
@@ -608,12 +717,16 @@ impl App {
                 }
                 KeyCode::Tab if matches!(kind, InputKind::Search) && !self.demo => {
                     let api = self.api.clone();
-                    let query = value.clone();
+                    let query = value.to_string();
                     self.request(
                         async move { Ok(Message::Suggestions(api.suggest(&query).await?)) },
                     );
                 }
-                _ => {}
+                _ => {
+                    if value.handle_key(event) {
+                        *selected = None;
+                    }
+                }
             },
             Modal::Confirm(video) => {
                 if key == KeyCode::Char('y') || key == KeyCode::Enter {
@@ -684,9 +797,37 @@ impl App {
         }
         Ok(())
     }
-    fn key(&mut self, key: KeyCode) -> Result<bool> {
+    fn key(&mut self, event: KeyEvent) -> Result<bool> {
+        let key = event.code;
         if self.modal.is_some() {
-            self.key_modal(key)?;
+            self.key_modal(event)?;
+            return Ok(false);
+        }
+        if self.filtering {
+            let keep = self.selected_key();
+            let mut changed = false;
+            match key {
+                KeyCode::Esc => {
+                    self.filter = self.filter_before.clone();
+                    self.filtering = false;
+                    changed = true;
+                }
+                KeyCode::Enter => self.filtering = false,
+                KeyCode::Down => self.select(1),
+                KeyCode::Up => self.select(-1),
+                KeyCode::PageDown => self.select(10),
+                KeyCode::PageUp => self.select(-10),
+                _ => changed = self.filter.handle_key(event),
+            }
+            if changed {
+                self.keep_selection(keep);
+            }
+            return Ok(false);
+        }
+        if event
+            .modifiers
+            .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SUPER)
+        {
             return Ok(false);
         }
         match key {
@@ -704,8 +845,25 @@ impl App {
             }
             KeyCode::Down | KeyCode::Char('j') => self.select(1),
             KeyCode::Up | KeyCode::Char('k') => self.select(-1),
-            KeyCode::PageDown => self.select(10),
-            KeyCode::PageUp => self.select(-10),
+            KeyCode::PageDown => {
+                self.select(self.list_rect.height.saturating_sub(3).max(1) as isize)
+            }
+            KeyCode::PageUp => {
+                self.select(-(self.list_rect.height.saturating_sub(3).max(1) as isize))
+            }
+            KeyCode::Home => {
+                self.selected = 0;
+                self.detail = None;
+            }
+            KeyCode::End => {
+                self.selected = if self.page == 8 {
+                    self.filtered_queue().len()
+                } else {
+                    self.filtered().len()
+                }
+                .saturating_sub(1);
+                self.detail = None;
+            }
             KeyCode::Enter => self.detail(),
             KeyCode::Char('p') => self.play(),
             KeyCode::Char('s') => self.input(InputKind::Search),
@@ -816,6 +974,11 @@ impl App {
                     });
                 }
             }
+            KeyCode::Esc if !self.filter.is_empty() => {
+                let keep = self.selected_key();
+                self.filter.clear();
+                self.keep_selection(keep);
+            }
             KeyCode::Esc => {
                 self.cancel_read();
                 if self.detail.take().is_none() {
@@ -832,172 +995,184 @@ impl App {
         }
         Ok(false)
     }
-    fn receive(&mut self) -> bool {
-        let mut dirty = false;
-        while let Ok(message) = self.rx.try_recv() {
-            let message = match message {
-                Message::Read(id, _) if id != self.read_generation => continue,
-                Message::Read(_, inner) => *inner,
-                other => other,
-            };
-            dirty = true;
-            match message {
-                Message::Read(_, _) => continue,
-                Message::Page(list, title) => {
-                    self.list = list;
-                    self.heading = title;
-                    self.selected = 0;
-                    self.detail = None;
-                    self.notice = if self.list.is_empty() {
-                        "没有内容；s 搜索 · R 刷新 · L 登录".into()
-                    } else {
-                        format!("{} 项 · 第 {} 页 · n / N 翻页", self.list.len(), self.pn)
-                    };
+    fn apply_message(&mut self, message: Message) -> bool {
+        let message = match message {
+            Message::Read(id, _) if id != self.read_generation => return false,
+            Message::Read(_, inner) => {
+                self.loading = false;
+                *inner
+            }
+            other => other,
+        };
+        match message {
+            Message::Read(_, _) => return false,
+            Message::Page(list, title) => {
+                self.replace_list(list, title);
+                self.notice = if self.list.is_empty() {
+                    "没有内容；s 搜索 · R 刷新 · L 登录".into()
+                } else {
+                    format!("{} 项 · 第 {} 页 · n / N 翻页", self.list.len(), self.pn)
+                };
+            }
+            Message::CursorPage {
+                page,
+                pn,
+                list,
+                title,
+                next,
+            } => {
+                if let Some(cursor) = next {
+                    self.cursors.insert((page, pn + 1), cursor);
+                } else {
+                    self.cursors.remove(&(page, pn + 1));
                 }
-                Message::CursorPage {
-                    page,
-                    pn,
-                    list,
-                    title,
-                    next,
-                } => {
-                    if let Some(cursor) = next {
-                        self.cursors.insert((page, pn + 1), cursor);
+                self.replace_list(list, title);
+                self.notice = if self.cursors.contains_key(&(page, pn + 1)) {
+                    if self.list.is_empty() {
+                        format!("本页没有可显示视频 · 第 {} 页 · n 下一页", pn)
                     } else {
-                        self.cursors.remove(&(page, pn + 1));
+                        format!("{} 项 · 第 {} 页 · n 下一页", self.list.len(), pn)
                     }
-                    self.list = list;
-                    self.heading = title;
-                    self.selected = 0;
-                    self.detail = None;
-                    self.notice = if self.cursors.contains_key(&(page, pn + 1)) {
-                        if self.list.is_empty() {
-                            format!("本页没有可显示视频 · 第 {} 页 · n 下一页", pn)
-                        } else {
-                            format!("{} 项 · 第 {} 页 · n 下一页", self.list.len(), pn)
-                        }
-                    } else if self.list.is_empty() {
-                        "没有更多内容 · N 返回上一页 · R 刷新".into()
-                    } else {
-                        format!("{} 项 · 第 {} 页 · 已到最后一页", self.list.len(), pn)
-                    };
-                }
-                Message::Detail(v, r) => {
-                    self.detail = Some(*v);
-                    self.related = r;
-                    self.part = 0;
-                    self.notice = "p 播放 · [ / ] 分 P · Q 清晰度 · v 下载".into();
-                }
-                Message::Folders(folders, picker, target) => {
-                    if picker {
-                        if let Some(video) = target {
-                            self.modal = Some(Modal::Favourite(folders, 0, video));
-                        }
-                    } else {
-                        self.list = folders
-                            .into_iter()
-                            .map(|f| Video {
-                                bvid: format!("folder:{}", f.id),
-                                title: f.title,
-                                views: f.count,
-                                up: "收藏夹 · Enter 打开".into(),
-                                ..Default::default()
-                            })
-                            .collect();
-                        self.heading = "收藏夹".into();
-                        self.selected = 0;
+                } else if self.list.is_empty() {
+                    "没有更多内容 · N 返回上一页 · R 刷新".into()
+                } else {
+                    format!("{} 项 · 第 {} 页 · 已到最后一页", self.list.len(), pn)
+                };
+            }
+            Message::Detail(v, r) => {
+                self.detail = Some(*v);
+                self.related = r;
+                self.part = 0;
+                self.notice = "p 播放 · [ / ] 分 P · Q 清晰度 · v 下载".into();
+            }
+            Message::Folders(folders, picker, target) => {
+                if picker {
+                    if let Some(video) = target {
+                        self.modal = Some(Modal::Favourite(folders, 0, video));
                     }
-                }
-                Message::Cover(url, bytes) => {
-                    if self.current().is_some_and(|v| v.cover == url) {
-                        match encode_image(&bytes) {
-                            Ok(png) => self.image = Some((url, png)),
-                            Err(_) => {
-                                self.image = None;
-                            }
-                        }
-                    }
-                }
-                Message::Qr(url, key) => match qr_art(&url) {
-                    Ok(art) => {
-                        self.modal = Some(Modal::Qr {
-                            key,
-                            art,
-                            status: "请用哔哩哔哩 App 扫码；Esc 取消".into(),
-                            last: std::time::Instant::now(),
+                } else {
+                    self.list = folders
+                        .into_iter()
+                        .map(|f| Video {
+                            bvid: format!("folder:{}", f.id),
+                            title: f.title,
+                            views: f.count,
+                            up: "收藏夹 · Enter 打开".into(),
+                            ..Default::default()
                         })
-                    }
-                    Err(e) => self.notice = e.to_string(),
-                },
-                Message::Login(cookie) => {
-                    if matches!(self.modal, Some(Modal::Qr { .. })) {
-                        match store::save_cookie(&cookie).and_then(|_| Api::new(cookie)) {
-                            Ok(api) => {
-                                self.api = api;
-                                self.modal = None;
-                                self.notice = "登录成功 · cookie 已以 0600 保存".into();
-                                let (tx, rx) = mpsc::unbounded_channel();
-                                let (updates, progress) = mpsc::unbounded_channel();
-                                self.download = tx;
-                                self.progress = progress;
-                                self.jobs.push(tokio::spawn(media::download_worker(
-                                    self.api.clone(),
-                                    rx,
-                                    updates,
-                                )));
-                            }
-                            Err(e) => self.notice = e.to_string(),
-                        }
-                    }
-                    self.polling = false;
+                        .collect();
+                    self.heading = "收藏夹".into();
+                    self.selected = 0;
                 }
-                Message::Suggestions(s) => {
-                    if let Some(Modal::Input {
-                        choices, selected, ..
-                    }) = &mut self.modal
-                    {
-                        *choices = s.into_iter().map(|s| model::clean(&s)).collect();
-                        *selected = None;
-                    }
-                }
-                Message::Notice(s) => {
-                    if let Some(raw) = s.strip_prefix("quality:") {
-                        if let Ok(mut q) = serde_json::from_str::<Vec<(u64, String)>>(raw) {
-                            q.insert(0, (0, "最高可用（按当前登录权限）".into()));
-                            self.modal = Some(Modal::Quality(q, 0));
+            }
+            Message::Cover(url, bytes) => {
+                if self.current().is_some_and(|v| v.cover == url) {
+                    match encode_image(&bytes) {
+                        Ok(png) => self.image = Some((url, png)),
+                        Err(_) => {
+                            self.image = None;
                         }
-                    } else if let Some(status) = s.strip_prefix("qr-expired:") {
-                        self.polling = false;
-                        if let Some(Modal::Qr {
-                            key,
-                            status: s,
-                            last,
-                            ..
-                        }) = &mut self.modal
-                        {
-                            key.clear();
-                            *s = status.into();
-                            *last = std::time::Instant::now();
-                        }
-                    } else if let Some(status) = s.strip_prefix("qr:") {
-                        self.polling = false;
-                        if let Some(Modal::Qr {
-                            status: s, last, ..
-                        }) = &mut self.modal
-                        {
-                            *s = status.into();
-                            *last = std::time::Instant::now();
-                        }
-                    } else {
-                        if let Some(Modal::Qr { key, status, .. }) = &mut self.modal {
-                            if key.is_empty() {
-                                *status = s.clone();
-                            }
-                        }
-                        self.notice = s;
                     }
                 }
             }
+            Message::Qr(url, key) => match qr_art(&url) {
+                Ok(art) => {
+                    self.modal = Some(Modal::Qr {
+                        key,
+                        art,
+                        status: "用哔哩哔哩 App 扫码，并在手机确认".into(),
+                        last: std::time::Instant::now(),
+                    })
+                }
+                Err(e) => {
+                    self.error = Some(e.to_string());
+                    self.modal = Some(Modal::Error(e.to_string()));
+                }
+            },
+            Message::Login(cookie) => {
+                if matches!(self.modal, Some(Modal::Qr { .. })) {
+                    match store::save_cookie(&cookie).and_then(|_| Api::new(cookie)) {
+                        Ok(api) => {
+                            self.api = api;
+                            self.modal = None;
+                            self.notice = "登录成功 · 登录状态已保存".into();
+                            let (tx, rx) = mpsc::unbounded_channel();
+                            let (updates, progress) = mpsc::unbounded_channel();
+                            self.download = tx;
+                            self.progress = progress;
+                            self.jobs.push(tokio::spawn(media::download_worker(
+                                self.api.clone(),
+                                rx,
+                                updates,
+                            )));
+                        }
+                        Err(e) => {
+                            self.error = Some(e.to_string());
+                            self.modal = Some(Modal::Error(e.to_string()));
+                        }
+                    }
+                }
+                self.polling = false;
+            }
+            Message::Suggestions(s) => {
+                if let Some(Modal::Input {
+                    choices, selected, ..
+                }) = &mut self.modal
+                {
+                    *choices = s.into_iter().map(|s| model::clean(&s)).collect();
+                    *selected = None;
+                }
+            }
+            Message::Error(error) => {
+                self.error = Some(error.clone());
+                self.notice = error.clone();
+                self.polling = false;
+                self.modal = Some(Modal::Error(error));
+            }
+            Message::Notice(s) => {
+                if let Some(raw) = s.strip_prefix("quality:") {
+                    if let Ok(mut q) = serde_json::from_str::<Vec<(u64, String)>>(raw) {
+                        q.insert(0, (0, "最高可用（按当前登录权限）".into()));
+                        self.modal = Some(Modal::Quality(q, 0));
+                    }
+                } else if let Some(status) = s.strip_prefix("qr-expired:") {
+                    self.polling = false;
+                    if let Some(Modal::Qr {
+                        key,
+                        status: s,
+                        last,
+                        ..
+                    }) = &mut self.modal
+                    {
+                        key.clear();
+                        *s = status.into();
+                        *last = std::time::Instant::now();
+                    }
+                } else if let Some(status) = s.strip_prefix("qr:") {
+                    self.polling = false;
+                    if let Some(Modal::Qr {
+                        status: s, last, ..
+                    }) = &mut self.modal
+                    {
+                        *s = status.into();
+                        *last = std::time::Instant::now();
+                    }
+                } else {
+                    if let Some(Modal::Qr { key, status, .. }) = &mut self.modal {
+                        if key.is_empty() {
+                            *status = s.clone();
+                        }
+                    }
+                    self.notice = s;
+                }
+            }
+        }
+        true
+    }
+    fn receive(&mut self) -> bool {
+        let mut dirty = false;
+        while let Ok(message) = self.rx.try_recv() {
+            dirty |= self.apply_message(message);
         }
         while let Ok(progress) = self.progress.try_recv() {
             if let Some(item) = self.queue.get_mut(progress.id) {
@@ -1015,6 +1190,9 @@ impl App {
         dirty
     }
     fn poll_qr(&mut self) {
+        if !self.focused {
+            return;
+        }
         let key = if let Some(Modal::Qr { key, last, .. }) = &self.modal {
             if !key.is_empty() && last.elapsed() >= Duration::from_secs(3) && !self.polling {
                 Some(key.clone())
@@ -1036,18 +1214,18 @@ impl App {
                     Ok((code, _)) => Ok(Message::Notice(format!(
                         "qr:{}",
                         match code {
-                            86101 => "等待扫码",
-                            86090 => "已扫码，请在手机确认",
-                            _ => "二维码未完成，请稍后重试",
+                            86101 => "等待扫码".to_owned(),
+                            86090 => "已扫码，请在手机确认".to_owned(),
+                            _ => format!("二维码状态 {code}，请稍后重试"),
                         }
                     ))),
-                    Err(e) => Ok(Message::Notice(format!("qr:{e}"))),
+                    Err(e) => Err(e),
                 }
             });
         }
     }
     fn request_cover(&mut self, width: u16) {
-        if self.demo || !self.kitty || width < 110 || self.modal.is_some() {
+        if !self.focused || self.demo || !self.kitty || width < 110 || self.modal.is_some() {
             return;
         }
         let Some(video) = self.current() else { return };
@@ -1056,75 +1234,180 @@ impl App {
         }
         self.image_requested = video.cover.clone();
         let api_url = video.cover;
-        self.independent(async move {
-            let bytes = media::cover(&api_url).await?;
-            Ok(Message::Cover(api_url, bytes))
-        });
+        if let Some(job) = self.cover_job.take() {
+            job.abort();
+        }
+        let tx = self.tx.clone();
+        self.cover_job = Some(tokio::spawn(async move {
+            let message = match media::cover(&api_url).await {
+                Ok(bytes) => Message::Cover(api_url, bytes),
+                Err(error) => Message::Notice(format!("封面不可用：{error}")),
+            };
+            let _ = tx.send(message);
+        }));
+    }
+    fn focus(&mut self, focused: bool) {
+        self.focused = focused;
+        if !focused {
+            self.resume_read =
+                self.loading || self.read_job.as_ref().is_some_and(|job| !job.is_finished());
+            self.cancel_read();
+            self.loading = false;
+            self.polling = false;
+            if let Some(job) = self.cover_job.take() {
+                if !job.is_finished() {
+                    job.abort();
+                    self.image_requested.clear();
+                }
+            }
+        } else {
+            if let Some(Modal::Qr { key, last, .. }) = &mut self.modal {
+                *last = std::time::Instant::now();
+                if key.is_empty() && self.resume_read {
+                    let api = self.api.clone();
+                    self.request(async move {
+                        let (url, key) = api.qr_generate().await?;
+                        Ok(Message::Qr(url, key))
+                    });
+                }
+            } else if self.resume_read && self.modal.is_none() {
+                self.refresh();
+            }
+            self.resume_read = false;
+        }
+    }
+    fn handle_event(&mut self, event: Event) -> Result<bool> {
+        match event {
+            Event::FocusLost => {
+                self.focus(false);
+                delete_image()?;
+            }
+            Event::FocusGained => self.focus(true),
+            Event::Key(key) if key.kind != KeyEventKind::Release && self.key(key)? => {
+                return Ok(true);
+            }
+            Event::Resize(_, _) => {}
+            Event::Paste(text) => self.paste(&text),
+            Event::Mouse(mouse) if self.modal.is_none() => match mouse.kind {
+                MouseEventKind::ScrollDown => self.select(1),
+                MouseEventKind::ScrollUp => self.select(-1),
+                MouseEventKind::Down(event::MouseButton::Left) => {
+                    if mouse.row == 1 {
+                        let mut x = 1;
+                        for (page, label) in TABS.iter().enumerate() {
+                            let width = unicode_width::UnicodeWidthStr::width(*label) as u16 + 4;
+                            if mouse.column >= x && mouse.column < x + width {
+                                self.page = page;
+                                self.pn = 1;
+                                self.context_mid = None;
+                                self.context_folder = None;
+                                self.detail = None;
+                                self.selected = 0;
+                                self.filter.clear();
+                                self.filtering = false;
+                                self.refresh();
+                                break;
+                            }
+                            x += width;
+                        }
+                    } else if self.list_rect.contains((mouse.column, mouse.row).into())
+                        && mouse.row >= self.list_rect.y.saturating_add(2)
+                        && mouse.row < self.list_rect.bottom().saturating_sub(1)
+                        && mouse.column > self.list_rect.x
+                        && mouse.column < self.list_rect.right().saturating_sub(1)
+                    {
+                        self.selected =
+                            self.list_offset + (mouse.row - self.list_rect.y - 2) as usize;
+                        let len = if self.page == 8 {
+                            self.filtered_queue().len()
+                        } else {
+                            self.filtered().len()
+                        };
+                        self.selected = self.selected.min(len.saturating_sub(1));
+                        self.detail = None;
+                    }
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+        Ok(false)
+    }
+    fn sync_notice(&mut self) {
+        if self.notice != self.last_notice {
+            let tone = if self.error.as_ref() == Some(&self.notice) {
+                ui::Tone::Error
+            } else if self.notice.starts_with("已") || self.notice.starts_with("登录成功") {
+                ui::Tone::Success
+            } else if self.notice.contains("需要")
+                || self.notice.contains("请先")
+                || self.notice.contains("不可用")
+                || self.notice.contains("禁用")
+            {
+                ui::Tone::Warning
+            } else {
+                ui::Tone::Info
+            };
+            self.notice_display.set(self.notice.clone(), tone);
+            self.last_notice = self.notice.clone();
+        }
     }
     pub async fn run(mut self) -> Result<()> {
         let (mut terminal, _guard) = ui::terminal()?;
         print!("\x1b]11;#1e2228\x07");
         self.refresh();
         let mut dirty = true;
+        let mut events = event::EventStream::new();
         loop {
             dirty |= self.receive();
-            self.poll_qr();
-            self.request_cover(terminal.size()?.width);
-            if dirty {
-                terminal.draw(|frame| self.draw(frame))?;
-                self.paint_cover()?;
-                dirty = false;
-            }
-            if event::poll(Duration::from_millis(80))? {
-                match event::read()? {
-                    Event::Key(key) if key.kind == KeyEventKind::Press => {
-                        if self.key(key.code)? {
-                            break;
-                        }
-                        dirty = true;
-                    }
-                    Event::Resize(_, _) => dirty = true,
-                    Event::Mouse(mouse) if self.modal.is_none() => {
-                        match mouse.kind {
-                            MouseEventKind::ScrollDown => self.select(1),
-                            MouseEventKind::ScrollUp => self.select(-1),
-                            MouseEventKind::Down(event::MouseButton::Left) => {
-                                if mouse.row == 1 {
-                                    let mut x = 0;
-                                    for (page, label) in TABS.iter().enumerate() {
-                                        let width = unicode_width::UnicodeWidthStr::width(*label)
-                                            as u16
-                                            + 5;
-                                        if mouse.column >= x && mouse.column < x + width {
-                                            self.page = page;
-                                            self.pn = 1;
-                                            self.context_mid = None;
-                                            self.context_folder = None;
-                                            self.detail = None;
-                                            self.selected = 0;
-                                            self.refresh();
-                                            break;
-                                        }
-                                        x += width;
-                                    }
-                                } else if self.list_rect.contains((mouse.column, mouse.row).into())
-                                    && mouse.row > self.list_rect.y + 1
-                                {
-                                    self.selected = self.list_offset
-                                        + (mouse.row - self.list_rect.y - 2) as usize;
-                                    self.selected =
-                                        self.selected.min(self.filtered().len().saturating_sub(1));
-                                    self.detail = None;
-                                }
-                            }
-                            _ => {}
-                        }
-                        dirty = true;
-                    }
-                    _ => {}
+            self.sync_notice();
+            if self.focused {
+                self.poll_qr();
+                self.request_cover(terminal.size()?.width);
+                if dirty {
+                    terminal.draw(|frame| self.draw(frame))?;
+                    self.paint_cover()?;
+                    dirty = false;
                 }
             }
-            tokio::task::yield_now().await;
+            let qr = if self.focused && !self.polling {
+                match &self.modal {
+                    Some(Modal::Qr { key, last, .. }) if !key.is_empty() => {
+                        Some(*last + Duration::from_secs(3))
+                    }
+                    _ => None,
+                }
+            } else {
+                None
+            };
+            let deadline = if self.focused {
+                self.notice_display.deadline().into_iter().chain(qr).min()
+            } else {
+                None
+            };
+            let wake = async {
+                match deadline {
+                    Some(t) => tokio::time::sleep_until(t.into()).await,
+                    None => std::future::pending::<()>().await,
+                }
+            };
+            tokio::select! {
+                event=events.next()=> {
+                    let Some(event)=event else{break};
+                    if self.handle_event(event?)? {break;}
+                    dirty=true;
+                }
+                Some(message)=self.rx.recv()=>{dirty|=self.apply_message(message);}
+                Some(progress)=self.progress.recv()=>{
+                    if let Some(item)=self.queue.get_mut(progress.id) {item.state=progress.state;if progress.bytes>0 {item.bytes=progress.bytes;}}
+                    dirty=true;
+                }
+                Some(notice)=self.play_notice.recv()=>{self.notice=notice;dirty=true;}
+                _=wake=>{
+                    if self.notice_display.expire() {self.notice.clear();self.last_notice.clear();}
+                    self.poll_qr();dirty=true;
+                }
+            }
         }
         delete_image()?;
         print!("\x1b]111\x07");
@@ -1147,57 +1430,157 @@ impl App {
             Constraint::Length(2),
         ])
         .split(area);
-        ui::status(frame,layout[0],&format!(" BILIBILI   /   bilitui-mayon                         {auth} · mpv / DASH · 弹幕 {}",if self.config.danmaku{"开"}else{"关"}));
-        // Compact tabs retain every numbered destination at 90 columns.
+        self.sync_notice();
+        let auth_tone = if self.api.logged_in() && !self.demo {
+            ui::Tone::Success
+        } else {
+            ui::Tone::Info
+        };
+        frame.render_widget(
+            Paragraph::new(Line::from(vec![
+                Span::styled(" 哔哩哔哩", Style::default().fg(BRIGHTFG)),
+                ui::muted(" · "),
+                Span::styled(
+                    format!("{} {auth}", auth_tone.symbol()),
+                    Style::default().fg(auth_tone.color()),
+                ),
+                ui::muted(format!(
+                    " · 弹幕 {}",
+                    if self.config.danmaku { "开" } else { "关" }
+                )),
+            ]))
+            .style(ui::base()),
+            layout[0],
+        );
         let spans = TABS
             .iter()
             .enumerate()
             .flat_map(|(i, t)| {
                 [
                     Span::styled(
-                        format!(" {} {t} ", i + 1),
-                        Style::default().fg(if i == self.page { BLUE } else { MUTED }),
+                        format!("{} {t}", i + 1),
+                        if i == self.page {
+                            Style::default()
+                                .fg(BLUE)
+                                .add_modifier(ratatui::style::Modifier::UNDERLINED)
+                        } else {
+                            Style::default().fg(MUTED)
+                        },
                     ),
-                    Span::raw(" "),
+                    Span::raw("  "),
                 ]
             })
             .collect::<Vec<_>>();
-        frame.render_widget(Paragraph::new(Line::from(spans)), layout[1]);
-        ui::footer(
-            frame,
-            layout[3],
-            " Enter 详情  p 播放  s 搜索  / 过滤  v 下载  ? 帮助  q 退出",
-            &self.notice,
-        );
+        let mut tabs = vec![Span::raw(" ")];
+        tabs.extend(spans);
+        frame.render_widget(Paragraph::new(Line::from(tabs)), layout[1]);
+        let hint = if self.filtering {
+            "↑/↓ 选择  Enter 保留  Esc 恢复"
+        } else if matches!(self.modal, Some(Modal::Input { .. })) {
+            if self.demo {
+                "Enter 搜索  ↑/↓ 历史  Esc 取消"
+            } else {
+                "Enter 搜索  ↑/↓ 历史  Tab 建议  Esc 取消"
+            }
+        } else if matches!(self.modal, Some(Modal::Error(_))) {
+            "Enter 关闭  Esc 关闭"
+        } else if matches!(self.modal, Some(Modal::Help)) {
+            "?/Esc 关闭帮助"
+        } else if matches!(self.modal, Some(Modal::Qr { .. })) {
+            "Esc 取消登录"
+        } else if self.modal.is_some() {
+            "↑/↓ 选择  Enter 确认  Esc 取消"
+        } else if self.page == 8 {
+            "↑/↓ 选择  / 过滤  1–9 切页  ? 帮助  q 退出"
+        } else if self.filtered().is_empty() {
+            "/ 过滤  s 搜索  R 刷新  L 登录  ? 帮助  q 退出"
+        } else if self.demo {
+            "Enter 详情  / 过滤  s 搜索  ↑/↓ 选择  ? 帮助  q 退出"
+        } else {
+            "Enter 详情  p 播放  s 搜索  / 过滤  v 下载  ? 帮助  q 退出"
+        };
+        let mut footer = vec![ui::hint_line(hint, layout[3].width as usize)];
+        if let Some((text, tone)) = self.notice_display.visible() {
+            footer.push(Line::from(Span::styled(
+                format!(
+                    "{} {}",
+                    tone.symbol(),
+                    ui::theme::clip(text, layout[3].width.saturating_sub(2) as usize)
+                ),
+                Style::default().fg(tone.color()),
+            )));
+        }
+        frame.render_widget(Paragraph::new(footer).style(ui::base()), layout[3]);
+        if self.filtering {
+            self.filter.render(
+                frame,
+                Rect::new(
+                    layout[1].x,
+                    layout[1].bottom().saturating_sub(1),
+                    layout[1].width,
+                    1,
+                ),
+                ui::base().fg(BLUE),
+            );
+        }
         self.image_rect = None;
         let body = layout[2];
         if self.page == 8 {
-            let rows = self
-                .queue
+            self.list_rect = body;
+            let ids = self.filtered_queue();
+            self.list_offset = self
+                .selected
+                .saturating_sub(body.height.saturating_sub(4) as usize);
+            let matcher = Matcher::new(&self.filter);
+            let rows = ids
                 .iter()
-                .map(|q| {
+                .map(|i| {
+                    let q = &self.queue[*i];
+                    let tone = if q.state.starts_with("失败") {
+                        ui::Tone::Error
+                    } else if q.state == "已完成" {
+                        ui::Tone::Success
+                    } else {
+                        ui::Tone::Info
+                    };
                     vec![
-                        q.title.clone(),
-                        q.state.clone(),
-                        format!("{:.1} MiB", q.bytes as f64 / 1048576.),
+                        self.search.highlight(&matcher, &q.title),
+                        Line::styled(q.state.clone(), Style::default().fg(tone.color())),
+                        ui::numeric(format!("{:.1} MiB", q.bytes as f64 / 1048576.)),
                     ]
                 })
                 .collect();
-            ui::table(
+            ui::table_highlighted(
                 frame,
                 body,
-                " 下载队列 · 串行 / 退出取消 ",
+                &format!(
+                    "下载队列 · {}/{} · /{}",
+                    ids.len(),
+                    self.queue.len(),
+                    self.filter
+                ),
                 vec!["内容", "状态", "已传输"],
                 rows,
                 &[
-                    Constraint::Min(20),
-                    Constraint::Length(20),
+                    Constraint::Min(12),
+                    Constraint::Length(16),
                     Constraint::Length(12),
                 ],
                 self.selected,
             );
+            if ids.is_empty() {
+                ui::list_state(
+                    frame,
+                    body.inner(ratatui::layout::Margin {
+                        horizontal: 1,
+                        vertical: 2,
+                    }),
+                    ui::ListState::Empty,
+                    "/ 修改过滤 · Esc 清除；选择视频后 v 下载",
+                );
+            }
         } else {
-            let wide = body.width >= 110;
+            let wide = body.width >= 110 && self.current().is_some();
             let parts =
                 Layout::horizontal([Constraint::Percentage(60), Constraint::Percentage(40)])
                     .split(body);
@@ -1213,23 +1596,43 @@ impl App {
         if let Some(modal) = &self.modal {
             match modal {
                 Modal::Help => ui::help(frame, HELP),
+                Modal::Error(error) => ui::error_dialog(
+                    frame,
+                    "请求失败",
+                    &format!("{error}\n\nEnter / Esc 关闭；返回列表后 R 重试或 L 登录"),
+                ),
                 Modal::Input {
-                    kind,
                     value,
                     choices,
                     selected,
+                    ..
                 } => {
-                    let title = if matches!(kind, InputKind::Filter) {
-                        " 过滤当前列表 "
-                    } else {
-                        " 搜索 · Tab 建议 · ↑↓ 历史 "
-                    };
-                    let mut lines = vec![format!("{value}▏"), String::new()];
+                    let inner = ui::modal(
+                        frame,
+                        if self.demo {
+                            "搜索 · ↑/↓ 历史"
+                        } else {
+                            "搜索 · Tab 建议 · ↑/↓ 历史"
+                        },
+                        76,
+                        18,
+                        ui::Tone::Action,
+                    );
+                    let mut lines = vec![Line::raw(""), Line::raw("")];
                     lines.extend(choices.iter().take(10).enumerate().map(|(i, c)| {
-                        format!("{} {}", if *selected == Some(i) { "▏" } else { " " }, c)
+                        Line::from(Span::styled(
+                            format!("{} {}", if *selected == Some(i) { "›" } else { " " }, c),
+                            Style::default().fg(if *selected == Some(i) { BLUE } else { MUTED }),
+                        ))
                     }));
-                    lines.push("Enter 确认 · Esc 取消".into());
-                    ui::dialog(frame, title, &lines.join("\n"));
+                    lines.push(Line::raw(""));
+                    lines.push(ui::hint_line("Enter 搜索  Esc 取消", inner.width as usize));
+                    frame.render_widget(Paragraph::new(lines).style(ui::base().bg(SURFACE)), inner);
+                    value.render(
+                        frame,
+                        Rect::new(inner.x, inner.y, inner.width, 1),
+                        ui::base().bg(SURFACE).fg(FG),
+                    );
                 }
                 Modal::Confirm(v) => ui::dialog(
                     frame,
@@ -1281,50 +1684,92 @@ impl App {
                         as u16
                         + 4;
                     let height = art.lines().count() as u16 + 5;
-                    let a = ui::centered(area, width.max(58), height);
-                    frame.render_widget(Clear, a);
-                    frame.render_widget(
-                        Paragraph::new(format!("{art}\n{status}\nEsc 取消；二维码仅当前进程保存"))
-                            .style(
+                    let inner = ui::modal(
+                        frame,
+                        "手机扫码登录",
+                        width.max(58),
+                        height,
+                        ui::Tone::Action,
+                    );
+                    if art.lines().count() as u16 > inner.height.saturating_sub(2)
+                        || art.lines().next().is_some_and(|line| {
+                            unicode_width::UnicodeWidthStr::width(line) > inner.width as usize
+                        })
+                    {
+                        frame.render_widget(
+                            Paragraph::new("请放大终端以完整显示二维码\n\nEsc 取消登录")
+                                .style(ui::base().bg(SURFACE).fg(YELLOW))
+                                .wrap(Wrap { trim: false }),
+                            inner,
+                        );
+                    } else {
+                        let art_height = art.lines().count() as u16;
+                        frame.render_widget(
+                            Paragraph::new(art.clone()).style(
                                 Style::default()
                                     .fg(ratatui::style::Color::White)
                                     .bg(ratatui::style::Color::Black),
-                            )
-                            .block(ui::block(" 手机扫码登录 ", true)),
-                        a,
-                    );
+                            ),
+                            Rect::new(inner.x, inner.y, inner.width, art_height),
+                        );
+                        let tone = if status.contains("过期") {
+                            ui::Tone::Warning
+                        } else {
+                            ui::Tone::Action
+                        };
+                        frame.render_widget(
+                            Paragraph::new(format!("{} {status}\nEsc 取消登录", tone.symbol()))
+                                .style(ui::base().bg(SURFACE).fg(tone.color()))
+                                .wrap(Wrap { trim: false }),
+                            Rect::new(
+                                inner.x,
+                                inner.y + art_height,
+                                inner.width,
+                                inner.height.saturating_sub(art_height),
+                            ),
+                        );
+                    }
                 }
             }
         }
     }
     fn draw_list(&mut self, frame: &mut Frame, area: Rect) {
         self.list_rect = area;
-        let visible = area.height.saturating_sub(3).max(1) as usize;
-        self.list_offset = self.selected.saturating_sub(visible.saturating_sub(1));
+        let visible = area.height.saturating_sub(3) as usize;
+        self.list_offset = self.selected.saturating_add(1).saturating_sub(visible);
+        let matcher = Matcher::new(&self.filter);
         let list = self.filtered();
         let rows = list
             .iter()
             .map(|v| {
                 vec![
-                    v.title.clone(),
-                    v.up.clone(),
-                    model::count(v.views),
-                    v.duration.clone(),
+                    self.search.highlight(&matcher, &v.title),
+                    self.search.highlight(&matcher, &v.up),
+                    ui::numeric(model::count(v.views)),
+                    ui::numeric(v.duration.clone()),
                 ]
             })
             .collect();
-        ui::table(
+        ui::table_highlighted(
             frame,
             area,
             &format!(
-                " {} · {} 项 · 第 {} 页{} ",
-                self.heading,
+                "{}/{}{} · {} · 第 {} 页{}",
                 list.len(),
-                self.pn,
+                self.list.len(),
                 if self.filter.is_empty() {
                     String::new()
                 } else {
                     format!(" · /{}", self.filter)
+                },
+                self.heading,
+                self.pn,
+                if self.loading {
+                    " · 加载中…"
+                } else if self.error.is_some() {
+                    " · × 请求失败"
+                } else {
+                    ""
                 }
             ),
             vec!["标题", "UP 主", "播放", "时长"],
@@ -1338,22 +1783,36 @@ impl App {
             self.selected,
         );
         if list.is_empty() {
-            let a = Rect::new(
-                area.x + 2,
-                area.y + 3,
-                area.width.saturating_sub(4),
-                area.height.saturating_sub(5),
-            );
-            frame.render_widget(
-                Paragraph::new(if self.page == 4 {
-                    "s 输入搜索词 · Tab 视频 / UP 主\n\n搜索历史保存在本机，Tab 按需获取建议。"
-                } else {
-                    "没有内容\n\nR 刷新 · s 搜索 · L 登录\n访客可以浏览推荐、热门、排行和视频详情。"
-                })
-                .style(ui::base().fg(MUTED))
-                .wrap(Wrap { trim: false }),
-                a,
-            );
+            let inner = area.inner(ratatui::layout::Margin {
+                horizontal: 1,
+                vertical: 2,
+            });
+            let (state, detail) = if self.loading {
+                (
+                    ui::ListState::Loading,
+                    "正在请求 B 站；Esc 取消本次请求".to_owned(),
+                )
+            } else if let Some(error) = &self.error {
+                (
+                    ui::ListState::Error,
+                    format!("{error}\nR 重试 · s 搜索 · L 登录"),
+                )
+            } else if !self.filter.is_empty() {
+                (
+                    ui::ListState::Empty,
+                    format!("过滤：{}\nEsc 清除过滤 · / 修改", self.filter),
+                )
+            } else {
+                (
+                    ui::ListState::Empty,
+                    if self.page == 4 {
+                        "s 输入搜索词 · Tab 视频 / UP 主".into()
+                    } else {
+                        "R 刷新 · s 搜索 · L 登录；访客可浏览推荐、热门和排行".into()
+                    },
+                )
+            };
+            ui::list_state(frame, inner, state, &detail);
         }
     }
     fn draw_detail(&mut self, frame: &mut Frame, area: Rect) {
@@ -1364,7 +1823,15 @@ impl App {
             area.width.saturating_sub(4),
             area.height.saturating_sub(2),
         );
-        let Some(v) = self.current() else { return };
+        let Some(v) = self.current() else {
+            ui::list_state(
+                frame,
+                inner,
+                ui::ListState::Empty,
+                "↑/↓ 选择视频 · Enter 查看详情",
+            );
+            return;
+        };
         let has_image = self.kitty
             && area.width >= 38
             && frame.area().width >= 110
@@ -1470,6 +1937,13 @@ impl App {
         stdout.write_all(b"\x1b8")?;
         stdout.flush()?;
         Ok(())
+    }
+}
+fn video_key(video: &Video) -> String {
+    if video.bvid.is_empty() {
+        format!("up:{}", video.mid)
+    } else {
+        video.bvid.clone()
     }
 }
 fn delete_image() -> Result<()> {
@@ -1812,6 +2286,235 @@ fn demo_videos() -> Vec<Video> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn app() -> App {
+        App::new(
+            Api::new(String::new()).unwrap(),
+            Config::default(),
+            true,
+            None,
+        )
+    }
+    fn key(code: KeyCode) -> KeyEvent {
+        KeyEvent::new(code, KeyModifiers::NONE)
+    }
+    fn screen(app: &mut App, width: u16, height: u16) -> String {
+        let mut terminal =
+            ratatui::Terminal::new(ratatui::backend::TestBackend::new(width, height)).unwrap();
+        terminal.draw(|frame| app.draw(frame)).unwrap();
+        terminal
+            .backend()
+            .buffer()
+            .content
+            .iter()
+            .map(|cell| cell.symbol())
+            .collect::<String>()
+            .replace(' ', "")
+    }
+    #[test]
+    fn local_filter_is_incremental_keeps_identity_and_escape_snapshot() {
+        let mut app = app();
+        app.selected = 3;
+        app.key(key(KeyCode::Char('/'))).unwrap();
+        app.key(key(KeyCode::Down)).unwrap();
+        let selected = app.selected_key();
+        app.paste("shenghuo");
+        assert!(!app.filtered().is_empty() && app.filtered().len() < app.list.len());
+        assert_eq!(app.selected_key(), selected);
+        app.key(KeyEvent::new(KeyCode::Char('q'), KeyModifiers::CONTROL))
+            .unwrap();
+        assert_eq!(app.filter.as_str(), "shenghuo");
+        app.key(key(KeyCode::Enter)).unwrap();
+        app.key(key(KeyCode::Char('/'))).unwrap();
+        app.paste("\nq\nmissing");
+        assert!(app.filtered().is_empty());
+        assert_eq!(app.selected, 0);
+        app.key(key(KeyCode::Enter)).unwrap();
+        let empty = screen(&mut app, 80, 24);
+        assert!(empty.contains("0/10"));
+        assert!(empty.contains("shenghuoqmissing"));
+        assert!(empty.contains("Esc清除过滤"));
+        app.key(key(KeyCode::Esc)).unwrap();
+        assert!(app.filter.is_empty());
+        app.key(key(KeyCode::Char('/'))).unwrap();
+        app.paste("nix");
+        app.key(key(KeyCode::Enter)).unwrap();
+        app.key(key(KeyCode::Char('/'))).unwrap();
+        app.paste("missing");
+        app.key(key(KeyCode::Esc)).unwrap();
+        assert_eq!(app.filter.as_str(), "nix");
+        assert!(!app.filtered().is_empty());
+        assert!(app.filtered().len() < app.list.len());
+        app.paste("q");
+        assert_eq!(app.filter.as_str(), "nix");
+    }
+    #[test]
+    fn refresh_and_filtered_mouse_rows_keep_video_ids_and_highlight_han() {
+        let mut app = app();
+        app.list = vec![
+            Video {
+                bvid: "a".into(),
+                title: "北京 Apple".into(),
+                ..Default::default()
+            },
+            Video {
+                bvid: "b".into(),
+                title: "香港 Apple".into(),
+                ..Default::default()
+            },
+        ];
+        app.selected = 1;
+        app.filter.set("apple");
+        let mut reversed = app.list.clone();
+        reversed.reverse();
+        app.apply_message(Message::Page(reversed, "样例".into()));
+        assert_eq!(app.selected_key().as_deref(), Some("b"));
+        app.key(key(KeyCode::Char('/'))).unwrap();
+        app.key(KeyEvent::new(KeyCode::Char('a'), KeyModifiers::CONTROL))
+            .unwrap();
+        app.key(KeyEvent::new(KeyCode::Char('k'), KeyModifiers::CONTROL))
+            .unwrap();
+        app.paste("xianggang");
+        app.key(key(KeyCode::Enter)).unwrap();
+        let mut terminal =
+            ratatui::Terminal::new(ratatui::backend::TestBackend::new(80, 24)).unwrap();
+        terminal.draw(|frame| app.draw(frame)).unwrap();
+        assert!(terminal
+            .backend()
+            .buffer()
+            .content
+            .iter()
+            .any(|cell| cell.symbol() == "香" && cell.fg == YELLOW));
+        let row = app.list_rect.y + 2;
+        app.handle_event(Event::Mouse(event::MouseEvent {
+            kind: MouseEventKind::Down(event::MouseButton::Left),
+            column: 2,
+            row,
+            modifiers: KeyModifiers::NONE,
+        }))
+        .unwrap();
+        assert_eq!(app.selected_key().as_deref(), Some("b"));
+        let last = app.selected;
+        app.handle_event(Event::Mouse(event::MouseEvent {
+            kind: MouseEventKind::Down(event::MouseButton::Left),
+            column: 2,
+            row: app.list_rect.bottom() - 1,
+            modifiers: KeyModifiers::NONE,
+        }))
+        .unwrap();
+        assert_eq!(app.selected, last);
+    }
+    #[test]
+    fn remote_search_waits_for_enter_and_all_inputs_use_character_editing() {
+        let mut app = app();
+        app.key(key(KeyCode::Char('s'))).unwrap();
+        app.paste("Apple 中文");
+        assert!(app.query.is_empty());
+        app.key(key(KeyCode::Home)).unwrap();
+        app.key(key(KeyCode::Char('中'))).unwrap();
+        app.key(KeyEvent::new(KeyCode::Char('x'), KeyModifiers::ALT))
+            .unwrap();
+        app.key(key(KeyCode::Enter)).unwrap();
+        assert_eq!(app.query, "中Apple 中文");
+        assert_eq!(app.page, 4);
+        assert!(app.modal.is_none());
+        for (width, height) in [(80, 24), (120, 24), (1, 1)] {
+            screen(&mut app, width, height);
+            app.key(key(KeyCode::Char('s'))).unwrap();
+            screen(&mut app, width, height);
+            app.key(key(KeyCode::Esc)).unwrap();
+        }
+    }
+    #[test]
+    fn api_errors_remain_visible_with_a_red_title_and_retry_instruction() {
+        let mut app = app();
+        app.list.clear();
+        app.apply_message(Message::Error(
+            "请求参数不正确（错误码 -400）：接口原因".into(),
+        ));
+        let mut terminal =
+            ratatui::Terminal::new(ratatui::backend::TestBackend::new(80, 24)).unwrap();
+        terminal.draw(|frame| app.draw(frame)).unwrap();
+        assert!(terminal
+            .backend()
+            .buffer()
+            .content
+            .iter()
+            .any(|cell| cell.fg == RED));
+        let text = screen(&mut app, 80, 24);
+        assert!(text.contains("请求失败") && text.contains("-400") && text.contains("接口原因"));
+        app.key(key(KeyCode::Esc)).unwrap();
+        let text = screen(&mut app, 80, 24);
+        assert!(text.contains("加载失败") && text.contains("R重试"));
+    }
+    #[tokio::test]
+    async fn losing_focus_cancels_passive_work_and_blocks_qr_polling() {
+        let mut app = app();
+        let generation = app.read_generation;
+        app.read_job = Some(tokio::spawn(std::future::pending()));
+        app.cover_job = Some(tokio::spawn(std::future::pending()));
+        app.image_requested = "fixture".into();
+        app.modal = Some(Modal::Qr {
+            key: "0123456789abcdef0123456789abcdef".into(),
+            art: String::new(),
+            status: String::new(),
+            last: std::time::Instant::now() - Duration::from_secs(10),
+        });
+        app.focus(false);
+        app.poll_qr();
+        assert!(!app.focused && app.read_job.is_none() && app.cover_job.is_none());
+        assert!(!app.polling);
+        assert!(app.image_requested.is_empty());
+        assert!(!app.apply_message(Message::Read(
+            generation,
+            Box::new(Message::Page(vec![], "旧请求".into()))
+        )));
+        app.focus(true);
+        assert!(app.focused && !app.polling);
+    }
+    #[tokio::test]
+    async fn focus_resumes_completed_reads_before_their_results_are_consumed() {
+        for qr in [false, true] {
+            let mut app = app();
+            app.demo = false;
+            if qr {
+                app.modal = Some(Modal::Qr {
+                    key: String::new(),
+                    art: String::new(),
+                    status: "正在获取二维码".into(),
+                    last: std::time::Instant::now(),
+                });
+            }
+            app.request(async { Ok(Message::Page(vec![], "尚未消费".into())) });
+            while !app.read_job.as_ref().unwrap().is_finished() {
+                tokio::task::yield_now().await;
+            }
+            assert!(app.loading);
+            app.focus(false);
+            assert!(app.resume_read);
+            assert!(!app.receive());
+            assert_ne!(app.heading, "尚未消费");
+            app.focus(true);
+            assert!(app.loading && app.read_job.is_some());
+            assert!(!app.resume_read);
+            app.cancel_read();
+        }
+    }
+    #[test]
+    fn qr_modal_shows_complete_art_or_an_explicit_size_instruction() {
+        let mut app = app();
+        let art =
+            qr_art("https://account.bilibili.com/h5/account-h5/auth/scan-web?fixture=1").unwrap();
+        app.modal = Some(Modal::Qr {
+            key: String::new(),
+            art,
+            status: "等待扫码".into(),
+            last: std::time::Instant::now(),
+        });
+        assert!(screen(&mut app, 80, 24).contains("请放大终端"));
+        assert!(screen(&mut app, 120, 50).contains('█'));
+        screen(&mut app, 1, 1);
+    }
+
     #[test]
     fn qr_uses_half_blocks() {
         let art = qr_art("https://example.com/fixture").unwrap();

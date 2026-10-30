@@ -9,7 +9,7 @@ use anyhow::{bail, Context, Result};
 use api::Api;
 use std::{path::PathBuf, time::Duration};
 
-#[tokio::main]
+#[tokio::main(worker_threads = 2)]
 async fn main() {
     if let Err(error) = run().await {
         eprintln!("bilitui: {error}");

@@ -119,7 +119,7 @@ struct ProxyResponse {
     proxies: BTreeMap<String, Proxy>,
 }
 
-#[derive(Clone, Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct ConnectionsResponse {
     #[serde(default, deserialize_with = "null_connections")]
     pub connections: Vec<Connection>,
@@ -513,7 +513,7 @@ mod tests {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct Provider {
     #[serde(default, rename = "vehicleType")]
     pub vehicle_type: String,
@@ -526,7 +526,7 @@ pub struct Provider {
     #[serde(default, rename = "ruleCount")]
     pub rule_count: u64,
 }
-#[derive(Clone, Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct Rule {
     #[serde(default, rename = "type")]
     pub kind: String,
@@ -537,21 +537,23 @@ pub struct Rule {
     #[serde(default)]
     pub extra: Option<RuleExtra>,
 }
-#[derive(Clone, Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct RuleExtra {
     #[serde(default, rename = "hitCount")]
     pub hit_count: u64,
     #[serde(default, rename = "hitAt")]
     pub hit_at: String,
 }
-#[derive(Clone, Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct LogEntry {
+    #[serde(skip)]
+    pub id: u64,
     #[serde(default, rename = "type")]
     pub level: String,
     #[serde(default)]
     pub payload: String,
 }
-#[derive(Clone, Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct Traffic {
     pub up: u64,
     pub down: u64,

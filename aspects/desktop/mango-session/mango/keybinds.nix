@@ -18,18 +18,8 @@ let
     # Ctrl+Shift+Esc, as on other desktops.
     "CTRL+SHIFT,Escape,toggle_named_scratchpad,mayon-monitor,none,${lib.getExe pkgs.kitty} --class=mayon-monitor btop"
     "SUPER+SHIFT,C,toggle_named_scratchpad,mayon-clash,none,${lib.getExe pkgs.kitty} --class=mayon-clash clashtui-mayon"
-    "SUPER+SHIFT,D,toggle_named_scratchpad,mayon-docker,none,${lib.getExe pkgs.kitty} --class=mayon-docker dockertui-mayon"
-    "SUPER+CTRL,P,toggle_named_scratchpad,mayon-ports,none,${lib.getExe pkgs.kitty} --class=mayon-ports portstui-mayon"
-    "SUPER+ALT,F,toggle_named_scratchpad,seek,none,${lib.getExe pkgs.kitty} --class=seek --title=Seek ${lib.getExe pkgs.seek} tui --viewer zathura"
-    "SUPER+ALT,S,toggle_named_scratchpad,study-mayon,none,${lib.getExe pkgs.kitty} --class=study-mayon --title=学习 ${pkgs.studyMayon}/bin/study-mayon"
-    "SUPER+SHIFT,M,toggle_named_scratchpad,mcsrv-mayon,none,${lib.getExe pkgs.kitty} --class=mcsrv-mayon ${lib.getExe pkgs.mcsrvMayon}"
-    "SUPER+SHIFT,Y,toggle_named_scratchpad,serial-mayon,none,${lib.getExe pkgs.kitty} --class=serial-mayon --title=串口监视 ${lib.getExe pkgs.serialMayon}"
-    "SUPER+SHIFT,Z,toggle_named_scratchpad,power-mayon,none,${lib.getExe pkgs.kitty} --class=power-mayon --title=电源 ${lib.getExe pkgs.powerMayon}"
-    "SUPER+SHIFT,X,toggle_named_scratchpad,shots-mayon,none,${lib.getExe pkgs.kitty} --class=shots-mayon ${lib.getExe pkgs.shotsMayon}"
-    "SUPER+SHIFT,F1,toggle_named_scratchpad,keys-mayon,none,${lib.getExe pkgs.kitty} --class=keys-mayon ${lib.getExe pkgs.keysMayon}"
-    "SUPER+SHIFT,B,spawn,${lib.getExe pkgs.kitty} --class=mayon-bili ${lib.getExe pkgs.bilitui}"
-    # Press once to start dictation, again to stop and type the text.
-    "SUPER+SHIFT,V,spawn,${lib.getExe pkgs.mayonVoice} toggle"
+    "SUPER+SHIFT,D,toggle_named_scratchpad,mayon-tools,none,${lib.getExe pkgs.kitty} --class=mayon-tools mayon-tools"
+    "SUPER+SHIFT,B,toggle_named_scratchpad,mayon-bili,none,${lib.getExe pkgs.kitty} --class=mayon-bili ${lib.getExe pkgs.bilitui}"
     "SUPER+CTRL,G,toggleglobal"
     "SUPER+ALT,G,toggleoverlay"
     "SUPER+CTRL,S,tag_special_silent"
@@ -181,6 +171,9 @@ let
     "SUPER+SHIFT,T,switcher,next"
 
   ];
+  releaseBinds = [
+    "SUPER+SHIFT,XF86Assistant,spawn,${lib.getExe pkgs.mayonVoice} toggle"
+  ];
   commonBinds = [
     # mango hot-reloads config.conf; without a bind there is no way to ask
     # for it after editing the file by hand.
@@ -227,7 +220,7 @@ let
     "none,right,3,focusdir,right"
 
   ];
-  allKeyRows = defaultBinds ++ commonBinds ++ hardwareBinds ++ resizeBinds;
+  allKeyRows = defaultBinds ++ releaseBinds ++ commonBinds ++ hardwareBinds ++ resizeBinds;
   helpKeyRows = lib.filter (row: !(lib.hasInfix "__MANGO_HELP__" row)) allKeyRows;
   actionNames = {
     spawn = "启动";
@@ -286,15 +279,8 @@ let
         mayon-files = "临时文件 Yazi";
         mayon-monitor = "系统监视 btop";
         mayon-clash = "Clash 代理";
-        mayon-docker = "Docker 容器与镜像";
-        mayon-ports = "监听端口与进程";
-        seek = "文件搜索 seek";
-        study-mayon = "背单词与课表";
-        mcsrv-mayon = "Minecraft 服务器";
-        serial-mayon = "串口监视";
-        power-mayon = "电量与性能";
-        shots-mayon = "截图库";
-        keys-mayon = "快捷键速查";
+        mayon-tools = "工具箱";
+        mayon-bili = "哔哩哔哩";
       };
       args =
         if action == "toggle_named_scratchpad" then
@@ -312,7 +298,9 @@ let
         actionNames.${lib.elemAt fields 3} or (lib.elemAt fields 3)
       } ${lib.concatStringsSep "," (lib.drop 4 fields)}"
     else
-      "${key} → ${label}${lib.optionalString (args != "") ": ${args}"}";
+      "${key}${lib.optionalString (builtins.elem row releaseBinds) "（松开）"} → ${label}${
+        lib.optionalString (args != "") ": ${args}"
+      }";
   categories = [
     {
       title = "启动器与会话";
@@ -393,6 +381,7 @@ in
 {
   inherit
     defaultBinds
+    releaseBinds
     commonBinds
     hardwareBinds
     resizeBinds

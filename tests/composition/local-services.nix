@@ -10,6 +10,7 @@ let
       {
         imports = [
           inputs.den.flakeModule
+          ../../aspects/cli/mayon-tools
           ../../aspects/dev/containers
           ../../aspects/dev/virtual-machines
           ../../aspects/dev/embedded
@@ -159,7 +160,7 @@ let
   results = {
     clientsDoNotStartLocalDaemonsOrGrantGroups =
       hasPackage (home clientsOnly "hostB" "alice") pkgs.docker
-      && hasPackage (home clientsOnly "hostB" "alice") pkgs.mayonTui.docker
+      && hasPackage (home clientsOnly "hostB" "alice") pkgs.mayonTui.tools
       && hasPackage (home clientsOnly "hostB" "bob") pkgs.virt-manager
       && !clientsHostB.virtualisation.docker.rootless.enable
       && !clientsHostB.virtualisation.libvirtd.enable

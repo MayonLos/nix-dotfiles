@@ -1,8 +1,0 @@
-// The selected Legion account may switch the PPD enum from its user timer.
-// No hold, configure-action, unit management or executable authorization.
-polkit.addRule(function(action, subject) {
-  if (action.id === "org.freedesktop.UPower.PowerProfiles.switch-profile" &&
-      subject.isInGroup("power-mayon")) {
-    return polkit.Result.YES;
-  }
-});

@@ -13,7 +13,7 @@ The first activation needs an ordered handover: the old running daemon may still
 `default.nix`, `home.nix`, and `host.nix` are private implementation files. Removing `container-client` removes the client package; removing `local-containers` also removes service and socket declarations on activation. Container writable layers, images, named volumes, and bind-mounted project data are user data and are not cleared by this feature.
 
 
-`container-client` also installs `pkgs.mayonTui.docker` (`dockertui-mayon`),
+`container-client` also installs `pkgs.mayonTui.tools` (`mayon-tools docker`),
 the Docker output of the shared [Rust workspace](../../../packages/mayon-tui/README.md).
 This places the client beside its Engine/Compose CLI rather than in a desktop
 feature, so it works in a terminal or over SSH. The TUI uses the public socket,

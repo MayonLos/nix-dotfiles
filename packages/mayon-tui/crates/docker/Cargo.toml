@@ -1,4 +1,5 @@
 [package]
+autobins = false
 name = "dockertui-mayon"
 version = "0.2.0"
 edition = "2021"

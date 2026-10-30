@@ -4,7 +4,7 @@
 上屏及空闲退出；Python 只承载 sherpa-onnx 官方绑定及可选 DeepSeek HTTP 调用。
 这避开自建 ONNX/CUDA FFI；默认使用 nixpkgs CPU 构建，不加载 CUDA、不探测 NVIDIA。
 公开包工厂：`default.nix { pkgs }`；公开输出 `pkgs.mayonVoice` 和
-`pkgs.mayonVoice.fcitxAddon`。共享 One Dark UI 通过 mayon-ui 的公开 path 依赖复用。
+`pkgs.mayonVoice.fcitxAddon`。公开 Rust 库 `mayon_voice` 导出 `Config`、XDG 路径和 `client` / `client_with_timeout`；工具箱通过这套 socket API 查看状态，daemon 不再依赖 TUI 库。
 
 ## 使用
 
@@ -16,11 +16,11 @@ mayon-voice start
 mayon-voice stop
 mayon-voice toggle
 mayon-voice status       # JSON；不包含转写正文
-mayon-voice ui           # 中文状态界面；空格录音、1/2 切页、? 帮助、/ 过滤、q 退出
+mayon-tools voice       # 工具箱的中文状态页；通过现有 socket 通信
 mayon-voice config       # 输出默认 TOML，用户自行保存修改
 ```
 
-`start`/`stop` 幂等；识别期间不允许开始第二次录音。录音最长默认 120 秒（可设 1–600），
+`start`/`stop` 幂等；识别期间不允许开始第二次录音。`toggle` 在 500ms 内重复收到时忽略并刷新防抖窗口，长按持续重复不会反复开启/结束；显式 `start` / `stop` 不经过防抖。识别期间的再次操作只发送一次“正在识别”提示，完成后重置。录音最长默认 120 秒（可设 1–600），
 单次识别最长等待 120 秒，超时释放引擎并报错。默认输入设备由 PipeWire 选择，16kHz/mono/PCM16；`input_device` 可设 PipeWire target 名称。
 worker 用 WebRTC VAD 丢弃静音，SenseVoice/Paraformer 模型首次识别加载、后续复用，空闲 600 秒退出并释放模型。
 Whisper CLI 是兼容路径，每次识别新建进程并加载模型，不常驻复用；其 warm 指标最多
@@ -29,7 +29,7 @@ Whisper CLI 是兼容路径，每次识别新建进程并加载模型，不常�
 不能宣称流式首字延迟。`status` 查询不延长空闲计时；socket 自身随图形 target 安装。
 
 服务不启动于登录，只有 socket 监听；首次命令激活服务。通知显示录音、识别和结果状态，
-不显示正文。当前采用通知，没有新增 layer-shell 浮标或实时音量条。TUI 为可选查看器，
+不显示正文。通知使用 `notify-send -p/-r` 复用 ID，状态保存在私有 runtime 的 `notification.json`，并绑定通知服务的 D-Bus owner；服务重启后不会误替换其他应用的新 ID。录音/识别状态有 15 分钟兜底过期，完成、静音或失败替换为 4 秒通知；正常退出关闭通知，进程重启先关闭遗留通知。通知均标记 transient，不进入通知历史。当前采用通知，没有新增 layer-shell 浮标或实时音量条。工具箱为可选查看器，
 关闭查看器不会取消录音；通知与 CLI 状态仍工作。
 
 ## 配置及状态
@@ -98,7 +98,7 @@ wtype 成功退出不能证明应用收到了文字，尤其 XWayland；因此�
 
 ## 开发与验证
 
-独立 Cargo workspace 和 `Cargo.lock`，依赖共享 UI 但不改共享源码。
+独立 Cargo workspace 和 `Cargo.lock`；无 UI 依赖，Python 引擎实现保持独立。
 
 ```sh
 CARGO_BUILD_JOBS=6 cargo test --locked
@@ -106,8 +106,17 @@ CARGO_BUILD_JOBS=6 cargo clippy --locked --all-targets -- -D warnings
 cargo fmt --all --check
 python3 engine/test_worker.py
 python3 tests/daemon.py target/debug/mayon-voice
+python3 tests/notifications.py target/debug/mayon-voice # 需要 dbus-next；自动启动私有 D-Bus
 ```
 
 进程测试只用私有 runtime 与替身录音/引擎，不连接真实 PipeWire、Fcitx 或桌面。
 包含命令幂等、识别期间拒绝重复录音、权限与删除、空闲释放、真实 fd3 传递。
 实测基准与隔离桌面证据留在本轮 `.work/r50/voice/`，不等于应用配置或真实麦克风验收。
+
+`mayon-tools voice` 状态页的 `/` 使用共享中文、全拼、首字母和大小写不敏感多词 AND 过滤；
+输入立即生效，Enter 保留结果，输入中 Esc 恢复打开前过滤，列表 Esc 先清过滤再退出。
+方向键、PgUp/PgDn 和滚轮滚动信息，g/G 到首尾；过滤与刷新保留当前信息行。
+标题显示匹配数/总数和当前过滤，无匹配提示 Esc 清除。
+输入支持字符光标和单行粘贴，未知 Ctrl/Alt 组合不会写入文字。
+
+录音默认绑定为专用 `Super+Shift+XF86Assistant` 的松开事件；旧 `Super+Shift+V` 已撤销。界面页签与键盘路由由工具箱拥有，daemon 只接受既有 socket 命令。

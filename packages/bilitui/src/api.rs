@@ -241,23 +241,10 @@ impl Api {
                 false,
             )
             .await?;
-        let data = value
-            .get("data")
-            .ok_or_else(|| anyhow::anyhow!("无法创建登录二维码"))?;
-        let url = data
-            .get("url")
-            .and_then(Value::as_str)
-            .filter(|s| s.starts_with("https://passport.bilibili.com/"))
-            .ok_or_else(|| anyhow::anyhow!("B 站未返回有效二维码"))?;
-        let key = data
-            .get("qrcode_key")
-            .and_then(Value::as_str)
-            .filter(|s| valid_qr_key(s))
-            .ok_or_else(|| anyhow::anyhow!("B 站未返回有效二维码密钥"))?;
-        Ok((url.to_owned(), key.to_owned()))
+        parse_qr_generate(value)
     }
 
-    /// Polls once. On success, the returned string is the newly issued cookie for the caller to save.
+    /// Polls once. A successful response must issue a complete new session.
     pub async fn qr_poll(&self, key: &str) -> Result<(i64, Option<String>)> {
         if !valid_qr_key(key) {
             bail!("二维码密钥格式无效");
@@ -272,45 +259,7 @@ impl Api {
                 false,
             )
             .await?;
-        let state = value
-            .pointer("/data/code")
-            .and_then(Value::as_i64)
-            .or_else(|| value.get("code").and_then(Value::as_i64))
-            .ok_or_else(|| anyhow::anyhow!("无法读取二维码登录状态"))?;
-        if state != 0 {
-            return Ok((state, None));
-        }
-        let mut cookies = self.cookie.clone();
-        // Login responses can return the session in Set-Cookie or in the SSO URL.
-        for header in value
-            .get("_set_cookie")
-            .and_then(Value::as_array)
-            .into_iter()
-            .flatten()
-            .filter_map(Value::as_str)
-        {
-            absorb_set_cookie(&mut cookies, header);
-        }
-        if let Some(url) = value.pointer("/data/url").and_then(Value::as_str) {
-            if let Ok(url) = Url::parse(url) {
-                if matches!(
-                    url.host_str(),
-                    Some("passport.bilibili.com" | "passport.biligame.com")
-                ) {
-                    for (key, value) in url.query_pairs() {
-                        if ["SESSDATA", "bili_jct", "DedeUserID", "DedeUserID__ckMd5"]
-                            .contains(&key.as_ref())
-                        {
-                            set_cookie(&mut cookies, &key, &value);
-                        }
-                    }
-                }
-            }
-        }
-        if !has_cookie(&cookies, "SESSDATA") || !has_cookie(&cookies, "bili_jct") {
-            bail!("登录成功响应未包含完整会话 cookie");
-        }
-        Ok((state, Some(cookies)))
+        parse_qr_poll(&self.cookie, value)
     }
 
     async fn request(
@@ -345,7 +294,7 @@ impl Api {
         let response = builder
             .send()
             .await
-            .map_err(|_| anyhow::anyhow!("B 站网络请求失败，请检查网络后重试"))?;
+            .map_err(|error| anyhow::anyhow!("B 站网络请求失败：{}", error.without_url()))?;
         let set_cookies = response
             .headers()
             .get_all(header::SET_COOKIE)
@@ -460,6 +409,15 @@ fn unwrap_api(value: Value) -> Result<Value> {
             -404 => "B 站内容不存在或不可见",
             _ => "B 站接口返回错误",
         };
+        let reason = value
+            .get("message")
+            .or_else(|| value.get("msg"))
+            .and_then(Value::as_str)
+            .map(safe_api_message)
+            .filter(|s| !s.is_empty());
+        if let Some(reason) = reason {
+            bail!("{message}（错误码 {code}）：{reason}");
+        }
         bail!("{message}（错误码 {code}）");
     }
     value
@@ -467,6 +425,124 @@ fn unwrap_api(value: Value) -> Result<Value> {
         .or_else(|| value.get("result"))
         .cloned()
         .ok_or_else(|| anyhow::anyhow!("B 站响应缺少数据"))
+}
+
+fn safe_api_message(text: &str) -> String {
+    if ["sessdata", "bili_jct", "qrcode_key", "cookie"]
+        .iter()
+        .any(|field| text.to_ascii_lowercase().contains(field))
+    {
+        return "接口返回了凭据相关错误，敏感内容已隐藏".into();
+    }
+    text.split_whitespace()
+        .map(|word| {
+            if word.contains("://") {
+                "[链接已隐藏]"
+            } else {
+                word
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+        .chars()
+        .filter(|c| !c.is_control())
+        .take(160)
+        .collect()
+}
+
+fn qr_url(value: &str) -> Option<Url> {
+    let url = Url::parse(value).ok()?;
+    let host = url.host_str()?;
+    (url.scheme() == "https"
+        && url.username().is_empty()
+        && url.password().is_none()
+        && (host == "bilibili.com" || host.ends_with(".bilibili.com")))
+    .then_some(url)
+}
+
+fn parse_qr_generate(value: Value) -> Result<(String, String)> {
+    let data = unwrap_api(value)?;
+    let url = data
+        .get("url")
+        .and_then(Value::as_str)
+        .and_then(qr_url)
+        .ok_or_else(|| {
+            anyhow::anyhow!("B 站返回的二维码链接无效：需要 HTTPS 的 bilibili.com 域名")
+        })?;
+    let key = data
+        .get("qrcode_key")
+        .and_then(Value::as_str)
+        .filter(|s| valid_qr_key(s))
+        .ok_or_else(|| anyhow::anyhow!("B 站未返回有效二维码密钥"))?;
+    Ok((url.to_string(), key.to_owned()))
+}
+
+fn cookie_query_value(value: &str) -> String {
+    value
+        .as_bytes()
+        .iter()
+        .map(|byte| {
+            if is_cookie_value(*byte) {
+                (*byte as char).to_string()
+            } else {
+                format!("%{byte:02X}")
+            }
+        })
+        .collect()
+}
+
+fn parse_qr_poll(previous: &str, value: Value) -> Result<(i64, Option<String>)> {
+    let data = unwrap_api(value.clone())?;
+    let state = data
+        .get("code")
+        .and_then(Value::as_i64)
+        .ok_or_else(|| anyhow::anyhow!("B 站登录状态缺少 data.code"))?;
+    if state != 0 {
+        return Ok((state, None));
+    }
+    let mut issued = String::new();
+    for header in value
+        .get("_set_cookie")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+    {
+        absorb_set_cookie(&mut issued, header);
+    }
+    if let Some(url) = data
+        .get("url")
+        .and_then(Value::as_str)
+        .and_then(|s| Url::parse(s).ok())
+    {
+        if url.scheme() == "https"
+            && matches!(
+                url.host_str(),
+                Some("passport.bilibili.com" | "passport.biligame.com")
+            )
+        {
+            for (key, value) in url.query_pairs() {
+                if ["SESSDATA", "bili_jct", "DedeUserID", "DedeUserID__ckMd5"]
+                    .contains(&key.as_ref())
+                {
+                    set_cookie(&mut issued, &key, &cookie_query_value(&value));
+                }
+            }
+        }
+    }
+    if !has_cookie(&issued, "SESSDATA") || !has_cookie(&issued, "bili_jct") {
+        bail!("登录成功响应未包含完整的新会话 cookie");
+    }
+    let mut cookies = clean_cookie(previous);
+    for pair in issued.split("; ") {
+        if let Some((key, value)) = pair.split_once('=') {
+            set_cookie(&mut cookies, key, value);
+        }
+    }
+    if cookies.len() > 16384 {
+        bail!("B 站登录 cookie 超过 16 KiB 上限");
+    }
+    Ok((state, Some(cookies)))
 }
 
 fn validate_target(host: &str, path: &str) -> Result<()> {
@@ -561,6 +637,9 @@ fn set_cookie(cookie: &mut String, name: &str, value: &str) {
     if !valid_cookie_name(name) || !value.bytes().all(is_cookie_value) {
         return;
     }
+    if !valid_cookie_name(name) || !value.bytes().all(is_cookie_value) {
+        return;
+    }
     let mut pairs = cookie
         .split("; ")
         .filter_map(|part| part.split_once('='))
@@ -571,10 +650,9 @@ fn set_cookie(cookie: &mut String, name: &str, value: &str) {
     *cookie = pairs.join("; ");
 }
 fn absorb_set_cookie(cookie: &mut String, value: &str) {
-    if let Some((pair, _)) = value.split_once(';') {
-        if let Some((name, value)) = pair.trim().split_once('=') {
-            set_cookie(cookie, name.trim(), value.trim());
-        }
+    let pair = value.split(';').next().unwrap_or("");
+    if let Some((name, value)) = pair.trim().split_once('=') {
+        set_cookie(cookie, name.trim(), value.trim());
     }
 }
 fn valid_qr_key(key: &str) -> bool {
@@ -632,6 +710,72 @@ mod tests {
         assert_eq!(
             signed.last().unwrap(),
             &("w_rid".to_owned(), fixture.expected_w_rid)
+        );
+    }
+
+    #[test]
+    fn qr_urls_accept_current_account_host_and_reject_lookalikes() {
+        let key = "0123456789abcdef0123456789abcdef";
+        for url in [
+            "https://account.bilibili.com/h5/account-h5/auth/scan-web?fixture=1",
+            "https://passport.bilibili.com/qrcode",
+            "https://bilibili.com/login",
+        ] {
+            assert!(parse_qr_generate(
+                serde_json::json!({"code":0,"data":{"url":url,"qrcode_key":key}})
+            )
+            .is_ok());
+        }
+        for url in [
+            "http://account.bilibili.com/",
+            "https://bilibili.com.evil/",
+            "https://evilbilibili.com/",
+            "https://bilibili.com@evil.example/",
+            "https://user@account.bilibili.com/",
+        ] {
+            assert!(parse_qr_generate(
+                serde_json::json!({"code":0,"data":{"url":url,"qrcode_key":key}})
+            )
+            .is_err());
+        }
+        let error =
+            parse_qr_generate(serde_json::json!({"code":-400,"message":"二维码暂时不可用"}))
+                .unwrap_err()
+                .to_string();
+        assert!(error.contains("-400") && error.contains("二维码暂时不可用"));
+    }
+    #[test]
+    fn qr_poll_checks_outer_errors_and_requires_new_session_cookies() {
+        assert!(
+            parse_qr_poll("", serde_json::json!({"code":-400,"message":"无效请求"}))
+                .unwrap_err()
+                .to_string()
+                .contains("无效请求")
+        );
+        assert_eq!(
+            parse_qr_poll("", serde_json::json!({"code":0,"data":{"code":86101}})).unwrap(),
+            (86101, None)
+        );
+        assert!(parse_qr_poll(
+            "SESSDATA=old; bili_jct=old",
+            serde_json::json!({"code":0,"data":{"code":0}})
+        )
+        .is_err());
+        let (_,cookie)=parse_qr_poll("buvid3=device",serde_json::json!({"code":0,"data":{"code":0},"_set_cookie":["SESSDATA=fixture-session; Path=/; Secure","bili_jct=fixture-csrf"]})).unwrap();
+        let cookie = cookie.unwrap();
+        assert!(
+            cookie.contains("buvid3=device")
+                && cookie.contains("SESSDATA=fixture-session")
+                && cookie.contains("bili_jct=fixture-csrf")
+        );
+        assert!(parse_qr_poll("",serde_json::json!({"code":0,"data":{"code":0,"url":"http://passport.bilibili.com/?SESSDATA=fake&bili_jct=fake"}})).is_err());
+        let (_,cookie)=parse_qr_poll("",serde_json::json!({"code":0,"data":{"code":0,"url":"https://passport.biligame.com/crossDomain?SESSDATA=fixture%2Csession&bili_jct=fixture-csrf"}})).unwrap();
+        assert!(Api::new(cookie.clone().unwrap()).unwrap().logged_in());
+        assert!(cookie.unwrap().contains("SESSDATA=fixture%2Csession"));
+        assert!(safe_api_message("qrcode_key=secret-value").contains("已隐藏"));
+        assert!(
+            !safe_api_message("https://example.invalid/?qrcode_key=secret-value")
+                .contains("secret-value")
         );
     }
 

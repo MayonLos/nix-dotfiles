@@ -40,7 +40,30 @@
    constexpr int kMaxSummaryLines = 2;
    constexpr int kToastMaxBodyLines = 3;
    constexpr int kMaxToastCardHeight = 320;
-@@ -311,16 +311,6 @@
+@@ -134,19 +134,11 @@
+     return config->config().notification.borderColor;
+   }
+
+-  [[nodiscard]] float toastBorderWidth(const ConfigService* config, Urgency urgency, float scale) {
+-    if (config == nullptr) {
+-      return (urgency == Urgency::Critical ? Style::emphasizedBorderWidth : Style::borderWidth) * scale;
+-    }
+-    const auto& notification = config->config().notification;
+-    if (!notification.border) {
++  [[nodiscard]] float toastBorderWidth(const ConfigService* config, float outputScale) {
++    if (config != nullptr && !config->config().notification.border) {
+       return 0.0F;
+     }
+-    const float width = std::max(0.0F, notification.borderWidth);
+-    if (urgency == Urgency::Critical) {
+-      return std::max(Style::emphasizedBorderWidth, width) * scale;
+-    }
+-    return width * scale;
++    return 1.0F / std::max(0.1F, outputScale);
+   }
+
+   [[nodiscard]] float notificationWidth(const ConfigService* config) {
+@@ -311,16 +303,6 @@
      );
    }
 
@@ -57,7 +80,7 @@
    bool shouldShowNotificationActions(const ConfigService* config) {
      return config == nullptr || config->config().notification.showActions;
    }
-@@ -343,12 +333,13 @@
+@@ -343,12 +325,13 @@
        return colorSpecFromRole(ColorRole::OnSurface, 0.9F);
      case Urgency::Normal:
      default:
@@ -77,7 +100,7 @@
    }
 
    std::vector<std::unique_ptr<Button>>
-@@ -401,7 +392,6 @@
+@@ -401,7 +384,6 @@
      const float topTextMaxWidth = shouldShowCloseButton()
          ? std::max(0.0F, textMaxWidth - closeButtonSize(scale) - Style::spaceSm * scale)
          : textMaxWidth;
@@ -85,7 +108,7 @@
 
      auto card = ui::column(
          {.maxHeight = maxCardHeight, .clipChildren = true, .width = cardW},
-@@ -437,7 +427,7 @@
+@@ -437,7 +419,7 @@
              .width = textMaxWidth,
          },
          ui::label({
@@ -94,7 +117,7 @@
              .fontSize = summaryFontSize(scale),
              .fontWeight = FontWeight::Bold,
              .color = colorSpecFromRole(ColorRole::OnSurface),
-@@ -468,26 +458,6 @@
+@@ -468,26 +450,6 @@
        textColumn->addChild(std::move(actionsRow));
      }
 
@@ -121,7 +144,7 @@
 
      content->addChild(std::move(textColumn));
      card->addChild(std::move(content));
-@@ -1277,7 +1247,7 @@
+@@ -1277,7 +1239,7 @@
    const uint32_t removingId = (entryIndex < m_entries.size()) ? m_entries[entryIndex].notificationId : 0;
 
    cs.exitAnimId = inst.animations.animate(
@@ -130,7 +153,7 @@
        [this, card, content, foreground, targetY, cardHeight, scale = notificationUiScale(m_config),
         width = notificationWidth(m_config), edgePad = horizontalInnerPad(notificationUiScale(m_config))](float v) {
          applyCardRevealNodes(
-@@ -1979,7 +1949,7 @@
+@@ -1979,7 +1941,7 @@
          Node* cardNode = cs.cardNode;
 
          cs.slideAnimId = inst->animations.animate(
@@ -139,7 +162,7 @@
              [cardNode, px](float v) { cardNode->setPosition(px, v); },
              [this, instPtr, entryId] {
                if (auto* state = findCardState(*instPtr, entryId); state != nullptr) {
-@@ -2413,7 +2383,6 @@
+@@ -2413,7 +2375,6 @@
    const float topTextMaxWidth = shouldShowCloseButton()
        ? std::max(0.0F, textMaxWidth - closeButtonSize(scale) - Style::spaceSm * scale)
        : textMaxWidth;
@@ -147,22 +170,28 @@
 
    auto viewport = ui::inputArea({});
    viewport->setAcceptedButtons(InputArea::buttonMask({BTN_LEFT, BTN_RIGHT}));
-@@ -2481,11 +2450,28 @@
+@@ -2442,8 +2403,8 @@
+   });
+   *outCardForeground = foreground.get();
+
+-  const float bgAlpha = m_config != nullptr ? m_config->config().notification.backgroundOpacity : 0.97F;
+-  const float borderWidth = toastBorderWidth(m_config, entry.urgency, scale);
++  const float bgAlpha = m_config != nullptr ? m_config->config().notification.backgroundOpacity : 1.0F;
++  const float borderWidth = toastBorderWidth(m_config, renderer.renderScale());
+   const ColorSpec borderColor = toastBorderColor(m_config, entry.urgency);
+   foreground->addChild(
+       ui::progressBar({
+@@ -2481,11 +2442,23 @@
            rawIcon.data() + kNoctaliaGlyphIconPrefix.size(), rawIcon.size() - kNoctaliaGlyphIconPrefix.size()
        );
        if (!glyphName.empty()) {
-+        // Native Noctalia glyph notifications use the same compact badge as fallback icons.
 +        iconSlot->addChild(ui::box({
 +            .width = iconSize,
 +            .height = iconSize,
 +            .configure = [iconSize, scale](Box& box) {
-+              const Color primary = colorForRole(ColorRole::Primary);
-+              const Color tertiary = colorForRole(ColorRole::Tertiary);
 +              box.setStyle(RoundedRectStyle{
-+                  .fillMode = FillMode::LinearGradient,
-+                  .gradientDirection = GradientDirection::Horizontal,
-+                  .gradientStops = {GradientStop{0.0F, primary}, GradientStop{0.0F, primary},
-+                                    GradientStop{1.0F, tertiary}, GradientStop{1.0F, tertiary}},
++                  .fill = colorForRole(ColorRole::SurfaceContainerHigh),
++                  .fillMode = FillMode::Solid,
 +                  .radius = std::min(iconSize * 0.5F, 11.0F * scale),
 +              });
 +              box.setPosition(0.0F, 0.0F);
@@ -173,11 +202,11 @@
                  .glyph = std::string(glyphName),
                  .glyphSize = iconGlyphSize,
 -                .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
-+                .color = colorSpecFromRole(ColorRole::OnPrimary),
++                .color = colorSpecFromRole(ColorRole::OnSurface),
                  .configure = [iconSize, &renderer](Glyph& glyph) {
                    glyph.measure(renderer);
                    glyph.setPosition(
-@@ -2558,11 +2544,27 @@
+@@ -2558,11 +2531,23 @@
    }
 
    if (!iconAssigned) {
@@ -185,13 +214,9 @@
 +        .width = iconSize,
 +        .height = iconSize,
 +        .configure = [iconSize, scale](Box& box) {
-+          const Color primary = colorForRole(ColorRole::Primary);
-+          const Color tertiary = colorForRole(ColorRole::Tertiary);
 +          box.setStyle(RoundedRectStyle{
-+              .fillMode = FillMode::LinearGradient,
-+              .gradientDirection = GradientDirection::Horizontal,
-+              .gradientStops = {GradientStop{0.0F, primary}, GradientStop{0.0F, primary},
-+                                GradientStop{1.0F, tertiary}, GradientStop{1.0F, tertiary}},
++              .fill = colorForRole(ColorRole::SurfaceContainerHigh),
++              .fillMode = FillMode::Solid,
 +              .radius = std::min(iconSize * 0.5F, 11.0F * scale),
 +          });
 +          box.setPosition(0.0F, 0.0F);
@@ -202,11 +227,11 @@
              .glyph = "bell",
              .glyphSize = iconGlyphSize,
 -            .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
-+            .color = colorSpecFromRole(ColorRole::OnPrimary),
++            .color = colorSpecFromRole(ColorRole::OnSurface),
              .configure = [iconSize, &renderer](Glyph& glyph) {
                glyph.measure(renderer);
                glyph.setPosition(
-@@ -2575,7 +2577,7 @@
+@@ -2575,7 +2560,7 @@
 
    contentRow->addChild(std::move(iconSlot));
 
@@ -215,7 +240,7 @@
    const std::string displayBody = StringUtils::trimLeadingBlankLines(entry.body);
    auto textColumn = ui::column(
        {
-@@ -2717,7 +2719,7 @@
+@@ -2717,7 +2702,7 @@
            .minWidth = kInlineReplySendButtonSize * scale,
            .minHeight = kInlineReplySendButtonSize * scale,
            .padding = Style::spaceXs * scale,
@@ -224,7 +249,7 @@
            .onClick = [this, id = entry.notificationId, sourceSurface] { submitInlineReply(id, {}, sourceSurface); },
            .onEnter = [this, notificationId = entry.notificationId] { beginPopupHover(notificationId); },
            .onLeave = [this, notificationId = entry.notificationId,
-@@ -2758,25 +2760,6 @@
+@@ -2758,31 +2743,13 @@
      *outInlineReplyInput = nullptr;
    }
 
@@ -250,3 +275,11 @@
 
    contentRow->addChild(std::move(textColumn));
    foreground->addChild(std::move(contentRow));
+   foreground->layout(renderer);
+
+-  const float cardHeight = std::min(maxCardHeight, foreground->height());
++  const float outputScale = std::max(0.1F, renderer.renderScale());
++  const float cardHeight = std::ceil(std::min(maxCardHeight, foreground->height()) * outputScale) / outputScale;
+   cardRoot->setSize(cardW, cardHeight);
+   viewport->setSize(cardW, cardHeight);
+   viewport->setClipChildren(true);

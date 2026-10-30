@@ -9,7 +9,7 @@ license = "MIT"
 [dependencies]
 anyhow = "1"
 base64 = "0.22"
-crossterm = "0.29"
+crossterm = { version = "0.29", features = ["event-stream"] }
 futures-util = "0.3"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
 mayon-ui = { path = "../mayon-tui/crates/ui" }

@@ -9,13 +9,10 @@ let
 in
 {
   legion-conservation =
-    assert builtins.elem pkgs.powerMayon home.home.packages;
-    assert home.systemd.user.timers.power-mayon-auto.Timer.OnCalendar == "*-*-* *:*:00,30";
-    assert home.systemd.user.services.power-mayon-auto.Service.NoNewPrivileges;
     assert nixos.services.power-profiles-daemon.enable;
     assert !nixos.services.tlp.enable;
-    assert builtins.elem "power-mayon" nixos.users.users.mayon.extraGroups;
-    assert pkgs.lib.hasInfix pkgs.powerMayon.profilePolicy nixos.security.polkit.extraConfig;
+    assert nixos.services.scx.scheduler == "scx_lavd";
+    assert nixos.services.scx.extraArgs == [ ];
     assert nixos.users.groups ? legion-conservation;
     assert builtins.elem "legion-conservation" nixos.users.users.mayon.extraGroups;
     assert pkgs.lib.hasInfix "DRIVER==\"ideapad_acpi\"" nixos.services.udev.extraRules;

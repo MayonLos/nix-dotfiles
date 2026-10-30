@@ -1,3 +1,0 @@
-# UTF-8 单词表
-abandon	放弃
-serendipity

@@ -23,6 +23,7 @@ let
         ]
         || pkgs.lib.hasPrefix "packages/bilitui" relative
         || pkgs.lib.hasPrefix "packages/mayon-tui" relative
+        || pkgs.lib.hasPrefix "packages/mayon-voice" relative
         || type == "directory" && toString path == toString ../..
       );
   };
