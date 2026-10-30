@@ -12,12 +12,22 @@ let
         fg = "default";
         brightFg = "default";
         border = "light_black";
+        muted = "light_black";
+        green = "green";
+        yellow = "yellow";
+        red = "red";
       }
     else
       palette;
   key = label: {
     key = label;
     keyColor = colors.fg;
+  };
+  section = name: {
+    type = "custom";
+    format = "{#${colors.blue}}${name}{#${colors.border}} ${
+      builtins.concatStringsSep "" (builtins.genList (_: "─") (32 - builtins.stringLength name))
+    }{#}";
   };
 in
 
@@ -26,15 +36,50 @@ in
     fastfetch = {
       enable = true;
       settings = {
-        logo.type = "none";
+        logo = {
+          source = "nixos";
+          color = {
+            "1" = colors.blue;
+            "2" = colors.cyan;
+            "3" = colors.blue;
+            "4" = colors.cyan;
+            "5" = colors.blue;
+            "6" = colors.cyan;
+          };
+          padding = {
+            top = 1;
+            right = 3;
+          };
+        };
         display = {
           hideCursor = true;
           disableLinewrap = true;
           brightColor = false;
           separator = "  ";
+          size.binaryPrefix = "iec";
+          bar = {
+            width = 12;
+            color.total = colors.border;
+            border = {
+              left = "";
+              right = "";
+            };
+            char = {
+              elapsed = "━";
+              total = "━";
+            };
+          };
+          percent = {
+            type = 3;
+            color = {
+              green = colors.green;
+              yellow = colors.yellow;
+              red = colors.red;
+            };
+          };
           key = {
-            width = 10;
-            paddingLeft = 0;
+            width = 13;
+            paddingLeft = 2;
           };
           color = {
             output = colors.brightFg;
@@ -44,17 +89,72 @@ in
         modules = [
           {
             type = "title";
-            format = "{#${colors.brightFg}}{user-name}@{host-name}{#}";
+            format = "{#${colors.brightFg}}{user-name}{#${colors.muted}}@{#${colors.blue}}{host-name}{#}";
           }
-          ((key "System") // { type = "os"; })
+          (section "System")
+          ((key "OS") // { type = "os"; })
+          ((key "Host") // { type = "host"; })
           ((key "Kernel") // { type = "kernel"; })
+          ((key "Uptime") // { type = "uptime"; })
+          ((key "Packages") // { type = "packages"; })
+          (section "Desktop")
+          ((key "WM") // { type = "wm"; })
+          ((key "Shell") // { type = "shell"; })
           ((key "Terminal") // { type = "terminal"; })
+          ((key "Font") // { type = "terminalfont"; })
+          ((key "Theme") // { type = "theme"; })
+          ((key "Icons") // { type = "icons"; })
           (
-            (key "Memory")
+            (key "Display")
             // {
-              type = "memory";
+              type = "display";
+              compactType = "original-with-refresh-rate";
             }
           )
+          (section "Hardware")
+          ((key "CPU") // { type = "cpu"; })
+          (
+            (key "GPU")
+            // {
+              type = "gpu";
+              # PCI detection only: asking the NVIDIA driver would wake the dGPU.
+              detectionMethod = "pci";
+              temp = false;
+            }
+          )
+          ((key "Memory") // { type = "memory"; })
+          ((key "Swap") // { type = "swap"; })
+          (
+            (key "Disk")
+            // {
+              type = "disk";
+              folders = "/";
+            }
+          )
+          ((key "Battery") // { type = "battery"; })
+          (section "Network")
+          (
+            (key "Wi-Fi")
+            // {
+              type = "wifi";
+              percent.type = 1;
+            }
+          )
+          (
+            (key "Local IP")
+            // {
+              type = "localip";
+              # Not the Clash TUN's reserved address.
+              namePrefix = "wlp";
+              defaultRouteOnly = false;
+            }
+          )
+          "break"
+          {
+            type = "colors";
+            paddingLeft = 2;
+            symbol = "circle";
+          }
         ];
       };
     };

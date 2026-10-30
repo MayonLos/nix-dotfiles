@@ -204,11 +204,10 @@ pkgs.runCommand "command-line-runtime"
     import json, sys
     fastfetch, glow = [json.load(open(path)) for path in sys.argv[1:]]
     display = fastfetch["display"]
-    assert display["key"]["width"] == 10
+    assert display["key"]["width"] == 13
     keys = [module["key"] for module in fastfetch["modules"] if isinstance(module, dict) and "key" in module]
     assert display["key"]["width"] >= max(map(len, keys)) + display["key"]["paddingLeft"] + len(display["separator"])
-    assert fastfetch["logo"]["type"] == "none"
-    assert all(not isinstance(module, dict) or module["type"] not in ("custom", "colors") for module in fastfetch["modules"])
+    assert fastfetch["logo"]["source"] == "nixos"
     assert glow["h2"]["color"] == "${palette.blue}"
     assert glow["image"]["color"] == "${palette.cyan}"
     PY_VISUAL
@@ -217,7 +216,7 @@ pkgs.runCommand "command-line-runtime"
     grep -F 'Kernel' "$out/fastfetch.txt"
     grep -F 'Terminal' "$out/fastfetch.txt"
     grep -F 'Memory' "$out/fastfetch.txt"
-    for key in System Kernel Terminal Memory; do
+    for key in OS Kernel Terminal Memory; do
       grep -F '"key": "'"$key"'"' ${home.xdg.configFile."fastfetch/config.jsonc".source}
     done
     grep -F '"keyColor": "${palette.fg}"' ${home.xdg.configFile."fastfetch/config.jsonc".source}
