@@ -19,8 +19,10 @@ pkgs.writeShellApplication {
     esac
     case "''${1:-status}" in
       status) [[ "$value" == 0 ]] || printf '养护\n' ;;
+      on) [[ "$value" == 1 ]] || printf '1\n' > "$node" ;;
+      off) [[ "$value" == 0 ]] || printf '0\n' > "$node" ;;
       toggle) printf '%s\n' "$((1 - value))" > "$node" ;;
-      *) echo 'Usage: legion-conservation [status|toggle]' >&2; exit 2 ;;
+      *) echo 'Usage: legion-conservation [status|toggle|on|off]' >&2; exit 2 ;;
     esac
   '';
 }

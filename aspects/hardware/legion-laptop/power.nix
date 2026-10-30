@@ -1,6 +1,10 @@
 { pkgs, ... }:
 {
   users.groups.legion-conservation = { };
+  users.groups.power-mayon = { };
+  # PPD's default permits only active-session callers; a user-manager timer
+  # needs just this enum-switch action, without arbitrary command authority.
+  security.polkit.extraConfig = pkgs.powerMayon.profilePolicy;
   # sysfs attributes do not inherit udev GROUP/MODE for device nodes.
   # Bind/change also covers a driver rebind; no privileged runtime helper.
   services.udev.extraRules = ''
