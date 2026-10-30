@@ -1,8 +1,9 @@
 # mayon-ui
 
-Shared One Dark constants, Unicode cell clipping and byte/latency formatting;
+Shared One Dark constants, grapheme-safe Unicode cell clipping and byte/latency formatting;
 status chrome, numbered tabs, subtle selected table rows with a blue left
-marker, rounded thin borders, confirmation/help/input overlays and footers.
+marker, rounded thin borders, confirmation/help/input overlays and footers. Hints retain complete key/action pairs and fall back to `? 更多`;
+tables clip each cell before Ratatui rendering rather than cutting a word at the edge.
 `terminal()` owns raw mode, alternate screen and mouse cleanup. `Refresh<T>`
 allows one background future at a time and returns completions over a channel.
 

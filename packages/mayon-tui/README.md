@@ -15,7 +15,8 @@ The `out` output contains all three commands; separate `clash`, `docker`, and
 
 Features use `pkgs.mayonTui.<output>`; they never import a sibling feature's
 private source. They own installation and configuration; desktops own their
-bindings and window rules. Programs do not create services or persistent state.
+bindings and window rules. Programs do not create services or write persistent state. Clash can read an
+optional user-owned `~/.config/mayon-tui/clash.toml`.
 Existing subscriptions, projects, containers and volumes stay user owned.
 
 ## Development

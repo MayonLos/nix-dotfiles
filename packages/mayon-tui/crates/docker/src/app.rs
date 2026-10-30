@@ -944,7 +944,7 @@ impl App {
                 vec![
                     format!("{project}/{n}"),
                     c.image.clone(),
-                    c.status.clone(),
+                    compact_status(&c.status),
                     ports,
                     stat.map(|s| format!("{:.1}%", s.cpu))
                         .unwrap_or_else(|| "--".into()),
@@ -1466,4 +1466,27 @@ impl Drop for App {
         }
         self.stats_jobs.abort_all();
     }
+}
+
+fn compact_status(status: &str) -> String {
+    let mut value = status.to_string();
+    for (from, to) in [
+        (" seconds", "s"),
+        (" second", "s"),
+        (" minutes", "m"),
+        (" minute", "m"),
+        (" hours", "h"),
+        (" hour", "h"),
+        (" days", "d"),
+        (" day", "d"),
+        (" weeks", "w"),
+        (" week", "w"),
+        (" months", "mo"),
+        (" month", "mo"),
+        (" ago", ""),
+        ("Exited", "Exit"),
+    ] {
+        value = value.replace(from, to);
+    }
+    value
 }

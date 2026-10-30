@@ -15,6 +15,7 @@ serde_json = { workspace = true }
 serde_yaml = { workspace = true }
 tokio = { workspace = true }
 unicode-width = { workspace = true }
+unicode-segmentation = "1.12"
 libc = { workspace = true }
 
 [build-dependencies]

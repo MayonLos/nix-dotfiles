@@ -1,597 +1,989 @@
-//! Pure rendering: terminal-cell widths and scrolling are handled explicitly.
+//! Render only the visible rows; geometry is also used for mouse hit testing.
 use crate::{
-    app::{App, Dialog, Page},
+    app::{visible_start, App, Dialog, Page},
+    profiles::Usage,
     theme::*,
 };
+use mayon_ui::{base, blue, marker, muted};
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Layout, Rect, Size},
     style::Style,
     text::{Line, Span},
-    widgets::{Block, Clear, List, ListItem, ListState, Paragraph, Wrap},
+    widgets::{Block, Clear, Paragraph, Sparkline, Wrap},
     Frame,
 };
+use unicode_width::UnicodeWidthStr;
 
-use mayon_ui::{base, blue, marker, muted};
-fn block(title: String, focused: bool) -> Block<'static> {
-    mayon_ui::block(title, focused)
+pub const TABS: [&str; 7] = ["概览", "代理", "订阅", "连接", "规则", "日志", "工具"];
+pub fn tab_at(column: u16) -> Option<char> {
+    let mut x = 1;
+    for (i, title) in TABS.iter().enumerate() {
+        let width = title.width() as u16 + 5;
+        if (x..x + width).contains(&column) {
+            return Some((b'1' + i as u8) as char);
+        }
+        x += width + 2;
+    }
+    None
 }
-fn row(lines: Vec<Line<'static>>, selected: bool) -> ListItem<'static> {
-    ListItem::new(lines).style(if selected {
+fn block(title: impl Into<String>) -> Block<'static> {
+    mayon_ui::block(title, true)
+}
+fn title(app: &App, text: &str, area: Rect) -> String {
+    clip(
+        &format!(
+            " {text}{} ",
+            if app.filter().is_empty() && !app.filtering {
+                String::new()
+            } else {
+                format!(
+                    " · /{}{}",
+                    app.filter(),
+                    if app.filtering { "▏" } else { "" }
+                )
+            }
+        ),
+        area.width.saturating_sub(2) as usize,
+    )
+}
+fn pane(frame: &mut Frame, area: Rect, title: String, text: Vec<Line<'static>>) {
+    frame.render_widget(Paragraph::new(text).style(base()).block(block(title)), area);
+}
+fn visible(area: Rect, selected: usize, len: usize, row_height: usize) -> std::ops::Range<usize> {
+    let count = area.height.saturating_sub(2) as usize / row_height;
+    let start = visible_start(selected, len, count);
+    start..(start + count).min(len)
+}
+fn selected_line(parts: Vec<Span<'static>>, selected: bool) -> Line<'static> {
+    Line::from(parts).style(if selected {
         base().bg(SELECTION)
     } else {
         base()
     })
 }
-pub fn tab_at(column: u16) -> Option<char> {
-    use unicode_width::UnicodeWidthStr;
-    let mut start = 1;
-    for (key, title) in [('1', "1 代理"), ('2', "2 订阅"), ('3', "3 连接")] {
-        let width = title.width() as u16 + 2;
-        if (start..start + width).contains(&column) {
-            return Some(key);
-        }
-        start += width + 2;
-    }
-    None
-}
-pub fn draw(frame: &mut Frame, app: &mut App) {
+pub fn draw(frame: &mut Frame, app: &App) {
     let area = frame.area();
     frame.render_widget(Block::default().style(base()), area);
     if area.width < 44 || area.height < 12 {
         frame.render_widget(
-            Paragraph::new("请将终端放大至至少 44 × 12\nq 退出")
-                .style(base())
-                .wrap(Wrap { trim: false }),
+            Paragraph::new("请放大终端至至少 44 × 12\nq 退出").style(base()),
             area,
         );
         return;
     }
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(1),
-            Constraint::Length(2),
-            Constraint::Min(4),
-            Constraint::Length(2),
-        ])
-        .split(area);
-    let mode = match app.config.mode.as_str() {
-        "rule" => "规则",
-        "global" => "全局",
-        "direct" => "直连",
-        _ => "--",
-    };
-    let traffic = app
+    let chunks = Layout::vertical([
+        Constraint::Length(1),
+        Constraint::Length(2),
+        Constraint::Min(1),
+        Constraint::Length(2),
+    ])
+    .split(area);
+    let rate = app
         .traffic
-        .map(|(up, down)| format!("↑{} ↓{}", bytes(up), bytes(down)))
-        .unwrap_or_else(|| "↑-- ↓--".into());
-    let header = if !app.online {
-        " 󰒍 Clash · 未运行".into()
-    } else if area.width >= 100 {
-        format!(
-            " 󰒍 Clash · 运行  ·  {mode}  ·  TUN {}  ·  {traffic}  ·  {} 连接  ·  {}",
-            if app.config.tun.enable { "on" } else { "off" },
-            app.connections.len(),
-            app.version
-        )
-    } else {
-        format!(
-            " 󰒍 运行 {mode} TUN:{}  {traffic}  {} conn {}",
-            if app.config.tun.enable { "on" } else { "off" },
-            app.connections.len(),
-            app.version.replace("Meta ", "")
-        )
-    };
-    mayon_ui::status(frame, chunks[0], &header);
-    let page = match app.page {
-        Page::Proxies => 0,
-        Page::Profiles => 1,
-        Page::Connections => 2,
-    };
+        .as_ref()
+        .map(|t| format!("↑{}/s ↓{}/s", bytes(t.up), bytes(t.down)))
+        .unwrap_or_else(|| "流量 --".into());
+    mayon_ui::status(
+        frame,
+        chunks[0],
+        &format!(
+            " 󰒍 Clash · {} · {} · {rate}",
+            if app.online { "运行" } else { "未运行" },
+            if app.online {
+                app.config.mode.as_str()
+            } else {
+                "s 启动"
+            }
+        ),
+    );
     frame.render_widget(
-        Paragraph::new(mayon_ui::tabs_line(&["代理", "订阅", "连接"], page)),
+        Paragraph::new(mayon_ui::tabs_line(&TABS, app.page as usize)),
         chunks[1],
     );
-    if !app.online {
-        frame.render_widget(
-            Paragraph::new(
-                "\n\n  Clash 未运行 · s 启动\n\n  打开 Verge 即启动，退出 Verge 即关闭。",
-            )
-            .style(base().fg(MUTED))
-            .block(block(" Clash ".into(), false)),
+    if !app.online && app.page != Page::Profiles {
+        let progress = app.launch_progress();
+        pane(
+            frame,
             chunks[2],
+            " Clash 未运行 ".into(),
+            vec![
+                Line::from(""),
+                Line::from(blue(format!("  {progress}"))),
+                Line::from(""),
+                Line::from("  s 启动 Verge    3 订阅 / 导入    ? 新手指引"),
+                Line::from(""),
+                Line::from(muted("  打开 Verge 即启动；退出 Verge 时清理代理和 TUN。")),
+                Line::from(muted("  如需静默启动，请在 Verge 设置开启「静默启动」。")),
+            ],
         );
     } else {
         match app.page {
-            Page::Proxies => proxies(frame, app, chunks[2]),
+            Page::Overview => overview(frame, app, chunks[2]),
+            Page::Proxies if !app.provider_mode => proxies(frame, app, chunks[2]),
+            Page::Proxies | Page::Rules if app.provider_mode => providers(frame, app, chunks[2]),
             Page::Profiles => profiles(frame, app, chunks[2]),
             Page::Connections => connections(frame, app, chunks[2]),
+            Page::Rules => rules(frame, app, chunks[2]),
+            Page::Logs => logs(frame, app, chunks[2]),
+            Page::Tools => tools(frame, app, chunks[2]),
+            _ => {}
         }
     }
-    let hint = if !app.online {
-        " s 启动 Verge  r 刷新  ? 帮助  q 退出"
-    } else {
-        match app.page {
-            Page::Proxies => " j/k 移动  Tab 面板  Enter 选择  t/T 测速  / 过滤  m 模式  ? 帮助",
-            Page::Profiles => " j/k 移动  i 导入  f 刷新用量  u 更新  Enter 切换  o Verge  ? 帮助",
-            Page::Connections => " j/k 移动  x 关闭连接  X 关闭 Clash  r 刷新  ? 帮助",
+    let hint = match app.page {
+        Page::Overview => " 2 选节点  3 订阅用量  m 模式  o Verge 设置  X 关闭  ? 帮助  q 退出",
+        Page::Proxies if app.provider_mode => {
+            " j/k 移动  t 健康检查  u 更新  p 返回节点  / 过滤  ? 帮助"
         }
+        Page::Proxies => " j/k 移动  Tab 面板  Enter 选节点  t/T 测速  S 排序  / 过滤  ? 帮助",
+        Page::Profiles => " j/k 移动  i 导入  f 刷新用量  u 更新  Enter 切换  o Verge  ? 帮助",
+        Page::Connections => {
+            " j/k 移动  Enter 详情  S 排序  / 过滤  x 关闭  d 关闭过滤  D 全关  ? 帮助"
+        }
+        Page::Rules => " j/k 移动  / 过滤  Enter 命中详情  p 规则源  u 更新源  ? 帮助",
+        Page::Logs => " j/k 滚动  / 搜索  L 级别  空格 暂停  g/G 首尾  ? 帮助",
+        Page::Tools => " j/k 移动  Enter 执行（确认）  m 模式  o Verge 设置  ? 帮助",
     };
     mayon_ui::footer(frame, chunks[3], hint, &format!(" {}", app.status));
     if app.help {
-        help(frame);
+        help(frame, app);
     }
     if let Some(dialog) = &app.dialog {
-        dialog_view(frame, dialog);
+        dialog_view(frame, dialog, app.detail_scroll);
     }
 }
-
+fn overview(frame: &mut Frame, app: &App, area: Rect) {
+    let sections = Layout::vertical([
+        Constraint::Length(7),
+        Constraint::Length(8),
+        Constraint::Min(5),
+    ])
+    .split(area);
+    let mut state = vec![
+        Line::from(vec![
+            blue("  ● 运行中"),
+            muted(format!("  {} · {}", app.version, app.config.mode)),
+        ]),
+        Line::from(format!(
+            "  TUN {}   系统代理 {} · 由 Verge 管理",
+            if app.config.tun.enable {
+                "开启"
+            } else {
+                "关闭"
+            },
+            app.system_proxy.as_deref().unwrap_or("未知")
+        )),
+        Line::from(format!(
+            "  {} 条连接{}   内核连接内存 {}",
+            app.connections.len(),
+            if app.connections_live {
+                ""
+            } else {
+                "（流已断开）"
+            },
+            bytes(app.memory)
+        )),
+        Line::from(clip(
+            &format!("  {}", app.chain()),
+            area.width.saturating_sub(2) as usize,
+        )),
+    ];
+    if app.config.mode == "rule" {
+        if let Some(group) = app.group_names.iter().find(|n| n.as_str() != "GLOBAL") {
+            state.push(Line::from(muted(clip(
+                &format!(
+                    "  参考组：{group} → {}",
+                    app.proxies[group].now.as_deref().unwrap_or("按策略选择")
+                ),
+                area.width.saturating_sub(2) as usize,
+            ))));
+        }
+    }
+    pane(frame, sections[0], " 代理状态与出口 ".into(), state);
+    let traffic = sections[1];
+    frame.render_widget(
+        Block::default()
+            .style(base())
+            .borders(ratatui::widgets::Borders::ALL)
+            .border_style(Style::default().fg(BORDER))
+            .title(" 最近 60 秒 · 独立纵轴 "),
+        traffic,
+    );
+    let inner = traffic.inner(ratatui::layout::Margin::new(2, 1));
+    let halves =
+        Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]).split(inner);
+    for (index, a) in halves.iter().enumerate() {
+        let series: Vec<u64> = app
+            .history
+            .iter()
+            .map(|t| if index == 0 { t.0 } else { t.1 })
+            .collect();
+        let speed = app
+            .traffic
+            .as_ref()
+            .map(|t| bytes(if index == 0 { t.up } else { t.down }))
+            .map(|s| format!("{s}/s"))
+            .unwrap_or_else(|| "--".into());
+        frame.render_widget(
+            Paragraph::new(format!(
+                "{} {speed}",
+                if index == 0 {
+                    "↑ 上传"
+                } else {
+                    "↓ 下载"
+                }
+            ))
+            .style(base().fg(if index == 0 { BLUE } else { GREEN })),
+            Rect::new(a.x, a.y, a.width, 1),
+        );
+        frame.render_widget(
+            Sparkline::default()
+                .data(&series)
+                .style(Style::default().fg(if index == 0 { BLUE } else { GREEN })),
+            Rect::new(
+                a.x,
+                a.y + 1,
+                a.width.saturating_sub(1),
+                a.height.saturating_sub(2),
+            ),
+        );
+        frame.render_widget(
+            Paragraph::new(format!(
+                "本次内核累计 {}",
+                bytes(if index == 0 {
+                    app.totals.0
+                } else {
+                    app.totals.1
+                })
+            ))
+            .style(base().fg(MUTED)),
+            Rect::new(a.x, a.y + a.height.saturating_sub(1), a.width, 1),
+        );
+    }
+    let current = app.store.items.iter().find(|i| i.uid == app.store.current);
+    let text = match current {
+        Some(item) => {
+            let usage = item
+                .uid
+                .as_ref()
+                .and_then(|id| app.usage.get(id))
+                .copied()
+                .or(item.extra);
+            let mut text = vec![Line::from(blue(format!(
+                "  {}",
+                item.name.as_deref().unwrap_or("未命名订阅")
+            )))];
+            text.extend(usage_lines(usage, area.width.saturating_sub(5) as usize));
+            text
+        }
+        None => vec![
+            Line::from("  尚无当前订阅 · 3 订阅 → i 导入"),
+            Line::from(muted(
+                "  订阅提供节点和规则。输入服务商的订阅链接，由 Verge 导入。",
+            )),
+        ],
+    };
+    pane(
+        frame,
+        sections[2],
+        " 当前订阅 · 3 查看所有订阅 ".into(),
+        text,
+    );
+}
 fn proxies(frame: &mut Frame, app: &App, area: Rect) {
     let columns =
         Layout::horizontal([Constraint::Percentage(32), Constraint::Percentage(68)]).split(area);
-    let groups = app.groups();
-    let group_rows: Vec<_> = groups
-        .iter()
-        .enumerate()
-        .map(|(index, name)| {
-            let proxy = &app.proxies[name];
-            let selected = index == app.group;
-            let width = columns[0].width.saturating_sub(5) as usize;
-            row(
-                vec![
-                    Line::from(vec![marker(selected), Span::raw(clip(name, width))]),
-                    Line::from(vec![
-                        Span::raw("  "),
-                        muted(clip(
-                            &format!("{} · {}", proxy.kind, proxy.now.as_deref().unwrap_or("--")),
-                            width.saturating_sub(1),
-                        )),
-                    ]),
-                ],
-                selected,
-            )
-        })
-        .collect();
-    let mut state = ListState::default().with_selected((!groups.is_empty()).then_some(app.group));
-    frame.render_stateful_widget(
-        List::new(group_rows).block(block(
-            format!(" 代理组 {} ", groups.len()),
-            !app.nodes_focus,
-        )),
-        columns[0],
-        &mut state,
-    );
-    let nodes = app.nodes();
-    let current = app
-        .group_name()
-        .and_then(|g| app.proxies.get(&g))
-        .and_then(|p| p.now.as_deref());
-    let node_rows: Vec<_> = nodes
-        .iter()
-        .enumerate()
-        .map(|(index, name)| {
-            let selected = index == app.node;
-            let (label, color) = match app.delay(name) {
-                Some(Some(delay)) => (format!("{delay} ms"), delay_color(Some(delay))),
-                Some(None) => ("超时".into(), RED),
-                None => ("--".into(), MUTED),
-            };
-            let width = columns[1].width.saturating_sub(16) as usize;
-            let clipped = clip(name, width);
-            let pad = width.saturating_sub(unicode_width::UnicodeWidthStr::width(clipped.as_str()));
-            row(
-                vec![Line::from(vec![
-                    marker(selected),
-                    Span::styled(
-                        if current == Some(name.as_str()) {
-                            "● "
-                        } else {
-                            "  "
-                        },
-                        Style::default().fg(CYAN),
-                    ),
-                    Span::raw(clipped),
-                    Span::raw(" ".repeat(pad + 1)),
-                    Span::styled(label, Style::default().fg(color)),
-                ])],
-                selected,
-            )
-        })
-        .collect();
-    let progress = app
-        .measuring
-        .map(|(done, total)| format!(" · ⟳ {done}/{total} Esc 取消"))
-        .unwrap_or_default();
-    let filter = if app.filter.is_empty() && !app.filtering {
-        String::new()
-    } else {
-        format!(" · /{}{}", app.filter, if app.filtering { "▏" } else { "" })
-    };
-    let title = clip(
-        &format!(" 节点 {}{progress}{filter} ", nodes.len()),
-        columns[1].width.saturating_sub(2) as usize,
-    );
-    let mut state = ListState::default().with_selected((!nodes.is_empty()).then_some(app.node));
-    frame.render_stateful_widget(
-        List::new(node_rows).block(block(title, app.nodes_focus)),
-        columns[1],
-        &mut state,
-    );
-    if nodes.is_empty() {
-        let inner = Rect {
-            x: columns[1].x + 2,
-            y: columns[1].y + 2,
-            width: columns[1].width.saturating_sub(4),
-            height: 2,
-        };
-        frame.render_widget(
-            Paragraph::new("无匹配节点 · Esc 清除过滤").style(Style::default().fg(MUTED)),
-            inner,
-        );
-    }
-}
-
-fn profiles(frame: &mut Frame, app: &App, area: Rect) {
-    let width = area.width.saturating_sub(6) as usize;
-    let rows: Vec<_> = app
-        .store
-        .items
-        .iter()
-        .enumerate()
-        .map(|(index, item)| {
-            let selected = index == app.profile;
-            let current = item
-                .uid
-                .as_ref()
-                .is_some_and(|uid| Some(uid) == app.store.current.as_ref());
-            let refreshed = item
-                .uid
-                .as_ref()
-                .and_then(|uid| app.usage.get(uid))
-                .copied();
-            let usage = refreshed.or(item.extra);
-            let mut lines = vec![Line::from(vec![
+    let mut groups = Vec::new();
+    for i in visible(columns[0], app.group, app.group_names.len(), 2) {
+        let n = &app.group_names[i];
+        let p = &app.proxies[n];
+        let selected = i == app.group;
+        groups.push(selected_line(
+            vec![
                 marker(selected),
-                Span::styled(if current { "● " } else { "  " }, Style::default().fg(CYAN)),
-                Span::styled(
-                    clip(
-                        item.name.as_deref().unwrap_or("未命名订阅"),
-                        width.saturating_sub(12),
-                    ),
-                    Style::default().fg(BRIGHTFG),
-                ),
-                blue(if current { "  当前" } else { "" }),
-            ])];
-            if let Some(usage) = usage {
-                let fraction = usage.progress();
-                let count = width.saturating_sub(10).min(28);
-                let fill = (fraction.unwrap_or(0.0) * count as f64).round() as usize;
-                lines.push(Line::from(vec![
-                    Span::raw("   "),
-                    Span::styled("━".repeat(fill), Style::default().fg(BLUE)),
-                    Span::styled("─".repeat(count - fill), Style::default().fg(BORDER)),
-                    muted(
-                        fraction
-                            .map(|p| format!("  {:.0}%", p * 100.0))
-                            .unwrap_or_else(|| "  无配额".into()),
-                    ),
-                ]));
-                let total = if usage.total > 0 {
-                    bytes(usage.total)
+                Span::raw(clip(n, columns[0].width.saturating_sub(3) as usize)),
+            ],
+            selected,
+        ));
+        groups.push(Line::from(muted(clip(
+            &format!(
+                "  {} · {}",
+                group_label(&p.kind),
+                p.now.as_deref().unwrap_or("按策略")
+            ),
+            columns[0].width.saturating_sub(2) as usize,
+        ))));
+    }
+    pane(
+        frame,
+        columns[0],
+        format!(" 代理组 {} ", app.group_names.len()),
+        groups,
+    );
+    let mut nodes = Vec::new();
+    let width = columns[1].width.saturating_sub(16) as usize;
+    for i in visible(columns[1], app.node, app.node_names.len(), 1) {
+        let name = &app.node_names[i];
+        let n = clip(name, width);
+        let pad = width.saturating_sub(n.width());
+        let (label, color) = match app.delay(name) {
+            Some(Some(d)) => (
+                format!("{d}ms"),
+                if d >= app.opts.settings.timeout_ms {
+                    RED
                 } else {
-                    "未知".into()
-                };
-                let remaining = usage
-                    .remaining_bytes()
+                    delay_color(Some(d))
+                },
+            ),
+            Some(None) => ("超时".into(), RED),
+            None => ("--".into(), MUTED),
+        };
+        nodes.push(selected_line(
+            vec![
+                marker(i == app.node),
+                Span::styled(
+                    if app.current_node() == Some(name) {
+                        "● "
+                    } else {
+                        "  "
+                    },
+                    Style::default().fg(CYAN),
+                ),
+                Span::raw(n),
+                Span::raw(" ".repeat(pad + 1)),
+                Span::styled(label, Style::default().fg(color)),
+            ],
+            i == app.node,
+        ));
+    }
+    if nodes.is_empty() {
+        nodes.push(Line::from(muted(" 无匹配节点 · Esc 清除过滤")));
+    }
+    let measuring = app
+        .measuring
+        .map(|(n, t)| format!(" · 测速 {n}/{t}"))
+        .unwrap_or_default();
+    pane(
+        frame,
+        columns[1],
+        title(
+            app,
+            &format!(
+                "节点 {} · {}{}{}",
+                app.node_names.len(),
+                app.sort.label(),
+                if app.hide_timeout {
+                    " · 隐藏超时"
+                } else {
+                    ""
+                },
+                measuring
+            ),
+            columns[1],
+        ),
+        nodes,
+    );
+}
+pub fn group_label(kind: &str) -> &'static str {
+    match kind {
+        "Selector" => "↦ 手动选择",
+        "URLTest" => "↯ 自动选择",
+        "Fallback" => "↪ 故障转移",
+        "LoadBalance" => "⇄ 负载均衡",
+        "Relay" => "⇢ 串联",
+        _ => "◇ 代理组",
+    }
+}
+fn usage_lines(usage: Option<Usage>, width: usize) -> Vec<Line<'static>> {
+    let Some(u) = usage else {
+        return vec![Line::from(muted("  用量未知 · 3 订阅 → f 读取用量响应头"))];
+    };
+    let bar_width = width.saturating_sub(12).clamp(4, 36);
+    let progress = u.progress().unwrap_or(0.0);
+    let fill = (bar_width as f64 * progress).round() as usize;
+    let total = if u.total == 0 {
+        "未知".into()
+    } else {
+        bytes(u.total)
+    };
+    let expiry = u
+        .expires_at()
+        .map(|d| d.format("%Y-%m-%d").to_string())
+        .unwrap_or_else(|| "未知 / 不限".into());
+    let days = u
+        .expires_at()
+        .map(|d| (d - chrono::Local::now()).num_days());
+    let warning = days.is_some_and(|d| d <= 7);
+    vec![
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled(
+                format!("{}{}", "━".repeat(fill), "─".repeat(bar_width - fill)),
+                Style::default().fg(if progress >= 0.9 { YELLOW } else { BLUE }),
+            ),
+            muted(if u.total > 0 {
+                format!(" {:>3.0}% 已用", progress * 100.0)
+            } else {
+                " 配额未知".into()
+            }),
+        ]),
+        Line::from(muted(clip(
+            &format!(
+                "  已用 {} / {total} · 剩余 {}",
+                bytes(u.used_bytes()),
+                u.remaining_bytes()
                     .map(bytes)
-                    .unwrap_or_else(|| "未知".into());
-                lines.push(Line::from(muted(clip(
-                    &format!(
-                        "   已用 {} / {} · 剩余 {}",
-                        bytes(usage.used_bytes()),
-                        total,
-                        remaining
-                    ),
-                    width,
-                ))));
-                let expiry = usage
-                    .expires_at()
-                    .map(|d| d.format("%Y-%m-%d").to_string())
-                    .unwrap_or_else(|| "未知 / 不限".into());
-                let updated = item
-                    .updated_at()
-                    .map(|d| d.format("%m-%d %H:%M").to_string())
-                    .unwrap_or_else(|| "未知".into());
-                lines.push(Line::from(muted(clip(
-                    &format!(
-                        "   到期 {expiry} · 更新 {updated}{}",
-                        if refreshed.is_some() {
-                            " · 实时用量"
-                        } else {
-                            ""
-                        }
-                    ),
-                    width,
-                ))));
-            } else {
-                lines.push(Line::from(""));
-                lines.push(Line::from(muted("   无用量信息 · f 从订阅响应头刷新")));
-                lines.push(Line::from(muted(format!(
-                    "   类型 {}",
-                    item.kind.as_deref().unwrap_or("unknown")
-                ))));
-            }
-            lines.push(Line::from(""));
-            if selected {
-                lines[0] = lines[0].clone().style(base().bg(SELECTION));
-            }
-            row(lines, false)
-        })
-        .collect();
-    let mut state = ListState::default().with_selected((!rows.is_empty()).then_some(app.profile));
-    frame.render_stateful_widget(
-        List::new(rows).block(block(
-            " 󰑓 Verge 订阅 · 只读快照 / 导入交给 Verge ".into(),
-            true,
-        )),
-        area,
-        &mut state,
-    );
-    if app.store.items.is_empty() {
-        frame.render_widget(
-            Paragraph::new(
-                "无可显示订阅 · r 重读文件 · i 导入\n不会直接改写 Verge 的 profiles.yaml",
-            )
-            .style(Style::default().fg(MUTED)),
-            Rect {
-                x: area.x + 3,
-                y: area.y + 2,
-                width: area.width.saturating_sub(6),
-                height: 3,
-            },
-        );
-    }
-}
-
-fn connections(frame: &mut Frame, app: &App, area: Rect) {
-    let width = area.width.saturating_sub(5) as usize;
-    let rows: Vec<_> = app
-        .connections
-        .iter()
-        .enumerate()
-        .map(|(index, connection)| {
-            let selected = index == app.connection;
-            let meta = &connection.metadata;
-            let host = if meta.host.is_empty() {
-                &meta.destination_ip
-            } else {
-                &meta.host
-            };
-            row(
-                vec![
-                    Line::from(vec![
-                        marker(selected),
-                        Span::raw(clip(
-                            &format!("{}:{}  {}", host, meta.destination_port, meta.network),
-                            width,
-                        )),
-                    ]),
-                    Line::from(muted(clip(
-                        &format!(
-                            "  {} → {}   ↑{} ↓{}",
-                            connection.rule,
-                            connection.chains.join(" → "),
-                            bytes(connection.upload),
-                            bytes(connection.download)
-                        ),
-                        width,
-                    ))),
-                ],
-                selected,
-            )
-        })
-        .collect();
-    let mut state =
-        ListState::default().with_selected((!rows.is_empty()).then_some(app.connection));
-    frame.render_stateful_widget(
-        List::new(rows).block(block(
-            format!(" 活动连接 {} · x 关闭所选 ", app.connections.len()),
-            true,
-        )),
-        area,
-        &mut state,
-    );
-    if app.connections.is_empty() {
-        frame.render_widget(
-            Paragraph::new("暂无活动连接").style(Style::default().fg(MUTED)),
-            Rect {
-                x: area.x + 3,
-                y: area.y + 2,
-                width: area.width.saturating_sub(6),
-                height: 1,
-            },
-        );
-    }
-}
-
-fn modal(frame: &mut Frame, width: u16, height: u16) -> Rect {
-    let area = frame.area();
-    let width = width.min(area.width.saturating_sub(4));
-    let height = height.min(area.height.saturating_sub(2));
-    let popup = Rect::new(
-        area.x + (area.width - width) / 2,
-        area.y + (area.height - height) / 2,
-        width,
-        height,
-    );
-    frame.render_widget(Clear, popup);
-    frame.render_widget(Block::default().style(base().bg(SURFACE)), popup);
-    popup
-}
-fn help(frame: &mut Frame) {
-    let popup = modal(frame, 76, 22);
-    let text = vec![
-        Line::from(blue("  移动与面板")),
-        Line::from("  j/k ↑/↓ 选择    g/G 首尾    h/l 或 Tab 切面板"),
-        Line::from("  1 代理    2 订阅    3 活动连接    q / Ctrl-C 退出"),
-        Line::from(""),
-        Line::from(blue("  代理与概览")),
-        Line::from("  Enter 切换节点    t 测当前    T 测整组（并发 4）"),
-        Line::from("  Esc 取消测速 / 清除过滤    / 中文或英文子串过滤"),
-        Line::from("  m 模式轮换：rule → global → direct    r 刷新"),
-        Line::from("  s 启动 Verge    X 确认退出 Verge / 关闭 Clash"),
-        Line::from(""),
-        Line::from(blue("  订阅")),
-        Line::from("  i 导入 URL（Tab 输入名称）    f 经代理刷新用量"),
-        Line::from("  u 更新 / Enter 切换 → 在 Verge 中完成    o 打开 Verge"),
-        Line::from("  用量只存内存；不写 profiles.yaml，不读取密钥"),
-        Line::from(""),
-        Line::from(blue("  连接")),
-        Line::from("  x 立即关闭当前连接    每 2 秒刷新快照"),
-        Line::from(""),
-        Line::from(muted(concat!(
-            "  ? / Esc 关闭帮助    ·    clashtui-mayon ",
-            env!("CARGO_PKG_VERSION")
+                    .unwrap_or_else(|| "未知".into())
+            ),
+            width,
         ))),
-    ];
+        Line::from(Span::styled(
+            clip(
+                &format!(
+                    "  到期 {expiry}{}",
+                    days.map(|d| if d < 0 {
+                        " · 已到期".into()
+                    } else {
+                        format!(" · 剩余 {d} 天")
+                    })
+                    .unwrap_or_default()
+                ),
+                width,
+            ),
+            Style::default().fg(if warning { YELLOW } else { MUTED }),
+        )),
+    ]
+}
+fn profiles(frame: &mut Frame, app: &App, area: Rect) {
+    let mut lines = Vec::new();
+    for i in visible(area, app.profile, app.store.items.len(), 5) {
+        let item = &app.store.items[i];
+        let current = item
+            .uid
+            .as_ref()
+            .is_some_and(|id| Some(id) == app.store.current.as_ref());
+        let width = area.width.saturating_sub(4) as usize;
+        lines.push(selected_line(
+            vec![
+                marker(i == app.profile),
+                blue(if current { "● " } else { "  " }),
+                Span::raw(clip(
+                    item.name.as_deref().unwrap_or("未命名订阅"),
+                    width.saturating_sub(3),
+                )),
+            ],
+            i == app.profile,
+        ));
+        let usage = item
+            .uid
+            .as_ref()
+            .and_then(|id| app.usage.get(id))
+            .copied()
+            .or(item.extra);
+        let mut u = usage_lines(usage, width);
+        while u.len() < 3 {
+            u.push(Line::from(""));
+        }
+        lines.extend(u);
+        let count = app
+            .providers
+            .iter()
+            .find(|(n, _)| {
+                Some(n.as_str()) == item.uid.as_deref() || Some(n.as_str()) == item.name.as_deref()
+            })
+            .map(|(_, p)| p.proxies.len().to_string())
+            .unwrap_or_else(|| "未知（内核无对应源）".into());
+        lines.push(Line::from(muted(clip(
+            &format!(
+                "  节点 {count} · 上次更新 {}",
+                item.updated_at()
+                    .map(|d| d.format("%m-%d %H:%M").to_string())
+                    .unwrap_or_else(|| "未知".into())
+            ),
+            width,
+        ))));
+    }
+    if app.store.items.is_empty() {
+        lines = vec![
+            Line::from(""),
+            Line::from(blue("  还没有订阅 · i 导入")),
+            Line::from(""),
+            Line::from("  1. 向服务商获取订阅链接"),
+            Line::from("  2. 按 i 粘贴 URL，由 Verge 完成导入"),
+            Line::from("  3. 回到 TUI 自动刷新，再到 2 代理选择节点"),
+            Line::from(""),
+            Line::from(muted("  TUN / 系统代理请在 Verge 设置中管理（o 打开）。")),
+        ];
+    }
+    pane(
+        frame,
+        area,
+        " 订阅 · Verge 管理，返回后自动刷新 ".into(),
+        lines,
+    );
+}
+fn connections(frame: &mut Frame, app: &App, area: Rect) {
+    let mut lines = Vec::new();
+    for i in visible(area, app.connection, app.connection_view.len(), 2) {
+        let c = &app.connections[app.connection_view[i]];
+        let selected = i == app.connection;
+        let host = if c.metadata.host.is_empty() {
+            &c.metadata.destination_ip
+        } else {
+            &c.metadata.host
+        };
+        let right = format!(
+            "{} /s  {}",
+            app.rates
+                .get(&c.id)
+                .copied()
+                .map(bytes)
+                .unwrap_or_else(|| "--".into()),
+            age(&c.start)
+        );
+        let width = area.width.saturating_sub(4) as usize;
+        let left_width = width.saturating_sub(right.width() + 2);
+        let left = clip(
+            &format!("{host}:{}", c.metadata.destination_port),
+            left_width,
+        );
+        lines.push(selected_line(
+            vec![
+                marker(selected),
+                Span::raw(left.clone()),
+                Span::raw(" ".repeat(left_width.saturating_sub(left.width()) + 1)),
+                blue(right),
+            ],
+            selected,
+        ));
+        lines.push(Line::from(muted(clip(
+            &format!(
+                "  {} · {} → {} · ↑{} ↓{}",
+                c.metadata.process,
+                c.rule,
+                c.chains.join(" → "),
+                bytes(c.upload),
+                bytes(c.download)
+            ),
+            width,
+        ))));
+    }
+    if lines.is_empty() {
+        lines.push(Line::from(muted(" 暂无匹配连接 · Esc 清除过滤")));
+    }
+    pane(
+        frame,
+        area,
+        title(
+            app,
+            &format!(
+                "活动连接 {}/{} · {} · {}",
+                app.connection_view.len(),
+                app.connections.len(),
+                ["速率", "总量", "时长", "主机"][app.connection_sort],
+                if app.connections_live {
+                    "实时"
+                } else {
+                    "流已断开"
+                }
+            ),
+            area,
+        ),
+        lines,
+    );
+}
+fn age(start: &str) -> String {
+    chrono::DateTime::parse_from_rfc3339(start)
+        .ok()
+        .map(|d| {
+            let s = (chrono::Utc::now() - d.with_timezone(&chrono::Utc))
+                .num_seconds()
+                .max(0);
+            if s < 60 {
+                format!("{s}s")
+            } else if s < 3600 {
+                format!("{}m", s / 60)
+            } else {
+                format!("{}h", s / 3600)
+            }
+        })
+        .unwrap_or_else(|| "--".into())
+}
+fn providers(frame: &mut Frame, app: &App, area: Rect) {
+    let map = if app.page == Page::Rules {
+        &app.rule_providers
+    } else {
+        &app.providers
+    };
+    let mut lines = Vec::new();
+    for i in visible(area, app.provider, app.provider_view.len(), 2) {
+        let n = &app.provider_view[i];
+        let p = &map[n];
+        let selected = i == app.provider;
+        lines.push(selected_line(
+            vec![
+                marker(selected),
+                Span::raw(clip(
+                    &format!("{n} · {} · {}", p.vehicle_type, p.kind),
+                    area.width.saturating_sub(4) as usize,
+                )),
+            ],
+            selected,
+        ));
+        lines.push(Line::from(muted(clip(
+            &format!(
+                "  {} 项 · 更新 {}",
+                if app.page == Page::Rules {
+                    p.rule_count as usize
+                } else {
+                    p.proxies.len()
+                },
+                if p.updated_at.is_empty() || p.updated_at.starts_with("0001-") {
+                    "内核未提供"
+                } else {
+                    &p.updated_at
+                }
+            ),
+            area.width.saturating_sub(2) as usize,
+        ))));
+    }
+    if lines.is_empty() {
+        lines.push(Line::from(muted(
+            " 无匹配 provider · p 返回 · Esc 清除过滤",
+        )));
+    }
+    pane(
+        frame,
+        area,
+        title(
+            app,
+            if app.page == Page::Rules {
+                "规则源 · u 更新 / p 返回"
+            } else {
+                "节点源 · t 健康检查 / u 更新 / p 返回"
+            },
+            area,
+        ),
+        lines,
+    );
+}
+fn rules(frame: &mut Frame, app: &App, area: Rect) {
+    let mut lines = Vec::new();
+    for i in visible(area, app.rule, app.rule_view.len(), 2) {
+        let r = &app.rules[app.rule_view[i]];
+        let selected = i == app.rule;
+        lines.push(selected_line(
+            vec![
+                marker(selected),
+                Span::raw(clip(
+                    &format!("{}  {}", r.kind, r.payload),
+                    area.width.saturating_sub(4) as usize,
+                )),
+            ],
+            selected,
+        ));
+        let hits = r
+            .extra
+            .as_ref()
+            .map(|e| format!("命中 {} 次", e.hit_count))
+            .unwrap_or_else(|| {
+                let count = app
+                    .connections
+                    .iter()
+                    .filter(|c| c.rule == r.kind && c.rule_payload == r.payload)
+                    .count();
+                format!("当前匹配连接 {count}（非累计命中）")
+            });
+        lines.push(Line::from(muted(clip(
+            &format!("  → {} · {hits}", r.proxy),
+            area.width.saturating_sub(2) as usize,
+        ))));
+    }
+    if lines.is_empty() {
+        lines.push(Line::from(muted(" 无匹配规则")));
+    }
+    pane(
+        frame,
+        area,
+        title(
+            app,
+            &format!(
+                "规则 {}/{} · p 规则源",
+                app.rule_view.len(),
+                app.rules.len()
+            ),
+            area,
+        ),
+        lines,
+    );
+}
+fn logs(frame: &mut Frame, app: &App, area: Rect) {
+    let mut lines = Vec::new();
+    for i in visible(area, app.log, app.log_view.len(), 1) {
+        let l = &app.logs[app.log_view[i]];
+        let color = match l.level.as_str() {
+            "error" => RED,
+            "warning" | "warn" => YELLOW,
+            "debug" => MUTED,
+            _ => GREEN,
+        };
+        lines.push(selected_line(
+            vec![
+                marker(i == app.log),
+                Span::styled(format!("{:<7}", l.level), Style::default().fg(color)),
+                Span::raw(clip(&l.payload, area.width.saturating_sub(12) as usize)),
+            ],
+            i == app.log,
+        ));
+    }
+    if lines.is_empty() {
+        lines.push(Line::from(muted(" 等待匹配日志 · L 切级别 · / 搜索")));
+    }
+    pane(
+        frame,
+        area,
+        title(
+            app,
+            &format!(
+                "日志 {} · {}+ · {}",
+                app.log_view.len(),
+                ["debug", "info", "warning", "error"][app.log_level],
+                if app.logs_paused {
+                    "已暂停（丢弃新日志）"
+                } else if app.logs_live {
+                    "实时 · 最多 2000 条"
+                } else {
+                    "等待日志流"
+                }
+            ),
+            area,
+        ),
+        lines,
+    );
+}
+fn tools(frame: &mut Frame, app: &App, area: Rect) {
+    let mut lines = vec![];
+    for (i, (name, detail)) in [
+        ("清空 fake-ip 缓存", "移除 DNS 虚拟地址映射"),
+        ("清空 DNS 缓存", "下次解析时重新查询"),
+        (
+            "更新 GeoIP / GeoSite",
+            "通过 mihomo 下载并重载；只读资源可能无法更新",
+        ),
+    ]
+    .iter()
+    .enumerate()
+    {
+        lines.push(selected_line(
+            vec![marker(app.tool == i), Span::raw(name.to_string())],
+            app.tool == i,
+        ));
+        lines.push(Line::from(muted(format!("  {detail}"))));
+        lines.push(Line::from(""));
+    }
+    lines.push(Line::from(muted(
+        "  Enter 执行前确认 · TUN / 系统代理：o 打开 Verge 设置",
+    )));
+    pane(frame, area, " 工具 · 缓存与规则数据库 ".into(), lines);
+}
+fn modal(frame: &mut Frame, title: &str, text: Vec<Line<'static>>, height: u16, scroll: u16) {
+    let a = mayon_ui::centered(frame.area(), 80, height);
+    frame.render_widget(Clear, a);
     frame.render_widget(
         Paragraph::new(text)
             .style(base().bg(SURFACE))
-            .block(block(" 󰋖 帮助 ".into(), true))
-            .wrap(Wrap { trim: false }),
-        popup,
+            .block(block(title.to_string()))
+            .wrap(Wrap { trim: false })
+            .scroll((scroll, 0)),
+        a,
     );
 }
-fn dialog_view(frame: &mut Frame, dialog: &Dialog) {
+fn help(frame: &mut Frame, app: &App) {
+    let body = match Page::ALL[app.help_page] {
+        Page::Overview => "上手：先 s 启动，3 订阅 → i 导入，2 代理 → Enter 选节点。\n订阅是服务商提供的节点与规则；节点是具体代理服务器。\n规则模式按网站分流，全局模式全部走 GLOBAL，直连模式绕过代理。\nTUN 接管 IP 流量；系统代理供遵守系统设置的应用使用，两者独立。\n由 Verge 统一管理开关；o 打开设置，X 确认退出 Verge。\n概览累计流量属于本次内核进程；断流时显示未知。",
+        Page::Proxies => "组是节点的选择策略。Tab / h/l 切组与节点面板，Enter 选中。\n↦ Selector 手动；↯ URLTest 自动最快；↪ Fallback 首个可用。\nURLTest/Fallback 允许临时手动指定；T 整组测速会恢复自动选择。\n⇄ LoadBalance 按连接分配，⇢ Relay 串联；无固定节点，不能手动选。\nt 单测 · T 内核组测 · b 测过滤列表（配置并发）· Esc 取消本地队列。\nS 默认/延迟/名称排序 · H 隐藏超时 · c 跳当前 · / 拼音首字母/中英模糊过滤。\np 节点源：t 健康检查，u 更新（源内并发与测试 URL 由内核管理）。",
+        Page::Profiles => "订阅显示用量、剩余、到期；7 天内到期高亮。未知配额不代表无限。\ni 导入：URL 隐藏；留空名称交给 Verge，指定名称在 Verge 完成。\nf 经代理只读用量响应头，未写回元数据，绝不下载订阅正文。\nEnter 切换 / u 更新：先说明并打开 Verge，返回后 2 秒内重读。\n未激活订阅的节点数可能未知：不会为计数读取订阅正文。\nVerge 2.4.7 会在其日志记录导入链接，请知悉后使用。",
+        Page::Connections => "连接是应用访问目标的一次会话；规则决定它走哪个组与节点。\nS 按速率/总量/时长/主机排序 · / 主机、IP、进程、规则、链路过滤。\nEnter 查看目标、规则、链路、进程、开始时间；j/k 可滚动详情。\nx 关闭单个 · d 关闭过滤结果快照 · D 全部关闭，均先确认。\n速率由连续快照差值得到，首帧和断流时未知；WebSocket 每秒更新。",
+        Page::Rules => "规则从上至下决定目标的出站策略；/ 搜索类型、内容或策略。\nEnter 看完整规则及命中；内核提供累计命中时优先显示。\n否则显示当前连接匹配数，并非历史累计。p 查看规则源，u 更新。\n规则源与 Verge 订阅不同：规则源属于当前内核配置。",
+        Page::Logs => "日志流来自当前内核，最多保留 2000 条，仅在进程内存。\nL 循环 debug/info/warning/error 最低级别 · / 搜索。\n空格暂停（丢弃新日志，界面停止追随）；再次空格恢复。\nj/k、PageUp/PageDown、g/G 滚动；G 回到追随。\n链接与常见凭据字段会隐藏；本程序不将日志写盘。",
+        Page::Tools => "Enter 选择工具并确认，Esc 取消；联网与文件错误会显示在底部。\nfake-ip 缓存存虚拟地址映射，DNS 缓存存解析结果。\nGeoIP/GeoSite 更新由内核处理；Nix store 资源只读时可能失败。\nm 循环 rule/global/direct。TUN 与系统代理请用 o 到 Verge 修改。",
+    };
+    let mut text = vec![
+        Line::from(""),
+        Line::from(blue(format!(
+            "  {} · {}",
+            app.help_page + 1,
+            TABS[app.help_page]
+        ))),
+        Line::from(""),
+    ];
+    text.extend(body.lines().map(|s| Line::from(format!("  {s}"))));
+    text.push(Line::from(""));
+    text.push(Line::from(muted(
+        "  1–7 / ←→ 分页 · j/k / 方向键移动 · g/G 首尾 · PgUp/PgDn 翻页",
+    )));
+    text.push(Line::from(blue(
+        "  Tab 下一页 · ? / Esc 返回 · 鼠标滚轮可切帮助页",
+    )));
+    modal(frame, " 新手指引与按页帮助 ", text, 23, 0);
+}
+fn dialog_view(frame: &mut Frame, dialog: &Dialog, scroll: u16) {
     match dialog {
-        Dialog::Stop => mayon_ui::dialog(
+        Dialog::Confirm { body, .. } => modal(
             frame,
-            " 关闭 Clash ",
-            "向本用户的 Verge GUI 发送 SIGTERM。\nVerge 将复位系统代理、关闭 TUN 并停止内核。\n\nEnter / y 确认 · Esc / n 取消",
+            " 确认操作 ",
+            vec![
+                Line::from(""),
+                Line::from(format!("  {body}")),
+                Line::from(""),
+                Line::from(blue("  Enter / y 确认 · Esc / n 取消")),
+            ],
+            9,
+            0,
         ),
-        Dialog::Import { url, name, field } => {
-            let popup = modal(frame, 76, 15);
-            // URLs are never rendered: tokens may be present even in query strings.
-            let masked = if url.is_empty() {
-                "输入 http(s) URL（内容隐藏）".into()
-            } else {
-                format!("{} 个字符 · URL 已隐藏", url.chars().count())
-            };
-            let lines = vec![
+        Dialog::Verge { reason } => modal(
+            frame,
+            " 在 Verge 中完成 ",
+            vec![
                 Line::from(""),
-                Line::from(vec![
-                    blue(if !field { " ▏URL   " } else { "  URL   " }),
-                    Span::raw(masked),
-                ]),
+                Line::from(format!("  {reason}")),
                 Line::from(""),
-                Line::from(vec![
-                    blue(if *field { " ▏名称  " } else { "  名称  " }),
-                    Span::raw(clip(name, popup.width.saturating_sub(12) as usize)),
-                ]),
+                Line::from(muted(
+                    "  即将打开 Verge 窗口；完成后返回 TUI，自动重读订阅。",
+                )),
+                Line::from(blue("  Enter / o 打开 Verge · Esc 返回")),
+            ],
+            10,
+            0,
+        ),
+        Dialog::Import { url, name, field } => modal(
+            frame,
+            " 导入订阅 ",
+            vec![
                 Line::from(""),
-                Line::from(muted("  Verge 2.4.7 会将完整导入链接写入它自己的日志。")),
-                Line::from(muted("  名称留空可直接导入；指定名称需在 Verge 中完成。")),
-                Line::from(muted("  本程序不保存 URL，也不读取 API 密钥。")),
+                Line::from(blue(format!(
+                    "  {}URL：{} 个字符（内容隐藏）",
+                    if !field { "▏" } else { " " },
+                    url.chars().count()
+                ))),
                 Line::from(""),
-                Line::from(blue("  Tab 切字段    Enter 交给 Verge    Esc 取消")),
-            ];
-            frame.render_widget(
-                Paragraph::new(lines)
-                    .style(base().bg(SURFACE))
-                    .block(block(" 导入订阅 ".into(), true))
-                    .wrap(Wrap { trim: false }),
-                popup,
-            );
+                Line::from(format!(
+                    "  {}名称：{}",
+                    if *field { "▏" } else { " " },
+                    clip(name, 50)
+                )),
+                Line::from(""),
+                Line::from(muted(
+                    "  名称留空可直接交给 Verge；命名导入需在 Verge 完成。",
+                )),
+                Line::from(muted("  Verge 2.4.7 会将完整导入链接写进它自己的日志。")),
+                Line::from(""),
+                Line::from(blue("  Tab 切字段 · Enter 交给 Verge · Esc 取消")),
+            ],
+            13,
+            0,
+        ),
+        Dialog::Detail(text) => modal(
+            frame,
+            " 详情 · j/k 滚动 / Esc 返回 ",
+            text.lines().map(|s| Line::from(format!(" {s}"))).collect(),
+            22,
+            scroll,
+        ),
+    }
+    let height = match dialog {
+        Dialog::Confirm { .. } => 9,
+        Dialog::Verge { .. } => 10,
+        Dialog::Import { .. } => 13,
+        Dialog::Detail(_) => 22,
+    };
+    let a = mayon_ui::centered(frame.area(), 80, height);
+    let buttons = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(Rect::new(
+            a.x + 1,
+            a.bottom().saturating_sub(2),
+            a.width.saturating_sub(2),
+            1,
+        ));
+    let primary = match dialog {
+        Dialog::Detail(_) => " [ Enter 返回 ]",
+        Dialog::Verge { .. } => " [ Enter 打开 Verge ]",
+        Dialog::Import { .. } => " [ Enter 交给 Verge ]",
+        Dialog::Confirm { .. } => " [ Enter 确认 ]",
+    };
+    frame.render_widget(Paragraph::new(primary).style(base().fg(BLUE)), buttons[0]);
+    frame.render_widget(
+        Paragraph::new(" [ Esc 返回 / 取消 ]").style(base().fg(MUTED)),
+        buttons[1],
+    );
+}
+pub fn dialog_click(
+    size: Size,
+    dialog: &Dialog,
+    x: u16,
+    y: u16,
+) -> Option<crossterm::event::KeyCode> {
+    use crossterm::event::KeyCode;
+    let height = match dialog {
+        Dialog::Confirm { .. } => 9,
+        Dialog::Verge { .. } => 10,
+        Dialog::Import { .. } => 13,
+        Dialog::Detail(_) => 22,
+    };
+    let a = mayon_ui::centered(Rect::new(0, 0, size.width, size.height), 80, height);
+    if let Dialog::Import { field, .. } = dialog {
+        if x > a.x && x < a.right() && ((y == a.y + 2 && *field) || (y == a.y + 4 && !field)) {
+            return Some(KeyCode::Tab);
         }
-        Dialog::Verge { reason } => {
-            let popup = modal(frame, 72, 9);
-            frame.render_widget(
-                Paragraph::new(vec![
-                    Line::from(""),
-                    Line::from(format!("  {reason}")),
-                    Line::from(""),
-                    Line::from(muted("  profiles.yaml 仍由 Verge 独占写入。")),
-                    Line::from(blue("  Enter / o 在 Verge 中打开    Esc 返回")),
-                ])
-                .style(base().bg(SURFACE))
-                .block(block(" 在 Verge 中完成 ".into(), true))
-                .wrap(Wrap { trim: false }),
-                popup,
-            );
-        }
+    }
+    if y == a.bottom().saturating_sub(2) && x > a.x && x < a.right().saturating_sub(1) {
+        Some(if x < a.x + a.width / 2 {
+            KeyCode::Enter
+        } else {
+            KeyCode::Esc
+        })
+    } else {
+        None
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::Options;
+    use crate::app::Action;
     #[test]
-    fn tabs_use_unicode_cell_ranges() {
-        assert_eq!(tab_at(2), Some('1'));
-        assert_eq!(tab_at(12), Some('2'));
-        assert_eq!(tab_at(22), Some('3'));
-    }
-    #[test]
-    fn renders_chinese_at_wide_and_narrow_sizes() {
-        for width in [48, 80, 132] {
-            let mut app = App::new(Options {
-                socket: "/nonexistent.sock".into(),
-                profiles: "/nonexistent.yaml".into(),
-                test_url: "http://example.invalid".into(),
-                usage_proxy: None,
-                no_verge: true,
-                lifecycle: crate::lifecycle::Lifecycle::default(),
-            })
-            .unwrap();
-            app.online = true;
-            app.proxies.insert(
-                "香港 选择".into(),
-                crate::api::Proxy {
-                    all: vec!["香港 节点".into()],
-                    ..Default::default()
-                },
+    fn tabs_and_modal_actions_share_geometry() {
+        for i in 0..7 {
+            assert_eq!(tab_at(2 + i * 11), Some((b'1' + i as u8) as char));
+        }
+        let size = Size::new(90, 34);
+        for dialog in [
+            Dialog::Confirm {
+                action: Action::Tool(0),
+                body: "test".into(),
+            },
+            Dialog::Verge { reason: "test" },
+            Dialog::Import {
+                url: String::new(),
+                name: String::new(),
+                field: false,
+            },
+            Dialog::Detail("test".into()),
+        ] {
+            let height = match &dialog {
+                Dialog::Confirm { .. } => 9,
+                Dialog::Verge { .. } => 10,
+                Dialog::Import { .. } => 13,
+                Dialog::Detail(_) => 22,
+            };
+            let a = mayon_ui::centered(Rect::new(0, 0, 90, 34), 80, height);
+            assert_eq!(
+                dialog_click(size, &dialog, a.x + 2, a.bottom() - 2),
+                Some(crossterm::event::KeyCode::Enter)
             );
-            for page in [Page::Proxies, Page::Profiles, Page::Connections] {
-                app.page = page;
-                let mut terminal =
-                    ratatui::Terminal::new(ratatui::backend::TestBackend::new(width, 24)).unwrap();
-                terminal.draw(|f| draw(f, &mut app)).unwrap();
-                let text = terminal
-                    .backend()
-                    .buffer()
-                    .content()
-                    .iter()
-                    .map(|c| c.symbol())
-                    .collect::<String>();
-                let expected = match page {
-                    Page::Proxies => "代理组",
-                    Page::Profiles => "订阅",
-                    Page::Connections => "活动连接",
-                };
-                assert!(
-                    text.chars()
-                        .filter(|c| !c.is_whitespace())
-                        .collect::<String>()
-                        .contains(expected),
-                    "{expected} missing at {width} columns"
-                );
-                app.online = false;
-                terminal.draw(|f| draw(f, &mut app)).unwrap();
-                let text = terminal
-                    .backend()
-                    .buffer()
-                    .content()
-                    .iter()
-                    .map(|c| c.symbol())
-                    .collect::<String>();
-                assert!(text
-                    .chars()
-                    .filter(|c| !c.is_whitespace())
-                    .collect::<String>()
-                    .contains("Clash未运行"));
-                app.online = true;
-            }
+            assert_eq!(
+                dialog_click(size, &dialog, a.right() - 2, a.bottom() - 2),
+                Some(crossterm::event::KeyCode::Esc)
+            );
         }
     }
 }

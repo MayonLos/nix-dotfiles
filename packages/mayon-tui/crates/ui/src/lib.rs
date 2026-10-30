@@ -57,10 +57,39 @@ pub fn tabs_line(tabs: &[&str], page: usize) -> Line<'static> {
     }
     Line::from(spans)
 }
+/// Keep complete key/action pairs; reserve the help action at narrow widths.
+pub fn fit_hint(hint: &str, width: usize) -> String {
+    use unicode_width::UnicodeWidthStr;
+    if hint.width() <= width {
+        return hint.into();
+    }
+    let more = "? 更多";
+    let mut out = String::new();
+    for part in hint.split("  ").map(str::trim).filter(|s| !s.is_empty()) {
+        if part.starts_with('?') {
+            break;
+        }
+        let next = if out.is_empty() {
+            part.to_string()
+        } else {
+            format!("{out}  {part}")
+        };
+        if next.width() + 2 + more.width() > width {
+            break;
+        }
+        out = next;
+    }
+    if out.is_empty() {
+        clip(more, width)
+    } else {
+        format!("{out}  {more}")
+    }
+}
+
 pub fn footer(frame: &mut Frame, area: Rect, hint: &str, message: &str) {
     frame.render_widget(
         Paragraph::new(vec![
-            Line::from(muted(clip(hint, area.width as usize))),
+            Line::from(muted(fit_hint(hint, area.width as usize))),
             Line::from(blue(clip(message, area.width as usize))),
         ]),
         area,
@@ -133,8 +162,23 @@ pub fn table(
     widths: &[Constraint],
     selected: usize,
 ) {
+    let usable = area.width.saturating_sub(2);
+    let mut ws = vec![Constraint::Length(1)];
+    ws.extend_from_slice(widths);
+    let columns = Layout::horizontal(ws.clone())
+        .spacing(1)
+        .split(Rect::new(0, 0, usable, 1));
     let rows = rows.into_iter().enumerate().map(|(i, mut r)| {
-        let mut cells: Vec<Cell<'static>> = r.drain(..).map(Cell::from).collect();
+        let mut cells: Vec<Cell<'static>> = r
+            .drain(..)
+            .enumerate()
+            .map(|(j, value)| {
+                Cell::from(clip(
+                    &value,
+                    columns.get(j + 1).map_or(0, |c| c.width as usize),
+                ))
+            })
+            .collect();
         cells.insert(0, Cell::from(marker(i == selected)));
         Row::new(cells).style(if i == selected {
             base().bg(SELECTION)
@@ -142,8 +186,6 @@ pub fn table(
             base()
         })
     });
-    let mut ws = vec![Constraint::Length(1)];
-    ws.extend_from_slice(widths);
     let mut hs = vec![""];
     hs.extend(headers);
     let table = Table::new(rows, ws)
@@ -209,5 +251,18 @@ impl<T: Send + 'static> Drop for Refresh<T> {
         if let Some(j) = self.job.take() {
             j.abort();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn hints_preserve_complete_actions() {
+        assert_eq!(
+            fit_hint(" j/k 移动  d 删除容器  ? 帮助", 23),
+            "j/k 移动  ? 更多"
+        );
+        assert!(!fit_hint(" j/k 移动  d 删除容器  ? 帮助", 23).contains("d …"));
     }
 }

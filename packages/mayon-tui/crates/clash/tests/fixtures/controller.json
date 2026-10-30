@@ -1,0 +1,18 @@
+{
+  "proxies": {
+    "GLOBAL": {"name":"GLOBAL","type":"Selector","now":"手动选择","all":["手动选择","自动选择","故障转移","负载均衡","串联"]},
+    "手动选择": {"name":"手动选择","type":"Selector","now":"🇭🇰 香港 HK 高速 01","all":["🇭🇰 香港 HK 高速 01","🇯🇵 日本 JP 超长名字用于测试终端宽字符对齐 👩‍💻 02","超时节点"]},
+    "自动选择": {"name":"自动选择","type":"URLTest","now":"🇭🇰 香港 HK 高速 01","all":["🇭🇰 香港 HK 高速 01"]},
+    "故障转移": {"name":"故障转移","type":"Fallback","now":"🇭🇰 香港 HK 高速 01","all":["🇭🇰 香港 HK 高速 01"]},
+    "负载均衡": {"name":"负载均衡","type":"LoadBalance","all":["🇭🇰 香港 HK 高速 01"]},
+    "串联": {"name":"串联","type":"Relay","all":["🇭🇰 香港 HK 高速 01"]},
+    "🇭🇰 香港 HK 高速 01": {"name":"🇭🇰 香港 HK 高速 01","type":"Http","history":[{"delay":81}]},
+    "🇯🇵 日本 JP 超长名字用于测试终端宽字符对齐 👩‍💻 02": {"name":"🇯🇵 日本 JP 超长名字用于测试终端宽字符对齐 👩‍💻 02","type":"Http","history":[{"delay":420}]},
+    "超时节点": {"name":"超时节点","type":"Http","history":[{"delay":0}]}
+  },
+  "configs": {"mode":"global","tun":{"enable":true},"mixed-port":32100},
+  "connections": {"uploadTotal":42,"downloadTotal":84,"memory":1024,"connections":[
+    {"id":"b","metadata":{"host":"example.invalid","network":"tcp","destinationPort":"443","process":"firefox"},"rule":"DomainSuffix","rulePayload":"example.invalid","chains":["🇭🇰 香港 HK 高速 01","手动选择"],"upload":10,"download":100,"start":"2026-10-30T00:00:00Z"},
+    {"id":"a","metadata":{"host":"local.invalid","network":"tcp","destinationPort":"80"},"rule":"MATCH","chains":["DIRECT"],"upload":1,"download":10,"start":"2026-10-30T00:01:00Z"}
+  ]}
+}

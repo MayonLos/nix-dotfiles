@@ -22,10 +22,10 @@ pub enum ApiError {
 impl std::fmt::Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            Self::Transport => "Mihomo controller is unavailable",
-            Self::InvalidResponse => "Mihomo returned an invalid response",
-            Self::Rejected => "Mihomo rejected the operation",
-            Self::InvalidEndpoint => "could not construct controller endpoint",
+            Self::Transport => "内核控制接口不可用",
+            Self::InvalidResponse => "内核响应格式无效",
+            Self::Rejected => "内核拒绝操作，请检查当前配置",
+            Self::InvalidEndpoint => "控制接口地址无效",
         })
     }
 }
@@ -89,6 +89,8 @@ pub struct Connection {
     pub upload: u64,
     #[serde(default)]
     pub download: u64,
+    #[serde(default)]
+    pub start: String,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
@@ -105,6 +107,10 @@ pub struct ConnectionMetadata {
     pub source_ip: String,
     #[serde(default, rename = "sourcePort")]
     pub source_port: String,
+    #[serde(default)]
+    pub process: String,
+    #[serde(default, rename = "processPath")]
+    pub process_path: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -113,10 +119,16 @@ struct ProxyResponse {
     proxies: BTreeMap<String, Proxy>,
 }
 
-#[derive(Debug, Deserialize)]
-struct ConnectionsResponse {
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct ConnectionsResponse {
     #[serde(default, deserialize_with = "null_connections")]
-    connections: Vec<Connection>,
+    pub connections: Vec<Connection>,
+    #[serde(default, rename = "uploadTotal")]
+    pub upload_total: u64,
+    #[serde(default, rename = "downloadTotal")]
+    pub download_total: u64,
+    #[serde(default)]
+    pub memory: u64,
 }
 
 // Mihomo encodes its nil slice as JSON null when no connection is active.
@@ -131,13 +143,14 @@ fn null_connections<'de, D: serde::Deserializer<'de>>(
 pub struct Client {
     http: HttpClient,
     base: Url,
+    socket: PathBuf,
 }
 
 impl Client {
     /// Build a client that can communicate only over `socket`.
     pub fn new(socket: PathBuf) -> Result<Self, reqwest::Error> {
         let http = HttpClient::builder()
-            .unix_socket(socket)
+            .unix_socket(socket.clone())
             .no_proxy()
             .connect_timeout(Duration::from_secs(3))
             .read_timeout(Duration::from_secs(8))
@@ -145,7 +158,7 @@ impl Client {
         // reqwest's Unix socket transport ignores the host, but requires a
         // syntactically valid HTTP origin to construct requests.
         let base = Url::parse("http://mihomo/").expect("constant URL is valid");
-        Ok(Self { http, base })
+        Ok(Self { http, base, socket })
     }
 
     fn endpoint(&self, segments: &[&str]) -> Result<Url, ApiError> {
@@ -196,7 +209,13 @@ impl Client {
             request = request.json(&body);
         }
         let response = request
-            .timeout(Duration::from_secs(8))
+            .timeout(Duration::from_secs(
+                if segments.first() == Some(&"providers") {
+                    180
+                } else {
+                    8
+                },
+            ))
             .send()
             .await
             .map_err(|_| ApiError::Transport)?;
@@ -235,14 +254,6 @@ impl Client {
             if version.meta { "Meta " } else { "" },
             version.version
         ))
-    }
-
-    /// Read the complete current connections snapshot.
-    pub async fn connections(&self) -> Result<Vec<Connection>, ApiError> {
-        Ok(self
-            .json::<ConnectionsResponse>(Method::GET, &["connections"], None)
-            .await?
-            .connections)
     }
 
     /// Select `node` in the proxy group `group`.
@@ -293,7 +304,7 @@ impl Client {
         let response = self
             .http
             .get(endpoint)
-            .timeout(Duration::from_secs(8))
+            .timeout(Duration::from_millis(timeout_ms + 2000))
             .send()
             .await
             .map_err(|_| ApiError::Transport)?;
@@ -312,6 +323,115 @@ impl Client {
         self.empty(Method::DELETE, &["connections", id], None).await
     }
 
+    pub async fn group_delay(
+        &self,
+        group: &str,
+        url: &str,
+        timeout: u64,
+    ) -> Result<BTreeMap<String, u64>, ApiError> {
+        let mut endpoint = self.endpoint(&["group", group, "delay"])?;
+        endpoint
+            .query_pairs_mut()
+            .append_pair("url", url)
+            .append_pair("timeout", &timeout.to_string());
+        self.http
+            .get(endpoint)
+            .timeout(Duration::from_millis(timeout + 2000))
+            .send()
+            .await
+            .map_err(|_| ApiError::Transport)?
+            .error_for_status()
+            .map_err(|_| ApiError::Rejected)?
+            .json()
+            .await
+            .map_err(|_| ApiError::InvalidResponse)
+    }
+    pub async fn providers(&self, rules: bool) -> Result<BTreeMap<String, Provider>, ApiError> {
+        #[derive(Deserialize)]
+        struct Providers {
+            providers: BTreeMap<String, Provider>,
+        }
+        Ok(self
+            .json::<Providers>(
+                Method::GET,
+                &["providers", if rules { "rules" } else { "proxies" }],
+                None,
+            )
+            .await?
+            .providers)
+    }
+    pub async fn rules(&self) -> Result<Vec<Rule>, ApiError> {
+        #[derive(Deserialize)]
+        struct Rules {
+            rules: Vec<Rule>,
+        }
+        Ok(self
+            .json::<Rules>(Method::GET, &["rules"], None)
+            .await?
+            .rules)
+    }
+    pub async fn update_provider(&self, name: &str, rules: bool) -> Result<(), ApiError> {
+        self.empty(
+            Method::PUT,
+            &["providers", if rules { "rules" } else { "proxies" }, name],
+            None,
+        )
+        .await
+    }
+    pub async fn healthcheck(&self, name: &str) -> Result<(), ApiError> {
+        self.empty(
+            Method::GET,
+            &["providers", "proxies", name, "healthcheck"],
+            None,
+        )
+        .await
+    }
+    pub async fn tool(&self, tool: usize) -> Result<(), ApiError> {
+        let path: &[&str] = match tool {
+            0 => &["cache", "fakeip", "flush"],
+            1 => &["cache", "dns", "flush"],
+            _ => &["configs", "geo"],
+        };
+        let response = self
+            .http
+            .post(self.endpoint(path)?)
+            .timeout(Duration::from_secs(if tool == 2 { 180 } else { 8 }))
+            .send()
+            .await
+            .map_err(|_| ApiError::Transport)?;
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(ApiError::Rejected)
+        }
+    }
+    pub async fn close_all(&self) -> Result<(), ApiError> {
+        self.empty(Method::DELETE, &["connections"], None).await
+    }
+    pub async fn connection_stream(
+        &self,
+    ) -> Result<tokio_tungstenite::WebSocketStream<tokio::net::UnixStream>, ApiError> {
+        let stream = tokio::time::timeout(
+            Duration::from_secs(3),
+            tokio::net::UnixStream::connect(&self.socket),
+        )
+        .await
+        .map_err(|_| ApiError::Transport)?
+        .map_err(|_| ApiError::Transport)?;
+        tokio_tungstenite::client_async("ws://mihomo/connections?interval=1000", stream)
+            .await
+            .map(|(ws, _)| ws)
+            .map_err(|_| ApiError::Transport)
+    }
+    pub async fn logs_response(&self) -> Result<Response, ApiError> {
+        self.http
+            .get("http://mihomo/logs?level=debug")
+            .send()
+            .await
+            .map_err(|_| ApiError::Transport)?
+            .error_for_status()
+            .map_err(|_| ApiError::Rejected)
+    }
     /// Begin the `/traffic` WebSocket-compatible streaming HTTP response.
     /// The caller may parse each newline-delimited JSON frame from `bytes_stream`.
     pub async fn traffic_response(&self) -> Result<Response, ApiError> {
@@ -375,6 +495,7 @@ mod tests {
             // The client is not used in these URL-construction tests.
             http: HttpClient::new(),
             base: Url::parse("http://mihomo/").unwrap(),
+            socket: "/unused".into(),
         };
         let endpoint = client
             .endpoint(&["proxies", "Group / 测试?", "delay"])
@@ -383,5 +504,154 @@ mod tests {
             endpoint.path(),
             "/proxies/Group%20%2F%20%E6%B5%8B%E8%AF%95%3F/delay"
         );
+    }
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct Provider {
+    #[serde(default, rename = "vehicleType")]
+    pub vehicle_type: String,
+    #[serde(default, rename = "type")]
+    pub kind: String,
+    #[serde(default)]
+    pub proxies: Vec<Proxy>,
+    #[serde(default, rename = "updatedAt")]
+    pub updated_at: String,
+    #[serde(default, rename = "ruleCount")]
+    pub rule_count: u64,
+}
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct Rule {
+    #[serde(default, rename = "type")]
+    pub kind: String,
+    #[serde(default)]
+    pub payload: String,
+    #[serde(default)]
+    pub proxy: String,
+    #[serde(default)]
+    pub extra: Option<RuleExtra>,
+}
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct RuleExtra {
+    #[serde(default, rename = "hitCount")]
+    pub hit_count: u64,
+    #[serde(default, rename = "hitAt")]
+    pub hit_at: String,
+}
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct LogEntry {
+    #[serde(default, rename = "type")]
+    pub level: String,
+    #[serde(default)]
+    pub payload: String,
+}
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct Traffic {
+    pub up: u64,
+    pub down: u64,
+    #[serde(default, rename = "upTotal")]
+    pub up_total: u64,
+    #[serde(default, rename = "downTotal")]
+    pub down_total: u64,
+}
+
+#[cfg(test)]
+mod transport_tests {
+    use super::*;
+    use futures_util::{SinkExt, StreamExt};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    static NEXT: AtomicUsize = AtomicUsize::new(0);
+    fn socket() -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "mayon-clash-test-{}-{}.sock",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ))
+    }
+    #[tokio::test]
+    async fn route_methods_and_escaped_names_match_locked_core() {
+        let path = socket();
+        let listener = tokio::net::UnixListener::bind(&path).unwrap();
+        let server = tokio::spawn(async move {
+            let mut requests = vec![];
+            for body in [r#"{"Node":42}"#, "", "", "", "", "", ""] {
+                let (mut stream, _) = listener.accept().await.unwrap();
+                let mut buffer = [0; 4096];
+                let n = stream.read(&mut buffer).await.unwrap();
+                requests.push(
+                    String::from_utf8_lossy(&buffer[..n])
+                        .lines()
+                        .next()
+                        .unwrap()
+                        .to_string(),
+                );
+                stream
+                    .write_all(
+                        format!(
+                            "HTTP/1.1 {}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                            if body.is_empty() {
+                                "204 No Content"
+                            } else {
+                                "200 OK"
+                            },
+                            body.len()
+                        )
+                        .as_bytes(),
+                    )
+                    .await
+                    .unwrap();
+            }
+            requests
+        });
+        let client = Client::new(path.clone()).unwrap();
+        assert_eq!(
+            client
+                .group_delay("Group / 测试?", "http://example.invalid/generate_204", 1000)
+                .await
+                .unwrap()["Node"],
+            42
+        );
+        client.healthcheck("A/B").await.unwrap();
+        client.update_provider("A/B", false).await.unwrap();
+        client.update_provider("rules", true).await.unwrap();
+        client.tool(0).await.unwrap();
+        client.tool(1).await.unwrap();
+        client.tool(2).await.unwrap();
+        let requests = server.await.unwrap();
+        assert!(requests[0].starts_with("GET /group/Group%20%2F%20%E6%B5%8B%E8%AF%95%3F/delay?"));
+        assert!(requests[1].starts_with("GET /providers/proxies/A%2FB/healthcheck "));
+        assert!(requests[2].starts_with("PUT /providers/proxies/A%2FB "));
+        assert!(requests[3].starts_with("PUT /providers/rules/rules "));
+        assert!(requests[4].starts_with("POST /cache/fakeip/flush "));
+        assert!(requests[5].starts_with("POST /cache/dns/flush "));
+        assert!(requests[6].starts_with("POST /configs/geo "));
+        std::fs::remove_file(path).unwrap();
+    }
+    #[tokio::test]
+    async fn connections_use_unix_websocket_frames() {
+        let path = socket();
+        let listener = tokio::net::UnixListener::bind(&path).unwrap();
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
+            ws.send(tokio_tungstenite::tungstenite::Message::Text(
+                r#"{"connections":null,"memory":1024,"uploadTotal":4,"downloadTotal":8}"#.into(),
+            ))
+            .await
+            .unwrap();
+            // Keep it open until the caller acknowledges the frame.
+            let _ = ws.next().await;
+        });
+        let client = Client::new(path.clone()).unwrap();
+        let mut ws = client.connection_stream().await.unwrap();
+        let frame = ws.next().await.unwrap().unwrap();
+        let snapshot: ConnectionsResponse = serde_json::from_str(frame.to_text().unwrap()).unwrap();
+        assert!(snapshot.connections.is_empty());
+        assert_eq!(snapshot.memory, 1024);
+        assert_eq!(snapshot.download_total, 8);
+        ws.close(None).await.unwrap();
+        server.await.unwrap();
+        std::fs::remove_file(path).unwrap();
     }
 }
