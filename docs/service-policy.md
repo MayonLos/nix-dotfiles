@@ -62,7 +62,7 @@ Noctalia/Mango 只消费 [白名单投影](../aspects/desktop/mango-session/sess
 
 第38轮审计同时确认：Mango 下的 xrdb-merge 服务承担 Xwayland DPI/根光标设置，属于两个会话共用的 oneshot，不能按 Xorg 专属误删。Docker 继续保留官方 rootless 常驻 unit；锁定模块没有 socket，不能直接用 fd:// 绕过 RootlessKit 的文件描述符边界。NVIDIA persistence 保留原关机崩溃规避；未改 fine-grained PM、外屏、CUDA、游戏、电源 profile 或网络后端。
 
-第45轮性能/游戏声明（尚未应用）：rootless Docker 使用 systemd-socket-proxyd 转发至私有 daemon socket，避免 RootlessKit 的 fd:// 边界；weekly builder prune 保留且可触发 daemon。GameMode 首/末客户端钩子保存并恢复 PPD 原 profile，按需持有独立 logind idle inhibitor，gamemoded 退出时执行恢复；不阻止手动锁屏/显式休眠，也不重启 scx。Steam 通过 inherited preload 和 helper blacklist 自动请求 GameMode；Prism 在实际游戏启动边界包装 game-run。NVIDIA 模块加载与 persistence 关机规避保持。隔离测试不等同应用后冷登录、真实游戏与容器验证，细节见 [Gaming](../aspects/apps/gaming/README.md) 与 [Containers](../aspects/dev/containers/README.md)。
+第45轮性能/游戏声明（尚未应用）：rootless Docker 使用 systemd-socket-proxyd 转发至私有 daemon socket，避免 RootlessKit 的 fd:// 边界；weekly builder prune 保留且可触发 daemon。GameMode 首/末客户端钩子保存并恢复 PPD 原 profile，CPU governor 仅由 PPD 管理（锁定 1.8.2 包补充 ignore 开关）；关闭 GPU 调频、split-lock 和 ioprio 改写，按需持有独立 logind idle inhibitor，gamemoded 退出时执行恢复；不阻止手动锁屏/显式休眠，也不重启 scx。Steam 不再全局 preload（该方式会使 steam-runtime lsof 崩溃）；每个游戏设置 `gamemoderun %command%`，helper blacklist 只处理显式包装链；Prism 在实际游戏启动边界包装 game-run。NVIDIA 模块加载与 persistence 关机规避保持。隔离测试不等同应用后冷登录、真实游戏与容器验证，细节见 [Gaming](../aspects/apps/gaming/README.md) 与 [Containers](../aspects/dev/containers/README.md)。
 
 
 第47轮 TUI 声明（尚未应用）：自写程序集中在

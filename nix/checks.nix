@@ -28,6 +28,7 @@
         ../aspects/apps/file-manager/checks.nix
         ../aspects/apps/media/checks.nix
         ../aspects/apps/gaming/checks.nix
+        ../aspects/apps/gaming/runtime-checks.nix
         ../aspects/cli/shell/checks.nix
         ../aspects/cli/herdr/checks.nix
         ../aspects/desktop/mango-session/checks.nix

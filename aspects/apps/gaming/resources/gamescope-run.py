@@ -6,6 +6,24 @@ import re
 import subprocess
 import sys
 
+GPU_KEYS = ("__NV_PRIME_RENDER_OFFLOAD", "__NV_PRIME_RENDER_OFFLOAD_PROVIDER",
+            "__GLX_VENDOR_LIBRARY_NAME", "__VK_LAYER_NV_optimus", "DRI_PRIME")
+
+
+def compositor_environment(env):
+    env = env.copy()
+    # Steam/Prism may already have applied game-run. Keep the compositor on
+    # its desktop GPU; the actual game receives a fresh offload/Mode request.
+    for key in GPU_KEYS:
+        env.pop(key, None)
+    preloads = [entry for entry in re.split(r"[:\s]+", env.get("LD_PRELOAD", ""))
+                if entry and not entry.rsplit("/", 1)[-1].startswith("libgamemodeauto.so")]
+    if preloads:
+        env["LD_PRELOAD"] = ":".join(preloads)
+    else:
+        env.pop("LD_PRELOAD", None)
+    return env
+
 
 def query(*args):
     return subprocess.run(args, check=True, capture_output=True, text=True, timeout=3).stdout
@@ -79,13 +97,18 @@ def main():
     flags = ["-f", "-W", str(width), "-H", str(height), "-w", str(render_width),
              "-h", str(render_height), "-r", str(args.fps or refresh),
              "--framerate-limit", str(args.fps or refresh)]
+    # 3.16.23's automatic SDL backend aborted on child shutdown in the isolated
+    # Wayland smoke; its native Wayland backend completed the same run cleanly.
+    if os.environ.get("WAYLAND_DISPLAY"):
+        flags = ["--backend", "wayland", *flags]
     if args.fsr:
         flags += ["-F", "fsr"]
     if args.hdr:
         flags += ["--hdr-enabled"]
         os.environ["ENABLE_GAMESCOPE_WSI"] = "1"
         os.environ["DXVK_HDR"] = "1"
-    os.execvp("game-run", ["game-run", "gamescope", *flags, "--", *command])
+    os.execvpe("gamescope", ["gamescope", *flags, "--", "game-run", *command],
+              compositor_environment(os.environ))
 
 
 if __name__ == "__main__":

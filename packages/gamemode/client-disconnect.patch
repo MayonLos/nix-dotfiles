@@ -1,0 +1,20 @@
+--- a/lib/client_impl.c
++++ b/lib/client_impl.c
+@@ -260,7 +260,16 @@
+ 		dbus_message_iter_append_basic(&iter, type, &p);
+ 	}
+ 
+-	dbus_connection_send_with_reply(bus, msg, &call, -1);
++	if (!dbus_connection_send_with_reply(bus, msg, &call, -1)) {
++		dbus_set_error_const(error, DBUS_ERROR_NO_MEMORY, "Could not queue GameMode D-Bus request");
++		return -1;
++	}
++	if (call == NULL) {
++		dbus_set_error_const(error,
++		                     DBUS_ERROR_DISCONNECTED,
++		                     "GameMode D-Bus connection closed before reply (client may have closed its file descriptors)");
++		return -1;
++	}
+ 	dbus_connection_flush(bus);
+ 	dbus_message_unref(msg);
+ 	msg = NULL;

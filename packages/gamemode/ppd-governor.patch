@@ -1,0 +1,45 @@
+--- a/daemon/gamemode-context.c
++++ b/daemon/gamemode-context.c
+@@ -267,6 +267,18 @@
+ 		return 0;
+ 	}
+ 
++	/*
++	 * The host may manage CPU governor changes through a separate policy
++	 * service. In that mode, leave governor state untouched on entry while
++	 * retaining the normal restore path if the policy changes during a game.
++	 */
++	if (gov == GAME_MODE_GOVERNOR_DESIRED) {
++		char desired_governor[CONFIG_VALUE_MAX] = { 0 };
++		config_get_desired_governor(self->config, desired_governor);
++		if (strcmp(desired_governor, "ignore") == 0)
++			return 0;
++	}
++
+ 	if (self->current_govenor == GAME_MODE_GOVERNOR_DEFAULT) {
+ 		/* Read the initial governor state so we can revert it correctly */
+ 		const char *initial_state = get_gov_state();
+--- a/daemon/gamemode-config.c
++++ b/daemon/gamemode-config.c
+@@ -770,6 +770,10 @@
+ 	else
+ 		value = atoi(ioprio_value);
+ 
++	/* "off" is a sentinel, not a priority to clamp into the valid range. */
++	if (IOPRIO_DONT_SET == value)
++		return value;
++
+ 	/* Validate values */
+ 	if (IOPRIO_RESET_DEFAULT == value) {
+ 		LOG_ONCE(MSG, "IO priority will be reset to default behavior (based on CPU priority).\n");
+--- a/lib/client_impl.c
++++ b/lib/client_impl.c
+@@ -347,6 +347,8 @@
+ 
+ 	if (res == -1 && dbus_error_is_set(&err))
+ 		log_error("D-Bus error: %s", err.message);
++	else if (res < 0)
++		log_error("Request '%s' rejected (code %d)", method, res);
+ 
+ 	TRACE("GM: [%d] request '%s' done: %d\n", (int)pids[0], method, res);
+ 

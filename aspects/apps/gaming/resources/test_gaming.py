@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+import runpy
 import subprocess
 import sys
 import tempfile
@@ -42,7 +43,7 @@ class Gaming(unittest.TestCase):
         self.bin = self.root / 'bin'
         self.bin.mkdir()
         for name in ['powerprofilesctl', 'systemctl', 'nvidia-smi', 'gamemoderun',
-                     'game-run', 'wlr-randr', 'mmsg', 'xrandr']:
+                     'game-run', 'gamescope', 'wlr-randr', 'mmsg', 'xrandr']:
             file = self.bin / name
             file.write_text(STUB.replace('/usr/bin/env python3', sys.executable))
             file.chmod(0o755)
@@ -135,12 +136,13 @@ class Gaming(unittest.TestCase):
     def test_gamescope_pointer_output_and_fsr(self):
         self.call('gamescope-run.py', '--render-size', '1920x1080', '--fsr', '--fps', '50', '--', 'a b')
         args = json.loads((self.root / 'launch').read_text())['argv']
-        self.assertEqual(args, ['gamescope', '-f', '-W', '3840', '-H', '2160', '-w', '1920',
-                                '-h', '1080', '-r', '50', '--framerate-limit', '50', '-F', 'fsr', '--', 'a b'])
+        self.assertEqual(args, ['--backend', 'wayland', '-f', '-W', '3840', '-H', '2160', '-w', '1920',
+                                '-h', '1080', '-r', '50', '--framerate-limit', '50', '-F', 'fsr', '--', 'game-run', 'a b'])
 
     def test_gamescope_manual_and_hdr(self):
         self.call('gamescope-run.py', '--size', '2560x1600', '--refresh', '165', '--hdr', '--', 'game')
         args = json.loads((self.root / 'launch').read_text())['argv']
+        self.assertEqual(args[:2], ['--backend', 'wayland'])
         self.assertIn('--hdr-enabled', args)
         env = json.loads((self.root / 'launch').read_text())['env']
         self.assertEqual(env['ENABLE_GAMESCOPE_WSI'], '1')
@@ -153,8 +155,30 @@ class Gaming(unittest.TestCase):
         self.call('gamescope-run.py', '--', 'game')
         args = json.loads((self.root / 'launch').read_text())['argv']
         self.assertEqual(args[args.index('-W')+1], '2560')
+        self.assertNotIn('--backend', args)
         self.call('gamescope-run.py', '--fps', '0', '--', 'game', success=False)
         self.call('gamescope-run.py', '--size', '0x800', '--', 'game', success=False)
+
+    def test_gamescope_keeps_game_hooks_inside_compositor(self):
+        self.env.update(__NV_PRIME_RENDER_OFFLOAD='1', __GLX_VENDOR_LIBRARY_NAME='nvidia',
+                        __VK_LAYER_NV_optimus='NVIDIA_only', DRI_PRIME='1')
+        self.call('gamescope-run.py', '--size', '1280x800', '--refresh', '60', '--', 'game with spaces')
+        launch = json.loads((self.root / 'launch').read_text())
+        self.assertEqual(launch['argv'][-3:], ['--', 'game-run', 'game with spaces'])
+        self.assertNotIn('__NV_PRIME_RENDER_OFFLOAD', launch['env'])
+        self.assertNotIn('__GLX_VENDOR_LIBRARY_NAME', launch['env'])
+        self.assertNotIn('__VK_LAYER_NV_optimus', launch['env'])
+        self.assertNotIn('DRI_PRIME', launch['env'])
+
+    def test_gamescope_removes_only_gamemode_preload(self):
+        clean = runpy.run_path(str(HERE / 'gamescope-run.py'))['compositor_environment']
+        original = {'LD_PRELOAD': 'libMangoHud.so:libgamemodeauto.so.0 /lib/libgamemodeauto.so.0.0.0:/lib/overlay.so',
+                    'DRI_PRIME': '1', 'DISPLAY': 'private'}
+        result = clean(original)
+        self.assertEqual(result['LD_PRELOAD'], 'libMangoHud.so:/lib/overlay.so')
+        self.assertEqual(result['DISPLAY'], 'private')
+        self.assertEqual(original['DRI_PRIME'], '1')
+        self.assertNotIn('LD_PRELOAD', clean({'LD_PRELOAD': 'libgamemodeauto.so.0'}))
 
 
 if __name__ == '__main__':
