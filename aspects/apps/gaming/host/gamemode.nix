@@ -18,7 +18,7 @@ in
         end = "${tools.gaming-mode-hook}/bin/gaming-mode-hook end";
       };
       # Match executable path fragments, NOT "steam" (which matches steamapps).
-      # The inherited preload reaches games; launchers/helpers must not hold a
+      # Per-game gamemoderun reaches games; launchers/helpers must not hold a
       # performance profile for the entire time the Steam UI is open.
       filter.blacklist = [
         "/ubuntu12_32/steam"

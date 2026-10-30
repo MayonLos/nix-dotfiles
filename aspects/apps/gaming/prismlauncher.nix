@@ -102,6 +102,13 @@ let
       pkgs.mangohud
       pkgs.gamescope
     ];
+    # LWJGL 3.4 (lwjgl3ify 3.x, e.g. GTNH 2.9) opens its window through SDL3,
+    # which dlopens these for Wayland; without xkbcommon SDL reports
+    # "wayland not available". libdecor gives SDL windows their decorations.
+    additionalLibs = [
+      pkgs.libxkbcommon
+      pkgs.libdecor
+    ];
     # Reuse the installed Temurin set; the wrapper exposes these exact store
     # paths through PRISMLAUNCHER_JAVA_PATHS without adding default OpenJDKs.
     jdks = lib.attrValues java.jdks;

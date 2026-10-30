@@ -7,12 +7,15 @@ in
     enable = true;
     extraCompatPackages = [ pkgs.proton-ge-bin ];
     package = pkgs.steam.override {
-      # GameMode filters exclude Steam's UI and runtime helpers. Both ABIs are
-      # supplied by Steam's multiPkgs so native and Proton games can preload.
+      # Both ABIs of libgamemode are supplied so `gamemoderun %command%` works
+      # for native and Proton games.
       extraLibraries = p: [ p.gamemode.lib ];
+      # No session-wide LD_PRELOAD of libgamemodeauto: every Steam helper then
+      # registers with gamemoded, and a blacklisted client aborts inside
+      # libdbus. The client's own `lsof` websocket check died that way and
+      # startup failed with "Unexpected Transport Error (0x3008)".
       extraProfile = ''
         eval "$(${tools.game-run}/bin/game-run --env)"
-        export LD_PRELOAD="libgamemodeauto.so.0''${LD_PRELOAD:+:$LD_PRELOAD}"
       '';
     };
 
