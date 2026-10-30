@@ -33,6 +33,9 @@
           # SNI must render the engine's subModeLabel (Rime 中/英), not a
           # static input-rime icon. Noctalia pins this native Fcitx tray item.
           PreferTextIcon = "True";
+          # Fcitx strokes tray labels in opaque black by default; on the translucent
+          # bar that reads as a dark box around the schema character.
+          TrayOutlineColor = "#00000000";
           Theme = "onedark";
           DarkTheme = "onedark";
           # Fcitx5 Classic UI parses this with Pango's font-description syntax;
