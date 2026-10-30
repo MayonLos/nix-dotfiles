@@ -274,6 +274,22 @@ impl Client {
         }
     }
 
+    pub async fn reload(&self) -> Result<(), ApiError> {
+        let response = self
+            .http
+            .put("http://mihomo/configs?force=true")
+            .timeout(Duration::from_secs(60))
+            .json(&serde_json::json!({}))
+            .send()
+            .await
+            .map_err(|_| ApiError::Transport)?;
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(ApiError::Rejected)
+        }
+    }
+
     /// Change global routing mode (`rule`, `global`, or `direct`).
     pub async fn set_mode(&self, mode: &str) -> Result<(), ApiError> {
         self.empty(

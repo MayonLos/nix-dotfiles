@@ -80,3 +80,20 @@ Docker TUI 使用公开 `%t/docker.sock`，首次请求可能启动 daemon；确
 启动的标准 Docker endpoint（即使 DOCKER_HOST 指向该端点，也需私有 daemon
 socket 已存在）；`--docker-map` 是显式强制查询。隔离真实 rootless daemon 仍受
 newuidmap 权限限制，Docker 交互证据来自私有 API fixture，不代表实机已运行。
+
+第49轮 native Clash 试用声明（尚未应用）：[mayon-clash.service](../aspects/network/laptop-network/README.md)
+与保留的 Verge 可切换。没有 wantedBy、timer、socket 激活或自动重启，开机 inactive；
+TUI `s` 手动 start，`X` 确认 stop，退出 TUI 不停服务。绑定用户只有此单元的
+start/stop/restart 免密码权限，后台执行内核仍是该用户，capabilities 仅
+NET_ADMIN/BIND_SERVICE。network-online 是排序/请求依赖，不反向启动 Clash。
+preflight 在同 UID Verge socket 可连、配置缺失或校验失败时拒绝启动。
+TUN 接管网络，不设系统代理或 nix-daemon 代理环境；停止后移除 TUN、恢复直连。
+订阅后台更新仅在 TUI 打开且 native 内核运行时执行，没有新常驻服务。
+旧第47轮“Clash TUI 仅由 Verge 管理”的描述只适用于显式 Verge 后端。
+集成后需主代理先退出 Verge再试 native，核对 TUN/DNS/路由/关闭恢复，切回时先 X
+停止 native；不可同时开两个内核。构建与隔离 VM 证据不代表真实主机已应用。
+
+native ExecStop 先通过自己的私有 controller 关闭运行中 TUN，再由 systemd
+结束内核；这规避 mihomo 1.19.24 在 `hub.Parse` 结束前尚未安装 SIGTERM 清理
+处理的竞态。该操作不写 settings.toml/config.yaml，不删除其他服务的路由，
+也不将 TUN 出现当成完整启动就绪；TUI 继续等待实际 TUN/端口匹配。

@@ -4,6 +4,7 @@ use std::path::Path;
 #[derive(Clone, Debug, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Settings {
+    pub backend: crate::backend::Preference,
     pub test_url: String,
     pub timeout_ms: u64,
     /// Limits client-side batch probes; Mihomo owns group/provider concurrency.
@@ -14,6 +15,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            backend: Default::default(),
             test_url: "https://www.gstatic.com/generate_204".into(),
             timeout_ms: 5000,
             concurrency: 4,

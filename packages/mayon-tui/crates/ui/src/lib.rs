@@ -1,7 +1,7 @@
 //! Shared One Dark widgets and terminal lifecycle for Mayon's small tools.
 pub mod theme;
 use crossterm::{
-    event::{DisableMouseCapture, EnableMouseCapture},
+    event::{DisableBracketedPaste, DisableMouseCapture, EnableMouseCapture},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -199,7 +199,12 @@ pub type Terminal = ratatui::Terminal<ratatui::backend::CrosstermBackend<io::Std
 pub struct TerminalGuard;
 fn restore() {
     let _ = disable_raw_mode();
-    let _ = execute!(io::stdout(), DisableMouseCapture, LeaveAlternateScreen);
+    let _ = execute!(
+        io::stdout(),
+        DisableBracketedPaste,
+        DisableMouseCapture,
+        LeaveAlternateScreen
+    );
 }
 impl Drop for TerminalGuard {
     fn drop(&mut self) {

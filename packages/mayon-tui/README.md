@@ -3,7 +3,8 @@
 All custom TUI source lives here. `default.nix` is the public Nix package
 factory (`{ pkgs }`); `nix/pkgs.nix` publishes `pkgs.mayonTui`. One locked
 `buildRustPackage` builds all binaries and runs workspace tests and clippy.
-The `out` output contains all three commands; separate `clash`, `docker`, and
+The `out` output contains all three commands; the `clash` output also exposes
+`mayon-clash-preflight` for the network service (source in `scripts/`). Separate `clash`, `docker`, and
 `ports` outputs allow features to install only their owned command.
 
 | Crate | Command | Installation owner |
@@ -15,7 +16,8 @@ The `out` output contains all three commands; separate `clash`, `docker`, and
 
 Features use `pkgs.mayonTui.<output>`; they never import a sibling feature's
 private source. They own installation and configuration; desktops own their
-bindings and window rules. Programs do not create services or write persistent state. Clash can read an
+bindings and window rules. Docker/ports 不拥有持久配置。Clash native 试用版写入用户私有的订阅、设置与 runtime；
+laptop-network 声明手动系统服务，程序本身不安装服务。Clash can read an
 optional user-owned `~/.config/mayon-tui/clash.toml`.
 Existing subscriptions, projects, containers and volumes stay user owned.
 
