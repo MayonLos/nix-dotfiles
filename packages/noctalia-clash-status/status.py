@@ -12,10 +12,15 @@ from pathlib import Path
 
 
 class UnixHTTP(http.client.HTTPConnection):
+    def __init__(self, path, timeout):
+        # The Host header must stay a valid name: Mihomo rejects a socket path.
+        super().__init__("localhost", timeout=timeout)
+        self.socket_path = path
+
     def connect(self):
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.sock.settimeout(self.timeout)
-        self.sock.connect(self.host)
+        self.sock.connect(self.socket_path)
 
 
 def request(path, endpoint):

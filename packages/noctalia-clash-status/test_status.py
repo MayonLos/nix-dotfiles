@@ -19,6 +19,10 @@ def controller(path, traffic=None, valid=True, delay=0):
             pass
 
         def do_GET(self):
+            # Go's net/http answers 400 to a Host containing a socket path.
+            if "/" in self.headers.get("Host", ""):
+                self.send_error(400, "malformed Host header")
+                return
             if self.path == "/version":
                 payload = {"version": "fixture"} if valid else {"error": "unauthorized"}
             elif self.path == "/traffic":
