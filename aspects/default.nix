@@ -5,6 +5,7 @@ _: {
     ./appearance/appearance
     ./system/default-tools
     ./workspace/workspace-task
+    ./workspace/study
     ./workspace/project-workbench
     ./dev/languages
     ./system/maintenance
