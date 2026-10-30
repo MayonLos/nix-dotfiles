@@ -51,7 +51,8 @@ pkgs.rustPlatform.buildRustPackage {
     python3 packages/mayon-voice/engine/test_polish.py
     python3 packages/mayon-voice/engine/test_models.py
     python3 packages/mayon-voice/tests/daemon.py target/${pkgs.stdenv.hostPlatform.rust.rustcTarget}/release/mayon-voice
-    ${notificationPython}/bin/python3 packages/mayon-voice/tests/notifications.py target/${pkgs.stdenv.hostPlatform.rust.rustcTarget}/release/mayon-voice
+    MAYON_VOICE_DBUS_SESSION_CONF=${pkgs.dbus}/share/dbus-1/session.conf \
+      ${notificationPython}/bin/python3 packages/mayon-voice/tests/notifications.py target/${pkgs.stdenv.hostPlatform.rust.rustcTarget}/release/mayon-voice
   '';
   postInstall = ''
     mkdir -p "$out/lib/mayon-voice"

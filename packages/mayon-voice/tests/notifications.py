@@ -221,5 +221,11 @@ if __name__ == '__main__':
         run(str(Path(sys.argv[1]).resolve()))
     else:
         env = {'PATH': os.environ['PATH'], 'HOME': tempfile.gettempdir(), 'PYTHONPATH': os.pathsep.join(sys.path)}
-        result = subprocess.run(['dbus-run-session', '--', sys.executable, __file__, sys.argv[1], '--private'], env=env)
+        dbus_cmd = ['dbus-run-session']
+        # The nix build sandbox has no /etc/dbus-1/session.conf, so pin the
+        # config shipped with pkgs.dbus when the caller supplies one.
+        if os.environ.get('MAYON_VOICE_DBUS_SESSION_CONF'):
+            dbus_cmd += ['--config-file', os.environ['MAYON_VOICE_DBUS_SESSION_CONF']]
+        dbus_cmd += ['--', sys.executable, __file__, sys.argv[1], '--private']
+        result = subprocess.run(dbus_cmd, env=env)
         sys.exit(result.returncode)
