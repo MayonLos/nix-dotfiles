@@ -30,6 +30,7 @@
         ../aspects/apps/voice-input/checks.nix
         ../aspects/apps/gaming/checks.nix
         ../aspects/apps/gaming/runtime-checks.nix
+        ../aspects/apps/gaming/mcsrv-checks.nix
         ../aspects/cli/shell/checks.nix
         ../aspects/cli/herdr/checks.nix
         ../aspects/desktop/mango-session/checks.nix
@@ -203,6 +204,7 @@
             assert lib.assertMsg (builtins.elem pkgs.bilitui home.home.packages)
               "Bilibili TUI must be installed by media";
             pkgs.bilitui;
+          mcsrv-mayon = pkgs.mcsrvMayon;
           architecture = pkgs.runCommand "architecture-check" { } "touch $out";
           palette-contrast = paletteContrast;
           statix = pkgs.runCommand "statix-check" { nativeBuildInputs = [ pkgs.statix ]; } ''
