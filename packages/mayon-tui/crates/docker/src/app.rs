@@ -1,6 +1,8 @@
 use crate::api::{
     drain_log_frames, drain_raw_log_lines, Container, Disk, Engine, Image, Info, StatView, Volume,
 };
+use crate::cleanup::{self, Entry, Flow, Kind, Report};
+use crate::vm;
 use crossterm::event::{KeyCode, KeyEvent, MouseEvent, MouseEventKind};
 use futures_util::StreamExt;
 use mayon_ui::{self as ui, theme::*};
@@ -23,14 +25,10 @@ enum Page {
     Images,
     Volumes,
     Overview,
+    Cleanup,
 }
 #[derive(Clone)]
 enum Confirm {
-    Container(String),
-    Image(String),
-    Volume(String, u8),
-    PruneImages(u64),
-    PruneBuild(u64),
     StopDaemon,
     ProjectRestart(String, Vec<String>),
 }
@@ -38,6 +36,8 @@ enum Update {
     Data(u64, Result<Data, String>),
     Stats(u64, String, Result<StatView, String>),
     Message(String),
+    Cleaned(Report),
+    Vm(vm::Inventory),
     Log(u64, String),
     LogEnded(u64, String),
 }
@@ -97,6 +97,17 @@ pub struct App {
     action: Option<JoinHandle<()>>,
     exec_job: Option<JoinHandle<()>>,
     stopped_by_user: bool,
+    picked: HashSet<String>,
+    cleanup_flow: Option<Flow>,
+    cleanup_report: Option<Report>,
+    report_scroll: u16,
+    cleaning: bool,
+    vm: vm::Inventory,
+    vm_section: bool,
+    vm_details: Option<vm::Row>,
+    vm_scroll: u16,
+    vm_job: Option<JoinHandle<()>>,
+    last_vm: Instant,
 }
 impl App {
     pub fn new(host: Option<String>) -> Result<Self, String> {
@@ -146,6 +157,17 @@ impl App {
             action: None,
             exec_job: None,
             stopped_by_user: false,
+            picked: HashSet::new(),
+            cleanup_flow: None,
+            cleanup_report: None,
+            report_scroll: 0,
+            cleaning: false,
+            vm: vm::Inventory::pending(),
+            vm_section: false,
+            vm_details: None,
+            vm_scroll: 0,
+            vm_job: None,
+            last_vm: Instant::now() - Duration::from_secs(31),
         })
     }
     fn selected_container(&self) -> Option<&Container> {
@@ -183,6 +205,8 @@ impl App {
             Page::Images => self.images.get(self.selected).map(|x| x.id.clone()),
             Page::Volumes => self.volumes.get(self.selected).map(|x| x.name.clone()),
             Page::Overview => None,
+            Page::Cleanup if self.vm_section => self.vm_rows().get(self.selected).map(|r| r.key()),
+            Page::Cleanup => self.cleanup_entries().get(self.selected).map(Entry::key),
         }
     }
     fn refresh(&mut self) {
@@ -239,6 +263,12 @@ impl App {
                     self.volumes = d.volumes;
                     self.info = d.info;
                     self.disk = d.disk;
+                    let eligible: HashSet<_> = cleanup::entries(&self.disk)
+                        .iter()
+                        .filter(|e| e.selectable())
+                        .map(Entry::key)
+                        .collect();
+                    self.picked.retain(|key| eligible.contains(key));
                     if let Some(id) = keep {
                         self.selected = self.ids().iter().position(|x| x == &id).unwrap_or(0)
                     } else {
@@ -286,6 +316,30 @@ impl App {
                 {
                     self.stats_pending.remove(&id);
                 }
+                Update::Vm(inventory) => {
+                    let keep = if self.page == Page::Cleanup && self.vm_section {
+                        self.selected_id()
+                    } else {
+                        None
+                    };
+                    self.vm = inventory;
+                    if let Some(key) = keep {
+                        self.selected = self
+                            .vm_rows()
+                            .iter()
+                            .position(|r| r.key() == key)
+                            .unwrap_or(0);
+                    }
+                    self.selected = self.selected.min(self.len().saturating_sub(1));
+                }
+                Update::Cleaned(report) => {
+                    self.cleaning = false;
+                    self.message = format!("清理完成 · {} 项失败 · Esc 关闭报告", report.failed);
+                    self.cleanup_report = Some(report);
+                    self.report_scroll = 0;
+                    self.picked.clear();
+                    self.last_refresh = Instant::now() - Duration::from_secs(3);
+                }
                 Update::Message(m) => {
                     self.message = m;
                     self.message_until = Some(Instant::now() + Duration::from_secs(5));
@@ -322,6 +376,8 @@ impl App {
             Page::Images => self.images.len(),
             Page::Volumes => self.volumes.len(),
             Page::Overview => 0,
+            Page::Cleanup if self.vm_section => self.vm_rows().len(),
+            Page::Cleanup => self.cleanup_entries().len(),
         }
     }
     fn has_temporary_message(&self) -> bool {
@@ -338,6 +394,8 @@ impl App {
             Page::Images => self.images.iter().map(|x| x.id.clone()).collect(),
             Page::Volumes => self.volumes.iter().map(|x| x.name.clone()).collect(),
             Page::Overview => vec![],
+            Page::Cleanup if self.vm_section => self.vm_rows().iter().map(|r| r.key()).collect(),
+            Page::Cleanup => self.cleanup_entries().iter().map(Entry::key).collect(),
         }
     }
     fn move_sel(&mut self, d: i32) {
@@ -514,51 +572,6 @@ impl App {
     fn confirm_action(&mut self) {
         let Some(c) = self.confirm.take() else { return };
         match c {
-            Confirm::Container(id) => {
-                let e = self.engine.clone();
-                self.command(async move { e.remove_container(&id).await })
-            }
-            Confirm::Image(id) => {
-                let e = self.engine.clone();
-                self.command(async move { e.remove_image(&id).await })
-            }
-            Confirm::Volume(n, k) => {
-                if !crate::api::volume_delete_confirmed(k + 1) {
-                    self.confirm = Some(Confirm::Volume(n.clone(), 1));
-                    self.message = format!("再次确认删除卷 {n}：按 y 删除，Esc 取消");
-                } else {
-                    let e = self.engine.clone();
-                    self.command(async move { e.remove_volume(&n).await })
-                }
-            }
-            Confirm::PruneImages(_) => {
-                let e = self.engine.clone();
-                self.command(async move {
-                    let result = e.prune_images().await?;
-                    let reclaimed = result
-                        .get("SpaceReclaimed")
-                        .and_then(serde_json::Value::as_u64)
-                        .unwrap_or(0);
-                    Err(format!(
-                        "悬空镜像清理完成 · 实际释放 {}",
-                        ui::theme::bytes(reclaimed)
-                    ))
-                })
-            }
-            Confirm::PruneBuild(_) => {
-                let e = self.engine.clone();
-                self.command(async move {
-                    let result = e.prune_build().await?;
-                    let reclaimed = result
-                        .get("SpaceReclaimed")
-                        .and_then(serde_json::Value::as_u64)
-                        .unwrap_or(0);
-                    Err(format!(
-                        "构建缓存清理完成 · 实际释放 {}",
-                        ui::theme::bytes(reclaimed)
-                    ))
-                })
-            }
             Confirm::ProjectRestart(_, ids) => {
                 let engine = self.engine.clone();
                 self.command(async move {
@@ -590,19 +603,47 @@ impl App {
         }
     }
     fn action_key(&mut self, k: KeyEvent) {
-        if let Some(Confirm::Volume(n, count)) = self.confirm.clone() {
+        if self.vm_details.is_some() {
             match k.code {
-                KeyCode::Esc | KeyCode::Char('n') => {
-                    self.confirm = None;
-                    return;
+                KeyCode::Esc => self.vm_details = None,
+                KeyCode::Char('j') | KeyCode::Down => {
+                    self.vm_scroll = self.vm_scroll.saturating_add(1)
                 }
-                KeyCode::Char('y') => {
-                    self.confirm = Some(Confirm::Volume(n, count));
-                    self.confirm_action();
-                    return;
+                KeyCode::Char('k') | KeyCode::Up => {
+                    self.vm_scroll = self.vm_scroll.saturating_sub(1)
                 }
-                _ => return,
+                KeyCode::Char('y') => self.copy_vm_path(),
+                _ => (),
             }
+            return;
+        }
+        if self.cleanup_report.is_some() {
+            match k.code {
+                KeyCode::Esc | KeyCode::Char('q') => self.cleanup_report = None,
+                KeyCode::Char('j') | KeyCode::Down => {
+                    self.report_scroll = self.report_scroll.saturating_add(1)
+                }
+                KeyCode::Char('k') | KeyCode::Up => {
+                    self.report_scroll = self.report_scroll.saturating_sub(1)
+                }
+                _ => (),
+            }
+            return;
+        }
+        if let Some(flow) = &mut self.cleanup_flow {
+            if k.code == KeyCode::Esc {
+                self.cleanup_flow = None;
+            } else if let Some(plan) = flow.key(k.code) {
+                self.cleanup_flow = None;
+                self.execute_cleanup(plan);
+            }
+            return;
+        }
+        if self.cleaning {
+            if k.code == KeyCode::Char('q') {
+                self.message = "清理执行中，请等待报告".into();
+            }
+            return;
         }
         if self.confirm.is_some() {
             match k.code {
@@ -656,7 +697,14 @@ impl App {
             }
             return;
         }
-        if self.stopped_by_user && !stopped_key_allowed(k.code) {
+        let vm_readonly = self.page == Page::Cleanup
+            && (matches!(k.code, KeyCode::Tab | KeyCode::Char('v'))
+                || self.vm_section
+                    && matches!(
+                        k.code,
+                        KeyCode::Enter | KeyCode::Char('y' | 'r' | ' ' | 'd')
+                    ));
+        if self.stopped_by_user && !stopped_key_allowed(k.code) && !vm_readonly {
             self.message = "Docker daemon 已手动停止；按 s 重新连接".into();
             return;
         }
@@ -686,6 +734,35 @@ impl App {
             }
             return;
         }
+        if self.page == Page::Cleanup {
+            if matches!(k.code, KeyCode::Tab | KeyCode::Char('v')) {
+                self.vm_section = !self.vm_section;
+                self.selected = 0;
+                return;
+            }
+            if self.vm_section {
+                match k.code {
+                    KeyCode::Enter => {
+                        self.vm_details = self.vm_rows().get(self.selected).cloned().cloned();
+                        self.vm_scroll = 0;
+                        return;
+                    }
+                    KeyCode::Char('y') => {
+                        self.copy_vm_path();
+                        return;
+                    }
+                    KeyCode::Char('r') => {
+                        self.last_vm = Instant::now() - Duration::from_secs(31);
+                        return;
+                    }
+                    KeyCode::Char(' ' | 'd') => {
+                        self.message = "VM 严格只读；不提供虚拟机、镜像、快照或 ISO 删除".into();
+                        return;
+                    }
+                    _ => (),
+                }
+            }
+        }
         match k.code {
             KeyCode::Char('q') => self.quit = true,
             KeyCode::Char('?') => self.help = true,
@@ -710,6 +787,26 @@ impl App {
                 self.page = Page::Overview;
                 self.selected = 0
             }
+            KeyCode::Char('5') => {
+                self.page = Page::Cleanup;
+                self.selected = 0;
+            }
+            KeyCode::Char(' ') if self.page == Page::Cleanup => {
+                if let Some(entry) = self.cleanup_entries().get(self.selected) {
+                    if entry.selectable() {
+                        let key = entry.key();
+                        if !self.picked.remove(&key) {
+                            self.picked.insert(key);
+                        }
+                    } else {
+                        self.message = entry.blocked.clone().unwrap_or_default();
+                    }
+                }
+            }
+            KeyCode::Enter | KeyCode::Char('d') if self.page == Page::Cleanup => {
+                let plan = cleanup::selected(&cleanup::entries(&self.disk), &self.picked);
+                self.preview_cleanup(plan);
+            }
             KeyCode::Char('j') | KeyCode::Down => self.move_sel(1),
             KeyCode::Char('k') | KeyCode::Up => self.move_sel(-1),
             KeyCode::Char('/') => self.filtering = true,
@@ -729,34 +826,20 @@ impl App {
             KeyCode::Char('p') if self.page == Page::Containers => self.act("p"),
             KeyCode::Char('l') if self.page == Page::Containers => self.start_logs(),
             KeyCode::Char('e') if self.page == Page::Containers => self.exec_container(),
-            KeyCode::Char('d') if self.page == Page::Containers => {
-                if let Some(c) = self.selected_container() {
-                    self.confirm = Some(Confirm::Container(c.id.clone()))
+            KeyCode::Char('d') => {
+                if let Some(id) = self.selected_id() {
+                    let kind = match self.page {
+                        Page::Containers => Some(Kind::Container),
+                        Page::Images => Some(Kind::Image),
+                        Page::Volumes => Some(Kind::Volume),
+                        _ => None,
+                    };
+                    let plan = cleanup::entries(&self.disk)
+                        .into_iter()
+                        .filter(|e| Some(e.kind) == kind && e.id == id && e.selectable())
+                        .collect();
+                    self.preview_cleanup(plan);
                 }
-            }
-            KeyCode::Char('d') if self.page == Page::Images => {
-                if let Some(i) = self.images.get(self.selected) {
-                    self.confirm = Some(Confirm::Image(i.id.clone()))
-                }
-            }
-            KeyCode::Char('d') if self.page == Page::Volumes => {
-                if let Some(v) = self.volumes.get(self.selected) {
-                    self.confirm = Some(Confirm::Volume(v.name.clone(), 0))
-                }
-            }
-            KeyCode::Char('c') if self.page == Page::Overview => {
-                let dangling = self
-                    .disk
-                    .images
-                    .iter()
-                    .filter(|i| crate::api::is_dangling(&i.tags))
-                    .map(|i| i.size.saturating_sub(i.shared))
-                    .sum();
-                self.confirm = Some(Confirm::PruneImages(dangling))
-            }
-            KeyCode::Char('b') if self.page == Page::Overview => {
-                let size = crate::api::reclaimable_build_cache(&self.disk.build_cache);
-                self.confirm = Some(Confirm::PruneBuild(size))
             }
             KeyCode::Char('S') if self.engine.can_stop_local_daemon => {
                 self.confirm = Some(Confirm::StopDaemon)
@@ -821,7 +904,26 @@ impl App {
         self.action_key(k)
     }
     pub fn mouse(&mut self, m: MouseEvent, size: ratatui::layout::Size) {
-        if self.confirm.is_some() || self.help || self.details || self.filtering {
+        if self.confirm.is_some()
+            || self.help
+            || self.details
+            || self.filtering
+            || self.cleanup_flow.is_some()
+            || self.cleaning
+            || self.vm_details.is_some()
+        {
+            return;
+        }
+        if self.cleanup_report.is_some() {
+            match m.kind {
+                MouseEventKind::ScrollDown => {
+                    self.report_scroll = self.report_scroll.saturating_add(3)
+                }
+                MouseEventKind::ScrollUp => {
+                    self.report_scroll = self.report_scroll.saturating_sub(3)
+                }
+                _ => (),
+            }
             return;
         }
         match m.kind {
@@ -849,13 +951,15 @@ impl App {
                             0 => Page::Containers,
                             1 => Page::Images,
                             2 => Page::Volumes,
-                            _ => Page::Overview,
+                            3 => Page::Overview,
+                            _ => Page::Cleanup,
                         };
                         self.selected = 0
                     }
-                } else if m.row >= 5 {
-                    let visible_rows = size.height.saturating_sub(8) as usize;
-                    let visible_row = m.row as usize - 5;
+                } else if m.row >= if self.page == Page::Cleanup { 15 } else { 5 } {
+                    let first = if self.page == Page::Cleanup { 15 } else { 5 };
+                    let visible_rows = size.height.saturating_sub(first + 3) as usize;
+                    let visible_row = (m.row - first) as usize;
                     self.selected =
                         table_click_index(self.selected, visible_rows, visible_row, self.len());
                 }
@@ -864,12 +968,27 @@ impl App {
         }
     }
     pub fn tick(&mut self) {
+        if self.last_vm.elapsed() >= Duration::from_secs(30)
+            && self.vm_job.as_ref().is_none_or(|j| j.is_finished())
+        {
+            let tx = self.tx.clone();
+            self.last_vm = Instant::now();
+            self.vm_job = Some(tokio::spawn(async move {
+                let inventory = vm::collect().await;
+                let _ = tx.send(Update::Vm(inventory)).await;
+            }));
+        }
         self.poll()
     }
     pub fn draw(&mut self, f: &mut Frame) {
         let (title, tabs, page) = (
             format!(
-                " 󰡨 Docker  ·  {}  ·  {}",
+                " 󰡨 {} · Docker {} · {}",
+                if self.page == Page::Cleanup {
+                    "Docker + VM"
+                } else {
+                    "Docker"
+                },
                 if self.stopped_by_user {
                     "已停止"
                 } else if self.online {
@@ -885,22 +1004,92 @@ impl App {
                     "等待 daemon"
                 }
             ),
-            ["容器", "镜像", "卷", "概览"],
+            ["容器", "镜像", "卷", "概览", "空间"],
             match self.page {
                 Page::Containers => 0,
                 Page::Images => 1,
                 Page::Volumes => 2,
                 Page::Overview => 3,
+                Page::Cleanup => 4,
             },
         );
         let hint = if self.logs.is_some() {
             "j/k 滚动  G 跟随  / 过滤  Esc 返回"
+        } else if self.page == Page::Cleanup && self.vm_section {
+            "Tab Docker/VM  Enter 详情  y 复制路径  / 过滤  r 刷新  ? 帮助"
+        } else if self.page == Page::Cleanup {
+            "Tab Docker/VM  Space 多选  Enter 预览  j/k 选择  / 过滤  1-5 切页  ? 帮助"
         } else {
-            "o 排序  j/k 选择  Enter 详情  1-4 页签  / 过滤  s 启停  r 单重启  p 项目启停  R 项目重启  l 日志  e exec  d 删除  ? 帮助"
+            "o 排序  j/k 选择  Enter 详情  1-5 页签  / 过滤  s 启停  r 单重启  p 项目启停  R 项目重启  l 日志  e exec  d 删除  ? 帮助"
         };
         let area = ui::chrome(f, &title, &tabs, page, hint, &self.message);
         if self.logs.is_some() {
             self.draw_logs(f, area);
+            return;
+        }
+        if let Some(row) = &self.vm_details {
+            let body = row.details();
+            use unicode_width::UnicodeWidthStr;
+            let lines: usize = body
+                .lines()
+                .map(|l| {
+                    l.width()
+                        .max(1)
+                        .div_ceil(area.width.saturating_sub(2).max(1) as usize)
+                })
+                .sum();
+            self.vm_scroll = self.vm_scroll.min(
+                lines
+                    .saturating_sub(area.height.saturating_sub(2) as usize)
+                    .min(u16::MAX as usize) as u16,
+            );
+            f.render_widget(
+                Paragraph::new(body)
+                    .style(ui::base())
+                    .block(ui::block(
+                        " VM 详情 · 严格只读 · j/k 滚动 · Esc 返回 ",
+                        true,
+                    ))
+                    .wrap(Wrap { trim: false })
+                    .scroll((self.vm_scroll, 0)),
+                area,
+            );
+            return;
+        }
+        if let Some(flow) = &self.cleanup_flow {
+            f.render_widget(
+                Paragraph::new(flow.body())
+                    .style(ui::base())
+                    .block(ui::block(" 清理 · Esc 取消 ", true))
+                    .wrap(Wrap { trim: false }),
+                area,
+            );
+            return;
+        }
+        if let Some(report) = &self.cleanup_report {
+            let body = report.body();
+            use unicode_width::UnicodeWidthStr;
+            let line_count: usize = body
+                .lines()
+                .map(|line| {
+                    line.width()
+                        .max(1)
+                        .div_ceil(area.width.saturating_sub(2).max(1) as usize)
+                })
+                .sum();
+            self.report_scroll = self.report_scroll.min(
+                line_count
+                    .saturating_sub(area.height.saturating_sub(2) as usize)
+                    .min(u16::MAX as usize) as u16,
+            );
+            f.render_widget(
+                Paragraph::new(body)
+                    .style(ui::base())
+                    .block(ui::block(" 清理报告 · j/k 滚动 · Esc 关闭 ", true))
+                    .wrap(Wrap { trim: false })
+                    .scroll((self.report_scroll, 0)),
+                area,
+            );
             return;
         }
         match self.page {
@@ -908,11 +1097,12 @@ impl App {
             Page::Images => self.draw_images(f, area),
             Page::Volumes => self.draw_volumes(f, area),
             Page::Overview => self.draw_overview(f, area),
+            Page::Cleanup => self.draw_cleanup(f, area),
         }
         if self.help {
             ui::help(
                 f,
-                "1-4 切页 · j/k 或方向键选择 · / 过滤\nEnter 查看容器完整镜像、状态与 IP 端口详情\ns 启动/停止容器 · r 单容器重启 · p 项目启停 · R 重启整个 Compose 项目\nl 跟随日志 · 日志内 j/k 滚动 / 过滤\ne 在新 Kitty 中进入容器 · d 删除并确认\n卷删除需输入两次 y，显示名称且永不自动清理\n概览 c 清理悬空镜像 · b 清理构建缓存\nS 停止 Docker 与代理服务 · s 恢复连接\nq 退出 · ? 关闭帮助",
+                "1-5 切页 · j/k 或方向键选择 · / 过滤\nEnter 查看容器完整镜像、状态与 IP 端口详情\ns 启动/停止容器 · r 单容器重启 · p 项目启停 · R 重启整个 Compose 项目\nl 跟随日志 · 日志内 j/k 滚动 / 过滤\ne 在新 Kitty 中进入容器 · d 删除并确认\n5 Docker + VM 空间：Tab/v 切分区\nVM：Enter 完整路径/详情 · y 复制路径 · r 刷新\nVM、镜像、快照、孤立候选和 ISO 均严格只读\nDocker：Space 多选 · Enter/d 冻结准确清单预览\nj/k 看完每项 → y 二次确认 → y 执行\n卷默认不选；需另行输入 DELETE 与完整卷名，数据不可恢复\n清理前重新验证引用；运行中容器与被引用镜像、卷不可选\nS 停止 Docker 与代理服务 · s 恢复连接\nq 退出 · ? 关闭帮助",
             )
         }
         if self.details {
@@ -1035,7 +1225,15 @@ impl App {
                         .unwrap_or_else(|| "未知".into()),
                     v.usage
                         .as_ref()
-                        .map(|u| if u.refs > 0 { "使用中" } else { "未使用" })
+                        .map(|u| {
+                            if u.refs > 0 {
+                                "使用中"
+                            } else if u.refs == 0 {
+                                "未使用"
+                            } else {
+                                "未知 / 保护"
+                            }
+                        })
                         .unwrap_or("未知")
                         .into(),
                 ]
@@ -1044,7 +1242,7 @@ impl App {
         ui::table(
             f,
             a,
-            &format!(" 卷 {}  · d 删除需二次确认 ", self.volumes.len()),
+            &format!(" 卷 {}  · d 预览 · 卷需输入名称确认 ", self.volumes.len()),
             vec!["卷名", "大小", "状态"],
             rows,
             &[
@@ -1055,44 +1253,206 @@ impl App {
             self.selected,
         )
     }
-    fn draw_overview(&self, f: &mut Frame, a: ratatui::layout::Rect) {
-        let build_reclaimable = crate::api::reclaimable_build_cache(&self.disk.build_cache);
-        let build_total = self
-            .disk
-            .build_cache
+    fn vm_rows(&self) -> Vec<&vm::Row> {
+        let q = self.filter.to_lowercase();
+        self.vm
+            .rows
             .iter()
-            .map(|entry| entry.size)
-            .sum::<u64>();
-        let dangling = self
-            .disk
-            .images
-            .iter()
-            .filter(|i| crate::api::is_dangling(&i.tags))
-            .map(|i| i.size.saturating_sub(i.shared))
-            .sum::<u64>();
-        let body = format!(
-            "Docker Engine {}\n\n容器：{}  ·  镜像：{}  ·  卷：{}\n镜像层：{}\n\n悬空镜像：{}（c 清理，预计释放 {}）\n构建缓存：{}（预计可回收 {}；b 清理）\n\nS 停止 daemon + docker-proxy\n确认后，下次连接会按需启动。",
-            self.info.version,
-            self.disk.containers.len(),
-            self.disk.images.len(),
-            self.disk.volumes.len(),
-            ui::theme::bytes(self.disk.layers_size),
-            self.disk
-                .images
-                .iter()
-                .filter(|i| crate::api::is_dangling(&i.tags))
-                .count(),
-            ui::theme::bytes(dangling),
-            ui::theme::bytes(build_total),
-            ui::theme::bytes(build_reclaimable)
+            .filter(|r| {
+                format!(
+                    "{} {} {} {} {}",
+                    r.uri,
+                    r.owner,
+                    r.kind,
+                    r.path
+                        .as_ref()
+                        .map(|p| p.display().to_string())
+                        .unwrap_or_default(),
+                    r.note
+                )
+                .to_lowercase()
+                .contains(&q)
+            })
+            .collect()
+    }
+    fn copy_vm_path(&mut self) {
+        let row = self
+            .vm_details
+            .as_ref()
+            .or_else(|| self.vm_rows().get(self.selected).copied())
+            .cloned();
+        let Some(path) = row.and_then(|r| r.path) else {
+            self.message = "此项没有本地文件路径".into();
+            return;
+        };
+        self.command(async move {
+            vm::copy_path(&path).await?;
+            Err("已复制完整 VM 路径；未读取或修改文件".into())
+        });
+    }
+    fn cleanup_entries(&self) -> Vec<Entry> {
+        let q = self.filter.to_lowercase();
+        cleanup::entries(&self.disk)
+            .into_iter()
+            .filter(|e| {
+                format!("{} {} {}", e.kind.label(), e.id, e.name)
+                    .to_lowercase()
+                    .contains(&q)
+            })
+            .collect()
+    }
+    fn preview_cleanup(&mut self, plan: Vec<Entry>) {
+        if self.action.as_ref().is_some_and(|j| !j.is_finished()) {
+            self.message = "操作正在进行，完成后再预览".into();
+            return;
+        }
+        self.cleanup_flow = Flow::new(plan);
+        if self.cleanup_flow.is_none() {
+            self.message = "没有可清理的选择；运行中、被引用或引用未知的资源已锁定".into();
+        }
+    }
+    fn execute_cleanup(&mut self, plan: Vec<Entry>) {
+        self.cleaning = true;
+        self.message = "正在清理已确认清单…".into();
+        let engine = self.engine.clone();
+        let tx = self.tx.clone();
+        self.action = Some(tokio::spawn(async move {
+            let report = cleanup::execute(&engine, &plan).await;
+            let _ = tx.send(Update::Cleaned(report)).await;
+        }));
+    }
+    fn draw_cleanup(&self, f: &mut Frame, a: ratatui::layout::Rect) {
+        let areas = ratatui::layout::Layout::vertical([Constraint::Length(10), Constraint::Min(3)])
+            .split(a);
+        let plan = cleanup::selected(&cleanup::entries(&self.disk), &self.picked);
+        let summary = format!(
+            "{}\n{}\nDocker 所选 {} 项 · 预计释放 {} · 卷数据不可恢复",
+            cleanup::summary(&self.disk),
+            self.vm.summary(),
+            plan.len(),
+            cleanup::estimate(&plan)
         );
+        f.render_widget(
+            Paragraph::new(summary)
+                .style(ui::base())
+                .block(ui::block(" Docker + VM 空间 · VM 严格只读 ", true)),
+            areas[0],
+        );
+        if self.vm_section {
+            let rows = self
+                .vm_rows()
+                .iter()
+                .map(|r| {
+                    vec![
+                        r.uri.trim_start_matches("qemu:///").into(),
+                        r.kind.clone(),
+                        r.owner.clone(),
+                        r.path
+                            .as_ref()
+                            .map(|p| {
+                                format!(
+                                    "…/{}/{}",
+                                    p.parent()
+                                        .and_then(|d| d.file_name())
+                                        .unwrap_or_default()
+                                        .to_string_lossy(),
+                                    p.file_name().unwrap_or_default().to_string_lossy()
+                                )
+                            })
+                            .unwrap_or_else(|| r.note.clone()),
+                        cleanup::bytes(r.actual).replace(".0 ", " "),
+                        cleanup::bytes(r.virtual_size).replace(".0 ", " "),
+                    ]
+                })
+                .collect();
+            ui::table(
+                f,
+                areas[1],
+                &format!(" VM · 大小降序 · Tab 返回 Docker · /{} ", self.filter),
+                vec![
+                    "连接",
+                    "类型",
+                    "虚拟机/池",
+                    "路径（Enter 完整）",
+                    "占用",
+                    "虚拟",
+                ],
+                rows,
+                &[
+                    Constraint::Length(7),
+                    Constraint::Length(12),
+                    Constraint::Length(15),
+                    Constraint::Min(10),
+                    Constraint::Length(9),
+                    Constraint::Length(9),
+                ],
+                self.selected,
+            );
+            return;
+        }
+        let entries = self.cleanup_entries();
+        let rows = entries
+            .iter()
+            .map(|e| {
+                vec![
+                    if !e.selectable() {
+                        "锁".into()
+                    } else if self.picked.contains(&e.key()) {
+                        "[x]".into()
+                    } else {
+                        "[ ]".into()
+                    },
+                    e.kind.label().into(),
+                    if e.kind == Kind::Volume || e.name.is_empty() {
+                        e.id.clone()
+                    } else {
+                        e.name.clone()
+                    },
+                    cleanup::bytes(e.size).replace(".0 ", " "),
+                    if e.selectable() {
+                        cleanup::bytes(e.reclaim).replace(".0 ", " ")
+                    } else {
+                        "—".into()
+                    },
+                    e.blocked.clone().unwrap_or_else(|| {
+                        if e.kind == Kind::Volume {
+                            "需输入卷名".into()
+                        } else {
+                            "可清理".into()
+                        }
+                    }),
+                ]
+            })
+            .collect();
+        ui::table(
+            f,
+            areas[1],
+            &format!(
+                " Docker · 大小降序 · /{} · Space 多选 · Tab VM ",
+                self.filter
+            ),
+            vec!["选", "类型", "名称 / ID", "占用", "可回收", "状态"],
+            rows,
+            &[
+                Constraint::Length(3),
+                Constraint::Length(8),
+                Constraint::Min(10),
+                Constraint::Length(9),
+                Constraint::Length(9),
+                Constraint::Length(18),
+            ],
+            self.selected,
+        );
+    }
+    fn draw_overview(&self, f: &mut Frame, a: ratatui::layout::Rect) {
+        let body = format!("Docker Engine {}\n\n{}\n{}\n\n5 Docker + VM 空间：Tab/v 切分区，VM 严格只读。\nS 停止 daemon + docker-proxy（另行确认）。", self.info.version, cleanup::summary(&self.disk),self.vm.summary());
         f.render_widget(
             Paragraph::new(body)
                 .style(ui::base())
                 .block(ui::block(" Docker Engine 概览 ", true))
                 .wrap(Wrap { trim: false }),
             a,
-        )
+        );
     }
     fn draw_logs(&self, f: &mut Frame, a: ratatui::layout::Rect) {
         let q = self.log_filter.to_lowercase();
@@ -1144,7 +1504,10 @@ fn compose_project_ids(containers: &[Container], project: &str) -> Vec<String> {
 fn tab_at(column: u16) -> Option<usize> {
     use unicode_width::UnicodeWidthStr;
     let mut start = 1u16;
-    for (index, label) in ["1 容器", "2 镜像", "3 卷", "4 概览"].iter().enumerate() {
+    for (index, label) in ["1 容器", "2 镜像", "3 卷", "4 概览", "5 空间"]
+        .iter()
+        .enumerate()
+    {
         let width = label.width() as u16 + 2;
         if (start..start + width).contains(&column) {
             return Some(index);
@@ -1179,7 +1542,7 @@ fn table_click_index(
 fn stopped_key_allowed(code: KeyCode) -> bool {
     matches!(
         code,
-        KeyCode::Char('q' | '?' | '1' | '2' | '3' | '4' | 's' | 'j' | 'k' | 'o' | '/')
+        KeyCode::Char('q' | '?' | '1' | '2' | '3' | '4' | '5' | 's' | 'j' | 'k' | 'o' | '/')
             | KeyCode::Esc
             | KeyCode::Up
             | KeyCode::Down
@@ -1202,30 +1565,66 @@ mod stop_policy_tests {
     }
 
     #[test]
+    fn vm_section_never_enters_docker_cleanup_or_selects_resources() {
+        let mut app = test_app();
+        app.page = Page::Cleanup;
+        app.vm_section = true;
+        app.picked.insert("镜像:fixture".into());
+        app.key(key(' '));
+        app.key(key('d'));
+        app.key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+        assert!(app.cleanup_flow.is_none());
+        assert!(app.confirm.is_none());
+        assert!(app.action.is_none());
+        assert_eq!(app.picked.len(), 1);
+        assert!(app.message.contains("严格只读"));
+        app.key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+        assert!(!app.vm_section);
+    }
+
+    #[test]
+    fn vm_navigation_and_refresh_work_while_docker_is_suspended() {
+        let mut app = test_app();
+        app.page = Page::Cleanup;
+        app.stopped_by_user = true;
+        app.key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+        assert!(app.vm_section);
+        app.key(key('r'));
+        assert!(app.last_vm.elapsed() >= Duration::from_secs(30));
+        app.key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+        assert!(app.refresh.is_none());
+        assert!(app.action.is_none());
+        assert!(app.stopped_by_user);
+    }
+
+    #[test]
+    fn suspended_docker_does_not_resume_through_retained_cleanup_selection() {
+        let mut app = test_app();
+        app.page = Page::Cleanup;
+        app.stopped_by_user = true;
+        app.picked.insert("镜像:fixture".into());
+        app.disk.images.push(
+            serde_json::from_value(
+                serde_json::json!({"Id":"fixture","Containers":0,"Size":32,"SharedSize":0}),
+            )
+            .unwrap(),
+        );
+        app.key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+        app.key(key('y'));
+        app.key(key('y'));
+        assert!(app.cleanup_flow.is_none());
+        assert!(app.action.is_none());
+        assert!(app.refresh.is_none());
+        assert!(app.stopped_by_user);
+    }
+
+    #[test]
     fn stopped_daemon_rejects_a_real_action_key() {
         let mut app = test_app();
         app.stopped_by_user = true;
         app.key(key('r'));
         assert!(app.action.is_none());
         assert!(app.message.contains("按 s"));
-    }
-
-    #[test]
-    fn volume_confirmation_requires_a_second_y_and_escape_cancels() {
-        let mut app = test_app();
-        app.confirm = Some(Confirm::Volume("fixture-data".into(), 0));
-        assert!(confirm_body(app.confirm.as_ref().unwrap()).contains("第一次 y"));
-        app.key(key('y'));
-        assert!(
-            matches!(app.confirm, Some(Confirm::Volume(ref name, 1)) if name == "fixture-data")
-        );
-        let second_stage = confirm_body(app.confirm.as_ref().unwrap());
-        assert!(second_stage.contains("二次确认"));
-        assert!(second_stage.contains("fixture-data"));
-        assert!(second_stage.contains("再次 y 永久删除 · Esc 取消"));
-        app.key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
-        assert!(app.confirm.is_none());
-        assert!(app.action.is_none());
     }
 
     #[test]
@@ -1411,25 +1810,6 @@ fn compact_port_mappings(c: &Container) -> String {
 }
 fn confirm_body(confirm: &Confirm) -> String {
     match confirm {
-        Confirm::Container(id) => format!(
-            "删除容器 {}？容器 writable layer 也会删除。\ny 确认 · Esc 取消",
-            short(id)
-        ),
-        Confirm::Image(id) => format!("删除镜像 {}？\ny 确认 · Esc 取消", short(id)),
-        Confirm::Volume(name, 0) => {
-            format!("删除卷 {name} 会永久删除卷内数据。\n第一次 y：继续到二次确认。")
-        }
-        Confirm::Volume(name, _) => {
-            format!("二次确认：永久删除卷 {name}？\n再次 y 永久删除 · Esc 取消")
-        }
-        Confirm::PruneImages(size) => format!(
-            "清理悬空镜像，预计释放 {}？\ny 确认 · Esc 取消",
-            ui::theme::bytes(*size)
-        ),
-        Confirm::PruneBuild(size) => format!(
-            "清理构建缓存，预计释放 {}？\ny 确认 · Esc 取消",
-            ui::theme::bytes(*size)
-        ),
         Confirm::ProjectRestart(name, ids) => {
             format!(
                 "重启 Compose 项目 {name} 中的 {} 个容器？\ny 确认 · Esc 取消",
@@ -1452,6 +1832,9 @@ fn short(s: &str) -> &str {
 
 impl Drop for App {
     fn drop(&mut self) {
+        if let Some(job) = self.vm_job.take() {
+            job.abort();
+        }
         if let Some(job) = self.refresh.take() {
             job.abort();
         }
