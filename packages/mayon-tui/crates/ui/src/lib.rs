@@ -127,7 +127,7 @@ pub fn chrome_in(
     frame.render_widget(Block::default().style(base()), a);
     let c = Layout::vertical([
         Constraint::Length(1),
-        Constraint::Length(2),
+        Constraint::Length(1),
         Constraint::Min(1),
         Constraint::Length(2),
     ])

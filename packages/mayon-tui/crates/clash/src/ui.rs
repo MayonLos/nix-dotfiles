@@ -96,7 +96,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
     }
     let chunks = Layout::vertical([
         Constraint::Length(1),
-        Constraint::Length(2),
+        Constraint::Length(1),
         Constraint::Min(1),
         Constraint::Length(2),
     ])

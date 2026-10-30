@@ -168,6 +168,11 @@ impl Matcher {
         }
     }
 
+    /// Scores at or above this come from literal or pinyin hits on every term;
+    /// lower scores contain a subsequence hit, which is only a fallback.
+    pub fn strong_score(&self) -> u32 {
+        self.terms.len() as u32 * 200
+    }
     pub fn matches(&self, text: &str) -> bool {
         self.find(text).is_some()
     }
@@ -246,11 +251,6 @@ fn match_term(text: &SearchText, term: &[char]) -> Option<(u32, Vec<Range<usize>
         text.literal
             .subsequence(term)
             .map(|r| (100, r))
-            .or_else(|| {
-                text.pinyin
-                    .as_ref()
-                    .and_then(|p| p.full.subsequence(term).map(|r| (100, r)))
-            })
             .or_else(|| {
                 text.pinyin
                     .as_ref()

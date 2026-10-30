@@ -161,12 +161,12 @@ fn open_screen(screens: &mut [Option<Screen>], page: usize, args: &[String]) {
     }
 }
 fn local_size(size: Size) -> Size {
-    Size::new(size.width, size.height.saturating_sub(2))
+    Size::new(size.width, size.height.saturating_sub(1))
 }
 fn local_event(event: Event) -> Event {
     match event {
         Event::Mouse(mut mouse) => {
-            mouse.row = mouse.row.saturating_sub(2);
+            mouse.row = mouse.row.saturating_sub(1);
             Event::Mouse(mouse)
         }
         other => other,
@@ -284,9 +284,9 @@ async fn main() -> Result<()> {
                 f.render_widget(ratatui::widgets::Block::default().style(ui::base()), all);
                 let body = Rect::new(
                     all.x,
-                    all.y.saturating_add(2),
+                    all.y.saturating_add(1),
                     all.width,
-                    all.height.saturating_sub(2),
+                    all.height.saturating_sub(1),
                 );
                 screen.draw(f, body);
                 tabs(f, page);

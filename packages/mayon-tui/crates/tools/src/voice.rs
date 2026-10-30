@@ -246,7 +246,11 @@ impl Screen {
             Paragraph::new(lines)
                 .style(base())
                 .block(block(
-                    format!(" 语音输入 · {count}/{total} · /{} ", self.filter),
+                    if self.filter.is_empty() {
+                        format!(" 语音输入 · {count}/{total} ")
+                    } else {
+                        format!(" 语音输入 · {count}/{total} · /{} ", self.filter)
+                    },
                     true,
                 ))
                 .scroll((

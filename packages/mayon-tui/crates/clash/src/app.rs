@@ -1970,7 +1970,7 @@ impl App {
                     }
                     return;
                 }
-                if event.row < 4 || event.row >= size.height.saturating_sub(2) {
+                if event.row < 3 || event.row >= size.height.saturating_sub(2) {
                     return;
                 }
                 let activate = self.last_click.is_some_and(|(x, y, time)| {
@@ -1979,8 +1979,8 @@ impl App {
                         && time.elapsed() < Duration::from_millis(400)
                 });
                 self.last_click = Some((event.column, event.row, Instant::now()));
-                let y = event.row as usize - 4;
-                let height = size.height.saturating_sub(7) as usize;
+                let y = event.row as usize - 3;
+                let height = size.height.saturating_sub(6) as usize;
                 if self.page == Page::Proxies && !self.provider_mode {
                     self.nodes_focus = event.column >= size.width * 32 / 100;
                 }

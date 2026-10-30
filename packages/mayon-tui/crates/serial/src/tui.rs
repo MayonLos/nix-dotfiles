@@ -55,15 +55,15 @@ pub fn event(app: &mut App, event: Event, size: ratatui::layout::Size) -> bool {
                     };
                     app.page = index;
                 } else if matches!(app.page, 1 | 3) {
-                    let visible = size.height.saturating_sub(8) as usize;
-                    if mouse.row >= 5 && mouse.row < size.height.saturating_sub(3) {
+                    let visible = size.height.saturating_sub(7) as usize;
+                    if mouse.row >= 4 && mouse.row < size.height.saturating_sub(3) {
                         let (selected, len) = if app.page == 1 {
                             (&mut app.selected, app.devices.len())
                         } else {
                             (&mut app.favorite_index, app.store.config.favorites.len())
                         };
                         let offset = selected.saturating_add(1).saturating_sub(visible);
-                        *selected = (offset + (mouse.row as usize - 5)).min(len.saturating_sub(1));
+                        *selected = (offset + (mouse.row as usize - 4)).min(len.saturating_sub(1));
                     }
                 }
             }

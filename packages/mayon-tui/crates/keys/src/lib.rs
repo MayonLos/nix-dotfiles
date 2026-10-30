@@ -128,16 +128,22 @@ impl App {
     }
     fn visible(&self, items: &[Entry]) -> Vec<usize> {
         let matcher = Matcher::new(&self.query);
-        let mut out = items
+        let scored = items
             .iter()
             .enumerate()
-            .filter(|(i, e)| {
-                self.group.is_none_or(|g| e.group == g)
-                    && self
-                        .search
-                        .get(*i)
-                        .is_some_and(|text| matcher.matches_in(text))
+            .filter(|(_, e)| self.group.is_none_or(|g| e.group == g))
+            .filter_map(|(i, _)| {
+                let found = matcher.find_in(self.search.get(i)?)?;
+                Some((i, found.score))
             })
+            .collect::<Vec<_>>();
+        // Raw Mango actions are long; fall back to subsequences only without a real hit.
+        let strong = scored
+            .iter()
+            .any(|(_, score)| *score >= matcher.strong_score());
+        let mut out = scored
+            .into_iter()
+            .filter(|(_, score)| !strong || *score >= matcher.strong_score())
             .map(|(i, _)| i)
             .collect::<Vec<_>>();
         out.sort_by_key(|i| items[*i].group);
@@ -174,10 +180,10 @@ fn positions(items: &[Entry], visible: &[usize], columns: usize) -> (Vec<Positio
             for (col, chunk) in visible.chunks(per_column).enumerate() {
                 out.push((col, 0, group, None));
                 for (row, _) in chunk.iter().enumerate() {
-                    out.push((col, 2 + row * 3, group, Some(col * per_column + row)));
+                    out.push((col, 1 + row, group, Some(col * per_column + row)));
                 }
             }
-            return (out, 3 + per_column * 3);
+            return (out, 1 + per_column);
         }
     }
     let mut heights = vec![0usize; columns];
@@ -198,10 +204,10 @@ fn positions(items: &[Entry], visible: &[usize], columns: usize) -> (Vec<Positio
             .unwrap()
             .0;
         out.push((col, heights[col], group, None));
-        heights[col] += 2;
+        heights[col] += 1;
         for (selection, _) in rows {
             out.push((col, heights[col], group, Some(selection)));
-            heights[col] += 3;
+            heights[col] += 1;
         }
         heights[col] += 1;
     }
@@ -224,7 +230,7 @@ fn draw_in(
     f.render_widget(Block::default().style(ui::base()), area);
     let c = Layout::vertical([
         Constraint::Length(1),
-        Constraint::Length(2),
+        Constraint::Length(1),
         Constraint::Length(1),
         Constraint::Min(1),
         Constraint::Length(3),
@@ -303,8 +309,8 @@ fn draw_in(
             if *y < app.scroll {
                 app.scroll = *y;
             }
-            if y + 2 > app.scroll + app.viewport {
-                app.scroll = (y + 2).saturating_sub(app.viewport);
+            if y + 1 > app.scroll + app.viewport {
+                app.scroll = (y + 1).saturating_sub(app.viewport);
             }
         }
     }
@@ -319,39 +325,36 @@ fn draw_in(
             .filter(|(column, _, _, _)| *column == index)
         {
             let _ = column;
-            if *y + 2 <= app.scroll || *y >= app.scroll + inner.height as usize {
+            if *y < app.scroll || *y >= app.scroll + inner.height as usize {
                 continue;
             }
-            let mut lines = if let Some(selection) = selection {
+            let lines = if let Some(selection) = selection {
                 let e = &items[visible[*selection]];
                 let selected = app.selected == *selection;
                 let style = ui::base().bg(if selected { SELECTION } else { BG });
                 let color = if e.conflict { RED } else { BRIGHTFG };
                 let chord = format!("{}{}", if e.conflict { "! " } else { "" }, e.chord);
                 let matcher = Matcher::new(&app.query);
-                let mut first =
-                    matcher.highlight(&clip(&chord, inner.width.saturating_sub(1) as usize));
-                first.spans.insert(0, ui::marker(selected));
-                let mut second = matcher.highlight(&clip(
-                    &format!("{} · {}", e.description, e.binding.mode),
+                let mode = if e.binding.mode == "default" {
+                    String::new()
+                } else {
+                    format!(" · {}", e.binding.mode)
+                };
+                let pad = 20usize
+                    .saturating_sub(Line::from(chord.as_str()).width())
+                    .max(1);
+                let mut row = matcher.highlight(&clip(
+                    &format!("{chord}{}{}{mode}", " ".repeat(pad), e.description),
                     inner.width.saturating_sub(1) as usize,
                 ));
-                second.spans.insert(0, Span::raw(" "));
-                vec![
-                    first.style(style.fg(color)),
-                    second.style(style.fg(if e.conflict { RED } else { FG })),
-                ]
+                row.spans.insert(0, ui::marker(selected));
+                vec![row.style(style.fg(color))]
             } else {
-                vec![
-                    Line::from(Span::styled(
-                        format!(" {}", GROUPS[*group]),
-                        ui::base().fg(BLUE).add_modifier(Modifier::BOLD),
-                    )),
-                    Line::default(),
-                ]
+                vec![Line::from(Span::styled(
+                    format!(" {}", GROUPS[*group]),
+                    ui::base().fg(BLUE).add_modifier(Modifier::BOLD),
+                ))]
             };
-            let skip = app.scroll.saturating_sub(*y).min(2);
-            lines.drain(..skip);
             let ry = inner.y + y.saturating_sub(app.scroll) as u16;
             let r = Rect::new(
                 inner.x,

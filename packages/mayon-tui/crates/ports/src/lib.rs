@@ -719,8 +719,6 @@ fn render_in(f: &mut ratatui::Frame, app: &mut App, viewport: Rect) {
             );
             let address_style = if dev {
                 Style::default().fg(CYAN)
-            } else if scope(&r.address) == "对外" {
-                Style::default().fg(RED)
             } else {
                 Style::default().fg(FG)
             };

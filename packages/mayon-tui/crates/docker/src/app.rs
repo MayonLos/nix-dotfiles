@@ -1107,8 +1107,8 @@ impl App {
                         };
                         self.selected = 0
                     }
-                } else if m.row >= if self.page == Page::Cleanup { 15 } else { 5 } {
-                    let first = if self.page == Page::Cleanup { 15 } else { 5 };
+                } else if m.row >= if self.page == Page::Cleanup { 14 } else { 4 } {
+                    let first = if self.page == Page::Cleanup { 14 } else { 4 };
                     let visible_rows = size.height.saturating_sub(first + 3) as usize;
                     let visible_row = (m.row - first) as usize;
                     self.selected =
@@ -1357,6 +1357,10 @@ impl App {
     fn draw_filter(&self, f: &mut Frame, input: &TextInput, area: ratatui::layout::Rect) {
         let row = area.bottom().saturating_sub(2);
         f.render_widget(
+            ratatui::widgets::Clear,
+            ratatui::layout::Rect::new(area.x, row, area.width, 1),
+        );
+        f.render_widget(
             Paragraph::new(" 过滤 /").style(ui::base().fg(BLUE)),
             ratatui::layout::Rect::new(area.x, row, area.width, 1),
         );
@@ -1409,15 +1413,7 @@ impl App {
         self.draw_table(
             f,
             a,
-            &format!(
-                " 容器 {}{} ",
-                xs.len(),
-                if self.filter.is_empty() {
-                    String::new()
-                } else {
-                    format!(" · /{}", self.filter)
-                }
-            ),
+            &format!(" 容器 {} ", xs.len()),
             vec!["项目 / 容器", "镜像", "状态", "端口", "CPU", "内存"],
             rows,
             &[
@@ -1475,7 +1471,11 @@ impl App {
         ui::table_highlighted(
             f,
             area,
-            &format!("{title} · {}/{} · /{}", self.len(), total, self.filter),
+            &if self.filter.is_empty() {
+                format!("{title} · {}", self.len())
+            } else {
+                format!("{title} · {}/{} · /{}", self.len(), total, self.filter)
+            },
             headers,
             rows,
             widths,
