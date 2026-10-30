@@ -67,16 +67,6 @@ pub struct Image {
 pub fn is_dangling(tags: &[String]) -> bool {
     tags.is_empty() || tags.iter().all(|tag| tag.starts_with("<none>"))
 }
-pub fn volume_delete_confirmed(presses: u8) -> bool {
-    presses >= 2
-}
-pub fn reclaimable_build_cache(entries: &[BuildDisk]) -> u64 {
-    entries
-        .iter()
-        .filter(|e| !e.in_use && !e.is_shared)
-        .map(|e| e.size)
-        .sum()
-}
 pub fn is_default_docker_socket(host: &str, runtime_dir: Option<&str>) -> bool {
     runtime_dir.is_some_and(|runtime| host == format!("unix://{runtime}/docker.sock"))
 }
@@ -100,9 +90,9 @@ pub struct Volume {
 }
 #[derive(Debug, Clone, Deserialize)]
 pub struct UsageData {
-    #[serde(rename = "Size", default)]
+    #[serde(rename = "Size", default = "unknown_usage")]
     pub size: i64,
-    #[serde(rename = "RefCount", default)]
+    #[serde(rename = "RefCount", default = "unknown_usage")]
     pub refs: i64,
 }
 #[derive(Debug, Clone, Deserialize)]
@@ -112,6 +102,13 @@ pub struct DiskVolume {
     #[serde(rename = "UsageData")]
     pub usage: Option<UsageData>,
 }
+fn unknown_usage() -> i64 {
+    -1
+}
+fn conservative_true() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct Disk {
     #[serde(rename = "Images", default, deserialize_with = "null_default_vec")]
@@ -127,20 +124,28 @@ pub struct Disk {
 }
 #[derive(Debug, Clone, Deserialize)]
 pub struct ImageDisk {
+    #[serde(rename = "Id", default)]
+    pub id: String,
+    #[serde(rename = "Containers", default = "unknown_usage")]
+    pub containers: i64,
     #[serde(rename = "Size", default)]
     pub size: u64,
-    #[serde(rename = "SharedSize", default)]
-    pub shared: u64,
+    #[serde(rename = "SharedSize", default = "unknown_usage")]
+    pub shared: i64,
     #[serde(rename = "RepoTags", default, deserialize_with = "null_default_vec")]
     pub tags: Vec<String>,
 }
 #[derive(Debug, Clone, Deserialize)]
 pub struct BuildDisk {
+    #[serde(rename = "ID", default)]
+    pub id: String,
+    #[serde(rename = "Description", default)]
+    pub description: String,
     #[serde(rename = "Size", default)]
     pub size: u64,
-    #[serde(rename = "InUse", default)]
+    #[serde(rename = "InUse", default = "conservative_true")]
     pub in_use: bool,
-    #[serde(rename = "Shared", default)]
+    #[serde(rename = "Shared", default = "conservative_true")]
     pub is_shared: bool,
 }
 #[derive(Debug, Clone, Deserialize)]
@@ -344,24 +349,26 @@ impl Engine {
     pub async fn remove_container(&self, id: &str) -> Result<(), String> {
         self.action(
             Method::DELETE,
-            &format!("/containers/{}?force=1&v=false", enc(id)),
+            &format!("/containers/{}?force=false&v=false", enc(id)),
         )
         .await
     }
     pub async fn remove_image(&self, id: &str) -> Result<(), String> {
-        self.action(Method::DELETE, &format!("/images/{}?force=false", enc(id)))
-            .await
+        self.action(
+            Method::DELETE,
+            &format!("/images/{}?force=false&noprune=true", enc(id)),
+        )
+        .await
     }
     pub async fn remove_volume(&self, name: &str) -> Result<(), String> {
         self.action(Method::DELETE, &format!("/volumes/{}", enc(name)))
             .await
     }
-    pub async fn prune_images(&self) -> Result<Value, String> {
-        self.json_post("/images/prune?filters=%7B%22dangling%22%3A%5B%22true%22%5D%7D")
-            .await
-    }
-    pub async fn prune_build(&self) -> Result<Value, String> {
-        self.json_post("/build/prune").await
+    /// BuildKit treats the id filter as a regex. Anchor a strictly validated ID.
+    /// Legacy builders reject this filter: never fall back to unfiltered prune.
+    pub async fn remove_cache(&self, id: &str) -> Result<Value, String> {
+        let path = cache_prune_path(id)?;
+        self.json_post(&path).await
     }
     async fn json_post(&self, path: &str) -> Result<Value, String> {
         let r = self.request(Method::POST, path).await?;
@@ -397,6 +404,21 @@ impl Engine {
             .await;
         start.is_ok_and(|r| r.status().is_success())
     }
+}
+pub fn cache_prune_path(id: &str) -> Result<String, String> {
+    if id.is_empty()
+        || !id
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || c == b'-' || c == b'_')
+    {
+        return Err("缓存 ID 不支持精确清理；未执行".into());
+    }
+    let filters =
+        serde_json::json!({"id": [format!("^{id}$")], "inuse": ["false"], "shared": ["false"]});
+    Ok(format!(
+        "/build/prune?all=true&filters={}",
+        enc(&filters.to_string())
+    ))
 }
 fn enc(s: &str) -> String {
     url_encode(s)
@@ -492,27 +514,6 @@ mod tests {
         assert!(image.tags.is_empty());
     }
     #[test]
-    fn build_cache_estimate_skips_in_use_and_shared_entries() {
-        let entries = vec![
-            BuildDisk {
-                size: 100,
-                in_use: false,
-                is_shared: false,
-            },
-            BuildDisk {
-                size: 200,
-                in_use: true,
-                is_shared: false,
-            },
-            BuildDisk {
-                size: 300,
-                in_use: false,
-                is_shared: true,
-            },
-        ];
-        assert_eq!(reclaimable_build_cache(&entries), 100);
-    }
-    #[test]
     fn multiplex_logs() {
         let mut b = vec![1, 0, 0, 0, 0, 0, 0, 4];
         b.extend(b"hey\n");
@@ -532,9 +533,8 @@ mod tests {
     #[test]
     fn url_encoded_ids_and_hazard_gates() {
         assert_eq!(enc("vol/a"), "vol%2Fa");
-        assert!(!volume_delete_confirmed(0));
-        assert!(!volume_delete_confirmed(1));
-        assert!(volume_delete_confirmed(2));
+        assert!(cache_prune_path("abc.*").is_err());
+        assert!(cache_prune_path("abc").unwrap().contains("%5Eabc%24"));
         assert!(is_default_docker_socket(
             "unix:///run/user/1000/docker.sock",
             Some("/run/user/1000")
