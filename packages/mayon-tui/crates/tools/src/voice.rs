@@ -150,7 +150,7 @@ impl Screen {
     pub fn draw(&mut self, f: &mut ratatui::Frame, area: ratatui::layout::Rect) {
         let areas = Layout::vertical([
             Constraint::Length(1),
-            Constraint::Length(2),
+            Constraint::Length(1),
             Constraint::Min(4),
             Constraint::Length(2),
         ])
@@ -247,7 +247,7 @@ impl Screen {
                 .style(base())
                 .block(block(
                     if self.filter.is_empty() {
-                        format!(" 语音输入 · {count}/{total} ")
+                        " 语音输入 ".to_string()
                     } else {
                         format!(" 语音输入 · {count}/{total} · /{} ", self.filter)
                     },
@@ -367,7 +367,7 @@ impl Screen {
                     self.scroll = (self.scroll + 1).min(self.visible_ids.len().saturating_sub(1))
                 }
                 MouseEventKind::ScrollUp => self.scroll = self.scroll.saturating_sub(1),
-                MouseEventKind::Down(_) if m.row <= 2 => {
+                MouseEventKind::Down(_) if m.row <= 1 => {
                     self.page = usize::from(m.column > 13);
                 }
                 _ => {}
