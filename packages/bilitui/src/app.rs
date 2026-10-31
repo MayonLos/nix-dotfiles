@@ -1425,7 +1425,7 @@ impl App {
         frame.render_widget(Block::default().style(ui::base()), area);
         let layout = Layout::vertical([
             Constraint::Length(1),
-            Constraint::Length(2),
+            Constraint::Length(1),
             Constraint::Min(1),
             Constraint::Length(2),
         ])
@@ -1441,7 +1441,11 @@ impl App {
                 Span::styled(" 哔哩哔哩", Style::default().fg(BRIGHTFG)),
                 ui::muted(" · "),
                 Span::styled(
-                    format!("{} {auth}", auth_tone.symbol()),
+                    if matches!(auth_tone, ui::Tone::Info) {
+                        auth.to_string()
+                    } else {
+                        format!("{} {auth}", auth_tone.symbol())
+                    },
                     Style::default().fg(auth_tone.color()),
                 ),
                 ui::muted(format!(

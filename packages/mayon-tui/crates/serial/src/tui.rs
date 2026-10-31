@@ -446,7 +446,7 @@ pub fn draw_in(f: &mut Frame, app: &App, viewport: Rect) {
 }
 fn devices(f: &mut Frame, area: Rect, app: &App) {
     if app.devices.is_empty() {
-        f.render_widget(Paragraph::new("\n  未发现 ttyACM / ttyUSB 设备\n\n  插入开发板或 USB 转串口，列表每 750ms 自动刷新。\n  也可：serial-mayon /dev/serial/by-id/… -b 115200\n\n  相同 VID:PID + 序列号 + 接口自动重连；无序列号按物理 USB 位置。\n  当前未打开任何设备。按 Enter 选择后才会连接。").style(ui::base()).block(ui::block(" 端口 · 自动发现 ",true)),area);
+        f.render_widget(Paragraph::new("\n  未发现 ttyACM / ttyUSB 设备\n\n  插入开发板或 USB 转串口，列表每 750ms 自动刷新。\n  也可：mayon-tools serial /dev/serial/by-id/… -b 115200\n\n  相同 VID:PID + 序列号 + 接口自动重连；无序列号按物理 USB 位置。\n  当前未打开任何设备。按 Enter 选择后才会连接。").style(ui::base()).block(ui::block(" 端口 · 自动发现 ",true)),area);
         return;
     }
     ui::table(
