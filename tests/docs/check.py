@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Keep docs/ indexable: front matter, routing table entries and local links."""
+"""Keep docs/ indexable: front matter, routing table entries, local links and no stale status."""
 import re
 import sys
 from pathlib import Path
@@ -28,6 +28,10 @@ for doc in sorted(docs.glob("*.md")):
             errors.append(f"{doc.name}: code path does not exist: {path}")
     if doc.name != "README.md" and f"]({doc.name})" not in index:
         errors.append(f"{doc.name}: not in the docs/README.md routing table")
+    if doc.name != "README.md":
+        for line, content in enumerate(text.splitlines(), 1):
+            if re.search(r"本轮|未应用", content):
+                errors.append(f"{doc.name}:{line}: time-bound status belongs in docs/history/")
 
 sources = [root / "AGENTS.md", root / "README.md", *docs.glob("*.md")]
 for source in sources:
