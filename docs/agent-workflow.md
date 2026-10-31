@@ -1,3 +1,10 @@
+---
+summary: 主代理设计审核、外部执行代理实现的流程与已知陷阱
+read_when: 用户要求委托 Codex/DeepSeek，或交接进行中的轮次
+code: [.work/HANDOFF.md]
+checks: []
+---
+
 # 多代理工作流：主代理设计审核，执行代理实现
 
 本文记录本仓库已经实际跑通的“主代理设计 + 审核、执行代理实现 + 自验”的工作方式，供 Claude、Codex、DeepSeek 等任何模型直接照做，用户不必每次重新说明。仓库规则仍以 [AGENTS.md](../AGENTS.md) 为准；本文只规定协作流程。
@@ -164,6 +171,11 @@ systemctl --user restart noctalia.service fcitx5-daemon.service   # 外观/输�
 - **sudo**：执行代理不得 sudo；主代理应用配置需用户提供密码或用户自己执行 `! sudo nixos-rebuild switch --flake .#nixos-btw`。不要把密码写进任何文件或记忆。
 - **独显**：用户经常主动给 NVIDIA 独显断电，`nvidia-smi` 报 No devices 属正常；顶栏 GPU 项应隐藏而不是显示 “--”。
 - **用户偏好**：不喜欢高饱和整块蓝底、紫粉配色、Tokyo Night；喜欢 One Dark、下划指示、现代简洁；界面不要太大（输出缩放 1.5）；复杂的 IDE 式布局（Islands、工具条）不受欢迎，倾向简洁的顶栏 + 按需侧栏。
+- **验证要先复现旧 bug**：新版“通过”不算证据，同样的操作在旧版上也要能复现问题。
+- **zsh**：`$PIPESTATUS` 不存在，取退出码用 `bash -c`；`pkill -f` 会匹配并杀掉自己的 shell，用 `ps` + `awk` 按命令路径筛选 PID。
+- **无头 sway 的 socket 路径**：`XDG_RUNTIME_DIR` 过长（超过 `sun_path`）时起不来，用短路径。
+- **移除工作树**：`git worktree remove --force` 会删掉其中被忽略的 `.work/`，要保留的产物先拷出去。
+- **`!` 跑 sudo**：Claude Code 的 `!` 没有可输入密码的终端，`nixos-rebuild switch` 要在普通终端运行。
 
 ## 11. 交接给另一个模型时
 

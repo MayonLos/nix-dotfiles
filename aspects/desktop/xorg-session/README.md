@@ -75,7 +75,7 @@ idle unit; it does not inhibit a lid-triggered or explicit system suspend.
 
 Super+Return/B/E, Alt+Space, Super+V, HJKL/arrows, Space, Shift+F, Z, numeric
 workspace keys, named scratchpads and media keys follow Mango. Full comparison
-and deliberate differences are in [the session guide](../../../docs/xorg-desktop-execution.md).
+and deliberate differences are in [the session guide](../../../docs/xorg.md).
 Super+F1 displays help generated from the same binding data.
 
 Print uses slop/maim then Satty for annotate/copy/save; Ctrl+Print directly copies

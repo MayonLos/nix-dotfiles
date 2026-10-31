@@ -1,3 +1,10 @@
+---
+summary: 后台服务的启动方式、session 边界和生命周期归属
+read_when: 新增或修改 systemd 服务、socket 激活、排查服务未启动
+code: [aspects, docs/config-ownership.md]
+checks: []
+---
+
 # 后台服务策略
 
 状态：2026-10-19，Den 声明已由用户 nr 应用，后续优化也获得应用授权；实现阶段历史证据见[Den 记录](history/den-execution.md)，当前运行交接见[应用记录](history/system-polish-execution.md)与[系统界面记录](history/system-experience-execution.md)。服务可安装、可激活与实际正常运行仍须分别核实。
@@ -13,7 +20,7 @@
 | 输入法 | [Fcitx5/Rime](../aspects/desktop/session-support/input-method.nix) 的官方 HM daemon 绑定已选 Mango / Xorg targets。输入法环境仅共享明确的键，不复制全部 home vars。 | 用户词库、学习数据和应用状态保留。候选框缩放、QQ/微信、实际退出与恢复未验证。 |
 | 剪贴板 | Mango 中 Noctalia 原生历史是唯一日用历史生产者，不声明 cliphist watcher；[clipboard bridge](../aspects/desktop/mango-session/clipboard.nix) 只做 Wayland/X11 selection 桥接，随 Mango target 拉起。 | 桥接 `Restart=always`、2 秒、3 次/60 秒；一侧 watcher 退出则结束两侧并重启，读操作有超时。历史、旧数据库与 Secret Service 状态不清理。真实图片/文字双向复制及 Secret Service 解锁待验收。 |
 | X11 DPI | [xrdb-merge](../aspects/desktop/session-support/xresources.nix) 随选中的 Mango / Xorg target 运行 oneshot，有限重试等待 X server。 | 不替代客户端实际缩放检查；无常驻轮询进程。 |
-| 可选 dwm / Xorg | `xorg-session.target` 仅由 supervisor 在 dwm 就绪后启动；Picom、Dunst、CopyQ、polkit、状态、壁纸、RandR watcher、idle 与 xss-lock 都具备 desktop/target guard。 | 不启动 Noctalia 或 Wayland clipboard bridge。Dunst D-Bus 激活同样受约束；Rofi 按需运行；xidlehook 以15/30/60分钟触发锁屏/熄屏/休眠，xss-lock独立保护睡眠锁屏；共享采用 X11 原生能力。实际构建/运行边界详见 [Xorg 记录](xorg-desktop-execution.md)。 |
+| 可选 dwm / Xorg | `xorg-session.target` 仅由 supervisor 在 dwm 就绪后启动；Picom、Dunst、CopyQ、polkit、状态、壁纸、RandR watcher、idle 与 xss-lock 都具备 desktop/target guard。 | 不启动 Noctalia 或 Wayland clipboard bridge。Dunst D-Bus 激活同样受约束；Rofi 按需运行；xidlehook 以15/30/60分钟触发锁屏/熄屏/休眠，xss-lock独立保护睡眠锁屏；共享采用 X11 原生能力。实际构建/运行边界详见 [Xorg 记录](xorg.md)。 |
 | Portal / keyring / polkit | [交互宿主支持](../aspects/desktop/session-support/default.nix) 共享提供 GTK portal backend、keyring/PAM 和系统 polkit；Noctalia 提供图形认证 agent。 | 这些是宿主共享能力，不是每账号私有的访问控制。每个 bus 名称只能有实际预期 backend；屏幕共享、解锁与单 agent 需实测。 |
 | 音频 | [PipeWire/WirePlumber](../aspects/desktop/session-support/host/audio.nix) 是共享宿主支持，保留 ALSA/Pulse/JACK 和现有通信兼容规则；不常驻 echo-cancel 模块（它常开内置麦并把默认输出拉进麦克风的 256 帧图，导致蓝牙 A2DP 持续丢包），回声消除由通话应用自带。WirePlumber 关闭蓝牙耳机自动切到 HFP：麦克风采集（如 pavucontrol 电平条）曾把 A2DP 切成 8/16 kHz 单声道并导致断连，耳机麦需手动选 HFP profile。全局 `sockets.target` wants 关闭，只有选中账号的桌面 targets 请求 PipeWire sockets。 | 支持 socket 按需激活，音频进程继续遵循 user manager 生命周期，不随 Noctalia 重启。未选账号不会自动得到个人音频启动配置；共享系统能力仍可被显式请求。实际音频设备与休眠恢复待验收。 |
 | 网络与设备 | NM/resolved、Clash、Bluetooth、Intel/NVIDIA、power profiles、thermald、upower、earlyoom 等由真实 laptop host 明确选择。Nix daemon 不强制指向 Clash 本地端口；Clash 关闭时保留直接下载能力。 | 不按通用身份或平台隐式启用。休眠不主动关闭业务/VM/容器；无新增周期设备轮询或通用 sleep inhibitor。 |

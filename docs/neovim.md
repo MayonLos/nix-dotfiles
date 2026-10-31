@@ -1,9 +1,16 @@
+---
+summary: Neovim 配置结构、AI 集成与验证方式
+read_when: 修改 Neovim 配置、插件、LSP；键位见 keymap.md
+code: [aspects/dev/neovim]
+checks: [neovim]
+---
+
 # Neovim AI 重构（2026-10-24）
 
 本轮以 `nvim-ai` / `cdbe549` 隔离 worktree 为基线，完整替换键位与 AI 工作流。
 配置尚未应用，不执行 sudo、nixos-rebuild 或 Git commit/push；合并冲突可由主代理暂存以标记解决。此前构建路径、性能样本、
 检查结果和实机待验项记录于[本轮历史](history/nvim-ai-2026-10-24.md)。
-完整新键位及旧→新对照见[工作流键位表](workflow-design.md#neovim-键位)。
+完整新键位及旧→新对照见[工作流键位表](keymap.md#neovim-键位)。
 
 ## AI 三层与补全
 

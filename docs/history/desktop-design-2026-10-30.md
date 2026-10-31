@@ -1,9 +1,11 @@
+> 归档于 2026-10-31，内容含已被取代的旧参数。现行内容见 [文档索引](../README.md)。
+
 # One Dark 精修桌面
 
 现行视觉依据为 [Astra 设计稿](visual-design.md)，2026-10-24 用户确认。
-第十九轮科技版与壁纸回退见[本轮执行记录](history/ui-v4-2026-10-25.md)；早期实施见[桌面视觉执行记录](history/visual-desktop-2026-10-24.md)。
+第十九轮科技版与壁纸回退见[本轮执行记录](ui-v4-2026-10-25.md)；早期实施见[桌面视觉执行记录](visual-desktop-2026-10-24.md)。
 早期记录中的未激活结论只适用于对应轮次；r29–r31 已应用。2026-10-26 的 r32 按全桌面预览继续统一边界与密度，具体取舍以 [现行视觉依据](visual-design.md) 开头的更新为准。旧轮次设计和测量有其时间范围，
-历史取舍见[第九轮记录](history/desktop-polish-2026-10-24.md)。
+历史取舍见[第九轮记录](desktop-polish-2026-10-24.md)。
 
 ## r43 基础与 r44 desk 修正（2026-10-29）
 
@@ -29,8 +31,8 @@ Launchpad 空查询默认隐藏 Thunar 批量重命名、可移动介质设置�
   显式语言覆盖保留。Development 子菜单仍英文。旧进程需正常退出重开。
 - 现有 Neovim 原生补全、英文 which-key 和 LibreOffice Qt6 延续已有配置。
 
-构建、应用和隔离截图证据分别见 [r32](history/desktop-polish-r32.md)、
-[r33](history/desktop-polish-r33.md)、[r34](history/desktop-polish-r34.md)。
+构建、应用和隔离截图证据分别见 [r32](desktop-polish-r32.md)、
+[r33](desktop-polish-r33.md)、[r34](desktop-polish-r34.md)。
 截图原件在 Git 忽略的 `.work/polish-r34/01-files.png`、`02-launcher.png`、`03-notifications.png`；
 它们使用最终包的隔离配置与样例内容，不是用户真实项目窗口。
 
@@ -48,7 +50,7 @@ Launchpad 空查询默认隐藏 Thunar 批量重命名、可移动介质设置�
 - 通知回到原生 usable-edge +12 px 定位；控制中心浮动 +12 px；面板、通知、OSD 继续不透明。OSD 位于底部96 px，给手动唤出的 Dock 留出间隔。
 - 八个旧 `hud-*` 补丁及其断言/避让测试删除。保留面板/启动器选择、锁屏和 OSD 三个补丁；独显采样从 hud-sysmon 拆为 `nvidia-sampler.patch`，新增小型应用名开关补丁。原生 Dock/工作区/通知不打补丁。
 
-具体功能迁移、补丁理由与状态归属见 [Mango README](../aspects/desktop/mango-session/README.md)。
+具体功能迁移、补丁理由与状态归属见 [Mango README](../../aspects/desktop/mango-session/README.md)。
 构建与私有 headless 截图不证明实机应用；GPU 模糊、真实应用启动、Rime 子模式、多屏和全屏边缘手势由主代理应用后验收。
 
 ## 窗口规则（R45）
@@ -75,7 +77,7 @@ Mango 0.18.3 的解析器和 `client_apply_rules()` 为准。规则按顺序覆�
   小尺寸。已有 Noctalia layer 规则不因应用窗口规则而改变。
 
 调研来源、匹配清单、字段限制与隔离验证边界见
-[Mango README 的 Windows and pointer](../aspects/desktop/mango-session/README.md#windows-and-pointer)。
+[Mango README 的 Windows and pointer](../../aspects/desktop/mango-session/README.md#windows-and-pointer)。
 构建检查运行原生解析器及主窗误匹配 fixtures；截图和 IPC 才是隔离运行证据。
 需要登录的聊天子窗、Steam 好友/游戏、认证请求及真实 GPU 的 VRR/撕裂由主代理实机核对。
 
@@ -83,11 +85,11 @@ Mango 0.18.3 的解析器和 `client_apply_rules()` 为准。规则按顺序覆�
 
 下表保留早期 Astra 方案的尺寸和目标，不能用于覆盖上方现行参数；实际数值以源码为准。
 
-颜色唯一来源是共享 [palette](../aspects/appearance/appearance/onedark.nix)：
+颜色唯一来源是共享 [palette](../../aspects/appearance/appearance/onedark.nix)：
 桌面 bg、卡片 surface、选择 selection；正文 brightFg、必要次级文字 fg，
 blue 标示焦点和短选中标签。无整块蓝色选中行。桌面字体 Inter，中文回退 Noto Sans CJK SC；
-Mango tab/group/title/jump 与科技版读数使用 Maple Mono NF CN。配置接口与职责遵循[架构规范](architecture-design.md)
-和[写入归属](config-ownership.md)。palette 文件与运行态主题选择统一名为 `onedark`。
+Mango tab/group/title/jump 与科技版读数使用 Maple Mono NF CN。配置接口与职责遵循[架构规范](../architecture.md)
+和[写入归属](../config-ownership.md)。palette 文件与运行态主题选择统一名为 `onedark`。
 
 | 界面 | 实施目标（设计稿章节） |
 |---|---|
@@ -109,8 +111,8 @@ Astra 的 S1–S3 阴影、面板行高/卡片尺寸、72px 锁屏时钟等部�
 
 `notify-send` 随本 feature 安装，用隔离审查消息检查普通/警告语义/critical；
 构建检查不会发送通知、打开用户状态或应用配置。功能与状态归属另见
-[Mango README](../aspects/desktop/mango-session/README.md)、[greeter README](../aspects/desktop/greeter/README.md)
-和[Xorg README](../aspects/desktop/xorg-session/README.md)。
+[Mango README](../../aspects/desktop/mango-session/README.md)、[greeter README](../../aspects/desktop/greeter/README.md)
+和[Xorg README](../../aspects/desktop/xorg-session/README.md)。
 
 ## 应用之间的协调
 
@@ -144,7 +146,7 @@ Kitty 原本没有 `symbol_map`，本轮也无需新增；保留独立 Symbols N
 当前 pin 已是原生 C++/Pango，不能按旧 Quickshell/QML 实现推断。构建检查使用真实 host
 生成的 fontconfig 规则、隔离 HOME 和 `fc-match 'Inter:lang=zh-cn:charset=4e2d'`
 验证中文选择 Noto Sans CJK SC；这证明字体选择，不替代面板中文裁切与混合文本实机验收。
-字体文件 family 与全部构建结果见[第三轮记录](history/optimization-2026-10-24.md#第三轮字体图标与-atuin)。
+字体文件 family 与全部构建结果见[第三轮记录](optimization-2026-10-24.md#第三轮字体图标与-atuin)。
 
 不把 Nerd Font 作为全部桌面文字字体。GTK/Qt 的字体设置需各自适配，不能以设置 Noctalia `font_family` 代替。浏览器与代码编辑区保持足够内容密度，应用自己的标题栏高度不强行伪装为同一个 36 像素条。
 
@@ -152,7 +154,7 @@ Kitty 原本没有 `symbol_map`，本轮也无需新增；保留独立 Symbols N
 ## 输入法与 CLI 的统一适配（第七轮）
 
 Fcitx5 保持 Rime-Ice 与两张专业补充词表，候选页改为 7 项。万象简体模型由
-[rime/package.nix](../aspects/desktop/session-support/rime/package.nix) 固定 `LTS` release
+[rime/package.nix](../../aspects/desktop/session-support/rime/package.nix) 固定 `LTS` release
 的 2026-10-19 资产和 SHA-256，作为只读 store 链接加入 fcitx5-rime 的 `share/rime-data`。
 上游 `LTS` 标签长期复用，因此可复现性由固定 hash 保证；不在登录时下载或自动换模型。
 语法权重采用[白霜推荐参数](https://github.com/gaboolic/rime-frost#使用语言模型)，启用
@@ -171,7 +173,7 @@ Image 路径并渲染 SVG；实际 150% 缩放下的文字位置与圆角仍需�
 
 当前声明已固定 dark/custom palette；Kitty 是单一 HM renderer，不再由 Noctalia 模板维护 include。
 历史上的 mutable Kitty stub、Tokyo Night 自动主题及 Mango palette 模板属于迁移前配置，
-不是当前源码。真实会话仍可能来自旧 generation，因此应用前后要按[配置归属](config-ownership.md)
+不是当前源码。真实会话仍可能来自旧 generation，因此应用前后要按[配置归属](../config-ownership.md)
 核实实际文件与 writer；不能把声明删除当成旧 hook 或进程已经退出。
 
 | 产物 | 当前声明的唯一写入者 |

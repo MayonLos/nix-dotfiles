@@ -1,3 +1,10 @@
+---
+summary: Grok Bot 打包与限制
+read_when: 使用或更新 Grok Bot
+code: [aspects/dev/ai-agents/grok-bot.nix]
+checks: []
+---
+
 # Grok Bot
 
 本仓库通过锁定的 `llm-agents` 输入安装官方 Linux 桌面客户端；当前包为 0.66.0，

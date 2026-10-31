@@ -1,38 +1,48 @@
-# 操作与验证
+---
+summary: 求值、构建、应用、回滚、清理的命令和四个验证层级
+read_when: 需要验证改动、应用配置、回滚或清理；汇报验证结果前
+code: [nix/checks.nix, nix/dev.nix, flake.nix]
+checks: [treefmt, architecture, docs]
+---
 
-本仓库的求值、构建、应用和实机验证是四个不同层级。前一层通过不代表后一层通过。Home Manager 随 NixOS system generation 一起重建；本仓库没有独立的 Home Manager switch。
+# 操作与验证
 
 ## 验证层级
 
+报告时写明达到哪一层，不把前一层写成后一层。
+
 | 层级 | 示例 | 能证明什么 |
 |---|---|---|
-| 求值 | `nix flake check --no-build --no-write-lock-file` | Nix 模块与检查能完成求值；不构建所有 derivation，也不代表运行配置正确 |
-| 构建 | 构建 checks、formatter 或 system toplevel | 对应 derivation 成功生成；不会激活配置或启动服务 |
-| 应用 | `nr` / `sudo nixos-rebuild switch --flake .#nixos-btw` | 激活新的系统 generation，并随之切换 Home Manager generation |
-| 实机 | 登录会话、冷启动应用、核对设备/服务/文件 | 仅能证明已实际执行并记录的具体行为 |
+| 求值 | `nix flake check --no-build --no-write-lock-file` | 模块和检查能求值；`checks.architecture` 在此触发 |
+| 构建 | 构建 check 或 toplevel | derivation 能生成；不激活任何东西 |
+| 应用 | `nr` | 切换系统与 Home Manager generation |
+| 实机 | 登录、启动应用、核对设备和文件 | 只证明实际执行过的那个行为 |
 
-常用只读构建检查：
+## 常用命令
 
 ```sh
+git status --short && git diff --check
+nix fmt                                      # 会改文件
 nix flake check --no-build --no-write-lock-file
-nix build --no-link --no-write-lock-file .#checks.x86_64-linux.treefmt
-nix build --no-link --no-write-lock-file .#nixosConfigurations.nixos-btw.config.system.build.toplevel
+nix build --no-link --no-write-lock-file .#checks.x86_64-linux.<名>
+nix build --no-link --no-write-lock-file --print-out-paths .#nixosConfigurations.nixos-btw.config.system.build.toplevel
+nix eval --no-write-lock-file --raw .#checks.x86_64-linux --apply 'c: builtins.concatStringsSep " " (builtins.attrNames c)'   # 列出全部检查
 ```
 
-如需构建所有检查，可先列出当前 `checks.x86_64-linux` 输出，再显式构建各项。功能检查名由 `nix/checks.nix` 登记；`checks.architecture` 会在求值阶段执行，即使 `--no-build` 也应触发。不得把求值检查说成构建通过。
+检查登记在 `nix/checks.nix`。内存：全系统求值 3–7 GB，全量 checks 可达 9 GB，同一时刻只跑一个；本机 31 GB。
 
 ## 应用与回滚
 
-`nr` 是 `nh os switch` 的快捷入口，flake 目录来自绑定的 `flakePath`，由系统 NH 配置提供，会改变运行系统。只有任务明确包含应用配置时才执行。`nixos-rebuild test` 也会临时激活配置，不能用作只读测试。切换前确认 `git status --short`、变更范围、目标输出和必要备份；新 generation 的成功不自动证明所有会话、服务和外设行为。
+- `nr`（`nh os switch`）或 `sudo nixos-rebuild switch --flake .#nixos-btw` 会改变运行系统，只有任务明确包含应用时才执行。需要在真实终端输入密码。
+- Home Manager 随系统一起切换，没有独立 switch。`nixos-rebuild test` 也会激活配置，不是只读检查。
+- 应用后要手动处理的：Noctalia 不会自动重启（见 [desktop.md](desktop.md)）；合成器、greeter、内核相关改动要重新登录或重启。
+- 回滚：启动菜单选上一代，或 `sudo nixos-rebuild switch --rollback`。之后核对 system 和 Home Manager generation。回滚不能替代应用数据备份。
+- 清理：`nc`（`nh clean all`）会删旧 generation，确认不再需要回退和诊断后再用。
 
-需要回退时可从启动菜单选择前一代系统，也可按机器现有 NixOS 操作流程使用 `sudo nixos-rebuild switch --rollback`。回退后仍需检查 system generation 与 Home Manager generation，并对有状态的应用确认实际文件和服务归属。不要用回滚替代应用数据备份。`nc` 对应 `nh clean all`，会清理旧 generations/store；执行前确认保留策略与待排查的构建结果，避免在回退和诊断所需内容尚未确认时清理。
+## 未跟踪文件
 
-## 未跟踪文件与临时快照
+Git flake 只包含已跟踪文件，新文件 `git add` 后才进入求值。`path:.` 会把 `.work/` 等被忽略的文件带入 store，可能含秘密，不要用。确需临时诊断时，用 `git ls-files` 加显式文件构造快照，排除 `.git/`、`.work/`、`.team/`、`.worktrees/`、`result*`、运行时状态和秘密。
 
-Git flake 源只包含 Git 跟踪文件。新建文件在由主代理纳入 Git 索引前不会进入 `.#` 的求值源；不要因此直接改用 `path:.`，它可能把 `.gitignore` 忽略的临时文件一起复制进 store。
+## 用户数据
 
-确需临时诊断时，使用独立临时快照：以 `git ls-files` 的跟踪文件为基底，只追加本次需要验证且经过检查的未跟踪源码文件；过滤 `.git/`、`.work/`、`.team/`、`.worktrees/`、`result*`、运行时状态、私钥和所有秘密明文。先列出快照文件清单并检查内容边界，再从快照求值；快照结果只作诊断，不代替在已审阅、已纳入 Git 输入的源码上最终验证。不要把临时快照提交或写入用户数据目录。
-
-## 当前重构状态
-
-第八轮架构重构期间仅修改源码与文档，没有执行 `nixos-rebuild switch`、`nixos-rebuild test` 或独立 Home Manager 激活。architecture、全部 21 个 checks 与 toplevel 已通过过滤源码快照构建；基线和验证边界见[第八轮记录](history/architecture-v2-execution.md)。新文件仍需主代理审阅暂存并以 Git flake 复核。任何图形会话、设备、服务与登录流程都需要另行应用并进行对应实机验证。
+配置迁移不等于删除数据。项目、模型、历史、登录状态、容器卷和 VM 镜像都要保留；移除功能时只撤回声明，数据是否清理由用户决定。

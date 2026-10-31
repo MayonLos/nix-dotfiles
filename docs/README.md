@@ -1,59 +1,49 @@
+---
+summary: 文档入口，按任务路由到文档、代码和检查
+read_when: 每次开始任务时先看这里
+code: [AGENTS.md, README.md]
+checks: [docs]
+---
+
 # 文档索引
 
-顶层文档描述当前设计、边界和用法；`history/` 保存各轮实施、应用和审核记录。历史记录中的
-generation、store 路径和样本数据只对应当时提交，与当前源码或 `flake.lock` 矛盾时以后者为准。
+先按任务查下表，再读对应文档。**当前源码和 `flake.lock` 优先于任何文档**，发现矛盾时修正文档。
 
-## 当前
+## 按任务查
 
-| 文档 | 内容 |
-|---|---|
-| [architecture-design.md](architecture-design.md) | Den 实体、aspect/bundle/inventory 边界 |
-| [operations.md](operations.md) | 求值、构建、应用、回滚、清理与实机验证层级 |
-| [agent-workflow.md](agent-workflow.md) | 多代理工作流：主代理设计审核、执行代理（Codex/DeepSeek 等）实现与隔离验证 |
-| [config-ownership.md](config-ownership.md) | 配置文件、可变状态与秘密的写入归属 |
-| [service-policy.md](service-policy.md) | 后台服务的 session 边界与所有权 |
-| [workflow-design.md](workflow-design.md) | 快捷键、tmux、项目工作台与长任务 |
-| [visual-design.md](visual-design.md) | Astra One Dark 视觉规范、令牌与对比度 |
-| [desktop-design.md](desktop-design.md) | Mango + Noctalia 的 One Dark 视觉 |
-| [xorg-desktop-execution.md](xorg-desktop-execution.md) | 可选 dwm/Xorg 会话的入口、服务与待验项 |
-| [dwm-visual-design.md](dwm-visual-design.md) | dwm 视觉与窗口规则 |
-| [neovim-rebuild-execution.md](neovim-rebuild-execution.md) | Neovim 当前设计与验证 |
-| [application-review.md](application-review.md) | 保留软件逐项评估 |
-| [dsh.md](dsh.md) | DeepSeek Harness 命令与桌面入口 |
-| [grok-bot.md](grok-bot.md) | Grok Bot 打包与限制 |
-| [obsidian-handwriting.md](obsidian-handwriting.md) | Obsidian 手写与插件 |
-| [server-plan.md](server-plan.md) | 未来服务器的复用边界（尚无真实主机） |
+| 要做什么 | 先读 | 代码入口 | 检查 |
+|---|---|---|---|
+| 新增、移动功能，跨功能传数据 | [architecture](architecture.md) | `aspects/default.nix`、`bundles/default.nix` | `architecture` |
+| 验证、应用、回滚、清理 | [operations](operations.md) | `nix/checks.nix` | `treefmt` |
+| 改生成文件，查谁写入、移除后留下什么 | [config-ownership](config-ownership.md) | 表内路径 | — |
+| 新增或修改后台服务 | [service-policy](service-policy.md) | 各功能 `default.nix` | — |
+| 查、改快捷键 | [keymap](keymap.md) | `aspects/desktop/mango-session/mango/keybinds.nix` | `keys-mayon-bindings` |
+| 改自写工具（Clash、工具箱、Bilibili、语音） | [tools](tools.md) | `packages/mayon-tui`、`packages/bilitui`、`packages/mayon-voice` | `mayon-tui`、`bilitui`、`mayon-voice` |
+| 改颜色、字体、尺寸、透明度 | [visual](visual.md) | `aspects/appearance/appearance/onedark.nix` | `palette-contrast` |
+| 改顶栏、Dock、面板、通知、窗口规则 | [desktop](desktop.md) | `aspects/desktop/mango-session` | `desktop-composition` |
+| 改 Xorg / dwm 会话 | [xorg](xorg.md)、[xorg-visual](xorg-visual.md) | `aspects/desktop/xorg-session` | `xorg-session-runtime` |
+| 改 Neovim | [neovim](neovim.md)、[keymap](keymap.md) | `aspects/dev/neovim` | `neovim` |
+| 增删软件 | [apps](apps.md) | `aspects/apps` | — |
+| Obsidian 主题与笔记库 | [obsidian](obsidian.md) | `aspects/apps/documents` | `documents-visual-config` |
+| 用 dsh、Grok Bot | [dsh](dsh.md)、[grok-bot](grok-bot.md) | `aspects/dev/ai-agents` | — |
+| 委托外部代理、交接进行中的轮次 | [agent-workflow](agent-workflow.md) | `.work/HANDOFF.md`（本地） | — |
+| 规划服务器 | [server-plan](server-plan.md) | `tests/composition/remote.nix` | `remote-workspace-composition` |
+| 查某次改动的经过 | [history](history/README.md) | `git log` | — |
 
-## 历史记录
+## 关键事实
 
-| 文档 | 日期 | 内容 |
-|---|---|---|
-| [refactor-plan.md](history/refactor-plan.md) | 2026-10 | 全面重构计划与软件取舍 |
-| [den-execution.md](history/den-execution.md) | 2026-10-18 | Den 迁移各批实施与检查 |
-| [neovim-migration-plan.md](history/neovim-migration-plan.md) | 2026-10-18 | Neovim 重构方案 |
-| [desktop-polish-execution.md](history/desktop-polish-execution.md) | 2026-10-18 | 桌面与窗口优化 |
-| [system-polish-execution.md](history/system-polish-execution.md) | 2026-10-18 | 系统与编辑器优化、首次自主应用 |
-| [panel-rime-execution.md](history/panel-rime-execution.md) | 2026-10-18 | 面板、场景与 Rime |
-| [system-experience-execution.md](history/system-experience-execution.md) | 2026-10-18–19 | CLI、媒体与桌面 |
-| [hyprland-removal-execution.md](history/hyprland-removal-execution.md) | 2026-10-19 | 移除 Hyprland |
-| [repository-organization.md](history/repository-organization.md) | 2026-10-19 | 目录归属与会话边界整理 |
-| [optimization-2026-10-20.md](history/optimization-2026-10-20.md) | 2026-10-20 | 可读性、面板分组与项目布局 |
-| [repository-audit-2026-10-20.md](history/repository-audit-2026-10-20.md) | 2026-10-20 | 配置审核与 DSH 接线 |
-| [execution-handoff.md](history/execution-handoff.md) | 2026-10-19–20 | 历次对话交接 |
-| [repository-cleanup-2026-10-23.md](history/repository-cleanup-2026-10-23.md) | 2026-10-23 | 提交已应用改动、归档分支与文档 |
-| [optimization-2026-10-24.md](history/optimization-2026-10-24.md) | 2026-10-24 | 五轮仓库与系统优化：依赖、启动、桌面、内核、登录与头像 |
-| [neovim-rebuild-2026-10-24.md](history/neovim-rebuild-2026-10-24.md) | 2026-10-24 | 第六轮 Neovim 完全重构、构建验证与此前历史 |
-| [im-cli-polish-2026-10-24.md](history/im-cli-polish-2026-10-24.md) | 2026-10-24 | 第七轮输入法语法模型、候选框主题与 CLI 配色 |
-| [desktop-polish-2026-10-24.md](history/desktop-polish-2026-10-24.md) | 2026-10-24 | 第九轮 Noctalia/Mango 标题条、视觉刻度与动效 |
-| [software-swap-2026-10-24.md](history/software-swap-2026-10-24.md) | 2026-10-24 | 第十轮软件替换、Neovim 启动页与 Lua LSP 实测 |
-| [architecture-design-v1.md](history/architecture-design-v1.md) | 2026-10 | v2 架构规范取代的旧版全文 |
-| [architecture-v2-execution.md](history/architecture-v2-execution.md) | 2026-10-24 | 第八轮 v2.1 重构、B0 对照、逐文件清单与验证边界 |
-| [visual-cli-2026-10-24.md](history/visual-cli-2026-10-24.md) | 2026-10-24 | CLI 视觉与配色 |
-| [visual-desktop-2026-10-24.md](history/visual-desktop-2026-10-24.md) | 2026-10-24 | Mango/Noctalia 桌面视觉 |
-| [visual-apps-2026-10-24.md](history/visual-apps-2026-10-24.md) | 2026-10-24 | GTK/Qt、输入法与应用视觉 |
-| [nvim-ai-2026-10-24.md](history/nvim-ai-2026-10-24.md) | 2026-10-24 | Neovim AI 与原生能力集成 |
-| [finalize-2026-10-25.md](history/finalize-2026-10-25.md) | 2026-10-25 | 视觉与 Neovim 收尾集成、性能和完整验证 |
-| [ui-v4-2026-10-25.md](history/ui-v4-2026-10-25.md) | 2026-10-25 | 第十九轮终端套件、科技版系统界面、herdr 与壁纸回退 |
-| [desktop-polish-r32.md](history/desktop-polish-r32.md) | 2026-10-26 | 全桌面整理、flake 更新与迁移 |
-| [desktop-polish-r33.md](history/desktop-polish-r33.md) | 2026-10-26 | Thunar 紧凑样式与 SYSTEM/通知避让 |
-| [desktop-polish-r34.md](history/desktop-polish-r34.md) | 2026-10-26 | 自主视觉巡检、中文菜单、实色浮层与应用证据 |
+- 单主机 `nixos-btw`，用户 `mayon`，Intel + NVIDIA 笔记本，Mango + Noctalia。Home Manager 随系统重建。
+- 仓库总规则在 [AGENTS.md](../AGENTS.md)。功能细节在各功能目录的 `README.md`。
+- 秘密只经 sops 运行时文件传递，不进 Nix 字符串、日志或 store。
+- 回复用户用中文；技术标签保持英文。
+
+## 写文档的规则
+
+`checks.docs` 会强制前三条：
+
+1. 顶层文档开头都有 front matter：`summary`（一句话）、`read_when`（何时该读）、`code`（真实存在的路径）、`checks`（相关检查）。
+2. 每篇顶层文档都登记在上面的路由表。
+3. 本地链接必须有效（`docs/history/` 除外）。
+4. 只写现行事实，不写“本轮”“尚未应用”这类随时间失效的状态；过程和结论写进 `docs/history/`，那里只追加。
+5. 能从源码查到的数值，写明源码位置，并以源码为准。
+6. 一个事实只写一处，其他地方放链接。

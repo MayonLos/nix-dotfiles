@@ -1,12 +1,14 @@
 # AGENTS.md
 
+开始任务前先查 [`docs/README.md`](docs/README.md) 的路由表，再读对应文档。
+
 本仓库使用 Codex。以下路径均相对仓库根目录；配置依据当前源码、`flake.lock` 锁定源码和实际运行行为。Den 负责组合，不改变这一证据优先级。
 
 ## 仓库
 
 NixOS + Home Manager，Den + flake-parts。当前真实实例为单主机 `nixos-btw`、用户 `mayon`：Intel + NVIDIA 笔记本，使用 Mango 桌面。Home Manager 随 NixOS 重建，没有独立 switch。
 
-`xorg-session` 另提供可选 dwm + Picom 真 Xorg 会话，用于 QQ/腾讯会议等原生捕获；Mango 仍是登录默认项。两者不同时运行；入口、服务归属与待验项见 [`docs/xorg-desktop-execution.md`](docs/xorg-desktop-execution.md)。
+`xorg-session` 另提供可选 dwm + Picom 真 Xorg 会话，用于 QQ/腾讯会议等原生捕获；Mango 仍是登录默认项。两者不同时运行；入口、服务归属与待验项见 [`docs/xorg.md`](docs/xorg.md)。
 
 | 路径 | 职责 |
 |---|---|
@@ -32,7 +34,7 @@ NixOS + Home Manager，Den + flake-parts。当前真实实例为单主机 `nixos
 | `lib/` | 至少两个功能目录共同使用的纯 helper；不是模块发现器 |
 | `tests/composition/`、`aspects/**/checks.nix` | 跨功能组合与功能检查 |
 | `secrets/` | sops 加密数据 |
-| `docs/` | 现行架构、操作、写入归属与服务策略；`docs/history/` 为执行记录 |
+| `docs/` | 现行文档，入口 [`docs/README.md`](docs/README.md) 按任务路由到文档、代码和检查；`docs/history/` 为只追加的执行记录 |
 
 `aspects/default.nix` 显式登记 feature 入口。资源、模块和配方就近放在功能目录，不会递归扫描成为模块。`bundles/default.nix` 只通过 `includes` 组合已登记 feature。真实实例只在 `inventory/` 声明；测试 fixture 不属于可部署主机清单。
 

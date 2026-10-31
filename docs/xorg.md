@@ -1,8 +1,13 @@
+---
+summary: 可选的 dwm + Picom 真 Xorg 会话：入口、键位对照、服务
+read_when: QQ/腾讯会议原生捕获、修改 Xorg 会话
+code: [aspects/desktop/xorg-session]
+checks: [xorg-session-runtime]
+---
+
 # 可选 dwm / Xorg 桌面
 
-第二十四轮（2026-10-25）重写。登录器仍默认 **Mango**，可选择 **DWM** 进入真正的
-Xorg。两会话互斥；用途是 QQ、腾讯会议、OBS 等应用的原生 X11 捕获。此次只构建和隔离
-验证，不执行 switch/test/boot、不重启用户服务、不注销当前桌面。
+登录器默认 **Mango**，可选 **DWM** 进入真正的 Xorg。两会话互斥；用途是 QQ、腾讯会议、OBS 等应用的原生 X11 捕获。
 
 唯一视觉依据为用户确认的 `scratchpad/dwm/design.html` 与 `design.png`；现行实现、参考
 取舍、截图迭代和构建结果见[本轮执行记录](history/xorg-r24-2026-10-25.md)。旧选型、登录

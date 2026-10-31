@@ -1,3 +1,5 @@
+> 归档于 2026-10-31，内容含已被取代的旧参数。现行内容见 [文档索引](../README.md)。
+
 # 紧凑 · 下划指示 v3
 
 2026-10-29 r44 desk 优先于下方旧轮次：光标统一 Bibata-Modern-Ice（10-30 改为 24）（bibata-cursors，含 greeter）；托盘少量应用直接内联，不再展开附着胶囊。右侧状态图标盒统一 18 逻辑 px，正常 brightFg，仅断开/不可用或静音灰色；充电及养护上限显示原生电池轮廓+闪电，保留百分比与低电警告。Launchpad 默认隐藏 Thunar 附属工具，搜索仍可找到，并修正审计发现的真实应用图标重复/回退；证据位于 `.work/r44/desk/`。
@@ -6,9 +8,9 @@
 
 2026-10-26 后续批准的 r32 调整优先于下方旧轮次：保留 r31 一体式 35 px 顶栏，删除 Nix Status；启动器宽 520，控制中心宽 380，通知宽 320；Mango 外距 12、内距 8、圆角 10。Neovim 保留 r29/r30 原生补全和英文 which-key。Thunar 低频开发入口归入 Development，LibreOffice 默认使用 Qt6 外壳并保留浅色纸张。原有状态语言继续适用，实施证据另记执行记录。
 
-2026-10-26 r33–r34 补充：Thunar 图标比例 0.85、表头上下间距 4，默认中文自定义操作；SYSTEM 提示与右上通知避让，通知/OSD 背景不透明。详见 [当前桌面说明](desktop-design.md) 与 [r34 验证记录](history/desktop-polish-r34.md)。
+2026-10-26 r33–r34 补充：Thunar 图标比例 0.85、表头上下间距 4，默认中文自定义操作；SYSTEM 提示与右上通知避让，通知/OSD 背景不透明。详见 [当前桌面说明](desktop-design.md) 与 [r34 验证记录](desktop-polish-r34.md)。
 
-2026-10-25 用户确认，第十八轮实施规范。实现与验证见 [执行记录](history/ui-v3-2026-10-25.md)。本版取代此前稿中顶栏、候选框、启动器、控制中心、通知、Neovim 与终端的尺寸和状态语言；其余平台约束与 palette 继续适用。
+2026-10-25 用户确认，第十八轮实施规范。实现与验证见 [执行记录](ui-v3-2026-10-25.md)。本版取代此前稿中顶栏、候选框、启动器、控制中心、通知、Neovim 与终端的尺寸和状态语言；其余平台约束与 palette 继续适用。
 
 ## 1. 视觉依据与状态语言
 
@@ -167,7 +169,7 @@ Kitty 从 `font_size=11.0` pt 开始（约 14.67 CSS px），不是把 15 直接
 
 ## 4. Noctalia 顶栏
 
-采用30逻辑像素紧凑栏：左侧为系统菜单、当前应用名和原生工作区；中间留空；右侧为内联托盘、网络/蓝牙/音量、电池、未读通知、控制中心和中文日期时间。具体值以 [Mango README](../aspects/desktop/mango-session/README.md) 为准。
+采用30逻辑像素紧凑栏：左侧为系统菜单、当前应用名和原生工作区；中间留空；右侧为内联托盘、网络/蓝牙/音量、电池、未读通知、控制中心和中文日期时间。具体值以 [Mango README](../../aspects/desktop/mango-session/README.md) 为准。
 
 仅启用本仓库 Launchpad、desktop-menus、legion-conservation；社区插件及其启动器 provider、控制中心入口、快捷键和渲染覆盖已移除。Alt+Space 保留原生应用搜索，Super+A 打开 Launchpad。Mango 原生布局与 resize 模式继续由 Super+W、Super+R 控制。
 
@@ -244,7 +246,7 @@ Kitty 从 `font_size=11.0` pt 开始（约 14.67 CSS px），不是把 15 直接
 
 ## 9. Neovim 工作台
 
-本节以第二十轮用户确认的 `ui2/desktop.html/png` 左侧编辑器和 `ui5/dash.html/png` 启动页，以及 `ui5/panels.html/png` 面板延伸稿为准，取代第十八轮中与之冲突的 Neovim 规则。实现、多轮实际 TUI 截图与验证见 [执行记录](history/nvim-visual-2026-10-25.md)。
+本节以第二十轮用户确认的 `ui2/desktop.html/png` 左侧编辑器和 `ui5/dash.html/png` 启动页，以及 `ui5/panels.html/png` 面板延伸稿为准，取代第十八轮中与之冲突的 Neovim 规则。实现、多轮实际 TUI 截图与验证见 [执行记录](nvim-visual-2026-10-25.md)。
 
 | 区域 | 尺寸、留白、状态 | TUI 实现与边界 |
 |---|---|---|
@@ -290,7 +292,7 @@ edge由现有palette的border与deep混色得到，不增加第二套颜色来�
 
 **依据与能力边界**：GTK3 由 Noctalia 现有模板生命周期独占生成 CSS，Thunar 4.20 侧栏使用真实 `.shortcuts-pane`。选中文件图标用透明计算背景配合 selection 渐变层，避开其原生 Cairo 乘色造成的变黑。GtkTreeView 无逐 cell CSS node，因此细节列表使用整行 selection 底，蓝标只画在侧栏；GTK3 无文本大写转换，保留原生表头。GTK4/libadwaita 保留原生几何，补齐语义色与 CSS custom properties；应用私有绘制仍需分别验收。
 
-Qt6ct 使用 Fusion，QPalette `Window/Base/AlternateBase/Button=bg/deep/surface`、`Text/WindowText/ButtonText=brightFg`、`Highlight=selection`、`HighlightedText=brightFg`、`Link=blue`。HM QSS 补充圆角输入/按钮、蓝色焦点与 tab 下划；GUI 配置仍是可变文件，通过缺失 seed 和有限默认值迁移接入。自定义 Qt stylesheets 保留，私有控件/Qt Quick/Qt5 不承诺完全一致。GTK/Qt builtin asset 在构建期固定为共享 One Dark 原色，避免依赖 Noctalia builtin engine 不会注入的 custom colors；原 builtin IDs/import/apply/undo 生命周期保留。Firefox user 模板仍读取 `_value` 原色，避免 Material 色阶。正式实现与验证见[执行记录](history/ui-r21b-2026-10-25.md)。
+Qt6ct 使用 Fusion，QPalette `Window/Base/AlternateBase/Button=bg/deep/surface`、`Text/WindowText/ButtonText=brightFg`、`Highlight=selection`、`HighlightedText=brightFg`、`Link=blue`。HM QSS 补充圆角输入/按钮、蓝色焦点与 tab 下划；GUI 配置仍是可变文件，通过缺失 seed 和有限默认值迁移接入。自定义 Qt stylesheets 保留，私有控件/Qt Quick/Qt5 不承诺完全一致。GTK/Qt builtin asset 在构建期固定为共享 One Dark 原色，避免依赖 Noctalia builtin engine 不会注入的 custom colors；原 builtin IDs/import/apply/undo 生命周期保留。Firefox user 模板仍读取 `_value` 原色，避免 Material 色阶。正式实现与验证见[执行记录](ui-r21b-2026-10-25.md)。
 
 ### Firefox
 
@@ -314,7 +316,7 @@ Qt6ct 使用 Fusion，QPalette `Window/Base/AlternateBase/Button=bg/deep/surface
 - **M** = `/nix/store/qcya6bfk3h3f291ca9jidjfnlrx7l32x-source`（Mango 0.18.3）。已读 `docs/visuals/theming.md`、`effects.md`、`animations.md`、`docs/window-management/overview.md`。
 - **R** = `/home/mayon/nix-dotfiles`。只读 `docs/desktop-design.md` 及 `aspects/desktop/{mango-session,greeter,session-support}`、`aspects/cli/{terminal,shell}`、`aspects/dev/neovim/config/lua/mayon/{ui,plugins}`、`aspects/apps/firefox/resources/noctalia-userChrome.css`。引用现有配置说明接口已接线，不证明目标参数已实施。
 
-本轮采用上述用户确认的 HTML/PNG，不再使用此前 mockup.html/mockup-panels.html 的尺寸。实施只执行构建与隔离/headless 验证，没有应用系统配置、启动或重启桌面常驻进程。Noctalia parser、Neovim Explorer/文本渲染、palette 对比度与完整构建结果见 [执行记录](history/ui-v3-2026-10-25.md)。
+本轮采用上述用户确认的 HTML/PNG，不再使用此前 mockup.html/mockup-panels.html 的尺寸。实施只执行构建与隔离/headless 验证，没有应用系统配置、启动或重启桌面常驻进程。Noctalia parser、Neovim Explorer/文本渲染、palette 对比度与完整构建结果见 [执行记录](ui-v3-2026-10-25.md)。
 
 实机待验：150% 缩放下文字/下划线/候选边距、九工作区和最长媒体/展开组时顶栏容量、彩色应用图标、3×2开关及滑块、隐私占用出现/退出、电池养护权限和切换、中文候选避边、长通知裁切。构建不代替这些运行证据。
 
@@ -335,14 +337,14 @@ Qt6ct 使用 Fusion，QPalette `Window/Base/AlternateBase/Button=bg/deep/surface
 
 系统界面：锁屏与 greeter 用等宽时钟/日期、蓝青底线和等宽状态；Mango tab/group/title 使用等宽字体；OSD 数值等宽、分段细轨。Thunar 与 Firefox 保留已有单一模板/seed，选择态 selection 底加左蓝条，路径和读数等宽；uosc 细进度线和蓝选中条。Zathura 以原生目录索引和数字页进度替代文件目录侧栏/独立进度线，uosc 采用平面线而无发光。
 
-补丁清单和上游升级处理在 [Mango session README](../aspects/desktop/mango-session/README.md)、[greeter README](../aspects/desktop/greeter/README.md)、[herdr README](../aspects/cli/herdr/README.md)。补丁应用和关键渲染锚点在构建期强制校验；不能用求值成功代替补丁构建或视觉验收。实际完成范围、命令结果和剩余实机项见 [第十九轮记录](history/ui-v4-2026-10-25.md)。
+补丁清单和上游升级处理在 [Mango session README](../../aspects/desktop/mango-session/README.md)、[greeter README](../../aspects/desktop/greeter/README.md)、[herdr README](../../aspects/cli/herdr/README.md)。补丁应用和关键渲染锚点在构建期强制校验；不能用求值成功代替补丁构建或视觉验收。实际完成范围、命令结果和剩余实机项见 [第十九轮记录](ui-v4-2026-10-25.md)。
 
 ## 12. 第二十一轮 A：桌面细节修订
 
 移除焦点外发光与 Mango 局部包覆盖，直接使用锁定上游 0.18.3。普通浮动窗黑影继续使用 §3 参数；开/移/tag 180 ms、关 160 ms，统一 `(.16,1,.3,1)`，焦点 0 ms，reducedMotion 仍关闭动效。native dim 不改变客户端透明度，alpha 0x10；全屏豁免由上游实现，浮动 PiP 无单独豁免接口。
 
-窗口规则单一归属为 [window-rules.nix](../aspects/desktop/mango-session/mango/window-rules.nix)，行为及大小表见 [Mango README](../aspects/desktop/mango-session/README.md#window-rules)。默认保留手动工作区习惯，浏览器 2 / 通讯 4 是显式 opt-in。普通窗口仍可正常取得焦点；通知/共享工具浮窗按应用和标题静默打开，activation 请求只提示 urgent。
+窗口规则单一归属为 [window-rules.nix](../../aspects/desktop/mango-session/mango/window-rules.nix)，行为及大小表见 [Mango README](../../aspects/desktop/mango-session/README.md#window-rules)。默认保留手动工作区习惯，浏览器 2 / 通讯 4 是显式 opt-in。普通窗口仍可正常取得焦点；通知/共享工具浮窗按应用和标题静默打开，activation 请求只提示 urgent。
 
 电池使用 Noctalia 原生 graphic，规避 Tabler 小字形歧义；移除 XKB 键盘布局组件，Fcitx 与其他托盘图标内联排列（r44 取代旧 drawer 默认值）。技术布局名 Tile/Scroller/Monocle 等、fastfetch 标准键和 tmux PREFIX/COPY/ZOOM 使用英文，中文日期和说明保留。r43 的 Bibata-Modern-Ice 32 复用共享配置，在 1.5 缩放下名义 48 device px；安全环境补齐 XCURSOR_THEME/SIZE 到 systemd 和 Mango 启动的 Qt/Kitty 客户端，不改 GTK/Qt/icon 文件。
 
-实施证据、标签对照、隔离截图及待验项见 [第二十一轮 A 记录](history/ui-r21a-2026-10-25.md)。
+实施证据、标签对照、隔离截图及待验项见 [第二十一轮 A 记录](ui-r21a-2026-10-25.md)。
