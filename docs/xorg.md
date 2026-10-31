@@ -10,8 +10,8 @@ checks: [xorg-session-runtime]
 登录器默认 **Mango**，可选 **DWM** 进入真正的 Xorg。两会话互斥；用途是 QQ、腾讯会议、OBS 等应用的原生 X11 捕获。
 
 唯一视觉依据为用户确认的 `scratchpad/dwm/design.html` 与 `design.png`；现行实现、参考
-取舍、截图迭代和构建结果见[本轮执行记录](history/xorg-r24-2026-10-25.md)。旧选型、登录
-修复和应用记录已[归档](history/xorg-before-r24-2026-10-25.md)，不代表本轮实现或应用状态。
+取舍、截图迭代和构建结果见[执行记录](history/xorg-r24-2026-10-25.md)。旧选型、登录
+修复和应用记录已[归档](history/xorg-before-r24-2026-10-25.md)，不代表现行实现或应用状态。
 
 ## 设计落地
 
@@ -88,7 +88,7 @@ QQ wrapper在Xorg选择`--ozone-platform=x11`，腾讯会议使用普通`wemeet`
 
 ## 验证边界
 
-本轮要求的隔离显示为2560×1600、DPI144，私有HOME/XDG/D-Bus，Picom使用XRender。
-截图与实际命令结果记录于[第二十四轮记录](history/xorg-r24-2026-10-25.md)。验证不激活系统。
+隔离验证使用2560×1600、DPI144，私有HOME/XDG/D-Bus，Picom使用XRender。
+截图与实际命令结果记录于[执行记录](history/xorg-r24-2026-10-25.md)。验证不激活系统。
 待实机：从greeter真正登录/退出DWM、驱动GLX/外屏热插拔/混合DPI、Fcitx子模式与应用
 输入、托盘恢复、PAM解锁/休眠唤醒，以及QQ/腾讯会议/OBS实际原生捕获。

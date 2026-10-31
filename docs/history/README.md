@@ -34,6 +34,7 @@
 | [desktop-polish-r33.md](desktop-polish-r33.md) | 2026-10-26 | Thunar 紧凑样式与 SYSTEM/通知避让 |
 | [desktop-polish-r34.md](desktop-polish-r34.md) | 2026-10-26 | 自主视觉巡检、中文菜单、实色浮层与应用证据 |
 | [tui-r55-2026-10-31.md](tui-r55-2026-10-31.md) | 2026-10-30–31 | TUI 统一搜索、工具箱、删除无用工具 |
+| [docs-status-cleanup-2026-10-31.md](docs-status-cleanup-2026-10-31.md) | 2026-10-31 | 从顶层文档移出的过时状态原文 |
 | [visual-design-2026-10-30.md](visual-design-2026-10-30.md) | 归档 | 旧视觉规范全文（含被取代的分层参数） |
 | [desktop-design-2026-10-30.md](desktop-design-2026-10-30.md) | 归档 | 旧桌面说明全文 |
 | [workflow-design-2026-10-30.md](workflow-design-2026-10-30.md) | 归档 | 旧操作方式说明全文 |

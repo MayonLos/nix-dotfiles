@@ -5,11 +5,9 @@ code: [aspects/dev/neovim]
 checks: [neovim]
 ---
 
-# Neovim AI 重构（2026-10-24）
+# Neovim
 
-本轮以 `nvim-ai` / `cdbe549` 隔离 worktree 为基线，完整替换键位与 AI 工作流。
-配置尚未应用，不执行 sudo、nixos-rebuild 或 Git commit/push；合并冲突可由主代理暂存以标记解决。此前构建路径、性能样本、
-检查结果和实机待验项记录于[本轮历史](history/nvim-ai-2026-10-24.md)。
+键位与 AI 工作流重构的构建路径、性能样本、检查结果和实机待验项见[历史记录](history/nvim-ai-2026-10-24.md)。
 完整新键位及旧→新对照见[工作流键位表](keymap.md#neovim-键位)。
 
 ## AI 三层与补全
@@ -140,7 +138,7 @@ nvim-lint、render-markdown、rainbow-delimiters 和限定 filetypes 的 coloriz
 Edgy 左 Explorer，右 Claude/CodeCompanion/sidekick，下 Trouble、quickfix 与普通终端；
 小窗口不固定左右侧栏，AI 创建时用浮窗。统一标题、圆角浮窗和 palette 面板/diff 高亮。
 Ctrl+h/j/k/l 用 smart-splits 穿过 Neovim 与 tmux 面板，Alt+h/j/k/l 调整大小。
-本轮未修改超出写入范围的 tmux 配置，主代理需合入历史文件中的 tmux 片段。
+tmux 一侧的配置在 `aspects/cli/shell/tmux.nix`。
 真实 tmux、TTY Alt/Tab、窗口缩放和美观仍需实机验收。
 
 原生 LSP、basedpyright、Taplo、Treesitter、flash、多光标、surround、Oil/Yazi、Snacks、Markdown、
@@ -157,12 +155,10 @@ Oil 继续回收站删除、独占复制、拒绝覆盖或符号链接目标；�
 `nvim_get_keymap` 只能看到最终有效映射，重复扫描不证明初始化期间没有覆盖；另检查 leader 叶节点前缀冲突。
 
 求值、构建、隔离 headless 与实机验证分开记录。不把 mock 回调或协议 fixture 当成联网模型请求、
-Claude CLI 实际写盘或 GUI 美观的证明。实际 health、构建命令与限制见本轮历史。
+Claude CLI 实际写盘或 GUI 美观的证明。实际 health、构建命令与限制见[历史记录](history/nvim-ai-2026-10-24.md)。
 
 ## 待办
 
-- 微信输入法问题待解决：主代理实测 XCB/Fcitx wrapper 无效，本轮撤销为直接安装 wechat；
-  问题挂起，不改用户数据。上一轮 wrapper 构建记录保留作历史，不能视为实机成功。
 - 应用后验收 Copilot 登录、灰色建议/逐词/候选/菜单互斥、Sidekick NES；DeepSeek 实际 FIM；
   codediff 暂存/提交/PR/冲突、ui2 真实 TUI 命令行/pager、restart 保留 UI、窄屏和 Alt 按键。
 

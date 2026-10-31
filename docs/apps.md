@@ -92,7 +92,7 @@ checks: []
 | 项目 | 判断 | 更优解、收益和代价 |
 |---|---|---|
 | IntelliJ IDEA | 保留 | JVM 主 IDE；可以覆盖部分其他语言，但插件和订阅决定完整能力，不据“一套 IDE”口号重新扩装。 |
-| PyCharm | 保留；可选合并入口 | IDEA 官方有 Python 插件。只有现有许可、插件和 Python 工作流都满足时，才值得试把 PyCharm 项目放入 IDEA；会改变独立设置与窗口习惯。用户已确认常用，本轮不删。 |
+| PyCharm | 保留；可选合并入口 | IDEA 官方有 Python 插件。只有现有许可、插件和 Python 工作流都满足时，才值得试把 PyCharm 项目放入 IDEA；会改变独立设置与窗口习惯。用户已确认常用，保留。 |
 | CLion | 保留 | C/C++ 项目模型、调试与嵌入式支持不是 clangd 的等价功能；无需额外安装 DataGrip 才能获得全部基础数据库入口，具体能力看 IDE 功能和许可。 |
 | VSCode FHS | 保留 | 为扩展附带的二进制和 USB/调试库提供兼容环境。改普通包会重新承担逐个扩展追依赖的工作。Remote-SSH 是否已手动安装需核对。 |
 | Neovim | 已迁移到原生 Lua + Nix 包 | `aspects/dev/neovim/config/` 承载配置，`aspects/dev/neovim/` 固定插件/parser 和 wrapper；保留插件由 Nix 提供，不使用在线插件管理器。专项包检查已通过；见[迁移计划](history/neovim-migration-plan.md)了解尚待核验项目。没有性能比较结论。 |

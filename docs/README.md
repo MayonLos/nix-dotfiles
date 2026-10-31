@@ -39,7 +39,7 @@ checks: [docs]
 
 ## 写文档的规则
 
-`checks.docs` 会强制前三条：
+`checks.docs` 会强制前四条（第 4 条只查这两个词）：
 
 1. 顶层文档开头都有 front matter：`summary`（一句话）、`read_when`（何时该读）、`code`（真实存在的路径）、`checks`（相关检查）。
 2. 每篇顶层文档都登记在上面的路由表。
