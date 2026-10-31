@@ -1,6 +1,13 @@
+---
+summary: 未来服务器的复用边界，目前没有真实主机
+read_when: 规划服务器或远程部署
+code: [inventory, tests/composition/remote.nix]
+checks: [remote-workspace-composition]
+---
+
 # 未来服务器规划
 
-状态：无头复用边界已在根 production 组合检查实现；没有真实服务器资料，不创建可部署的虚构主机，不安装、分区或远程执行。未来机器沿用 [Den 架构](architecture-design.md)，当前笔记本迁移不以购买服务器为前提。
+状态：无头复用边界已在根 production 组合检查实现；没有真实服务器资料，不创建可部署的虚构主机，不安装、分区或远程执行。未来机器沿用 [Den 架构](architecture.md)，当前笔记本迁移不以购买服务器为前提。
 
 ## 固定的边界
 

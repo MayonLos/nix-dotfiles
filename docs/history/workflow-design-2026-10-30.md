@@ -1,6 +1,8 @@
+> 归档于 2026-10-31，内容含已被取代的旧参数。现行内容见 [文档索引](../README.md)。
+
 # 操作方式设计
 
-状态：2026-10-18，Den 操作设计及后续窗口体验已由用户 nr 应用，本轮进一步优化获授权继续应用。按键/argv/cwd、tmux 键表及编辑器的隔离检查见 [实施记录](history/den-execution.md)；实际 GUI、文件管理器和项目交互仍待验收。
+状态：2026-10-18，Den 操作设计及后续窗口体验已由用户 nr 应用，本轮进一步优化获授权继续应用。按键/argv/cwd、tmux 键表及编辑器的隔离检查见 [实施记录](den-execution.md)；实际 GUI、文件管理器和项目交互仍待验收。
 
 ## 操作层次
 
@@ -16,7 +18,7 @@ tmux 保留前缀窗口管理；无前缀 `Ctrl+h/j/k/l` 根据 smart-splits 维
 `@pane-is-vim` 转给 Neovim 或移动 tmux pane，`Alt+h/j/k/l` 同理调整大小（tmux 每次 3 cell）。
 其他无前缀 Alt 字母/数字绑定仍清理；`Alt+b/f`、`Alt+C` 保持应用行为。复制模式保留 tmux 原生 vi 光标与选区键；上述跨层方向绑定属于 root 键表。`Ctrl+a Ctrl+a` 仍发送字面 Ctrl+a 给 shell。
 配置不会探测进程名；Neovim 退出/恢复后的标记与边缘导航仍须联合实机验收。见
-[tmux 配置](../aspects/cli/shell/tmux.nix) 与[本轮执行记录](history/visual-cli-2026-10-24.md)。
+[tmux 配置](../../aspects/cli/shell/tmux.nix) 与[本轮执行记录](visual-cli-2026-10-24.md)。
 
 ## 桌面主要操作
 
@@ -67,7 +69,7 @@ Noctalia 设置、portal 文件选择及 Swayimg 使用相对输出尺寸；Thun
 父窗口关联、模态与 IDE 弹窗沿用 Mango/应用逻辑；未用宽泛规则让整个 IDE 浮动或禁止聚焦。
 精确到父窗口中心、跨屏 DPI 无缝恢复和所有应用的焦点策略不是当前实现承诺。
 
-现有进阶操作（master 数量/比例、scroller 比例、隐藏边距、特定显示器开关等）继续保留，归入帮助的进阶分组；只对重复或冲突的入口去重，禁止因未列入主表就静默删除。完整来源是 [Mango 配置](../aspects/desktop/mango-session/mango.nix)。
+现有进阶操作（master 数量/比例、scroller 比例、隐藏边距、特定显示器开关等）继续保留，归入帮助的进阶分组；只对重复或冲突的入口去重，禁止因未列入主表就静默删除。完整来源是 [Mango 配置](../../aspects/desktop/mango-session/mango.nix)。
 
 ## 截图、文件和剪贴板
 
@@ -80,9 +82,9 @@ Noctalia 设置、portal 文件选择及 Swayimg 使用相对输出尺寸；Thun
 | 截图文件位置 | 应用保存动作 | 显示真实目标路径；用户已选路径不被激活脚本重置 |
 | 打开 / 看图 | MIME 默认 | Thunar；图片 Swayimg；PDF Zathura 默认、批注用 Zotero 内置阅读器；文本图形默认 VS Code，CLI 默认 Neovim |
 
-保留 Thunar 的“在此打开终端”“复制为图片”“复制路径”“粘贴剪贴板图片”“粘贴为链接”。文件 URI、路径文字、图片像素是三种不同用途，不能为了减少代码把它们合并成一种复制。迁移终端入口时保持当前文件夹作为 cwd，路径包含空格/中文/引号仍正常，不经拼接 shell 字符串。当前实现见 [文件动作](../aspects/apps/file-manager/thunar-actions.nix)、[终端入口](../aspects/apps/file-manager/thunar-terminal.nix)、[截图](../aspects/desktop/mango-session/screenshot.nix)。
+保留 Thunar 的“在此打开终端”“复制为图片”“复制路径”“粘贴剪贴板图片”“粘贴为链接”。文件 URI、路径文字、图片像素是三种不同用途，不能为了减少代码把它们合并成一种复制。迁移终端入口时保持当前文件夹作为 cwd，路径包含空格/中文/引号仍正常，不经拼接 shell 字符串。当前实现见 [文件动作](../../aspects/apps/file-manager/thunar-actions.nix)、[终端入口](../../aspects/apps/file-manager/thunar-terminal.nix)、[截图](../../aspects/desktop/mango-session/screenshot.nix)。
 
-剪贴板历史只由 Noctalia 管理；现有 Wayland/X11 桥接不是第二个历史后端，其退出与轮询策略按 [服务设计](service-policy.md) 核验。保留 WeChat/XWayland 与原生 Wayland 间文字、图片互通。锁屏和秘密复制行为先按锁定实现验证，不声称所有密码管理器内容都会自动排除；不输出剪贴板内容到测试日志。
+剪贴板历史只由 Noctalia 管理；现有 Wayland/X11 桥接不是第二个历史后端，其退出与轮询策略按 [服务设计](../service-policy.md) 核验。保留 WeChat/XWayland 与原生 Wayland 间文字、图片互通。锁屏和秘密复制行为先按锁定实现验证，不声称所有密码管理器内容都会自动排除；不输出剪贴板内容到测试日志。
 
 ## 终端、项目与远程工作
 
@@ -107,13 +109,13 @@ Kitty 新窗口默认进入普通 shell，不自动套 tmux。用户需要保持
 Starship 为两行：目录、分支、变更计数、耗时与环境信息在首行，第二行 `❯`；失败显示退出码，
 用户/主机只在 SSH 或 root 会话出现。没有强制重载已有 Kitty/tmux/shell 实例。
 
-tmux 会话恢复继续保留布局与编辑会话，禁止保存 pane 滚屏文本。恢复不等于重启数据库、容器、SSH 或付费 AI 任务；不能把“恢复窗口”实现成无条件重放历史命令。见 [现有恢复设置](../aspects/cli/shell/tmux.nix)。
+tmux 会话恢复继续保留布局与编辑会话，禁止保存 pane 滚屏文本。恢复不等于重启数据库、容器、SSH 或付费 AI 任务；不能把“恢复窗口”实现成无条件重放历史命令。见 [现有恢复设置](../../aspects/cli/shell/tmux.nix)。
 
 Zsh 的 `Ctrl+R` 由 Atuin 搜索本地命令历史，使用 compact 视图、全局默认筛选，并保留上箭头的原生 shell 搜索行为；候选需要再次按 Enter 才会执行。Atuin 同步与更新检查关闭。fzf 保留 `Ctrl+T` 文件选择和 `Alt+C` 目录选择。Atuin 数据库属于运行态用户数据，首次配置完成后如需导入旧历史，由用户在应用后显式执行；配置构建与隔离按键检查不会导入或读取真实历史。
 
 项目的依赖、编译器和 SDK 版本由项目 `flake.nix`/`flake.lock` 拥有；全局只提供确认保留的基础工具和交互工具。direnv/nix-direnv 负责目录环境缓存：新的或变化的 `.envrc` 需用户信任，首次缺依赖时下载是正常行为，不承诺进入项目零等待。编辑器、语言服务器必须从项目 cwd/环境启动；桌面打开目录不能假装自动获得其 devShell。全局 clangd 用 PATH，项目可覆盖，已有语言接口不把所有工具写死成 store 路径。
 
-远程默认在服务器内用 tmux 持续工作，笔记本只作 SSH 客户端。SSH 不嵌套自动启动 tmux；有意嵌套时文档说明如何发送前缀。服务器远程 workspace 不附带 GUI、Kitty 或本地剪贴板 daemon，参考 [服务器规划](server-plan.md)。
+远程默认在服务器内用 tmux 持续工作，笔记本只作 SSH 客户端。SSH 不嵌套自动启动 tmux；有意嵌套时文档说明如何发送前缀。服务器远程 workspace 不附带 GUI、Kitty 或本地剪贴板 daemon，参考 [服务器规划](../server-plan.md)。
 
 ## 编辑器阅读与文件导航
 
@@ -123,11 +125,11 @@ Zsh 的 `Ctrl+R` 由 Atuin 搜索本地命令历史，使用 compact 视图、�
 文件导航由两个入口组成：`<leader>e` 打开 Snacks Explorer 侧栏，`-` 打开 Oil 可编辑父目录，
 用于批量改名与目录操作；`<leader>fy` 打开常用的 Yazi 浮窗。Oil 删除只移入回收站，拒绝
 覆盖已有目标，copy 使用独占创建；从回收站恢复同样先校验目标，永久 purge 禁止。具体文件
-安全边界和实现见 [Neovim 执行记录](neovim-rebuild-execution.md)。
+安全边界和实现见 [Neovim 执行记录](../neovim.md)。
 
 本轮 AI/键位重构尚未应用。顶部标签、未保存保护、长文档折行与会话/草稿数据边界保留。
 Claude Code 使用专属 IDE 协议 diff，Codex/Grok 使用 sidekick，DeepSeek 使用 CodeCompanion；
-补全以 Copilot 为主，DeepSeek FIM 手动兜底。流程与验证见[执行记录](neovim-rebuild-execution.md)。
+补全以 Copilot 为主，DeepSeek FIM 手动兜底。流程与验证见[执行记录](../neovim.md)。
 
 ## Neovim 键位
 
@@ -214,7 +216,7 @@ CodeCompanion 的 `ga` 切 adapter；聊天内 `gh` 浏览历史、`,h` 保存�
 
 此前实现阶段只改声明和文档；用户随后 nr，本轮应用和实际验证按后续记录区分，不代表键盘、触控板、游戏或远程会话已全部验收。
 mod 任务继续受保护，不注销 Mango 或终止业务。本轮明确获授权的 shell 交接、配置应用与
-检查见[系统与编辑器记录](history/system-polish-execution.md)，不把早期未应用记录当作当前状态。
+检查见[系统与编辑器记录](system-polish-execution.md)，不把早期未应用记录当作当前状态。
 
 ## 项目与长任务入口
 
@@ -236,14 +238,14 @@ mod 任务继续受保护，不注销 Mango 或终止业务。本轮明确获授
 
 mpv 使用 uosc 时间线/播放列表/菜单与 thumbfast 缩略图。空格暂停、左方向键后退；右方向键由 evafast 保留轻按跳转、长按临时加速。`Ctrl+1` 开启原 Anime4K HQ 链、`Ctrl+0` 关闭，默认不对所有视频套用 CNN。菜单删除使用垃圾桶，media 自行提供 trash-cli。
 
-Yazi 主题由 HM 消费共享 OneDark palette，不再由 Noctalia yazi 模板写入。原公开主题在交接前备份，数据与历史保持原样；tmux/Kitty/Yazi 的已运行实例不会被强制重启，重新打开时读取新配置。具体运行证据见[系统界面记录](history/system-experience-execution.md)。
+Yazi 主题由 HM 消费共享 OneDark palette，不再由 Noctalia yazi 模板写入。原公开主题在交接前备份，数据与历史保持原样；tmux/Kitty/Yazi 的已运行实例不会被强制重启，重新打开时读取新配置。具体运行证据见[系统界面记录](system-experience-execution.md)。
 
 右下角鼠标热区已关闭；左下启动器热区保留。新登录环境的 `BAT_THEME=base16` 与 Bat/Delta
 声明一致。旧桌面含 HM 已加载标记，新终端也可能继承旧值，完整重登录后刷新；
 当前终端可用 `env BAT_THEME=base16 bat 文件` 临时采用新主题。
-桌面会话的移除过程和应用状态见[Hyprland 移除记录](history/hyprland-removal-execution.md)。
+桌面会话的移除过程和应用状态见[Hyprland 移除记录](hyprland-removal-execution.md)。
 另有用户明确选择的可选 dwm + Picom / 真 Xorg 会话，用于 QQ、腾讯会议原生共享；
-登录选择、原生栏、菜单和不同于 Mango 的操作见 [Xorg 记录](xorg-desktop-execution.md)。
+登录选择、原生栏、菜单和不同于 Mango 的操作见 [Xorg 记录](../xorg.md)。
 
 ## 2026-10-20 增强
 
@@ -251,7 +253,7 @@ Yazi 主题由 HM 消费共享 OneDark palette，不再由 Noctalia yazi 模板�
 项目入口的编辑器和目录可从 desktop actions 选择；明确启用 workspace 的项目还可用
 `workspace-project dotfiles workspace`
 建立/复用编辑器与两个 shell 的 tmux 布局，不自动构建、执行测试或信任 `.envrc`。
-实现、验证和应用状态见[本轮记录](history/optimization-2026-10-20.md)。
+实现、验证和应用状态见[本轮记录](optimization-2026-10-20.md)。
 
 
 ## 2026-10-24 桌面美化声明
@@ -263,4 +265,4 @@ Yazi 主题由 HM 消费共享 OneDark palette，不再由 Noctalia yazi 模板�
 交换保持开启。Tag 不新增循环、截图不新增全局 shield；现有截图和分享语义保持。
 Launcher 分类改为仅图标，名称仍在 tooltip；全局关闭图标隐藏后，普通面板仍可 Esc 或点击外部
 关闭，通知右键关闭，设置窗口由 Mango 关闭。锁屏保留密码显示按钮。
-取舍与只构建不应用的验证记录见[桌面美化记录](history/desktop-polish-2026-10-24.md)。
+取舍与只构建不应用的验证记录见[桌面美化记录](desktop-polish-2026-10-24.md)。

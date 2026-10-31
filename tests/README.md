@@ -90,3 +90,5 @@ Noctalia、输入法、显示器、NVIDIA、音频、USB、休眠或游戏的实
 
 `architecture` 在求值时执行，内置负例证明各规则会拒绝违规；`statix` 只检查，
 `deadnix` 带 `--no-lambda-pattern-names`。检查结果必须区分求值、构建和应用。
+
+`tests/docs/` 由 `checks.docs` 运行，校验 `docs/` 顶层文档的 front matter、路由表登记和本地链接。

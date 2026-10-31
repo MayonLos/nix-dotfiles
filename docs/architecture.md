@@ -1,8 +1,13 @@
+---
+summary: 仓库硬规则：功能目录、跨功能通道、inventory、包与输入、测试
+read_when: 新增或移动功能、跨功能传数据、加 flake 输入、做纯重构
+code: [flake.nix, nix, aspects/default.nix, bundles/default.nix, inventory, tests/architecture]
+checks: [architecture, deadnix, statix, treefmt]
+---
+
 # 仓库架构规范 v2.1
 
-状态：规范性文档，2026-10-24 起生效，取代旧版设计说明（旧文全文见 [architecture-design-v1](history/architecture-design-v1.md)）。
-本版由主代理起草，经 Codex（GPT）、Claude Fable、Claude Sonnet 三方独立审阅后修订；依据为锁定 Den v0.19.0
-（rev 37eb88c）源码、仓库现状与实测（求值剖析、移动文件的 drv 对照实验）。
+依据是锁定的 Den 源码与实测；与源码矛盾时以源码为准并修正本文。
 
 规则分两级：**[硬]** 必须遵守，能自动检查的由 `checks.architecture` 在**求值期**强制，不能自动检查的由审阅与语义测试强制；
 **[建议]** 审阅提示，不阻断。“没有自动检查”不降低硬规则的效力。
@@ -259,8 +264,7 @@ toplevel 求值 ≤ 20s（`NIX_SHOW_STATS=1`，记录 Nix 版本、lock、缓存
 
 ## 12. 文档
 
-- 现行文档保持原文件名以免 history 断链：`architecture-design.md`（本规范）、`config-ownership.md`、`service-policy.md`、`desktop-design.md`、`workflow-design.md`、`operations.md`（新增：重建、清理、回滚、验证层级）。
-- 功能细节写在功能 README；`docs/history/` 只追加。当前文档与源码矛盾时以源码为准并修正文档。
+入口与写法见 [docs/README.md](README.md)。功能细节写在功能 README；`docs/history/` 只追加。
 
 ## 13. 验证层级
 

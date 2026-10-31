@@ -1,6 +1,13 @@
+---
+summary: 每个配置文件、可变状态和秘密由谁写入，移除功能后留下什么
+read_when: 改任何生成文件前、遇到文件被覆盖、迁移配置 writer
+code: [aspects, inventory/hosts/nixos-btw/secrets.nix]
+checks: []
+---
+
 # 配置、运行时状态与秘密的写入归属
 
-本文记录当前 Den 源码声明的 writer，以及应用配置、可变状态和秘密之间的边界。用户已应用此前的 Den 配置，应用交接见[既有应用记录](history/system-polish-execution.md)；2026-10-24 第五轮只修改源码和构建，未激活新配置，见[第五轮记录](history/optimization-2026-10-24.md#第五轮仓库整理登录加速与头像)。第八轮架构迁移只修改源码与文档；本轮没有应用配置，全部 21 个 checks 与系统 toplevel 已通过过滤源码快照构建，详见[第八轮记录](history/architecture-v2-execution.md)。构建或求值不能证明全部文件、服务和权限都已生效；仍按目标路径核对真实文件、symlink、权限、进程和应用状态。
+本文记录源码声明的 writer。构建或求值不能证明文件、服务和权限已生效；排障时要核对真实文件、symlink、权限和进程。表中“待验”类说明写于当时，不代表现状。
 
 归属依据是当前 aspect、inventory、`flake.lock` 锁定模块和可观察到的运行行为。Den 负责组合功能，不改变证据优先级。每个生成目标只保留一个 renderer；应用可变文件只由 feature 修改明确拥有的字段或标记块。配置迁移不删除项目、认证状态、历史、模型、容器卷或 VM 镜像。
 
@@ -10,7 +17,7 @@
 |---|---|---|
 | 外观数据 `host.appearance`、`user.appearance` | `aspects/appearance/appearance/onedark.nix` 提供 One Dark 精修语义颜色、字体、光标、图标主题和 `reducedMotion` 偏好；`aspects/appearance/appearance/contract.nix` 定义 host/user schema。 | 数据本身不安装应用或选择功能。当前 host 与 mayon 分别绑定同一 palette；动效偏好是声明式输入，不另写 GUI state。 |
 | `~/.config/mango/config.conf`、Mango 快捷键说明 | 选择 `interactive-session` 后，`aspects/desktop/mango-session/mango.nix` 接线私有的 `mango/keybinds.nix` 和唯一窗口规则表 `mango/window-rules.nix`，配合锁定 Mango HM module 渲染完整配置；`~/.local/share/mango/keybindings.txt` 也由该 aspect 生成。 | Noctalia 不生成 Mango 主题片段，也不写入或 include `noctalia-colors.conf`。配置为声明式输出；Mango 会话实际加载与快捷键手感仍待应用后核验。 |
-| dwm / Xorg 配置与会话 | `xorg-session` 拥有 Nix 构建的 dwm、`~/.local/share/nix-dotfiles/xorg-session`、Picom/Dunst、Rofi 启动器/控制/电源主题、状态程序和 Xorg 专属 units；宿主安装唯一的 `xorg-dwm.desktop`。 | Rofi 使用频次、旧 j4 历史、CopyQ 数据仍属用户状态，保留而不托管；不托管用户 `.xinitrc`；不安装第二份未配置 dwm。runtime PID/锁/壁纸路径/socket 仅在当前用户的私有 runtime 目录；锁屏暗化缓存只在用户 cache 生成。Xorg 读取共享壁纸目录而不成为其第二写入者，移除不清理历史或图片。详见 [Xorg 记录](xorg-desktop-execution.md)。 |
+| dwm / Xorg 配置与会话 | `xorg-session` 拥有 Nix 构建的 dwm、`~/.local/share/nix-dotfiles/xorg-session`、Picom/Dunst、Rofi 启动器/控制/电源主题、状态程序和 Xorg 专属 units；宿主安装唯一的 `xorg-dwm.desktop`。 | Rofi 使用频次、旧 j4 历史、CopyQ 数据仍属用户状态，保留而不托管；不托管用户 `.xinitrc`；不安装第二份未配置 dwm。runtime PID/锁/壁纸路径/socket 仅在当前用户的私有 runtime 目录；锁屏暗化缓存只在用户 cache 生成。Xorg 读取共享壁纸目录而不成为其第二写入者，移除不清理历史或图片。详见 [Xorg 记录](xorg.md)。 |
 | CopyQ 数据与 X11 认证 | CopyQ 历史、应用账户及 `.Xauthority` 由应用/Xorg 管理；Nix 只启动会话服务。 | 不复制、输出、写入 store 或清除这些用户数据；不把构建当成共享通话验收。 |
 | `~/.config/kitty/kitty.conf` | `aspects/cli/terminal/kitty.nix` 是唯一 HM renderer，生成完整 One Dark 配置和 ANSI 色。 | Noctalia Kitty builtin/template 不再启用。不存在由 Nix stub 与 Noctalia 主题文件拼装的当前声明。真实 Kitty parser / 主题应用情况需在新 generation 中复核。 |
 | `~/.config/noctalia/config.toml` 与 custom palette | `aspects/desktop/mango-session/noctalia.nix` 通过锁定 HM module 生成配置和 `onedark` palette；其 Noctalia 包在原始 derivation 上应用本功能的局部选中态补丁；同一 aspect 生成 bar、launcher、widget、plugin、wallpaper、lockscreen 等声明。 | GUI 自建 palette 的写入不受支持，应在共享 palette 声明修改。GUI sidecar `~/.local/state/noctalia/settings.toml` 仍是 Noctalia 可变状态，不由 HM 整文件接管。插件运行数据、历史和其他 state 保留给应用。 |
@@ -60,7 +67,7 @@
 
 在实际应用后，逐路径检查 Home Manager generation、symlink/普通文件、mode、owner、Noctalia unit 前后关系、环境变量、MIME/desktop IDs、最终组与 udev/ACL。再冷启动相关应用验证 Kitty parser、Mango config、Noctalia theme apply/undo、GTK/Qt palette、Firefox managed block、Thunar 保存行为、Docker daemon/timer 和 libvirt socket/存储池。完成前保留回退副本；没有实机证据的项持续标为“待现场验证”。
 
-相关约束与流程见 [架构设计](architecture-design.md)、[桌面视觉设计](desktop-design.md)、[操作方式](workflow-design.md)、[服务策略](service-policy.md)、[服务器规划](server-plan.md)、[执行交接](history/execution-handoff.md) 和 [Den 执行记录](history/den-execution.md)。
+相关约束与流程见 [架构设计](architecture.md)、[桌面视觉设计](desktop.md)、[操作方式](keymap.md)、[服务策略](service-policy.md)、[服务器规划](server-plan.md)、[执行交接](history/execution-handoff.md) 和 [Den 执行记录](history/den-execution.md)。
 
 第 37 轮声明调整（尚未应用）：FileManager1 的唯一声明改由 file-manager 的 host Thunar 包拥有，撤回 HM 的重复 Thunar 包与 per-user service。Xorg 的 Dunst 包拥有规范命名的通知激活文件，HM 不再生成第二份。session-support 通过上游工厂生成并合并 `/etc/dbus-1` 的显式服务注册，保持 policy include 与标准用户 XDG 服务发现。上述移除仅涉及声明式服务文件，不删除 keyring、文件管理器状态、缩略图、通知历史或用户数据。
 

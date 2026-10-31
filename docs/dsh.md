@@ -1,3 +1,10 @@
+---
+summary: DeepSeek Harness 的命令、桌面入口和模型配置
+read_when: 使用或配置 dsh，让 dsh 当执行代理
+code: [aspects/dev/ai-agents/dsh-desktop.nix]
+checks: []
+---
+
 # DeepSeek Harness 命令与桌面入口
 
 2026-10-24。`aspects/dev/ai-agents/ai-agents.nix` 安装 `dsh` 命令与 `dsh-desktop`，两者调用同一个锁定 DSH 0.2.1-rc.3。Node 兼容修正已由上游 llm-agents 配方提供，本地不再重复替换。更新与构建记录见[本轮记录](history/optimization-2026-10-24.md)。不需要 OpenCode CLI，也不通过 npm 临时下载另一份运行时。
@@ -31,3 +38,22 @@ DSH_HOME=/absolute/path/to/isolated-harness dsh headless --help
 本机审核时两个 profile 均已存在，分别声明 `opencode-go` / `deepseek-v4.1-flash`，provider 的凭据引用一致。此次未手工改写模型 patch 或复制密钥。已安装命令的 `headless --dump-config` 也确认最终组合选择为该 Go 模型；此结论属于配置核验，不等同于真实模型请求成功。Go 订阅能否完成当前任务仍取决于额度、端点及服务可用性。
 
 源码与用法依据是已安装包的 `--help`、headless `startup.js`、`profile-boot` 与 credentials/default-model 文档；上游参考：[CLI](https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/cli/README.md)、[官方使用指南](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/guide/index.md)。验证与系统应用见[本次审核](history/repository-audit-2026-10-20.md)。
+
+## 作为执行代理（官方 key）
+
+默认 profile 走 `opencode-go`，未配置时报 `MISSING_CREDENTIAL`。改用官方 API 时写一个补丁文件，用 `--patch` 传入，不改 profile（`DEEPSEEK_API_KEY` 由 shell 从 sops 注入；可用模型以 `GET https://api.deepseek.com/models` 为准，2026-10-30 为 `deepseek-flash`、`deepseek-v4-pro`）：
+
+```yaml
+- id: agent-default-model
+  config: { provider: deepseek, model: deepseek-v4-pro }
+- id: llm-pi-ai
+  config:
+    providers:
+      deepseek: { apiKeyEnv: DEEPSEEK_API_KEY }
+```
+
+```sh
+dsh --profile headless --patch patch.yml - < brief.md > final.md 2> dsh.log
+```
+
+headless 默认是 `workspace-write` 沙箱：只能写工作目录，私有 `/tmp` 不跨会话，所以 brief 和产物要放在工作树内被 Git 忽略的 `.work/`，且它不输出进度日志。

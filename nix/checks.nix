@@ -204,6 +204,10 @@
             )) "Bilibili TUI must be installed by media";
             pkgs.bilitui;
           architecture = pkgs.runCommand "architecture-check" { } "touch $out";
+          docs = import ../tests/docs {
+            inherit pkgs;
+            source = ../.;
+          };
           palette-contrast = paletteContrast;
           statix = pkgs.runCommand "statix-check" { nativeBuildInputs = [ pkgs.statix ]; } ''
             statix check ${source}

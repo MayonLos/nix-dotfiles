@@ -1,8 +1,13 @@
+---
+summary: 已安装软件的去留决定、理由和备选方案
+read_when: 想新增、替换或删除软件之前
+code: [aspects/default.nix, aspects/apps]
+checks: []
+---
+
 # 保留应用逐项评估与补充候选
 
-核对日期：2026-10-18；2026-10-24 更新已确认的软件替换，验证见[第十轮记录](history/software-swap-2026-10-24.md)。当前功能已迁入 Den，本文保留软件决定，新的构建及未应用边界见[实施记录](history/den-execution.md)。本文先记录选型提案；随后用户确认的 pamixer、cliphist、pavucontrol 精简已修改配置。2026-10-25 第二十六轮确认 File Roller 替换 Xarchiver、移除 Okular（PDF 默认 Zathura，批注使用 Zotero 内置阅读器），并曾选择 OnlyOffice 与 LibreOffice 并存；该历史决定已由用户后续明确改为仅保留 LibreOffice，九种 Office MIME 统一由 LibreOffice 打开。第二十六轮记录仍保留当时的决定与执行证据，见[应用层记录](history/apps-r26-2026-10-25.md)。
-
-依据包括当前工作树、`flake.lock`、已取得的锁定源码、官方文档，以及项目 issue 中的具体兼容案例。范围是用户直接使用的应用、桌面插件和工具组，不逐个罗列传递依赖。仓库没有声明某项，不代表用户在运行时没有手动安装或使用其他方案。没有做应用间的内存、功耗、速度基准测试；不据语言或界面技术推断谁一定更轻。
+软件取舍记录，首次核对于 2026-10-18，之后逐项更新；具体日期以 Git 历史为准。依据是源码、`flake.lock` 与官方文档，未做应用间性能基准。自写工具的去留见 [tools.md](tools.md)。
 
 ## 建议先看这些
 
@@ -256,7 +261,7 @@
 
 1. 软件选型已结束；第二十六轮改为 File Roller、移除 Okular。用户后续决定移除 OnlyOffice，由 LibreOffice 统一处理九种 Office MIME；备份、密码库、Connector 及其他条件项以后有实际需求再纳入，不继续阻塞 Neovim 迁移。
 2. `pamixer`、重复 `cliphist` 和 `pavucontrol` 已按用户确认精简配置；验证状态单列在执行计划。不顺带删截图/OCR、剪贴板桥或用户历史。
-3. 先删无用，再原生替换；Neovim Lua + Nix 入口现已接入。先前 Heirline/Navic 原生替代已被用户后续重建要求覆盖；现恢复成熟界面插件与公式预览，OneDark 继续固定，主题选择器不恢复。完整 LaTeX 保留。当前状态见[重建记录](neovim-rebuild-execution.md)，性能结论需独立测量。
+3. 先删无用，再原生替换；Neovim Lua + Nix 入口现已接入。先前 Heirline/Navic 原生替代已被用户后续重建要求覆盖；现恢复成熟界面插件与公式预览，OneDark 继续固定，主题选择器不恢复。完整 LaTeX 保留。当前状态见[重建记录](neovim.md)，性能结论需独立测量。
 4. 在 Den 重构中，把桌面、开发、游戏、备份和服务器能力组合起来；实际主机只启用需要的能力，不把笔记本应用全集给服务器。
 5. 每批实现后做模块求值、相关构建；涉及剪贴板、音频、截图、分享、游戏和编辑器交互时做运行验证。应用配置另作明确步骤。
 

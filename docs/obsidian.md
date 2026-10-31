@@ -1,3 +1,10 @@
+---
+summary: Obsidian 主题、笔记库结构与手写
+read_when: 修改 Obsidian 配置或笔记库
+code: [aspects/apps/documents]
+checks: [documents-visual-config]
+---
+
 # Obsidian：One Dark、学习首页与手写
 
 2026-10-29 的重构方案在 `vault-stage` 实现，并在独立 HOME、D-Bus 和无头 sway

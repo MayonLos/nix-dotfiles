@@ -1,3 +1,10 @@
+---
+summary: dwm 会话的视觉参数与窗口规则
+read_when: 调整 dwm、Picom、Rofi、Dunst 外观
+code: [aspects/desktop/xorg-session]
+checks: [xorg-session-runtime]
+---
+
 # DWM 视觉与窗口规则
 
 2026-10-19。以 `f4686d6` 干净工作树为本轮基线。用户指出 B 初版视觉和窗口规则不完善，
