@@ -20,7 +20,7 @@
     palette = home.programs.noctalia.customPalettes.onedark;
   };
 
-  # Validates the generated 30px bar / Smart overlay Dock, source patch set,
+  # Validates the generated 30px bar / Smart top-layer Dock, source patch set,
   # native parser output, Launchpad model/manifest and tool bindings in the actual host config.
   interactive-session-config = import ./runtime-check.nix {
     inherit pkgs home;
