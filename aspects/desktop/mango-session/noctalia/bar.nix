@@ -140,8 +140,9 @@
     reserve_space = false;
     auto_hide = false;
     smart_auto_hide = true;
-    # The edge trigger remains reachable over fullscreen windows.
-    layer = "overlay";
+    # Mango stacks fullscreen clients above `top`, so games cover the edge
+    # trigger and pointer motion at the bottom edge cannot reveal the Dock.
+    layer = "top";
     show_running = true;
     show_dots = true;
     show_instance_count = false;

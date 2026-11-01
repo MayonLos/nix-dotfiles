@@ -362,7 +362,7 @@ pkgs.runCommand "interactive-session-config"
         ("dock", "smart_auto_hide"): True,
         ("dock", "auto_hide"): False,
         ("dock", "reserve_space"): False,
-        ("dock", "layer"): "overlay",
+        ("dock", "layer"): "top",
         ("dock", "show_running"): True,
         ("dock", "show_dots"): True,
         ("dock", "launcher_position"): "start",
