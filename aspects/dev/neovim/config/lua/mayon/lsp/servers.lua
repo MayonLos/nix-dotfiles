@@ -334,10 +334,20 @@ function M.setup()
 			if not root or warned[root] then
 				return
 			end
-			if vim.fn.filereadable(root .. "/compile_commands.json") ~= 1 then
+			-- clangd searches every parent of the file and its build/, so a subproject
+			-- below the Git root can own the database.
+			local found = false
+			for dir in vim.fs.parents(vim.api.nvim_buf_get_name(event.buf)) do
+				found = vim.fn.filereadable(dir .. "/compile_commands.json") == 1
+					or vim.fn.filereadable(dir .. "/build/compile_commands.json") == 1
+				if found or dir == root then
+					break
+				end
+			end
+			if not found then
 				warned[root] = true
 				vim.notify(
-					"未找到 compile_commands.json；clangd 可继续工作，建议由 CMake/构建系统生成以获得完整项目索引。",
+					"未找到 compile_commands.json；clangd 可继续工作，但可能误报缺少头文件。请由构建系统生成。",
 					vim.log.levels.INFO,
 					{ title = "clangd" }
 				)
