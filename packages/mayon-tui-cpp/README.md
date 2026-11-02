@@ -1,52 +1,109 @@
 # C++ terminal tools
 
-One Meson project: `ui/` is the shared library (palette, cell drawing, hints, keys, text input, terminal guard, mailbox, pinyin search) and `bilitui/` is the first program. New tools get their own directory and link `ui`; `ui/README` is not needed because `ui/draw.hpp` and its sibling headers are the API.
+One Meson project for the C++ rewrite of the Rust terminal tools. `ui/` is the
+shared library (One Dark palette, cell drawing, hints, key decoding, text input,
+terminal guard, mailbox, pinyin search). Each tool owns one directory and links
+`ui`; the public entries are the `page.hpp` factory and its `*_cli`, as in
+`keys/`.
 
-## bilitui-next
+The programs are:
 
-C++23 rewrite of `packages/bilitui`, a search-first Bilibili terminal player built around mpv for learning content. It runs beside the Rust version until accepted. It shares that version's data paths, so an existing login keeps working.
+| Program | Source | Rust counterpart |
+|---|---|---|
+| `bilitui-next` | `bilitui/` | `packages/bilitui`, `bilitui-mayon` |
+| `mayon-tools-next` | `toolbox/` + `ports/`, `serial/`, `docker/`, `keys/`, `toolbox/voice` | `mayon-tools` |
+| `clashtui-next` | `clash/` | `clashtui-mayon` |
 
-The public package factory is `default.nix` (`{ pkgs }`), published as `pkgs.bilitui-next` by `nix/pkgs.nix` and installed by Media. There is no background service: worker threads and mpv live only as long as the program.
+Each `*-demo` binary is `install: false`; it exists for screenshots and parity
+checks. The public package factory is `default.nix` (`{ pkgs }`), published as
+`pkgs.mayonTuiNext`. `pkgs.bilitui-next` is an alias of the same derivation, so
+Media installs only one copy. The Rust packages stay installed and keep their
+shortcuts until the user accepts the rewrite.
 
 ## Interface
 
-Three pages: **搜索** (the start page, with the cursor in the box), **学习** (稍后再看, unfinished history, favourite folders) and **关注** (followed uploads). `?` lists every key.
+`mayon-tools-next` defaults to Ports. `[` and `]` switch Docker, Ports, Serial,
+Keys and Voice unless the current page is editing (`Page::editing()`), so a
+confirmation or text field keeps the brackets. A page is built on its first
+visit; hidden pages stop refresh and streams. Non-interactive subcommands keep
+the Rust form: `mayon-tools-next keys list --json`, `... docker df`,
+`... serial list`, and so on.
 
-`Enter` plays and resumes from the last reported position. `→` enters the part or collection list. `a` queues, `w` adds to 稍后再看, `o`/`t` change search order and duration, `/` filters locally with pinyin, `u` opens the uploader, and `Space` opens the menu for quality, subtitles, favourites, links, downloads and login.
+`clashtui-next` accepts the Rust options and `profile`, `settings` and
+`service` commands. Subscription URLs are read from stdin only, never argv.
+Deleting a profile needs `--yes` and the current profile is refused.
 
-One mpv window plays everything. At the end of a file it plays the next queued item, then the next part, then the next collection episode. Stream addresses are resolved when each item starts because they expire. The queue is not kept across restarts.
+The Voice page only reads `$XDG_RUNTIME_DIR/mayon-voice/control.sock`; recording,
+models and delivery remain in `packages/mayon-voice`.
 
-Removed compared to the Rust version: danmaku, likes and coins, and the recommended, popular and ranking pages.
+## Differences from the Rust versions
 
-## Boundaries
+The full parity list is in `.work/r62/FINAL.md` at merge time. The intentional
+visual differences follow the shared C++ language: section labels and rows
+instead of large bordered panes, the selection background plus a blue left bar,
+`put_hints` footers and surface dialogs. Technical labels stay English.
 
-- Requests only reach fixed hosts and paths; redirects are never followed; JSON responses are capped at 8 MiB.
-- Writes are limited to 稍后再看, adding to a favourite folder and the playback heartbeat (`write_path_allowed`). Risk-control responses pause all requests for 60 seconds and are never bypassed.
-- Media URLs must be HTTPS on `bilivideo.com`, `bilivideo.cn`, `hdslb.com` or `bilibili.com`. The cookie is never sent to these CDNs or to mpv.
-- Remote text passes `clean()`, which removes every control character before it reaches the terminal.
-- Only libjpeg-turbo decodes remote images: covers are requested as a small JPEG rendition, limited to 4 MiB and 2048 px.
-- Only the UI thread changes application state; workers post closures through `Mailbox`.
+Notable functional differences:
 
-`search/all/v2` can answer an anonymous device with only a `v_voucher` challenge and code 0, so search uses `search/type` and reports a challenge as an error.
+- Serial uses the same keys, except that `F5` and the extra confirmed `X` both
+  start a flash; the Rust version has `F5` only.
+- Docker clean resolves the same guards, but refreshes its five read-only
+  endpoints sequentially instead of `try_join`.
+- Clash parses the YAML/TOML subset written by the Rust tool and common Clash
+  subscriptions; unsupported syntax fails safely instead of guessing. It does
+  not validate `Sec-WebSocket-Accept` on the local controller socket.
+- Ports uses the shared palette (no cyan) and removes the Nerd Font icon from the
+  title.
+- Keys, voice, Docker and serial read the same files and directories as Rust;
+  nothing is migrated or deleted.
 
 ## Files and data
 
-Owned: `ui/`, `bilitui/`, `tools/`, `meson.build` and `default.nix`. `ui/pinyin_table.inc` is generated by `tools/gen_pinyin.py`; `ui/palette.inc` is generated from the shared appearance palette at build time and is not committed.
+Owned: `ui/`, every tool directory, `meson.build` and `default.nix`.
+`ui/pinyin_table.inc` is generated by `tools/gen_pinyin.py`; `ui/palette.inc`
+is generated from the shared appearance palette at build time and is not
+committed.
 
 | Path | Use |
 |---|---|
-| `$XDG_DATA_HOME/bilitui/cookie` | Login cookie, mode 0600 |
-| `$XDG_DATA_HOME/bilitui/search.json` | Last 40 searches, mode 0600 |
-| `$XDG_CONFIG_HOME/bilitui/config.toml` | User-owned; read only |
-| `$XDG_CACHE_HOME/bilitui/player-*` | Private mpv socket and subtitles, removed on exit |
-| `~/Videos/Bilibili/` | Default download directory |
+| `$XDG_CONFIG_HOME/serial-mayon/config.json` | Serial profiles, favourites, highlights |
+| `$XDG_DATA_HOME/serial-mayon/history.json`, `logs/` | Serial history and capture logs |
+| `$XDG_CONFIG_HOME/keys-mayon/bindings.json` | Generated Mango key list, read only |
+| `$XDG_CONFIG_HOME/mayon-tui/clash.toml` | Optional Clash preferences, read only |
+| `$XDG_DATA_HOME/mayon-clash/` | Clash profiles, settings and runtime (shared with Rust) |
+| `$XDG_DATA_HOME/bilitui/` | Bilibili login and search history |
+| `$XDG_RUNTIME_DIR/mayon-voice/control.sock` | Voice daemon socket, read only |
 
-Config keys are `report_history`, `subtitles`, `quality` and `download_dir`; options from older versions are ignored. Removing the package leaves all of this data in place.
+Docker, ports and voice have no persistent state. Removing the package leaves
+the data above in place.
 
 ## Development
 
-`tools/dev-setup.sh` writes `ui/palette.inc` and `build/compile_commands.json` for clangd; run `:LspRestart` in an open Neovim afterwards. Rerun it after `flake.lock` changes or a garbage collection, because the database holds Nix store paths. `nix develop ../..#cpp --command meson compile -C build` builds locally.
+```sh
+tools/dev-setup.sh                 # palette and compile_commands.json, once
+nix develop --no-write-lock-file ../..#cpp --command meson setup --wipe --buildtype=debugoptimized build
+nix develop --no-write-lock-file ../..#cpp --command meson compile -C build -j4
+nix develop --no-write-lock-file ../..#cpp --command meson test -C build
+```
+
+`-Werror` stays on. New build dependencies go into `default.nix` and need
+`git add` before `nix develop` sees them. The flow tests use private HOME/XDG
+directories and the crates' Python mocks/PTYs; they never open a real Docker or
+libvirt endpoint, serial port, Clash controller or voice daemon.
+
+Screenshots use the real Kitty under a private headless sway:
+
+```sh
+RES=2560x1600 /home/mayon/nix-dotfiles/.work/r61/shot.sh "<wrapper>" <prefix> [keys...]
+```
 
 ## Verification
 
-`checks.bilitui-next` builds the package and runs its doctest suite, which needs no network, mpv or account. `bilitui-next --demo` is an offline sample (`--demo-playing` adds the now-playing bar), and `--probe-play BV` makes anonymous read-only requests and pulls a short null-output stream through mpv.
+`nix build .#checks.x86_64-linux.bilitui-next` builds all three programs and
+runs every Meson test (`ui`, `bilitui`, `keys`, `ports`, `serial`, `docker`,
+`clash`, `toolbox`). ASan builds are optional:
+
+```sh
+meson setup build-asan -Db_sanitize=address,undefined
+meson test -C build-asan
+```

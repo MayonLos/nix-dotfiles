@@ -18,7 +18,7 @@ _: {
       home.packages = with pkgs; [
         ffmpeg
         bilitui
-        bilitui-next
+        mayonTuiNext
         gimp
         kdePackages.kdenlive
         imagemagick

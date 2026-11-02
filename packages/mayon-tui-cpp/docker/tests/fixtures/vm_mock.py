@@ -53,7 +53,11 @@ def run(
     bindir.mkdir(exist_ok=True)
     virsh = bindir / "virsh"
     if not virsh.exists():
-        virsh.symlink_to(MOCK)
+        # The Nix store is read-only and drops the executable bit, so wrap the
+        # fixture instead of symlinking it and relying on its mode.
+        python = shutil.which("python3") or "/usr/bin/python3"
+        virsh.write_text(f'#!/bin/sh\nexec "{python}" "{MOCK}" "$@"\n', encoding="utf-8")
+        virsh.chmod(0o755)
     log_name = (
         "virsh-denied.jsonl" if denied else "virsh-snapshot-unknown.jsonl" if snapshot_unknown
         else "virsh-chain-unknown.jsonl" if chain_unknown else "virsh.jsonl"
