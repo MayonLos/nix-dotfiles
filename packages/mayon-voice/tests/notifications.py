@@ -188,7 +188,8 @@ while True:output.writeframes(b'\\0'*320);time.sleep(.01)
             wait(lambda: bool(state()['active']))
             old_id = next(iter(state()['active']))
             stored = root / 'mayon-voice/notification.json'
-            wait(stored.exists)
+            # The previous notice's file can still exist, so wait for this notice's id.
+            wait(lambda: stored.exists() and str(json.loads(stored.read_text())['id']) == old_id)
             assert stored.stat().st_mode & 0o777 == 0o600
             os.killpg(process.pid, signal.SIGKILL)
             process.wait(timeout=3)
