@@ -3,10 +3,17 @@ add_project_arguments('-Wno-missing-field-initializers', language: 'cpp')
 ftxui = dependency('ftxui')
 threads = dependency('threads')
 doctest = dependency('doctest')
-ui_deps = [ftxui, threads]
+curl = dependency('libcurl')
+ui_deps = [ftxui, threads, curl]
 ui_inc = include_directories('.')
 ui = static_library('mayon-ui', [
-    'ui/text.cpp', 'ui/search.cpp', 'ui/keys.cpp', 'ui/input.cpp', 'ui/terminal.cpp', 'ui/draw.cpp',
+    'ui/text.cpp', 'ui/search.cpp', 'ui/keys.cpp', 'ui/input.cpp', 'ui/terminal.cpp', 'ui/draw.cpp', 'ui/widgets.cpp', 'ui/page.cpp', 'ui/http.cpp',
   ], include_directories: ui_inc, dependencies: ui_deps)
 test('ui', executable('ui-tests', 'ui/tests.cpp', include_directories: ui_inc, link_with: ui, dependencies: ui_deps + [doctest]))
 subdir('bilitui')
+subdir('ports')
+subdir('keys')
+subdir('docker')
+subdir('serial')
+subdir('clash')
+subdir('toolbox')

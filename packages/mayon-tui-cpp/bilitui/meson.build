@@ -1,5 +1,4 @@
 bili_deps = ui_deps + [
-  dependency('libcurl'),
   dependency('nlohmann_json'),
   dependency('libqrencode'),
   dependency('libturbojpeg'),
