@@ -14,19 +14,22 @@
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <yaml-cpp/yaml.h>
 
 #include <algorithm>
+#include <charconv>
 #include <chrono>
+#include <cctype>
+#include <cstdio>
 #include <cstring>
 #include <fstream>
+#include <map>
 #include <memory>
 #include <set>
 #include <sstream>
-#include <toml++/toml.hpp>
 
 #include "api.hpp"
 #include "ui/text.hpp"
+#include "yaml.hpp"
 
 namespace fs = std::filesystem;
 namespace clash {
@@ -34,6 +37,43 @@ namespace {
 constexpr size_t kMaxBody = 32 * 1024 * 1024;
 const std::unexpected<std::string> fail(std::string text) { return std::unexpected(std::move(text)); }
 int64_t now_nanos() { return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count(); }
+
+// ---- Text --------------------------------------------------------------------------------------
+bool valid_utf8(std::string_view text) {
+    size_t at = 0;
+    while (at < text.size()) {
+        const auto lead = static_cast<unsigned char>(text[at]);
+        size_t need = 0;
+        char32_t code = 0;
+        if (lead < 0x80) {
+            ++at;
+            continue;
+        }
+        if ((lead & 0xE0) == 0xC0) {
+            need = 1;
+            code = lead & 0x1F;
+            if (code < 2) return false;
+        } else if ((lead & 0xF0) == 0xE0) {
+            need = 2;
+            code = lead & 0x0F;
+        } else if ((lead & 0xF8) == 0xF0) {
+            need = 3;
+            code = lead & 0x07;
+        } else {
+            return false;
+        }
+        if (at + need >= text.size()) return false;
+        for (size_t k = 1; k <= need; ++k) {
+            const auto next = static_cast<unsigned char>(text[at + k]);
+            if ((next & 0xC0) != 0x80) return false;
+            code = (code << 6) | (next & 0x3F);
+        }
+        if ((need == 2 && code < 0x800) || (need == 3 && code < 0x10000) || code > 0x10FFFF || (code >= 0xD800 && code <= 0xDFFF)) return false;
+        at += need + 1;
+    }
+    return true;
+}
+bool is_space(char c) { return c == ' ' || c == '\t'; }
 
 // ---- Files -------------------------------------------------------------------------------------
 std::optional<std::string> read_file(const fs::path& path) {
@@ -156,6 +196,259 @@ Ran run_process(const std::vector<std::string>& argv, bool capture, bool filter,
 }
 
 // ---- TOML --------------------------------------------------------------------------------------
+// The two index files use a small, fixed schema. This parser accepts exactly that
+// subset (tables, array-of-tables, strings, integers, booleans and empty arrays),
+// so shared files written by the Rust version round-trip without another library.
+struct TomlValue {
+    enum class Kind { String, Integer, Boolean, EmptyArray };
+    Kind kind = Kind::String;
+    std::string text;
+    int64_t number = 0;
+    bool flag = false;
+};
+int hex_value(char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
+void append_utf8(std::string& out, char32_t code) {
+    if (code <= 0x7F) {
+        out += static_cast<char>(code);
+    } else if (code <= 0x7FF) {
+        out += static_cast<char>(0xC0 | (code >> 6));
+        out += static_cast<char>(0x80 | (code & 0x3F));
+    } else if (code <= 0xFFFF) {
+        out += static_cast<char>(0xE0 | (code >> 12));
+        out += static_cast<char>(0x80 | ((code >> 6) & 0x3F));
+        out += static_cast<char>(0x80 | (code & 0x3F));
+    } else {
+        out += static_cast<char>(0xF0 | (code >> 18));
+        out += static_cast<char>(0x80 | ((code >> 12) & 0x3F));
+        out += static_cast<char>(0x80 | ((code >> 6) & 0x3F));
+        out += static_cast<char>(0x80 | (code & 0x3F));
+    }
+}
+// Parses one TOML string at `at`; leaves `at` after the closing delimiter.
+bool toml_string_at(std::string_view line, size_t& at, std::string& out) {
+    if (at >= line.size()) return false;
+    const char quote = line[at];
+    if (quote != '"' && quote != '\'') return false;
+    const bool triple = at + 2 < line.size() && line[at + 1] == quote && line[at + 2] == quote;
+    at += triple ? 3 : 1;
+    while (at < line.size()) {
+        const char c = line[at];
+        if (triple && c == quote && at + 2 < line.size() && line[at + 1] == quote && line[at + 2] == quote) {
+            at += 3;
+            return true;
+        }
+        if (!triple && c == quote) {
+            ++at;
+            return true;
+        }
+        if (quote == '\'' || c != '\\') {
+            out += c;
+            ++at;
+            continue;
+        }
+        ++at;
+        if (at >= line.size()) return false;
+        const char esc = line[at++];
+        switch (esc) {
+            case 'b': out += '\b'; break;
+            case 't': out += '\t'; break;
+            case 'n': out += '\n'; break;
+            case 'f': out += '\f'; break;
+            case 'r': out += '\r'; break;
+            case '"': out += '"'; break;
+            case '\\': out += '\\'; break;
+            case 'u':
+            case 'U': {
+                const int digits = esc == 'u' ? 4 : 8;
+                if (at + static_cast<size_t>(digits) > line.size()) return false;
+                char32_t code = 0;
+                for (int k = 0; k < digits; ++k) {
+                    const int value = hex_value(line[at + k]);
+                    if (value < 0) return false;
+                    code = (code << 4) | static_cast<char32_t>(value);
+                }
+                at += static_cast<size_t>(digits);
+                if (code > 0x10FFFF || (code >= 0xD800 && code <= 0xDFFF)) return false;
+                append_utf8(out, code);
+                break;
+            }
+            default: return false;
+        }
+    }
+    return false;
+}
+bool toml_value_at(std::string_view text, TomlValue& out) {
+    while (!text.empty() && is_space(text.front())) text.remove_prefix(1);
+    while (!text.empty() && is_space(text.back())) text.remove_suffix(1);
+    if (text.empty()) return false;
+    if (text.front() == '"' || text.front() == '\'') {
+        size_t at = 0;
+        std::string value;
+        if (!toml_string_at(text, at, value)) return false;
+        while (at < text.size() && is_space(text[at])) ++at;
+        if (at != text.size()) return false;
+        out.kind = TomlValue::Kind::String;
+        out.text = std::move(value);
+        return true;
+    }
+    if (text == "true" || text == "false") {
+        out.kind = TomlValue::Kind::Boolean;
+        out.flag = text == "true";
+        return true;
+    }
+    if (text == "[]") {
+        out.kind = TomlValue::Kind::EmptyArray;
+        return true;
+    }
+    std::string number;
+    for (const char c : text) {
+        if (c != '_') number += c;
+    }
+    if (number.empty()) return false;
+    int64_t value = 0;
+    const auto [ptr, error] = std::from_chars(number.data(), number.data() + number.size(), value);
+    if (error != std::errc{} || ptr != number.data() + number.size()) return false;
+    out.kind = TomlValue::Kind::Integer;
+    out.number = value;
+    return true;
+}
+// Removes a '#' comment outside strings.
+std::string toml_strip_comment(std::string_view line) {
+    bool single = false, doubly = false;
+    for (size_t i = 0; i < line.size(); ++i) {
+        const char c = line[i];
+        if (single) {
+            if (c == '\'') single = false;
+        } else if (doubly) {
+            if (c == '\\') ++i;
+            else if (c == '"') doubly = false;
+        } else if (c == '\'') {
+            single = true;
+        } else if (c == '"') {
+            doubly = true;
+        } else if (c == '#') {
+            return std::string(line.substr(0, i));
+        }
+    }
+    return std::string(line);
+}
+std::string toml_trim(std::string_view text) {
+    while (!text.empty() && is_space(text.front())) text.remove_prefix(1);
+    while (!text.empty() && is_space(text.back())) text.remove_suffix(1);
+    return std::string(text);
+}
+struct TomlEntry {
+    std::string key;
+    TomlValue value;
+};
+// One section: top-level fields, one array-of-tables element, or an ignored table.
+struct TomlSection {
+    std::string name;
+    std::vector<TomlEntry> entries;
+    const TomlValue* get(std::string_view key) const {
+        for (const auto& entry : entries) {
+            if (entry.key == key) return &entry.value;
+        }
+        return nullptr;
+    }
+    bool has(std::string_view key) const { return get(key) != nullptr; }
+    bool add(std::string key, TomlValue value) {
+        if (has(key)) return false;
+        entries.push_back(TomlEntry{std::move(key), std::move(value)});
+        return true;
+    }
+};
+struct TomlDoc {
+    TomlSection root;
+    std::vector<TomlSection> items;
+    std::vector<TomlSection> ignored;
+};
+bool parse_toml_document(std::string_view text, TomlDoc& doc) {
+    int current = -1;  // -1 root, otherwise items index.
+    bool ignore = false;
+    size_t at = 0;
+    while (at <= text.size()) {
+        const size_t end = std::min(text.find('\n', at), text.size());
+        std::string line = toml_strip_comment(text.substr(at, end - at));
+        at = end + 1;
+        const std::string trimmed = toml_trim(line);
+        if (trimmed.empty()) {
+            if (end == text.size()) break;
+            continue;
+        }
+        if (trimmed.front() == '[') {
+            std::string header = trimmed;
+            if (header.size() >= 4 && header.rfind("[[", 0) == 0 && header.substr(header.size() - 2) == "]]") {
+                const std::string name = toml_trim(std::string_view(header).substr(2, header.size() - 4));
+                if (name == "items") {
+                    doc.items.emplace_back();
+                    doc.items.back().name = name;
+                    current = static_cast<int>(doc.items.size()) - 1;
+                    ignore = false;
+                } else {
+                    ignore = true;
+                }
+            } else if (header.back() == ']') {
+                const std::string name = toml_trim(std::string_view(header).substr(1, header.size() - 2));
+                if (name == "items.usage" && current >= 0) {
+                    // Usage fields stay in the same item section; the marker is only
+                    // used to switch type expectations.
+                    doc.items[static_cast<size_t>(current)].name = "item.usage";
+                    ignore = false;
+                } else {
+                    ignore = true;
+                }
+            } else {
+                return false;
+            }
+            if (end == text.size()) break;
+            continue;
+        }
+        const auto equal = trimmed.find('=');
+        if (equal == std::string::npos) return false;
+        const std::string key = toml_trim(std::string_view(trimmed).substr(0, equal));
+        if (key.empty()) return false;
+        TomlValue value;
+        if (!toml_value_at(std::string_view(trimmed).substr(equal + 1), value)) return false;
+        if (ignore) {
+            if (end == text.size()) break;
+            continue;
+        }
+        TomlSection& section = current < 0 ? doc.root : doc.items[static_cast<size_t>(current)];
+        if (!section.add(key, std::move(value))) return false;
+        if (end == text.size()) break;
+    }
+    return true;
+}
+bool as_string(const TomlValue* value, std::string& out) {
+    if (!value) return true;
+    if (value->kind != TomlValue::Kind::String) return false;
+    out = value->text;
+    return true;
+}
+bool as_bool(const TomlValue* value, bool& out) {
+    if (!value) return true;
+    if (value->kind != TomlValue::Kind::Boolean) return false;
+    out = value->flag;
+    return true;
+}
+bool as_int(const TomlValue* value, int64_t& out) {
+    if (!value) return true;
+    if (value->kind != TomlValue::Kind::Integer) return false;
+    out = value->number;
+    return true;
+}
+bool as_uint(const TomlValue* value, std::optional<uint64_t>& out) {
+    if (!value) return true;
+    if (value->kind != TomlValue::Kind::Integer || value->number < 0) return false;
+    out = static_cast<uint64_t>(value->number);
+    return true;
+}
 std::string toml_string(std::string_view text) {
     std::string out = "\"";
     for (const char c : text) {
@@ -186,139 +479,6 @@ Res<std::string> toml_uint(uint64_t value) {
     return std::to_string(value);
 }
 const std::unexpected<std::string> kBadData = fail("本地数据格式无效（内容隐藏）");
-// Field readers: absent gives nothing, a present field of the wrong type is an error.
-bool read_string(const toml::table& table, const char* key, std::optional<std::string>& out) {
-    const toml::node* node = table.get(key);
-    if (!node) return true;
-    const auto* value = node->as_string();
-    if (!value) return false;
-    out = value->get();
-    return true;
-}
-bool read_bool(const toml::table& table, const char* key, std::optional<bool>& out) {
-    const toml::node* node = table.get(key);
-    if (!node) return true;
-    const auto* value = node->as_boolean();
-    if (!value) return false;
-    out = value->get();
-    return true;
-}
-bool read_int(const toml::table& table, const char* key, std::optional<int64_t>& out) {
-    const toml::node* node = table.get(key);
-    if (!node) return true;
-    const auto* value = node->as_integer();
-    if (!value) return false;
-    out = value->get();
-    return true;
-}
-bool read_uint(const toml::table& table, const char* key, std::optional<uint64_t>& out) {
-    std::optional<int64_t> value;
-    if (!read_int(table, key, value)) return false;
-    if (value) {
-        if (*value < 0) return false;
-        out = static_cast<uint64_t>(*value);
-    }
-    return true;
-}
-std::optional<toml::table> parse_toml(std::string_view text) {
-    try {
-        return toml::parse(text);
-    } catch (const toml::parse_error&) {
-        return std::nullopt;
-    }
-}
-
-// ---- YAML --------------------------------------------------------------------------------------
-// yaml-cpp's own Node emitter drops the quotes of "123" and turns it into a number, so a quoted password
-// would change type. This walker keeps quoted scalars quoted and expands aliases as serde_yaml does.
-struct YamlBudget {
-    size_t nodes = 0;
-};
-constexpr size_t kMaxYamlNodes = 8'000'000;
-constexpr int kMaxYamlDepth = 128;
-bool emit_yaml(YAML::Emitter& out, const YAML::Node& node, YamlBudget& budget, int depth) {
-    if (++budget.nodes > kMaxYamlNodes || depth > kMaxYamlDepth) return false;
-    switch (node.Type()) {
-        case YAML::NodeType::Null:
-        case YAML::NodeType::Undefined:
-            out << YAML::Null;
-            return true;
-        case YAML::NodeType::Scalar:
-            if (node.Tag() == "!") out << YAML::DoubleQuoted << node.Scalar();
-            else out << node.Scalar();
-            return true;
-        case YAML::NodeType::Sequence:
-            out << YAML::BeginSeq;
-            for (const auto& item : node) {
-                if (!emit_yaml(out, item, budget, depth + 1)) return false;
-            }
-            out << YAML::EndSeq;
-            return true;
-        case YAML::NodeType::Map:
-            out << YAML::BeginMap;
-            for (const auto& item : node) {
-                out << YAML::Key;
-                if (!emit_yaml(out, item.first, budget, depth + 1)) return false;
-                out << YAML::Value;
-                if (!emit_yaml(out, item.second, budget, depth + 1)) return false;
-            }
-            out << YAML::EndMap;
-            return true;
-    }
-    return false;
-}
-// serde_yaml refuses duplicate keys, so the same document must fail here too.
-bool no_duplicate_keys(const YAML::Node& node, YamlBudget& budget, int depth) {
-    if (++budget.nodes > kMaxYamlNodes || depth > kMaxYamlDepth) return false;
-    if (node.IsSequence()) {
-        for (const auto& item : node) {
-            if (!no_duplicate_keys(item, budget, depth + 1)) return false;
-        }
-    } else if (node.IsMap()) {
-        std::set<std::string> seen;
-        for (const auto& item : node) {
-            if (item.first.IsScalar() && !seen.insert(item.first.Scalar()).second) return false;
-            if (!no_duplicate_keys(item.second, budget, depth + 1)) return false;
-        }
-    }
-    return true;
-}
-bool valid_utf8(std::string_view text) {
-    for (const char32_t ch : tui::decode(text)) {
-        if (ch == U'�') {
-            if (text.find("\xEF\xBF\xBD") == std::string_view::npos) return false;
-        }
-    }
-    // A replacement character is only legitimate where the source really holds one.
-    size_t real = 0;
-    for (size_t at = 0; (at = text.find("\xEF\xBF\xBD", at)) != std::string_view::npos; at += 3) ++real;
-    size_t decoded = 0;
-    for (const char32_t ch : tui::decode(text)) decoded += ch == U'�';
-    return decoded == real;
-}
-std::optional<YAML::Node> load_yaml(std::string_view bytes) {
-    if (!valid_utf8(bytes)) return std::nullopt;
-    try {
-        std::vector<YAML::Node> documents = YAML::LoadAll(std::string(bytes));
-        if (documents.size() > 1) return std::nullopt;
-        YAML::Node root = documents.empty() ? YAML::Node() : documents.front();
-        YamlBudget budget;
-        if (!no_duplicate_keys(root, budget, 0)) return std::nullopt;
-        return root;
-    } catch (const std::exception&) {
-        return std::nullopt;
-    }
-}
-bool is_map(const YAML::Node& parent, const char* key) { return parent.IsMap() && parent[key].IsDefined() && parent[key].IsMap(); }
-bool is_missing(const YAML::Node& parent, const char* key) {
-    if (!parent[key].IsDefined()) return true;
-    return parent[key].IsNull();
-}
-std::string lower(std::string_view text) {
-    std::string out(text);
-    std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c) { return static_cast<char>(c >= 'A' && c <= 'Z' ? c + 32 : c); });
-    return out;
-}
 
 // ---- Network -----------------------------------------------------------------------------------
 struct Fetched {
@@ -358,7 +518,11 @@ size_t on_header(char* data, size_t size, size_t count, void* user) {
         return total;
     }
     const auto colon = line.find(':');
-    if (colon != std::string_view::npos) out.headers.emplace_back(lower(line.substr(0, colon)), tui::trim(line.substr(colon + 1)));
+    if (colon != std::string_view::npos) {
+        std::string name(line.substr(0, colon));
+        std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return static_cast<char>(c >= 'A' && c <= 'Z' ? c + 32 : c); });
+        out.headers.emplace_back(std::move(name), tui::trim(line.substr(colon + 1)));
+    }
     return total;
 }
 size_t on_body(char* data, size_t size, size_t count, void* user) {
@@ -416,7 +580,7 @@ std::string percent_decode(std::string_view raw) {
     for (size_t i = 0; i < raw.size(); ++i) {
         if (raw[i] != '%') {
             out += raw[i];
-        } else if (i + 2 < raw.size() + 0 && i + 2 <= raw.size() - 1) {
+        } else if (i + 2 < raw.size()) {
             const int high = hex(raw[i + 1]), low = hex(raw[i + 2]);
             if (high >= 0 && low >= 0) out += static_cast<char>(high * 16 + low);
             i += 2;
@@ -468,7 +632,7 @@ std::vector<std::string> Store::due() const {
     std::vector<std::string> out;
     for (const Subscription& item : items) {
         const auto hours = static_cast<int64_t>(std::clamp<uint64_t>(item.interval_hours, 1, 8760));
-        if (now - item.updated >= hours * 3600) out.push_back(item.id);
+        if (now >= item.updated && now - item.updated >= hours * 3600) out.push_back(item.id);
     }
     return out;
 }
@@ -509,30 +673,35 @@ Res<std::string> encode_settings(const Settings& settings) {
     return out;
 }
 Res<Store> decode_store(std::string_view text) {
-    const auto parsed = parse_toml(text);
-    if (!parsed) return kBadData;
+    TomlDoc doc;
+    if (!parse_toml_document(text, doc)) return kBadData;
     Store store;
-    if (!read_string(*parsed, "current", store.current)) return kBadData;
-    const toml::node* items = parsed->get("items");
-    if (!items) return store;
-    const toml::array* list = items->as_array();
-    if (!list) return kBadData;
-    for (const toml::node& node : *list) {
-        const toml::table* row = node.as_table();
-        if (!row) return kBadData;
-        std::optional<std::string> id, name, url;
-        std::optional<int64_t> updated;
+    if (const TomlValue* current = doc.root.get("current")) {
+        if (current->kind != TomlValue::Kind::String) return kBadData;
+        store.current = current->text;
+    }
+    if (const TomlValue* items = doc.root.get("items")) {
+        if (items->kind != TomlValue::Kind::EmptyArray || !doc.items.empty()) return kBadData;
+    }
+    for (const TomlSection& row : doc.items) {
+        std::string id, name, url;
+        int64_t updated = 0;
         std::optional<uint64_t> interval, nodes;
-        std::optional<bool> marker;
-        if (!read_string(*row, "id", id) || !read_string(*row, "name", name) || !read_string(*row, "url", url) || !read_int(*row, "updated", updated) ||
-            !read_uint(*row, "interval_hours", interval) || !read_uint(*row, "nodes", nodes) || !read_bool(*row, "verge_current", marker)) return kBadData;
-        if (!id || !name || !url || !updated || !interval || !nodes) return kBadData;
-        Subscription item{*id, *name, *url, *updated, *interval, std::nullopt, *nodes, marker.value_or(false)};
-        if (const toml::node* usage = row->get("usage")) {
-            const toml::table* fields = usage->as_table();
-            if (!fields) return kBadData;
-            std::optional<uint64_t> upload, download, total, expire;
-            if (!read_uint(*fields, "upload", upload) || !read_uint(*fields, "download", download) || !read_uint(*fields, "total", total) || !read_uint(*fields, "expire", expire)) return kBadData;
+        bool marker = false;
+        if (!as_string(row.get("id"), id) || !as_string(row.get("name"), name) || !as_string(row.get("url"), url) || !as_int(row.get("updated"), updated) ||
+            !as_uint(row.get("interval_hours"), interval) || !as_uint(row.get("nodes"), nodes) || !as_bool(row.get("verge_current"), marker)) return kBadData;
+        if (!row.has("id") || !row.has("name") || !row.has("url") || !row.has("updated") || !row.has("interval_hours") || !row.has("nodes")) return kBadData;
+        Subscription item;
+        item.id = std::move(id);
+        item.name = std::move(name);
+        item.url = std::move(url);
+        item.updated = updated;
+        item.interval_hours = interval.value_or(0);
+        item.nodes = nodes.value_or(0);
+        item.legacy_current_marker = marker;
+        std::optional<uint64_t> upload, download, total, expire;
+        if (!as_uint(row.get("upload"), upload) || !as_uint(row.get("download"), download) || !as_uint(row.get("total"), total) || !as_uint(row.get("expire"), expire)) return kBadData;
+        if (row.has("upload") || row.has("download") || row.has("total") || row.has("expire")) {
             item.usage = Usage{upload.value_or(0), download.value_or(0), total.value_or(0), expire.value_or(0)};
         }
         store.items.push_back(std::move(item));
@@ -540,21 +709,22 @@ Res<Store> decode_store(std::string_view text) {
     return store;
 }
 Res<Settings> decode_settings(std::string_view text) {
-    const auto parsed = parse_toml(text);
-    if (!parsed) return kBadData;
+    TomlDoc doc;
+    if (!parse_toml_document(text, doc)) return kBadData;
     Settings settings;
-    std::optional<bool> tun, ipv6, allow_lan;
-    std::optional<std::string> mode, log_level, baseline;
+    bool tun = settings.tun, ipv6 = settings.ipv6, allow_lan = settings.allow_lan;
+    std::string mode = settings.mode, log_level = settings.log_level, baseline = settings.baseline;
     std::optional<uint64_t> port;
-    if (!read_bool(*parsed, "tun", tun) || !read_bool(*parsed, "ipv6", ipv6) || !read_bool(*parsed, "allow_lan", allow_lan) || !read_string(*parsed, "mode", mode) ||
-        !read_string(*parsed, "log_level", log_level) || !read_string(*parsed, "baseline", baseline) || !read_uint(*parsed, "mixed_port", port)) return kBadData;
+    if (!as_bool(doc.root.get("tun"), tun) || !as_bool(doc.root.get("ipv6"), ipv6) || !as_bool(doc.root.get("allow_lan"), allow_lan) ||
+        !as_string(doc.root.get("mode"), mode) || !as_string(doc.root.get("log_level"), log_level) || !as_string(doc.root.get("baseline"), baseline) ||
+        !as_uint(doc.root.get("mixed_port"), port)) return kBadData;
     if (port && *port > 65535) return kBadData;
-    if (tun) settings.tun = *tun;
-    if (ipv6) settings.ipv6 = *ipv6;
-    if (allow_lan) settings.allow_lan = *allow_lan;
-    if (mode) settings.mode = *mode;
-    if (log_level) settings.log_level = *log_level;
-    if (baseline) settings.baseline = *baseline;
+    settings.tun = tun;
+    settings.ipv6 = ipv6;
+    settings.allow_lan = allow_lan;
+    settings.mode = std::move(mode);
+    settings.log_level = std::move(log_level);
+    settings.baseline = std::move(baseline);
     if (port) settings.mixed_port = static_cast<uint16_t>(*port);
     return settings;
 }
@@ -562,55 +732,65 @@ bool valid_id(std::string_view id) {
     return !id.empty() && id.size() < 96 && std::all_of(id.begin(), id.end(), [](unsigned char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_'; });
 }
 uint64_t node_count(std::string_view bytes) {
-    const auto root = load_yaml(bytes);
-    if (!root || !root->IsMap()) return 0;
-    const YAML::Node proxies = (*root)["proxies"];
-    return proxies.IsDefined() && proxies.IsSequence() ? proxies.size() : 0;
+    const auto root = yaml::parse(bytes);
+    if (!root || !root->is_map()) return 0;
+    const yaml::Node* proxies = root->find("proxies");
+    return proxies && proxies->is_seq() ? proxies->items.size() : 0;
 }
 Res<std::string> merge(std::string_view bytes, const Settings& settings, const std::string& socket) {
-    const auto loaded = load_yaml(bytes);
+    const auto loaded = yaml::parse(bytes);
     if (!loaded) return fail("订阅不是有效 YAML（内容隐藏）");
-    YAML::Node value = *loaded;
-    const bool has_proxies = value.IsMap() && value["proxies"].IsDefined() && value["proxies"].IsSequence();
-    if (!value.IsMap() || (!has_proxies && !is_map(value, "proxy-providers"))) return fail("订阅缺少 proxies / proxy-providers");
-    YAML::Node baseline;
-    if (const auto parsed = load_yaml(settings.baseline)) baseline = *parsed;
+    yaml::Node value = *loaded;
+    if (!value.is_map()) return fail("订阅缺少 proxies / proxy-providers");
+    const yaml::Node* proxies = value.find("proxies");
+    const yaml::Node* providers = value.find("proxy-providers");
+    if ((!proxies || !proxies->is_seq()) && (!providers || !providers->is_map())) return fail("订阅缺少 proxies / proxy-providers");
+    yaml::Node baseline;
+    if (const auto parsed = yaml::parse(settings.baseline)) baseline = *parsed;
     // Discard every remote control/listener inherited from a subscription; keep outbound definitions and rules.
     for (const char* key : {"external-controller", "external-controller-tls", "external-controller-pipe", "external-ui", "external-ui-url", "external-ui-name", "secret", "listeners",
                             "authentication", "port", "socks-port", "redir-port", "tproxy-port", "ss-config", "vmess-config", "tuic-server", "iptables", "ntp"}) {
         value.remove(key);
     }
     for (const char* key : {"tun", "dns", "sniffer", "profile"}) {
-        if (is_map(baseline, key)) value[key] = YAML::Clone(baseline[key]);
-        else value.remove(key);
+        if (const yaml::Node* section = baseline.find(key); section && section->is_map()) {
+            if (yaml::Node* target = value.find(key)) *target = *section;
+            else value.entries.emplace_back(yaml::scalar(key), *section);
+        } else {
+            value.remove(key);
+        }
     }
-    try {
-        if (is_missing(value, "tun")) value["tun"] = YAML::Load("{stack: mixed, auto-route: true, auto-detect-interface: true, strict-route: false, dns-hijack: ['any:53']}");
-        if (is_missing(value, "dns")) value["dns"] = YAML::Load("{enable: true, listen: ':53', enhanced-mode: fake-ip, fake-ip-range: 198.18.0.1/16, nameserver: [223.5.5.5, 8.8.8.8]}");
-        if (is_missing(value, "sniffer")) value["sniffer"] = YAML::Load("{enable: false}");
-        if (is_missing(value, "profile")) value["profile"] = YAML::Load("{}");
-        const char* yes = "true";
-        const char* no = "false";
-        value["tun"]["enable"] = settings.tun ? yes : no;
-        value["tun"]["device"] = "mayon-clash";
-        value["dns"]["ipv6"] = settings.ipv6 ? yes : no;
-        value["profile"]["store-selected"] = yes;
-        value["external-controller-unix"] = socket;
-        value["mixed-port"] = std::to_string(settings.mixed_port);
-        value["allow-lan"] = settings.allow_lan ? yes : no;
-        value["bind-address"] = settings.allow_lan ? "*" : "127.0.0.1";
-        value["mode"] = settings.mode;
-        value["ipv6"] = settings.ipv6 ? yes : no;
-        value["log-level"] = settings.log_level;
-        value["geodata-mode"] = yes;
-        value["geo-auto-update"] = no;
-        YAML::Emitter out;
-        YamlBudget budget;
-        if (!emit_yaml(out, value, budget, 0) || !out.good()) return fail("配置编码失败");
-        return std::string(out.c_str()) + "\n";
-    } catch (const std::exception&) {
-        return fail("配置编码失败");
+    const auto ensure = [&](const char* key, const char* fallback) {
+        yaml::Node* node = value.find(key);
+        if (!node || node->is_null()) {
+            if (node) *node = *yaml::parse(fallback);
+            else value.entries.emplace_back(yaml::scalar(key), *yaml::parse(fallback));
+        }
+    };
+    ensure("tun", "{stack: mixed, auto-route: true, auto-detect-interface: true, strict-route: false, dns-hijack: ['any:53']}");
+    ensure("dns", "{enable: true, listen: ':53', enhanced-mode: fake-ip, fake-ip-range: 198.18.0.1/16, nameserver: [223.5.5.5, 8.8.8.8]}");
+    ensure("sniffer", "{enable: false}");
+    ensure("profile", "{}");
+    const auto put = [&](yaml::Node& parent, const char* key, std::string text) {
+        if (yaml::Node* node = parent.find(key)) *node = yaml::scalar(std::move(text));
+        else parent.entries.emplace_back(yaml::scalar(key), yaml::scalar(std::move(text)));
+    };
+    if (yaml::Node* tun = value.find("tun"); tun && tun->is_map()) {
+        put(*tun, "enable", settings.tun ? "true" : "false");
+        put(*tun, "device", "mayon-clash");
     }
+    if (yaml::Node* dns = value.find("dns"); dns && dns->is_map()) put(*dns, "ipv6", settings.ipv6 ? "true" : "false");
+    if (yaml::Node* profile = value.find("profile"); profile && profile->is_map()) put(*profile, "store-selected", "true");
+    put(value, "external-controller-unix", socket);
+    put(value, "mixed-port", std::to_string(settings.mixed_port));
+    put(value, "allow-lan", settings.allow_lan ? "true" : "false");
+    put(value, "bind-address", settings.allow_lan ? "*" : "127.0.0.1");
+    put(value, "mode", settings.mode);
+    put(value, "ipv6", settings.ipv6 ? "true" : "false");
+    put(value, "log-level", settings.log_level);
+    put(value, "geodata-mode", "true");
+    put(value, "geo-auto-update", "false");
+    return yaml::emit(value);
 }
 HeaderMeta header_meta(const Headers& headers, const std::string& host) {
     HeaderMeta meta;
@@ -636,15 +816,17 @@ HeaderMeta header_meta(const Headers& headers, const std::string& host) {
                 if (semi == std::string_view::npos) break;
                 rest.remove_prefix(semi + 1);
             }
+            bool star = false;
             for (const std::string& field : fields) {
                 if (field.rfind("filename*=", 0) == 0) {
+                    star = true;
                     std::string_view value = trim_quotes(std::string_view(field).substr(10));
                     if (const auto mark = value.rfind("''"); mark != std::string_view::npos) value.remove_prefix(mark + 2);
                     name = percent_decode(value);
                     break;
                 }
             }
-            if (name.empty()) {
+            if (!star) {
                 for (const std::string& field : fields) {
                     if (field.rfind("filename=", 0) == 0) {
                         name = std::string(trim_quotes(std::string_view(field).substr(9)));
@@ -777,7 +959,14 @@ std::optional<std::string> read_data(const fs::path& path, bool& error) {
     const auto state = fs::status(path, code);
     if (state.type() == fs::file_type::not_found) return std::nullopt;
     auto text = read_file(path);
-    if (!text) error = true;
+    if (!text) {
+        error = true;
+        return std::nullopt;
+    }
+    if (!valid_utf8(*text)) {
+        error = true;
+        return std::nullopt;
+    }
     return text;
 }
 }  // namespace

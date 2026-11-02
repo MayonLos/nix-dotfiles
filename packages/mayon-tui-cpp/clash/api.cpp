@@ -64,7 +64,7 @@ std::expected<void, ApiError> empty_call(const Client& client, const std::string
     if (!success(reply->status)) return std::unexpected(ApiError::Rejected);
     return {};
 }
-std::string quoted(std::string_view value) {
+std::string json_quote(std::string_view value) {
     std::string out = "\"";
     for (const char c : value) {
         const auto byte = static_cast<unsigned char>(c);
@@ -90,7 +90,7 @@ std::expected<Proxies, ApiError> Client::proxies() const { return json_call(*thi
 std::expected<RuntimeConfig, ApiError> Client::configs() const { return json_call(*this, "/configs", kDefaultTimeout, parse_config); }
 std::expected<std::string, ApiError> Client::version() const { return json_call(*this, "/version", kDefaultTimeout, parse_version); }
 std::expected<void, ApiError> Client::select(const std::string& group, const std::string& node) const {
-    return empty_call(*this, "PUT", encode_path({"proxies", group}), "{\"name\":" + quoted(node) + "}", kDefaultTimeout);
+    return empty_call(*this, "PUT", encode_path({"proxies", group}), std::string("{\"name\":") + json_quote(node) + "}", kDefaultTimeout);
 }
 std::expected<void, ApiError> Client::reload() const { return empty_call(*this, "PUT", "/configs?force=true", "{}", 60000); }
 std::expected<uint64_t, ApiError> Client::delay(const std::string& proxy, const std::string& test_url, uint64_t timeout_ms) const {
