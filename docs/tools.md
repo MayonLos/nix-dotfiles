@@ -1,8 +1,8 @@
 ---
 summary: 自写工具清单、入口、数据位置、统一交互约定和资源测量
 read_when: 修改或新增自写 TUI、查工具的快捷键和数据目录、判断某个工具是否还存在
-code: [packages/mayon-tui, packages/bilitui, packages/mayon-tui-cpp, packages/mayon-voice, packages/noctalia-clash-status, aspects/cli/mayon-tools, aspects/cli/keys-mayon]
-checks: [mayon-tui, bilitui, bilitui-next, serial-mayon, keys-mayon, keys-mayon-bindings, mayon-voice, mayon-voice-fcitx]
+code: [packages/mayon-tui, packages/bilitui, packages/mayon-voice, packages/noctalia-clash-status, aspects/cli/mayon-tools, aspects/cli/keys-mayon]
+checks: [mayon-tui, bilitui, serial-mayon, keys-mayon, keys-mayon-bindings, mayon-voice, mayon-voice-fcitx]
 ---
 
 # 自写工具
@@ -17,14 +17,7 @@ checks: [mayon-tui, bilitui, bilitui-next, serial-mayon, keys-mayon, keys-mayon-
 | Clash | `clashtui-mayon` | `Super+Shift+C` | `pkgs.mayonTui.clash` | `~/.local/share/mayon-clash/` |
 | 工具箱 | `mayon-tools [docker\|ports\|serial\|keys\|voice]` | `Super+Shift+D` | `pkgs.mayonTui.tools` | 见下 |
 | Bilibili | `bilitui-mayon` | `Super+Shift+B` | `pkgs.bilitui` | `~/.local/share/bilitui/`、`~/.config/bilitui/`、`~/Videos/Bilibili/` |
-| Clash（C++ 新版，并行验收） | `clashtui-next` | 无 | `pkgs.mayonTuiNext` | 与旧版共用 |
-| 工具箱（C++ 新版，并行验收） | `mayon-tools-next [docker\|ports\|serial\|keys\|voice]` | 无 | `pkgs.mayonTuiNext` | 与旧版共用 |
-| Bilibili（C++ 新版，并行验收） | `bilitui-next` | 无 | `pkgs.mayonTuiNext`（`pkgs.bilitui-next` 为同 derivation 别名） | 与旧版共用 |
 | 语音输入 | `mayon-voice {toggle,start,stop,status,models fetch}` | 专用键，松开触发 | `pkgs.mayonVoice` | `~/.local/share/mayon-voice/models/` |
-
-C++ 新版由 Media 安装，和 Rust 版共用数据与格式；快捷键仍指向 Rust 版，验收通过后才切换。
-`mayon-tools-next` 与 `clashtui-next` 不接受真实服务作为默认测试对象：Docker 用
-`--host unix:///...`，Clash 用 `--data-dir/--socket/--mihomo/--systemctl` 指向 mock。
 
 工具箱页签：
 

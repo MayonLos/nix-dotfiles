@@ -203,14 +203,6 @@
               map (package: package.outPath) home.home.packages
             )) "Bilibili TUI must be installed by media";
             pkgs.bilitui;
-          bilitui-next =
-            assert lib.assertMsg (
-              pkgs.bilitui-next.outPath == pkgs.mayonTuiNext.outPath
-            ) "bilitui-next must stay an alias of mayonTuiNext";
-            assert lib.assertMsg (builtins.elem pkgs.mayonTuiNext.outPath (
-              map (package: package.outPath) home.home.packages
-            )) "mayonTuiNext must be installed by media";
-            pkgs.bilitui-next;
           architecture = pkgs.runCommand "architecture-check" { } "touch $out";
           docs = import ../tests/docs {
             inherit pkgs;
