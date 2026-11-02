@@ -20,4 +20,10 @@ in
     gvfs.enable = true;
     tumbler.enable = true;
   };
+
+  # gvfsd-metadata handles one journaled Remove per deleted file. Emptying a
+  # modpack-sized trash kept it at 100% CPU for minutes, and Thunar's D-Bus calls
+  # hit the 25 s timeout. Nothing here relies on metadata writes; D-Bus activation
+  # then fails immediately and existing metadata files are left in place.
+  systemd.user.units."gvfs-metadata.service".enable = false;
 }

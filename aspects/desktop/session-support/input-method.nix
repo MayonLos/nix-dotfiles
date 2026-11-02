@@ -6,6 +6,14 @@
   ...
 }:
 {
+  # The KDE settings module needs systemsettings; fcitx5-configtool stays available.
+  xdg.dataFile."applications/kcm_fcitx5.desktop".text = ''
+    [Desktop Entry]
+    Type=Application
+    Name=Fcitx 5
+    Hidden=true
+  '';
+
   i18n.inputMethod = {
     enable = true;
     type = "fcitx5";

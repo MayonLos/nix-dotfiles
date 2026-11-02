@@ -89,10 +89,6 @@
             "application/vnd.oasis.opendocument.text" = [ "writer.desktop" ];
             "application/vnd.oasis.opendocument.spreadsheet" = [ "calc.desktop" ];
             "application/vnd.oasis.opendocument.presentation" = [ "impress.desktop" ];
-            # Documents owns this narrow exception to the generic text editor
-            # binding: Markdown opens in the installed document application.
-            # force: The documents selection overrides the generic text MIME default for Markdown.
-            "text/markdown" = lib.mkForce [ "obsidian.desktop" ];
           };
         };
         home.packages = with pkgs; [

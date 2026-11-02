@@ -11,7 +11,7 @@ checks: [desktop-composition, mango-blur-sampling, noctalia-osd-pixels, noctalia
 
 ## 组成
 
-- **顶栏**：左侧启动器、当前应用名、工作区；中间留空；右侧托盘（内联）、网络、蓝牙、音量、电池、未读通知、控制中心、中文日期时间。状态图标正常为 brightFg，断开或静音才灰色。
+- **顶栏**：左侧启动器、当前应用名、工作区；中间留空；右侧托盘（内联）、网络、蓝牙、电池、未读通知、控制中心、中文日期时间。状态图标正常为 brightFg，断开才灰色。
 - **Dock**：Smart，空工作区显示，有窗口收起，碰底边唤出；全屏窗口（含游戏）会盖住底边触发条，不会误触；固定 kitty、firefox、obsidian、thunar、code、qq、musicfox。
 - **插件**：只有本仓库的 Launchpad、desktop-menus、legion-conservation，不用社区插件。
 - **启动器**：`Alt+Space` 是原生应用搜索，`Super+A` 是 Launchpad。
