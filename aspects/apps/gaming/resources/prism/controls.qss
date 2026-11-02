@@ -36,6 +36,46 @@ QMainWindow#MainWindow QToolBar#instanceToolBar QToolButton:disabled {
   border-color: transparent;
 }
 
+/* Instance page action bars (Mods, Worlds, Version...) follow the same quiet
+   list as the main instance toolbar; the patched WideBar left-aligns labels. */
+WideBar QToolButton {
+  color: @BRIGHT_FG@;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  padding: 4px 8px;
+}
+
+WideBar QToolButton:hover {
+  background: @SURFACE@;
+  border-color: @BORDER@;
+}
+
+WideBar QToolButton:pressed,
+WideBar QToolButton:checked {
+  background: @SELECTION@;
+  border-color: @BLUE@;
+}
+
+WideBar QToolButton:disabled {
+  color: @MUTED@;
+  background: transparent;
+  border-color: transparent;
+}
+
+WideBar QToolButton::menu-button {
+  background: transparent;
+  border: 0;
+  border-left: 1px solid transparent;
+  width: 14px;
+}
+
+WideBar QToolButton::menu-button:hover,
+WideBar QToolButton::menu-button:pressed {
+  background: transparent;
+  border-left-color: @BORDER@;
+}
+
 /* Keep the split-button arrow and its clickable area, while removing the
    always-visible divider that otherwise reads as a second button. */
 QMainWindow#MainWindow QToolBar#mainToolBar QToolButton::menu-button,

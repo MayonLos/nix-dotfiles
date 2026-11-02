@@ -89,6 +89,7 @@ let
   );
   prismlauncher = pkgs.prismlauncher.override {
     prismlauncher-unwrapped = pkgs.prismlauncher-unwrapped.overrideAttrs (old: {
+      patches = (old.patches or [ ]) ++ [ ./resources/prism/widebar-icons.patch ];
       postPatch = (old.postPatch or "") + ''
         # Apply at the game launch boundary, preserving user custom wrappers
         # and instance overrides without rewriting any Prism settings file.

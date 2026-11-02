@@ -125,6 +125,7 @@ assert builtins.length withoutAppearance.config.home.packages == 1;
         prism_qss = qss[len(shared_qss):]
         assert "QToolBar#mainToolBar QToolButton" in prism_qss
         assert "QToolBar#instanceToolBar QToolButton" in prism_qss
+        assert "WideBar QToolButton:hover" in prism_qss, "page action bars must follow the instance toolbar"
         assert ":hover" in prism_qss and ":pressed" in prism_qss and ":focus" in prism_qss
         assert "QToolButton::menu-button" in prism_qss and "width: 14px" in prism_qss
         assert "QPushButton," not in prism_qss, "generic buttons must retain the shared style"

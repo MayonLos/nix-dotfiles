@@ -1,0 +1,51 @@
+--- a/launcher/ui/widgets/WideBar.cpp
++++ b/launcher/ui/widgets/WideBar.cpp
+@@ -2,8 +2,38 @@
+ 
+ #include <QContextMenuEvent>
+ #include <QCryptographicHash>
++#include <QHash>
++#include <QIcon>
++#include <QPixmap>
+ #include <QToolButton>
+ 
++// Prism's page actions have no icons, so Fusion centers their labels. Give them
++// the icons used by the main-window toolbars; a blank fallback keeps labels aligned.
++static QIcon wideBarFallbackIcon(const QAction* action)
++{
++    static const QHash<QString, QString> names{
++        { "actionDownloadItem", "new" },        { "actionAddItem", "new" },
++        { "actionAdd", "new" },                 { "actionAddMicrosoft", "new" },
++        { "actionAddOffline", "new" },          { "actionAdd_Empty", "new" },
++        { "actionUpdateItem", "checkupdate" },  { "actionChangeVersion", "tag" },
++        { "actionChange_version", "tag" },      { "actionRemoveItem", "delete" },
++        { "actionRemove", "delete" },           { "actionDelete", "delete" },
++        { "actionEnableItem", "status-good" },  { "actionDisableItem", "status-bad" },
++        { "actionViewHomepage", "news" },       { "actionExportMetadata", "export" },
++        { "actionViewFolder", "viewfolder" },   { "actionView_Folder", "viewfolder" },
++        { "actionMinecraftFolder", "viewfolder" }, { "actionLibrariesFolder", "viewfolder" },
++        { "actionViewConfigs", "settings" },    { "actionRename", "rename" },
++        { "actionCopy", "copy" },               { "actionRefresh", "refresh" },
++        { "actionReload", "refresh" },          { "actionJoin", "launch" },
++        { "actionManageSkins", "accounts" },    { "actionData_Packs", "datapacks" },
++    };
++    if (const auto name = names.value(action->objectName()); !name.isEmpty())
++        return QIcon::fromTheme(name);
++    QPixmap blank(16, 16);
++    blank.fill(Qt::transparent);
++    return QIcon(blank);
++}
++
+ class ActionButton : public QToolButton {
+     Q_OBJECT
+    public:
+@@ -15,6 +45,9 @@
+         // workaround for breeze and breeze forks
+         setProperty("_kde_toolButton_alignment", Qt::AlignLeft);
+ 
++        if (m_action->icon().isNull())
++            m_action->setIcon(wideBarFallbackIcon(m_action));
++
+         if (m_use_default_action) {
+             setDefaultAction(action);
+         } else {
