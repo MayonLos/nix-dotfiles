@@ -74,8 +74,18 @@ std::vector<std::string> wrap(const std::string& text, int width, size_t max_lin
     return lines;
 }
 void fill(Screen& screen, const Rect& area, uint32_t bg) {
+    const int left = std::max(area.x, 0);
+    const int right = std::min(area.x + area.width, screen.dimx());
     for (int y = std::max(area.y, 0); y < area.y + area.height && y < screen.dimy(); ++y) {
-        for (int x = std::max(area.x, 0); x < area.x + area.width && x < screen.dimx(); ++x) {
+        // A wide character occupies two cells with an empty continuation cell. Overwriting
+        // either half alone would leave the other half visible outside the filled area.
+        if (left > 0 && left < screen.dimx() && screen.PixelAt(left, y).character.empty()) {
+            screen.PixelAt(left - 1, y).character = " ";
+        }
+        if (right > 0 && right < screen.dimx() && screen.PixelAt(right, y).character.empty()) {
+            screen.PixelAt(right, y).character = " ";
+        }
+        for (int x = left; x < right; ++x) {
             ftxui::Pixel& pixel = screen.PixelAt(x, y);
             pixel.character = " ";
             pixel.background_color = rgb(bg);
