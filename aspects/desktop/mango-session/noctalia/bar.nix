@@ -35,7 +35,6 @@
       "tray"
       "network"
       "bluetooth"
-      "volume"
       "battery"
       # Native control-center has no unread badge; this fallback disappears
       # completely once history is read, and opens the notifications tab.
@@ -95,11 +94,6 @@
       scale = 1.125;
     };
     bluetooth.scale = 1.125;
-    volume = {
-      show_label = false;
-      scale = 1.125;
-      mute_color = palette.muted;
-    };
     battery = {
       # R44 keeps native Tabler battery outline + bolt even at AC charge limit.
       scale = 1.125;

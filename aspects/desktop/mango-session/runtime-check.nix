@@ -353,7 +353,6 @@ pkgs.runCommand "interactive-session-config"
         ("widget", "battery", "actions", "left"): "exec legion-conservation toggle",
         ("widget", "tray", "drawer"): False,
         ("widget", "tray", "pinned"): ["fcitx"],
-        ("widget", "volume", "show_label"): False,
         ("widget", "notifications", "hide_when_no_unread"): True,
         ("system", "monitor", "gpu_poll_seconds"): 2.0,
         ("system", "monitor", "gpu_only_nvidia"): True,
@@ -403,7 +402,7 @@ pkgs.runCommand "interactive-session-config"
         bar = root["bar"]["main"]
         assert bar["start"] == ["launcher", "active_window", "workspaces"]
         assert bar["center"] == []
-        assert bar["end"] == ["tray", "network", "bluetooth", "volume", "battery", "notifications", "control-center", "clock"]
+        assert bar["end"] == ["tray", "network", "bluetooth", "battery", "notifications", "control-center", "clock"]
         assert not bar.get("capsule_group")
         assert not any(name.startswith(("monitor-", "separator-", "group:")) for name in root["widget"])
         assert root["battery"]["warning_threshold"] == 20
@@ -412,7 +411,7 @@ pkgs.runCommand "interactive-session-config"
         assert root["notification"]["offset_y"] == 24
     assert "battery-charging" in patches["r44-status-icons.patch"]
     assert settings["bar"]["main"]["icon_color"] == m["palette"]["brightFg"]
-    for name in ("network", "bluetooth", "volume", "battery", "tray", "notifications", "control-center"):
+    for name in ("network", "bluetooth", "battery", "tray", "notifications", "control-center"):
         assert settings["widget"][name]["scale"] == 1.125
     assert "workspaces_widget" not in patches["astra-selection.patch"]
     local_ids = {"nix-dotfiles/legion-conservation", "nix-dotfiles/launchpad", "nix-dotfiles/desktop-menus"}
