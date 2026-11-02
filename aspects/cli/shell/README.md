@@ -8,6 +8,8 @@ Outputs include Zsh, Starship, zoxide, Atuin, fzf/fzf-tab, Git/delta/lazygit, di
 
 Removing the feature removes its shell selection, generated shell files, tools, and runtime exports on activation. It preserves shell history, Git repositories, credentials, Atuin history, project files, and user-owned configuration/data unless separately edited by the user.
 
+`vim.nix` owns `~/.config/vim/vimrc`: built-in options on top of `defaults.vim`, with no plugins. Vim itself is installed by `system/maintenance`. It also hides the packaged `gvim.desktop`, which has no binary.
+
 r43 uses a single-line Starship prompt: directory, neutral Git metadata and a
 blue `❯`. The right prompt shows duration only from three seconds; Zsh hides it
 when input needs the space. SSH shows `@hostname`, actual UID 0 shows the root

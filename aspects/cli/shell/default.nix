@@ -16,6 +16,7 @@
         (import ./git.nix { palette = user.appearance; })
         ./direnv.nix
         ./nix-index.nix
+        ./vim.nix
         (import ./tmux.nix { palette = user.appearance; })
         (import ./yazi.nix { palette = user.appearance; })
         (import ./sysinfo.nix { palette = user.appearance; })
