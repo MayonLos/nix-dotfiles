@@ -3,16 +3,32 @@ let
   palette = pkgs.writeText "palette.inc" (
     import ./tools/palette.nix (import ../../aspects/appearance/appearance/onedark.nix)
   );
+  runtimePath = pkgs.lib.makeBinPath [
+    pkgs.docker
+    pkgs.ffmpeg
+    pkgs.libvirt
+    pkgs.mihomo
+    pkgs.mpv
+    pkgs.systemd
+    pkgs.wl-clipboard
+    pkgs.xdg-utils
+  ];
+  clashEnvironment = ''
+    --set-default MAYON_CLASH_GEOIP ${pkgs.v2ray-geoip}/share/v2ray/geoip.dat \
+    --set-default MAYON_CLASH_GEOSITE ${pkgs.v2ray-domain-list-community}/share/v2ray/geosite.dat \
+    --set-default MAYON_CLASH_MMDB ${pkgs.dbip-country-lite.mmdb}
+  '';
 in
 pkgs.stdenv.mkDerivation {
-  pname = "bilitui-next";
-  version = "0.1.0";
+  pname = "mayon-tui-next";
+  version = "0.2.0";
   src = pkgs.lib.cleanSourceWith {
     src = ./.;
     filter =
       path: _:
       !(builtins.elem (baseNameOf path) [
         "build"
+        "build-asan"
         "result"
       ]);
   };
@@ -21,6 +37,8 @@ pkgs.stdenv.mkDerivation {
     ninja
     pkg-config
     makeWrapper
+    # The integration tests drive the crates' Python mock servers and PTYs.
+    python3
   ];
   buildInputs = with pkgs; [
     curl
@@ -34,20 +52,21 @@ pkgs.stdenv.mkDerivation {
     cp ${palette} ui/palette.inc
   '';
   doCheck = true;
-  # The search path stays a suffix so a user's own mpv and ffmpeg win.
+  # Only the three real programs are installed; per-tool demo binaries stay out.
+  # The search path stays a suffix so a user's own tools win.
   postInstall = ''
-    wrapProgram "$out/bin/bilitui-next" --suffix PATH : ${
-      pkgs.lib.makeBinPath [
-        pkgs.mpv
-        pkgs.ffmpeg
-        pkgs.xdg-utils
-      ]
-    }
+    wrapProgram "$out/bin/bilitui-next" --suffix PATH : ${runtimePath}
+    wrapProgram "$out/bin/mayon-tools-next" \
+      --set SERIAL_MAYON_SHELL ${pkgs.runtimeShell} \
+      --suffix PATH : ${runtimePath}
+    wrapProgram "$out/bin/clashtui-next" \
+      --prefix PATH : ${runtimePath} \
+      ${clashEnvironment}
   '';
   meta = {
-    description = "Search-first Bilibili terminal player for learning, built around mpv";
+    description = "C++ rewrite of the Bilibili player, toolbox and Clash terminal UIs";
     license = pkgs.lib.licenses.mit;
-    mainProgram = "bilitui-next";
+    mainProgram = "mayon-tools-next";
     platforms = pkgs.lib.platforms.linux;
   };
 }

@@ -25,6 +25,11 @@ static const std::vector<std::string_view>& table() {
     return words;
 }
 static char32_t lower(char32_t ch) { return ch >= U'A' && ch <= U'Z' ? ch + 32 : ch; }
+std::string_view pinyin_syllable(char32_t ch) {
+    const auto& words = table();
+    if (ch < 0x4E00 || ch - 0x4E00 >= words.size()) return {};
+    return words[ch - 0x4E00];
+}
 struct Index {
     std::u32string chars;
     std::vector<size_t> map;

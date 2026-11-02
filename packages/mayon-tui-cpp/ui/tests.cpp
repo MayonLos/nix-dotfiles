@@ -4,8 +4,47 @@
 #include <ftxui/screen/screen.hpp>
 
 #include "ui/draw.hpp"
+#include "ui/input.hpp"
+#include "ui/keys.hpp"
+#include "ui/search.hpp"
 
 using namespace tui;
+TEST_CASE("pinyin syllables come from the shared table") {
+    CHECK(pinyin_syllable(U'信') == "xin");
+    CHECK(pinyin_syllable(U'号') == "hao");
+    CHECK(pinyin_syllable(U'A').empty());
+    CHECK(pinyin_syllable(U'㐀').empty());
+}
+TEST_CASE("filling one half of a wide character clears the other") {
+    ftxui::Screen screen(6, 1);
+    put(screen, 0, 0, "信号", Style{});
+    // Only the continuation cell is inside the filled area.
+    fill(screen, Rect{1, 0, 1, 1}, kSurface);
+    CHECK(screen.PixelAt(0, 0).character == " ");
+    ftxui::Screen other(6, 1);
+    put(other, 0, 0, "信号", Style{});
+    // The start cell is the last one filled; its continuation lies outside.
+    fill(other, Rect{2, 0, 1, 1}, kSurface);
+    CHECK(other.PixelAt(3, 0).character == " ");
+}
+TEST_CASE("function keys are decoded for the serial flash shortcut") {
+    InputParser parser;
+    const auto f5 = parser.feed("\x1b[15~");
+    REQUIRE(f5.size() == 1);
+    CHECK(f5[0].key.code == KeyCode::F5);
+    const auto f1 = parser.feed("\x1bOP");
+    REQUIRE(f1.size() == 1);
+    CHECK(f1[0].key.code == KeyCode::F1);
+    const auto f12 = parser.feed("\x1b[24~");
+    REQUIRE(f12.size() == 1);
+    CHECK(f12[0].key.code == KeyCode::F12);
+}
+TEST_CASE("text input keeps the rust character limit") {
+    TextInput input;
+    input.paste(std::string(5000, 'a'));
+    CHECK(input.str().size() == TextInput::kMaxChars);
+    CHECK(input.str().size() == 4096);
+}
 TEST_CASE("clip keeps wide characters whole and marks the cut") {
     CHECK(clip("信号与系统", 20) == "信号与系统");
     CHECK(clip("信号与系统", 6) == "信号…");

@@ -15,9 +15,11 @@ void TextInput::paste(std::string_view text) {
         if (ch == U'\n' || ch == U'\r' || ch == U'\t') flat.push_back(U' ');
         else if (ch >= 0x20 && ch != 0x7F && !(ch >= 0x80 && ch < 0xA0)) flat.push_back(ch);
     }
-    if (text_.size() + flat.size() > 512) return;
-    text_.insert(cursor_, flat);
-    cursor_ += flat.size();
+    for (const char32_t ch : flat) {
+        if (text_.size() >= kMaxChars) break;
+        text_.insert(cursor_, 1, ch);
+        ++cursor_;
+    }
 }
 bool TextInput::handle(const Key& key) {
     const auto word_start = [&] {
@@ -50,7 +52,7 @@ bool TextInput::handle(const Key& key) {
         cursor_ = from;
         return true;
     }
-    if (key.code == KeyCode::Char && !key.ctrl && !key.alt && key.ch >= 0x20 && text_.size() < 512) {
+    if (key.code == KeyCode::Char && !key.ctrl && !key.alt && key.ch >= 0x20 && text_.size() < kMaxChars) {
         text_.insert(cursor_, 1, key.ch);
         ++cursor_;
         return true;

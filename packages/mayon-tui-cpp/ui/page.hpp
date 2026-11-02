@@ -28,6 +28,9 @@ public:
     virtual void tick() {}
     // Where the real cursor goes after draw, for text inputs.
     virtual std::optional<std::pair<int, int>> cursor() const { return std::nullopt; }
+    // True while a key belongs to this page, so the toolbox must not steal [ and ].
+    // Confirmations and destructive-flow dialogs edit even when they show no cursor.
+    virtual bool editing() const { return cursor().has_value(); }
 
 protected:
     Post post_;

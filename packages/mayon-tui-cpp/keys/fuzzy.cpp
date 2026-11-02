@@ -3,31 +3,12 @@
 #include <algorithm>
 
 #include "model.hpp"
+#include "ui/search.hpp"
 #include "ui/text.hpp"
 
 namespace keys {
 namespace {
-const char kPinyin[] =
-#include "ui/pinyin_table.inc"
-    ;
-const std::vector<std::string_view>& pinyin_table() {
-    static const std::vector<std::string_view> words = [] {
-        std::vector<std::string_view> out;
-        std::string_view rest(kPinyin);
-        while (true) {
-            const auto space = rest.find(' ');
-            out.push_back(rest.substr(0, space));
-            if (space == std::string_view::npos) return out;
-            rest.remove_prefix(space + 1);
-        }
-    }();
-    return words;
-}
-std::string_view syllable(char32_t ch) {
-    const auto& words = pinyin_table();
-    if (ch < 0x4E00 || ch - 0x4E00 >= words.size()) return {};
-    return words[ch - 0x4E00];
-}
+std::string_view syllable(char32_t ch) { return tui::pinyin_syllable(ch); }
 bool is_han(char32_t ch) { return (ch >= 0x3400 && ch <= 0x4DBF) || (ch >= 0x4E00 && ch <= 0x9FFF) || (ch >= 0xF900 && ch <= 0xFAFF) || (ch >= 0x20000 && ch <= 0x3134F); }
 char32_t lower(char32_t ch) { return ch >= U'A' && ch <= U'Z' ? ch + 32 : ch; }
 void add(Indexed& index, char32_t ch, size_t at) {
