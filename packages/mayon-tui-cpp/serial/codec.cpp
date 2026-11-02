@@ -438,7 +438,7 @@ std::expected<uint64_t, const char*> parse_unsigned(std::string_view text, uint6
     for (const char c : text) {
         if (c < '0' || c > '9') return std::unexpected("InvalidDigit");
         const auto digit = static_cast<uint64_t>(c - '0');
-        if (value > (max - digit) / 10) return std::unexpected("PosOverflow");
+        if (digit > max || value > (max - digit) / 10) return std::unexpected("PosOverflow");
         value = value * 10 + digit;
     }
     return value;

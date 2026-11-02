@@ -126,7 +126,6 @@ std::expected<int, std::string> configure(const Device& device, const Settings& 
     // O_NOCTTY: a serial port must never become this program's controlling terminal.
     const int fd = ::open(device.path.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK | O_CLOEXEC);
     if (fd < 0) return fail(-1, device.path + ": " + os_error(errno));
-    if (::ioctl(fd, TIOCEXCL) != 0) return fail(fd, device.path + ": " + os_error(errno));
     termios options{};
     if (::tcgetattr(fd, &options) != 0) return fail(fd, device.path + ": " + os_error(errno));
     ::cfmakeraw(&options);
@@ -150,10 +149,7 @@ std::expected<int, std::string> configure(const Device& device, const Settings& 
     if (!set_baud(fd, settings.baud)) return fail(fd, device.path + ": " + os_error(errno));
     return fd;
 }
-void close_port(int fd) {
-    ::ioctl(fd, TIOCNXCL);
-    ::close(fd);
-}
+void close_port(int fd) { ::close(fd); }
 bool is_stream(const Event& event) { return event.kind == Event::Kind::Rx || event.kind == Event::Kind::Tx; }
 // Delivers events without ever blocking the port loop: overflow waits here, and reads pause meanwhile.
 class EventSink {
