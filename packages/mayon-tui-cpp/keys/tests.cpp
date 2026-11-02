@@ -4,6 +4,9 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
+#include <filesystem>
+#include <unistd.h>
+
 #include <algorithm>
 #include <cstdlib>
 #include <fstream>
@@ -96,9 +99,10 @@ Cli cli(const std::vector<std::string>& args) {
     return Cli{code, out.str(), err.str()};
 }
 std::string scratch_file(const std::string& name, const std::string& body) {
-    const std::string path = "keys-test-" + name;
+    const auto path = std::filesystem::temp_directory_path() /
+                      ("keys-test-" + name + "-" + std::to_string(::getpid()) + ".json");
     std::ofstream(path, std::ios::binary) << body;
-    return path;
+    return path.string();
 }
 }  // namespace
 
