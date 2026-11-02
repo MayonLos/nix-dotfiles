@@ -43,13 +43,14 @@ Stamp local_stamp() {
     std::tm tm{};
     localtime_r(&when, &tm);
     char clock[16];
-    std::snprintf(clock, sizeof clock, "%02d:%02d:%02d.%03lld", tm.tm_hour, tm.tm_min, tm.tm_sec, static_cast<long long>(micros / 1000));
+    const int millis = static_cast<int>((micros / 1000) % 1000);
+    std::snprintf(clock, sizeof clock, "%02d:%02d:%02d.%03d", tm.tm_hour, tm.tm_min, tm.tm_sec, millis);
     long offset = tm.tm_gmtoff;
     const char sign = offset < 0 ? '-' : '+';
     offset = offset < 0 ? -offset : offset;
     char stamp[80];
-    std::snprintf(stamp, sizeof stamp, "%04d-%02d-%02dT%02d:%02d:%02d.%06lld%c%02ld:%02ld", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-                  tm.tm_hour, tm.tm_min, tm.tm_sec, static_cast<long long>(micros), sign, offset / 3600, offset / 60 % 60);
+    std::snprintf(stamp, sizeof stamp, "%04d-%02d-%02dT%02d:%02d:%02d.%06d%c%02ld:%02ld", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+                  tm.tm_hour, tm.tm_min, tm.tm_sec, static_cast<int>(micros), sign, offset / 3600, offset / 60 % 60);
     return Stamp{clock, stamp};
 }
 std::expected<void, std::string> write_fd(int fd, std::string_view text) {
