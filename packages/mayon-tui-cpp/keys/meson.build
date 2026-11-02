@@ -1,7 +1,7 @@
 keys_inc = include_directories('.', '..')
 keys_deps = ui_deps + [dependency('nlohmann_json')]
 keys_lib = static_library('keys', ['model.cpp', 'fuzzy.cpp', 'page.cpp'], include_directories: keys_inc, link_with: ui, dependencies: keys_deps)
-keys_demo = executable('keys-demo', 'demo.cpp', include_directories: keys_inc, link_with: [keys_lib, ui], dependencies: keys_deps)
+keys_demo = executable('keys-demo', 'demo.cpp', include_directories: keys_inc, link_with: [keys_lib, ui], dependencies: keys_deps, install: false)
 keys_fixtures = meson.current_source_dir() / 'tests/fixtures'
 test('keys', executable('keys-tests', 'tests.cpp', include_directories: keys_inc, link_with: [keys_lib, ui], dependencies: keys_deps + [doctest],
   cpp_args: ['-DFIXTURES="' + keys_fixtures + '"']))
