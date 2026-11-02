@@ -39,7 +39,7 @@
           (final: _: {
             # Local programs have a separate public entry; local remains upstream aliases.
             bilitui = import ../packages/bilitui { pkgs = final; };
-            bilitui-next = import ../packages/bilitui-cpp { pkgs = final; };
+            bilitui-next = import ../packages/mayon-tui-cpp { pkgs = final; };
             mayonTui = import ../packages/mayon-tui { pkgs = final; };
             mayonVoice = import ../packages/mayon-voice { pkgs = final; };
             # Explicit exceptions to stable; each consumer uses this shared instance.

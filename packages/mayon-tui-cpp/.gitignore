@@ -1,0 +1,5 @@
+/build/
+/result
+ui/palette.inc
+/build-asan/
+.cache/

@@ -1,7 +1,7 @@
 ---
 summary: 自写工具清单、入口、数据位置、统一交互约定和资源测量
 read_when: 修改或新增自写 TUI、查工具的快捷键和数据目录、判断某个工具是否还存在
-code: [packages/mayon-tui, packages/bilitui, packages/bilitui-cpp, packages/mayon-voice, packages/noctalia-clash-status, aspects/cli/mayon-tools, aspects/cli/keys-mayon]
+code: [packages/mayon-tui, packages/bilitui, packages/mayon-tui-cpp, packages/mayon-voice, packages/noctalia-clash-status, aspects/cli/mayon-tools, aspects/cli/keys-mayon]
 checks: [mayon-tui, bilitui, bilitui-next, serial-mayon, keys-mayon, keys-mayon-bindings, mayon-voice, mayon-voice-fcitx]
 ---
 
