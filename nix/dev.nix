@@ -20,6 +20,13 @@ _: {
           ];
         };
 
+        # C++ tools; tools/dev-setup.sh enters it to create the clangd database.
+        cpp = pkgs.mkShell {
+          name = "cpp-dev";
+          inputsFrom = [ pkgs.bilitui-next ];
+          packages = [ pkgs.clang-tools ];
+        };
+
         cuda = pkgs.mkShell {
           name = "cuda-dev";
           packages = with pkgs.cudaPackages; [

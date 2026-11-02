@@ -203,6 +203,11 @@
               map (package: package.outPath) home.home.packages
             )) "Bilibili TUI must be installed by media";
             pkgs.bilitui;
+          bilitui-next =
+            assert lib.assertMsg (builtins.elem pkgs.bilitui-next.outPath (
+              map (package: package.outPath) home.home.packages
+            )) "bilitui-next must be installed by media";
+            pkgs.bilitui-next;
           architecture = pkgs.runCommand "architecture-check" { } "touch $out";
           docs = import ../tests/docs {
             inherit pkgs;

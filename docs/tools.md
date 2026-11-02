@@ -1,8 +1,8 @@
 ---
 summary: 自写工具清单、入口、数据位置、统一交互约定和资源测量
 read_when: 修改或新增自写 TUI、查工具的快捷键和数据目录、判断某个工具是否还存在
-code: [packages/mayon-tui, packages/bilitui, packages/mayon-voice, packages/noctalia-clash-status, aspects/cli/mayon-tools, aspects/cli/keys-mayon]
-checks: [mayon-tui, bilitui, serial-mayon, keys-mayon, keys-mayon-bindings, mayon-voice, mayon-voice-fcitx]
+code: [packages/mayon-tui, packages/bilitui, packages/bilitui-cpp, packages/mayon-voice, packages/noctalia-clash-status, aspects/cli/mayon-tools, aspects/cli/keys-mayon]
+checks: [mayon-tui, bilitui, bilitui-next, serial-mayon, keys-mayon, keys-mayon-bindings, mayon-voice, mayon-voice-fcitx]
 ---
 
 # 自写工具
@@ -17,6 +17,7 @@ checks: [mayon-tui, bilitui, serial-mayon, keys-mayon, keys-mayon-bindings, mayo
 | Clash | `clashtui-mayon` | `Super+Shift+C` | `pkgs.mayonTui.clash` | `~/.local/share/mayon-clash/` |
 | 工具箱 | `mayon-tools [docker\|ports\|serial\|keys\|voice]` | `Super+Shift+D` | `pkgs.mayonTui.tools` | 见下 |
 | Bilibili | `bilitui-mayon` | `Super+Shift+B` | `pkgs.bilitui` | `~/.local/share/bilitui/`、`~/.config/bilitui/`、`~/Videos/Bilibili/` |
+| Bilibili（C++ 新版，并行验收） | `bilitui-next` | 无 | `pkgs.bilitui-next` | 与旧版共用 |
 | 语音输入 | `mayon-voice {toggle,start,stop,status,models fetch}` | 专用键，松开触发 | `pkgs.mayonVoice` | `~/.local/share/mayon-voice/models/` |
 
 工具箱页签：

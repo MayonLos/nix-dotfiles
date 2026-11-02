@@ -1,0 +1,4 @@
+/build/
+/result
+src/ui/palette.inc
+/build-asan/

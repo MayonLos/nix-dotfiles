@@ -20,7 +20,7 @@ checks: []
 | 已移除 | Okular | 用户决定不安装；PDF 默认 Zathura，PDF 批注使用 Zotero 内置阅读器。 |
 | 已修改 | `cliphist` | 删除两个 watcher，日常历史统一使用 Noctalia；保留旧数据库和 X11↔Wayland 剪贴板桥。 |
 | 已修改 | `pamixer` | 移除无消费者的安装声明；音量键继续走 Noctalia。 |
-| 已修改 | `pavucontrol` | 移除安装声明与浮窗规则；Noctalia 覆盖日常混音，高级声卡 profile/端口操作使用已有 wpctl/pw-cli。 |
+| 已修改 | `pavucontrol` | 由 `xorg-session` 安装，Mango 下也可从启动器打开并按浮窗规则显示；用于精细调节。音量键负责日常调节，顶栏不放音量图标。 |
 | 已修改 | Discord → Vesktop | 用户确认替换；使用 stable 包及系统 Vencord，Wayland/PipeWire 接线已构建，实际分享待验。 |
 | 按需 | 跨设备同步、远程开发 | 有第二台设备/服务器后，再选 Syncthing、Remote-SSH、Tailscale；不提前把所有服务打开。 |
 
@@ -50,7 +50,7 @@ checks: []
 | Fastfetch | 保留 | 终端快照，不与实时监视器等价；若以后发现启动拖慢，再测量并改成显式 `ff`，当前不假定存在延迟问题。 |
 | btop | 保留 | 进程选择、资源排序和结束进程不同于 Noctalia 的资源概览；暂不另加 Mission Center。 |
 | pamixer | 已修改：移除 | 仓库无命令消费者，删除安装声明；音量键仍直接使用 Noctalia IPC。 |
-| pavucontrol | 已修改：移除 | 已核对锁定源码的设备、音量和应用输出路由；移除安装声明及浮窗规则。Noctalia 未提供等价的硬件 card profile 菜单，高级操作改用 wpctl/pw-cli，命令见 README。 |
+| pavucontrol | 保留 | 由 `xorg-session` 安装，两个会话都可用。Noctalia 未提供等价的硬件 card profile 菜单，高级操作也可用 wpctl/pw-cli，命令见 README。 |
 | brightnessctl | 保留 | 笔记本背光命令后端，不因面板有亮度滑块就视为重复。 |
 | ddcutil | 保留 | 外接显示器 DDC/CI 后端，与笔记本背光不同。无支持设备时不会凭空带来功能。 |
 | playerctl | 保留 | MPRIS 媒体控制接线，不是另一个播放器。 |
@@ -76,7 +76,7 @@ checks: []
 | LibreOffice | 保留，统一处理 Office 格式 | DOC/DOCX、XLS/XLSX、PPT/PPTX 与 ODT/ODS/ODP 均由 LibreOffice 默认打开，分别使用 Writer、Calc、Impress。复杂文档仍应使用真实文件检查排版，不凭格式支持宣称兼容性普遍更好。 |
 | Zotero | 保留，优先补 Connector | 文献库和论文注释已有一体化流程；浏览器扩展可减少手动录入。不要用普通文件同步器同步正在使用的数据目录。 |
 | Obsidian | 保留 | 本地 Markdown 知识库、链接和检索有明确角色；无需为减少应用数量直接并入单文档编辑器。 |
-| Typora | 已移除声明 | 用户确认删除包与受管主题；Markdown 默认 Obsidian，CLI 编辑仍遵循 default-tools。Typora 配置、文档与历史保留。 |
+| Typora | 已移除声明 | 用户确认删除包与受管主题；Markdown 默认跟随 default-tools 的 GUI 文本编辑器，CLI 编辑仍遵循 default-tools。Typora 配置、文档与历史保留。 |
 | Zathura | 保留 | 键盘式 PDF 阅读与 SyncTeX；PDF 批注使用 Zotero 内置阅读器。若另有手写批注需求，再评估 Xournal++，不安装 Okular。 |
 | Quill | 保留 | 面板快记、todo 与主笔记库分工。先明确哪些内容应长期进入 Obsidian，避免同一事项在两处维护。 |
 | Musicfox | 保留 | 网易云终端入口；不承担通用本地音乐库，无需因为已有 mpv 就删除。 |
