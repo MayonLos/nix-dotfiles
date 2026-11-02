@@ -47,7 +47,7 @@ local no_sdk = embedded.query_driver_args({
 })
 assert(#no_sdk == 0, "missing SDKs must not add broad clangd compiler permissions")
 
-local clangd = embedded.configure_clangd({ cmd = { "clangd", "--background-index" } }, {
+local sdk_options = {
 	sdk_root = sdk_root,
 	is_directory = function(path)
 		return path == sdk_root .. "/sysroots"
@@ -55,9 +55,23 @@ local clangd = embedded.configure_clangd({ cmd = { "clangd", "--background-index
 	executable_path = function()
 		return nil
 	end,
-})
-assert(clangd.cmd[1] == "clangd" and clangd.cmd[2] == "--background-index")
-assert(clangd.cmd[3]:match("^%-%-query%-driver="), "clangd command should receive the SDK-only driver allowlist")
+}
+local base = { "clangd", "--background-index" }
+local host = embedded.clangd_command(base, "/project", vim.tbl_extend("force", sdk_options, {
+	is_cross = function()
+		return false
+	end,
+}))
+assert(#host == 2, "a host project must keep the clangd wrapper's standard library headers")
+local cross = embedded.clangd_command(base, "/project", vim.tbl_extend("force", sdk_options, {
+	is_cross = function()
+		return true
+	end,
+}))
+assert(cross[1] == "clangd" and cross[2] == "--background-index")
+assert(cross[3]:match("^%-%-query%-driver="), "a cross project should receive the SDK-only driver allowlist")
+local configured = embedded.configure_clangd({ cmd = base }, sdk_options)
+assert(type(configured.cmd) == "function" and configured.base_cmd[2] == "--background-index")
 
 local input = vim.ui.input
 local executable = vim.fn.executable

@@ -47,20 +47,46 @@ function M.query_driver_args(options)
 	return { "--query-driver=" .. table.concat(drivers, ",") }
 end
 
-function M.configure_clangd(config, options)
-	config.cmd = vim.deepcopy(config.cmd or { "clangd" })
-	local args = M.query_driver_args(options)
-	for _, arg in ipairs(args) do
-		local exists = false
-		for _, current in ipairs(config.cmd) do
-			if current:match("^%-%-query%-driver=") then
-				exists = true
-				break
+local function database_uses_cross_compiler(root)
+	if not root then
+		return false
+	end
+	local candidates = { root .. "/compile_commands.json", root .. "/build/compile_commands.json" }
+	vim.list_extend(candidates, vim.fn.glob(root .. "/cmake-build-*/compile_commands.json", true, true))
+	vim.list_extend(candidates, vim.fn.glob(root .. "/build-*/compile_commands.json", true, true))
+	for _, path in ipairs(candidates) do
+		local file = io.open(path, "r")
+		if file then
+			local head = file:read(65536) or ""
+			file:close()
+			if head:find("arm%-none%-eabi%-") or head:find("arm%-ostl%-linux") then
+				return true
 			end
 		end
-		if not exists then
-			config.cmd[#config.cmd + 1] = arg
-		end
+	end
+	return false
+end
+
+-- The nixpkgs clangd wrapper stops injecting the host C++ and libc headers once
+-- it sees --query-driver, so that flag must only reach cross-compiled projects.
+function M.clangd_command(base, root, options)
+	local command = vim.deepcopy(base)
+	local cross = (options and options.is_cross or database_uses_cross_compiler)(root)
+	if cross then
+		vim.list_extend(command, M.query_driver_args(options))
+	end
+	return command
+end
+
+function M.configure_clangd(config, options)
+	local base = vim.deepcopy(config.cmd or { "clangd" })
+	config.base_cmd = base
+	config.cmd = function(dispatchers, resolved)
+		return vim.lsp.rpc.start(M.clangd_command(base, resolved.root_dir, options), dispatchers, {
+			cwd = resolved.cmd_cwd,
+			env = resolved.cmd_env,
+			detached = resolved.detached,
+		})
 	end
 	return config
 end

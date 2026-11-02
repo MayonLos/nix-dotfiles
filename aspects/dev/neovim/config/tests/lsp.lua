@@ -272,14 +272,14 @@ assert(rendered_fold:find("… 3 lines", 1, true), "foldtextresult should render
 assert(not rendered_fold:find("%#", 1, true), "foldtextresult must not expose highlight markup literally")
 vim.api.nvim_set_current_buf(original_buf)
 vim.api.nvim_buf_delete(fold_buf, { force = true })
-assert(vim.lsp.config.clangd.cmd[2] == "--background-index")
+assert(vim.lsp.config.clangd.base_cmd[2] == "--background-index")
 for _, flag in ipairs({
 	"--clang-tidy",
 	"--header-insertion=never",
 	"--completion-style=detailed",
 	"--function-arg-placeholders=0",
 }) do
-	assert(vim.tbl_contains(vim.lsp.config.clangd.cmd, flag), "clangd is missing " .. flag)
+	assert(vim.tbl_contains(vim.lsp.config.clangd.base_cmd, flag), "clangd is missing " .. flag)
 end
 for _, command in ipairs({ "TexlabBuild", "TexlabForwardSearch", "TexlabClean", "TexlabToggleBuildOnSave" }) do
 	assert(vim.api.nvim_get_commands({})[command], "missing public LaTeX command: " .. command)

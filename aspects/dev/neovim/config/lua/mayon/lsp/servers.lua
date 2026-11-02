@@ -347,7 +347,7 @@ function M.setup()
 			if not found then
 				warned[root] = true
 				vim.notify(
-					"未找到 compile_commands.json；clangd 可继续工作，但可能误报缺少头文件。请由构建系统生成。",
+					"未找到 compile_commands.json，多文件项目的头文件可能报错。CMake/Meson 配置到 build/ 即自动生成；Makefile 用 bear -- make。生成后 :LspRestart。",
 					vim.log.levels.INFO,
 					{ title = "clangd" }
 				)
