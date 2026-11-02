@@ -57,17 +57,25 @@ local sdk_options = {
 	end,
 }
 local base = { "clangd", "--background-index" }
-local host = embedded.clangd_command(base, "/project", vim.tbl_extend("force", sdk_options, {
-	is_cross = function()
-		return false
-	end,
-}))
+local host = embedded.clangd_command(
+	base,
+	"/project",
+	vim.tbl_extend("force", sdk_options, {
+		is_cross = function()
+			return false
+		end,
+	})
+)
 assert(#host == 2, "a host project must keep the clangd wrapper's standard library headers")
-local cross = embedded.clangd_command(base, "/project", vim.tbl_extend("force", sdk_options, {
-	is_cross = function()
-		return true
-	end,
-}))
+local cross = embedded.clangd_command(
+	base,
+	"/project",
+	vim.tbl_extend("force", sdk_options, {
+		is_cross = function()
+			return true
+		end,
+	})
+)
 assert(cross[1] == "clangd" and cross[2] == "--background-index")
 assert(cross[3]:match("^%-%-query%-driver="), "a cross project should receive the SDK-only driver allowlist")
 local configured = embedded.configure_clangd({ cmd = base }, sdk_options)
