@@ -92,6 +92,10 @@ std::vector<InputEvent> InputParser::feed(std::string_view bytes) {
                     if (number == 4 || number == 8) out.push_back(key_event(KeyCode::End));
                     if (number == 5) out.push_back(key_event(KeyCode::PageUp));
                     if (number == 6) out.push_back(key_event(KeyCode::PageDown));
+                    // VT220.xterm function keys. Kitty and foot use the same finals.
+                    if (number >= 11 && number <= 15) out.push_back(key_event(static_cast<KeyCode>(static_cast<int>(KeyCode::F1) + number - 11)));
+                    if (number >= 17 && number <= 21) out.push_back(key_event(static_cast<KeyCode>(static_cast<int>(KeyCode::F6) + number - 17)));
+                    if (number >= 23 && number <= 24) out.push_back(key_event(static_cast<KeyCode>(static_cast<int>(KeyCode::F11) + number - 23)));
                     continue;
                 }
                 const KeyCode code = final == 'A' ? KeyCode::Up : final == 'B' ? KeyCode::Down : final == 'C' ? KeyCode::Right : final == 'D' ? KeyCode::Left
@@ -103,6 +107,10 @@ std::vector<InputEvent> InputParser::feed(std::string_view bytes) {
                 if (at + 2 >= buffer_.size()) break;
                 const char final = buffer_[at + 2];
                 consume(3);
+                if (final >= 'P' && final <= 'S') {
+                    out.push_back(key_event(static_cast<KeyCode>(static_cast<int>(KeyCode::F1) + final - 'P')));
+                    continue;
+                }
                 const KeyCode code = final == 'A' ? KeyCode::Up : final == 'B' ? KeyCode::Down : final == 'C' ? KeyCode::Right : final == 'D' ? KeyCode::Left
                                      : final == 'H' ? KeyCode::Home : final == 'F' ? KeyCode::End : KeyCode::None;
                 if (code != KeyCode::None) out.push_back(key_event(code));

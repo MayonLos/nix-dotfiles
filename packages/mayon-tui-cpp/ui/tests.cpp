@@ -5,6 +5,7 @@
 
 #include "ui/draw.hpp"
 #include "ui/input.hpp"
+#include "ui/keys.hpp"
 #include "ui/search.hpp"
 
 using namespace tui;
@@ -25,6 +26,18 @@ TEST_CASE("filling one half of a wide character clears the other") {
     // The start cell is the last one filled; its continuation lies outside.
     fill(other, Rect{2, 0, 1, 1}, kSurface);
     CHECK(other.PixelAt(3, 0).character == " ");
+}
+TEST_CASE("function keys are decoded for the serial flash shortcut") {
+    InputParser parser;
+    const auto f5 = parser.feed("\x1b[15~");
+    REQUIRE(f5.size() == 1);
+    CHECK(f5[0].key.code == KeyCode::F5);
+    const auto f1 = parser.feed("\x1bOP");
+    REQUIRE(f1.size() == 1);
+    CHECK(f1[0].key.code == KeyCode::F1);
+    const auto f12 = parser.feed("\x1b[24~");
+    REQUIRE(f12.size() == 1);
+    CHECK(f12[0].key.code == KeyCode::F12);
 }
 TEST_CASE("text input keeps the rust character limit") {
     TextInput input;
