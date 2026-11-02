@@ -22,8 +22,14 @@ std::string as_string(const json& value) {
     return value.get<std::string>();
 }
 uint64_t as_u64(const json& value) {
-    if (!value.is_number_unsigned()) throw Fail(kBadJson);
-    return value.get<uint64_t>();
+    // serde's u64 accepts any non-negative JSON integer, signed or unsigned in the DOM.
+    if (value.is_number_unsigned()) return value.get<uint64_t>();
+    if (value.is_number_integer()) {
+        const auto raw = value.get<int64_t>();
+        if (raw < 0) throw Fail(kBadJson);
+        return static_cast<uint64_t>(raw);
+    }
+    throw Fail(kBadJson);
 }
 int64_t as_i64(const json& value) {
     if (value.is_number_unsigned()) {
@@ -166,8 +172,8 @@ StatView decode_stats(const json& value) {
     if (!stats.is_object()) throw Fail(kBadJson);
     for (const auto& [key, item] : stats.items()) as_u64(item);
     uint64_t cache = 0;
-    if (stats.contains("inactive_file")) cache = stats["inactive_file"].get<uint64_t>();
-    else if (stats.contains("cache")) cache = stats["cache"].get<uint64_t>();
+    if (stats.contains("inactive_file")) cache = as_u64(stats["inactive_file"]);
+    else if (stats.contains("cache")) cache = as_u64(stats["cache"]);
     return StatView{s > 0. ? c / s * 100. * static_cast<double>(n) : 0., saturating_sub(u64_or(memory, "usage"), cache), u64_or(memory, "limit")};
 }
 bool is_dangling(const std::vector<std::string>& tags) {

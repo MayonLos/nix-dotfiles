@@ -10,6 +10,7 @@
 #include "ui/input.hpp"
 
 namespace dock {
+namespace cleanup {
 enum class Kind { Image, Container, Volume, Cache };
 inline constexpr std::array<Kind, 4> kAllKinds{Kind::Image, Kind::Container, Kind::Volume, Kind::Cache};
 const char* label(Kind kind);
@@ -63,4 +64,5 @@ struct Report {
 // Every mutation is scoped to one reviewed ID, non-forcing, and preceded by a fresh snapshot.
 // Engine conflict checks remain the final race protection.
 Report execute(const Engine& engine, const std::vector<Entry>& plan);
+}  // namespace cleanup
 }  // namespace dock

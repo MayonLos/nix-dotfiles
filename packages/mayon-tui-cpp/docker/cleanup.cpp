@@ -7,6 +7,7 @@
 #include "ui/draw.hpp"
 
 namespace dock {
+namespace cleanup {
 namespace {
 std::optional<uint64_t> positive(std::optional<int64_t> value) {
     if (!value || *value < 0) return std::nullopt;
@@ -308,4 +309,5 @@ Report execute(const Engine& engine, const std::vector<Entry>& plan) {
     report.lines.insert(report.lines.begin(), head.begin(), head.end());
     return report;
 }
+}  // namespace cleanup
 }  // namespace dock

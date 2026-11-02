@@ -378,7 +378,7 @@ std::string path_text(const std::optional<std::string>& path) { return path ? *p
 
 std::string Row::key() const { return std::format("{}:{}:{}:{}", uri, owner, kind, path ? "Some(\"" + *path + "\")" : "None"); }
 std::string Row::details() const {
-    return std::format("{} · {}\n{}\n路径：{}\n占用 {} · 虚拟 {}\n{}\n\nVM 严格只读：不可选、不可清理。\ny 复制完整路径 · Esc 返回", kind, owner, uri, path_text(path), bytes(actual), bytes(virtual_size), note);
+    return std::format("{} · {}\n{}\n路径：{}\n占用 {} · 虚拟 {}\n{}\n\nVM 严格只读：不可选、不可清理。\ny 复制完整路径 · Esc 返回", kind, owner, uri, path_text(path), cleanup::bytes(actual), cleanup::bytes(virtual_size), note);
 }
 Inventory Inventory::pending() {
     Inventory out;
@@ -411,13 +411,13 @@ std::string Inventory::summary() const {
         capacity = add(capacity, sizes.capacity.value_or(0));
     }
     const bool incomplete = std::any_of(connections.begin(), connections.end(), [](const Connection& c) { return !c.complete; });
-    return std::format("VM：已知占用 {} · 已知虚拟 {}{}{}", bytes(actual), virtual_unknown > 0 ? std::format("{} + {}项未知", bytes(capacity), virtual_unknown) : bytes(capacity),
+    return std::format("VM：已知占用 {} · 已知虚拟 {}{}{}", cleanup::bytes(actual), virtual_unknown > 0 ? std::format("{} + {}项未知", cleanup::bytes(capacity), virtual_unknown) : cleanup::bytes(capacity),
                        unknown > 0 ? std::format(" · {} 项大小未知", unknown) : "", incomplete ? " · 统计不完整" : " · 文件去重");
 }
 std::string Inventory::cli() const {
     std::string out = "VM 空间（严格只读）\n" + summary();
     for (const Connection& c : connections) out += std::format("\n{}：{}", c.uri, c.status);
-    for (const Row& r : rows) out += std::format("\n{} · {} · {}\n路径：{}\n占用 {} · 虚拟 {}\n{}", r.uri, r.owner, r.kind, path_text(r.path), bytes(r.actual), bytes(r.virtual_size), r.note);
+    for (const Row& r : rows) out += std::format("\n{} · {} · {}\n路径：{}\n占用 {} · 虚拟 {}\n{}", r.uri, r.owner, r.kind, path_text(r.path), cleanup::bytes(r.actual), cleanup::bytes(r.virtual_size), r.note);
     return out;
 }
 void Census::file(const std::string& uri, const std::string& owner, const std::string& kind, const std::string& path, std::optional<uint64_t> capacity, const std::string& note) {
