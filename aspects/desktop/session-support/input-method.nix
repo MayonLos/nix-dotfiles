@@ -47,10 +47,8 @@
           Theme = "onedark";
           DarkTheme = "onedark";
           # Fcitx5 Classic UI parses this with Pango's font-description syntax;
-          # the bare integer is a point size (11 pt), not a logical pixel size.
-          Font = "${palette.fonts.cjk} 11";
-          # Tray and right-click menus are Latin-heavy UI labels.
-          MenuFont = "${palette.fonts.sans} 10";
+          # the bare integer is a point size (13 pt), not a logical pixel size.
+          Font = "${palette.fonts.cjk} 10";
           "Vertical Candidate List" = "False";
 
           # Wayland already scales classicui through wp_fractional_scale_v1.

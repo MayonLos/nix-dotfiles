@@ -85,26 +85,26 @@ pkgs.runCommand "rime-technical-runtime"
     palette = json.loads(pathlib.Path(sys.argv[3]).read_text())
     classic_ui = json.loads(sys.argv[4])
     assert classic_ui["Vertical Candidate List"] == "False"
-    assert classic_ui["Font"].endswith(" 11")
-    assert classic_ui["MenuFont"].endswith(" 10")
+    assert classic_ui["Font"].endswith(" 10")
     panel = configparser.ConfigParser()
     panel.read(theme / "theme.conf")
     # These are the public roles in the One Dark palette consumed here.
     assert panel["InputPanel"]["highlightcandidatecolor"] == palette["brightFg"]
     assert panel["InputPanel"]["highlightbackgroundcolor"] == palette["black"] + "00"
-    # Underlined selection: surface panel and muted metadata; the fallback fill stays transparent.
+    # Compact underlined selection: surface panel and muted metadata, without row fill.
     assert panel["InputPanel"]["candidatelabelcolor"] == palette["muted"]
     assert panel["InputPanel"]["candidatecommentcolor"] == palette["muted"]
     assert panel["InputPanel"]["highlightcandidatelabelcolor"] == palette["blue"]
     assert panel["InputPanel"]["highlightcandidatecommentcolor"] == palette["muted"]
     assert panel["InputPanel"]["fullwidthhighlight"] == "False"
     assert panel["InputPanel"]["pagebuttonalignment"] == "Center"
-    shadow = panel["InputPanel/ShadowMargin"]
-    assert all(int(shadow[k]) > 0 for k in ("left", "right", "top", "bottom"))
-    assert int(panel["InputPanel/Background/Margin"]["left"]) == int(shadow["left"]) + 12
-    assert int(panel["InputPanel/ContentMargin"]["left"]) == int(shadow["left"]) + 6
-    assert int(panel["InputPanel/TextMargin"]["left"]) >= 8
-    assert int(panel["InputPanel/TextMargin"]["right"]) >= 8
+    # No shadow padding: it renders as a faint transparent frame around the panel.
+    assert not panel.has_section("InputPanel/ShadowMargin")
+    assert not panel.has_section("Menu/ShadowMargin")
+    assert int(panel["InputPanel/Background/Margin"]["left"]) == 10
+    assert int(panel["InputPanel/ContentMargin"]["left"]) == 6
+    assert int(panel["InputPanel/TextMargin"]["left"]) >= 6
+    assert int(panel["InputPanel/TextMargin"]["right"]) >= 6
     assert panel["InputPanel/PrevPage/ClickMargin"]["top"] == "6"
     assert panel["InputPanel/NextPage/ClickMargin"]["top"] == "6"
     assert panel["Metadata"]["scalewithdpi"] == "True"
@@ -114,18 +114,16 @@ pkgs.runCommand "rime-technical-runtime"
     assert set(images) == {"panel.svg", "highlight.svg", "prev.svg", "next.svg", "radio.svg", "arrow.svg"}
     assert all((theme / image).is_file() for image in images)
     background = (theme / "panel.svg").read_text()
-    assert "feGaussianBlur" in background and f'fill="{palette["surface"]}"' in background
-    assert f'flood-color="{palette["black"]}"' in background
+    assert f'fill="{palette["surface"]}"' in background
+    assert "filter" not in background and 'x="0.5" y="0.5"' in background
     selected = (theme / "highlight.svg").read_text()
-    assert 'x="8" y="29" width="16" height="2" rx="1"' in selected
+    assert 'x="8" y="13" width="16" height="2" rx="1"' in selected
     assert f'fill="{palette["blue"]}"' in selected
-    # The glow fades from transparent at the top to a faint tint at the line.
-    assert 'stop-opacity="0"' in selected and 'stop-opacity="0.14"' in selected
     # The whole underline must be inside the fixed bottom slice; its caps
     # must stay in the fixed side slices when Fcitx stretches the centre.
     from xml.etree import ElementTree
     svg = ElementTree.fromstring(selected)
-    rect = svg.findall("{http://www.w3.org/2000/svg}rect")[-1]
+    rect = svg.find("{http://www.w3.org/2000/svg}rect")
     margins = panel["InputPanel/Highlight/Margin"]
     x, y, width, height, radius = (float(rect.attrib[k]) for k in ("x", "y", "width", "height", "rx"))
     assert y >= float(svg.attrib["height"]) - int(margins["bottom"])
