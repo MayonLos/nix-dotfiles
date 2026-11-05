@@ -9,9 +9,7 @@ local bundle_root = vim.fn.tempname()
 vim.fn.mkdir(bundle_root, "p")
 local debug_bundle = bundle_root .. "/com.microsoft.java.debug.plugin-fixture.jar"
 local test_bundle = bundle_root .. "/com.microsoft.java.test.runner-fixture.jar"
-local excluded_runner = bundle_root .. "/com.microsoft.java.test.runner-jar-with-dependencies.jar"
-local excluded_coverage = bundle_root .. "/jacocoagent.jar"
-for _, path in ipairs({ debug_bundle, test_bundle, excluded_runner, excluded_coverage }) do
+for _, path in ipairs({ debug_bundle, test_bundle }) do
 	vim.fn.writefile({ "fixture" }, path)
 end
 
@@ -30,8 +28,6 @@ local config = java_debug.configure({
 		debug_bundle,
 		test_bundle,
 		debug_bundle,
-		excluded_runner,
-		excluded_coverage,
 		bundle_root .. "/missing.jar",
 	},
 	is_file = function(path)
@@ -41,7 +37,7 @@ local config = java_debug.configure({
 assert(config.init_options.bundles[1] == original_bundles[1], "configure must retain existing bundles")
 assert(vim.tbl_contains(config.init_options.bundles, debug_bundle), "java-debug bundle should be appended")
 assert(vim.tbl_contains(config.init_options.bundles, test_bundle), "vscode-java-test bundle should be appended")
-assert(vim.tbl_count(config.init_options.bundles) == 3, "duplicate, excluded, and missing jars should not be appended")
+assert(vim.tbl_count(config.init_options.bundles) == 3, "duplicate and missing jars should not be appended")
 assert(config.init_options.settings.java.format.enabled, "configure must preserve other init options")
 
 local original_loader = package.loaded["mayon.config.loader"]

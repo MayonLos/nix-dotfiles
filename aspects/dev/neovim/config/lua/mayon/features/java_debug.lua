@@ -1,8 +1,4 @@
 local M = {}
-local excluded_bundles = {
-	["com.microsoft.java.test.runner-jar-with-dependencies.jar"] = true,
-	["jacocoagent.jar"] = true,
-}
 
 local function bundle_paths(options)
 	local opts = options or {}
@@ -26,7 +22,9 @@ local function configured_bundles(config, paths, is_file)
 		present[path] = true
 	end
 	for _, path in ipairs(paths) do
-		if type(path) == "string" and path:match("%.jar$") and not excluded_bundles[vim.fs.basename(path)] then
+		-- debug-tools.nix already filters the test-runner and jacocoagent jars
+		-- at build time; here we only skip non-jar entries and absent files.
+		if type(path) == "string" and path:match("%.jar$") then
 			local stat = vim.uv.fs_stat(path)
 			local exists = is_file and is_file(path) or (stat and stat.type == "file")
 			if exists and not present[path] then

@@ -82,6 +82,8 @@ local configured = embedded.configure_clangd({ cmd = base }, sdk_options)
 assert(type(configured.cmd) == "function" and configured.base_cmd[2] == "--background-index")
 
 local input = vim.ui.input
+local select = vim.ui.select
+local glob = vim.fn.glob
 local executable = vim.fn.executable
 local fs_stat = vim.uv.fs_stat
 local jobstart = vim.fn.jobstart
@@ -100,6 +102,10 @@ vim.fn.jobstart = function(argv, options)
 	return 42
 end
 
+-- No by-id devices: fall back to the explicit manual path prompt.
+vim.fn.glob = function()
+	return {}
+end
 vim.ui.input = function(_, callback)
 	callback(nil)
 end
@@ -121,7 +127,27 @@ prompts = { "/dev/serial/by-id/usb-fixture", "115200" }
 assert(embedded.serial(), "reopening the same serial device must not collide with an existing buffer name")
 assert(vim.api.nvim_get_current_buf() ~= first_serial_buf, "each serial launch should own its terminal buffer")
 
+-- A by-id device is offered for selection instead of a free-form prompt.
+local selected
+vim.fn.glob = function()
+	return { "/dev/serial/by-id/usb-fixture" }
+end
+vim.ui.select = function(items, _, callback)
+	assert(items[1] == "/dev/serial/by-id/usb-fixture", "by-id devices are offered for selection")
+	selected = true
+	callback(items[1])
+end
+prompts = { "921600" }
+vim.ui.input = function(_, callback)
+	callback(table.remove(prompts, 1))
+end
+assert(embedded.serial(), "by-id selection should open the device chosen from the list")
+
 launched = nil
+vim.fn.glob = function()
+	return {}
+end
+vim.ui.select = select
 prompts = { "/dev/ttyUSB-fixture", "0; touch /tmp/not-a-command" }
 vim.ui.input = function(_, callback)
 	callback(table.remove(prompts, 1))
@@ -130,6 +156,8 @@ embedded.serial()
 assert(launched == nil, "invalid baud input must not start tio or reach a shell")
 
 vim.ui.input = input
+vim.ui.select = select
+vim.fn.glob = glob
 vim.fn.executable = executable
 vim.uv.fs_stat = fs_stat
 vim.fn.jobstart = jobstart

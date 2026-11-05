@@ -144,48 +144,19 @@ vim.fn.delete(tmp, "rf")
 local config = require("dap-view.setup").config
 assert(config.auto_toggle == true and config.windows.position == "below" and config.windows.size == 12)
 assert(not config.winbar.controls.enabled, "no debugging toolbar")
-assert(
-	vim.deep_equal(
-		config.winbar.sections,
-		{ "scopes", "watches", "breakpoints", "stack", "threads", "repl", "console" }
-	)
-)
-assert(config.help.border == "single")
+assert(vim.deep_equal(config.winbar.sections, { "scopes", "watches", "breakpoints", "threads", "repl", "console" }))
+-- The stack is dap-view's native threads section, relabeled for the embedded
+-- audience; there must be no self-drawn custom section left behind.
+assert(vim.tbl_count(config.winbar.custom_sections) == 0, "no self-drawn stack section")
+assert(config.winbar.base_sections.threads.label == "Stack" and config.winbar.base_sections.threads.keymap == "S")
+assert(config.help.border == "rounded", "debug floats use the shared rounded border")
 local view = require("dap-view")
 view.open()
 local state = require("dap-view.state")
 assert(state.winnr and vim.api.nvim_win_is_valid(state.winnr))
 assert(vim.api.nvim_win_get_height(state.winnr) == 12)
-view.show_view("stack")
+view.show_view("threads")
 assert(vim.bo[vim.api.nvim_win_get_buf(state.winnr)].filetype == "dap-view")
-local get_session, up, focus = dap.session, dap.up, dap.focus_frame
-local stack_frames = {
-	{ id = 1, name = "callee", source = { path = "fixture.c" }, line = 4 },
-	{ id = 2, name = "caller", source = { path = "fixture.c" }, line = 10 },
-}
-local stack_session =
-	{ stopped_thread_id = 1, threads = { [1] = { frames = stack_frames } }, current_frame = stack_frames[1] }
-dap.session = function()
-	return stack_session
-end
-dap.up = function()
-	stack_session.current_frame = stack_frames[2]
-	dap.listeners.after.scopes.mayon_stack()
-end
-dap.focus_frame = function() end
-config.winbar.custom_sections.stack.action()
-local stack_buf = vim.api.nvim_win_get_buf(state.winnr)
-vim.api.nvim_set_current_win(state.winnr)
-vim.api.nvim_win_set_cursor(state.winnr, { 2, 0 })
-vim.fn.maparg("<CR>", "n", false, true).callback()
-assert(
-	vim.wait(1000, function()
-		return vim.api.nvim_buf_get_lines(stack_buf, 1, 2, false)[1]:match("^▸ caller")
-	end),
-	"selected stack frame marker did not refresh after scopes"
-)
-assert(not vim.wo[state.winnr].number and not vim.wo[state.winnr].relativenumber)
-dap.session, dap.up, dap.focus_frame = get_session, up, focus
 view.close(true)
 assert(not state.winnr or not vim.api.nvim_win_is_valid(state.winnr))
 for _, name in ipairs({ "DapBreakpoint", "DapBreakpointCondition", "DapLogPoint", "DapStopped" }) do
@@ -214,6 +185,22 @@ for _, lhs in ipairs({
 }) do
 	assert(vim.fn.maparg(lhs, "n", false, true).desc, "missing debugger binding: " .. lhs)
 end
+-- State changes notify subscribers and emit a User event instead of relying on
+-- the statusline probing package.loaded.
+local state_changes, event_seen = {}, nil
+debug.on_change(function(value)
+	state_changes[#state_changes + 1] = value
+end)
+vim.api.nvim_create_autocmd("User", {
+	pattern = "MayonDebugState",
+	callback = function(args)
+		event_seen = args.data and args.data.state
+	end,
+})
+dap.listeners.after.event_stopped.mayon()
+assert(debug.state == "Stopped" and state_changes[#state_changes] == "Stopped" and event_seen == "Stopped")
+dap.listeners.on_session.mayon(nil, nil)
+assert(debug.state == "" and state_changes[#state_changes] == "" and event_seen == "")
 -- The pinned Java ftplugin must not leave its silent E216 behind on cleanup.
 local b = vim.api.nvim_create_buf(false, true)
 vim.bo[b].filetype = "java"

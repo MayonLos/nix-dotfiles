@@ -102,6 +102,18 @@ local function serial_device_allowed(path)
 	return stat ~= nil and stat.type == "char"
 end
 
+-- Enumerate real character devices under /dev/serial/by-id/ for selection.
+local function serial_by_id_devices()
+	local devices = {}
+	for _, path in ipairs(vim.fn.glob("/dev/serial/by-id/*", true, true)) do
+		if serial_device_allowed(path) then
+			devices[#devices + 1] = path
+		end
+	end
+	table.sort(devices)
+	return devices
+end
+
 local function open_serial(device, baud)
 	vim.cmd("botright 12new")
 	local buffer = vim.api.nvim_get_current_buf()
@@ -118,32 +130,58 @@ local function open_serial(device, baud)
 	return true
 end
 
+local function ask_baud(device)
+	vim.ui.input({ prompt = "波特率: ", default = "115200" }, function(baud)
+		if not baud or baud == "" then
+			return
+		end
+		local numeric = tonumber(baud)
+		if not baud:match("^%d+$") or not numeric or numeric < 50 or numeric > 4000000 then
+			vim.notify("波特率应为 50 到 4000000 之间的整数", vim.log.levels.WARN, { title = "串口" })
+			return
+		end
+		open_serial(device, baud)
+	end)
+end
+
 function M.serial()
 	if vim.fn.executable("tio") ~= 1 then
 		vim.notify("未找到 tio；请先启用 embedded-workbench", vim.log.levels.WARN, { title = "串口" })
 		return false
 	end
-	vim.ui.input({ prompt = "串口设备路径（如 /dev/ttyUSB0）: " }, function(device)
-		if not device or device == "" then
-			return
-		end
-		if not serial_device_allowed(device) then
-			vim.notify("请输入存在的 /dev/tty* 或 /dev/serial/by-id/* 字符设备", vim.log.levels.WARN, {
-				title = "串口",
-			})
-			return
-		end
-		vim.ui.input({ prompt = "波特率: ", default = "115200" }, function(baud)
-			if not baud or baud == "" then
+	local function manual()
+		vim.ui.input({ prompt = "串口设备路径（如 /dev/ttyUSB0）: " }, function(device)
+			if not device or device == "" then
 				return
 			end
-			local numeric = tonumber(baud)
-			if not baud:match("^%d+$") or not numeric or numeric < 50 or numeric > 4000000 then
-				vim.notify("波特率应为 50 到 4000000 之间的整数", vim.log.levels.WARN, { title = "串口" })
+			if not serial_device_allowed(device) then
+				vim.notify("请输入存在的 /dev/tty* 或 /dev/serial/by-id/* 字符设备", vim.log.levels.WARN, {
+					title = "串口",
+				})
 				return
 			end
-			open_serial(device, baud)
+			ask_baud(device)
 		end)
+	end
+	local devices = serial_by_id_devices()
+	if #devices == 0 then
+		manual()
+		return true
+	end
+	-- Ports without a by-id link (ttyS*, ttyAMA*) stay reachable by path.
+	local manual_entry = "Manual path…"
+	devices[#devices + 1] = manual_entry
+	vim.ui.select(devices, {
+		prompt = "串口设备",
+		format_item = function(path)
+			return path == manual_entry and path or vim.fs.basename(path)
+		end,
+	}, function(device)
+		if device == manual_entry then
+			manual()
+		elseif device then
+			ask_baud(device)
+		end
 	end)
 	return true
 end

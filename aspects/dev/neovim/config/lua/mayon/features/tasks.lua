@@ -32,18 +32,32 @@ local function add(tasks, seen, root, source, name, command)
 	}
 end
 
-local function discover_just(tasks, seen, root)
-	local justfile = vim.fs.find({ "justfile", "Justfile" }, { path = root, upward = false })[1]
-	if not justfile or vim.fn.executable("just") ~= 1 then
-		return
-	end
+local function has(root, name)
+	return vim.fn.filereadable(root .. "/" .. name) == 1
+end
+
+local function run_system(cmd, opts)
 	local ok, result = pcall(function()
-		return vim.system({ "just", "--list", "--unsorted" }, { cwd = root, text = true, timeout = 2000 }):wait()
+		return vim.system(cmd, opts):wait()
 	end)
 	if not ok or not result or result.code ~= 0 then
+		return nil
+	end
+	return result.stdout
+end
+
+local function discover_just(tasks, seen, root)
+	if not has(root, "justfile") and not has(root, "Justfile") then
 		return
 	end
-	for line in result.stdout:gmatch("[^\r\n]+") do
+	if vim.fn.executable("just") ~= 1 then
+		return
+	end
+	local stdout = run_system({ "just", "--list", "--unsorted" }, { cwd = root, text = true, timeout = 2000 })
+	if not stdout then
+		return
+	end
+	for line in stdout:gmatch("[^\r\n]+") do
 		local name = line:match("^%s+([%w_.%-]+)%s*[#%s]") or line:match("^%s+([%w_.%-]+)%s*$")
 		if name and name ~= "Available" then
 			add(tasks, seen, root, "just", name, "just -- " .. vim.fn.shellescape(name))
@@ -52,10 +66,10 @@ local function discover_just(tasks, seen, root)
 end
 
 local function discover_make(tasks, seen, root)
-	local makefile = root .. "/Makefile"
-	if vim.fn.filereadable(makefile) ~= 1 then
+	if not has(root, "Makefile") then
 		return
 	end
+	local makefile = root .. "/Makefile"
 	local phony = {}
 	for _, line in ipairs(vim.fn.readfile(makefile)) do
 		if line:match("^%.PHONY%s*:") then
@@ -77,11 +91,10 @@ local function discover_make(tasks, seen, root)
 end
 
 local function discover_package(tasks, seen, root)
-	local path = root .. "/package.json"
-	if vim.fn.filereadable(path) ~= 1 then
+	if not has(root, "package.json") then
 		return
 	end
-	local ok, data = pcall(vim.json.decode, table.concat(vim.fn.readfile(path), "\n"))
+	local ok, data = pcall(vim.json.decode, table.concat(vim.fn.readfile(root .. "/package.json"), "\n"))
 	if not ok or type(data) ~= "table" or type(data.scripts) ~= "table" then
 		return
 	end
@@ -90,28 +103,30 @@ local function discover_package(tasks, seen, root)
 	end
 end
 
-local function discover_flake(tasks, seen, root)
-	if vim.fn.filereadable(root .. "/flake.nix") ~= 1 or vim.fn.executable("nix") ~= 1 then
-		return
-	end
+local function flake_system()
 	local machine = vim.uv.os_uname().machine
-	if machine == "x86_64" then
-		machine = "x86_64"
-	elseif machine == "aarch64" or machine == "arm64" then
-		machine = "aarch64"
+	if machine == "x86_64" or machine == "aarch64" or machine == "arm64" then
+		return machine .. (vim.fn.has("mac") == 1 and "-darwin" or "-linux")
 	end
-	local system = machine .. (vim.fn.has("mac") == 1 and "-darwin" or "-linux")
-	local ok, result = pcall(function()
-		return vim.system({ "nix", "eval", "--json", root .. "#apps." .. system }, {
-			cwd = root,
-			text = true,
-			timeout = 2500,
-		}):wait()
-	end)
-	if not ok or not result or result.code ~= 0 then
+	return nil
+end
+
+local function discover_flake(tasks, seen, root)
+	if not has(root, "flake.nix") or vim.fn.executable("nix") ~= 1 then
 		return
 	end
-	local decoded, apps = pcall(vim.json.decode, result.stdout)
+	local system = flake_system()
+	if not system then
+		return
+	end
+	local stdout = run_system(
+		{ "nix", "eval", "--json", root .. "#apps." .. system },
+		{ cwd = root, text = true, timeout = 2500 }
+	)
+	if not stdout then
+		return
+	end
+	local decoded, apps = pcall(vim.json.decode, stdout)
 	if not decoded or type(apps) ~= "table" then
 		return
 	end
@@ -120,12 +135,33 @@ local function discover_flake(tasks, seen, root)
 	end
 end
 
+-- Cache keyed by root + manifest mtimes so a re-edit invalidates results.
+-- The just/nix process spawns then only ever run once per root until a
+-- manifest changes, instead of on every <leader>rt keystroke.
+local discover_cache = {}
+
+local function cache_key(root)
+	local manifests = { "justfile", "Justfile", "Makefile", "package.json", "flake.nix", "flake.lock" }
+	local stamp = { root }
+	for _, name in ipairs(manifests) do
+		local stat = vim.uv.fs_stat(root .. "/" .. name)
+		if stat and stat.mtime then
+			stamp[#stamp + 1] = name .. ":" .. tostring(stat.mtime.sec) .. "." .. tostring(stat.mtime.nsec)
+		end
+	end
+	return table.concat(stamp, "|")
+end
+
 function M.discover(path)
 	local root = root_for(path)
+	local key = cache_key(root)
+	if discover_cache[key] then
+		return discover_cache[key]
+	end
 	local tasks, seen = {}, {}
-	discover_just(tasks, seen, root)
 	discover_make(tasks, seen, root)
 	discover_package(tasks, seen, root)
+	discover_just(tasks, seen, root)
 	discover_flake(tasks, seen, root)
 	table.sort(tasks, function(a, b)
 		if a.source == b.source then
@@ -133,6 +169,11 @@ function M.discover(path)
 		end
 		return a.source < b.source
 	end)
+	-- An empty result may be a timed-out `nix eval` or a failing `just`;
+	-- retry on the next press instead of caching it.
+	if #tasks > 0 then
+		discover_cache[key] = tasks
+	end
 	return tasks
 end
 
@@ -153,20 +194,20 @@ local function save_last(task)
 		command = task.command,
 		cwd = task.cwd,
 	}
-	local ok = vim.fn.writefile({ vim.json.encode(saved) }, temp)
-	if ok == 0 then
+	if vim.fn.writefile({ vim.json.encode(saved) }, temp) == 0 then
 		vim.uv.fs_rename(temp, path)
 		last_cache = saved
 	end
 end
 
+-- Presentation-safe snapshot: returns the in-memory record without touching
+-- the disk or rediscovering tasks (the toolbar reads this on every redraw).
 function M.cached_last()
 	return last_cache and vim.deepcopy(last_cache) or nil
 end
 
--- Read the tiny persisted display record away from redraw callbacks. The
--- command is only presentation data here; M.run always rediscovers and
--- validates the task before launching it.
+-- Prime the render-safe cache once, away from redraw callbacks. The record is
+-- only presentation data; M.run always rediscovers and validates before launch.
 function M.refresh_cached_last(callback)
 	vim.schedule(function()
 		local path = state_path()
@@ -191,9 +232,6 @@ function M.refresh_cached_last(callback)
 		end
 		if callback then
 			callback(M.cached_last())
-		end
-		if #vim.api.nvim_list_uis() > 0 then
-			vim.cmd.redrawtabline()
 		end
 	end)
 end
@@ -242,7 +280,7 @@ function M.run(task)
 	save_last(validated)
 	require("snacks").terminal(validated.command, {
 		cwd = validated.cwd,
-		win = { style = "terminal", position = "bottom", height = 0.32, border = "single" },
+		win = { style = "terminal", position = "bottom", height = 0.32, border = require("mayon.util").border },
 	})
 	return true
 end
@@ -263,11 +301,9 @@ M.refresh_cached_last()
 function M.pick(path, callback)
 	local tasks = M.discover(path)
 	if #tasks == 0 then
-		vim.notify(
-			"没有发现 just、Make、flake app 或 package.json 任务",
-			vim.log.levels.INFO,
-			{ title = "任务" }
-		)
+		vim.notify("没有发现 just、Make、flake app 或 package.json 任务", vim.log.levels.INFO, {
+			title = "任务",
+		})
 		return false
 	end
 	vim.ui.select(tasks, {

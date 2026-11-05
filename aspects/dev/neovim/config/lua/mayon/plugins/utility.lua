@@ -74,7 +74,7 @@ return {
 			{
 				"<leader>dh",
 				function()
-					require("dap.ui.widgets").hover(nil, { border = "single" })
+					require("dap.ui.widgets").hover(nil, { border = require("mayon.util").border })
 				end,
 				desc = "Inspect value",
 			},
