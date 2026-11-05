@@ -2,6 +2,7 @@ local M = {}
 
 function M.setup()
 	require("mayon.ui.terminal").setup()
+	local util = require("mayon.util")
 	local group = vim.api.nvim_create_augroup("MayonCore", { clear = true })
 	vim.api.nvim_create_autocmd("BufReadPost", {
 		group = group,
@@ -17,7 +18,7 @@ function M.setup()
 	vim.api.nvim_create_autocmd({ "BufWinEnter", "WinEnter" }, {
 		group = group,
 		callback = function(ev)
-			if vim.bo[ev.buf].buftype == "" and vim.bo[ev.buf].filetype ~= "" and not vim.wo.diff then
+			if util.is_document(ev.buf) and not vim.wo.diff then
 				vim.wo.cursorline = true
 				vim.wo.cursorlineopt = "both"
 			end
@@ -45,8 +46,11 @@ function M.setup()
 	vim.api.nvim_create_autocmd("FileType", {
 		group = group,
 		callback = function(ev)
-			vim.bo[ev.buf].spelllang = "en,cjk"
-			vim.wo.spell = vim.tbl_contains({ "markdown", "gitcommit", "tex" }, ev.match)
+			local prose = vim.tbl_contains({ "markdown", "gitcommit", "tex" }, ev.match)
+			if prose then
+				vim.bo[ev.buf].spelllang = "en,cjk"
+			end
+			vim.wo.spell = prose
 		end,
 	})
 end

@@ -1,5 +1,3 @@
-local M = {}
-
 local function setup()
 	require("gitsigns").setup({
 		signs = {
@@ -93,20 +91,17 @@ return {
 		cmd = { "CodeDiff" },
 		after = function()
 			local palette = require("mayon.generated").palette
-			local blend = require("mayon.ui.theme").blend
-			local line_insert = blend(palette.green, palette.bg, 0.12)
-			local line_delete = blend(palette.red, palette.bg, 0.12)
-			local char_insert = blend(palette.green, palette.bg, 0.18)
-			local char_delete = blend(palette.red, palette.bg, 0.18)
+			local theme = require("mayon.ui.theme")
+			local blend = theme.blend
 			-- The Nix package ships libvscode_diff.so (unversioned). Skip upstream's
 			-- mutable auto-installer and let codediff's loader use its local fallback.
 			vim.env.VSCODE_DIFF_NO_AUTO_INSTALL = "1"
 			require("codediff").setup({
 				highlights = {
-					line_insert = line_insert,
-					line_delete = line_delete,
-					char_insert = char_insert,
-					char_delete = char_delete,
+					line_insert = blend(palette.green, palette.bg, 0.12),
+					line_delete = blend(palette.red, palette.bg, 0.12),
+					char_insert = blend(palette.green, palette.bg, 0.18),
+					char_delete = blend(palette.red, palette.bg, 0.18),
 					conflict_sign = "DiagnosticSignWarn",
 					conflict_sign_resolved = "Comment",
 					conflict_sign_accepted = "DiagnosticSignOk",
@@ -120,14 +115,13 @@ return {
 					icons = { folder_closed = "", folder_open = "" },
 				},
 			})
-			-- codediff resolves configured colors to backgrounds only. Restore its
-			-- foregrounds after plugin initialization and after its ColorScheme hook.
-			require("mayon.ui.theme").refresh()
+			-- codediff resolves its configured colors to backgrounds only; the
+			-- foregrounds live in theme.lua. Re-apply the theme after setup and
+			-- after codediff's own ColorScheme hook so both fg and bg survive.
+			theme.refresh()
 			vim.api.nvim_create_autocmd("ColorScheme", {
 				group = vim.api.nvim_create_augroup("MayonCodeDiffTheme", { clear = true }),
-				callback = function()
-					require("mayon.ui.theme").refresh()
-				end,
+				callback = theme.refresh,
 			})
 		end,
 	},

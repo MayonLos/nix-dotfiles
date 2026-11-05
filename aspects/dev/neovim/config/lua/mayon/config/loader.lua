@@ -50,6 +50,8 @@ function M.setup()
 		vim.list_extend(specs, require("mayon.plugins." .. domain))
 	end
 	-- Keep load errors visible to both interactive users and the test runner.
+	-- Theme re-application is coalesced: whichever `after` callbacks run in the
+	-- same event-loop turn schedule a single deferred theme.refresh().
 	for _, spec in ipairs(specs) do
 		local after = spec.after
 		if after then

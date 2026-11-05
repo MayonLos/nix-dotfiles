@@ -75,6 +75,83 @@ do
 	vim.fn.delete(dir, "rf")
 end
 
+-- willRenameFiles is requested before the move; its edit (addressed to the
+-- old URI, as servers do) lands in the renamed buffer and no buffer is left
+-- behind for the old path.
+do
+	local dir = tempdir()
+	local old, new = dir .. "/before.lua", dir .. "/after.lua"
+	vim.fn.writefile({ "return 1" }, old)
+	vim.cmd.edit(vim.fn.fnameescape(old))
+	local buf = vim.api.nvim_get_current_buf()
+	local requested, notified
+	local fake_client = {
+		id = 1,
+		offset_encoding = "utf-16",
+		supports_method = function(_, method)
+			return method == "workspace/willRenameFiles" or method == "workspace/didRenameFiles"
+		end,
+		request = function(_, method, params, callback)
+			requested = {
+				method = method,
+				old_present = vim.fn.filereadable(old) == 1,
+				new_present = vim.fn.filereadable(new) == 1,
+			}
+			local old_uri = params.files[1].oldUri
+			assert(old_uri:find("before.lua", 1, true), "willRenameFiles missing the old URI")
+			-- Reply asynchronously, like a real server.
+			vim.schedule(function()
+				callback(nil, {
+					changes = {
+						[old_uri] = {
+							{
+								range = { start = { line = 0, character = 0 }, ["end"] = { line = 0, character = 0 } },
+								newText = "-- lsp edit\n",
+							},
+						},
+					},
+				})
+			end)
+			return true, 1
+		end,
+		notify = function(_, method, params)
+			notified = { method = method, oldUri = params.files[1].oldUri }
+		end,
+	}
+	local original_get_clients = vim.lsp.get_clients
+	-- The rename waits on the event loop, so only fileops may see the fake.
+	vim.lsp.get_clients = function(...)
+		if debug.getinfo(2, "S").source:find("features/fileops.lua", 1, true) then
+			return { fake_client }
+		end
+		return original_get_clients(...)
+	end
+	local renamed = fileops.rename_path(old, new)
+	vim.lsp.get_clients = original_get_clients
+	assert(renamed, "LSP-aware rename should move the file")
+	assert(requested and requested.method == "workspace/willRenameFiles", "willRenameFiles was not requested")
+	assert(
+		requested.old_present and not requested.new_present,
+		"willRenameFiles must be sent before the filesystem move"
+	)
+	assert(vim.fn.filereadable(old) == 0 and vim.fn.filereadable(new) == 1, "rename did not move the file")
+	assert(notified and notified.method == "workspace/didRenameFiles", "didRenameFiles was not notified")
+	assert(vim.api.nvim_buf_get_name(buf) == new, "renamed buffer does not point at the new path")
+	assert(
+		vim.api.nvim_buf_get_lines(buf, 0, 1, false)[1] == "-- lsp edit",
+		"willRenameFiles edit was not applied to the renamed buffer"
+	)
+	-- nvim_buf_set_name keeps an unloaded alternate-file entry for the old
+	-- name; a ghost would be a loaded buffer holding the edit.
+	local ghost = vim.fn.bufnr(old)
+	assert(
+		ghost == -1 or not vim.api.nvim_buf_is_loaded(ghost),
+		"willRenameFiles edit created a ghost buffer at the old path"
+	)
+	close_buffer(buf)
+	vim.fn.delete(dir, "rf")
+end
+
 -- Existing targets and target buffers are never overwritten or adopted.
 do
 	local dir = tempdir()
@@ -165,7 +242,12 @@ vim.cmd.edit(vim.fn.fnameescape(%q))
 local buf = vim.api.nvim_get_current_buf()
 vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "unsaved editor version" })
 assert(fileops.rename_file({ from = %q, to = %q }))
-vim.api.nvim_create_autocmd("BufWritePre", { buffer = buf, callback = function() error("injected pre-write failure") end })
+vim.api.nvim_create_autocmd("BufWritePre", {
+	buffer = buf,
+	callback = function()
+		error("injected pre-write failure")
+	end,
+})
 local ok = pcall(vim.cmd, "wq")
 assert(not ok, ":wq must fail when BufWritePre fails")
 assert(vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].modified, "failed :wq must keep the modified buffer open")

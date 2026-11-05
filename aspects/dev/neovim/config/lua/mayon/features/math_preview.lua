@@ -39,6 +39,26 @@ local FILETYPES = {
 -- nothing.
 local DEBOUNCE = 250
 
+-- Cheap local check before touching treesitter or pdflatex. Every supported
+-- format writes maths with one of these markers; looking at a small window
+-- around the cursor keeps plain prose typing essentially free.
+local MATH_MARKERS = { "$", "\\(", "\\)", "\\[", "\\]", "\\begin{", "\\end{" }
+
+local function near_math()
+	local buf = vim.api.nvim_get_current_buf()
+	local row = vim.api.nvim_win_get_cursor(0)[1]
+	local first = math.max(1, row - 12)
+	local last = math.min(vim.api.nvim_buf_line_count(buf), row + 12)
+	for _, line in ipairs(vim.api.nvim_buf_get_lines(buf, first - 1, last, false)) do
+		for _, marker in ipairs(MATH_MARKERS) do
+			if line:find(marker, 1, true) then
+				return true
+			end
+		end
+	end
+	return false
+end
+
 ---@type {win?:table, img?:table, src?:string, kind?:"image"|"error"}
 local state = {}
 local timer ---@type any
@@ -124,7 +144,7 @@ local function show_error(src, lines)
 		col = 0,
 		width = width,
 		height = math.min(#lines, 8),
-		border = "single",
+		border = require("mayon.util").border,
 		focusable = false,
 		enter = false,
 		backdrop = false,
@@ -263,22 +283,47 @@ local function update()
 	end
 end
 
-local function schedule()
+-- `near` is the already computed result of the FILETYPES + near_math() check.
+local function schedule_render(near)
 	-- Invalidate immediately, rather than waiting for the debounce: an older
 	-- render can finish during that interval and otherwise replace the new one.
 	invalidate()
+	if not near then
+		if state.win or state.img then
+			close()
+		end
+		return
+	end
 	timer = timer or assert(uv.new_timer())
 	timer:stop()
 	timer:start(DEBOUNCE, 0, vim.schedule_wrap(update))
+end
+
+local function schedule()
+	schedule_render(FILETYPES[vim.bo.filetype] and near_math())
 end
 
 function M.setup()
 	-- `CursorMovedI` and `TextChangedI` are the whole point: they are what
 	-- snacks does not listen to, and they are what makes this live while the
 	-- formula is being written.
-	vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI", "TextChanged", "TextChangedI", "InsertLeave" }, {
+	vim.api.nvim_create_autocmd({ "CursorMovedI", "TextChanged", "TextChangedI", "InsertLeave" }, {
 		group = augroup,
 		callback = schedule,
+	})
+
+	-- A plain cursor move is cheap: schedule only when a preview is on screen
+	-- (it may need to follow or close) or when the cursor lands near maths.
+	-- schedule() itself is a local text scan, not treesitter or pdflatex.
+	vim.api.nvim_create_autocmd("CursorMoved", {
+		group = augroup,
+		callback = function()
+			if state.win and state.win:valid() then
+				schedule()
+			elseif FILETYPES[vim.bo.filetype] and near_math() then
+				schedule_render(true)
+			end
+		end,
 	})
 
 	-- Nothing to preview if the window or buffer is gone. Immediate, not
