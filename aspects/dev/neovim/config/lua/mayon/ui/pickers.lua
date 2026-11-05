@@ -1,4 +1,4 @@
--- Explorer navigation stays in its sidebar; its search opens a normal picker.
+-- One shared rail helper and one picker layout; the explorer sidebar reuses it.
 local M = {}
 
 local labels = {
@@ -15,87 +15,27 @@ local labels = {
 	diagnostics = "Diagnostics",
 }
 
-local function range(picker)
-	local cwd = picker:cwd()
-	return vim.fn.fnamemodify(cwd, ":~")
-end
-
-local function title(picker)
-	local source = picker.opts.source or "search"
-	local shown = picker.list:count()
-	local label = source:match("^grep") and "grep"
-		or (picker.opts.mayon_label or labels[source] or picker.title or source)
-	return {
-		{ label, "SnacksPickerTitle" },
-		{ " · ", "SnacksPickerBorder" },
-		{ tostring(shown) .. (source:match("^grep") and " matches" or " items"), "MayonPickerCount" },
-	}
-end
-
-local function update_title(picker)
-	local root = picker.input and picker.input.win
-	if root and root:valid() then
-		root.opts.footer, root.opts.footer_pos = title(picker), "right"
-		vim.api.nvim_win_set_config(root.win, { title = "", footer = root.opts.footer, footer_pos = "right" })
-	end
-end
-
-local function show_picker(picker)
-	local win = picker.list.win.win
-	if not picker.input._mayon_totals then
-		local update = picker.input.update
-		picker.input.update = function(input, ...)
-			update(input, ...)
-			local ns = vim.api.nvim_get_namespaces()["snacks.picker.input"]
-			if ns and input.win:buf_valid() then
-				pcall(vim.api.nvim_buf_del_extmark, input.win.buf, ns, 999)
-			end
-		end
-		picker.input._mayon_totals = true
-	end
-	if not picker._mayon_title_wrapped then
-		local update = picker.update_titles
-		picker.update_titles = function(self, ...)
-			update(self, ...)
-			update_title(self)
-		end
-		picker._mayon_title_wrapped = true
-	end
-	local function rail()
-		local current = tonumber(vim.g.statusline_winid) or win
-		if
-			vim.api.nvim_win_is_valid(current)
-			and vim.bo[vim.api.nvim_win_get_buf(current)].filetype == "snacks_picker_list"
-			and vim.v.lnum == vim.api.nvim_win_get_cursor(current)[1]
-		then
-			return "%#MayonPickerRail#▎%*"
-		end
+-- A single statuscolumn helper draws the blue "▎" cursor rail for every picker
+-- list and the explorer sidebar. The expression calls this module directly, so
+-- no `_G.Mayon*` function has to survive into the global namespace.
+function M.statuscolumn()
+	local win = tonumber(vim.g.statusline_winid)
+	if not win or not vim.api.nvim_win_is_valid(win) then
 		return " "
 	end
-	_G.MayonPickerStatusColumn = rail
-	local options = {
-		cursorline = true,
-		cursorlineopt = "line",
-		number = true,
-		numberwidth = 1,
-		relativenumber = false,
-		signcolumn = "no",
-		statuscolumn = "%!v:lua.MayonPickerStatusColumn()",
-	}
-	picker.list.win.opts.wo = vim.tbl_extend("force", picker.list.win.opts.wo, options)
-	picker.layout.win_opts.list.wo = vim.tbl_extend("force", picker.layout.win_opts.list.wo, options)
-	vim.schedule(function()
-		if vim.api.nvim_win_is_valid(win) then
-			for key, value in pairs(options) do
-				vim.wo[win][key] = value
-			end
-		end
-	end)
-	update_title(picker)
+	local buf = vim.api.nvim_win_get_buf(win)
+	if vim.bo[buf].filetype ~= "snacks_picker_list" then
+		return " "
+	end
+	return vim.v.lnum == vim.api.nvim_win_get_cursor(win)[1] and "%#MayonPickerRail#▎%*" or " "
+end
+
+function M.rail()
+	return "%!v:lua.require'mayon.ui.pickers'.statuscolumn()"
 end
 
 -- One match per row; paths stay at the right so the text remains easy to scan.
-local function grep_format(item, picker)
+local function grep_format(item)
 	local out = { { ("%4d  "):format(item.pos and item.pos[1] or 0), "SnacksPickerRow" } }
 	if item.line then
 		if item.positions then
@@ -131,7 +71,7 @@ function M.layout(preview)
 			position = "bottom",
 			width = 0,
 			height = height,
-			border = "top",
+			border = require("mayon.util").border,
 			{ win = "input", height = 1, border = "bottom" },
 			{
 				box = wide and "horizontal" or "vertical",
@@ -179,6 +119,8 @@ function M.configure(opts)
 	end
 
 	opts.prompt = "❯ "
+	-- Public picker title; the old footer/count patch is gone.
+	opts.title = opts.title or opts.mayon_label or labels[opts.source]
 	opts.formatters = vim.tbl_deep_extend("force", opts.formatters or {}, { file = { filename_first = true } })
 	if opts.source == "files" or opts.source == "recent" then
 		opts.format = function(item, picker)
@@ -217,6 +159,11 @@ function M.configure(opts)
 			wo = {
 				cursorline = true,
 				cursorlineopt = "line",
+				number = true,
+				numberwidth = 1,
+				relativenumber = false,
+				signcolumn = "no",
+				statuscolumn = M.rail(),
 				winhighlight = "Normal:SnacksPickerList,FloatBorder:SnacksPickerBorder,CursorLine:SnacksPickerListCursorLine",
 			},
 		},
@@ -231,19 +178,6 @@ function M.configure(opts)
 	})
 	if opts.source == "grep" or opts.source == "grep_word" or opts.source == "grep_buffers" then
 		opts.format = grep_format
-	end
-	local prior_show, prior_change = opts.on_show, opts.on_change
-	opts.on_show = function(picker)
-		show_picker(picker)
-		if prior_show then
-			prior_show(picker)
-		end
-	end
-	opts.on_change = function(picker, item)
-		update_title(picker)
-		if prior_change then
-			prior_change(picker, item)
-		end
 	end
 	return opts
 end

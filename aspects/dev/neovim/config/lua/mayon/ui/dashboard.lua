@@ -4,6 +4,11 @@ local M = {}
 local content_width = 60
 local selection_ns = vim.api.nvim_create_namespace("MayonDashboardSelection")
 local active_dashboard
+-- The decorated row is remembered so a cursor move on the already-selected row
+-- only updates the two extmarks instead of clearing and repainting the whole
+-- namespace (which would flicker every CursorMoved event).
+local selected_row
+local selected_buf
 local function highlights()
 	local p = require("mayon.generated").palette
 	for name, spec in pairs({
@@ -12,7 +17,7 @@ local function highlights()
 		MayonDashboardMuted = { fg = p.muted, bg = p.bg },
 		MayonDashboardBlue = { fg = p.blue, bg = p.bg },
 		MayonDashboardKey = { fg = p.muted, bg = p.bg },
-		MayonDashboardTitle = { fg = p.fg, bg = p.bg, bold = true },
+		MayonDashboardTitle = { fg = p.blue, bg = p.bg, bold = true },
 		MayonDashboardRail = { fg = p.blue, bg = p.selection },
 		MayonDashboardSelection = { fg = p.brightFg, bg = p.selection },
 		SnacksDashboardNormal = { fg = p.brightFg, bg = p.bg },
@@ -50,12 +55,25 @@ local function dashboard_icon(item)
 	return { icon, hl = hl, width = 2 }
 end
 
+-- Drop only the previously decorated row. Clearing the whole namespace on
+-- every CursorMoved repainted the complete dashboard and flickered.
+local function forget_selection()
+	if selected_buf and selected_row and vim.api.nvim_buf_is_valid(selected_buf) then
+		vim.api.nvim_buf_clear_namespace(selected_buf, selection_ns, selected_row - 1, selected_row)
+	end
+	selected_row, selected_buf = nil, nil
+end
+
 local function selection(d)
 	if not d or not d.win or not vim.api.nvim_win_is_valid(d.win) or vim.api.nvim_win_get_buf(d.win) ~= d.buf then
 		return
 	end
-	vim.api.nvim_buf_clear_namespace(d.buf, selection_ns, 0, -1)
 	local row = vim.api.nvim_win_get_cursor(d.win)[1]
+	if selected_row == row and selected_buf == d.buf then
+		return
+	end
+	forget_selection()
+	selected_row, selected_buf = row, d.buf
 	for _, item in ipairs(d.items) do
 		if item.action and item._ and item._.row == row then
 			local line = vim.api.nvim_buf_get_lines(d.buf, row - 1, row, false)[1] or ""
@@ -137,6 +155,7 @@ function M.config()
 			then
 				return
 			end
+			forget_selection()
 			local row = vim.api.nvim_win_get_cursor(d.win)[1]
 			for _, item in ipairs(d.items or {}) do
 				if item.action and item._ and item._.row == row then
@@ -174,6 +193,7 @@ function M.config()
 					end
 				end
 			end
+			forget_selection()
 			selection(d)
 		end,
 	})

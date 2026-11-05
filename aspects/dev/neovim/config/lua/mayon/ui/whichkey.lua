@@ -59,87 +59,6 @@ local function group_spec()
 	return spec
 end
 
--- The native renderer packs each box to its content width. Pad between its
--- existing key spans so the four boxes occupy equal quarters of the strip;
--- extmarks move with the inserted whitespace and native key handling is intact.
-local function spread_columns(win)
-	local buf = vim.api.nvim_win_get_buf(win)
-	local rows = {}
-	for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(buf, -1, 0, -1, { details = true })) do
-		if mark[4].hl_group == "WhichKey" then
-			rows[mark[2]] = rows[mark[2]] or {}
-			table.insert(rows[mark[2]], mark[3])
-		end
-	end
-	local width = vim.api.nvim_win_get_width(win)
-	local boxes = 1
-	for _, columns in pairs(rows) do
-		boxes = math.max(boxes, #columns)
-	end
-	local modifiable = vim.bo[buf].modifiable
-	vim.bo[buf].modifiable = true
-	for row, columns in pairs(rows) do
-		table.sort(columns)
-		if #columns > 1 then
-			local text = vim.api.nvim_buf_get_lines(buf, row, row + 1, false)[1]
-			local deltas = { 0 }
-			for column = 2, #columns do
-				local current = vim.fn.strdisplaywidth(text:sub(1, columns[column]))
-				deltas[column] = math.max(0, (column - 1) * math.floor(width / boxes) + 2 - current)
-			end
-			for column = #columns, 2, -1 do
-				local pad = math.max(0, deltas[column] - deltas[column - 1])
-				if pad > 0 then
-					vim.api.nvim_buf_set_text(buf, row, columns[column], row, columns[column], { string.rep(" ", pad) })
-				end
-			end
-		end
-	end
-	vim.bo[buf].modifiable = modifiable
-end
-
-local function install_title()
-	local view = require("which-key.view")
-	if view._mayon_title then
-		return
-	end
-	view._mayon_title = true
-	-- The pinned renderer exposes the actual filtered subtree count. Keep
-	-- labels short while making the size of each collapsed group explicit.
-	local item = view.item
-	view.item = function(node, opts)
-		local result = item(node, opts)
-		if
-			result.group
-			and node.desc
-			and node:count() > 0
-			and not node:can_expand()
-			and not (opts and opts.group == false)
-		then
-			result.desc = result.desc .. " +" .. node:count()
-		end
-		return result
-	end
-	local render = view.show
-	view.show = function(...)
-		local geometry = M.geometry(vim.o.columns)
-		local options = require("which-key.config").options
-		options.win.width = geometry.width
-		options.win.col = geometry.col
-		options.layout.width = { min = geometry.column_width, max = geometry.column_width }
-		local result = render(...)
-		local popup = view.view
-		local win = popup and popup.win
-		if win and vim.api.nvim_win_is_valid(win) then
-			local buf = vim.api.nvim_win_get_buf(win)
-			if vim.bo[buf].filetype == "wk" then
-				spread_columns(win)
-			end
-		end
-		return result
-	end
-end
-
 function M.config()
 	return {
 		spec = group_spec(),
@@ -159,10 +78,12 @@ function M.config()
 		show_help = false,
 		show_keys = false,
 		win = {
-			border = "single",
+			border = require("mayon.util").border,
+			-- which-key resolves these per render (Layout.dim): fractions follow the
+			-- current 'columns', so the popup stays centred after a resize.
 			row = -1,
-			col = M.geometry().col,
-			width = M.geometry().width,
+			col = 0.5,
+			width = { min = 40, max = max_window_width },
 			height = { min = 4, max = 10 },
 			padding = { 0, 1 },
 			title = true,
@@ -170,7 +91,7 @@ function M.config()
 			wo = { winblend = 0 },
 		},
 		layout = {
-			width = { min = M.geometry().column_width, max = M.geometry().column_width },
+			width = { min = 20, max = 27 },
 			spacing = 2,
 		},
 		plugins = {
@@ -200,7 +121,6 @@ function M.setup()
 	require("which-key").setup(M.config())
 	apply_highlights()
 	vim.schedule(apply_highlights)
-	install_title()
 end
 
 function M.show_all()

@@ -422,7 +422,6 @@ for _, group in ipairs({
 	assert(next(hl), "missing theme group: " .. group)
 end
 assert(vim.o.tabline ~= "", "the document workbench header should remain installed")
-local palette = require("mayon.generated").palette
 for _, group in ipairs({ "FloatTitle", "MayonPopupTitle" }) do
 	local title = vim.api.nvim_get_hl(0, { name = group, link = false })
 	assert(title.fg == tonumber(palette.muted:sub(2), 16), "floating titles should use muted text: " .. group)
@@ -508,17 +507,10 @@ assert(
 	separator.fg == tonumber(require("mayon.ui.theme").float_edge():sub(2), 16),
 	"window separators should use the thin edge color"
 )
-local function_hl = vim.api.nvim_get_hl(0, { name = "@lsp.type.function", link = false })
-local variable_hl = vim.api.nvim_get_hl(0, { name = "@lsp.type.variable", link = false })
-local parameter_hl = vim.api.nvim_get_hl(0, { name = "@lsp.type.parameter", link = false })
-local library_hl = vim.api.nvim_get_hl(0, { name = "@lsp.typemod.variable.defaultLibrary", link = false })
-assert(function_hl.fg == tonumber(palette.blue:sub(2), 16), "semantic functions should follow One Dark blue")
-assert(variable_hl.fg == tonumber(palette.fg:sub(2), 16), "semantic variables should use the base foreground")
-assert(
-	parameter_hl.fg == tonumber(palette.orange:sub(2), 16) and parameter_hl.italic,
-	"semantic parameters should be orange italic"
-)
-assert(library_hl.fg == tonumber(palette.yellow:sub(2), 16), "default library symbols should be yellow")
+-- Syntax belongs to onedark; the ui adapter must not ship a second copy.
+for _, group in ipairs({ "@function", "@keyword", "@string", "Keyword", "Function", "@lsp.type.function" }) do
+	assert(next(vim.api.nvim_get_hl(0, { name = group, link = false })), "onedark syntax group missing: " .. group)
+end
 assert(
 	vim.api.nvim_get_hl(0, { name = "MayonHeaderFile", link = false }).fg == tonumber(palette.brightFg:sub(2), 16),
 	"current document header should stay bright"
@@ -527,8 +519,8 @@ assert(
 	vim.api.nvim_get_hl(0, { name = "MayonHeaderMuted", link = false }).fg == tonumber(palette.muted:sub(2), 16),
 	"project and branch should stay muted"
 )
-assert(require("mayon.ui.theme").mode_highlight("i") == "MayonModeBlockInsert")
-assert(require("mayon.ui.theme").mode_highlight("v") == "MayonModeBlockVisual")
+assert(require("mayon.ui.theme").mode_highlight("i") == "MayonModeInsert")
+assert(require("mayon.ui.theme").mode_highlight("v") == "MayonModeVisual")
 assert(vim.opt.fillchars:get().eob == " ", "empty document rows should remain quiet in inactive windows")
 local current_win = vim.api.nvim_get_current_win()
 vim.cmd.vsplit()
@@ -536,19 +528,71 @@ assert(
 	vim.wo[current_win].winhighlight:find("CursorLine:NormalNC", 1, true),
 	"inactive document windows should hide the current-line highlight"
 )
-assert(
-	vim.wo[current_win].winhighlight:find("EndOfBuffer:NormalNC", 1, true),
-	"inactive empty rows must match the document surface"
-)
 vim.cmd.close()
 assert(
 	not vim.wo[current_win].winhighlight:find("CursorLine:NormalNC", 1, true),
 	"the focused editor should restore its current-line highlight"
 )
+-- A noautocmd focus change leaves without a matching enter; the original
+-- cursor-line link must survive the next real leave/enter round trip.
+do
+	local a = vim.api.nvim_get_current_win()
+	vim.cmd.vsplit()
+	local b = vim.api.nvim_get_current_win()
+	vim.cmd("noautocmd call nvim_set_current_win(" .. a .. ")")
+	vim.cmd.wincmd("p")
+	vim.cmd.wincmd("p")
+	assert(vim.api.nvim_get_current_win() == a, "wincmd p should return to the first window")
+	assert(
+		not vim.wo[a].winhighlight:find("CursorLine:NormalNC", 1, true),
+		"noautocmd focus changes must not leave the active window without a cursorline"
+	)
+	vim.api.nvim_win_close(b, true)
+end
+-- Mode letters, groups and cursor colors come from one definition per group.
+local theme = require("mayon.ui.theme")
+for _, pair in ipairs({ { "R", "r" }, { "R", "Rv" }, { "v", "\22" }, { "c", "t" } }) do
+	assert(theme.mode_highlight(pair[1]) == theme.mode_highlight(pair[2]), "mode group mismatch: " .. pair[2])
+	assert(theme.mode_color(pair[1]) == theme.mode_color(pair[2]), "mode color mismatch: " .. pair[2])
+end
 assert(
-	not vim.wo[current_win].winhighlight:find("EndOfBuffer:NormalNC", 1, true),
-	"focused empty rows must restore the editor surface"
+	vim.api.nvim_get_hl(0, { name = "@markup.heading.1.markdown" }).link == "RenderMarkdownH1",
+	"markdown headings should follow render-markdown heading colors"
 )
+-- Entering a float must keep its NormalFloat surface; style_float keeps an
+-- explicit plugin border and only fills in a missing one.
+do
+	local float_buf = vim.api.nvim_create_buf(false, false)
+	local float = vim.api.nvim_open_win(float_buf, true, {
+		relative = "editor",
+		row = 1,
+		col = 1,
+		width = 20,
+		height = 2,
+		border = "double",
+	})
+	vim.wo[float].winhighlight = "Normal:NormalFloat"
+	vim.cmd.wincmd("p")
+	vim.api.nvim_set_current_win(float)
+	assert(vim.wo[float].winhighlight:find("Normal:NormalFloat", 1, true), "floats must keep NormalFloat")
+	require("mayon.ui.extras").style_float(float, "Fixture")
+	assert(vim.api.nvim_win_get_config(float).border[1] == "╔", "style_float must keep an explicit border")
+	vim.api.nvim_win_close(float, true)
+	local bare = vim.api.nvim_open_win(float_buf, false, {
+		relative = "editor",
+		row = 1,
+		col = 1,
+		width = 20,
+		height = 2,
+		border = "none",
+		title = nil,
+	})
+	require("mayon.ui.extras").style_float(bare, "Fixture")
+	local bare_config = vim.api.nvim_win_get_config(bare)
+	assert(bare_config.border[1] == "╭", "style_float should fill in the shared rounded border")
+	vim.api.nvim_win_close(bare, true)
+	vim.api.nvim_buf_delete(float_buf, { force = true })
+end
 assert(not package.loaded.satellite, "the removed satellite UI must stay unloaded")
 assert(vim.v.errmsg == "", vim.v.errmsg)
 print("Lazy setup, dashboard, unified pickers, folds and palette groups passed")

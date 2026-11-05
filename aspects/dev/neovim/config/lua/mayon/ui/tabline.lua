@@ -2,39 +2,9 @@
 local M = {}
 local active_documents = {}
 
-local excluded_filetypes = {
-	checkhealth = true,
-	["grug-far"] = true,
-	grug_far = true,
-	oil = true,
-	aerial = true,
-	trouble = true,
-	quickfix = true,
-	qf = true,
-	help = true,
-	man = true,
-	helpft = true,
-}
-
-local function is_document(buf)
-	if not buf or not vim.api.nvim_buf_is_valid(buf) or not vim.bo[buf].buflisted then
-		return false
-	end
-	local buftype = vim.bo[buf].buftype
-	if buftype ~= "" and buftype ~= "acwrite" then
-		return false
-	end
-	local filetype = vim.bo[buf].filetype:lower()
-	if excluded_filetypes[filetype] then
-		return false
-	end
-	for _, prefix in ipairs({ "neogit", "snacks", "codecompanion", "claudecode" }) do
-		if filetype:sub(1, #prefix) == prefix then
-			return false
-		end
-	end
-	return true
-end
+-- Document filtering lives in one place (`mayon.util`); keep the historical
+-- name as an alias since other modules call `M.is_document` directly.
+local is_document = require("mayon.util").is_document
 M.is_document = is_document
 
 local function empty_placeholder(buf)
