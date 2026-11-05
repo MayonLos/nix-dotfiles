@@ -1,5 +1,3 @@
-local M = {}
-
 local function middle_truncate_filename(name, width)
 	if vim.fn.strdisplaywidth(name) <= width then
 		return name
@@ -52,11 +50,11 @@ local function setup(overrides)
 	local config = {
 		input = {
 			enabled = true,
-			win = { border = "single", title_pos = "center", backdrop = false },
+			win = { border = require("mayon.util").border, title_pos = "center", backdrop = false },
 		},
 		styles = {
 			notification = {
-				border = "single",
+				border = require("mayon.util").border,
 				wo = { winblend = 0 },
 			},
 		},
@@ -64,7 +62,7 @@ local function setup(overrides)
 			configure = false,
 			win = {
 				style = "float",
-				border = "single",
+				border = require("mayon.util").border,
 				title = " Git · Lazygit ",
 				title_pos = "center",
 				backdrop = false,
@@ -72,7 +70,7 @@ local function setup(overrides)
 		},
 		terminal = {
 			win = {
-				border = "single",
+				border = require("mayon.util").border,
 				title = " Terminal · Snacks ",
 				backdrop = false,
 				title_pos = "center",
@@ -153,20 +151,6 @@ local function setup(overrides)
 			config = function(opts)
 				return require("mayon.ui.pickers").configure(opts)
 			end,
-			layout = function()
-				if vim.o.columns >= 100 then
-					return { preset = "default", layout = { width = 0.88, height = 0.82, min_width = 40 } }
-				end
-				return {
-					preset = "select",
-					layout = {
-						width = 0.88,
-						height = 0.55,
-						min_width = math.min(30, vim.o.columns - 4),
-						max_width = vim.o.columns - 4,
-					},
-				}
-			end,
 			sources = {
 				explorer = {
 					config = function(opts)
@@ -195,6 +179,26 @@ local function setup(overrides)
 						opts.icons.git.enabled = false
 						opts.diagnostics = false
 						opts.diagnostics_open = false
+						opts.title = "Project"
+						-- Window options belong to the public picker config; the
+						-- explorer no longer rewrites picker internals from on_show.
+						opts.win = vim.tbl_deep_extend("force", opts.win or {}, {
+							input = { title = "", wo = { winbar = "" } },
+							list = {
+								border = "none",
+								wo = {
+									wrap = false,
+									number = true,
+									relativenumber = false,
+									numberwidth = 1,
+									signcolumn = "no",
+									statuscolumn = require("mayon.ui.pickers").rail(),
+									cursorline = true,
+									cursorlineopt = "line",
+									winbar = "",
+								},
+							},
+						})
 						return opts
 					end,
 					layout = function()
@@ -211,51 +215,6 @@ local function setup(overrides)
 								{ win = "list", border = "none" },
 							},
 						}
-					end,
-					on_show = function(picker)
-						local win = picker.list.win.win
-						picker.opts.title = "Project"
-						_G.MayonExplorerStatusColumn = function()
-							local target = tonumber(vim.g.statusline_winid)
-							if
-								not target
-								or not vim.api.nvim_win_is_valid(target)
-								or vim.bo[vim.api.nvim_win_get_buf(target)].filetype ~= "snacks_picker_list"
-							then
-								target = win
-							end
-							return vim.v.lnum == vim.api.nvim_win_get_cursor(target)[1]
-									and "%#MayonExplorerCursor#▎%*"
-								or " "
-						end
-						local options = {
-							number = true,
-							relativenumber = false,
-							numberwidth = 1,
-							signcolumn = "no",
-							statuscolumn = "%!v:lua.MayonExplorerStatusColumn()",
-							cursorline = true,
-							cursorlineopt = "line",
-							winbar = "",
-						}
-						-- Snacks reapplies opts.wo during its final layout pass.
-						picker.list.win.opts.wo = vim.tbl_extend("force", picker.list.win.opts.wo, options)
-						picker.layout.win_opts.list.wo =
-							vim.tbl_extend("force", picker.layout.win_opts.list.wo, options)
-						vim.schedule(function()
-							if not vim.api.nvim_win_is_valid(win) then
-								return
-							end
-							for key, value in pairs(options) do
-								vim.wo[win][key] = value
-							end
-						end)
-					end,
-					on_change = function(picker)
-						local title = "Project"
-						if picker.opts.title ~= title then
-							picker.opts.on_show(picker)
-						end
 					end,
 					format = function(item, picker)
 						local depth, parent = 0, item.parent
@@ -288,15 +247,6 @@ local function setup(overrides)
 						end
 						return result
 					end,
-					win = {
-						input = { title = "", wo = { winbar = "" } },
-						list = {
-							border = "none",
-							wo = {
-								wrap = false,
-							},
-						},
-					},
 				},
 			},
 		},

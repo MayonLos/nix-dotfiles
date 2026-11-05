@@ -1,29 +1,47 @@
 -- A quiet workspace rail: editing mode, location, attention, then cursor position.
 local M = {}
 local ready = false
+
+-- Cached status snapshots, invalidated by events instead of recomputed on every
+-- redraw. Provider/busy reads stay live (they are cheap); the Copilot request
+-- walk and the per-buffer diagnostic count are recomputed only on LSP and
+-- DiagnosticChanged events.
 local codecompanion_requests = {}
+local copilot_pending_cache = nil
+local diag_cache = { errors = 0, warnings = 0 }
+
+local function invalidate_copilot_pending()
+	copilot_pending_cache = nil
+end
+
+local function copilot_pending()
+	if copilot_pending_cache ~= nil then
+		return copilot_pending_cache
+	end
+	local pending = 0
+	for _, client in ipairs(vim.lsp.get_clients({ name = "copilot" })) do
+		for _, request in pairs(client.requests or {}) do
+			if request.type == "pending" and request.method == "textDocument/inlineCompletion" then
+				pending = pending + 1
+			end
+		end
+	end
+	copilot_pending_cache = pending
+	return pending
+end
 
 local function ai_status()
 	local completion = package.loaded["mayon.features.ai_completion"]
 	local provider = completion and completion.provider or "copilot"
 	local pending = completion and completion.pending or 0
-	local copilot_pending = 0
-	if provider == "copilot" then
-		for _, client in ipairs(vim.lsp.get_clients({ name = "copilot" })) do
-			for _, request in pairs(client.requests or {}) do
-				if request.type == "pending" and request.method == "textDocument/inlineCompletion" then
-					copilot_pending = copilot_pending + 1
-				end
-			end
-		end
-	end
 	local requests = 0
 	for _ in pairs(codecompanion_requests) do
 		requests = requests + 1
 	end
 	local companion_loaded = package.loaded.codecompanion ~= nil
 	local companion_command = vim.fn.exists(":CodeCompanion") == 2
-	local completion_pending = provider == "deepseek" and pending or provider == "copilot" and copilot_pending or 0
+	local copilot_pending_n = provider == "copilot" and copilot_pending() or 0
+	local completion_pending = provider == "deepseek" and pending or provider == "copilot" and copilot_pending_n or 0
 	return {
 		provider = provider,
 		completion_enabled = provider ~= "off",
@@ -42,6 +60,18 @@ function M.ai_status()
 	return ai_status()
 end
 
+local function refresh_diagnostics()
+	local errors, warnings = 0, 0
+	for _, diagnostic in ipairs(vim.diagnostic.get(0)) do
+		if diagnostic.severity == vim.diagnostic.severity.ERROR then
+			errors = errors + 1
+		elseif diagnostic.severity == vim.diagnostic.severity.WARN then
+			warnings = warnings + 1
+		end
+	end
+	diag_cache = { errors = errors, warnings = warnings }
+end
+
 function M.setup()
 	if ready then
 		return
@@ -58,7 +88,7 @@ function M.setup()
 		return {
 			bg = palette.bg,
 			selection = palette.selection,
-			purple = palette.purple,
+			purple = palette.blue,
 			position_bg = palette.bg,
 			fg = palette.fg,
 			bright = palette.brightFg,
@@ -79,77 +109,35 @@ function M.setup()
 		vim.cmd("redrawstatus")
 	end
 
-	-- Statusline providers parse %, and byte counts mismeasure Chinese names.
-	local mode_colors = {
-		n = "blue",
-		i = "green",
-		v = "yellow",
-		V = "yellow",
-		["\22"] = "yellow",
-		c = "cyan",
-		s = "yellow",
-		S = "yellow",
-		["\19"] = "yellow",
-		R = "red",
-		r = "cyan",
-		["!"] = "yellow",
-		t = "cyan",
-	}
-	local mode_names = {
-		n = "NORMAL",
-		niI = "NORMAL",
-		niR = "NORMAL",
-		niV = "NORMAL",
-		no = "O-PENDING",
-		nov = "O-PENDING",
-		noV = "O-PENDING",
-		i = "INSERT",
-		ic = "INSERT",
-		ix = "INSERT",
-		v = "VISUAL",
-		V = "V-LINE",
-		["\22"] = "V-BLOCK",
-		s = "SELECT",
-		S = "S-LINE",
-		["\19"] = "S-BLOCK",
-		R = "REPLACE",
-		Rv = "V-REPLACE",
-		c = "COMMAND",
-		cv = "EX",
-		r = "PROMPT",
-		rm = "MORE",
-		["r?"] = "CONFIRM",
-		["!"] = "SHELL",
-		t = "TERMINAL",
-	}
-	local short_modes = {
-		n = "N",
-		i = "I",
-		v = "V",
-		V = "V",
+	-- Mode colors come from the theme's single palette-backed definition. Block
+	-- and select modes have no printable first byte, so name their letters here.
+	local mode_letters = {
 		["\22"] = "V",
-		c = "C",
-		s = "S",
-		S = "S",
-		R = "R",
-		r = "P",
+		["\19"] = "S",
 		["!"] = "!",
 		t = "T",
+		r = "P",
 	}
+	local function mode_letter(mode)
+		local first = mode:sub(1, 1)
+		return mode_letters[first] or first:upper()
+	end
+	local function mode_color(mode)
+		return require("mayon.ui.theme").mode_color(mode)
+	end
 	local ViMode = {
 		{
 			provider = "●",
 			hl = function(self)
-				return { fg = mode_colors[self.mode:sub(1, 1)] or "blue" }
+				return { fg = mode_color(self.mode) }
 			end,
 		},
 		{
 			provider = function(self)
-				local name = mode_names[self.mode] or self.mode:upper()
-				return " " .. (short_modes[self.mode:sub(1, 1)] or name:sub(1, 1)) .. " "
+				return " " .. mode_letter(self.mode) .. " "
 			end,
 			hl = function(self)
-				return { fg = mode_colors[self.mode:sub(1, 1)] or "blue" }
+				return { fg = mode_color(self.mode) }
 			end,
 		},
 	}
@@ -233,23 +221,23 @@ function M.setup()
 
 	local Diagnostics = {
 		condition = function()
-			return #vim.diagnostic.get(0, { severity = { min = vim.diagnostic.severity.WARN } }) > 0
+			return diag_cache.errors > 0 or diag_cache.warnings > 0
 		end,
 		{
 			condition = function()
-				return #vim.diagnostic.get(0, { severity = vim.diagnostic.severity.WARN }) > 0
+				return diag_cache.warnings > 0
 			end,
 			provider = function()
-				return "▲" .. #vim.diagnostic.get(0, { severity = vim.diagnostic.severity.WARN }) .. " "
+				return "▲" .. diag_cache.warnings .. " "
 			end,
 			hl = { fg = "diag_warn" },
 		},
 		{
 			condition = function()
-				return #vim.diagnostic.get(0, { severity = vim.diagnostic.severity.ERROR }) > 0
+				return diag_cache.errors > 0
 			end,
 			provider = function()
-				return "●" .. #vim.diagnostic.get(0, { severity = vim.diagnostic.severity.ERROR }) .. " "
+				return "●" .. diag_cache.errors .. " "
 			end,
 			hl = { fg = "red" },
 		},
@@ -265,37 +253,31 @@ function M.setup()
 		end,
 		hl = { fg = "red", bold = true },
 	}
+
+	-- One search-count implementation; see extras.lua's removal in the report.
+	local function searchcount_string()
+		if vim.v.hlsearch == 0 then
+			return ""
+		end
+		local ok, count = pcall(vim.fn.searchcount, { maxcount = 999, timeout = 20 })
+		if not ok or not count.total or count.total == 0 then
+			return ""
+		end
+		if count.incomplete == 1 then
+			return "[…] "
+		end
+		return "[" .. count.current .. "/" .. count.total .. (count.incomplete == 2 and "+" or "") .. "] "
+	end
 	local SearchCount = {
 		condition = function()
 			return vim.o.columns >= 80 and vim.v.hlsearch == 1
 		end,
 		provider = function()
-			local ok, count = pcall(vim.fn.searchcount, { maxcount = 999, timeout = 20 })
-			if not ok or not count.total or count.total == 0 then
-				return ""
-			end
-			if count.incomplete == 1 then
-				return "[…] "
-			end
-			return "[" .. count.current .. "/" .. count.total .. (count.incomplete == 2 and "+" or "") .. "] "
+			return searchcount_string()
 		end,
 		hl = { fg = "fg" },
 	}
-	vim.api.nvim_create_autocmd({ "RecordingEnter", "RecordingLeave", "LspAttach", "LspDetach" }, {
-		group = vim.api.nvim_create_augroup("HeirlineState", { clear = true }),
-		callback = vim.schedule_wrap(redraw_status),
-	})
-	vim.api.nvim_create_autocmd("LspRequest", {
-		group = "HeirlineState",
-		callback = function(ev)
-			local data = ev.data or {}
-			local request = data.request or {}
-			local client = vim.lsp.get_client_by_id(data.client_id)
-			if client and client.name == "copilot" and request.method == "textDocument/inlineCompletion" then
-				vim.schedule(redraw_status)
-			end
-		end,
-	})
+
 	local Encoding = {
 		condition = function()
 			return vim.o.columns >= 120
@@ -319,24 +301,12 @@ function M.setup()
 		},
 	}
 
-	vim.api.nvim_create_autocmd("User", {
-		group = vim.api.nvim_create_augroup("HeirlineCodeCompanion", { clear = true }),
-		pattern = { "CodeCompanionRequestStarted", "CodeCompanionRequestFinished" },
-		callback = function(args)
-			local data = args.data or {}
-			local id = data.id
-			if args.match == "CodeCompanionRequestStarted" and id ~= nil and not codecompanion_requests[id] then
-				local adapter = data.adapter
-				codecompanion_requests[id] = adapter and (adapter.formatted_name or adapter.name) or "CodeCompanion"
-			elseif args.match == "CodeCompanionRequestFinished" and id ~= nil then
-				codecompanion_requests[id] = nil
-			end
-			vim.cmd("redrawstatus")
-		end,
-	})
 	local AI = {
-		provider = function()
-			local state = ai_status()
+		init = function(self)
+			self.ai = ai_status()
+		end,
+		provider = function(self)
+			local state = self.ai
 			local name = ({ copilot = "Copilot", deepseek = "DeepSeek", off = "AI off" })[state.provider]
 				or state.provider
 			if state.provider == "deepseek" and (not vim.env.DEEPSEEK_API_KEY or vim.env.DEEPSEEK_API_KEY == "") then
@@ -347,15 +317,13 @@ function M.setup()
 				or (state.codecompanion_enabled and " · CC" or "")
 			return " " .. name .. busy .. cc .. " "
 		end,
-		hl = function()
-			local state = ai_status()
+		hl = function(self)
+			local state = self.ai
 			if state.completion_generating or state.codecompanion_generating then
 				return { fg = "blue" }
 			end
 			return { fg = state.provider == "copilot" and "green" or state.provider == "off" and "gray" or "cyan" }
 		end,
-		-- Read the small state snapshot on redraw; request events can arrive
-		-- before Heirline update caches are invalidated. Never cache busy text.
 	}
 
 	local Debug = {
@@ -457,11 +425,6 @@ function M.setup()
 			hl = { fg = "gray" },
 		}
 	end
-	vim.api.nvim_create_autocmd("User", {
-		group = "HeirlineCodeCompanion",
-		pattern = { "CodeCompanionChatOpened", "CodeCompanionChatModel", "CodeCompanionChatDone" },
-		callback = vim.schedule_wrap(redraw_status),
-	})
 	local CodeCompanionStatusline = {
 		condition = IsCodeCompanion,
 		init = function(self)
@@ -508,6 +471,60 @@ function M.setup()
 	heirline.setup({ statusline = StatusLines })
 	heirline.load_colors(setup_colors())
 
+	-- Event-driven cache invalidation: the Copilot pending count and the
+	-- diagnostic counts recompute only when a relevant LSP/diagnostic event
+	-- fires, never on every statusline redraw. Refresh the cache synchronously so
+	-- an immediate redraw already sees the event, then schedule the repaint.
+	local function refresh_state()
+		invalidate_copilot_pending()
+		refresh_diagnostics()
+	end
+	local state_group = vim.api.nvim_create_augroup("HeirlineState", { clear = true })
+	vim.api.nvim_create_autocmd(
+		{ "RecordingEnter", "RecordingLeave", "LspAttach", "LspDetach", "DiagnosticChanged", "BufEnter" },
+		{
+			group = state_group,
+			callback = function()
+				refresh_state()
+				vim.schedule(redraw_status)
+			end,
+		}
+	)
+	vim.api.nvim_create_autocmd("LspRequest", {
+		group = state_group,
+		callback = function(ev)
+			local data = ev.data or {}
+			local request = data.request or {}
+			local client = vim.lsp.get_client_by_id(data.client_id)
+			if client and client.name == "copilot" and request.method == "textDocument/inlineCompletion" then
+				invalidate_copilot_pending()
+				vim.schedule(redraw_status)
+			end
+		end,
+	})
+
+	local cc_group = vim.api.nvim_create_augroup("HeirlineCodeCompanion", { clear = true })
+	vim.api.nvim_create_autocmd("User", {
+		group = cc_group,
+		pattern = { "CodeCompanionRequestStarted", "CodeCompanionRequestFinished" },
+		callback = function(args)
+			local data = args.data or {}
+			local id = data.id
+			if args.match == "CodeCompanionRequestStarted" and id ~= nil and not codecompanion_requests[id] then
+				local adapter = data.adapter
+				codecompanion_requests[id] = adapter and (adapter.formatted_name or adapter.name) or "CodeCompanion"
+			elseif args.match == "CodeCompanionRequestFinished" and id ~= nil then
+				codecompanion_requests[id] = nil
+			end
+			vim.cmd("redrawstatus")
+		end,
+	})
+	vim.api.nvim_create_autocmd("User", {
+		group = cc_group,
+		pattern = { "CodeCompanionChatOpened", "CodeCompanionChatModel", "CodeCompanionChatDone" },
+		callback = vim.schedule_wrap(redraw_status),
+	})
+
 	vim.api.nvim_create_autocmd("ColorScheme", {
 		group = vim.api.nvim_create_augroup("Heirline", { clear = true }),
 		-- Refresh after all theme adapters so cached Heirline colours see overrides.
@@ -517,6 +534,10 @@ function M.setup()
 			vim.cmd.redrawtabline()
 		end),
 	})
+
+	-- Seed the diagnostic cache once so the first render is correct before any
+	-- DiagnosticChanged event fires.
+	refresh_diagnostics()
 end
 
 return M

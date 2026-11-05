@@ -13,42 +13,33 @@ function M.ensure()
 		cterm_color = "173",
 		name = "Matlab",
 	}
-	local devicons = require("nvim-web-devicons")
-	-- Keep the established devicons, replacing their purple/pink accents with
-	-- the editor's blue. Configure through the plugin API so theme reloads
-	-- preserve the same foregrounds rather than rewriting highlights later.
+	-- Keep devicons' own semantic colors; only named entries that need a
+	-- palette accent are overridden. MATLAB has no upstream entry at all, and
+	-- C/C++ headers use the editor blue instead of the upstream purple.
+	local header = { icon = "", color = require("mayon.generated").palette.blue, cterm_color = "75", name = "H" }
 	local overrides = {
 		m = matlab,
 		mlx = vim.tbl_extend("force", matlab, { name = "MatlabLiveScript" }),
 		mat = vim.tbl_extend("force", matlab, { name = "MatlabData" }),
 		slx = vim.tbl_extend("force", matlab, { name = "Simulink" }),
+		h = header,
+		hpp = vim.tbl_extend("force", header, { name = "Hpp" }),
 	}
-	for name, icon in pairs(devicons.get_icons()) do
-		local hex = icon.color and tonumber(icon.color:sub(2), 16)
-		if hex then
-			local r, g, b = math.floor(hex / 65536), math.floor(hex / 256) % 256, hex % 256
-			if r > g * 1.12 and b > g * 1.1 then
-				overrides[name] = vim.tbl_extend(
-					"force",
-					icon,
-					{ color = require("mayon.generated").palette.blue, cterm_color = "75" }
-				)
-			end
-		end
-	end
+	local devicons = require("nvim-web-devicons")
 	devicons.setup({ color_icons = true, override = overrides })
 end
 
 -- Dashboard icons do not need diagnostic state. Configure the gutter when the
 -- language-service core starts, rather than loading vim.diagnostic on frame 1.
+-- Each severity keeps a visually distinct glyph instead of relying on color.
 function M.diagnostics()
 	vim.diagnostic.config({
 		signs = {
 			text = {
 				[vim.diagnostic.severity.ERROR] = "●",
 				[vim.diagnostic.severity.WARN] = "•",
-				[vim.diagnostic.severity.INFO] = "·",
-				[vim.diagnostic.severity.HINT] = "·",
+				[vim.diagnostic.severity.INFO] = "◆",
+				[vim.diagnostic.severity.HINT] = "▪",
 			},
 		},
 	})

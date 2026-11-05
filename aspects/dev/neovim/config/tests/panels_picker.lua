@@ -11,7 +11,7 @@ assert(
 	files.layout().layout.height == math.floor(vim.o.lines * (vim.o.columns >= 120 and 0.42 or 0.52)),
 	"picker height should adapt to the editor"
 )
-assert(files.layout().layout.border == "top", "picker should use a fine top frame")
+assert(files.layout().layout.border == require("mayon.util").border, "picker should use the shared rounded frame")
 assert(files.layout().layout[1].border == "bottom", "picker input should use a fine lower rule")
 assert(files.win.list.wo.cursorline and files.win.list.wo.cursorlineopt == "line")
 assert(files.win.list.wo.winhighlight:find("SnacksPickerListCursorLine", 1, true))
@@ -79,6 +79,8 @@ for _, source in ipairs({
 }) do
 	assert(pickers.labels[source], "missing shared picker label for " .. source)
 end
+assert(not _G.MayonPickerRail and not _G.MayonPickerStatusColumn, "picker rail must not leak globals")
+assert(pickers.rail():find("require'mayon.ui.pickers'", 1, true), "picker rail should call the module directly")
 local explorer_opts = pickers.configure({ source = "explorer" })
 assert(explorer_opts.prompt == "⌕ ", "Project should expose the native filter input")
 assert(explorer_opts.win.list.keys["/"] == "explorer_filter", "Project slash should reveal its one-line filter")
@@ -119,6 +121,10 @@ local list_win = picker.list.win.win
 assert(
 	vim.api.nvim_win_is_valid(list_win) and vim.api.nvim_win_get_width(list_win) == 28,
 	"wide Project rail should be 28 columns"
+)
+assert(
+	vim.wo[list_win].statuscolumn:find("mayon.ui.pickers", 1, true),
+	"Project list should reuse the shared statuscolumn rail"
 )
 assert(picker.opts.prompt == "⌕ ", "Project filter prompt should be the native search input")
 assert(picker.layout:is_hidden("input"), "Project filter should be hidden by default")
@@ -220,11 +226,10 @@ for _, candidate in ipairs(grep_picker.finder.items) do
 end
 local live_row = grep_picker.opts.format(grep_picker.finder.items[1], grep_picker)
 assert(live_row[#live_row].virt_text_pos == "right_align", "native grep path should remain right aligned")
-grep_picker:update_titles()
-local grep_footer = vim.api.nvim_win_get_config(grep_picker.input.win.win).footer
+grep_picker.input:update()
 assert(
-	grep_footer and vim.inspect(grep_footer):find("matches", 1, true),
-	"live grep count should render in the right-side input footer"
+	grep_picker.input.totals:find("10/10", 1, true),
+	"live picker totals should render in the native right-side input overlay"
 )
 grep_picker:close()
 vim.fn.delete(dir, "rf")

@@ -22,14 +22,14 @@ local function color(value)
 	return tonumber(value:sub(2), 16)
 end
 
-local function assert_single_surface(win, label)
+local function assert_rounded_surface(win, label)
 	local config = vim.api.nvim_win_get_config(win)
 	assert(config.relative ~= "", label .. " must be a real floating window")
-	local single = config.border == nil and vim.o.winborder == "single"
-		or type(config.border) == "table" and config.border[1] == "┌"
+	local rounded = config.border == nil and vim.o.winborder == "rounded"
+		or type(config.border) == "table" and config.border[1] == "╭"
 	assert(
-		single,
-		label .. " must use a single-line border: " .. vim.inspect(config.border) .. " / " .. vim.o.winborder
+		rounded,
+		label .. " must use the shared rounded border: " .. vim.inspect(config.border) .. " / " .. vim.o.winborder
 	)
 	return config
 end
@@ -49,10 +49,7 @@ local before_input = {}
 for _, win in ipairs(vim.api.nvim_list_wins()) do
 	before_input[win] = true
 end
-local input_result
-vim.ui.input({ prompt = "Fixture prompt: ", title = " Input fixture " }, function(value)
-	input_result = value
-end)
+vim.ui.input({ prompt = "Fixture prompt: ", title = " Input fixture " }, function() end)
 local input_win
 assert(
 	vim.wait(1500, function()
@@ -66,7 +63,7 @@ assert(
 	end, 10),
 	"Snacks input did not create a floating prompt"
 )
-local input_config = assert_single_surface(input_win, "Snacks input")
+local input_config = assert_rounded_surface(input_win, "Snacks input")
 assert(type(input_config.title) == "table", "input should render its native title chunks")
 assert(
 	vim.wo[input_win].winhighlight:find("FloatBorder:SnacksInputBorder", 1, true),
@@ -96,7 +93,7 @@ assert(
 	end, 10),
 	"configured notifier did not render a notification window"
 )
-local notification_config = assert_single_surface(notification_win, "notification")
+local notification_config = assert_rounded_surface(notification_win, "notification")
 assert(type(notification_config.title) == "table", "notification should render title chunks")
 assert(
 	vim.wo[notification_win].winhighlight:find("FloatBorder:FloatBorder", 1, true)
@@ -116,7 +113,7 @@ local chat_buf = panels.open_fixture("chat")
 vim.wait(100)
 local chat_win = vim.fn.win_findbuf(chat_buf)[1]
 assert(chat_win, "offline AI fixture must open its chat window")
-local chat_config = assert_single_surface(chat_win, "AI chat")
+local chat_config = assert_rounded_surface(chat_win, "AI chat")
 assert(type(chat_config.title) == "table", "AI chat should render title chunks")
 border = highlight("FloatBorder")
 title = highlight("FloatTitle")
@@ -213,7 +210,6 @@ assert(not local_maps.gr, "LspAttach must not consume the gr prefix")
 
 -- Accept one word from a local Copilot-shaped snippet fixture. Stub only the
 -- native completion request, so the real 0.12 snippet grammar transforms it.
-local ai_completion = require("mayon.features.ai_completion")
 local inline = vim.lsp.inline_completion
 local old_get = inline.get
 local old_provider = ai_completion.provider

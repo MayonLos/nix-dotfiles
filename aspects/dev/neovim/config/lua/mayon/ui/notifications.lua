@@ -3,6 +3,10 @@ local M = {}
 local cap_scheduled = false
 local tracked = {}
 
+-- Snacks has no "max visible cards" option. Its public history/hide API is the
+-- only supported way to trim the stack; this module keeps the <=3 rule here
+-- instead of patching notifier internals. `layout.top` is the public layout
+-- value Snacks itself uses, reset so retained cards repack after a hide.
 function M.cap_visible()
 	local snacks = rawget(_G, "Snacks")
 	local notifier = snacks and snacks.notifier
@@ -78,8 +82,7 @@ function M.filter(notif)
 		notif.level = "info"
 	end
 	if notif.msg and (#vim.split(notif.msg, "\n", { plain = true }) > 3 or vim.fn.strdisplaywidth(notif.msg) > 160) then
-		-- Native UI2 collapses the log; history keeps every line, including
-		-- quotes/newlines that must never be interpolated into an Ex command.
+		-- Long details go to :messages untouched; show a short corner notice.
 		vim.api.nvim_echo({ { notif.msg, "Normal" } }, true, {})
 		notif.msg = "Details saved to :messages"
 	end
@@ -92,10 +95,23 @@ function M.render(buf, notif, ctx)
 	local level = notif.level:sub(1, 1):upper() .. notif.level:sub(2)
 	local rail = "SnacksNotifierIcon" .. level
 	-- Severity belongs in a small title mark, never in an asymmetric frame.
+	local util = require("mayon.util")
 	ctx.opts.wo = ctx.opts.wo or {}
-	ctx.opts.wo.winhighlight =
-		"Normal:NormalFloat,NormalNC:NormalFloat,FloatBorder:FloatBorder,FloatTitle:FloatTitle,FloatFooter:FloatTitle,SignColumn:NormalFloat,LineNr:NormalFloat,EndOfBuffer:NormalFloat"
-	ctx.opts.border = "single"
+	local links = util.winhl_parse(ctx.opts.wo.winhighlight)
+	for from, to in pairs({
+		Normal = "NormalFloat",
+		NormalNC = "NormalFloat",
+		FloatBorder = "FloatBorder",
+		FloatTitle = "FloatTitle",
+		FloatFooter = "FloatTitle",
+		SignColumn = "NormalFloat",
+		LineNr = "NormalFloat",
+		EndOfBuffer = "NormalFloat",
+	}) do
+		links[from] = to
+	end
+	ctx.opts.wo.winhighlight = util.winhl_string(links)
+	ctx.opts.border = util.border
 	ctx.opts.footer = nil
 	ctx.opts.title = {
 		{ " ● ", rail },

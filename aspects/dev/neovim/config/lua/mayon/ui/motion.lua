@@ -14,7 +14,7 @@ function M.config()
 	return {
 		enabled = not M.reduced_motion(),
 		autoreload = true,
-		refresh_interval_ms = 12,
+		refresh_interval_ms = 20,
 		text_change_batch_timeout_ms = 40,
 		overwrite = {
 			auto_map = true,
@@ -26,7 +26,7 @@ function M.config()
 		},
 		animations = {
 			fade = {
-				max_duration = 260,
+				max_duration = 160,
 				min_duration = 80,
 				easing = "outQuad",
 				chars_for_max_duration = 10,
@@ -34,7 +34,7 @@ function M.config()
 				to_color = palette.bg,
 			},
 			reverse_fade = {
-				max_duration = 280,
+				max_duration = 180,
 				min_duration = 90,
 				easing = "outQuad",
 				chars_for_max_duration = 10,

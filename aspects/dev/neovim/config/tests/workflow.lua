@@ -50,6 +50,7 @@ local attention = vim.api.nvim_create_namespace("workflow-attention")
 local diagnostics = {}
 diagnostics[1] = { lnum = 0, col = 0, message = "workflow fixture", severity = vim.diagnostic.severity.ERROR }
 vim.diagnostic.set(attention, doc, diagnostics)
+vim.wait(50)
 vim.bo[doc].modified, vim.bo[doc].readonly = true, true
 for _, width in ipairs({ 40, 60, 80, 100, 160 }) do
 	vim.o.columns = width
@@ -68,6 +69,7 @@ assert(require("mayon.ui.statusline").ai_status().completion_generating, "AI hel
 ai_completion.busy = old_busy
 diagnostics[1].severity = vim.diagnostic.severity.WARN
 vim.diagnostic.set(attention, doc, diagnostics)
+vim.wait(50)
 vim.cmd.redrawstatus()
 local warning_rail = vim.api.nvim_eval_statusline(vim.o.statusline, { maxwidth = 160 })
 assert(warning_rail.str:find("▲1", 1, true), "warning count should use the compact yellow marker")

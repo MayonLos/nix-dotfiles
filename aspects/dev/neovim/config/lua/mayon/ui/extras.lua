@@ -1,5 +1,9 @@
 -- Window-local surfaces for built-in buffers and secondary plugin views.
+-- Most of this module's work moved into util.winhl / theme / statusline;
+-- what remains is the shared secondary-surface titles and the highlight-colors
+-- option table that decorations.lua applies.
 local M = {}
+local util = require("mayon.util")
 
 local titles = {
 	oil = "Project",
@@ -29,35 +33,6 @@ local function surface_title(buf, fallback)
 	return title .. " · " .. source
 end
 
-local function add_window_highlights(win)
-	local entries = {}
-	local mapped = {}
-	for entry in vim.wo[win].winhighlight:gmatch("[^,]+") do
-		local source = entry:match("^([^:]+):")
-		-- style=minimal adds EndOfBuffer: with an empty target. That clears
-		-- its color instead of inheriting a plugin's floating namespace.
-		if not (source == "EndOfBuffer" and entry:match("^EndOfBuffer:%s*$")) then
-			if source then
-				mapped[source] = true
-			end
-			entries[#entries + 1] = entry
-		end
-	end
-	for _, entry in ipairs({
-		"Normal:NormalFloat",
-		"NormalNC:NormalFloat",
-		"EndOfBuffer:NormalFloat",
-		"FloatBorder:FloatBorder",
-		"FloatTitle:FloatTitle",
-	}) do
-		local source = entry:match("^([^:]+):")
-		if not mapped[source] then
-			entries[#entries + 1] = entry
-		end
-	end
-	vim.wo[win].winhighlight = table.concat(entries, ",")
-end
-
 local function title_is_empty(title)
 	if type(title) == "string" then
 		return title:match("^%s*$") ~= nil
@@ -72,6 +47,23 @@ local function title_is_empty(title)
 	return title == nil or title == false
 end
 
+-- A float without a visible frame: no border, "none", or eight empty glyphs.
+local function border_is_missing(border)
+	if border == nil or border == "none" or border == "" then
+		return true
+	end
+	if type(border) == "table" then
+		for _, part in ipairs(border) do
+			local glyph = type(part) == "table" and part[1] or part
+			if glyph ~= "" then
+				return false
+			end
+		end
+		return true
+	end
+	return false
+end
+
 local function virtual_width(win)
 	local width = vim.api.nvim_win_get_config(win).width
 	return width ~= nil and width > vim.o.columns
@@ -84,17 +76,23 @@ function M.style(win, title)
 	-- Neovim 0.12 ui2 creates hidden command/message windows with a logical
 	-- width larger than the screen, even though get_width() reports a clamp.
 	-- Do not attach layout options to those internal windows.
-	if virtual_width(win) then
+	local virtual = virtual_width(win)
+	if virtual then
 		return
 	end
-	vim.wo[win].winhighlight =
-		"Normal:NormalFloat,NormalNC:NormalFloat,WinBar:MayonPanelTitle,WinSeparator:FloatBorder,CursorLine:PmenuSel"
+	util.winhl(win, {
+		Normal = "NormalFloat",
+		NormalNC = "NormalFloat",
+		WinBar = "MayonPanelTitle",
+		WinSeparator = "FloatBorder",
+		CursorLine = "PmenuSel",
+	})
 	-- Neovim 0.12 ui2 represents command/message surfaces with oversized hidden
 	-- windows. A window-local winbar asks the TUI to lay out that virtual width
 	-- and raises E36; keep its colors, but leave the synthetic surface alone.
 	local ft = vim.bo[vim.api.nvim_win_get_buf(win)].filetype
 	local ui2_surface = ft == "cmd" or ft == "msg" or ft == "dialog" or ft == "pager"
-	if title and not ui2_surface and not virtual_width(win) and vim.api.nvim_win_get_width(win) <= vim.o.columns then
+	if title and not ui2_surface and not virtual and vim.api.nvim_win_get_width(win) <= vim.o.columns then
 		vim.wo[win].winbar = "%#MayonPanelTitle# " .. escaped(title) .. " %*"
 	end
 end
@@ -117,28 +115,23 @@ function M.style_float(win, title)
 	if ft:match("^snacks_") or ft == "wk" then
 		return
 	end
-	if not config.border or config.border == "none" then
-		config.border = "single"
+	-- Fill in a frame only where the plugin left none; explicit borders stay.
+	if border_is_missing(config.border) then
+		config.border = util.border
 	end
-	if title_is_empty(config.title) and ft ~= "snacks_terminal" then
+	if title_is_empty(config.title) then
 		config.title = " " .. surface_title(buf, title) .. " "
 	end
 	-- Keep native/plugin floats visually quiet and centered like the LSP popups.
-	-- A little whitespace in the title itself prevents it touching the edge glyphs.
 	config.title_pos = "center"
 	pcall(vim.api.nvim_win_set_config, win, config)
-	add_window_highlights(win)
-end
-
-function M.searchcount()
-	if vim.v.hlsearch == 0 or vim.fn.getreg("/") == "" then
-		return ""
-	end
-	local ok, count = pcall(vim.fn.searchcount, { recompute = 0, maxcount = 9999 })
-	if not ok or not count or count.total == 0 then
-		return ""
-	end
-	return ("[%d/%d]"):format(count.current or 0, count.total)
+	util.winhl(win, {
+		Normal = "NormalFloat",
+		NormalNC = "NormalFloat",
+		EndOfBuffer = "NormalFloat",
+		FloatBorder = "FloatBorder",
+		FloatTitle = "FloatTitle",
+	})
 end
 
 function M.color_options()

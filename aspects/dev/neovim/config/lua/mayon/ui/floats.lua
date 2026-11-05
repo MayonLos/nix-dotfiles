@@ -1,31 +1,13 @@
 -- Keep native LSP requests, focus/close behavior and completion resolution.
 local M = {}
 local ready = false
-local padding_ns = vim.api.nvim_create_namespace("MayonFloatPadding")
+local util = require("mayon.util")
 
-local function pad_buffer(buf)
-	if not vim.api.nvim_buf_is_valid(buf) then
-		return
-	end
-	vim.api.nvim_buf_clear_namespace(buf, padding_ns, 0, -1)
-	for row, line in ipairs(vim.api.nvim_buf_get_lines(buf, 0, -1, false)) do
-		vim.api.nvim_buf_set_extmark(buf, padding_ns, row - 1, 0, {
-			virt_text = { { " ", "NormalFloat" } },
-			virt_text_pos = "inline",
-			priority = 20,
-		})
-		if line ~= "" then
-			vim.api.nvim_buf_set_extmark(buf, padding_ns, row - 1, #line, {
-				virt_text = { { " ", "NormalFloat" } },
-				virt_text_pos = "inline",
-				priority = 20,
-			})
-		end
-	end
-end
-
+-- Fit a floating preview to its content, honoring the caller's width/height
+-- limits. The rounded border owns the visual margin; the buffer text is never
+-- modified to fake padding.
 local function fit_padding(win, opts)
-	if not vim.api.nvim_win_is_valid(win) then
+	if not win or not vim.api.nvim_win_is_valid(win) then
 		return
 	end
 	opts = opts or {}
@@ -55,7 +37,7 @@ end
 
 function M.options(kind, opts)
 	return vim.tbl_extend("force", {
-		border = "single",
+		border = util.border,
 		max_width = 64,
 		max_height = 18,
 		title = " " .. kind .. " · " .. server() .. " ",
@@ -78,11 +60,12 @@ function M.setup()
 	local original = vim.lsp.util.open_floating_preview
 	vim.lsp.util.open_floating_preview = function(contents, syntax, opts)
 		opts = vim.tbl_extend("keep", opts or {}, {
-			border = "single",
 			max_width = 64,
 			max_height = 18,
 			title_pos = "center",
 		})
+		-- One border style for every native preview, including diagnostics.
+		opts.border = util.border
 		local kind = opts.focus_id == "textDocument/hover" and "hover"
 			or opts.focus_id == "textDocument/signatureHelp" and "signature"
 		if not opts.title then
@@ -107,10 +90,13 @@ function M.setup()
 			end
 		end
 		local buf, win = original(lines, syntax, opts)
-		pad_buffer(buf)
 		if win and vim.api.nvim_win_is_valid(win) then
-			vim.wo[win].winhighlight =
-				"Normal:NormalFloat,NormalNC:NormalFloat,FloatBorder:FloatBorder,FloatTitle:FloatTitle"
+			util.winhl(win, {
+				Normal = "NormalFloat",
+				NormalNC = "NormalFloat",
+				FloatBorder = "FloatBorder",
+				FloatTitle = "FloatTitle",
+			})
 			vim.wo[win].wrap = true
 			vim.wo[win].linebreak = true
 			vim.wo[win].breakindent = true
