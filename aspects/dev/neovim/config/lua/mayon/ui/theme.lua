@@ -21,7 +21,7 @@ M.blend = blend
 
 function M.float_edge()
 	local c = require("mayon.generated").palette
-	return blend(c.border, c.bg, 0.62)
+	return blend(c.border, c.bg, 0.9)
 end
 
 local function diagnostic_prefix(diagnostic, index)
@@ -120,13 +120,13 @@ local function overrides()
 	set("Search", { fg = c.brightFg, bg = blend(c.orange, c.bg, 0.22) })
 	set("IncSearch", { fg = c.deep, bg = c.orange, bold = true })
 	set("CurSearch", { fg = c.deep, bg = c.orange, bold = true })
-	set("LineNr", { fg = c.muted, bg = c.bg })
+	set("LineNr", { fg = c.border, bg = c.bg })
 	set("CursorLineNr", { fg = c.blue, bg = blend(c.blue, c.bg, 0.035), bold = true })
-	set("CursorLine", { bg = blend(c.blue, c.bg, 0.035) })
+	set("CursorLine", { bg = blend(c.selection, c.bg, 0.55) })
 	set("Cursor", { fg = c.bg, bg = c.blue, bold = true })
 	set("CursorLineSign", { bg = c.bg })
 	set("SignColumn", { bg = c.bg })
-	set("WinSeparator", { fg = edge, bg = c.bg })
+	set("WinSeparator", { fg = blend(c.border, c.bg, 0.42), bg = c.bg })
 	set("NonText", { fg = blend(c.muted, c.bg, 0.62) })
 	set("MatchParen", { fg = c.blue, bg = "NONE", bold = true, underline = true, sp = c.blue })
 	set("TabLine", { bg = c.bg, fg = c.fg })
@@ -135,7 +135,7 @@ local function overrides()
 
 	-- Diagnostics: a distinct glyph per severity (the gutter signs are the only
 	-- place where all four severities must be readable at a glance).
-	for severity, color in pairs({ Error = c.red, Warn = c.yellow, Info = c.blue, Hint = c.cyan }) do
+	for severity, color in pairs({ Error = c.red, Warn = c.yellow, Info = c.cyan, Hint = c.muted }) do
 		set("DiagnosticUnderline" .. severity, { sp = blend(color, c.bg, 0.52), undercurl = true })
 		set("DiagnosticSign" .. severity, { fg = color, bg = c.bg })
 		-- Floating prose stays neutral; the prefix carries the severity color.
@@ -143,8 +143,8 @@ local function overrides()
 	end
 	set("DiagnosticError", { fg = c.red })
 	set("DiagnosticWarn", { fg = c.yellow })
-	set("DiagnosticInfo", { fg = c.blue })
-	set("DiagnosticHint", { fg = c.cyan })
+	set("DiagnosticInfo", { fg = c.cyan })
+	set("DiagnosticHint", { fg = c.muted })
 	set("DiagnosticOk", { fg = c.green })
 
 	local diagnostic_inline = blend(c.yellow, c.bg, 0.62)
@@ -182,7 +182,7 @@ local function overrides()
 	-- Floating / completion surfaces, all rounded like util.border.
 	vim.api.nvim_set_hl(0, "NormalFloat", { fg = c.brightFg, bg = c.bg })
 	vim.api.nvim_set_hl(0, "FloatBorder", { fg = edge, bg = c.bg })
-	vim.api.nvim_set_hl(0, "FloatTitle", { fg = c.muted, bg = c.bg })
+	vim.api.nvim_set_hl(0, "FloatTitle", { fg = c.fg, bg = c.bg })
 	-- Neogit remaps these names inside its own highlight namespace. Use
 	-- concrete colors to avoid a FloatBorder -> NeogitFloatBorder link cycle.
 	vim.api.nvim_set_hl(0, "NeogitNormal", { fg = c.brightFg, bg = c.bg })
@@ -191,7 +191,7 @@ local function overrides()
 	vim.api.nvim_set_hl(0, "NeogitFloatHeader", { fg = c.muted, bg = c.bg })
 
 	set("Pmenu", { fg = c.brightFg, bg = c.bg })
-	set("PmenuSel", { fg = c.blue, bg = c.selection, bold = true })
+	set("PmenuSel", { fg = c.brightFg, bg = c.selection, bold = true })
 	set("PmenuKind", { fg = c.blue, bg = c.bg })
 	set("PmenuKindSel", { fg = c.blue, bg = c.selection })
 	set("PmenuExtra", { fg = c.muted, bg = c.bg })
@@ -325,8 +325,8 @@ local function overrides()
 	set("SatelliteGitSignsChange", { fg = c.orange })
 	set("SatelliteGitSignsDelete", { fg = c.red })
 
-	set("GitSignsAdd", { fg = c.green, bg = c.bg })
-	set("GitSignsChange", { fg = c.blue, bg = c.bg })
+	set("GitSignsAdd", { fg = blend(c.green, c.bg, 0.75), bg = c.bg })
+	set("GitSignsChange", { fg = blend(c.blue, c.bg, 0.75), bg = c.bg })
 	set("GitSignsDelete", { fg = c.red, bg = c.bg })
 
 	-- Native Claude/codediff and MiniDiff overlays share the palette.
@@ -354,7 +354,7 @@ local function overrides()
 
 	set("MayonPopup", { fg = c.brightFg, bg = c.bg })
 	set("MayonPopupBorder", { fg = edge, bg = c.bg })
-	set("MayonPopupTitle", { fg = c.muted, bg = c.bg })
+	set("MayonPopupTitle", { fg = c.fg, bg = c.bg })
 	set("MayonFloatErrorBorder", { fg = blend(c.red, c.bg, 0.65), bg = c.bg })
 	set("MayonExplorerFile", { fg = c.fg })
 	set("MayonExplorerTitle", { fg = c.muted, bg = c.bg })

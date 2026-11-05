@@ -26,7 +26,16 @@ assert(vim.bo.filetype == "", "test expects an empty current buffer")
 assert(vim.diagnostic.config().virtual_text == false)
 assert(vim.diagnostic.config().virtual_lines == false)
 assert(vim.diagnostic.config().severity_sort == true)
-assert(vim.diagnostic.config().signs.text[vim.diagnostic.severity.WARN] == "•", "LSP must install the quiet gutter")
+-- Each severity has its own shape, readable without relying on color.
+local sign_text = vim.diagnostic.config().signs.text
+local severity = vim.diagnostic.severity
+assert(
+	sign_text[severity.ERROR] == "●"
+		and sign_text[severity.WARN] == "▲"
+		and sign_text[severity.INFO] == "◆"
+		and sign_text[severity.HINT] == "○",
+	"LSP must install distinct gutter shapes"
+)
 assert(not vim.lsp.inlay_hint.is_enabled({ bufnr = 0 }), "inlay hints should default to off")
 
 local inlay_toggle = vim.fn.maparg("<leader>uh", "n", false, true)

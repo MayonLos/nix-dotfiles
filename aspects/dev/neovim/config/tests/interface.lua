@@ -424,7 +424,8 @@ end
 assert(vim.o.tabline ~= "", "the document workbench header should remain installed")
 for _, group in ipairs({ "FloatTitle", "MayonPopupTitle" }) do
 	local title = vim.api.nvim_get_hl(0, { name = group, link = false })
-	assert(title.fg == tonumber(palette.muted:sub(2), 16), "floating titles should use muted text: " .. group)
+	-- muted fails contrast on raised text; titles use the secondary fg.
+	assert(title.fg == tonumber(palette.fg:sub(2), 16), "floating titles should use secondary text: " .. group)
 	assert(title.bg == tonumber(palette.bg:sub(2), 16) and not title.bold, "floating title style mismatch: " .. group)
 end
 local tiny_error = vim.api.nvim_get_hl(0, { name = "TinyInlineDiagnosticVirtualTextError", link = false })
@@ -494,7 +495,9 @@ for group, color in pairs({ DiffAdd = palette.green, DiffChange = palette.blue, 
 end
 for group, color in pairs({ GitSignsAdd = palette.green, GitSignsChange = palette.blue, GitSignsDelete = palette.red }) do
 	local sign = vim.api.nvim_get_hl(0, { name = group, link = false })
-	assert(sign.fg == tonumber(color:sub(2), 16), "Git marker and diff hue mismatch: " .. group)
+	-- Add/change rails are softened toward the canvas; delete keeps full red.
+	local expected = group == "GitSignsDelete" and color or theme.blend(color, palette.bg, 0.75)
+	assert(sign.fg == tonumber(expected:sub(2), 16), "Git marker and diff hue mismatch: " .. group)
 end
 assert(
 	vim.api.nvim_get_hl(0, { name = "DiffText", link = false }).bg
@@ -503,9 +506,10 @@ assert(
 )
 local separator = vim.api.nvim_get_hl(0, { name = "WinSeparator", link = false })
 assert(separator.bg == tonumber(palette.bg:sub(2), 16), "window separators should sit on the editor surface")
+-- Split separators are fainter than float frames so floats read as on top.
 assert(
-	separator.fg == tonumber(require("mayon.ui.theme").float_edge():sub(2), 16),
-	"window separators should use the thin edge color"
+	separator.fg == tonumber(theme.blend(palette.border, palette.bg, 0.42):sub(2), 16),
+	"window separators should be fainter than float borders"
 )
 -- Syntax belongs to onedark; the ui adapter must not ship a second copy.
 for _, group in ipairs({ "@function", "@keyword", "@string", "Keyword", "Function", "@lsp.type.function" }) do

@@ -20,7 +20,7 @@ assert(
 assert(vim.o.guicursor:find("n:block-Cursor", 1, true))
 assert(vim.o.guicursor:find("i-ci:ver25-Cursor", 1, true))
 assert(vim.o.guicursor:find("r-cr-o:hor20-Cursor", 1, true))
-assert(vim.api.nvim_get_hl(0, { name = "LineNr", link = false }).fg == tonumber(palette.muted:sub(2), 16))
+assert(vim.api.nvim_get_hl(0, { name = "LineNr", link = false }).fg == tonumber(palette.border:sub(2), 16))
 assert(vim.api.nvim_get_hl(0, { name = "@keyword.function", link = false }).fg == tonumber(palette.blue:sub(2), 16))
 assert(vim.wo.number and not vim.wo.relativenumber and vim.wo.cursorline and vim.wo.wrap)
 assert(
