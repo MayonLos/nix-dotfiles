@@ -38,7 +38,7 @@ end
 -- message windows do not count as editor windows; closing the last document
 -- window would otherwise leave the tree alone or fail with E444.
 local function close_smart()
-	local api, tabline = vim.api, require("mayon.ui.tabline")
+	local api, util = vim.api, require("mayon.util")
 	if api.nvim_win_get_config(0).relative ~= "" then
 		vim.cmd.close()
 		return
@@ -47,12 +47,12 @@ local function close_smart()
 	for _, win in ipairs(api.nvim_tabpage_list_wins(0)) do
 		if api.nvim_win_get_config(win).relative == "" then
 			splits = splits + 1
-			if tabline.is_document(api.nvim_win_get_buf(win)) then
+			if util.is_document(api.nvim_win_get_buf(win)) then
 				documents = documents + 1
 			end
 		end
 	end
-	local current_is_document = tabline.is_document(api.nvim_get_current_buf())
+	local current_is_document = util.is_document(api.nvim_get_current_buf())
 	if splits > 1 and (documents > 1 or not current_is_document) then
 		vim.cmd.close()
 	else
@@ -66,7 +66,7 @@ local function terminal(position)
 			win = {
 				style = "terminal",
 				position = position,
-				border = "single",
+				border = require("mayon.util").border,
 			},
 		})
 	end
@@ -91,7 +91,7 @@ function M.setup()
 	}) do
 		map("n", key, function()
 			require("mayon.ui.workspace").action(action)
-		end, "工具窗口 · " .. action)
+		end, "Workspace · " .. action)
 	end
 	map("n", "<leader>?", function()
 		require("lz.n").trigger_load("which-key.nvim")

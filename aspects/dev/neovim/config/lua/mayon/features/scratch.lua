@@ -1,32 +1,33 @@
 local M = {}
 local api, uv = vim.api, vim.uv
+
 local function scratch_dir()
 	return vim.fn.stdpath("data") .. "/mayon-scratch"
 end
+
 local function notify(message, level)
 	vim.notify(message, level, { title = "Scratch" })
 end
 
+local function is_scratch_buffer(buf)
+	local name = api.nvim_buf_get_name(buf)
+	local prefix = vim.fs.normalize(scratch_dir()) .. "/"
+	return name:sub(1, #prefix) == prefix
+end
+
 function M.setup()
 	local scratch_group = api.nvim_create_augroup("MayonScratchPersistence", { clear = true })
-	local function save_scratch(buf)
-		if not api.nvim_buf_is_valid(buf) or not vim.bo[buf].modified then
-			return
-		end
-		local name = api.nvim_buf_get_name(buf)
-		local prefix = vim.fs.normalize(scratch_dir()) .. "/"
-		if name:sub(1, #prefix) ~= prefix then
-			return
-		end
-		pcall(api.nvim_buf_call, buf, function()
-			vim.cmd("silent write")
-		end)
-	end
-	api.nvim_create_autocmd({ "BufLeave", "BufHidden" }, {
+	-- Persist only scratch buffers, and only when the scratch buffer itself is
+	-- the one being left. No per-buffer decision for unrelated BufLeave events.
+	api.nvim_create_autocmd("BufLeave", {
 		group = scratch_group,
 		callback = function(args)
-			vim.schedule(function()
-				save_scratch(args.buf)
+			local buf = args.buf
+			if not is_scratch_buffer(buf) or not vim.bo[buf].modified then
+				return
+			end
+			pcall(api.nvim_buf_call, buf, function()
+				vim.cmd("silent write")
 			end)
 		end,
 	})
@@ -34,7 +35,11 @@ function M.setup()
 		group = scratch_group,
 		callback = function()
 			for _, buf in ipairs(api.nvim_list_bufs()) do
-				save_scratch(buf)
+				if is_scratch_buffer(buf) and vim.bo[buf].modified then
+					pcall(api.nvim_buf_call, buf, function()
+						vim.cmd("silent write")
+					end)
+				end
 			end
 		end,
 	})
@@ -57,35 +62,6 @@ function M.scratch()
 	end
 	vim.bo.buflisted = true
 	return api.nvim_get_current_buf()
-end
-
-function M.scratch_select()
-	local dir = scratch_dir()
-	local entries = {}
-	local ok, iter = pcall(uv.fs_scandir, dir)
-	if ok and iter then
-		while true do
-			local name, kind = uv.fs_scandir_next(iter)
-			if not name then
-				break
-			end
-			if kind == "file" and name:match("%.md$") then
-				entries[#entries + 1] = name
-			end
-		end
-	end
-	table.sort(entries, function(a, b)
-		return a > b
-	end)
-	if #entries == 0 then
-		notify("No scratch notes yet", vim.log.levels.INFO)
-		return
-	end
-	vim.ui.select(entries, { prompt = "Scratch notes" }, function(choice)
-		if choice then
-			vim.cmd.edit(vim.fn.fnameescape(dir .. "/" .. choice))
-		end
-	end)
 end
 
 return M

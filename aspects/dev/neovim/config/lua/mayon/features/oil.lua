@@ -11,14 +11,21 @@ local function as_file_path(url)
 	return fs.posix_to_os_path(path)
 end
 
-local function protect_files_adapter()
-	local files = require("oil.adapters.files")
+-- Oil has public options for trash routing, confirmations and LSP handling;
+-- those are all set in M.setup(). The behaviours below have no public hook, so
+-- they are patched onto the two adapters in this one place:
+--   * exclusive copy (never overwrite a target),
+--   * refuse to overwrite a target or adopt a symlink target on move,
+--   * refuse permanent deletion / copy out of the trash,
+--   * route trash moves and restores through the shared guarded fileops.
+-- @param files oil adapter module (already required)
+local function guard_files_adapter(files)
 	if files._mayon_safe_actions then
 		return
 	end
+	local fileops = require("mayon.features.fileops")
 	local original = files.perform_action
 	files.perform_action = function(action, callback)
-		local fileops = require("mayon.features.fileops")
 		if action.type == "create" then
 			local path = as_file_path(action.url)
 			if not path then
@@ -71,11 +78,11 @@ local function protect_files_adapter()
 	files._mayon_safe_actions = true
 end
 
-local function protect_trash_adapter()
-	local trash = require("oil.adapters.trash")
+local function guard_trash_adapter(trash)
 	if trash._mayon_safe_actions then
 		return
 	end
+	local fileops = require("mayon.features.fileops")
 	local original = trash.perform_action
 	trash.perform_action = function(action, callback)
 		if action.type == "delete" then
@@ -85,13 +92,12 @@ local function protect_trash_adapter()
 		elseif action.type == "move" then
 			local source = as_file_path(action.src_url)
 			if source then
-				local ok, reason = require("mayon.features.fileops").trash(source)
+				local ok, reason = fileops.trash(source)
 				return callback(not ok and reason or nil)
 			end
 			local config = require("oil.config")
 			local files = require("oil.adapters.files")
 			if config.get_adapter_by_scheme(action.dest_url) == files then
-				local fileops = require("mayon.features.fileops")
 				local destination = as_file_path(action.dest_url)
 				if not destination then
 					return callback("Could not resolve restore destination; trashed item was kept")
@@ -107,11 +113,21 @@ local function protect_trash_adapter()
 	trash._mayon_safe_actions = true
 end
 
+-- The remaining two adapter patches persist because Oil's own copy/move/trash
+-- implementations cannot express "exclusive copy", "no overwrite", "no symlink
+-- target", or "no permanent trash deletion" through setup options. Everything
+-- else (borders, trash routing, LSP dedup, hidden files) uses public config.
+local function protect_adapters()
+	guard_files_adapter(require("oil.adapters.files"))
+	guard_trash_adapter(require("oil.adapters.trash"))
+end
+
 function M.setup()
 	if did_setup then
 		return
 	end
 	local oil = require("oil")
+	local util = require("mayon.util")
 	oil.setup({
 		delete_to_trash = true,
 		-- fileops owns willRename/didRename and applies edits exactly once, only
@@ -121,11 +137,10 @@ function M.setup()
 		skip_confirm_for_simple_edits = false,
 		view_options = { show_hidden = true },
 		win_options = { number = false, relativenumber = false, signcolumn = "no" },
-		confirmation = { border = "single" },
-		float = { border = "single" },
+		confirmation = { border = util.border },
+		float = { border = util.border },
 	})
-	protect_files_adapter()
-	protect_trash_adapter()
+	protect_adapters()
 	vim.keymap.set("n", "-", function()
 		oil.open()
 	end, { desc = "Browse Parent Directory" })

@@ -143,7 +143,54 @@ local function move_conflict(target, old)
 	return nil
 end
 
-local function rename_now(old, new)
+-- Ask every supporting client for `workspace/willRenameFiles` edits and wait
+-- (bounded, like the old request_sync path) for all responses. The edits are
+-- addressed to the old URIs, so they must be applied before the buffers are
+-- renamed and before the filesystem move.
+local function request_will_rename(clients, old, new, bufnr)
+	local changes, requests = {}, {}
+	local params = { files = { { oldUri = file_uri(old), newUri = file_uri(new) } } }
+	local function settled()
+		for _, request in ipairs(requests) do
+			if request.waiting then
+				return false
+			end
+		end
+		return true
+	end
+	for _, client in pairs(clients) do
+		if client:supports_method("workspace/willRenameFiles") then
+			local request = { client = client, waiting = true }
+			local ok, sent, id = pcall(client.request, client, "workspace/willRenameFiles", params, function(_, result)
+				if request.waiting then
+					request.waiting = false
+					if result then
+						changes[#changes + 1] = { client = client, edit = result }
+					end
+				end
+			end, bufnr)
+			if ok and sent then
+				request.id = id
+				requests[#requests + 1] = request
+			end
+		end
+	end
+	if not settled() then
+		vim.wait(1500, settled, 10)
+		-- Late responses are dropped: their edits would target renamed buffers.
+		for _, request in ipairs(requests) do
+			if request.waiting then
+				request.waiting = false
+				if request.id then
+					pcall(request.client.cancel_request, request.client, request.id)
+				end
+			end
+		end
+	end
+	return changes
+end
+
+local function do_rename(old, new)
 	old, new = normalize(old), normalize(new)
 	local renaming_directory = is_dir(old)
 	if old == new then
@@ -163,23 +210,18 @@ local function rename_now(old, new)
 		return false, "Target parent directory does not exist"
 	end
 	local buffers, clients = buffers_for_path(old, renaming_directory)
-	local changes = {}
-	for _, client in pairs(clients) do
-		if client:supports_method("workspace/willRenameFiles") then
-			local response = client:request_sync("workspace/willRenameFiles", {
-				files = { { oldUri = file_uri(old), newUri = file_uri(new) } },
-			}, 1500, buffers[1] or 0)
-			if response and response.result then
-				changes[#changes + 1] = { client = client, edit = response.result }
-			end
+	local changes = request_will_rename(clients, old, new, buffers[1] or 0)
+	for _, change in ipairs(changes) do
+		local ok, err = pcall(vim.lsp.util.apply_workspace_edit, change.edit, change.client.offset_encoding)
+		if not ok then
+			notify("Could not apply rename edits: " .. tostring(err), vim.log.levels.WARN)
 		end
 	end
+	-- Edits may have loaded more files under the old path; move those too.
+	buffers = buffers_for_path(old, renaming_directory)
 	local ok, err = uv.fs_rename(old, new)
 	if not ok then
 		return false, "Rename failed: " .. tostring(err)
-	end
-	for _, change in ipairs(changes) do
-		vim.lsp.util.apply_workspace_edit(change.edit, change.client.offset_encoding)
 	end
 	for _, candidate in ipairs(buffers) do
 		if api.nvim_buf_is_valid(candidate) then
@@ -195,10 +237,14 @@ local function rename_now(old, new)
 	local files = { files = { { oldUri = file_uri(old), newUri = file_uri(new) } } }
 	for _, client in pairs(clients) do
 		if client:supports_method("workspace/didRenameFiles") then
-			client:notify("workspace/didRenameFiles", files)
+			pcall(client.notify, client, "workspace/didRenameFiles", files)
 		end
 	end
 	return true
+end
+
+local function rename_now(old, new)
+	return do_rename(old, new)
 end
 
 -- Public synchronous path for adapters such as Oil. It deliberately uses the

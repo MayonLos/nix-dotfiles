@@ -180,7 +180,13 @@ local copied, copy_reason = fileops.copy_path(readonly_source, alias .. "/recurs
 assert(not copied and copy_reason:find("itself", 1, true), "copy followed a target parent symlink into its source")
 assert(not vim.uv.fs_lstat(readonly_source .. "/recursive"))
 -- Actual shared trash command through Oil, isolated XDG_DATA_HOME, no mock.
-local trashed = dir .. "/oil-trash-" .. tostring(vim.uv.hrtime()) .. ".txt"
+-- Keep the fixture on the same filesystem as the isolated home trash: trash-cli
+-- correctly uses a top-directory trash for cross-device paths, and this check
+-- asserts the recoverable entry in XDG_DATA_HOME/Trash.
+local data_home = assert(vim.env.XDG_DATA_HOME, "isolated XDG_DATA_HOME is required")
+local trash_root = data_home .. "/mayon-trash-test-" .. tostring(vim.uv.hrtime())
+vim.fn.mkdir(trash_root, "p")
+local trashed = trash_root .. "/oil-trash.txt"
 vim.fn.writefile({ "recoverable" }, trashed)
 local source_undo = vim.fn.undofile(trashed)
 vim.fn.mkdir(vim.fs.dirname(source_undo), "p")
@@ -206,6 +212,7 @@ assert(#matches == 1, "Oil trash entry missing")
 local trash_file = matches[1]
 assert(read(trash_file) == "recoverable", "Oil deletion did not leave a recoverable trash entry")
 assert(oil_config.lsp_file_methods.enabled == false, "Oil must not send duplicate LSP rename edits")
+vim.fn.delete(trash_root, "rf")
 vim.fn.delete(dir, "rf")
 
 print("modern Oil and file safety integration checks passed")
