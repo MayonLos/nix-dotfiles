@@ -3,9 +3,18 @@ local M = {}
 local ready = false
 local util = require("mayon.util")
 
--- Fit a floating preview to its content, honoring the caller's width/height
--- limits. The rounded border owns the visual margin; the buffer text is never
--- modified to fake padding.
+-- One blank cell between the rounded border and the text. A statuscolumn
+-- draws it, so the buffer text (and anything yanked from it) is unchanged.
+function M.pad(win)
+	vim.wo[win].number = false
+	vim.wo[win].relativenumber = false
+	vim.wo[win].signcolumn = "no"
+	vim.wo[win].foldcolumn = "0"
+	vim.wo[win].statuscolumn = " "
+end
+
+-- Fit a floating preview to its content plus the padding cells, honoring the
+-- caller's width/height limits.
 local function fit_padding(win, opts)
 	if not win or not vim.api.nvim_win_is_valid(win) then
 		return
@@ -19,6 +28,7 @@ local function fit_padding(win, opts)
 	for _, line in ipairs(vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(win), 0, -1, false)) do
 		width = math.max(width, vim.fn.strdisplaywidth(line))
 	end
+	M.pad(win)
 	local limit = math.max(1, math.min(opts.max_width or 64, vim.o.columns - 4))
 	vim.api.nvim_win_set_config(win, { width = math.min(limit, math.max(cfg.width, width + 2)) })
 	local height = vim.api.nvim_win_text_height(win, {}).all
@@ -100,7 +110,6 @@ function M.setup()
 			vim.wo[win].wrap = true
 			vim.wo[win].linebreak = true
 			vim.wo[win].breakindent = true
-			vim.wo[win].signcolumn = "no"
 			-- FileType markdown enables prose spell checking; API documentation
 			-- contains identifiers and should remain a quiet read-only preview.
 			vim.wo[win].spell = false

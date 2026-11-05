@@ -560,6 +560,12 @@ local function style_terminal(buf)
 		vim.wo[win].winhighlight =
 			"Normal:NormalFloat,EndOfBuffer:NormalFloat,WinBar:MayonAIPanel,WinBarNC:MayonAIPanel"
 		vim.wo[win].fillchars = "eob: "
+		-- CLI output owns the whole panel: no gutter beside it.
+		vim.wo[win].number = false
+		vim.wo[win].relativenumber = false
+		vim.wo[win].signcolumn = "no"
+		vim.wo[win].statuscolumn = ""
+		vim.wo[win].cursorline = false
 		local name = resolve_provider(buf)
 		vim.wo[win].winbar = name and "%!v:lua.require'mayon.ui.ai_panels'.winbar()" or ""
 		vim.w[win].mayon_ai_panel = name ~= nil

@@ -62,7 +62,7 @@ local function style_docs(win)
 	vim.wo[win].wrap = true
 	vim.wo[win].linebreak = true
 	vim.wo[win].spell = false
-	vim.wo[win].signcolumn = "no"
+	floats.pad(win)
 	-- NONE disables the global prose continuation marker for this window.
 	vim.wo[win].showbreak = "NONE"
 	local fillchars = vim.opt_local.fillchars:get()
