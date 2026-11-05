@@ -270,6 +270,21 @@ local rendered_fold = vim.fn.foldtextresult(1)
 assert(rendered_fold:find("local function example", 1, true), "foldtextresult should render the fold header")
 assert(rendered_fold:find("… 3 lines", 1, true), "foldtextresult should render its capsule line count")
 assert(not rendered_fold:find("%#", 1, true), "foldtextresult must not expose highlight markup literally")
+local fold_client = {
+	supports_method = function(_, method)
+		return method == "textDocument/foldingRange"
+	end,
+}
+local fold_get_clients = vim.lsp.get_clients
+vim.lsp.get_clients = function()
+	return { fold_client }
+end
+folds.apply(fold_buf)
+assert(vim.wo.foldexpr == "v:lua.vim.lsp.foldexpr()", "folds should prefer a server with foldingRange")
+assert(vim.wo.foldtext == "v:lua.require'mayon.features.folds'.text()")
+vim.lsp.get_clients = fold_get_clients
+folds.apply(fold_buf)
+assert(vim.wo.foldexpr == "v:lua.vim.treesitter.foldexpr()", "folds should fall back to Treesitter")
 vim.api.nvim_set_current_buf(original_buf)
 vim.api.nvim_buf_delete(fold_buf, { force = true })
 assert(vim.lsp.config.clangd.base_cmd[2] == "--background-index")
@@ -346,6 +361,73 @@ end
 assert(global_maps["Switch Source and Header"], "source/header map should remain global")
 assert(global_maps[" ch"], "clangd source/header shortcut should be <leader>ch")
 assert(not vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr }), "LspAttach should keep inlay hints disabled")
+
+-- Restart only touches clients attached to the current buffer: a same-named
+-- client in another workspace must survive.
+local restart_mapping = vim.fn.maparg(" lr", "n", false, true)
+assert(type(restart_mapping.callback) == "function", "<leader>lr should restart LSP")
+local function restart_server(dispatchers)
+	local closing = false
+	local function exit()
+		if not closing then
+			closing = true
+			vim.schedule(function()
+				dispatchers.on_exit(0, 15)
+			end)
+		end
+	end
+	return {
+		request = function(method, _, callback)
+			callback(nil, method == "initialize" and { capabilities = {} } or nil)
+			return true, 1
+		end,
+		notify = function(method)
+			if method == "exit" then
+				exit()
+			end
+			return true
+		end,
+		is_closing = function()
+			return closing
+		end,
+		terminate = exit,
+	}
+end
+local restart_bufs, restart_ids = {}, {}
+for index, workspace in ipairs({ "/tmp/mayon-restart-a", "/tmp/mayon-restart-b" }) do
+	restart_bufs[index] = vim.api.nvim_create_buf(true, false)
+	restart_ids[index] = assert(
+		vim.lsp.start(
+			{ name = "restart-fixture", cmd = restart_server, root_dir = workspace },
+			{ bufnr = restart_bufs[index] }
+		)
+	)
+end
+local function restart_client(buf)
+	local clients = vim.lsp.get_clients({ bufnr = buf, name = "restart-fixture" })
+	return clients[1] and clients[1].id
+end
+assert(vim.wait(1000, function()
+	return restart_client(restart_bufs[1]) and restart_client(restart_bufs[2])
+end))
+local restart_previous = vim.api.nvim_get_current_buf()
+vim.api.nvim_set_current_buf(restart_bufs[1])
+restart_mapping.callback()
+assert(
+	vim.wait(3000, function()
+		local id = restart_client(restart_bufs[1])
+		return id ~= nil and id ~= restart_ids[1]
+	end),
+	"restart should replace the current buffer's client"
+)
+assert(restart_client(restart_bufs[2]) == restart_ids[2], "restart must not stop other workspaces' clients")
+vim.api.nvim_set_current_buf(restart_previous)
+for _, buf in ipairs(restart_bufs) do
+	for _, client in ipairs(vim.lsp.get_clients({ bufnr = buf })) do
+		client:stop(true)
+	end
+	vim.api.nvim_buf_delete(buf, { force = true })
+end
 
 local ns = vim.api.nvim_create_namespace("lsp-migration-test")
 vim.diagnostic.set(

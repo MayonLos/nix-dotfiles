@@ -1,24 +1,36 @@
 local M = {}
-local progress_ids = {}
+local util = require("mayon.util")
+
+-- Native ui.progress_status only collects Progress events; LSP emits LspProgress.
+-- Bridge once, keep a flat table of live tokens for LspDetach cleanup.
+local active_progress = {}
 
 local function progress_id(client_id, token)
 	return ("lsp:%s:%s:%s"):format(client_id, type(token), tostring(token))
 end
 
-local function publish_progress(client_id, id, value, status)
+local function publish_progress(id, client_id, value, status)
 	local client = vim.lsp.get_client_by_id(client_id)
 	local title = value.title or (client and client.name) or "LSP"
 	local text = value.message or title
 	local percent =
 		math.max(0, math.min(100, math.floor(tonumber(value.percentage) or (status == "success" and 100 or 0))))
-	vim.api.nvim_echo({ { tostring(text) } }, false, {
-		kind = "progress",
-		id = id,
-		source = "lsp",
-		title = tostring(title),
-		status = status,
-		percent = percent,
-		data = { client_id = client_id },
+	if status == "running" then
+		active_progress[id] = client_id
+	else
+		active_progress[id] = nil
+	end
+	vim.api.nvim_exec_autocmds("Progress", {
+		pattern = "lsp",
+		data = {
+			id = id,
+			title = tostring(title),
+			text = tostring(text),
+			source = "lsp",
+			status = status,
+			percent = percent,
+			data = { client_id = client_id },
+		},
 	})
 end
 
@@ -36,36 +48,19 @@ local function progress()
 			if client_id == nil or token == nil or type(value) ~= "table" then
 				return
 			end
-
-			local status
-			if value.kind == "begin" or value.kind == "report" then
-				status = "running"
-			elseif value.kind == "end" then
-				status = "success"
-			else
+			local status = (value.kind == "begin" or value.kind == "report") and "running"
+				or value.kind == "end" and "success"
+			if not status then
 				return
 			end
-
-			local id = progress_id(client_id, token)
-			if value.kind == "begin" then
-				progress_ids[client_id] = progress_ids[client_id] or {}
-				progress_ids[client_id][id] = true
-			end
-			publish_progress(client_id, id, value, status)
-			if value.kind == "end" and progress_ids[client_id] then
-				progress_ids[client_id][id] = nil
-				if not next(progress_ids[client_id]) then
-					progress_ids[client_id] = nil
-				end
-			end
+			publish_progress(progress_id(client_id, token), client_id, value, status)
 		end,
 	})
-
 	vim.api.nvim_create_autocmd("LspDetach", {
 		group = group,
 		callback = function(event)
 			local client_id = (event.data or {}).client_id
-			if client_id == nil or not progress_ids[client_id] then
+			if client_id == nil then
 				return
 			end
 			vim.schedule(function()
@@ -73,10 +68,11 @@ local function progress()
 				if client and next(client.attached_buffers or {}) then
 					return
 				end
-				for id in pairs(progress_ids[client_id] or {}) do
-					publish_progress(client_id, id, { message = "" }, "cancel")
+				for id, owner in pairs(active_progress) do
+					if owner == client_id then
+						publish_progress(id, client_id, { message = "" }, "cancel")
+					end
 				end
-				progress_ids[client_id] = nil
 			end)
 		end,
 	})
@@ -102,6 +98,11 @@ local function source_header()
 	end, 0)
 end
 
+local function signature()
+	local opts = require("mayon.ui.floats").options("signature", { border = util.border })
+	vim.lsp.buf.signature_help(opts)
+end
+
 local function attach(event)
 	local bufnr = event.buf
 	local client = vim.lsp.get_client_by_id(event.data and event.data.client_id)
@@ -112,15 +113,12 @@ local function attach(event)
 	map(bufnr, "grr", function()
 		Snacks.picker.lsp_references()
 	end, "Find References Preview")
-	map(bufnr, "gK", function()
-		require("mayon.ui.floats").signature()
-	end, "Show Signature Help")
+	map(bufnr, "gK", signature, "Show Signature Help")
 	map(bufnr, "gD", vim.lsp.buf.declaration, "Jump to Declaration")
 	map(bufnr, "grt", vim.lsp.buf.type_definition, "Jump to Type Definition")
 	map(bufnr, "gi", vim.lsp.buf.implementation, "Jump to Implementation")
 	map(bufnr, "K", function()
-		local opts = require("mayon.ui.floats").options("hover")
-		opts.title_pos = "center"
+		local opts = require("mayon.ui.floats").options("hover", { border = util.border })
 		vim.lsp.buf.hover(opts)
 	end, "Show Hover Documentation")
 	map(bufnr, "grx", vim.lsp.codelens.run, "Run Code Lens")
@@ -144,29 +142,33 @@ local function attach(event)
 	end
 end
 
+local function restart()
+	-- Native `:lsp restart` without names restarts only the clients attached to
+	-- the current buffer and re-attaches their buffers; no FileType re-trigger.
+	if #vim.lsp.get_clients({ bufnr = 0 }) > 0 then
+		vim.cmd("lsp restart")
+	end
+end
+
 local function diagnostics()
 	require("mayon.ui.icons").diagnostics()
 	vim.diagnostic.config({
 		virtual_text = false,
 		virtual_lines = false,
 		severity_sort = true,
-		float = { border = "single", source = "if_many", header = "", title = " diagnostics ", title_pos = "center" },
+		float = {
+			border = util.border,
+			source = "if_many",
+			header = "",
+			title = " diagnostics ",
+			title_pos = "center",
+		},
 	})
-
 	vim.keymap.set("n", "<leader>ll", function()
 		local all = vim.diagnostic.config().virtual_lines == true
 		vim.diagnostic.config({ virtual_lines = all and { current_line = true } or true })
 	end, { desc = "Toggle Diagnostic Lines", silent = true })
-	vim.keymap.set("n", "<leader>lr", function()
-		local bufnr = vim.api.nvim_get_current_buf()
-		local ft = vim.bo[bufnr].filetype
-		for _, client in ipairs(vim.lsp.get_clients({ bufnr = bufnr })) do
-			client:stop()
-		end
-		vim.defer_fn(function()
-			vim.api.nvim_exec_autocmds("FileType", { pattern = ft })
-		end, 500)
-	end, { desc = "Restart Language Server", silent = true })
+	vim.keymap.set("n", "<leader>lr", restart, { desc = "Restart Language Server", silent = true })
 end
 
 function M.setup()

@@ -193,7 +193,7 @@ vim.cmd.packadd("nvim.difftool")
 assert(vim.fn.exists(":Undotree") == 2 and vim.fn.exists(":DiffTool") == 2)
 assert(vim.fn.exists(":restart") == 2)
 assert(vim.tbl_contains(vim.opt.diffopt:get(), "inline:word"))
-assert(vim.o.pumborder == "single" and vim.o.pumheight <= 10)
+assert(vim.o.pumborder == require("mayon.util").border and vim.o.pumheight <= 10)
 local muted = tonumber(require("mayon.generated").palette.muted:sub(2), 16)
 for _, name in ipairs({ "ComplHint", "ComplHintMore", "MinuetVirtualText" }) do
 	assert(vim.api.nvim_get_hl(0, { name = name, link = false }).fg == muted)
