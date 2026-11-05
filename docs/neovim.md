@@ -134,8 +134,19 @@ nvim-lint、render-markdown、rainbow-delimiters 和限定 filetypes 的 coloriz
 
 Edgy 左 Explorer，右 Claude/CodeCompanion，下 Trouble、quickfix 与普通终端；
 小窗口不固定左右侧栏，AI 面板用浮窗；Claude 终端每次显示时按当前宽度选择浮窗或右侧栏。终端缩放（如 Mango 平铺成半屏）后 AI 侧栏重新按
-`max(36, 38% 宽度)` 取宽，文档窗口不会被挤成一列。焦点进入 Claude 终端时符号大纲保持打开，
-避免右侧重排改变 CLI 的 pty 尺寸。统一标题、圆角浮窗和 palette 面板/diff 高亮。
+`max(36, 38% 宽度)` 取宽，文档窗口不会被挤成一列。符号大纲只在手动 toggle 时打开，焦点进入
+Claude 终端不会引起右侧重排（避免改变 CLI 的 pty 尺寸）。统一标题、圆角浮窗和 palette 面板/diff 高亮。
+
+### 2026-11-05 重写
+
+按 ui、面板与 AI、编辑与 LSP、嵌入式调试、核心与会话五个领域重写（审计与设计记录在
+`docs/history/nvim-rewrite-2026-11-05.md`）。视觉为“一块画布”：浮窗、补全、通知、AI 面板与编辑区同底色，
+只用圆角细边框（`border` 与 `bg` 0.9 混合）和更淡的分屏线（0.42）分层；唯一的底色变化是选中项
+`selection` 加蓝色 `▎`。浮窗标题用 fg，行号退到 border 色。诊断符号形状互不相同：错误 `●`、警告 `▲`、
+信息 `◆`（cyan）、提示 `○`（muted）。语法配色交还 onedark，主题只保留界面层覆盖。which-key 改用公开尺寸选项，
+折叠分组不再显示 `+N` 计数。会话改由 mini.sessions 写入，恢复时直接 source，不清除运行中的终端与 AI 缓冲。
+`␣lr` 使用原生 `:lsp restart`，只重启当前缓冲的客户端。自动签名帮助只显示一行签名，不抢焦点，随输入关闭；
+`gK` 仍显示完整签名帮助。补全文档窗在 CompleteChanged 与 completionItem/resolve 后设置样式，不再轮询。
 Ctrl+h/j/k/l 用 smart-splits 穿过 Neovim 与 tmux 面板，Alt+h/j/k/l 调整大小。
 tmux 一侧的配置在 `aspects/cli/shell/tmux.nix`。
 真实 tmux、TTY Alt/Tab、窗口缩放和美观仍需实机验收。

@@ -56,5 +56,6 @@
 | [visual-design-2026-10-30.md](visual-design-2026-10-30.md) | 归档 | 旧视觉规范全文（含被取代的分层参数） |
 | [desktop-design-2026-10-30.md](desktop-design-2026-10-30.md) | 归档 | 旧桌面说明全文 |
 | [workflow-design-2026-10-30.md](workflow-design-2026-10-30.md) | 归档 | 旧操作方式说明全文 |
+| [nvim-rewrite-2026-11-05.md](nvim-rewrite-2026-11-05.md) | 2026-11-05 | Neovim 按五个领域重写、审查与“一块画布”视觉 |
 
 附带数据：[architecture-v2-baseline.json](architecture-v2-baseline.json)、[architecture-v2-result.json](architecture-v2-result.json)、[architecture-v2-files.tsv](architecture-v2-files.tsv) 属于 architecture-v2-execution；[software-swap-dashboard.txt](software-swap-dashboard.txt) 与 `software-swap-2026-10-24-data/` 属于 software-swap-2026-10-24。
