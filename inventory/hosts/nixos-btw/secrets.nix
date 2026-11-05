@@ -7,6 +7,7 @@
 
     secrets = {
       deepseek-api-key.owner = "mayon";
+      opencode-go-api-key.owner = "mayon";
       github-token.owner = "mayon";
     };
 
