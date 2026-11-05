@@ -20,7 +20,7 @@ checks: []
 | 已移除 | Okular | 用户决定不安装；PDF 默认 Zathura，PDF 批注使用 Zotero 内置阅读器。 |
 | 已修改 | `cliphist` | 删除两个 watcher，日常历史统一使用 Noctalia；保留旧数据库和 X11↔Wayland 剪贴板桥。 |
 | 已修改 | `pamixer` | 移除无消费者的安装声明；音量键继续走 Noctalia。 |
-| 已修改 | `pavucontrol` | 由 `xorg-session` 安装，Mango 下也可从启动器打开并按浮窗规则显示；用于精细调节。音量键负责日常调节，顶栏不放音量图标。 |
+| 已修改 | `pavucontrol` | 由 `session-support` 安装，可从启动器打开并按浮窗规则显示；用于精细调节。音量键负责日常调节，顶栏不放音量图标。 |
 | 已修改 | Discord → Vesktop | 用户确认替换；使用 stable 包及系统 Vencord，Wayland/PipeWire 接线已构建，实际分享待验。 |
 | 按需 | 跨设备同步、远程开发 | 有第二台设备/服务器后，再选 Syncthing、Remote-SSH、Tailscale；不提前把所有服务打开。 |
 
@@ -50,7 +50,7 @@ checks: []
 | Fastfetch | 保留 | 终端快照，不与实时监视器等价；若以后发现启动拖慢，再测量并改成显式 `ff`，当前不假定存在延迟问题。 |
 | btop | 保留 | 进程选择、资源排序和结束进程不同于 Noctalia 的资源概览；暂不另加 Mission Center。 |
 | pamixer | 已修改：移除 | 仓库无命令消费者，删除安装声明；音量键仍直接使用 Noctalia IPC。 |
-| pavucontrol | 保留 | 由 `xorg-session` 安装，两个会话都可用。Noctalia 未提供等价的硬件 card profile 菜单，高级操作也可用 wpctl/pw-cli，命令见 README。 |
+| pavucontrol | 保留 | 由 `session-support` 安装。Noctalia 未提供等价的硬件 card profile 菜单，高级操作也可用 wpctl/pw-cli，命令见 README。 |
 | brightnessctl | 保留 | 笔记本背光命令后端，不因面板有亮度滑块就视为重复。 |
 | ddcutil | 保留 | 外接显示器 DDC/CI 后端，与笔记本背光不同。无支持设备时不会凭空带来功能。 |
 | playerctl | 保留 | MPRIS 媒体控制接线，不是另一个播放器。 |

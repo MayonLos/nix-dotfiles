@@ -8,7 +8,7 @@
 
 NixOS + Home Manager，Den + flake-parts。当前真实实例为单主机 `nixos-btw`、用户 `mayon`：Intel + NVIDIA 笔记本，使用 Mango 桌面。Home Manager 随 NixOS 重建，没有独立 switch。
 
-`xorg-session` 另提供可选 dwm + Picom 真 Xorg 会话，用于 QQ/腾讯会议等原生捕获；Mango 仍是登录默认项。两者不同时运行；入口、服务归属与待验项见 [`docs/xorg.md`](docs/xorg.md)。
+Mango 是唯一图形会话；dwm/Xorg 会话已于 2026-11-05 移除。
 
 | 路径 | 职责 |
 |---|---|
@@ -22,7 +22,7 @@ NixOS + Home Manager，Den + flake-parts。当前真实实例为单主机 `nixos
 | `aspects/system/` | 默认工具 schema、系统维护 |
 | `aspects/hardware/` | 机型驱动与策略（Legion 笔记本） |
 | `aspects/appearance/` | 外观契约、主题数据、壁纸、头像功能 |
-| `aspects/desktop/` | 会话支持、Mango、Xorg、greeter |
+| `aspects/desktop/` | 会话支持、Mango、greeter |
 | `aspects/cli/` | shell、terminal 与 CLI 工具 |
 | `aspects/dev/` | 编辑器、语言、embedded、containers、virtual machines、AI agents |
 | `aspects/apps/` | browser、communication、documents、media、file manager、gaming |
@@ -38,7 +38,7 @@ NixOS + Home Manager，Den + flake-parts。当前真实实例为单主机 `nixos
 
 `aspects/default.nix` 显式登记 feature 入口。资源、模块和配方就近放在功能目录，不会递归扫描成为模块。`bundles/default.nix` 只通过 `includes` 组合已登记 feature。真实实例只在 `inventory/` 声明；测试 fixture 不属于可部署主机清单。
 
-九个领域目录是导航分类，不代表依赖层级。aspect ID 与目录路径解耦，迁移目录时 ID 保持稳定。Xorg 专属模块、dwm 配方、启动脚本与测试集中在 `aspects/desktop/xorg-session/`。Mango 与 Xorg 只复用 `desktop/session-support`；`workspace-task` 是命令行与桌面共用的独立功能。Neovim Lua、插件/parser 与配置包位于 `aspects/dev/neovim/config/` 和同目录 `package.nix`、`plugins.nix`、`parsers.nix`；薄 flake 输出由 `nix/outputs.nix` 调用公开包工厂。
+九个领域目录是导航分类，不代表依赖层级。aspect ID 与目录路径解耦，迁移目录时 ID 保持稳定。Mango 复用 `desktop/session-support`；`workspace-task` 是命令行与桌面共用的独立功能。Neovim Lua、插件/parser 与配置包位于 `aspects/dev/neovim/config/` 和同目录 `package.nix`、`plugins.nix`、`parsers.nix`；薄 flake 输出由 `nix/outputs.nix` 调用公开包工厂。
 
 ## 配置与数据边界
 

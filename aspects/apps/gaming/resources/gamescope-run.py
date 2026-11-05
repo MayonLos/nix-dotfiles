@@ -43,16 +43,6 @@ def output_mode(name=None):
             for mode in output["modes"]:
                 if mode.get("current"):
                     return mode["width"], mode["height"], round(mode["refresh"])
-    else:
-        current = False
-        for line in query("xrandr", "--current").splitlines():
-            if line and not line[0].isspace():
-                current = " connected" in line and (not name or line.split()[0] == name)
-            elif current and "*" in line:
-                fields = line.split()
-                width, height = map(int, fields[0].split("x"))
-                refresh = next(rate for rate in fields[1:] if "*" in rate)
-                return width, height, round(float(refresh.rstrip("*+")))
     raise ValueError("no current output mode; specify --size WIDTHxHEIGHT --refresh HZ")
 
 

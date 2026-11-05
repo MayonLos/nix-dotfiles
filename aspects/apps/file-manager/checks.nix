@@ -79,7 +79,6 @@ assert !(home.xdg.dataFile ? "dbus-1/services/org.freedesktop.FileManager1.servi
             "${pkgs.kitty}/bin/kitty"
             "${pkgs.local.herdr}/bin/herdr"
             "${pkgs.lazygit}/bin/lazygit"
-            "${pkgs.feh}/bin/feh"
             "${home.programs.noctalia.package}/bin/noctalia"
             "${pkgs.file-roller}/bin/file-roller"
           ]

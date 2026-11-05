@@ -170,7 +170,7 @@ percentages of the remaining half-screen, not pixels.
 | About/confirmation, polkit/pinentry | `compact`; authentication focus stays native; Noctalia's built-in agent is a native panel layer |
 | Firefox | Library/Downloads `dialog`, About `compact`; PiP retains its 480×270 size, offsets and overlay/global/silent behavior |
 | Thunar | Progress/rename `compact`, properties/preferences/Bulk Rename `dialog`; main directories tiled |
-| Audio/Bluetooth/network, CopyQ, calculator/color tools | One centered `tools` size; no former top-right offset |
+| Audio/Bluetooth/network, calculator/color tools | One centered `tools` size; no former top-right offset |
 | Noctalia settings | `panel`; native `dev.noctalia.Noctalia` ID |
 | Qt/Fcitx, File Roller, keyboard-layout and Legion settings | `dialog`; existing observed Fcitx `org.fcitx.` identity retained |
 | QQ/WeChat/Tencent Meeting/Vesktop | Login `compact`, call/image viewer `dialog`; existing notification/sharing silent/focus semantics retained |
@@ -243,7 +243,7 @@ is retained because locked Mango `manage/layer.c` gates compositor layer animati
 on that flag and Noctalia already animates its content/clip/input regions; enabling
 both would animate the same surface twice. These choices use the locked sources.
 
-Fcitx keeps `ClassicUI.PreferTextIcon=True` and the bar's pinned `fcitx` SNI, so the native tray image can express Rime's Chinese/English submode. No polling service or synthetic real-session keys are added. Bibata-Modern-Ice 24 (nixpkgs bibata-cursors) is shared by Mango, HM session environment, GTK, Xresources and Xorg; at 1.5 scale this is nominally 36 device pixels.
+Fcitx keeps `ClassicUI.PreferTextIcon=True` and the bar's pinned `fcitx` SNI, so the native tray image can express Rime's Chinese/English submode. No polling service or synthetic real-session keys are added. Bibata-Modern-Ice 24 (nixpkgs bibata-cursors) is shared by Mango, HM session environment, GTK and Xresources; at 1.5 scale this is nominally 36 device pixels.
 
 Build-time validation, isolated sway/Mango screenshots and activation are separate evidence levels. Headless sway can verify layout and layer-shell behavior but provides no blur; actual GPU blur quality, real tray submode changes, external outputs and application focus/launch require the main agent's real-session acceptance after applying the generation.
 
@@ -284,7 +284,7 @@ to authenticate. Never run those commands during isolated visual verification.
 
 ## R44 desk corrections (2026-10-29)
 
-Bibata-Modern-Ice from `bibata-cursors` replaces the previous pointer at 24 logical px (nominally 36 device px at scale 1.5; 32 looked oversized). Shared appearance, HM GTK/Xresources/environment, Mango, Xorg and greeter all consume that theme and size; greeter also installs the matching package. Qt inherits the shared cursor environment and Xresources, with no additional GUI settings migration.
+Bibata-Modern-Ice from `bibata-cursors` replaces the previous pointer at 24 logical px (nominally 36 device px at scale 1.5; 32 looked oversized). Shared appearance, HM GTK/Xresources/environment, Mango and greeter all consume that theme and size; greeter also installs the matching package. Qt inherits the shared cursor environment and Xresources, with no additional GUI settings migration.
 
 Tray items render inline (`drawer=false`), which removes the attached reverse-corner capsule for the usual one or two application items. Native symbolic icons retain brightFg tint; application colour artwork remains intact. Tray, network, Bluetooth, battery, unread notification and control-center use a common 18 logical px box (`scale=1.125` against native 16). The bar explicitly sets `icon_color=brightFg`; disconnected network/Bluetooth and muted audio use secondary grey. Network/Bluetooth retain the locked Tabler shapes and native state models. Battery charging, full and pending-charge/charge-limit states use `battery-charging`, with the native percentage and original low-battery threshold/colour preserved. `r44-status-icons.patch` and its build-time source checks fail closed on upstream drift. The resolver also checks hicolor `1024x1024/apps` when theme indexes omit that directory; this fixes the real DeepSeek Harness fallback.
 

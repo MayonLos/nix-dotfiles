@@ -21,7 +21,6 @@ checks: [docs]
 | 改自写工具（Clash、工具箱、Bilibili、语音） | [tools](tools.md) | `packages/mayon-tui`、`packages/bilitui`、`packages/mayon-voice` | `mayon-tui`、`bilitui`、`mayon-voice` |
 | 改颜色、字体、尺寸、透明度 | [visual](visual.md) | `aspects/appearance/appearance/onedark.nix` | `palette-contrast` |
 | 改顶栏、Dock、面板、通知、窗口规则 | [desktop](desktop.md) | `aspects/desktop/mango-session` | `desktop-composition` |
-| 改 Xorg / dwm 会话 | [xorg](xorg.md)、[xorg-visual](xorg-visual.md) | `aspects/desktop/xorg-session` | `xorg-session-runtime` |
 | 改 Neovim | [neovim](neovim.md)、[keymap](keymap.md) | `aspects/dev/neovim` | `neovim` |
 | 增删软件 | [apps](apps.md) | `aspects/apps` | — |
 | Obsidian 主题与笔记库 | [obsidian](obsidian.md) | `aspects/apps/documents` | `documents-visual-config` |

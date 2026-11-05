@@ -16,8 +16,8 @@
     "nvidia"
   ];
   # PRIME offload already contributes the Intel modesetting device with its
-  # BusID. Listing modesetting again creates duplicate Device/Screen IDs when
-  # real Xorg is enabled; keep a single primary iGPU screen from that module.
+  # BusID; listing modesetting again would duplicate Device/Screen IDs if a
+  # real Xorg server were ever enabled.
 
   hardware.nvidia = {
     modesetting.enable = true;

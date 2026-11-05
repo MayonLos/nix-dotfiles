@@ -36,7 +36,6 @@
         ../aspects/desktop/mango-session/checks.nix
         ../aspects/desktop/greeter/checks.nix
         ../aspects/desktop/session-support/checks.nix
-        ../aspects/desktop/xorg-session/checks.nix
         ../aspects/dev/embedded/checks.nix
         ../aspects/dev/containers/checks.nix
         ../aspects/dev/neovim/checks.nix
@@ -68,7 +67,6 @@
           "aspects/appearance/appearance/resources/wallpaper"
           "aspects/dev/neovim/package.nix"
           "aspects/desktop/session-support/qt-style.nix"
-          "aspects/desktop/xorg-session/dwm/package.nix"
         ]
         ++ map (path: lib.removePrefix "${toString ../.}/" (toString path)) registry;
       };

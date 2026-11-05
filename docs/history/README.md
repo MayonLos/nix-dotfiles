@@ -36,6 +36,7 @@
 | [tui-r55-2026-10-31.md](tui-r55-2026-10-31.md) | 2026-10-30–31 | TUI 统一搜索、工具箱、删除无用工具 |
 | [docs-status-cleanup-2026-10-31.md](docs-status-cleanup-2026-10-31.md) | 2026-10-31 | 从顶层文档移出的过时状态原文 |
 | [nvim-probe-rs-2026-11-03.md](nvim-probe-rs-2026-11-03.md) | 2026-11-03 | Neovim 接入 probe-rs DAP，STM32H562 实机调试 |
+| [xorg-removal-2026-11-05.md](xorg-removal-2026-11-05.md) | 2026-11-05 | 移除 dwm/Xorg 与 X11 专属组件；QQ Wayland 共享试验撤销 |
 | [visual-design-2026-10-30.md](visual-design-2026-10-30.md) | 归档 | 旧视觉规范全文（含被取代的分层参数） |
 | [desktop-design-2026-10-30.md](desktop-design-2026-10-30.md) | 归档 | 旧桌面说明全文 |
 | [workflow-design-2026-10-30.md](workflow-design-2026-10-30.md) | 归档 | 旧操作方式说明全文 |

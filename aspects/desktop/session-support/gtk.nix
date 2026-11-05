@@ -107,7 +107,7 @@ lib.mkMerge [
     # Noctalia renders GTK/Qt files through its own template lifecycle. Point
     # that existing writer at a complete copy of the final package's assets,
     # replacing only the three palette templates. The option guard keeps this
-    # shared support aspect usable by Xorg sessions without Noctalia installed.
+    # shared support aspect usable by selections without Noctalia installed.
   }
   (lib.mkIf (config.programs.noctalia.enable or false) {
     systemd.user.services.noctalia.Service.Environment = [ "NOCTALIA_ASSETS_DIR=${noctaliaAssets}" ];

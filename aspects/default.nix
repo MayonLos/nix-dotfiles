@@ -23,7 +23,6 @@ _: {
     ./dev/editor-runtime
     ./desktop/session-support
     ./desktop/mango-session
-    ./desktop/xorg-session
     ./desktop/greeter
     ./dev/embedded
     ./dev/ai-agents

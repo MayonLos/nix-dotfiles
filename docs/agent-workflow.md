@@ -141,7 +141,6 @@ echo "[rN EXIT] final=$(test -s $S/codex-final-N.md && echo yes || echo no)"
 | 对象 | 方式 |
 |---|---|
 | Wayland 应用（Kitty、Neovim、GTK/Qt 应用、文件选择器） | 私有无头 sway：`WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1`，独立 `XDG_RUNTIME_DIR`、`WAYLAND_DISPLAY`、`HOME`/XDG 目录与 D-Bus 会话；输出 2560×1600、scale 1.5；`grim` 指定该 socket 截图 |
-| X11/dwm 会话 | 私有 `Xvfb :97 -screen 0 2560x1600x24 -dpi 144`，独立 HOME/XDG；picom 用 xrender 后端；ImageMagick `import -window root` 截图；结束时清理全部进程 |
 | 终端界面 | 必须用**真实 Kitty**（在上面的无头 sway 中）。tmux→HTML 转换看不出 Kitty 内边距、字体图标、背景色不一致等问题 |
 | Noctalia 模板 | 运行锁定 Noctalia 的真实模板引擎检查输出文件被写出且无 template error；只检查模板文件内容会漏掉运行时失败 |
 

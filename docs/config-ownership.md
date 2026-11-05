@@ -17,8 +17,6 @@ checks: []
 |---|---|---|
 | 外观数据 `host.appearance`、`user.appearance` | `aspects/appearance/appearance/onedark.nix` 提供 One Dark 精修语义颜色、字体、光标、图标主题和 `reducedMotion` 偏好；`aspects/appearance/appearance/contract.nix` 定义 host/user schema。 | 数据本身不安装应用或选择功能。当前 host 与 mayon 分别绑定同一 palette；动效偏好是声明式输入，不另写 GUI state。 |
 | `~/.config/mango/config.conf`、Mango 快捷键说明 | 选择 `interactive-session` 后，`aspects/desktop/mango-session/mango.nix` 接线私有的 `mango/keybinds.nix` 和唯一窗口规则表 `mango/window-rules.nix`，配合锁定 Mango HM module 渲染完整配置；`~/.local/share/mango/keybindings.txt` 也由该 aspect 生成。 | Noctalia 不生成 Mango 主题片段，也不写入或 include `noctalia-colors.conf`。配置为声明式输出；Mango 会话实际加载与快捷键手感仍待应用后核验。 |
-| dwm / Xorg 配置与会话 | `xorg-session` 拥有 Nix 构建的 dwm、`~/.local/share/nix-dotfiles/xorg-session`、Picom/Dunst、Rofi 启动器/控制/电源主题、状态程序和 Xorg 专属 units；宿主安装唯一的 `xorg-dwm.desktop`。 | Rofi 使用频次、旧 j4 历史、CopyQ 数据仍属用户状态，保留而不托管；不托管用户 `.xinitrc`；不安装第二份未配置 dwm。runtime PID/锁/壁纸路径/socket 仅在当前用户的私有 runtime 目录；锁屏暗化缓存只在用户 cache 生成。Xorg 读取共享壁纸目录而不成为其第二写入者，移除不清理历史或图片。详见 [Xorg 记录](xorg.md)。 |
-| CopyQ 数据与 X11 认证 | CopyQ 历史、应用账户及 `.Xauthority` 由应用/Xorg 管理；Nix 只启动会话服务。 | 不复制、输出、写入 store 或清除这些用户数据；不把构建当成共享通话验收。 |
 | `~/.config/kitty/kitty.conf` | `aspects/cli/terminal/kitty.nix` 是唯一 HM renderer，生成完整 One Dark 配置和 ANSI 色。 | Noctalia Kitty builtin/template 不再启用。不存在由 Nix stub 与 Noctalia 主题文件拼装的当前声明。真实 Kitty parser / 主题应用情况需在新 generation 中复核。 |
 | `~/.config/noctalia/config.toml` 与 custom palette | `aspects/desktop/mango-session/noctalia.nix` 通过锁定 HM module 生成配置和 `onedark` palette；其 Noctalia 包在原始 derivation 上应用本功能的局部选中态补丁；同一 aspect 生成 bar、launcher、widget、plugin、wallpaper、lockscreen 等声明。 | GUI 自建 palette 的写入不受支持，应在共享 palette 声明修改。GUI sidecar `~/.local/state/noctalia/settings.toml` 仍是 Noctalia 可变状态，不由 HM 整文件接管。插件运行数据、历史和其他 state 保留给应用。 |
 | `~/Pictures/Wallpapers/managed` 与 `local/` | `aspects/desktop/mango-session/noctalia.nix` 是唯一声明写入者：HM 管理 `managed` → appearance 壁纸工厂 store link farm；activation `wallpaperLocalDirectory` 仅幂等创建缺失的 `local/`。Noctalia 读取共同父目录，`wallpaper.automation.recursive=true`，锁定 5.4 的递归扫描跟随目录软链并对真实目录去重。 | `local/` 及其中图片归用户；已有目录（含指向目录的软链）原样保留，非目录或失效软链报错且不替换。移除 feature 不清理 local/、用户图片或 Noctalia 历史。默认图由 greeter、Mango 锁屏、Xorg desktop/lock 共用。 |
@@ -50,7 +48,7 @@ checks: []
 | rootless Docker | `local-containers` 将 Docker CLI、shell 与 systemd 的 DOCKER_HOST、选定账号的 user daemon 和 weekly `docker builder prune -f --filter until=168h` timer 绑定在一起；host support 复用锁定 NixOS rootless unit 的配置并取消全局 user-unit 自动拉起。 | Rootless Docker 数据目录、容器、镜像和 named volumes 留给 Docker/用户；自动 prune 仅清理旧构建缓存，不再清理停止容器及其可写层。运行态尚未专项核验，不声称 daemon/timer 已正常运行或数据已迁移。变更服务前核验真实 `docker info` 的 data-root、unit 和卷。 |
 | 本机 VM | `local-virtual-machines` 选择后安装 virt-manager、配置 `qemu:///system`、授予 `libvirtd`/`kvm` 组，并由 host support 配置 QEMU/KVM、swtpm 和 SPICE USB redirection。libvirtd 通过 socket 激活；`libvirt-guests` 被禁用。 | VM 镜像、快照、存储池和 guest state 归 libvirt/用户，当前 aspect 不迁移或删除它们。新组实际权限、socket activation 和存储池仍待专项核验。 |
 | Legion 电池养护 | `legion-laptop` host 声明 `legion-conservation` 组及 ideapad_acpi sysfs 属性 udev 权限；`legion-laptop-user` 的 user class 授予所选账号并安装 `legion-conservation status|toggle`。桌面仅调用 CLI，不获取管理权限。 | `/sys/bus/platform/drivers/ideapad_acpi/*/conservation_mode` 由内核/固件拥有；只有用户点击才写0/1，构建与激活不写养护值。移除配置保留固件现状；权限撤销需设备重建/重启、组变化需刷新登录。无额外 daemon。 |
-| 主机图形服务与权限 | `graphical-session-support-host` 拥有基础 portal、PipeWire、polkit 和字体；`interactive-session-host` 拥有 Mango 与其 wlroots 路由。Mango 由 Noctalia 提供认证 agent，Xorg 由 `xorg-polkit` 启动 polkit-gnome。用户 feature 负责自己的 session service 和账号组授权。 | 安装包不等于服务运行或权限生效。需在应用后核验最终 unit target、agent 唯一性、groups、udev tags/mode 和 logind ACL；不从配置求值推断。 |
+| 主机图形服务与权限 | `graphical-session-support-host` 拥有基础 portal、PipeWire、polkit 和字体；`interactive-session-host` 拥有 Mango 与其 wlroots 路由。Mango 由 Noctalia 提供认证 agent。用户 feature 负责自己的 session service 和账号组授权。 | 安装包不等于服务运行或权限生效。需在应用后核验最终 unit target、agent 唯一性、groups、udev tags/mode 和 logind ACL；不从配置求值推断。 |
 | sops 凭据与 shell 消费 | `inventory/hosts/nixos-btw/secrets.nix` 指定 SSH host key 解密密文，deepseek/github secret owner 为 mayon；Nix access-token fragment 以运行时 SOPS template 写入，owner mayon、mode `0400` 并由 Nix 配置 `!include`。secret name 与导出变量由 `inventory/hosts/nixos-btw/users/mayon.nix` 数据提供；`aspects/cli/shell/zsh.nix` 仅在运行时读秘密路径。 | 明文不得进入 Nix 字符串、日志、生成配置或 store。密文文件仍为输入；构建不证明本机 age key、解密结果、owner/mode 或撤销行为有效，须现场核验且不得输出 secret 内容。 |
 
 ## 迁移与回退
@@ -69,7 +67,7 @@ checks: []
 
 相关约束与流程见 [架构设计](architecture.md)、[桌面视觉设计](desktop.md)、[操作方式](keymap.md)、[服务策略](service-policy.md)、[服务器规划](server-plan.md)、[执行交接](history/execution-handoff.md) 和 [Den 执行记录](history/den-execution.md)。
 
-D-Bus 服务文件：FileManager1 的唯一声明改由 file-manager 的 host Thunar 包拥有，撤回 HM 的重复 Thunar 包与 per-user service。Xorg 的 Dunst 包拥有规范命名的通知激活文件，HM 不再生成第二份。session-support 通过上游工厂生成并合并 `/etc/dbus-1` 的显式服务注册，保持 policy include 与标准用户 XDG 服务发现。上述移除仅涉及声明式服务文件，不删除 keyring、文件管理器状态、缩略图、通知历史或用户数据。
+D-Bus 服务文件：FileManager1 的唯一声明改由 file-manager 的 host Thunar 包拥有，撤回 HM 的重复 Thunar 包与 per-user service。session-support 通过上游工厂生成并合并 `/etc/dbus-1` 的显式服务注册，保持 policy include 与标准用户 XDG 服务发现。上述移除仅涉及声明式服务文件，不删除 keyring、文件管理器状态、缩略图、通知历史或用户数据。
 
 原生 Clash 声明：[laptop-network](../aspects/network/laptop-network/README.md)
 拥有无 boot wants 的 `mayon-clash.service` 和绑定用户的单元专属 polkit。Nix 不渲染

@@ -53,8 +53,7 @@
 
           # Wayland already scales classicui through wp_fractional_scale_v1.
           # Do not force 144 DPI there: it would multiply the scale twice.
-          # QQ uses Wayland in Mango and X11 in dwm; X11 clients therefore
-          # reads the merged Xft.dpi value through PerScreenDPI.
+          # Xwayland clients read the merged Xft.dpi value instead.
           PerScreenDPI = "False";
         };
       };

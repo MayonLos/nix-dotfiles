@@ -14,7 +14,7 @@
 | `checks.protocols-composition` | `composition/protocols.nix` | 外观/默认工具的数据边界、类型与冲突负例、两绑定 palette/Kitty 动效偏好和固定参数 argv |
 | `checks.workspace-composition` | `composition/workspace.nix` | 多 host/user 的命令行选择、共享/移除、CLI/桌面隔离和账号权限 |
 | `checks.editing-composition` | `composition/editing.nix` | 编辑器与所选语言组合、数据冲突、未选择工具隔离、实际 clangd 工作负载 |
-| `checks.desktop-composition` | `composition/desktop.nix` | 两 host/two user 的 Mango 与独立 Xorg 选择、共享支持、未选绑定隔离与移除行为；palette/动效偏好及减少动画分支的锁定 Mango/Noctalia 解析检查 |
+| `checks.desktop-composition` | `composition/desktop.nix` | 两 host/two user 的 Mango 选择、共享支持、未选绑定隔离与移除行为；palette/动效偏好及减少动画分支的锁定 Mango/Noctalia 解析检查 |
 | `checks.local-services-composition` | `composition/local-services.nix` | 本地容器/VM daemon 与远程 client 的隔离、宿主资源去重和撤销行为 |
 | `checks.embedded-composition` | `composition/embedded.nix` | 嵌入式工具、权限组、udev host provider 的选择/共享/移除边界 |
 
@@ -26,7 +26,6 @@ aspect 和嵌入式组合 fixture 中：
 | `checks.project-workbench` | `aspects/workspace/project-workbench/checks.nix` | 临时项目目录中的 cwd、argv、缺目录与 direnv 拒绝 |
 | `checks.interactive-session-config` | `aspects/desktop/mango-session/checks.nix` | 主机与 Home Manager 交互会话生成配置检查 |
 | `checks.rime-technical-runtime` | `aspects/desktop/session-support/rime-checks.nix` | 见下方 Rime 运行检查说明 |
-| `checks.xorg-session-runtime` | `aspects/desktop/xorg-session/checks.nix` | 见下方 Xorg/dmenu 隔离运行检查说明 |
 | `checks.command-line-runtime` | `aspects/cli/shell/checks.nix` | 生成的命令行配置、解析器及工具运行检查 |
 | `checks.neovim` | `nix/outputs.nix` | 见下方 Neovim headless 检查说明 |
 | `checks.embedded-home`, `checks.embedded-udev`, `checks.embedded-tools` | `tests/composition/embedded.nix` 与 `aspects/dev/embedded/checks.nix` | 嵌入式 Home Manager、udev 规则和工具产物检查 |
@@ -60,11 +59,6 @@ aspect 和嵌入式组合 fixture 中：
 专业词、错拼和英文候选可达，以及现有学习库名称仍为 `rime_ice`。它不打开个人词库，不验证
 个人排名或学习持久化；曾实际拒绝错误的非递归词表组合。词表维护见
 [Rime 说明](../aspects/desktop/session-support/rime/README.md)。
-
-`xorg-session-runtime` 在 Xvfb 中运行实际 dwm 与生产 launcher/menu：它用隔离的 `.desktop`
-条目检查 j4+dmenu 的选择与 `Exec` 参数，用 Escape 检查生产桌面菜单可取消，并提交任意输入
-确认其不会被当作命令执行。该检查覆盖隔离 X11/XRender 冒烟行为，不代表真实 Xorg、GLX、PAM
-或原生窗口捕获验收。
 
 ## 证据范围
 

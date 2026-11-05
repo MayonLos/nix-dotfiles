@@ -23,7 +23,6 @@ let
     "QQ|qq|com[.]qq[.]QQ"
     "wechat|WeChat|weixin|com[.]tencent[.](WeChat|wechat)"
     "discord|Discord|vesktop|Vesktop"
-    "wemeet|wemeetapp|TencentMeeting"
   ];
   # Keep each row below the parser's 255 UTF-8 byte value limit. App scoping
   # avoids floating a browser tab / terminal / document named "Settings".
@@ -75,7 +74,6 @@ let
     "${tools},app_id:^(gcolor3|org[.]gnome[.]Gcolor3|org[.]kde[.]kcolorchooser|hyprpicker)$"
     "${dialog},app_id:^(qt[56]ct|fcitx5-config-qt|org[.]fcitx[.].*|org[.]fcitx[.]Fcitx5[.]Config)$"
     "${dialog},app_id:^(org[.]gnome[.]FileRoller|file-roller|kbd-layout-viewer5?|legion_gui)$"
-    "${tools},app_id:^(com[.]github[.]hluk[.]copyq|copyq|CopyQ)$"
     # mark-shot capture and wayscrollshot selection are layer surfaces. Do not
     # resize their full-output capture areas; this only catches editor toplevels.
     "${float},no_animation:1,app_id:^(mark-shot|markshot|MarkShot)$"
@@ -164,8 +162,7 @@ let
   ]
   ++ lib.optionals assignAppTags (
     map (
-      app:
-      "tags:4,is_tag_silent:1,app_id:^(${app})$,title:^(QQ|微信|WeChat|Discord|Vesktop|腾讯会议|Tencent Meeting)$"
+      app: "tags:4,is_tag_silent:1,app_id:^(${app})$,title:^(QQ|微信|WeChat|Discord|Vesktop)$"
     ) communicationGroups
   );
 in

@@ -77,7 +77,6 @@ for app, title in (
     ("org.blueman.Manager", "Bluetooth Devices"),
     (".blueman-manager-wrapped", "Bluetooth Devices"),
     ("nm-connection-editor", "Network Connections"),
-    ("com.github.hluk.copyq", "CopyQ"),
     ("qt6ct", "Qt6 Configuration Tool"),
     ("org.gnome.FileRoller", "File Roller"),
     ("kbd-layout-viewer", "Keyboard Layout viewer"),
@@ -130,9 +129,6 @@ for app, title in (
     ("Zotero", "My Library - Zotero"),
     ("QQ", "QQ"),
     ("wechat", "Weixin"),
-    ("wemeetapp", "腾讯会议"),
-    ("wemeetapp", "Screen Share"),
-    ("wemeetapp", "屏幕共享"),
     ("vesktop", "Discord"),
     ("thunderbird", "Home - Mozilla Thunderbird"),
     ("steam", "Steam"),
@@ -144,7 +140,7 @@ for app, title in (
     assert "is_floating" not in row, (app, title, row)
     assert "no_focus" not in row and "is_open_silent" not in row, (app, title, row)
 
-for app in ("QQ", "wechat", "vesktop", "discord", "wemeetapp"):
+for app in ("QQ", "wechat", "vesktop", "discord"):
     row = resolve(app, "Sharing Toolbar")
     assert all(row[key] == "1" for key in ("is_floating", "no_focus", "is_open_silent", "is_tag_silent")), row
     assert "no_focus" not in resolve(app, "Video Call"), app

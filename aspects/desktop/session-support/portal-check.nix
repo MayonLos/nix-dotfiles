@@ -37,11 +37,7 @@ assert
   pkgs.lib.toList nixos.xdg.portal.config.mango."org.freedesktop.impl.portal.FileChooser"
   == [ "gtk" ];
 assert
-  pkgs.lib.toList nixos.xdg.portal.config.dwm."org.freedesktop.impl.portal.FileChooser" == [ "gtk" ];
-assert
   pkgs.lib.toList nixos.xdg.portal.config.mango."org.freedesktop.impl.portal.Settings" == [ "gtk" ];
-assert
-  pkgs.lib.toList nixos.xdg.portal.config.dwm."org.freedesktop.impl.portal.Settings" == [ "gtk" ];
 assert !(builtins.elem pkgs.xdg-desktop-portal-gnome nixos.xdg.portal.extraPortals);
 pkgs.runCommand "application-portals-theme-check"
   {

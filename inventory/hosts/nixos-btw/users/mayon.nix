@@ -62,7 +62,6 @@ in
           port-tools
           legion-laptop-user
           personal-desktop
-          xorg-session
           engineering-workbench
           project-workbench
           embedded-workbench

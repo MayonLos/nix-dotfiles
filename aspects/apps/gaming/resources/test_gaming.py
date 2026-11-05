@@ -28,7 +28,6 @@ elif name=='nvidia-smi':
 elif name=='wlr-randr':
     print(json.dumps([{'name':'eDP-1','enabled':True,'modes':[{'width':2560,'height':1600,'refresh':165.002,'current':True}]}, {'name':'DP-1','enabled':True,'modes':[{'width':3840,'height':2160,'refresh':59.94,'current':True}]}]))
 elif name=='mmsg': print(json.dumps({'monitor':'DP-1'}))
-elif name=='xrandr': print('eDP-1 connected primary\\n   2560x1600  165.00*+ 60.00')
 else:
     (root/'launch').write_text(json.dumps({'argv':args,'env':dict(os.environ)}))
     sys.exit(int(os.environ.get('GAME_EXIT','0')))
@@ -43,7 +42,7 @@ class Gaming(unittest.TestCase):
         self.bin = self.root / 'bin'
         self.bin.mkdir()
         for name in ['powerprofilesctl', 'systemctl', 'nvidia-smi', 'gamemoderun',
-                     'game-run', 'gamescope', 'wlr-randr', 'mmsg', 'xrandr']:
+                     'game-run', 'gamescope', 'wlr-randr', 'mmsg']:
             file = self.bin / name
             file.write_text(STUB.replace('/usr/bin/env python3', sys.executable))
             file.chmod(0o755)
@@ -150,12 +149,9 @@ class Gaming(unittest.TestCase):
         self.assertEqual(args[args.index('-r')+1], '165')
         self.assertNotIn('wlr-randr', (self.root / 'calls').read_text())
 
-    def test_gamescope_xorg_and_bad_arguments(self):
+    def test_gamescope_without_wayland_and_bad_arguments(self):
         self.env.pop('WAYLAND_DISPLAY')
-        self.call('gamescope-run.py', '--', 'game')
-        args = json.loads((self.root / 'launch').read_text())['argv']
-        self.assertEqual(args[args.index('-W')+1], '2560')
-        self.assertNotIn('--backend', args)
+        self.call('gamescope-run.py', '--', 'game', success=False)
         self.call('gamescope-run.py', '--fps', '0', '--', 'game', success=False)
         self.call('gamescope-run.py', '--size', '0x800', '--', 'game', success=False)
 

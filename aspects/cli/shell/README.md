@@ -33,8 +33,7 @@ OSC 11/111 background-color sequences, while preserving `on` visibility checks a
 client rejection. The native PTY check covers OSC 11 in the same write as an
 alternate-screen redraw and suppression from a background window.
 Underline-style support is declared for `xterm-kitty` and
-`tmux-256color`. The existing tmux-fzf CopyQ suppression remains: clipboard
-daemons belong to the Xorg session. Smart-splits still routes `Ctrl+h/j/k/l`
+`tmux-256color`. Smart-splits still routes `Ctrl+h/j/k/l`
 and `Alt+h/j/k/l` between Neovim and tmux navigation/resize.
 
 Yazi uses list + preview (`0:5:4`) with the parent path in its breadcrumb;

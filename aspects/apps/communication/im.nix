@@ -26,9 +26,9 @@ let
   # Under mango's rootless Xwayland there is nothing for XQueryTree to find, so
   # the picker ends at "该应用已无法共享". Nothing in this file can change that,
   # and nothing else in the repo does either -- the v4l2loopback virtual-camera
-  # workaround was built, tried and then removed on request. Screen sharing goes
-  # through a browser instead. The optional real Xorg session uses QQ's X11
-  # backend; its own picker still needs an actual call/capture acceptance test.
+  # workaround and the dwm/Xorg session were both tried and removed on request,
+  # and linuxqq-wayland-fix was applied on 2026-11-05 and reverted after a
+  # failed call test. Screen sharing goes through a browser instead.
   #
   # Verified 2026-08-13: dlopen("libpipewire-0.3.so.0") fails with QQ's own
   # environment and succeeds (pw_init included) with pipewire on the path.
@@ -55,18 +55,11 @@ let
   # explicit --ozone-platform never falls back, so surviving proves Wayland
   # initialised. Its input now goes through text-input-v3, where classicui
   # already scales correctly from wp_fractional_scale_v1.
-  #
-  # This historical Mango workaround remains Wayland-only. Forcing it in the
-  # optional real Xorg session would prevent QQ from starting at all.
-  qqLauncher = pkgs.writeShellScript "qq-session-launcher" ''
-    backend=wayland
-    if [[ "''${XDG_SESSION_TYPE:-}" == x11 || -z "''${WAYLAND_DISPLAY:-}" ]]; then
-      backend=x11
-    fi
+  qqLauncher = pkgs.writeShellScript "qq-wayland-launcher" ''
     export LD_LIBRARY_PATH="${
       lib.makeLibraryPath [ pkgs.pipewire ]
     }''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-    exec ${pkgs.unstable.qq}/bin/qq "--ozone-platform=$backend" --xdg-portal-required-version=3 "$@"
+    exec ${pkgs.unstable.qq}/bin/qq --ozone-platform=wayland --xdg-portal-required-version=3 "$@"
   '';
   qq = pkgs.symlinkJoin {
     name = "qq-with-pipewire";
@@ -114,11 +107,6 @@ in
     # NIXOS_OZONE_WL and WAYLAND_DISPLAY are both set in Mango, so fcitx5's
     # wayland frontend drives it over text-input-v3 rather than XIM.
     qq
-
-    # Stable's launcher enables the Wayland sharing hook only in a Wayland
-    # session. In real Xorg use `wemeet`, not `wemeet-xwayland` (which forces
-    # that hook). Conference, camera/audio and capture still need a real call.
-    pkgs.wemeet
 
     # App-local XCB + Fcitx5 IBus portal; see the feature README.
     wechat

@@ -50,16 +50,10 @@ let
   };
   setWallpaper = pkgs.writeShellApplication {
     name = "thunar-set-wallpaper";
-    runtimeInputs = [
-      pkgs.feh
-      config.programs.noctalia.package
-    ];
+    runtimeInputs = [ config.programs.noctalia.package ];
     text = ''
       [ "$#" -eq 1 ] && [ -f "$1" ] || exit 2
-      case "''${XDG_CURRENT_DESKTOP:-}" in
-        *dwm*) exec feh --bg-fill "$1" ;;
-        *) exec ${config.programs.noctalia.package}/bin/noctalia msg wallpaper-set "$1" ;;
-      esac
+      exec ${config.programs.noctalia.package}/bin/noctalia msg wallpaper-set "$1"
     '';
   };
   failFunction = appName: message: ''
@@ -125,8 +119,8 @@ let
         png="$tmp"
       fi
 
-      # Only call clipboard tools for displays which exist. wl-copy exits
-      # unsuccessfully in a pure Xorg session; xclip has the symmetric issue.
+      # Only call clipboard tools for displays which exist: wl-copy and xclip
+      # each exit unsuccessfully without their display server.
       copied=0
       if [ -n "''${WAYLAND_DISPLAY:-}" ]; then
         wl-copy --type image/png <"$png"

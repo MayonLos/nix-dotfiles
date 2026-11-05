@@ -52,17 +52,6 @@ let
     TMUX_FZF_PREVIEW="0"
     TMUX_FZF_OPTIONS="-p -w 62% -h 38% -m --border=none --layout=reverse --bind=ctrl-/:toggle-preview"
   '';
-
-  # Upstream main.tmux backgrounds `copyq` whenever it is on PATH. CopyQ is
-  # installed for the Xorg session only, so this leaked an unused clipboard
-  # daemon into Mango whenever tmux started. The clipboard menu is not in
-  # TMUX_FZF_ORDER; fail the build if upstream changes this block.
-  tmux-fzf = pkgs.tmuxPlugins.tmux-fzf.overrideAttrs (old: {
-    postPatch = (old.postPatch or "") + ''
-      substituteInPlace main.tmux --replace-fail \
-        $'if [ -x "$(command -v copyq)" ]; then\n  copyq &>/dev/null &\nfi\n' ""
-    '';
-  });
 in
 {
   programs.tmux = {

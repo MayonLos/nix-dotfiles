@@ -31,9 +31,8 @@ in
     # to go here.
     #
     # Historical failure: xdpw's external output chooser was unavailable.
-    # dmenu is now present only when Xorg is selected, but it is not a native
-    # Wayland output chooser. Keep capture independent of that optional stack.
-    # slurp selects regions rather than choosing an output.
+    # dmenu is not a native Wayland output chooser, and slurp selects regions
+    # rather than choosing an output.
     #
     # One output, so skip the chooser rather than install a picker to answer a
     # question with one possible answer. Revisit if a second output appears.

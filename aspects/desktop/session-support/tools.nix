@@ -17,5 +17,7 @@
     brightnessctl
     ddcutil
     playerctl
+    # Fine-grained card profiles; Noctalia has no equivalent menu.
+    pavucontrol
   ];
 }

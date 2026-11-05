@@ -22,6 +22,5 @@ in
     gameRun
     pkgs.gamescope
     pkgs.wlr-randr
-    pkgs.xrandr
   ];
 }

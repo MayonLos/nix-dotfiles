@@ -49,7 +49,7 @@ assert float(pip["width"]) / float(pip["height"]) == 16 / 9
 assert int(pip["offset_x"]) > 0 and int(pip["offset_y"]) > 0
 assert "no_size_hint" not in pip
 
-for app in ("QQ", "wechat", "vesktop", "discord", "wemeetapp"):
+for app in ("QQ", "wechat", "vesktop", "discord"):
     for title in ("Notification", "Sharing Toolbar"):
         row = resolve(app, title)
         assert row["is_open_silent"] == row["is_tag_silent"] == row["is_floating"] == "1", (app, title)

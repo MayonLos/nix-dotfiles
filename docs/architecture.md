@@ -56,7 +56,7 @@ docs/                     # 现行文档；history/ 只追加
 | `system/` | nix 设置与维护、locale、sudo/安全策略、账号公共策略 |
 | `hardware/` | 机型驱动与策略（legion-laptop：NVIDIA PRIME、电源、启动、gamemode GPU、mpv 硬解等，由 facts 参数化） |
 | `appearance/` | 外观契约、主题数据（onedark、ansi、壁纸、头像生成） |
-| `desktop/` | `session-support`（输入法、GTK/Qt、字体、portal、音频 socket、session targets）、`mango-session`（Mango+Noctalia+剪贴板+截图）、`xorg-session`、`greeter` |
+| `desktop/` | `session-support`（输入法、GTK/Qt、字体、portal、音频 socket、session targets）、`mango-session`（Mango+Noctalia+剪贴板+截图）、`greeter` |
 | `cli/` | shell、terminal、git、tmux、yazi、系统信息、CLI 工具 |
 | `dev/` | 编辑器（neovim、vscode、jetbrains）、languages（契约+各语言）、embedded、containers、virtual-machines、ai-agents |
 | `apps/` | firefox、communication、documents、media、file-manager、gaming |
@@ -99,7 +99,7 @@ Den 只对**函数值**注入上下文，路径字面量原样交给模块系统
 | 实体 schema 属性 | 实体输入（由 `den.schema.{host,user}.imports` 的契约定义） | `host.appearance`、`user.defaultTools`、`user.workspaceProjects`、`host.facts` |
 | quirks（必要时 pipes） | 已选功能向消费者**贡献数据** | `editorLanguages`、`noctaliaIntegrations` |
 | 公开模块选项 | 同一模块系统内的合并接线 | `nixDotfiles.graphicalSessionTargets` |
-| 公开包工厂 | 带参数的包 | dwm 配方（palette、DPI） |
+| 公开包工厂 | 带参数的包 | Neovim 配置包、`qt-style.nix` |
 
 其他方式（读取其他功能私有文件、通过全局变量、跨功能 `imports` 私有模块）一律禁止。
 

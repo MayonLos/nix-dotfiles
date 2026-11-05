@@ -1,6 +1,6 @@
 # nix-dotfiles
 
-NixOS + Home Manager 配置，当前只有一个真实主机 `nixos-btw`（Intel + NVIDIA 笔记本）和用户 `mayon`。Home Manager 随 NixOS 重建，没有独立 switch。Mango 是默认桌面；`xorg-session` 提供可选 dwm + Picom 真 Xorg 会话。两种会话不同时运行。
+NixOS + Home Manager 配置，当前只有一个真实主机 `nixos-btw`（Intel + NVIDIA 笔记本）和用户 `mayon`。Home Manager 随 NixOS 重建，没有独立 switch。Mango 是唯一桌面会话。
 
 仓库使用 Den 与 flake-parts。`aspects/default.nix` 显式登记功能，`bundles/default.nix` 用 Den `includes` 组合功能，`inventory/` 保存实体事实与选择。功能、契约、配方与资源集中在功能目录，目录不会被递归扫描。架构与仓库约定见 [AGENTS.md](AGENTS.md)，操作、回滚与验证层级见 [操作说明](docs/operations.md)。
 
@@ -12,7 +12,7 @@ nix/                      pkgs、host pipeline、outputs、checks、开发环境
 aspects/system/            默认工具契约和系统维护
 aspects/hardware/          机型驱动与策略
 aspects/appearance/       外观数据、壁纸和头像
-aspects/desktop/           session-support、Mango、Xorg、greeter
+aspects/desktop/           session-support、Mango、greeter
 aspects/cli/               shell、terminal 与命令行工具
 aspects/dev/               编辑器、语言、embedded、容器、虚拟机、AI agents
 aspects/apps/              Firefox、通信、文档、媒体、文件管理、游戏

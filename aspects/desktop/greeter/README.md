@@ -1,7 +1,6 @@
 # Greeter
 
-Noctalia Greeter 1.7.0 provides the system login screen, defaulting to Mango with
-Xorg available in a small session dropdown. Inputs are the host appearance and
+Noctalia Greeter 1.7.0 provides the system login screen, defaulting to Mango. Inputs are the host appearance and
 display name/scale. `default.nix` is public; `greeter.nix`, `package.nix` and
 `tech-greeter.patch` are private. `checks.nix` exposes `{ pkgs, nixos, appearance, ... }`.
 

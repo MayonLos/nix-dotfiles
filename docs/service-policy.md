@@ -13,12 +13,11 @@ checks: []
 
 | 功能 | 声明和启动方 | 停止、恢复与数据边界 |
 |---|---|---|
-| 登录与会话 | host 明选 [login-screen](../aspects/desktop/greeter/greeter.nix)，Noctalia Greeter 的默认会话为 Mango，另可明确选择 dwm / Xorg。锁定 Mango C 实现先导入动态 DISPLAY/WAYLAND/cursor 环境并请求 `mango-session.target`；HM 非空 `autostart_sh = ":"` 是补充同步钩子，不是唯一启动路径。 | Mango 退出由其会话 target 路径结束。冷登录/退出时序仍需实机核验，不依赖 autostart 比 C 路径先运行。当前移除状态见[执行记录](history/hyprland-removal-execution.md)。 |
+| 登录与会话 | host 明选 [login-screen](../aspects/desktop/greeter/greeter.nix)，Noctalia Greeter 的默认会话为 Mango。锁定 Mango C 实现先导入动态 DISPLAY/WAYLAND/cursor 环境并请求 `mango-session.target`；HM 非空 `autostart_sh = ":"` 是补充同步钩子，不是唯一启动路径。 | Mango 退出由其会话 target 路径结束。冷登录/退出时序仍需实机核验，不依赖 autostart 比 C 路径先运行。当前移除状态见[执行记录](history/hyprland-removal-execution.md)。 |
 | Noctalia | [HM renderer](../aspects/desktop/mango-session/noctalia.nix) 启用官方 systemd unit，`PartOf`/`After`/`WantedBy` 均指向 Mango target；无直接 `noctalia &`。安全静态环境由同源白名单提供，`launch_apps_as_systemd_services = true`。 | `Restart=on-failure`、2 秒、60 秒内最多 3 次。应用独立 systemd 启动；正常 shell 交接中受保护业务存活已核验，故障注入与会话退出仍未验证。启动前先做有限字段归属交接，旧 writer 活跃时拒绝修改。 |
-| 输入法 | [Fcitx5/Rime](../aspects/desktop/session-support/input-method.nix) 的官方 HM daemon 绑定已选 Mango / Xorg targets。输入法环境仅共享明确的键，不复制全部 home vars。 | 用户词库、学习数据和应用状态保留。候选框缩放、QQ/微信、实际退出与恢复未验证。 |
+| 输入法 | [Fcitx5/Rime](../aspects/desktop/session-support/input-method.nix) 的官方 HM daemon 绑定已选 Mango target。输入法环境仅共享明确的键，不复制全部 home vars。 | 用户词库、学习数据和应用状态保留。候选框缩放、QQ/微信、实际退出与恢复未验证。 |
 | 剪贴板 | Mango 中 Noctalia 原生历史是唯一日用历史生产者，不声明 cliphist watcher；[clipboard bridge](../aspects/desktop/mango-session/clipboard.nix) 只做 Wayland/X11 selection 桥接，随 Mango target 拉起。 | 桥接 `Restart=always`、2 秒、3 次/60 秒；一侧 watcher 退出则结束两侧并重启，读操作有超时。历史、旧数据库与 Secret Service 状态不清理。真实图片/文字双向复制及 Secret Service 解锁待验收。 |
-| X11 DPI | [xrdb-merge](../aspects/desktop/session-support/xresources.nix) 随选中的 Mango / Xorg target 运行 oneshot，有限重试等待 X server。 | 不替代客户端实际缩放检查；无常驻轮询进程。 |
-| 可选 dwm / Xorg | `xorg-session.target` 仅由 supervisor 在 dwm 就绪后启动；Picom、Dunst、CopyQ、polkit、状态、壁纸、RandR watcher、idle 与 xss-lock 都具备 desktop/target guard。 | 不启动 Noctalia 或 Wayland clipboard bridge。Dunst D-Bus 激活同样受约束；Rofi 按需运行；xidlehook 以15/30/60分钟触发锁屏/熄屏/休眠，xss-lock独立保护睡眠锁屏；共享采用 X11 原生能力。实际构建/运行边界详见 [Xorg 记录](xorg.md)。 |
+| X11 DPI | [xrdb-merge](../aspects/desktop/session-support/xresources.nix) 随 Mango target 运行 oneshot，有限重试等待 X server。 | 不替代客户端实际缩放检查；无常驻轮询进程。 |
 | Portal / keyring / polkit | [交互宿主支持](../aspects/desktop/session-support/default.nix) 共享提供 GTK portal backend、keyring/PAM 和系统 polkit；Noctalia 提供图形认证 agent。 | 这些是宿主共享能力，不是每账号私有的访问控制。每个 bus 名称只能有实际预期 backend；屏幕共享、解锁与单 agent 需实测。 |
 | 音频 | [PipeWire/WirePlumber](../aspects/desktop/session-support/host/audio.nix) 是共享宿主支持，保留 ALSA/Pulse/JACK 和现有通信兼容规则；不常驻 echo-cancel 模块（它常开内置麦并把默认输出拉进麦克风的 256 帧图，导致蓝牙 A2DP 持续丢包），回声消除由通话应用自带。WirePlumber 关闭蓝牙耳机自动切到 HFP：麦克风采集（如 pavucontrol 电平条）曾把 A2DP 切成 8/16 kHz 单声道并导致断连，耳机麦需手动选 HFP profile。全局 `sockets.target` wants 关闭，只有选中账号的桌面 targets 请求 PipeWire sockets。 | 支持 socket 按需激活，音频进程继续遵循 user manager 生命周期，不随 Noctalia 重启。未选账号不会自动得到个人音频启动配置；共享系统能力仍可被显式请求。实际音频设备与休眠恢复待验收。 |
 | 网络与设备 | NM/resolved、Clash、Bluetooth、Intel/NVIDIA、power profiles、thermald、upower、earlyoom 等由真实 laptop host 明确选择。Nix daemon 不强制指向 Clash 本地端口；Clash 关闭时保留直接下载能力。 | 不按通用身份或平台隐式启用。休眠不主动关闭业务/VM/容器；无新增周期设备轮询或通用 sleep inhibitor。 |
@@ -55,11 +54,11 @@ Noctalia/Mango 只消费 [白名单投影](../aspects/desktop/mango-session/sess
 
 执行操作与回滚见[操作说明](operations.md)。
 
-Portal 与 D-Bus：GTK 提供两个会话的 FileChooser/Settings，移除需要 Mutter 的 GNOME portal；gnome-keyring Secret 与 Mango wlr capture 保留。共享 session-support 合并显式 D-Bus 服务目录并保留标准 XDG 用户目录发现；Dunst 仍为 Xorg 专用，包内唯一规范服务名通过受 guard 的 systemd unit 激活。PipeWire 不再加载无人使用的 X11 bell 模块，常规音频与通知声音保留。蓝牙关闭未使用的实验性 LE Audio profile；经典 A2DP 保留。
+Portal 与 D-Bus：GTK 提供 FileChooser/Settings，移除需要 Mutter 的 GNOME portal；gnome-keyring Secret 与 Mango wlr capture 保留。共享 session-support 合并显式 D-Bus 服务目录并保留标准 XDG 用户目录发现。PipeWire 不再加载无人使用的 X11 bell 模块，常规音频与通知声音保留。蓝牙关闭未使用的实验性 LE Audio profile；经典 A2DP 保留。
 
 内存与 Nix：Legion 保留 earlyoom 的 RAM 5% / swap 10% 阈值，关闭没有监控 cgroup 的 systemd-oomd；保留 zstd / 50% RAM 的 zram 容量，设置 swappiness 100、page-cluster 0。该笔记本的 Nix 并行度改为 2 个构建、每个 8 个 worker；ext4 根挂载使用 noatime。维护显式保持 keep-outputs=false，删除上游已提供的重复 root trust/官方 cache key。SSH socket 改为仅 loopback；远程访问仍需明确授权与接线。生成配置和构建不能证明应用后的内存峰值、启动时间或功耗改善。
 
-保留项：Mango 下的 xrdb-merge 服务承担 Xwayland DPI/根光标设置，属于两个会话共用的 oneshot，不能按 Xorg 专属误删。Docker 继续保留官方 rootless 常驻 unit；锁定模块没有 socket，不能直接用 fd:// 绕过 RootlessKit 的文件描述符边界。NVIDIA persistence 保留原关机崩溃规避；未改 fine-grained PM、外屏、CUDA、游戏、电源 profile 或网络后端。
+保留项：Mango 下的 xrdb-merge 服务承担 Xwayland DPI/根光标设置，不能因 Xorg 会话移除而误删。Docker 继续保留官方 rootless 常驻 unit；锁定模块没有 socket，不能直接用 fd:// 绕过 RootlessKit 的文件描述符边界。NVIDIA persistence 保留原关机崩溃规避；未改 fine-grained PM、外屏、CUDA、游戏、电源 profile 或网络后端。
 
 性能与游戏：rootless Docker 使用 systemd-socket-proxyd 转发至私有 daemon socket，避免 RootlessKit 的 fd:// 边界；weekly builder prune 保留且可触发 daemon。GameMode 首/末客户端钩子保存并恢复 PPD 原 profile，CPU governor 仅由 PPD 管理（锁定 1.8.2 包补充 ignore 开关）；关闭 GPU 调频、split-lock 和 ioprio 改写，按需持有独立 logind idle inhibitor，gamemoded 退出时执行恢复；不阻止手动锁屏/显式休眠，也不重启 scx。Steam 不再全局 preload（该方式会使 steam-runtime lsof 崩溃）；每个游戏设置 `gamemoderun %command%`，helper blacklist 只处理显式包装链；Prism 在实际游戏启动边界包装 game-run。NVIDIA 模块加载与 persistence 关机规避保持。隔离测试不等同应用后冷登录、真实游戏与容器验证，细节见 [Gaming](../aspects/apps/gaming/README.md) 与 [Containers](../aspects/dev/containers/README.md)。
 
