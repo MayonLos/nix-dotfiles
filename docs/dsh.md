@@ -41,7 +41,7 @@ DSH_HOME=/absolute/path/to/isolated-harness dsh headless --help
 
 ## 作为执行代理（官方 key）
 
-默认 profile 走 `opencode-go`，未配置时报 `MISSING_CREDENTIAL`。改用官方 API 时写一个补丁文件，用 `--patch` 传入，不改 profile（`DEEPSEEK_API_KEY` 由 shell 从 sops 注入；可用模型以 `GET https://api.deepseek.com/models` 为准，2026-10-30 为 `deepseek-flash`、`deepseek-v4-pro`）：
+默认 profile 走 `opencode-go`（`deepseek-v4.1-flash`），凭据为 `OPENCODE_GO_API_KEY`：2026-11-05 起由 sops secret `opencode-go-api-key` 经 zsh 的 `secretExports` 注入，新开的 shell 才有；未设置时报 `MISSING_CREDENTIAL`。写入或更换 key 用 `read -rs k && sops set secrets/secrets.yaml '["opencode-go-api-key"]' "\"$k\"" && unset k`，再重建。改用官方 API 时写一个补丁文件，用 `--patch` 传入，不改 profile（`DEEPSEEK_API_KEY` 由 shell 从 sops 注入；可用模型以 `GET https://api.deepseek.com/models` 为准，2026-10-30 为 `deepseek-flash`、`deepseek-v4-pro`）：
 
 ```yaml
 - id: agent-default-model

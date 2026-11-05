@@ -17,6 +17,10 @@ in
             name = "deepseek-api-key";
             variable = "DEEPSEEK_API_KEY";
           }
+          {
+            name = "opencode-go-api-key";
+            variable = "OPENCODE_GO_API_KEY";
+          }
         ];
         appearance = import ../../../../aspects/appearance/appearance/onedark.nix;
         workspaceProjects = {
