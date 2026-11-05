@@ -213,6 +213,10 @@ local function claude()
 		auto_start = true,
 		track_selection = true,
 		focus_after_send = false,
+		-- The alt-screen renderer repaints the whole screen on resize. The
+		-- classic one leaves stale frames when a split briefly squeezes the
+		-- panel before Edgy restores it.
+		env = { CLAUDE_CODE_NO_FLICKER = "1", CLAUDE_CODE_ALT_SCREEN_FULL_REPAINT = "1" },
 		terminal = {
 			provider = "snacks",
 			split_side = "right",

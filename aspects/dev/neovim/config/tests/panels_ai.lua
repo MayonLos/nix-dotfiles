@@ -139,6 +139,12 @@ assert(
 	panels.winbar(terminal_buf):find("OFFLINE FIXTURE", 1, true),
 	"terminal container should identify its fixture status"
 )
+-- Ctrl-h is the terminal-mode way back to the document.
+local leave = vim.fn.maparg("<C-h>", "t", false, true)
+assert(leave.buffer == 1 and leave.desc == "Leave AI Panel", "AI terminal should map Ctrl-h to leave the panel")
+vim.api.nvim_set_current_win(terminal_win)
+leave.callback()
+assert(vim.api.nvim_get_current_win() ~= terminal_win, "Ctrl-h should leave the AI terminal window")
 
 -- The Claude connection poll runs only while an AI panel is visible.
 assert(panels.poll_active(), "Claude status poll should run while an AI panel is visible")

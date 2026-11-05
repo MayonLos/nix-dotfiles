@@ -60,16 +60,40 @@ function M.preview_default(source)
 	return vim.o.columns >= 120 and vim.tbl_contains({ "files", "recent", "grep", "grep_word" }, source)
 end
 
+-- Editor columns not taken by AI side panels. The picker floats over this
+-- span instead of splitting: a split resizes every window around it, and a
+-- CLI running in an AI terminal redraws badly after each resize.
+local function document_span()
+	local panels = require("mayon.ui.ai_panels")
+	local left, right
+	for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+		if vim.api.nvim_win_get_config(win).relative == "" and not panels.is_panel(vim.api.nvim_win_get_buf(win)) then
+			local col = vim.api.nvim_win_get_position(win)[2]
+			local width = vim.api.nvim_win_get_width(win)
+			left = math.min(left or col, col)
+			right = math.max(right or 0, col + width)
+		end
+	end
+	if not left then
+		return 0, vim.o.columns
+	end
+	return left, right - left
+end
+
 function M.layout(preview)
 	local wide = vim.o.columns >= 120
 	local height = math.max(8, math.floor(vim.o.lines * (wide and 0.42 or 0.52)))
+	local col, width = document_span()
 	return {
 		preview = preview or false,
 		layout = {
 			box = "vertical",
 			backdrop = false,
-			position = "bottom",
-			width = 0,
+			position = "float",
+			-- Bottom-anchored just above the global statusline (cmdheight=0).
+			row = -1,
+			col = col,
+			width = width - 2,
 			height = height,
 			border = require("mayon.util").border,
 			{ win = "input", height = 1, border = "bottom" },

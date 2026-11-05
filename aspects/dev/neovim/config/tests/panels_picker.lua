@@ -3,9 +3,15 @@ local pickers = require("mayon.ui.pickers")
 local files = pickers.configure({ source = "files" })
 assert(files.prompt == "❯ ", "general picker input should retain its prompt")
 assert(files.layout().preview == (vim.o.columns >= 120), "file picker preview should follow the wide-window default")
+-- A float, not a split: a split would squeeze the AI terminal and make the
+-- CLI redraw. Without side panels it spans the editor above the statusline.
 assert(
-	files.layout().layout.width == 0 and files.layout().layout.position == "bottom",
-	"picker should occupy the bottom width"
+	files.layout().layout.position == "float" and files.layout().layout.row == -1,
+	"picker should float at the bottom"
+)
+assert(
+	files.layout().layout.col == 0 and files.layout().layout.width == vim.o.columns - 2,
+	"picker should span the document columns"
 )
 assert(
 	files.layout().layout.height == math.floor(vim.o.lines * (vim.o.columns >= 120 and 0.42 or 0.52)),

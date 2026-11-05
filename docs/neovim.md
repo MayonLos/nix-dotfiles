@@ -149,6 +149,11 @@ Claude 终端不会引起右侧重排（避免改变 CLI 的 pty 尺寸）。统
 `gK` 仍显示完整签名帮助。补全文档窗在 CompleteChanged 与 completionItem/resolve 后设置样式，不再轮询。
 Ctrl+h/j/k/l 用 smart-splits 穿过 Neovim 与 tmux 面板，Alt+h/j/k/l 调整大小。
 tmux 一侧的配置在 `aspects/cli/shell/tmux.nix`。
+同日修复：底部分屏（终端、Trouble、quickfix、旧版 picker）打开时，会先把右侧 Claude 面板压矮，再由 Edgy 恢复。
+经典渲染器在这次"缩小再恢复"之后会留下残影（真实 kitty 截图复现）。现在 picker 改为浮在文档列上方的浮窗；
+内嵌 Claude 使用 `CLAUDE_CODE_NO_FLICKER=1` 与 `CLAUDE_CODE_ALT_SCREEN_FULL_REPAINT=1`（只开 NO_FLICKER 仍会留残影）。
+七种切换方式在真实 Claude 2.1.312 下截图验证干净；流式输出时整屏重绘的 CPU 开销尚未实测。
+Claude 终端内 `Ctrl+h` 回到文档。
 真实 tmux、TTY Alt/Tab、窗口缩放和美观仍需实机验收。
 
 原生 LSP、basedpyright、Taplo、Treesitter、flash、多光标、surround、Oil/Yazi、Snacks、Markdown、

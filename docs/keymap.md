@@ -169,6 +169,7 @@ Leader 为 Space（下表 `␣`），localleader 为逗号。which-key 分组为
 | `␣ac` / `as` | Claude 终端 / 发送可视选区到 Claude |
 | `␣aA` / `aD`；建议 buffer `,a` / `,r` | 接受 / 拒绝 Claude 当前文件提案 |
 | `␣af` | 把当前文件加入 Claude 上下文 |
+| Claude 终端内 `Ctrl+h` | 回到文档窗口（浮动面板回到上一个窗口）；Esc 仍交给 Claude |
 | `␣ad` / `ai` | DeepSeek 对话 / 内联改写（普通或可视） |
 | `␣aC` | Claude Code ACP 对话（CodeCompanion 缓冲区，可搜索/复制/存历史） |
 | `␣ae` / `at`（可视）/ `am` | 解释诊断 / 为选区写测试 / 起草提交信息 |

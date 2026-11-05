@@ -437,6 +437,12 @@ vim.o.columns = 100
 assert(claude_terminal.defaults.snacks_win_opts.position == "float", "narrow Claude terminal should float")
 vim.o.columns = 200
 assert(claude_terminal.defaults.snacks_win_opts.position == "right", "wide Claude terminal should split right")
+-- Squeeze-and-restore of the panel must not leave stale classic-renderer frames.
+local claude_env = claude_terminal.defaults.env
+assert(
+	claude_env.CLAUDE_CODE_NO_FLICKER == "1" and claude_env.CLAUDE_CODE_ALT_SCREEN_FULL_REPAINT == "1",
+	"embedded Claude should use the full-repaint alt-screen renderer"
+)
 -- A narrower terminal re-fits the fixed-width AI side panel instead of
 -- squeezing the document window.
 local columns_before = vim.o.columns

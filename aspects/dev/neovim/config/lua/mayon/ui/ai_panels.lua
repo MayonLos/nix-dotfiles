@@ -570,6 +570,11 @@ local function style_terminal(buf)
 		vim.wo[win].winbar = name and "%!v:lua.require'mayon.ui.ai_panels'.winbar()" or ""
 		vim.w[win].mayon_ai_panel = name ~= nil
 	end
+	-- Every other key belongs to the CLI (Esc interrupts Claude), so Ctrl-h is
+	-- the one way back to the document; in the CLI it only duplicated Backspace.
+	vim.keymap.set("t", "<C-h>", function()
+		vim.cmd.wincmd(api.nvim_win_get_config(0).relative == "" and "h" or "p")
+	end, { buffer = buf, desc = "Leave AI Panel" })
 	ensure_poll()
 end
 
