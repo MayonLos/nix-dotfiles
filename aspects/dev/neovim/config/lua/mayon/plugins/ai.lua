@@ -1,3 +1,5 @@
+local border = require("mayon.util").border
+
 vim.api.nvim_create_user_command("AICompletion", function(args)
 	local completion = require("mayon.features.ai_completion")
 	if args.args == "" then
@@ -92,7 +94,7 @@ local function companion()
 		display = {
 			chat = {
 				window = {
-					border = "single",
+					border = border,
 					-- Resolve geometry at every open, including after a resize. A
 					-- focused float keeps chat usable without narrowing the document.
 					layout = "float",
@@ -217,7 +219,7 @@ local function claude()
 			split_width_percentage = 0.36,
 			snacks_win_opts = {
 				position = claude_position(),
-				border = "single",
+				border = border,
 				title = " Claude Code ",
 				bo = { filetype = "claudecode" },
 				wo = { winhighlight = "Normal:NormalFloat,WinBar:FloatTitle" },
@@ -230,48 +232,23 @@ local function claude()
 			keep_terminal_focus = false,
 		},
 	})
-	-- The pinned plugin has no public connection User event. Only the AI panel
-	-- winbars show the state, so poll while one is on screen and redraw only on
-	-- a connection transition.
-	local connected = require("claudecode").is_claude_connected()
-	local timer = assert(vim.uv.new_timer())
-	local function panel_visible()
+	-- The pinned plugin has no public connection User event. Refresh connection
+	-- state on demand instead of polling: when an AI panel window is entered or
+	-- opened, invalidate the provider cache so the winbar re-resolves once, and
+	-- redraw. Panel visibility uses the window marker set by ai_panels, never a
+	-- winbar string scan.
+	local panels = require("mayon.ui.ai_panels")
+	local function refresh_status()
 		for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
-			if vim.wo[win].winbar:find("ai_panels", 1, true) then
-				return true
+			if vim.w[win].mayon_ai_panel then
+				panels.refresh_status(vim.api.nvim_win_get_buf(win))
 			end
-		end
-		return false
-	end
-	local function poll()
-		local current = require("claudecode").is_claude_connected()
-		if current ~= connected then
-			connected = current
-			vim.cmd("redrawstatus!")
-		end
-		if not panel_visible() then
-			timer:stop()
-		end
-	end
-	local function ensure_poll()
-		if not timer:is_closing() and not timer:is_active() and panel_visible() then
-			poll()
-			timer:start(500, 500, vim.schedule_wrap(poll))
 		end
 	end
 	vim.api.nvim_create_autocmd({ "BufWinEnter", "WinEnter", "TabEnter" }, {
 		group = vim.api.nvim_create_augroup("MayonClaudeStatus", { clear = true }),
 		callback = function()
-			-- Edgy and the panel styling set the winbar after the window opens.
-			vim.schedule(ensure_poll)
-		end,
-	})
-	vim.schedule(ensure_poll)
-	vim.api.nvim_create_autocmd("VimLeavePre", {
-		once = true,
-		callback = function()
-			timer:stop()
-			timer:close()
+			vim.schedule(refresh_status)
 		end,
 	})
 

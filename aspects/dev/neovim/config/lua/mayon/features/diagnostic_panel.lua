@@ -1,7 +1,10 @@
+-- Quickfix and Trouble panels share one palette, one highlight application and
+-- one title format. Quickfix stays native (quickfixtextfunc); Trouble takes a
+-- matched set of options.
 local M = {}
 
 local function palette()
-	return require("mayon.generated").palette
+	return require("mayon.util").palette()
 end
 
 local function apply_highlights()
@@ -11,8 +14,8 @@ local function apply_highlights()
 	vim.api.nvim_set_hl(0, "MayonPanelPosition", { fg = c.muted, bg = c.bg })
 	vim.api.nvim_set_hl(0, "MayonPanelNormal", { fg = c.fg, bg = c.bg })
 	vim.api.nvim_set_hl(0, "MayonPanelSelection", { fg = c.brightFg, bg = c.selection })
-	local edge = require("mayon.ui.theme").float_edge()
-	vim.api.nvim_set_hl(0, "MayonPanelEdge", { fg = edge, bg = c.bg })
+	vim.api.nvim_set_hl(0, "MayonPanelEdge", { fg = require("mayon.ui.theme").float_edge(), bg = c.bg })
+	vim.api.nvim_set_hl(0, "MayonPanelTitle", { fg = c.muted, bg = c.bg })
 end
 
 local function location(entry)
@@ -43,18 +46,46 @@ local function get_list(info)
 	return ok and result or { items = {} }
 end
 
+-- Count contiguous runs of each filename in one O(n) pass, keyed by first
+-- occurrence, so group headers know their size without a nested scan.
+local function group_counts(items, first, last)
+	local count_at = {}
+	local prev
+	local run_start = first
+	for index = first, last do
+		local item = items[index]
+		if not item then
+			break
+		end
+		local path = filename(item)
+		if path ~= prev then
+			if prev then
+				count_at[run_start] = index - run_start
+			end
+			run_start = index
+			prev = path
+		end
+	end
+	if prev then
+		count_at[run_start] = (last or #items) - run_start + 1
+	end
+	return count_at
+end
+
 function M.formatQuickfix(info)
 	local list = get_list(info)
 	local items = list.items or {}
+	local first, last = info.start_idx, info.end_idx
 	local width = math.max(
 		24,
 		(info.winid and vim.api.nvim_win_is_valid(info.winid)) and vim.api.nvim_win_get_width(info.winid)
 			or vim.o.columns
 	)
+	local counts = group_counts(items, first, last)
 	local rows = {}
 	local previous = nil
 	local text = require("mayon.ui.text")
-	for index = info.start_idx, info.end_idx do
+	for index = first, last do
 		local item = items[index]
 		if item then
 			local path = filename(item)
@@ -62,14 +93,7 @@ function M.formatQuickfix(info)
 			if path == previous then
 				prefix = "  "
 			else
-				local group_count = 1
-				for next_index = index + 1, #items do
-					if filename(items[next_index]) ~= path then
-						break
-					end
-					group_count = group_count + 1
-				end
-				prefix = ("%s · %d  "):format(path, group_count)
+				prefix = ("%s · %d  "):format(path, counts[index] or 1)
 			end
 			previous = path
 			local pos = location(item)
@@ -148,6 +172,20 @@ function M.rail(win, line)
 end
 _G.MayonPanelRail = M.rail
 
+-- Shared window styling for both panels: one winhighlight + title + rail.
+local function panel_window_options(winbar)
+	local winhighlight =
+		"Normal:MayonPanelNormal,NormalNC:MayonPanelNormal,CursorLine:MayonPanelSelection,WinBar:MayonPanelTitle"
+	return {
+		winhighlight = winhighlight,
+		winbar = winbar,
+		statuscolumn = "%!v:lua.MayonPanelRail()",
+		signcolumn = "no",
+		number = true,
+		numberwidth = 1,
+	}
+end
+
 function M.setupQuickfix()
 	apply_highlights()
 	vim.o.quickfixtextfunc = "v:lua.MayonQuickfixText"
@@ -158,23 +196,11 @@ function M.setupQuickfix()
 	vim.api.nvim_create_autocmd("FileType", {
 		group = vim.api.nvim_create_augroup("MayonQuickfixPanel", { clear = true }),
 		pattern = "qf",
-		callback = function(event)
+		callback = function()
 			local win = vim.api.nvim_get_current_win()
-			vim.wo[win].winhighlight =
-				"Normal:MayonPanelNormal,NormalNC:MayonPanelNormal,CursorLine:MayonPanelSelection,WinBar:MayonPanelTitle"
-			vim.wo[win].winbar = "%!v:lua.MayonQuickfixTitle()"
-			vim.wo[win].statuscolumn = "%!v:lua.MayonPanelRail()"
-			vim.wo[win].signcolumn = "no"
-			vim.wo[win].number = true
-			vim.wo[win].numberwidth = 1
-			vim.schedule(function()
-				if vim.api.nvim_buf_is_valid(event.buf) and vim.api.nvim_win_is_valid(win) then
-					vim.api.nvim_win_call(win, function()
-						pcall(vim.fn.matchadd, "MayonPanelPosition", [[\v\d+:\d+$]], 10)
-						pcall(vim.fn.matchadd, "MayonPanelFile", [[\v^\S.*\ze\s{2}]], 10)
-					end)
-				end
-			end)
+			for key, value in pairs(panel_window_options("%!v:lua.MayonQuickfixTitle()")) do
+				vim.wo[win][key] = value
+			end
 		end,
 	})
 end
@@ -205,6 +231,8 @@ function M.troubleOptions()
 		{ "directory" },
 		{ "filename", format = "{hl:MayonPanelFile}{basename}{hl} {count}" },
 	}
+	local border = require("mayon.util").border
+	local panel_wo = panel_window_options("%!v:lua.MayonTroubleTitle()")
 	return {
 		focus = true,
 		formatters = {
@@ -232,15 +260,8 @@ function M.troubleOptions()
 		win = {
 			position = "bottom",
 			size = 12,
-			border = "none",
-			wo = {
-				winhighlight = "Normal:MayonPanelNormal,NormalNC:MayonPanelNormal,CursorLine:MayonPanelSelection,WinBar:MayonPanelTitle",
-				winbar = "%!v:lua.MayonTroubleTitle()",
-				statuscolumn = "%!v:lua.MayonPanelRail()",
-				signcolumn = "no",
-				number = true,
-				numberwidth = 1,
-			},
+			border = border,
+			wo = panel_wo,
 		},
 		icons = {
 			indent = { top = "  ", middle = "  ", last = "  ", fold_open = "▾ ", fold_closed = "▸ ", ws = "  " },
@@ -268,11 +289,6 @@ function M.troubleOptions()
 end
 
 function M.setupTrouble()
-	apply_highlights()
-	vim.api.nvim_create_autocmd("ColorScheme", {
-		group = vim.api.nvim_create_augroup("MayonDiagnosticPanelPalette", { clear = false }),
-		callback = apply_highlights,
-	})
 	M.setupQuickfix()
 	return require("trouble").setup(M.troubleOptions())
 end

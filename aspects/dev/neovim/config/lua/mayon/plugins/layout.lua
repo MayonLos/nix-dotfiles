@@ -1,26 +1,17 @@
+-- Layout skeleton: Edgy side/bottom panels, smart-splits, and the AI panel
+-- width fit. The AI-terminal predicate and winbar render live in one place.
 -- smart-splits reads this global before its module is loaded and marks the
 -- active tmux pane as a Neovim pane for the companion tmux bindings.
 vim.g.smart_splits_multiplexer_integration = vim.env.TMUX and "tmux" or false
 
+local ai_panels = require("mayon.ui.ai_panels")
+local util = require("mayon.util")
+
 local function wide_enough(_, win)
-	return vim.o.columns >= 120 and vim.api.nvim_win_get_config(win).relative == ""
+	return util.wide() and vim.api.nvim_win_get_config(win).relative == ""
 end
 
-local function terminal_command(buf)
-	local terminal = vim.b[buf].snacks_terminal
-	local cmd = terminal and terminal.cmd
-	if type(cmd) == "table" then
-		return table.concat(cmd, " "):lower()
-	end
-	return type(cmd) == "string" and cmd:lower() or ""
-end
-
-local function is_ai_terminal(buf)
-	local filetype = vim.bo[buf].filetype
-	local cmd = terminal_command(buf)
-	return filetype == "claudecode" or cmd:match("claude") ~= nil
-end
-
+-- Single owner of the AI side panel width; Edgy and the resize fit share it.
 local function ai_panel_width()
 	return math.max(36, math.floor(vim.o.columns * 0.38))
 end
@@ -31,18 +22,51 @@ end
 local function fit_ai_panels()
 	for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
 		local buf = vim.api.nvim_win_get_buf(win)
-		local filetype = vim.bo[buf].filetype
-		if vim.api.nvim_win_get_config(win).relative == "" and (filetype == "codecompanion" or is_ai_terminal(buf)) then
+		if vim.api.nvim_win_get_config(win).relative == "" and ai_panels.is_panel(buf) then
 			vim.api.nvim_win_set_width(win, ai_panel_width())
 		end
 	end
 end
 
+-- Bottom panel winbar: clickable Terminal/Problems/Git/Tasks capsules plus the
+-- current panel title. Inlined here because Edgy is its only caller.
+local bottom_labels = { "Terminal", "Problems", "Git", "Tasks" }
+local bottom_actions = { "terminal", "problems", "commit", "tasks" }
+
+local function bottom_click(id)
+	vim.schedule(function()
+		require("mayon.ui.workspace").action(bottom_actions[id])
+	end)
+end
+
+local function bottom_render()
+	local win = tonumber(vim.g.statusline_winid) or 0
+	local buf = vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_buf(win) or 0
+	local ft = vim.bo[buf].filetype
+	local active = (ft == "trouble" or ft == "qf") and 2 or ft:match("git") and 3 or 1
+	local parts = { " " }
+	for i, label in ipairs(bottom_labels) do
+		parts[#parts + 1] = (i == active and "%#TabLineSel#" or "%#TabLine#")
+			.. "%"
+			.. i
+			.. "@v:lua.MayonBottomClick@ "
+			.. label
+			.. " %X  "
+	end
+	return table.concat(parts)
+		.. "%=%#MayonPanelTitle# "
+		.. (ft == "qf" and "Quickfix" or ft == "trouble" and "Diagnostics" or "Terminal")
+		.. " · Workspace "
+end
+
 local function setup_edgy()
-	require("mayon.ui.bottom").setup()
-	vim.opt.laststatus = 3
+	-- The bottom winbar is invoked via statusline syntax; expose its renderer
+	-- and click handler as globals, matching the other winbar entry points.
 	vim.opt.splitkeep = "screen"
-	local palette = require("mayon.generated").palette
+	_G.MayonBottomClick = bottom_click
+	_G.MayonBottomWinbar = bottom_render
+	local bottom_winbar = "%!v:lua.MayonBottomWinbar()"
+	local palette = util.palette()
 	vim.api.nvim_set_hl(0, "EdgyNormal", { fg = palette.brightFg, bg = palette.bg })
 	vim.api.nvim_set_hl(0, "EdgyWinBar", { fg = palette.blue, bg = palette.bg, bold = true })
 	local ai_winbar = "%!v:lua.require'mayon.ui.ai_panels'.winbar()"
@@ -58,7 +82,6 @@ local function setup_edgy()
 					fillchars = "eob: ",
 				},
 				filter = wide_enough,
-				size = { width = 0.38 },
 			},
 			{
 				ft = "codecompanion",
@@ -70,11 +93,10 @@ local function setup_edgy()
 					fillchars = "eob: ",
 				},
 				filter = wide_enough,
-				size = { width = 0.38 },
 			},
 			{
 				ft = "snacks_terminal",
-				title = "AI 命令行",
+				title = "AI CLI",
 				wo = {
 					winbar = ai_winbar,
 					winhighlight = "WinBar:EdgyWinBar,Normal:EdgyNormal",
@@ -82,32 +104,31 @@ local function setup_edgy()
 					fillchars = "eob: ",
 				},
 				filter = function(buf, win)
-					return wide_enough(buf, win) and is_ai_terminal(buf)
+					return wide_enough(buf, win) and ai_panels.is_ai_terminal(buf)
 				end,
-				size = { width = 0.38 },
 			},
 		},
 		bottom = {
 			{
 				ft = "trouble",
-				title = "诊断",
+				title = "Diagnostics",
 				size = { height = 12 },
-				wo = { winbar = "%!v:lua.require'mayon.ui.bottom'.render()" },
+				wo = { winbar = bottom_winbar },
 			},
 			{
 				ft = "qf",
-				title = "快速修复",
+				title = "Quickfix",
 				size = { height = 10 },
-				wo = { winbar = "%!v:lua.require'mayon.ui.bottom'.render()" },
+				wo = { winbar = bottom_winbar },
 			},
 			{
 				ft = "snacks_terminal",
-				title = "终端",
+				title = "Terminal",
 				filter = function(buf, win)
-					return not is_ai_terminal(buf) and vim.api.nvim_win_get_config(win).relative == ""
+					return not ai_panels.is_ai_terminal(buf) and vim.api.nvim_win_get_config(win).relative == ""
 				end,
 				size = { height = 14 },
-				wo = { winbar = "%!v:lua.require'mayon.ui.bottom'.render()" },
+				wo = { winbar = bottom_winbar },
 			},
 		},
 		options = {
@@ -184,12 +205,8 @@ return {
 				filter_kind = false,
 				highlight_mode = "full_width",
 				highlight_closest = true,
-				-- The workbench owns opening/closing, including per-tab manual intent.
+				-- The workbench owns opening; the outline is manual-only.
 				open_automatic = false,
-				post_add_all_symbols = function(bufnr, items)
-					outline.on_symbols(bufnr)
-					return items
-				end,
 			})
 			outline.setup()
 		end,

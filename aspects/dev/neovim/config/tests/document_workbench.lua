@@ -13,13 +13,6 @@ local lua_lines = {
 	"return M",
 }
 vim.fn.writefile(lua_lines, lua_file)
-local tsx_file = root .. "/界面.tsx"
-vim.fn.writefile({
-	"type Props = { title: string }",
-	"export function Header(props: Props) {",
-	"  return <h1>{props.title}</h1>",
-	"}",
-}, tsx_file)
 
 vim.cmd.edit(vim.fn.fnameescape(lua_file))
 local doc = vim.api.nvim_get_current_buf()
@@ -65,177 +58,93 @@ local function wait_for_symbols(buf)
 	end, 25)
 end
 assert(wait_for_symbols(doc), "Aerial should produce symbols for the Lua fixture")
-outline.reconcile()
+
+local function outline_win()
+	for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+		if vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "aerial" then
+			return win
+		end
+	end
+end
+
+-- The outline is manual-only: a supported document with symbols stays closed
+-- until the user toggles it.
+assert(not outline.is_open(), "a supported document must not auto-open its outline")
+
+outline.toggle()
 assert(
 	vim.wait(1500, function()
 		return outline.is_open()
 	end),
-	"wide source buffer should open its Aerial outline"
+	"toggling on a supported document should open the Aerial outline"
 )
-local outline_win
-for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
-	if vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "aerial" then
-		outline_win = win
-	end
-end
-assert(outline_win, "Aerial outline window should exist")
-local outline_lines =
-	table.concat(vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(outline_win), 0, -1, false), "\n")
+assert(outline_win(), "Aerial outline window should exist")
 assert(
 	vim.wait(1500, function()
-		return table
-			.concat(vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(outline_win), 0, -1, false), "\n")
-			:find("render_title", 1, true) ~= nil
+		local win = outline_win()
+		return win
+			and table
+					.concat(vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(win), 0, -1, false), "\n")
+					:find("render_title", 1, true)
+				~= nil
 	end),
 	"outline should list a real Lua symbol"
 )
 
-vim.api.nvim_buf_set_lines(doc, 0, -1, false, { "-- no Lua symbols remain" })
-vim.api.nvim_exec_autocmds("TextChanged", { buffer = doc })
-assert(
-	vim.wait(5000, function()
-		return aerial.num_symbols(doc) == 0 and not outline.is_open()
-	end, 25),
-	"Aerial should close automatically after the final Lua symbol is removed"
-)
-vim.api.nvim_buf_set_lines(doc, 0, -1, false, lua_lines)
-vim.api.nvim_exec_autocmds("TextChanged", { buffer = doc })
-assert(
-	vim.wait(5000, function()
-		return aerial.num_symbols(doc) > 0 and outline.is_open()
-	end, 25),
-	"Aerial should restore after source symbols return"
-)
-
--- The shared right outline follows the active source split, not its first owner.
-local split_file = root .. "/split.lua"
-vim.fn.writefile({ "function split_only_symbol() return 1 end" }, split_file)
-vim.cmd.vsplit(vim.fn.fnameescape(split_file))
-local split_win = vim.api.nvim_get_current_win()
-assert(
-	vim.wait(3000, function()
-		for _, w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
-			local b = vim.api.nvim_win_get_buf(w)
-			if vim.bo[b].filetype == "aerial" then
-				return table
-					.concat(vim.api.nvim_buf_get_lines(b, 0, -1, false), "\n")
-					:find("split_only_symbol", 1, true) ~= nil
-			end
-		end
-		return false
-	end),
-	"outline should retarget to the newly active code split"
-)
-vim.api.nvim_set_current_win(doc_window)
-assert(
-	vim.wait(3000, function()
-		for _, w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
-			local b = vim.api.nvim_win_get_buf(w)
-			if vim.bo[b].filetype == "aerial" then
-				return table.concat(vim.api.nvim_buf_get_lines(b, 0, -1, false), "\n"):find("render_title", 1, true)
-					~= nil
-			end
-		end
-		return false
-	end),
-	"outline should retarget when focus returns to the original code split"
-)
-vim.api.nvim_win_close(split_win, true)
-
-vim.o.columns = 100
-outline.reconcile(doc)
-assert(not outline.is_open(), "narrow workbench should automatically close the outline")
-assert(outline.state().manual_closed == false, "automatic narrow close must not count as a manual close")
-vim.o.columns = 180
-outline.reconcile(doc)
-assert(
-	vim.wait(1000, function()
-		return outline.is_open()
-	end),
-	"wide resize should restore the automatic outline"
-)
-outline.toggle()
-assert(not outline.is_open() and outline.state().manual_closed, "manual close should persist for this tab")
-outline.reconcile(doc)
-assert(not outline.is_open(), "automatic reconciliation must respect a manual close")
-
--- A manual close is tab-local; a new supported document tab gets its outline.
-vim.cmd.tabnew()
-local second_tab = vim.api.nvim_get_current_tabpage()
-vim.cmd.edit(vim.fn.fnameescape(tsx_file))
-local tsx_buf = vim.api.nvim_get_current_buf()
-assert(outline.is_supported(tsx_buf), "Aerial should recognize the TSX Treesitter backend")
-assert(wait_for_symbols(tsx_buf), "Aerial should produce symbols for the TSX fixture")
-outline.reconcile(tsx_buf)
-assert(
-	vim.wait(1500, function()
-		return outline.is_open(second_tab)
-	end),
-	"new tab should open its outline independently"
-)
-local tsx_outline_win
-for _, win in ipairs(vim.api.nvim_tabpage_list_wins(second_tab)) do
-	if vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "aerial" then
-		tsx_outline_win = win
-	end
-end
-assert(tsx_outline_win, "TSX outline window should exist")
-local tsx_lines =
-	table.concat(vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(tsx_outline_win), 0, -1, false), "\n")
-assert(
-	vim.wait(1500, function()
-		return table
-			.concat(vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(tsx_outline_win), 0, -1, false), "\n")
-			:find("Header", 1, true) ~= nil
-	end),
-	"outline should list a real TSX symbol"
-)
-local terminal_buf = vim.api.nvim_create_buf(false, true)
-vim.bo[terminal_buf].filetype = "terminal"
-vim.api.nvim_set_current_buf(terminal_buf)
-outline.reconcile()
-assert(not outline.is_open(second_tab), "terminal focus should close and suppress the outline")
-local dashboard_buf = vim.api.nvim_create_buf(false, true)
-vim.bo[dashboard_buf].filetype = "snacks_dashboard"
-vim.api.nvim_set_current_buf(dashboard_buf)
-outline.reconcile()
-assert(not outline.is_open(second_tab), "dashboard focus should suppress the outline")
-vim.api.nvim_set_current_buf(tsx_buf)
-outline.reconcile(tsx_buf)
-assert(
-	vim.wait(1000, function()
-		return outline.is_open(second_tab)
-	end),
-	"returning to the TSX document should restore its automatic outline"
-)
+-- Focusing a side terminal beside the document and its outline must not
+-- reflow the layout.
+local document_win = vim.api.nvim_get_current_win()
 local side_terminal = vim.api.nvim_create_buf(false, true)
 vim.api.nvim_open_term(side_terminal, {})
 vim.cmd("botright vsplit")
-vim.api.nvim_win_set_buf(0, side_terminal)
+local side_win = vim.api.nvim_get_current_win()
+vim.api.nvim_win_set_buf(side_win, side_terminal)
+vim.api.nvim_set_current_win(document_win)
+vim.wait(50)
 local resized = 0
 local resize_watch = vim.api.nvim_create_autocmd("WinResized", {
 	callback = function()
 		resized = resized + 1
 	end,
 })
-outline.reconcile()
+vim.api.nvim_set_current_win(side_win)
 vim.wait(100)
 vim.api.nvim_del_autocmd(resize_watch)
-assert(outline.is_open(second_tab), "side terminal focus should keep the visible document's outline")
+assert(outline.is_open(), "side terminal focus should keep the document's outline")
 assert(resized == 0, "side terminal focus should not reflow the layout")
-vim.api.nvim_win_close(0, true)
-vim.cmd.tabprevious()
-assert(outline.state().manual_closed, "the first tab's manual close should be remembered independently")
-assert(not outline.is_open(), "returning to a manually closed tab should keep its outline hidden")
+vim.api.nvim_win_close(side_win, true)
+vim.api.nvim_set_current_win(document_win)
 
--- Plain text and tool buffers do not acquire an outline even on a wide view.
+-- Toggling again closes it.
+outline.toggle()
+assert(
+	vim.wait(1500, function()
+		return not outline.is_open()
+	end),
+	"a second toggle should close the outline"
+)
+
+-- A narrow editor must still let the user open the outline on demand.
+vim.o.columns = 100
+outline.toggle()
+assert(
+	vim.wait(1500, function()
+		return outline.is_open()
+	end),
+	"a narrow editor must still allow a manual outline open"
+)
+outline.toggle()
+assert(not outline.is_open(), "toggle off in the narrow editor")
+vim.o.columns = 180
+
+-- Plain text and tool buffers do not open an outline even when toggled.
 local text_file = root .. "/notes.txt"
 vim.fn.writefile({ "普通文本没有符号大纲" }, text_file)
 vim.cmd.edit(vim.fn.fnameescape(text_file))
 local text_buf = vim.api.nvim_get_current_buf()
 assert(not outline.is_supported(text_buf), "plain text should not claim an Aerial backend")
-outline.reconcile(text_buf)
-assert(not outline.is_open(), "unsupported plain text should not display an outline")
+outline.toggle()
+assert(not outline.is_open(), "unsupported plain text should not open an outline")
 
 -- The status helper tracks overlapping CodeCompanion requests by request ID.
 local status = require("mayon.ui.statusline")
