@@ -43,16 +43,12 @@ function M.set(provider)
 	if copilot_ready then
 		vim.lsp.enable("copilot", provider == "copilot")
 	end
-	vim.g.sidekick_nes = provider == "copilot"
 	vim.lsp.inline_completion.enable(provider == "copilot")
 	for _, buf in ipairs(vim.api.nvim_list_bufs()) do
 		if vim.api.nvim_buf_is_loaded(buf) and not M.allowed(buf) then
 			vim.lsp.inline_completion.enable(false, { bufnr = buf })
 		end
 		vim.b[buf].minuet_virtual_text_auto_trigger = provider == "deepseek" and M.allowed(buf)
-	end
-	if package.loaded["sidekick.nes"] then
-		require("sidekick.nes").clear()
 	end
 	if provider == "deepseek" then
 		require("lz.n").trigger_load("minuet-ai.nvim")
@@ -192,7 +188,6 @@ function M.copilot_setup()
 				return
 			end
 			vim.lsp.inline_completion.enable(M.provider == "copilot" and M.allowed(ev.buf), { bufnr = ev.buf })
-			require("lz.n").trigger_load("sidekick.nvim")
 		end,
 	})
 	vim.api.nvim_create_autocmd("CompleteChanged", {

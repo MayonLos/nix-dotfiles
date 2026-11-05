@@ -208,6 +208,22 @@ assert(
 	end),
 	"returning to the TSX document should restore its automatic outline"
 )
+local side_terminal = vim.api.nvim_create_buf(false, true)
+vim.api.nvim_open_term(side_terminal, {})
+vim.cmd("botright vsplit")
+vim.api.nvim_win_set_buf(0, side_terminal)
+local resized = 0
+local resize_watch = vim.api.nvim_create_autocmd("WinResized", {
+	callback = function()
+		resized = resized + 1
+	end,
+})
+outline.reconcile()
+vim.wait(100)
+vim.api.nvim_del_autocmd(resize_watch)
+assert(outline.is_open(second_tab), "side terminal focus should keep the visible document's outline")
+assert(resized == 0, "side terminal focus should not reflow the layout")
+vim.api.nvim_win_close(0, true)
 vim.cmd.tabprevious()
 assert(outline.state().manual_closed, "the first tab's manual close should be remembered independently")
 assert(not outline.is_open(), "returning to a manually closed tab should keep its outline hidden")

@@ -2,7 +2,6 @@
 local load = require("lz.n").trigger_load
 load({
 	"claudecode.nvim",
-	"sidekick.nvim",
 	"codecompanion.nvim",
 	"minuet-ai.nvim",
 	"edgy.nvim",
@@ -175,8 +174,7 @@ assert(
 -- Leave the synthetic chat open until the test process exits. The history
 -- extension resolves ChatClosed asynchronously and expects registered chats.
 
-assert(require("sidekick.config").cli.tools.claude == nil, "Claude must have one terminal owner")
-assert(require("sidekick.config").cli.tools.codex and require("sidekick.config").cli.tools.grok)
+assert(not pcall(require, "sidekick"), "Claude Code is the only AI CLI owner; Sidekick is removed")
 local mini_diff = require("mini.diff")
 assert(
 	mini_diff.config.view.style == "number",
@@ -186,7 +184,7 @@ assert(mini_diff.config.source.name == "manual", "MiniDiff must not attach as a 
 local completion = require("mayon.features.ai_completion")
 local existing = vim.api.nvim_create_buf(true, false)
 vim.api.nvim_set_current_buf(existing)
-assert(completion.set("deepseek") == "deepseek" and vim.g.sidekick_nes == false)
+assert(completion.set("deepseek") == "deepseek")
 assert(vim.b[existing].minuet_virtual_text_auto_trigger, "existing buffer missed DeepSeek auto trigger")
 local delivered = 0
 local pending_response = completion.guard(function()
@@ -221,7 +219,7 @@ vim.api.nvim_exec_autocmds("User", { pattern = "MinuetRequestFinished" })
 assert(completion.pending == 0)
 completion.busy = true
 assert(completion.set("off") == "off" and not completion.accept() and not completion.busy)
-assert(completion.set("copilot") == "copilot" and vim.g.sidekick_nes == true)
+assert(completion.set("copilot") == "copilot")
 assert(not pcall(completion.set, "invalid"))
 completion.set("off")
 assert(require("minuet").config.provider == "openai_fim_compatible")
@@ -231,9 +229,8 @@ for _, key in ipairs({
 	" as",
 	" aA",
 	" aD",
-	" ax",
-	" ag",
 	" ad",
+	" aC",
 	" ai",
 	" af",
 	" ae",
@@ -433,5 +430,37 @@ for _, mode in ipairs({ "n", "x", "i", "t" }) do
 	end
 	print("keymaps " .. mode .. ": " .. vim.tbl_count(seen) .. ", duplicate/prefix conflicts=0")
 end
+-- The Claude terminal position follows the current width, not the width at
+-- plugin load time.
+local claude_terminal = require("claudecode.terminal")
+vim.o.columns = 100
+assert(claude_terminal.defaults.snacks_win_opts.position == "float", "narrow Claude terminal should float")
+vim.o.columns = 200
+assert(claude_terminal.defaults.snacks_win_opts.position == "right", "wide Claude terminal should split right")
+-- A narrower terminal re-fits the fixed-width AI side panel instead of
+-- squeezing the document window.
+local columns_before = vim.o.columns
+vim.o.columns = 200
+for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+	if vim.api.nvim_win_get_config(win).relative == "" then
+		vim.api.nvim_set_current_win(win)
+		break
+	end
+end
+local panel_buf = vim.api.nvim_create_buf(false, true)
+vim.api.nvim_open_term(panel_buf, {})
+vim.bo[panel_buf].filetype = "claudecode"
+vim.cmd("botright 76vsplit")
+vim.api.nvim_win_set_buf(0, panel_buf)
+local panel_win = vim.api.nvim_get_current_win()
+vim.wo[panel_win].winfixwidth = true
+vim.cmd("wincmd p")
+vim.o.columns = 110
+assert(
+	vim.api.nvim_win_get_width(panel_win) == 41,
+	"AI panel kept its wide width: " .. vim.api.nvim_win_get_width(panel_win)
+)
+vim.api.nvim_win_close(panel_win, true)
+vim.o.columns = columns_before
 assert(vim.v.errmsg == "", vim.v.errmsg)
 print("AI adapters, provider switching, inline and Claude accept/reject, layouts and keys passed")

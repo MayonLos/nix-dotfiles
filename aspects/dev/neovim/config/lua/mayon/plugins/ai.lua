@@ -188,6 +188,23 @@ local function companion()
 	require("mayon.features.cc_minidiff").setup()
 	require("mayon.features.cc_inline_indicator").setup()
 end
+local function claude_position()
+	return vim.o.columns < 120 and "float" or "right"
+end
+-- Snacks reads the position each time it shows a window. Keep both the
+-- template for a new Claude terminal and a hidden existing one in step with
+-- the current width, so a session started narrow does not stay a float.
+local function sync_claude_position()
+	local position = claude_position()
+	local terminal = require("claudecode.terminal")
+	terminal.defaults.snacks_win_opts.position = position
+	local bufnr = terminal.get_active_terminal_bufnr()
+	for _, term in ipairs(bufnr and Snacks.terminal.list() or {}) do
+		if term.buf == bufnr and not term:win_valid() then
+			term.opts.position = position
+		end
+	end
+end
 local function claude()
 	require("mayon.ui.ai_panels").setup()
 	require("claudecode").setup({
@@ -199,7 +216,7 @@ local function claude()
 			split_side = "right",
 			split_width_percentage = 0.36,
 			snacks_win_opts = {
-				position = vim.o.columns < 120 and "float" or "right",
+				position = claude_position(),
 				border = "single",
 				title = " Claude Code ",
 				bo = { filetype = "claudecode" },
@@ -213,28 +230,54 @@ local function claude()
 			keep_terminal_focus = false,
 		},
 	})
-	-- The pinned plugin has no public connection User event. Poll only after
-	-- loading Claude, and redraw only on a connection transition.
+	-- The pinned plugin has no public connection User event. Only the AI panel
+	-- winbars show the state, so poll while one is on screen and redraw only on
+	-- a connection transition.
 	local connected = require("claudecode").is_claude_connected()
 	local timer = assert(vim.uv.new_timer())
-	timer:start(
-		500,
-		500,
-		vim.schedule_wrap(function()
-			local current = require("claudecode").is_claude_connected()
-			if current ~= connected then
-				connected = current
-				vim.api.nvim_exec_autocmds("User", { pattern = "MayonAIStatus", modeline = false })
-				vim.cmd.redrawstatus()
+	local function panel_visible()
+		for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+			if vim.wo[win].winbar:find("ai_panels", 1, true) then
+				return true
 			end
-		end)
-	)
+		end
+		return false
+	end
+	local function poll()
+		local current = require("claudecode").is_claude_connected()
+		if current ~= connected then
+			connected = current
+			vim.cmd("redrawstatus!")
+		end
+		if not panel_visible() then
+			timer:stop()
+		end
+	end
+	local function ensure_poll()
+		if not timer:is_closing() and not timer:is_active() and panel_visible() then
+			poll()
+			timer:start(500, 500, vim.schedule_wrap(poll))
+		end
+	end
+	vim.api.nvim_create_autocmd({ "BufWinEnter", "WinEnter", "TabEnter" }, {
+		group = vim.api.nvim_create_augroup("MayonClaudeStatus", { clear = true }),
+		callback = function()
+			-- Edgy and the panel styling set the winbar after the window opens.
+			vim.schedule(ensure_poll)
+		end,
+	})
+	vim.schedule(ensure_poll)
 	vim.api.nvim_create_autocmd("VimLeavePre", {
 		once = true,
 		callback = function()
 			timer:stop()
 			timer:close()
 		end,
+	})
+
+	vim.api.nvim_create_autocmd("VimResized", {
+		group = vim.api.nvim_create_augroup("MayonClaudePosition", { clear = true }),
+		callback = sync_claude_position,
 	})
 
 	vim.api.nvim_create_autocmd({ "BufWinEnter", "WinEnter" }, {
@@ -261,32 +304,6 @@ local function claude()
 		end,
 	})
 end
-local function sidekick()
-	require("mayon.ui.ai_panels").setup()
-	require("sidekick").setup({
-		nes = {
-			enabled = function(buf)
-				return require("mayon.features.ai_completion").provider == "copilot"
-					and require("mayon.features.ai_completion").allowed(buf)
-			end,
-		},
-		cli = {
-			mux = { enabled = false },
-			win = {
-				layout = vim.o.columns < 120 and "float" or "right",
-				split = { width = 60 },
-				nav = function(dir)
-					local name = ({ h = "left", j = "down", k = "up", l = "right" })[dir]
-					require("lz.n").trigger_load("smart-splits.nvim")
-					require("smart-splits")["move_cursor_" .. name]()
-				end,
-			},
-		},
-	})
-	-- 2.3.0 deep-merges defaults and has no disable flag per tool. Replace the
-	-- public tools table after setup so Claude has exactly one terminal owner.
-	require("sidekick.config").cli.tools = { codex = { cmd = { "codex" } }, grok = { cmd = { "grok" } } }
-end
 local function cc_prompt(name)
 	if not require("mayon.features.ai_completion").require_deepseek_key() then
 		return false
@@ -294,40 +311,6 @@ local function cc_prompt(name)
 	require("lz.n").trigger_load("codecompanion.nvim")
 	require("codecompanion").prompt(name)
 	return true
-end
-local function send(message)
-	if vim.fn.executable("codex") ~= 1 and vim.fn.executable("grok") ~= 1 then
-		vim.notify(
-			"未找到 Codex 或 Grok 命令；请先将 CLI 加入 PATH",
-			vim.log.levels.WARN,
-			{ title = "Sidekick" }
-		)
-		return false
-	end
-	local ok, err = pcall(function()
-		require("lz.n").trigger_load("sidekick.nvim")
-		require("sidekick.cli").send({ msg = message, focus = false })
-	end)
-	if not ok then
-		vim.notify("无法发送到 Sidekick：" .. tostring(err), vim.log.levels.WARN, { title = "Sidekick" })
-	end
-	return ok
-end
-local function toggle_cli(name)
-	if vim.fn.executable(name) ~= 1 then
-		vim.notify(name .. " 不在 PATH 中；请先安装或启用对应开发环境", vim.log.levels.WARN, {
-			title = "Sidekick",
-		})
-		return false
-	end
-	local ok, err = pcall(function()
-		require("lz.n").trigger_load("sidekick.nvim")
-		require("sidekick.cli").toggle({ name = name, focus = true })
-	end)
-	if not ok then
-		vim.notify("无法启动 " .. name .. "：" .. tostring(err), vim.log.levels.WARN, { title = "Sidekick" })
-	end
-	return ok
 end
 local function map(lhs, rhs, desc, mode)
 	return { lhs, rhs, desc = desc, mode = mode or "n" }
@@ -355,43 +338,15 @@ return {
 					vim.cmd("ClaudeCodeSend")
 				end
 			end, "Send Selection to Claude", "v"),
+			map("<leader>af", function()
+				if not notify_cli_missing("claude", "Claude Code") then
+					vim.cmd("ClaudeCodeAdd %")
+				end
+			end, "Add File to Claude"),
 			map("<leader>aA", "<cmd>ClaudeCodeDiffAccept<cr>", "Accept Claude Changes"),
 			map("<leader>aD", "<cmd>ClaudeCodeDiffDeny<cr>", "Reject Claude Changes"),
 		},
 		after = claude,
-	},
-	{
-		"sidekick.nvim",
-		cmd = "Sidekick",
-		keys = {
-			map("<leader>ax", function()
-				toggle_cli("codex")
-			end, "Toggle Codex CLI"),
-			map("<leader>ag", function()
-				toggle_cli("grok")
-			end, "Toggle Grok CLI"),
-			map("<leader>af", function()
-				send("{file}")
-			end, "Send File to AI CLI"),
-			map("<leader>av", function()
-				send("{selection}")
-			end, "Send Selection to AI CLI", "v"),
-			map("<leader>aE", function()
-				send("{diagnostics}")
-			end, "Send Diagnostics to AI CLI"),
-			map("<leader>aG", function()
-				local result = vim.system({ "git", "diff", "--no-ext-diff" }, { text = true }):wait()
-				if result.code == 0 then
-					send("请审阅以下 Git diff：\n" .. result.stdout)
-				end
-			end, "Send Git Diff to AI CLI"),
-			map("<Tab>", function()
-				if not require("sidekick").nes_jump_or_apply() then
-					vim.api.nvim_feedkeys(vim.keycode("<Tab>"), "n", false)
-				end
-			end, "Apply Next Copilot Edit"),
-		},
-		after = sidekick,
 	},
 	{
 		"codecompanion.nvim",
@@ -403,6 +358,10 @@ return {
 					vim.cmd("CodeCompanionChat Toggle")
 				end
 			end, "Open DeepSeek Chat", { "n", "v" }),
+			map("<leader>aC", function()
+				require("lz.n").trigger_load("codecompanion.nvim")
+				vim.cmd.CodeCompanionChat("adapter=claude_code")
+			end, "Open Claude ACP Chat", { "n", "v" }),
 			map("<leader>ai", function()
 				if require("mayon.features.ai_completion").require_deepseek_key() then
 					require("lz.n").trigger_load("codecompanion.nvim")

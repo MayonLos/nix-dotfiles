@@ -20,16 +20,12 @@ checks: [neovim]
    每次审阅对应一个文件提案，不是逐 hunk 批准。锁定 0.3.0 的接受命令返回 `FILE_SAVED`
    与编辑后的文本给 CLI，由 CLI 写入目标文件；CLI 随后 `close_tab` 清理视图。
    拒绝返回 `DIFF_REJECTED`，不会写源文件。未保存的原文件会被上游拒绝打开 diff。
-2. **sidekick.nvim** 管理 Codex/Grok 原生 TUI；`<Space>ax/ag` 切换工具，
-   `<Space>af/av/aE/aG` 将文件/选区/诊断/Git diff 交给当前会话。
-   没有活跃会话时选择工具。发送只插入上下文，不自动提交。Claude 从工具表移除，避免第二终端。
-   CLI 退出后的改动通过 watch/checktime 刷新，保留缓冲区未保存保护。
-   NES 与原生 inline completion 共享单个 `copilot` LSP：sidekick 2.3 按客户端名发现它，
-   直接调用 `textDocument/copilotInlineEdit`。普通模式 `Tab` 跳到/应用下一编辑，
-   没有建议时透传 Tab；插入模式 Tab 由独立幽灵文本模块处理。
+2. Sidekick（Codex/Grok TUI 与 Copilot NES）已于 2026-11-05 移除；Claude Code 是唯一的 AI CLI 面板，
+   `<Space>af` 把当前文件加入 Claude 上下文。Codex 仍可作为 CodeCompanion 的 ACP adapter 使用。
 3. **CodeCompanion 19.27** 默认 DeepSeek HTTP 对话与内联改写；中文 prompt library 包含解释报错、
    为选区写测试、提交信息草稿、重构与注释。历史扩展保持原目录、自动本地保存、不额外请求标题。
-   对话中 `ga` 切换 adapter，可选 `codex` / `claude_code` ACP；这与 CLI 的原生 TUI 是不同入口。
+   对话中 `ga` 切换 adapter，可选 `codex` / `claude_code` ACP；`<Space>aC` 直接打开 `claude_code` 对话。
+   这与 CLI 的原生 TUI 是不同入口；CodeCompanion 自带的 CLI interaction 未启用，CLI 由 claudecode.nvim 承担。
    ACP 使用 llm-agents 的 `codex-acp` 2.2.2 / `claude-agent-acp` 0.95.0，不运行 npx。
    独立 flake 包由 `nix/outputs.nix` 注入绝对路径；HM 消费 ai-workbench 的公开会话变量
    `NVIM_CODEX_ACP` / `NVIM_CLAUDE_ACP`，应用后需新登录会话。无有效路径时报错。
@@ -45,7 +41,7 @@ checks: [neovim]
 的 `lsp/copilot.lua`。认证由服务器在运行时管理，不读取或迁移既有凭据。
 `␣au` / `␣ua` 或 `:AICompletion copilot|deepseek|off` 三态切换。DeepSeek 使用 Minuet
 virtualtext 前端，仅读 `DEEPSEEK_API_KEY`，不写入 Nix/store；使用 FIM beta/completions。
-无 Key 显示说明；不会自动切到付费兜底。切换后丢弃晚到 DeepSeek 响应并关闭其他引擎与 NES。
+无 Key 显示说明；不会自动切到付费兜底。切换后丢弃晚到 DeepSeek 响应并关闭其他引擎。
 菜单打开时隐藏幽灵文本。插入 `Tab` 接受整条建议；`Ctrl+→` / `Alt+l` 接受一个词，
 `Alt+]` / `Alt+[` 轮换，`Esc` / `Ctrl+]` 拒绝。Tab 无建议时跳原生片段，再回退缩进。
 
@@ -72,7 +68,7 @@ Gitsigns 单独拥有 Git sign 列；mini.diff 只在内联审阅时用行号/ov
 按需加载，现状见[功能 README 的 Debugging 一节](../aspects/dev/neovim/README.md#debugging)。
 删除 overseer 与任务模板，用项目终端/AI CLI 跑项目任务；删除 smear-cursor，避免与 Kitty
 cursor_trail 重复。最新原生替换见下表；文件安全和用户状态保留。
-claudecode、sidekick、Minuet、mini.diff、edgy、smart-splits 与 codediff 来自锁定 stable。
+claudecode、Minuet、mini.diff、edgy、smart-splits 与 codediff 来自锁定 stable。
 Home Manager 与独立 flake 包均通过 `pkgs.unstable.codecompanion-nvim` 使用 CodeCompanion
 19.27.0；该包名在 `nix/pkgs.nix` 的 unstable 白名单中登记。原因是 stable 19.13 缺少后续修复与 ACP
 改进，v20 有破坏性变更，待 nixpkgs 收录后另行迁移。其 Plenary runtime 依赖保持 stable，
@@ -95,7 +91,7 @@ CodeCompanion/Claude 按命令或按键，Minuet 手动切换后加载；Copilot
 | 替换前 | 替换后 | 行为与边界 |
 |---|---|---|
 | blink.cmp 与 AI source | 原生 LSP 菜单 + 独立幽灵文本 | 少量 LSP 需求；片段/路径走原生；无 AI 菜单项 |
-| copilot.lua / copilot-lsp | inline_completion + Nix Copilot server | 同一个 client 供 Sidekick NES 使用 |
+| copilot.lua / copilot-lsp | inline_completion + Nix Copilot server | 单个 client 只做 inline completion |
 | Noice / nui | `vim._core.ui2.enable()` | 实验接口；消息 pager 为 buffer，命令行实时高亮；通知仍 Snacks |
 | 自写 LSP progress 聚合 | Progress + `vim.ui.progress_status()` / busy | 状态栏读取原生摘要 |
 | 无撤销树入口 | `packadd nvim.undotree` + `:Undotree` | `␣su` 按需加载，原 undo 数据保留 |
@@ -136,8 +132,10 @@ nvim-lint、render-markdown、rainbow-delimiters 和限定 filetypes 的 coloriz
 
 ## 布局、语言与状态
 
-Edgy 左 Explorer，右 Claude/CodeCompanion/sidekick，下 Trouble、quickfix 与普通终端；
-小窗口不固定左右侧栏，AI 创建时用浮窗。统一标题、圆角浮窗和 palette 面板/diff 高亮。
+Edgy 左 Explorer，右 Claude/CodeCompanion，下 Trouble、quickfix 与普通终端；
+小窗口不固定左右侧栏，AI 面板用浮窗；Claude 终端每次显示时按当前宽度选择浮窗或右侧栏。终端缩放（如 Mango 平铺成半屏）后 AI 侧栏重新按
+`max(36, 38% 宽度)` 取宽，文档窗口不会被挤成一列。焦点进入 Claude 终端时符号大纲保持打开，
+避免右侧重排改变 CLI 的 pty 尺寸。统一标题、圆角浮窗和 palette 面板/diff 高亮。
 Ctrl+h/j/k/l 用 smart-splits 穿过 Neovim 与 tmux 面板，Alt+h/j/k/l 调整大小。
 tmux 一侧的配置在 `aspects/cli/shell/tmux.nix`。
 真实 tmux、TTY Alt/Tab、窗口缩放和美观仍需实机验收。
@@ -160,7 +158,7 @@ Claude CLI 实际写盘或 GUI 美观的证明。实际 health、构建命令与
 
 ## 待办
 
-- 应用后验收 Copilot 登录、灰色建议/逐词/候选/菜单互斥、Sidekick NES；DeepSeek 实际 FIM；
+- 应用后验收 Copilot 登录、灰色建议/逐词/候选/菜单互斥；DeepSeek 实际 FIM；
   codediff 暂存/提交/PR/冲突、ui2 真实 TUI 命令行/pager、restart 保留 UI、窄屏和 Alt 按键。
 
 Home Manager 与独立 `neovim` / `neovim-dev` 输出现均通过

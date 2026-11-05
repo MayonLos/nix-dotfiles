@@ -27,14 +27,6 @@ let
       dependencies = [ vimPlugins.plenary-nvim ];
     }))
     vimPlugins.claudecode-nvim
-    (vimPlugins.sidekick-nvim.overrideAttrs (old: {
-      # Switching native inline completion to DeepSeek/off also disables NES.
-      # Sidekick's CLI remains usable without a Copilot client in that state.
-      postPatch = (old.postPatch or "") + ''
-        substituteInPlace lua/sidekick/health.lua \
-          --replace-fail '  if not found then' '  if not found and (Config.nes.enabled == false or vim.g.sidekick_nes == false) then vim.health.info("Copilot NES disabled; no Copilot LSP required") elseif not found then'
-      '';
-    }))
     vimPlugins.minuet-ai-nvim
     vimPlugins.mini-diff
     vimPlugins.edgy-nvim

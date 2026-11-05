@@ -146,7 +146,7 @@ Zsh 的 `Ctrl+R` 由 Atuin 搜索本地命令历史，使用 compact 视图、�
 ## Neovim 键位
 
 Leader 为 Space（下表 `␣`），localleader 为逗号。which-key 分组为中文与统一 Nerd Font 图标。
-未列出的 Vim 原生移动、窗口、编辑和折叠键继续可用；`s`、普通模式 Tab 为明确自定义入口。
+未列出的 Vim 原生移动、窗口、编辑和折叠键继续可用；`s` 为明确自定义入口。
 
 | 键位 | 行为 |
 |---|---|
@@ -168,9 +168,9 @@ Leader 为 Space（下表 `␣`），localleader 为逗号。which-key 分组为
 | `␣gS` / `gR` / `gq` / `gB` | 暂存整个文件 / 还原整个文件 / hunk quickfix / 远程浏览 |
 | `␣ac` / `as` | Claude 终端 / 发送可视选区到 Claude |
 | `␣aA` / `aD`；建议 buffer `,a` / `,r` | 接受 / 拒绝 Claude 当前文件提案 |
-| `␣ax` / `ag` | Codex / Grok 原生 TUI |
-| `␣af` / `av`（可视）/ `aE` / `aG` | 发送文件 / 选区 / 诊断 / Git diff 到当前 CLI |
+| `␣af` | 把当前文件加入 Claude 上下文 |
 | `␣ad` / `ai` | DeepSeek 对话 / 内联改写（普通或可视） |
+| `␣aC` | Claude Code ACP 对话（CodeCompanion 缓冲区，可搜索/复制/存历史） |
 | `␣ae` / `at`（可视）/ `am` | 解释诊断 / 为选区写测试 / 起草提交信息 |
 | `␣ap` / `ah` | 中文 prompt library / 对话历史 |
 | `␣au` 或 `␣ua` | copilot → deepseek → off 补全切换 |
@@ -194,10 +194,9 @@ Leader 为 Space（下表 `␣`），localleader 为逗号。which-key 分组为
 | 插入 `Ctrl+y` / `Enter`；`Ctrl+n/p`；`Ctrl+e` | 显式确认所选项（Enter 未选择则换行）；上下选择；关闭菜单 |
 | 插入 `Ctrl+Space`；`Ctrl+x Ctrl+f`；C++ `Ctrl+x Ctrl+u` | 原生 LSP 补全；原生路径补全；仓库 C++ 片段源 |
 | 插入 `Ctrl+→` 或 `Alt+l`；`Esc` / `Ctrl+]` | 接受 AI 一个词；拒绝幽灵文本（无建议时 Esc 退出插入） |
-| 插入 `Alt+]` / `Alt+[`；普通 `Tab` | 轮换 AI 建议；Copilot NES 跳到/应用（无建议透传） |
+| 插入 `Alt+]` / `Alt+[` | 轮换 AI 建议 |
 
 原生 LSP 菜单不预选；选中候选时 popup 显示文档，边框跟随 rounded。输入 `(` / `,` 自动签名帮助。
 AI 只显示灰色幽灵文本，不进入补全菜单；菜单显示期间隐藏 Copilot/Minuet 幽灵文本。
-普通模式 Tab 只负责 Sidekick NES，与插入模式 Tab 分开。
 窗口原生 `Ctrl+w` 与折叠 `zR/zM/zc/zo` 保留。所有破坏性文件操作继续走已有 fileops 保护。
 CodeCompanion 的 `ga` 切 adapter；聊天内 `gh` 浏览历史、`,h` 保存当前聊天。

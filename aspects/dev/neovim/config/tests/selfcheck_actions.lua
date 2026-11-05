@@ -166,10 +166,6 @@ local function safe_map(map)
 	if not map.desc then
 		return "skip", "no user description; likely native or plugin mapping"
 	end
-	if description == "toggle codex cli" or description == "toggle grok cli" then
-		return "skip",
-			"Sidekick creates an interactive terminal session whose channel cannot be represented by an offline process stub"
-	end
 	local unsafe = {
 		"save",
 		"write",
@@ -199,7 +195,6 @@ local function safe_map(map)
 		"codecompanion",
 		"grok",
 		"codex",
-		"sidekick",
 		"completion",
 		"session",
 		"quit",
@@ -232,7 +227,6 @@ local function safe_map(map)
 				or token == "codecompanion"
 				or token == "grok"
 				or token == "codex"
-				or token == "sidekick"
 			then
 				reason = "AI request boundary: no offline response fixture is wired to this mapping; no request sent"
 				if token == "completion" and description == "cycle ai completion" then
@@ -457,10 +451,6 @@ local function with_offline_boundaries(callback, description)
 	-- Workspace dispatch is the effect boundary for the keymap's Git, AI,
 	-- terminal and project tool-window actions. The keymap callback itself runs.
 	replace(workspace, "action", "workspace.action")
-	if description:lower():find("codex", 1, true) or description:lower():find("grok", 1, true) then
-		require("lz.n").trigger_load("sidekick.nvim")
-		replace(require("sidekick.cli"), "toggle", "sidekick.cli.toggle")
-	end
 	if
 		description:lower():find("git", 1, true)
 		or description:lower():find("hunk", 1, true)
@@ -905,12 +895,7 @@ local function command_inventory(commands, scope, buffer)
 			row.reason = "starts a listener; network/socket action prohibited"
 		elseif name:match("^Texlab") then
 			row.reason = "requires a TeX document or external texlab/build process"
-		elseif
-			name:match("CodeCompanion")
-			or name:match("Minuet")
-			or name:match("Sidekick")
-			or name:match("ClaudeCode")
-		then
+		elseif name:match("CodeCompanion") or name:match("Minuet") or name:match("ClaudeCode") then
 			row.reason = "AI request/CLI boundary; no offline response fixture is bound to this command"
 		elseif name:match("Dap") or name:match("Debug") then
 			row.reason = "requires a debug target or starts a process/listener; none started"

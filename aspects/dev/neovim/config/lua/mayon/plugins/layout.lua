@@ -18,11 +18,24 @@ end
 local function is_ai_terminal(buf)
 	local filetype = vim.bo[buf].filetype
 	local cmd = terminal_command(buf)
-	return filetype == "sidekick_terminal"
-		or filetype == "sidekick"
-		or cmd:match("claude") ~= nil
-		or cmd:match("codex") ~= nil
-		or cmd:match("grok") ~= nil
+	return filetype == "claudecode" or cmd:match("claude") ~= nil
+end
+
+local function ai_panel_width()
+	return math.max(36, math.floor(vim.o.columns * 0.38))
+end
+
+-- Edgy sizes its windows when they open. Panels keep winfixwidth, so a later
+-- terminal resize (e.g. Mango tiling kitty to half width) would squeeze the
+-- document window to a single column. Re-apply the proportional width.
+local function fit_ai_panels()
+	for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+		local buf = vim.api.nvim_win_get_buf(win)
+		local filetype = vim.bo[buf].filetype
+		if vim.api.nvim_win_get_config(win).relative == "" and (filetype == "codecompanion" or is_ai_terminal(buf)) then
+			vim.api.nvim_win_set_width(win, ai_panel_width())
+		end
+	end
 end
 
 local function setup_edgy()
@@ -73,18 +86,6 @@ local function setup_edgy()
 				end,
 				size = { width = 0.38 },
 			},
-			{
-				ft = "sidekick_terminal",
-				title = "Sidekick AI",
-				wo = {
-					winbar = ai_winbar,
-					winhighlight = "WinBar:EdgyWinBar,Normal:EdgyNormal",
-					signcolumn = "yes:1",
-					fillchars = "eob: ",
-				},
-				filter = wide_enough,
-				size = { width = 0.38 },
-			},
 		},
 		bottom = {
 			{
@@ -115,11 +116,7 @@ local function setup_edgy()
 					return math.min(30, math.max(22, math.floor(vim.o.columns * 0.28)))
 				end,
 			},
-			right = {
-				size = function()
-					return math.max(36, math.floor(vim.o.columns * 0.38))
-				end,
-			},
+			right = { size = ai_panel_width },
 			bottom = { size = 12 },
 		},
 		animate = { enabled = false },
@@ -130,6 +127,10 @@ local function setup_edgy()
 			spell = false,
 			signcolumn = "no",
 		},
+	})
+	vim.api.nvim_create_autocmd({ "VimResized", "TabEnter" }, {
+		group = vim.api.nvim_create_augroup("MayonAIPanelWidth", { clear = true }),
+		callback = fit_ai_panels,
 	})
 end
 

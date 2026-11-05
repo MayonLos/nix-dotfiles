@@ -112,10 +112,9 @@ local function document_buffer(tabpage)
 	tabpage = tabpage or tab()
 	local current_win = vim.api.nvim_tabpage_get_win(tabpage)
 	local current = vim.api.nvim_win_get_buf(current_win)
-	local ft = vim.bo[current].filetype
-	if vim.bo[current].buftype == "terminal" or ft == "terminal" or ft == "snacks_dashboard" then
-		return nil
-	end
+	-- Focus in a side terminal (Claude Code) keeps the visible document's
+	-- outline. Closing it would reflow the right edge and resize the CLI's pty
+	-- on every focus change; a terminal that replaced the document finds none.
 	if is_document_buffer(current) then
 		return current
 	end

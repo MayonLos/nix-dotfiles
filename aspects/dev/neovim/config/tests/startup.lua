@@ -134,7 +134,6 @@ for _, module in ipairs({
 	"lazydev",
 	"oil",
 	"claudecode",
-	"sidekick",
 	"copilot",
 	"minuet",
 	"edgy",

@@ -5,7 +5,7 @@ local float_before = {}
 for _, name in ipairs({ "NormalFloat", "FloatBorder", "FloatTitle" }) do
 	float_before[name] = vim.api.nvim_get_hl(0, { name = name, link = false })
 end
-require("lz.n").trigger_load({ "codecompanion.nvim", "claudecode.nvim", "sidekick.nvim", "edgy.nvim" })
+require("lz.n").trigger_load({ "codecompanion.nvim", "claudecode.nvim", "edgy.nvim" })
 local panels = require("mayon.ui.ai_panels")
 local original_diff_add = vim.api.nvim_get_hl(0, { name = "DiffAdd" })
 local original_diff_delete = vim.api.nvim_get_hl(0, { name = "DiffDelete" })

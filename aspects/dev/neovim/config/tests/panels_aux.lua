@@ -204,7 +204,7 @@ vim.cmd("cclose")
 vim.fn.setqflist({}, "r")
 vim.api.nvim_buf_delete(scratch, { force = true })
 
-local auth_notice = { msg = "Copilot: You are not signed into GitHub.", title = "Sidekick", level = "error" }
+local auth_notice = { msg = "Copilot: You are not signed into GitHub.", title = "Copilot", level = "error" }
 assert(require("mayon.ui.notifications").filter(auth_notice))
 assert(auth_notice.level == "info" and auth_notice.msg:find("尚未登录", 1, true))
 local actual_error = { msg = "Language server crashed", title = "LSP", level = "error" }

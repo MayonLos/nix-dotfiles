@@ -284,27 +284,6 @@ local function provider(buf)
 		end
 		local model = vim.env.ANTHROPIC_MODEL or "Claude Code"
 		return "Claude", (connected and "已连接" or "未连接") .. " · " .. model, connected
-	elseif ft == "sidekick_terminal" or ft == "sidekick" or cmd:find("codex", 1, true) then
-		local tool = vim.b[buf].sidekick_cli
-		local name = type(tool) == "table" and tool.name or tool
-		name = name or (cmd:find("codex", 1, true) and "codex") or "AI CLI"
-		local status = "已启动"
-		local ok, sessions = pcall(function()
-			return require("sidekick.status").cli()
-		end)
-		if ok then
-			local attached = false
-			for _, session in ipairs(sessions or {}) do
-				if session.tool == name or session.tool == tostring(name):lower() then
-					attached = true
-					break
-				end
-			end
-			status = attached and "已连接" or "已启动"
-		end
-		local label = tostring(name):lower() == "codex" and "Codex" or tostring(name)
-		local model = vim.env.CODEX_MODEL or "Codex CLI"
-		return label, status .. " · " .. model, status == "已连接"
 	elseif ft == "codecompanion" then
 		local ok, chat = pcall(function()
 			local last = require("codecompanion").last_chat()
@@ -341,18 +320,10 @@ local function provider_state(label)
 			connected = connected_ok and value == true
 		end
 		return connected and "connected" or "offline"
-	elseif label == "Codex" then
-		local ok, sessions = pcall(function()
-			return require("sidekick.status").cli()
-		end)
-		if ok then
-			for _, session in ipairs(sessions or {}) do
-				if tostring(session.tool):lower() == "codex" then
-					return "connected"
-				end
-			end
-		end
-		return "offline"
+	elseif label ~= "DeepSeek" then
+		-- Codex and other ACP adapters only appear as the active panel and
+		-- expose no connection state here.
+		return "configured"
 	end
 	return vim.env.DEEPSEEK_API_KEY ~= nil and vim.env.DEEPSEEK_API_KEY ~= "" and "configured" or "offline"
 end
@@ -378,7 +349,11 @@ function M.winbar(buf)
 		return "%#MayonAIActive# " .. active .. " %*%=%#MayonAIPanelMuted#" .. statusline_text(status) .. " %*"
 	end
 	local tabs = {}
-	for _, label in ipairs({ "Claude", "Codex", "DeepSeek" }) do
+	local labels = { "Claude", "DeepSeek" }
+	if not vim.tbl_contains(labels, active) then
+		labels[#labels + 1] = active
+	end
+	for _, label in ipairs(labels) do
 		local tab_state = provider_state(label)
 		local dot = "%#" .. states[tab_state] .. "#●%*"
 		tabs[#tabs + 1] = dot .. (label == active and "%#MayonAIActive# " or "%#MayonAIInactive# ") .. label .. " %*"
