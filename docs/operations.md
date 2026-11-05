@@ -37,7 +37,7 @@ nix eval --no-write-lock-file --raw .#checks.x86_64-linux --apply 'c: builtins.c
 - Home Manager 随系统一起切换，没有独立 switch。`nixos-rebuild test` 也会激活配置，不是只读检查。
 - 应用后要手动处理的：Noctalia 不会自动重启（见 [desktop.md](desktop.md)）；合成器、greeter、内核相关改动要重新登录或重启。
 - 回滚：启动菜单选上一代，或 `sudo nixos-rebuild switch --rollback`。之后核对 system 和 Home Manager generation。回滚不能替代应用数据备份。
-- 清理：`nc`（`nh clean all`）会删旧 generation，确认不再需要回退和诊断后再用。
+- 清理：`nc`（`nh clean all --keep 5 --keep-since 14d --keep-one`）会删旧 generation，确认不再需要回退和诊断后再用。`--keep-one` 为每个 direnv 项目保留一个 gcroot，避免项目 devshell 的源码（如 HAL flake inputs）被回收后 clangd 找不到头文件。
 
 ## 未跟踪文件
 

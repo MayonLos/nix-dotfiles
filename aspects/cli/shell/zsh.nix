@@ -154,7 +154,7 @@ in
         ".." = "cd ..";
         "..." = "cd ../..";
         nr = "nh os switch";
-        nc = "nh clean all";
+        nc = "nh clean all --keep 5 --keep-since 14d --keep-one";
         lg = "lazygit";
         ff = "fastfetch";
         bt = "btop";

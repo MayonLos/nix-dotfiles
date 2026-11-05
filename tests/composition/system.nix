@@ -43,7 +43,7 @@ let
         !c.nix.settings.keep-outputs
         && c.nix.optimise.automatic
         && !c.nix.settings.auto-optimise-store
-        && c.programs.nh.clean.extraArgs == "--keep 5 --keep-since 14d"
+        && c.programs.nh.clean.extraArgs == "--keep 5 --keep-since 14d --keep-one"
         &&
           builtins.length (
             builtins.filter (
