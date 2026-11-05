@@ -143,3 +143,13 @@ assert(sessions.last(), "last() should restore the newest session file")
 assert(vim.v.this_session:match("%.vim$"), "last() picked a non-session file")
 assert(vim.fs.dirname(vim.v.this_session) == session_dir, "last() picked a file outside the session directory")
 print("Latest session lookup passed")
+
+-- A session rewritten by another Neovim instance is never overwritten.
+local shared = sessions.path()
+assert(sessions.save(true), "baseline save failed")
+local foreign = { '" written by another instance' }
+vim.fn.writefile(foreign, shared)
+vim.uv.fs_utime(shared, os.time() + 5, os.time() + 5)
+assert(not sessions.save(true), "save must skip a session changed by another instance")
+assert(vim.deep_equal(vim.fn.readfile(shared), foreign), "the other instance's session was overwritten")
+print("Concurrent session guard passed")

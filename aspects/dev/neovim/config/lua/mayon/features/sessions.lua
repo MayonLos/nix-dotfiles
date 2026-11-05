@@ -186,6 +186,14 @@ local function restore_tool_buffers(suspended)
 	end
 end
 
+-- Another Neovim instance on the same project may write this session file.
+-- Remember the mtime this instance last saw and never overwrite a newer one.
+local mtime_baselines = {}
+local function mtime(path)
+	local stat = vim.uv.fs_stat(path)
+	return stat and (stat.mtime.sec * 1000000000 + stat.mtime.nsec) or false
+end
+
 local function save(force, exiting)
 	if save_disabled then
 		return false
@@ -200,19 +208,28 @@ local function save(force, exiting)
 		close_tool_tabs()
 		close_tool_windows()
 	end
+	local path = session_path(current_name())
+	if mtime_baselines[path] == nil then
+		mtime_baselines[path] = mtime(path)
+	end
+	if mtime(path) ~= mtime_baselines[path] then
+		notify("save skipped because this session changed in another Neovim instance", vim.log.levels.WARN)
+		return false
+	end
 	vim.fn.mkdir(session_dir(), "p")
 	local suspended = suspend_tool_buffers()
 	local ok, err
 	if has_mini then
 		ok, err = pcall(mini.write, current_name(), { force = true, verbose = false })
 	else
-		ok, err = pcall(vim.cmd, "mksession! " .. vim.fn.fnameescape(session_path(current_name())))
+		ok, err = pcall(vim.cmd, "mksession! " .. vim.fn.fnameescape(path))
 	end
 	restore_tool_buffers(suspended)
 	if not ok then
 		notify("could not save session: " .. tostring(err), vim.log.levels.ERROR)
 		return false
 	end
+	mtime_baselines[path] = mtime(path)
 	return true
 end
 
@@ -250,6 +267,7 @@ local function read_session(path)
 		return false
 	end
 	vim.v.this_session = path
+	mtime_baselines[path] = mtime(path)
 	return true
 end
 

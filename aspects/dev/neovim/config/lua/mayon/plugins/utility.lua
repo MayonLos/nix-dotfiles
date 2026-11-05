@@ -108,7 +108,7 @@ return {
 		"grug-far.nvim",
 		cmd = "GrugFar",
 		after = function()
-			require("grug-far").setup({ headerMaxWidth = 80, border = "single" })
+			require("grug-far").setup({ headerMaxWidth = 80, border = require("mayon.util").border })
 		end,
 	},
 	{

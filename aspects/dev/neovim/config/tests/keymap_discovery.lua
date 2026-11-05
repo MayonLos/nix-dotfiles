@@ -70,7 +70,10 @@ whichkey.setup()
 vim.api.nvim_exec_autocmds("VimEnter", {})
 vim.wait(100)
 local config = whichkey.config()
-assert(config.win.border == "single" and config.win.row == -1, "which-key should keep a bottom single-line surface")
+assert(
+	config.win.border == require("mayon.util").border and config.win.row == -1,
+	"which-key should keep a bottom surface with the shared border"
+)
 assert(config.win.title == true, "which-key should derive its title from the active prefix")
 local geometry = whichkey.geometry
 local wide = geometry(1706)
@@ -85,8 +88,13 @@ assert(medium.width == 110 and medium.col == 25, "which-key should scale with me
 assert(narrow.width == 55 and narrow.col == 12 and narrow.columns == 3, "which-key should adapt narrow layouts")
 assert(small.width == 34 and small.col == 8 and small.columns == 2, "which-key should reduce columns on small windows")
 assert(tiny.width == 27 and tiny.col == 6 and tiny.columns == 1, "which-key should use one column on tiny windows")
-assert(config.win.width == geometry(vim.o.columns).width)
-assert(config.win.col == geometry(vim.o.columns).col and config.layout.spacing == 2)
+-- which-key recomputes these public dimensions on every render, so the
+-- popup stays centered after a terminal resize.
+assert(
+	type(config.win.width) == "table" and config.win.width.max == 118 and config.win.col == 0.5,
+	"which-key should size and center itself through its public options"
+)
+assert(config.layout.spacing == 2)
 assert(config.win.height.min == 4 and config.win.height.max == 10, "which-key height should remain compact")
 assert(type(config.delay) == "function", "which-key delay should be explicit and context-aware")
 assert(
@@ -418,10 +426,9 @@ assert(macro_node:expand().a.keys == "@a", "macro selection must retain its pare
 assert(macro_node:expand()["@"].keys == "@@", "repeat selection must replay the complete macro command")
 vim.fn.setreg("a", "")
 assert(not macro_node:expand().a, "empty macro registers must stay hidden")
-assert(
-	require("which-key.view").item(debug_node).desc == "Debug +" .. debug_node:count(),
-	"collapsed groups must show their real child count"
-)
+-- Group labels come from which-key's public renderer (no +N count patch);
+-- the group still carries all of its children.
+assert(debug_node:count() >= 10, "the Debug group must keep its child mappings")
 assert(vim.tbl_contains(config.sort, "manual"), "common groups must retain explicit spec order")
 assert(vim.tbl_isempty(require("which-key.tree").dups), "which-key found duplicate virtual mappings")
 assert(
