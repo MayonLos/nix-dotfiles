@@ -96,7 +96,7 @@ user-installed extensions, profiles, authentication, workspace state, history,
 Noctalia's old theme output and project files are preserved. Reverting seed
 values is a user action, not automatic cleanup.
 
-The r41 B verification used a private HOME/XDG/D-Bus and headless sway at
-2560×1600, scale 1.5, with three screenshot/review rounds. Fresh profiles verify
+Visual verification uses a private HOME/XDG/D-Bus and headless sway at
+2560×1600, scale 1.5. Fresh profiles verify
 the defaults; they do not prove the existing user profile selected the same
 settings. Main-host activation and Noctalia apply/undo remain integration checks.

@@ -7,7 +7,9 @@ let
       let
         relative = pkgs.lib.removePrefix (toString ../.. + "/") (toString path);
       in
-      !(builtins.elem (builtins.baseNameOf path) [
+      # Documentation is not a build input; editing it must not rebuild the crate.
+      !(type == "regular" && pkgs.lib.hasSuffix ".md" relative)
+      && !(builtins.elem (builtins.baseNameOf path) [
         "target"
         ".git"
         ".work"

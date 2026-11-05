@@ -239,13 +239,13 @@ checks: []
 | **KeePassXC 或 Bitwarden** | 跨网站/设备统一密码库、浏览器填充 | KeePassXC 是本地 KDBX，自选同步和备份；Bitwarden 更偏账号同步。Secret Service 和 sops 分别服务应用/部署秘密，不能视作密码库已完整覆盖。 | 桌面应用 + Firefox 扩展；凭据不进入仓库。先不自建 Vaultwarden。 |
 | **Zotero Connector** | 浏览器一键收集网页、论文元数据/附件 | 当前仅声明 Dark Reader；可能已手动安装。增量维护小，实际导入仍看站点支持。 | Firefox 扩展声明，保留 Zotero 本体。 |
 | uBlock Origin（条件） | Firefox 的广告/内容过滤；尚未使用同类方案时值得补 | 未在仓库扩展清单声明，不代表运行时没有安装。Clash 的整机代理与浏览器内容过滤分工不同；少数站点需单独放行，不盲目叠加大量过滤列表。 | Firefox 扩展；与密码库扩展、Connector 一并整理。 |
-| **File Roller（第二十六轮替换）** | 浏览压缩包、选择性解压，与 Thunar archive plugin 配合 | 使用 GTK4 版本，TAP 指向包的绝对可执行路径；不再安装 Xarchiver。 | 桌面文件工具能力；保留 Thunar。 |
+| **File Roller（替换 Xarchiver）** | 浏览压缩包、选择性解压，与 Thunar archive plugin 配合 | 使用 GTK4 版本，TAP 指向包的绝对可执行路径；不再安装 Xarchiver。 | 桌面文件工具能力；保留 Thunar。 |
 | Syncthing（条件） | 第二台电脑间同步文档/Obsidian 等普通文件 | 同步会传播修改/删除，不能替代备份。不要同步正在使用的 Zotero 数据目录、VM 磁盘或任意应用数据库；Zotero 使用自己的同步方案。 | 设备逐个启用，明确目录，避免整个 home。 |
 | rclone（条件） | 已有网盘/对象存储，需要批量传输或接入备份目的地 | 云端 API、授权和挂载行为需要维护；没有具体云服务需求就暂不装。 | 需要的主机/用户角色，非默认常驻挂载。 |
 | VSCode Remote-SSH（条件） | 后续服务器上的图形编辑/调试 | 服务端组件及系统要求需核对，NixOS 目标也需验证动态库兼容。现有 `kitten ssh` 解决终端接入，不等于远程 IDE。 | VSCode 扩展与目标主机分别配置。 |
 | Tailscale（条件） | 多台设备跨网络互联，需要方便地访问 SSH/服务 | 引入账户、控制面和 ACL 管理；只有一台本机时价值有限。Headscale 自建控制面以后有真实需求再选，不同时铺开。 | host 选择网络角色，不复制桌面配置。 |
 | fwupd（条件） | 支持 LVFS 的设备固件更新 | 先核对具体设备是否支持。现有 redistributable firmware 是驱动固件分发，不等于 BIOS/设备更新服务。 | 硬件能力；不预设 Lenovo 全部设备可更新。 |
-| Okular（第二十六轮移除） | 用户决定移除；PDF 默认仍为 Zathura，批注使用 Zotero 内置阅读器 | 删除包与 MIME association；Zotero 当前锁定版本 9.0.6。 | 不删除 PDF 或应用数据。 |
+| Okular（已移除） | 用户决定移除；PDF 默认仍为 Zathura，批注使用 Zotero 内置阅读器 | 删除包与 MIME association；Zotero 当前锁定版本 9.0.6。 | 不删除 PDF 或应用数据。 |
 | Crosspipe（条件） | 可视化 PipeWire 节点连接，例如复杂录音/直播路由 | 日常音量已有 Noctalia，排障可用 wpctl/pw-cli。锁定 nixpkgs 已移除 Helvum 包别名，不照旧推荐它；Crosspipe 仍需验证实际路由。 | 桌面音频工具，按需打开。 |
 | EasyEffects（条件） | 明确需要麦克风 EQ、降噪、压缩或输出处理 | 系统不常驻 echo-cancel（曾拖垮蓝牙 A2DP），通话应用自带回声消除。效果链增加调试和处理成本，没有需求先不加。 | 用户级音效能力，避免双重处理。 |
 | Heroic（条件） | 确实有 Epic/GOG/Amazon 游戏 | 商店登录和 Wine/游戏兼容另需维护，Steam/Prism 用户不自动需要。 | 游戏桌面角色。 |
@@ -259,7 +259,7 @@ checks: []
 
 ## 后续执行顺序与验收
 
-1. 软件选型已结束；第二十六轮改为 File Roller、移除 Okular。用户后续决定移除 OnlyOffice，由 LibreOffice 统一处理九种 Office MIME；备份、密码库、Connector 及其他条件项以后有实际需求再纳入，不继续阻塞 Neovim 迁移。
+1. 软件选型已结束；压缩包改用 File Roller，移除 Okular。用户后续决定移除 OnlyOffice，由 LibreOffice 统一处理九种 Office MIME；备份、密码库、Connector 及其他条件项以后有实际需求再纳入，不继续阻塞 Neovim 迁移。
 2. `pamixer`、重复 `cliphist` 和 `pavucontrol` 已按用户确认精简配置；验证状态单列在执行计划。不顺带删截图/OCR、剪贴板桥或用户历史。
 3. 先删无用，再原生替换；Neovim Lua + Nix 入口现已接入。先前 Heirline/Navic 原生替代已被用户后续重建要求覆盖；现恢复成熟界面插件与公式预览，OneDark 继续固定，主题选择器不恢复。完整 LaTeX 保留。当前状态见[重建记录](neovim.md)，性能结论需独立测量。
 4. 在 Den 重构中，把桌面、开发、游戏、备份和服务器能力组合起来；实际主机只启用需要的能力，不把笔记本应用全集给服务器。

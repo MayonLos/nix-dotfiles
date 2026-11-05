@@ -2,7 +2,7 @@
 
 开始任务前先查 [`docs/README.md`](docs/README.md) 的路由表，再读对应文档。
 
-本仓库使用 Codex。以下路径均相对仓库根目录；配置依据当前源码、`flake.lock` 锁定源码和实际运行行为。Den 负责组合，不改变这一证据优先级。
+以下路径均相对仓库根目录；配置依据当前源码、`flake.lock` 锁定源码和实际运行行为。Den 负责组合，不改变这一证据优先级。
 
 ## 仓库
 
@@ -67,13 +67,3 @@ nix build --no-link --no-write-lock-file .#nixosConfigurations.nixos-btw.config.
 按影响选择检查。纯文档检查链接、事实和格式；模块改动求值并构建相关输出；桌面/编辑器行为还需相应运行时证据。缺依赖或网络失败时报告限制，不宣称通过。Git flake 不含未跟踪文件；`path:.` 可能把 Git 忽略的本地文件带入 Nix store，使用前检查源范围，不能包含运行时秘密。临时求值新文件时只构造过滤后的源码快照，排除 `.work/`、`result*`、运行时状态与秘密明文。
 
 构建不会应用配置。`nixos-rebuild switch` 会更改运行系统；只有任务明确包含应用配置时才执行。`nixos-rebuild test` 也会临时激活配置，不能当作只读构建检查。Home Manager 随 NixOS 一起重建，不支持独立 HM switch。系统入口为 `sudo nixos-rebuild switch --flake .#nixos-btw`（`nr`）；清理命令为 `nc`；开发环境为 `nix develop` 和 `nix develop .#cuda`。应用与回滚流程见 [`docs/operations.md`](docs/operations.md)。
-
-## Codex 分工
-
-主代理负责方案、跨功能判断、真实 host 接线、集成、最终核验和提交。把可独立完成的窄任务交给 Luna；跨模块结论由继承主模型的独立 reviewer 复核。使用当前环境原生子代理工具；项目角色尚未加载时，在任务中显式选择 `gpt-6-luna` 并说明角色要求，不假装角色已加载。若该模型不可用，由主代理接手。
-
-每个子任务说明目标、绝对路径、可写范围、已知事实和验收标准。并行写任务分配不重叠文件；需改同一文件或独立 CLI 执行时使用隔离 worktree。子代理不得回滚他人改动、stage、commit 或 push；主代理审阅证据和 diff 后集成。结论须说明改动路径、实际验证与限制。
-
-无需把 Codex 包装成外部 `codex exec`，不依赖家目录委托脚本。其他引擎仅在用户明确要求时使用，并单独确认上下文、权限及隔离范围。
-
-用户要求“主代理设计审核、外部执行代理实现”时（例如 Claude 或 DeepSeek 作为主代理驱动 `codex exec`），按 [多代理工作流](docs/agent-workflow.md) 执行：预览先行、brief 模板、隔离 worktree、内存监控、隔离视觉验证、同会话续跑、集成与实机核对。

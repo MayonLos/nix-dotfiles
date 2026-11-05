@@ -10,7 +10,7 @@ Removing the feature removes its shell selection, generated shell files, tools, 
 
 `vim.nix` owns `~/.config/vim/vimrc`: built-in options on top of `defaults.vim`, with no plugins. Vim itself is installed by `system/maintenance`. It also hides the packaged `gvim.desktop`, which has no binary.
 
-r43 uses a single-line Starship prompt: directory, neutral Git metadata and a
+The shell uses a single-line Starship prompt: directory, neutral Git metadata and a
 blue `❯`. The right prompt shows duration only from three seconds; Zsh hides it
 when input needs the space. SSH shows `@hostname`, actual UID 0 shows the root
 username, and a failed command adds `✘` plus its status. Language and Nix-shell

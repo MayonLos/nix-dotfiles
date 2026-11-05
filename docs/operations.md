@@ -46,3 +46,25 @@ Git flake 只包含已跟踪文件，新文件 `git add` 后才进入求值。`p
 ## 用户数据
 
 配置迁移不等于删除数据。项目、模型、历史、登录状态、容器卷和 VM 镜像都要保留；移除功能时只撤回声明，数据是否清理由用户决定。
+
+## 隔离视觉验证
+
+不在用户的 Wayland 会话里开窗口、模拟按键，也不重启 noctalia、fcitx5、mango 等桌面守护进程。
+
+| 对象 | 方式 |
+|---|---|
+| Wayland 应用（Kitty、Neovim、GTK/Qt、文件选择器） | 私有无头 sway：`WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1`，独立 `XDG_RUNTIME_DIR`（路径要短，超过 `sun_path` 起不来）、`WAYLAND_DISPLAY`、`HOME`/XDG 与 D-Bus 会话；输出 2560×1600、scale 1.5；`grim` 指定该 socket 截图 |
+| 终端界面 | 必须用真实 Kitty（放进上面的无头 sway）。tmux→HTML 转换看不出内边距、字体图标、背景色差异 |
+| Noctalia 模板 | 运行锁定 Noctalia 的真实模板引擎，确认输出写出且无 template error；只检查模板文本会漏掉运行时失败 |
+| 设计稿 | HTML 用 nixpkgs chromium `--headless=new --screenshot` 渲染；`html{zoom:1.5}` 对应实机 1.5 缩放 |
+
+验证要先在旧版本上复现问题：新版“通过”本身不是证据。
+
+## 已知陷阱
+
+桌面相关陷阱（Noctalia 锁屏、主题、服务）见 [desktop.md](desktop.md#排障)。
+
+- **补丁型美化**（Mango、Noctalia 源码补丁）每个都配构建期检查，上游升级时失败而不是静默退化。
+- **独显断电**：用户常主动给 NVIDIA 断电，`nvidia-smi` 报 No devices 属正常。
+- **zsh**：交互 shell 是 zsh，`$var` 不按空格拆分、没有 `$PIPESTATUS`；`pkill -f`/`pgrep -f` 的模式会匹配自己的命令行。多 PID 操作用 bash 脚本。
+- **`git worktree remove --force`** 会删掉其中被忽略的 `.work/`，要保留的产物先拷出。

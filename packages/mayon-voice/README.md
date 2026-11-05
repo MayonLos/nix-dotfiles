@@ -111,7 +111,7 @@ python3 tests/notifications.py target/debug/mayon-voice # 需要 dbus-next；自
 
 进程测试只用私有 runtime 与替身录音/引擎，不连接真实 PipeWire、Fcitx 或桌面。
 包含命令幂等、识别期间拒绝重复录音、权限与删除、空闲释放、真实 fd3 传递。
-实测基准与隔离桌面证据留在本轮 `.work/r50/voice/`，不等于应用配置或真实麦克风验收。
+隔离基准与桌面截图不等于应用配置或真实麦克风验收。
 
 `mayon-tools voice` 状态页的 `/` 使用共享中文、全拼、首字母和大小写不敏感多词 AND 过滤；
 输入立即生效，Enter 保留结果，输入中 Esc 恢复打开前过滤，列表 Esc 先清过滤再退出。

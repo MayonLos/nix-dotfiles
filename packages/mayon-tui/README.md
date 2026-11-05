@@ -60,7 +60,7 @@ Production invocations may contact real local services and confirmed actions
 can change them. Run development against explicit private sockets and test
 processes. Start every isolated runtime from `env -i` with a private HOME/XDG
 and D-Bus/Wayland session. Never inspect or log an inherited environment. See
-[agent workflow](../../docs/agent-workflow.md), sections 3 and 8, for screenshots.
+[isolated visual checks](../../docs/operations.md#隔离视觉验证) for screenshots.
 Clash accepts `--data-dir`, `--socket`, `--mihomo`, `--systemctl`, and `--config`
 paths for isolated data and service fixtures;
 `mayon-tools docker` accepts `--host`; ports can run in an unprivileged user/network

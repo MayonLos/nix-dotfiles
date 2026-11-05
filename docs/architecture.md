@@ -33,12 +33,13 @@ nix/                      # flake 管线，无业务配置
   pkgs.nix                # 每个 system 一组 stable 与 unstable 实例；overlay（见 §8）
   hosts.nix               # den.schema.host 默认：instantiate、Home Manager 全局接线（见 §6）
   den.nix                 # Den 导入、schema 类注册、quirk 注册
-  outputs.nix             # flake packages（如 neovim）、apps
+  outputs.nix             # flake packages（neovim、neovim-dev）
   checks.nix              # 显式登记表收集各功能 checks + tests + architecture
   dev.nix                 # devShells、treefmt
 aspects/<领域>/<功能>/    # 功能（§3）
 bundles/                  # 只含 includes 的用途组合（§7）
 inventory/                # 实体、事实、绑定（§6）
+packages/                 # 自写程序与补丁包（§8.3）
 lib/                      # 跨功能 helper（§8.4）
 tests/                    # 跨功能组合与负例（§10）
 secrets/                  # sops 加密文件
@@ -195,7 +196,9 @@ inventory/
 ### 8.3 配方位置
 
 - 私有配方留在功能目录；带参数的配方以**包工厂**公开（不要固定成全局单例）。
-- 只有被 ≥2 个功能使用的无参配方才放 `packages/`（目前可为空，不预建）。
+- `packages/` 放本仓库自写程序的源码与包工厂（`mayon-tui`、`bilitui`、`mayon-voice`、`noctalia-clash-status`）和需要整机替换的上游补丁包（`gamemode`）；
+  多数经 `nix/pkgs.nix` 的 overlay 公开为 `pkgs.<名>`（`gamemode` 替换同名上游包）；只有一个消费者的可由其直接导入包工厂
+  （`noctalia-clash-status` → `desktop/mango-session`）。功能目录只负责安装、快捷键与配置。
 - flake 对外导出（如 `.#neovim`）由 `nix/outputs.nix` 调用功能的公开包工厂并显式传入默认数据。
 
 ### 8.4 lib [硬]

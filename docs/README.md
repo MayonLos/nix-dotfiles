@@ -25,7 +25,6 @@ checks: [docs]
 | 增删软件 | [apps](apps.md) | `aspects/apps` | — |
 | Obsidian 主题与笔记库 | [obsidian](obsidian.md) | `aspects/apps/documents` | `documents-visual-config` |
 | 用 dsh、Grok Bot | [dsh](dsh.md)、[grok-bot](grok-bot.md) | `aspects/dev/ai-agents` | — |
-| 委托外部代理、交接进行中的轮次 | [agent-workflow](agent-workflow.md) | `.work/HANDOFF.md`（本地） | — |
 | 规划服务器 | [server-plan](server-plan.md) | `tests/composition/remote.nix` | `remote-workspace-composition` |
 | 查某次改动的经过 | [history](history/README.md) | `git log` | — |
 

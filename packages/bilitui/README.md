@@ -108,6 +108,6 @@ cargo fmt --all -- --check
 登录、收藏/投币等写入、真实账号历史回报、下载全集及硬件解码必须由主代理获得授权后实机验证；
 单测、隔离截图和 null 输出拉流不代表这些功能已实机验收。
 
-本轮录制的 `fixtures/{popular,search,view}-public.json` 来自 2026-10-30 的匿名公开请求，
+`fixtures/{popular,search,view}-public.json` 来自 2026-10-30 的匿名公开请求，
 仅保留 parser 所需的公开数据，不包含登录 cookie 或签名 CDN 流 URL。网络探测实际报告和
-隔离视觉证据不进包源码。R55 的对比图、资源测量与实机验收记录由仓库执行记录保存。
+隔离视觉证据不进包源码；测量与验收记录见 [docs/history](../../docs/history/README.md)。

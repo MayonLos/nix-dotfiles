@@ -15,6 +15,8 @@ pkgs.rustPlatform.buildRustPackage {
         ];
       in
       pkgs.lib.cleanSourceFilter path type
+      # Documentation is not a build input; editing it must not rebuild the crates.
+      && !(type == "regular" && pkgs.lib.hasSuffix ".md" (toString path))
       && !(builtins.elem (builtins.baseNameOf path) [
         "target"
         ".work"

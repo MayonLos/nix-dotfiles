@@ -87,4 +87,4 @@ cd packages/mayon-tui && cargo test --workspace --locked
 nix build --no-link --no-write-lock-file .#checks.x86_64-linux.mayon-tui
 ```
 
-终端界面要用真实 Kitty 截图验证，方法见 [agent-workflow.md](agent-workflow.md) 第 8 节。
+终端界面要用真实 Kitty 截图验证，方法见 [operations.md](operations.md#隔离视觉验证)。

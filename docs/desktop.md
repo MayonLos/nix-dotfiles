@@ -58,5 +58,8 @@ Kitty 背景要和 Neovim `Normal` 同步（OSC 11），否则四周出现色框
 - 主题改动后 Qt、输入法没变：`systemctl --user restart fcitx5-daemon.service`，已运行的应用要重开。
 - Noctalia 起不来（start-limit-hit）：有不在服务 cgroup 下的手动实例，`kill -TERM` 后 `systemctl --user reset-failed noctalia.service`。
 - HM 报 “would be clobbered by backing up”：目标旁已有 `*.backup`，先看内容，改名加时间戳，不删除。
+- 锁屏时重启 Noctalia 会灰屏：它持有 ext-session-lock 锁屏面，重启后锁被遗弃。`noctalia.service` 已设 HM `X-SwitchMethod = "keep-old"`（`X-RestartIfChanged` 只对 NixOS 系统服务有效）。手动重启前先 `loginctl show-session <id> -p LockedHint` 确认为 `no`；已出现时用 `WAYLAND_DISPLAY=<该会话 socket> noctalia msg session lock` 重新接管。
+- 服务重启失败：先查残留旧进程（旧 `.fcitx5-wrapped`、旧 noctalia）是否占着 D-Bus 名或单实例锁，结束后 `reset-failed` 再启动。
+- Noctalia 自定义颜色：深色模式下 `colors.<name>` 是 Material 色调 80，原色用 `colors.<name>_value`；内置模板拿不到 `custom_colors`，要在构建主题资源时写入原色。
 
-更多陷阱见 [agent-workflow.md](agent-workflow.md) 第 10 节。旧版说明归档在 [history/desktop-design-2026-10-30.md](history/desktop-design-2026-10-30.md)。
+隔离截图与通用陷阱见 [operations.md](operations.md#隔离视觉验证)。旧版说明归档在 [history/desktop-design-2026-10-30.md](history/desktop-design-2026-10-30.md)。

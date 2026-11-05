@@ -29,6 +29,21 @@
 | [visual-apps-2026-10-24.md](visual-apps-2026-10-24.md) | 2026-10-24 | GTK/Qt、输入法与应用视觉 |
 | [nvim-ai-2026-10-24.md](nvim-ai-2026-10-24.md) | 2026-10-24 | Neovim AI 与原生能力集成 |
 | [finalize-2026-10-25.md](finalize-2026-10-25.md) | 2026-10-25 | 视觉与 Neovim 收尾集成、性能和完整验证 |
+| [ui-v3-2026-10-25.md](ui-v3-2026-10-25.md) | 2026-10-25 | 第十八轮紧凑界面与下划指示 v3 |
+| [nvim-visual-2026-10-25.md](nvim-visual-2026-10-25.md) | 2026-10-25 | 第二十轮 Neovim 视觉对齐与启动页 |
+| [ui-r21a-2026-10-25.md](ui-r21a-2026-10-25.md) | 2026-10-25 | 第二十一轮 A：桌面细节与窗口规则 |
+| [ui-r21b-2026-10-25.md](ui-r21b-2026-10-25.md) | 2026-10-25 | 第二十一轮 B：GTK/Qt 与图标主题 |
+| [xorg-before-r24-2026-10-25.md](xorg-before-r24-2026-10-25.md) | 2026-10-25 | 可选 dwm/Xorg 桌面（r24 前） |
+| [xorg-r24-2026-10-25.md](xorg-r24-2026-10-25.md) | 2026-10-25 | 第二十四轮 dwm/Xorg 重写与视觉验收 |
+| [nvim-minimal-2026-10-25.md](nvim-minimal-2026-10-25.md) | 2026-10-25 | Neovim R25 极简专注 |
+| [nvim-overhaul-2026-10-25.md](nvim-overhaul-2026-10-25.md) | 2026-10-25 | Neovim 全面改造 |
+| [apps-r26-2026-10-25.md](apps-r26-2026-10-25.md) | 2026-10-25 | 第二十六轮应用、文件管理与主题 |
+| [nvim-r28-2026-10-25.md](nvim-r28-2026-10-25.md) | 2026-10-25 | Neovim 第二十八轮深度精修 |
+| [nvim-r28b-2026-10-25.md](nvim-r28b-2026-10-25.md) | 2026-10-25 | Neovim r28b：DAP 与 which-key |
+| [nvim-r29-2026-10-25.md](nvim-r29-2026-10-25.md) | 2026-10-25 | Neovim r29：统一界面与普通输入补全 |
+| [nvim-r30-native-completion-2026-10-25.md](nvim-r30-native-completion-2026-10-25.md) | 2026-10-25 | Neovim r30：原生补全交互与浮窗 |
+| [bar-r31-unified-2026-10-25.md](bar-r31-unified-2026-10-25.md) | 2026-10-25 | 顶栏 r31 一体式 One Dark |
+| [wechat-ime-2026-10-25.md](wechat-ime-2026-10-25.md) | 2026-10-25 | WeChat IBus portal 修复 |
 | [ui-v4-2026-10-25.md](ui-v4-2026-10-25.md) | 2026-10-25 | 第十九轮终端套件、科技版系统界面、herdr 与壁纸回退 |
 | [desktop-polish-r32.md](desktop-polish-r32.md) | 2026-10-26 | 全桌面整理、flake 更新与迁移 |
 | [desktop-polish-r33.md](desktop-polish-r33.md) | 2026-10-26 | Thunar 紧凑样式与 SYSTEM/通知避让 |
@@ -37,6 +52,9 @@
 | [docs-status-cleanup-2026-10-31.md](docs-status-cleanup-2026-10-31.md) | 2026-10-31 | 从顶层文档移出的过时状态原文 |
 | [nvim-probe-rs-2026-11-03.md](nvim-probe-rs-2026-11-03.md) | 2026-11-03 | Neovim 接入 probe-rs DAP，STM32H562 实机调试 |
 | [xorg-removal-2026-11-05.md](xorg-removal-2026-11-05.md) | 2026-11-05 | 移除 dwm/Xorg 与 X11 专属组件；QQ Wayland 共享试验撤销 |
+| [cleanup-2026-11-05.md](cleanup-2026-11-05.md) | 2026-11-05 | 删除 Codex 工作流、修正过时文档、包源码排除 Markdown、家目录清理 |
 | [visual-design-2026-10-30.md](visual-design-2026-10-30.md) | 归档 | 旧视觉规范全文（含被取代的分层参数） |
 | [desktop-design-2026-10-30.md](desktop-design-2026-10-30.md) | 归档 | 旧桌面说明全文 |
 | [workflow-design-2026-10-30.md](workflow-design-2026-10-30.md) | 归档 | 旧操作方式说明全文 |
+
+附带数据：[architecture-v2-baseline.json](architecture-v2-baseline.json)、[architecture-v2-result.json](architecture-v2-result.json)、[architecture-v2-files.tsv](architecture-v2-files.tsv) 属于 architecture-v2-execution；[software-swap-dashboard.txt](software-swap-dashboard.txt) 与 `software-swap-2026-10-24-data/` 属于 software-swap-2026-10-24。

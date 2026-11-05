@@ -4,7 +4,7 @@ Installs Kitty and renders its configuration from `user.appearance`, including t
 
 Owned files are `default.nix`, `kitty.nix`, and `tab-bar.nix`, all private. Outputs are the Kitty package, `kitty/kitty.conf`, and `kitty/tab_bar.py`. Removing the aspect removes those declarations in the next generation; Kitty scrollback files and other user data remain intact.
 
-The r43 reading surface uses `deep` at 0.96 background opacity, `brightFg` text,
+The reading surface uses `deep` at 0.96 background opacity, `brightFg` text,
 11 pt Maple Mono NF CN and 10 pt padding.
 The character grid is anchored at the top left; fractional-scale remainder strips
 use the current terminal background so status markers cannot bleed into them. Neovim temporarily synchronizes the terminal

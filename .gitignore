@@ -1,15 +1,12 @@
 /result
 /result-*
 .worktrees/
-# Share Codex instructions and agent roles; keep local runtime state private.
-/.agents/*
-/.codex/*
-!/.codex/config.toml
-!/.codex/agents/
+# Local agent and editor state.
+/.agents/
+/.codex/
 /.team/
-
-# Legacy local Claude state is not part of the Codex workflow.
 /.claude/
+/.vscode/
 
 # Python bytecode from scripts run in-tree.
 __pycache__/

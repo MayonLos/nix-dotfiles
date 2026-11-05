@@ -4,7 +4,7 @@ Provides the Mango Wayland desktop and its Noctalia shell integration. Inputs ar
 
 Outputs include Mango/Noctalia configuration, clipboard bridges, screenshot and OCR tools, per-session environment, and host-side Mango/portal modules routed through `interactive-session-host`. The `noctaliaIntegrations` quirk is declared here and validated by `contract.nix`. This feature owns its session target and Noctalia service lifecycle; it does not select the login greeter. Home Manager follows the NixOS rebuild.
 
-## Bar and Dock (r39)
+## Bar and Dock
 
 The approved G1/G2 design replaces the dense HUD with a flush 30 logical pixel top bar. Its surface has opacity 0.62, no outline, corners, outer margins or shadow. Inter 500 and native Tabler glyphs are used throughout; the active application name uses weight 650. The left section contains a monochrome NixOS system-menu icon, application name and native `minimal` C2 workspace numbers with a white active dot, no capsule, and native-model hover cards. The center stays empty. The right contains the inline Fcitx and application tray indicators, network, Bluetooth, neutral native battery glyph/percentage, unread-only notifications, sliders control-center button and Chinese date/time. The native control-center widget has no unread badge; a small native notifications widget appears only while unread history exists. There is no permanent sysmon, layout label, keymode label, tools accordion or capsule group.
 
@@ -290,9 +290,9 @@ Tray items render inline (`drawer=false`), which removes the attached reverse-co
 
 Launchpad's `icon_overrides` string list accepts `desktop-id=icon-name-or-absolute-path`; it changes artwork only (absolute paths bypass desktop-ID fuzzy matching) and falls back to native lookup if the override is unavailable. Neovim uses its packaged upstream icon, long-task terminal uses the original `resources/terminal-clock.svg`, and the user's Dead by Daylight launcher uses its actual Steam app icon instead of the Steam logo. No desktop files, launch commands, histories or GUI state are rewritten. `resources/dead-by-daylight.jpg` is the unmodified 32×32 public app thumbnail from Steam's library cache for app 381210 (Behaviour Interactive artwork; SHA256 `2f308ff02f87f002d757a24f54e590118ad3e13ac5e860a3fe2bd5f25af5de93`). Yazi and Legion GUI already resolve their package pixmaps and retain them.
 
-The complete host desktop/icon audit and private Sway shots are under `.work/r44/desk/`. They verify rendering at 2560×1600/scale 1.5 with synthetic private D-Bus devices, not application of this worktree or physical hardware transitions. Removal withdraws these package/settings/plugin assets and leaves user desktop entries and application data intact.
+Icon rendering is verified in private headless Sway at 2560×1600/scale 1.5 with synthetic D-Bus devices; that does not cover physical hardware transitions. Removal withdraws these package/settings/plugin assets and leaves user desktop entries and application data intact.
 
-## R50 blur edge sampling
+## Blur edge sampling
 
 Mango's locked scenefx (`37ccd723bef49e6891156ffafce8f549f01446cc`)
 uses full-output-size ping-pong FBOs for the dual-Kawase pyramid. Each reduced
