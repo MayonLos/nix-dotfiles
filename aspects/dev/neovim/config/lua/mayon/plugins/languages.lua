@@ -6,15 +6,13 @@ return {
 			local function ordinary(buf)
 				return vim.bo[buf].buftype == "" and vim.bo[buf].filetype ~= "" and vim.bo[buf].filetype ~= "bigfile"
 			end
-			local function start(buf)
+			local function start()
 				require("mayon.lsp").setup()
-				local folds = require("mayon.features.folds")
-				folds.setup()
-				folds.apply(buf)
+				require("mayon.features.folds").setup()
 			end
 			local buf = vim.api.nvim_get_current_buf()
 			if ordinary(buf) then
-				start(buf)
+				start()
 				return
 			end
 			-- Dashboard, prompt and terminal FileTypes do not need the LSP graph.
@@ -24,7 +22,7 @@ return {
 				callback = function(ev)
 					if ordinary(ev.buf) then
 						vim.api.nvim_del_autocmd(id)
-						start(ev.buf)
+						start()
 					end
 				end,
 			})

@@ -30,9 +30,8 @@ local function setup()
 		end
 		return config
 	end
-	local group = vim.api.nvim_create_augroup("MayonLint", { clear = true })
-	vim.api.nvim_create_autocmd({ "FileType", "BufWritePost", "InsertLeave" }, {
-		group = group,
+	vim.api.nvim_create_autocmd({ "FileType", "BufWritePost" }, {
+		group = vim.api.nvim_create_augroup("MayonLint", { clear = true }),
 		callback = function()
 			require("lint").try_lint()
 		end,

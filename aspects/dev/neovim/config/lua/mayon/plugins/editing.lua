@@ -4,9 +4,18 @@ local function map(mode, lhs, rhs, desc)
 	vim.keymap.set(mode, lhs, rhs, { desc = desc })
 end
 
-local function setup()
+local function setup_surround()
 	require("nvim-surround").setup({})
+end
+
+local function setup_flash()
 	require("flash").setup({})
+	map({ "n", "o" }, "s", function()
+		require("flash").jump()
+	end, "Jump with Flash")
+end
+
+local function setup_context()
 	require("treesitter-context").setup({
 		enable = false,
 		max_lines = 3,
@@ -18,21 +27,17 @@ local function setup()
 		end,
 		zindex = 20,
 	})
+	map("n", "[c", function()
+		require("treesitter-context").go_to_context(vim.v.count1)
+	end, "Jump to Parent Syntax")
+end
+
+local function setup_textobjects()
 	require("nvim-treesitter-textobjects").setup({
 		select = { lookahead = true },
 		move = { set_jumps = true },
 	})
-	require("multicursor-nvim").setup()
-
-	map({ "n", "o" }, "s", function()
-		require("flash").jump()
-	end, "Jump with Flash")
-	map("n", "[c", function()
-		require("treesitter-context").go_to_context(vim.v.count1)
-	end, "Jump to Parent Syntax")
-
 	local select = require("nvim-treesitter-textobjects.select").select_textobject
-	local move = require("nvim-treesitter-textobjects.move")
 	for _, spec in ipairs({
 		{ "af", "@function.outer", "Select Outer Function" },
 		{ "if", "@function.inner", "Select Inner Function" },
@@ -49,6 +54,7 @@ local function setup()
 			select(spec[2], "textobjects")
 		end, spec[3])
 	end
+	local move = require("nvim-treesitter-textobjects.move")
 	for _, spec in ipairs({
 		{ "]m", move.goto_next_start, "@function.outer", "Jump to Next Function Start" },
 		{ "[m", move.goto_previous_start, "@function.outer", "Jump to Prev Function Start" },
@@ -67,8 +73,11 @@ local function setup()
 	map("n", "<leader>c[", function()
 		require("nvim-treesitter-textobjects.swap").swap_previous("@parameter.inner")
 	end, "Swap Parameter with Prev")
+end
 
+local function setup_multicursor()
 	local mc = require("multicursor-nvim")
+	mc.setup()
 	-- These bindings only exist while multiple cursors are active.
 	mc.addKeymapLayer(function(layer)
 		layer({ "n", "x" }, "<left>", mc.prevCursor, { desc = "Move to Prev Cursor" })
@@ -127,6 +136,14 @@ local function setup()
 	for key, action in pairs(actions) do
 		map({ "n", "x" }, "<leader>m" .. key, action[1], action[2])
 	end
+end
+
+local function setup()
+	setup_surround()
+	setup_flash()
+	setup_context()
+	setup_textobjects()
+	setup_multicursor()
 end
 
 return {

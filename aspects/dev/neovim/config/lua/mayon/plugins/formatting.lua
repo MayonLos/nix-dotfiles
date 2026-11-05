@@ -1,11 +1,11 @@
 local M = {}
+local slow_filetypes = {}
+
+local function autoformat_disabled(bufnr)
+	return vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat
+end
 
 local function setup()
-	_G.slow_format_filetypes = {}
-	_G.autoformat_disabled = function(bufnr)
-		return vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat
-	end
-
 	require("conform").setup({
 		formatters = {
 			latexindent = {
@@ -18,22 +18,19 @@ local function setup()
 			["_"] = { "squeeze_blanks", "trim_whitespace", "trim_newlines" },
 		}),
 		format_on_save = function(bufnr)
-			if
-				vim.bo[bufnr].filetype == "bigfile"
-				or _G.autoformat_disabled(bufnr)
-				or _G.slow_format_filetypes[vim.bo[bufnr].filetype]
-			then
+			local filetype = vim.bo[bufnr].filetype
+			if filetype == "bigfile" or autoformat_disabled(bufnr) or slow_filetypes[filetype] then
 				return
 			end
 			local function on_format(err)
 				if err and err:match("timeout$") then
-					_G.slow_format_filetypes[vim.bo[bufnr].filetype] = true
+					slow_filetypes[filetype] = true
 				end
 			end
 			return { timeout_ms = 200, lsp_format = "fallback" }, on_format
 		end,
 		format_after_save = function(bufnr)
-			if _G.autoformat_disabled(bufnr) or not _G.slow_format_filetypes[vim.bo[bufnr].filetype] then
+			if autoformat_disabled(bufnr) or not slow_filetypes[vim.bo[bufnr].filetype] then
 				return
 			end
 			return { lsp_format = "fallback" }

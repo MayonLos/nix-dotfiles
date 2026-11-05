@@ -18,7 +18,6 @@ local function setup()
 			return
 		end
 		vim.bo[buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
-		require("mayon.features.folds").apply(buf)
 		local ft = vim.bo[buf].filetype
 		local lang = vim.treesitter.language.get_lang(ft) or ft
 		pcall(vim.treesitter.start, buf, lang)
