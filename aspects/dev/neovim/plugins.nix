@@ -29,6 +29,7 @@ let
     vimPlugins.claudecode-nvim
     vimPlugins.minuet-ai-nvim
     vimPlugins.mini-diff
+    vimPlugins.mini-sessions
     vimPlugins.edgy-nvim
     vimPlugins.smart-splits-nvim
     (vimPlugins.codecompanion-history-nvim.overrideAttrs (_: {
