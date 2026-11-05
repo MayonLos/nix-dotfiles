@@ -1,7 +1,9 @@
 # Visual Studio Code
 
 Installs the FHS VS Code package, One Dark Pro (`zhuangtongfa.material-theme`)
-3.19.0 and the Nix grammar (`bbenoist.nix`) through the locked nixpkgs instance.
+3.19.0 and the Nix grammar (`bbenoist.nix`) through the locked nixpkgs instance,
+plus the probe-rs debugger extension (`probe-rs.probe-rs-debugger`) pinned from the
+VS Code Marketplace by version and hash, because nixpkgs does not package it.
 The FHS variant supplies libraries used by extension-provided binaries, rather
 than maintaining a partial `LD_LIBRARY_PATH` wrapper. Native editor runtime
 support is selected through `editing-runtime-host`.
@@ -67,11 +69,23 @@ is not pinned by `flake.lock`; its target/hook behavior must be rechecked if tha
 upstream integration changes. Do not add HM `profiles.default.userSettings` or
 turn this into an overwrite of the user profile.
 
+## Embedded debugging
+
+The probe-rs extension provides the `probe-rs-debug` launch type. It starts
+`probe-rs dap-server` from `PATH`; this feature does not install probe-rs, so the
+user also needs `embedded-workbench` (or another source of probe-rs). The
+extension and binary must be the same release. The pin is 0.31.0, matching locked
+`probe-rs-tools`, and the `vscode-settings` check fails when they diverge: update
+the version and hash together. No `debuggerExecutable` setting is seeded, since a
+seeded store path would outlive garbage collection. Project `launch.json` files
+with this type are shared with the Neovim configuration.
+
 ## Checks and removal
 
 `default.nix` is the feature entry. `checks.nix` is the public explicit check hook
 for the central registry; the remaining Nix/Python files are private. The
 `vscode-settings` check verifies the HM ownership boundary, Nix theme installation,
+the probe-rs extension/binary version match,
 palette/settings invariants, and JSONC preservation, idempotence, locks and
 symlink fixtures. The central check registry must explicitly include this hook;
 it is not discovered automatically.

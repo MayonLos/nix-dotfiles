@@ -61,6 +61,27 @@ local function address(default)
 	end
 end
 
+-- probe-rs flashes the ELF it is given, so both values are asked for on each
+-- launch; the last chip is offered again. Projects can pin them in launch.json.
+local last_chip = ""
+local function probe_chip()
+	return input("probe-rs chip: ", last_chip, function(value)
+		if not value:match("^[%w_%-]+$") then
+			return require("dap").ABORT
+		end
+		last_chip = value
+		return value
+	end)
+end
+local function probe_cores()
+	return input("Firmware ELF: ", vim.fn.getcwd() .. "/", function(path)
+		if vim.fn.filereadable(path) ~= 1 then
+			return require("dap").ABORT
+		end
+		return { { coreIndex = 0, programBinary = vim.fs.normalize(path) } }
+	end, "file")
+end
+
 local function lua_adapter(callback, config)
 	if not config.program then
 		callback({ type = "server", host = config.host or "127.0.0.1", port = config.port })
@@ -100,6 +121,12 @@ function M.setup()
 	dap.adapters.gdb = { type = "executable", command = tools.gdb, args = { "--interpreter=dap", "--quiet", "--nx" } }
 	dap.adapters.codelldb =
 		{ type = "server", port = "${port}", executable = { command = tools.codelldb, args = { "--port", "${port}" } } }
+	-- Same type name as the probe-rs VS Code extension, so one launch.json serves both.
+	dap.adapters["probe-rs-debug"] = {
+		type = "server",
+		port = "${port}",
+		executable = { command = tools.probe_rs, args = { "dap-server", "--port", "${port}", "--single-session" } },
+	}
 	dap.adapters.python = function(callback, config)
 		if config.request == "attach" then
 			callback({
@@ -141,6 +168,15 @@ function M.setup()
 			program = program,
 			target = address("127.0.0.1:3333"),
 			cwd = "${workspaceFolder}",
+		},
+		{
+			name = "STM32: Flash and debug (probe-rs)",
+			type = "probe-rs-debug",
+			request = "launch",
+			cwd = "${workspaceFolder}",
+			chip = probe_chip,
+			flashingConfig = { flashingEnabled = true, haltAfterReset = true },
+			coreConfigs = probe_cores,
 		},
 		{
 			name = "MP157: Attach gdbserver (USB)",
@@ -209,6 +245,11 @@ function M.setup()
 	end
 	dap.listeners.after.event_continued.mayon = function()
 		state("Running")
+	end
+	-- probe-rs reports flashing progress and probe errors through a custom event.
+	dap.listeners.before["event_probe-rs-show-message"].mayon = function(_, body)
+		local levels = { error = vim.log.levels.ERROR, warning = vim.log.levels.WARN }
+		vim.notify(body.message, levels[body.severity] or vim.log.levels.INFO, { title = "probe-rs" })
 	end
 	dap.listeners.after.configurationDone.mayon_lua = function(session)
 		local job = session.config._mayon_lua_job

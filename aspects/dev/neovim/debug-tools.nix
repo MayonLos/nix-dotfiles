@@ -35,6 +35,7 @@ in
   tools = {
     gdb = "${gdb}/bin/gdb";
     codelldb = "${codelldb}/bin/codelldb";
+    probe_rs = "${pkgs.probe-rs-tools}/bin/probe-rs";
     debugpy_python = "${python}/bin/python3";
     python = "${pkgs.python3}/bin/python3";
     java_debug_manifest = "${bundles}/bundles.lua";
@@ -44,6 +45,7 @@ in
   versions = {
     gdb = pkgs.gdb.version;
     codelldb = codelldb.version;
+    probe_rs = pkgs.probe-rs-tools.version;
     debugpy = pkgs.python3Packages.debugpy.version;
     java_debug = extensions.vscode-java-debug.version;
     java_test = extensions.vscode-java-test.version;

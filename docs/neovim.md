@@ -68,7 +68,8 @@ Gitsigns 单独拥有 Git sign 列；mini.diff 只在内联审阅时用行号/ov
 
 ## 插件与加载
 
-删除 nvim-dap、dap-view、dap-virtual-text、Nix 的 LLDB/debugpy 注入和全部调试键；
+调试（nvim-dap、dap-view、dap-virtual-text、GDB/codelldb/debugpy/probe-rs 注入与 `Space d` 键）
+按需加载，现状见[功能 README 的 Debugging 一节](../aspects/dev/neovim/README.md#debugging)。
 删除 overseer 与任务模板，用项目终端/AI CLI 跑项目任务；删除 smear-cursor，避免与 Kitty
 cursor_trail 重复。最新原生替换见下表；文件安全和用户状态保留。
 claudecode、sidekick、Minuet、mini.diff、edgy、smart-splits 与 codediff 来自锁定 stable。

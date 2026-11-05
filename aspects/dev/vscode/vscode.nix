@@ -17,6 +17,15 @@
     profiles.default.extensions = with pkgs.vscode-extensions; [
       zhuangtongfa.material-theme
       bbenoist.nix
+      # Not in nixpkgs. It runs `probe-rs dap-server` from PATH (supplied by
+      # embedded-workbench) and must match that probe-rs release; checks.nix
+      # fails when nixpkgs moves probe-rs-tools to another version.
+      (pkgs.vscode-utils.extensionFromVscodeMarketplace {
+        publisher = "probe-rs";
+        name = "probe-rs-debugger";
+        version = "0.31.0";
+        hash = "sha256-LZ00tkx7MR9SoIBFjh+3AoOsLlAwhhNeif4UeQr4F7A=";
+      })
     ];
   };
   assertions = [

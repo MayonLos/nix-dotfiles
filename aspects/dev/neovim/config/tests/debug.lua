@@ -2,7 +2,7 @@
 assert(not package.loaded.dap and not package.loaded["dap-view"] and not package.loaded.osv)
 assert(not package.loaded["mayon.features.debug"], "debug feature loaded during startup")
 local tools = require("mayon.generated").tools
-for _, name in ipairs({ "gdb", "codelldb", "debugpy_python", "jdtls", "java" }) do
+for _, name in ipairs({ "gdb", "codelldb", "probe_rs", "debugpy_python", "jdtls", "java" }) do
 	assert(
 		tools[name]:match("^/nix/store/") and vim.fn.executable(tools[name]) == 1,
 		"adapter is not Nix-owned: " .. name
@@ -25,7 +25,24 @@ for _, ft in ipairs({ "c", "cpp", "python", "rust", "lua" }) do
 end
 assert(dap.adapters.gdb.command == tools.gdb)
 assert(dap.adapters.codelldb.executable.command == tools.codelldb)
-assert(dap.configurations.c[3].name:match("STM32") and dap.configurations.c[4].name:match("MP157"))
+assert(dap.configurations.c[3].name:match("STM32") and dap.configurations.c[5].name:match("MP157"))
+local probe = dap.configurations.c[4]
+assert(probe.type == "probe-rs-debug" and probe.request == "launch" and probe.flashingConfig.haltAfterReset)
+assert(dap.adapters["probe-rs-debug"].executable.command == tools.probe_rs)
+assert(
+	vim.deep_equal(
+		dap.adapters["probe-rs-debug"].executable.args,
+		{ "dap-server", "--port", "${port}", "--single-session" }
+	)
+)
+-- Flashing progress and probe errors arrive as a probe-rs custom event.
+local notify, notified = vim.notify, nil
+vim.notify = function(message, level)
+	notified = { message, level }
+end
+dap.listeners.before["event_probe-rs-show-message"].mayon(nil, { severity = "error", message = "fixture probe" })
+vim.notify = notify
+assert(notified[1] == "fixture probe" and notified[2] == vim.log.levels.ERROR)
 
 -- A failed owned Neovim must not survive initialization or adapter EOF. An
 -- externally attached editor is never ours to stop.
@@ -109,6 +126,14 @@ assert(resolve(remote.target, "[::1]:3333") == "[::1]:3333")
 assert(resolve(remote.target, "127.0.0.1:3333") == "127.0.0.1:3333")
 assert(resolve(remote.program, nil) == dap.ABORT)
 assert(resolve(remote.program, "/absent/r28b/firmware.elf") == dap.ABORT)
+-- probe-rs flashes whatever it is handed: reject odd chip names and absent ELFs.
+assert(resolve(probe.chip, "STM32H562VI; rm") == dap.ABORT)
+assert(resolve(probe.chip, "STM32H562VI") == "STM32H562VI")
+assert(resolve(probe.coreConfigs, "/absent/h562/firmware.elf") == dap.ABORT)
+local elf = vim.fn.tempname() .. ".elf"
+vim.fn.writefile({ "fixture" }, elf)
+assert(vim.deep_equal(resolve(probe.coreConfigs, elf), { { coreIndex = 0, programBinary = vim.fs.normalize(elf) } }))
+vim.fn.delete(elf)
 vim.ui.input, vim.schedule = original_input, original_schedule
 local tmp = vim.fn.tempname()
 vim.fn.mkdir(tmp .. "/.venv/bin", "p")

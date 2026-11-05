@@ -15,6 +15,12 @@ in
     assert builtins.any (
       extension: extension.vscodeExtUniqueId == "zhuangtongfa.material-theme"
     ) home.programs.vscode.profiles.default.extensions;
+    # The probe-rs extension and the probe-rs binary on PATH speak one DAP version.
+    assert builtins.any (
+      extension:
+      extension.vscodeExtUniqueId == "probe-rs.probe-rs-debugger"
+      && extension.version == pkgs.probe-rs-tools.version
+    ) home.programs.vscode.profiles.default.extensions;
     assert !(builtins.hasAttr "Code/User/settings.json" home.xdg.configFile);
     pkgs.runCommand "vscode-settings-check" { nativeBuildInputs = [ pkgs.python3 ]; } ''
       cp ${./seed-settings.py} seed-settings.py

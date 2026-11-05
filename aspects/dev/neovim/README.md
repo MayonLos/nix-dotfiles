@@ -101,19 +101,23 @@ The macro prefix `@` has a dedicated dynamic hint: nonempty letter registers and
 
 ## Debugging
 
-nvim-dap is lazy-loaded on the first Debug action. The editor package injects tool paths from [debug-tools.nix](debug-tools.nix): host GDB with Python/DAP support, codelldb, Python with debugpy, the JDK and jdtls, and the Microsoft Java debug/test bundles. A checked GDB data-directory patch makes remote DAP disconnect detach without asking GDB to kill the target. This does not install or alter system SDKs. Versions and exact executable paths are exposed through the generated config metadata.
+nvim-dap is lazy-loaded on the first Debug action. The editor package injects tool paths from [debug-tools.nix](debug-tools.nix): host GDB with Python/DAP support, codelldb, probe-rs (its `dap-server`), Python with debugpy, the JDK and jdtls, and the Microsoft Java debug/test bundles. A checked GDB data-directory patch makes remote DAP disconnect detach without asking GDB to kill the target. This does not install or alter system SDKs. Versions and exact executable paths are exposed through the generated config metadata.
 
 Select a configuration with `Space ds`; the list is selected by the current filetype.
 
 | Language | Launch | Attach / test |
 |---|---|---|
-| C/C++ | Host GDB DAP asks for an executable or firmware ELF | Local process picker, or the STM32/MP157 remote entries below |
+| C/C++ | Host GDB DAP asks for an executable or firmware ELF; probe-rs flashes and debugs a Cortex-M ELF | Local process picker, or the STM32/MP157 remote entries below |
 | Rust | codelldb asks for the executable | codelldb process picker |
 | Python | Runs the current file with project `.venv`/`venv`, then `$VIRTUAL_ENV`, then packaged Python | Attach asks for a debugpy port (default `5678`); start debugpy yourself |
 | Lua | Runs the current script in a separate headless Neovim with temporary `osv` | Attach to `127.0.0.1:8086`; `:DebugLuaListen` explicitly starts `osv` in the current editor |
 | Java | Selects jdtls-provided main-class configs after DAP is loaded | `Space dj` runs the nearest Java test; `Space dJ` runs the test class |
 
-The C/C++ remote configurations ask for an ELF and a host:port, defaulting to `127.0.0.1:3333` for STM32/OpenOCD and `192.168.7.1:2345` for MP157 gdbserver. Start OpenOCD or gdbserver yourself, then select and confirm the attach configuration. Neovim does not start a target server, connect during startup, or flash firmware automatically.
+The C/C++ remote configurations ask for an ELF and a host:port, defaulting to `127.0.0.1:3333` for STM32/OpenOCD and `192.168.7.1:2345` for MP157 gdbserver. Start OpenOCD or gdbserver yourself, then select and confirm the attach configuration.
+
+`STM32: Flash and debug (probe-rs)` is the one entry that writes to a board. It asks for a probe-rs chip name (the last one is offered again) and an existing ELF, starts `probe-rs dap-server --single-session` on a free local port, flashes the ELF, halts after reset and stops at your breakpoints. The adapter type is `probe-rs-debug`, matching the probe-rs VS Code extension, so a project `.vscode/launch.json` with that type pins the chip and ELF for both editors; nvim-dap reads `./.vscode/launch.json` from the current directory. probe-rs `show-message` events become notifications. Neovim never starts a target server, connects during startup or flashes until you pick and confirm one of these entries. Build the ELF first; the configuration does not run CMake.
+
+Checked on 2026-11-03 against an ALIENTEK Mini STM32H562 with an ST-Link V2: launch.json flash and halt in about 1 s, breakpoint, step over without entering HAL, Variables scope and `count` evaluation, and disconnect with no leftover probe-rs process, after which the firmware kept running. `tests/debug.lua` covers only the adapter wiring and prompt validation, not hardware.
 
 For MP157 shared-library symbols, use the GDB REPL (`Space dr`) with `set sysroot <existing target sysroot>` and, when source paths differ, `set substitute-path <build prefix> <local source>`. The SDK path depends on the installed SDK; inspect its target sysroot instead of assuming the SDK root is a sysroot. These are native GDB commands, not cppdbg `setupCommands`; the GDB DAP adapter does not consume that cppdbg field.
 
