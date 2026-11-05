@@ -10,6 +10,15 @@ local panels = require("mayon.ui.ai_panels")
 local original_diff_add = vim.api.nvim_get_hl(0, { name = "DiffAdd" })
 local original_diff_delete = vim.api.nvim_get_hl(0, { name = "DiffDelete" })
 panels.setup()
+-- Chat decoration never hooks keystrokes globally; only chat buffers get
+-- buffer-local text-change hooks.
+local events = {}
+for _, autocmd in ipairs(vim.api.nvim_get_autocmds({ group = "MayonAIPanels" })) do
+	for _, event in ipairs(type(autocmd.event) == "table" and autocmd.event or { autocmd.event }) do
+		events[event] = true
+	end
+end
+assert(not events.TextChanged and not events.TextChangedI, "AI decoration must not hook global text-change events")
 for name, value in pairs(float_before) do
 	assert(
 		vim.deep_equal(value, vim.api.nvim_get_hl(0, { name = name, link = false })),
@@ -60,7 +69,8 @@ assert(
 	vim.api.nvim_win_get_width(chat_win) <= vim.o.columns - 4,
 	"CodeCompanion float should stay within the current editor width"
 )
-assert(chat_config.border[1] == "┌", "CodeCompanion float should use the shared single-line border")
+assert(chat_config.border[1] == "╭", "CodeCompanion float should use the shared rounded border")
+assert(vim.w[chat_win].mayon_ai_panel == true, "chat window must be marked as an AI panel")
 local surface = tonumber(require("mayon.generated").palette.bg:sub(2), 16)
 assert(vim.api.nvim_get_hl(0, { name = "FloatBorder", link = false }).bg == surface)
 assert(vim.api.nvim_get_hl(0, { name = "FloatTitle", link = false }).bg == surface)
@@ -84,13 +94,59 @@ if not vim.env.DEEPSEEK_API_KEY or vim.env.DEEPSEEK_API_KEY == "" then
 	)
 end
 
+-- Typed or streamed text is redecorated before the reply is done, from a
+-- buffer-local hook coalesced to one pass per tick.
+local local_hooks = vim.api.nvim_get_autocmds({ group = "MayonAIPanelsChat", buffer = chat_buf })
+local hooked_events = {}
+for _, autocmd in ipairs(local_hooks) do
+	hooked_events[autocmd.event] = true
+end
+assert(hooked_events.TextChanged and hooked_events.TextChangedI, "chat buffers need buffer-local text-change hooks")
+local original_decorate = panels.decorate_chat
+vim.api.nvim_buf_clear_namespace(chat_buf, vim.api.nvim_get_namespaces().MayonAIPanels, 0, -1)
+local line_count = vim.api.nvim_buf_line_count(chat_buf)
+vim.api.nvim_buf_set_lines(chat_buf, line_count, line_count, false, { "", "## YOU", "", "streamed text" })
+vim.api.nvim_exec_autocmds("TextChanged", { buffer = chat_buf, modeline = false })
+vim.api.nvim_exec_autocmds("TextChangedI", { buffer = chat_buf, modeline = false })
+vim.wait(30)
+assert(
+	#vim.api.nvim_buf_get_extmarks(chat_buf, vim.api.nvim_get_namespaces().MayonAIPanels, 0, -1, {}) > 0,
+	"text changes in a chat buffer must redecorate it"
+)
+assert(panels.decorate_chat == original_decorate, "decorate_chat export must stay stable")
+
+-- Adapter/model switches invalidate the cached provider label.
+assert(panels.winbar(chat_buf):find("deepseek%-v4%-flash"), "chat winbar should show the default model")
+local adapter_utils = require("codecompanion.adapters.utils")
+local original_resolve = adapter_utils.resolve_model
+adapter_utils.resolve_model = function()
+	return "switched-model"
+end
+vim.api.nvim_exec_autocmds("User", { pattern = "CodeCompanionChatModel", data = { bufnr = chat_buf } })
+vim.wait(30)
+assert(panels.winbar(chat_buf):find("switched-model", 1, true), "ChatModel must invalidate the provider cache")
+adapter_utils.resolve_model = original_resolve
+vim.api.nvim_exec_autocmds("User", { pattern = "CodeCompanionChatAdapter", data = { bufnr = chat_buf } })
+vim.wait(30)
+assert(panels.winbar(chat_buf):find("deepseek%-v4%-flash"), "ChatAdapter must invalidate the provider cache")
+
 local terminal_buf = panels.open_fixture("terminal")
 assert(vim.bo[terminal_buf].buftype == "terminal", "terminal fixture must use Neovim's terminal buffer")
 assert(vim.b[terminal_buf].mayon_ai_fixture, "terminal fixture must be explicitly offline")
+local terminal_win = vim.fn.win_findbuf(terminal_buf)[1]
+assert(terminal_win and vim.w[terminal_win].mayon_ai_panel == true, "AI terminal window must be marked")
 assert(
 	panels.winbar(terminal_buf):find("OFFLINE FIXTURE", 1, true),
 	"terminal container should identify its fixture status"
 )
 
+-- The Claude connection poll runs only while an AI panel is visible.
+assert(panels.poll_active(), "Claude status poll should run while an AI panel is visible")
 vim.api.nvim_buf_delete(chat_buf, { force = true })
 vim.api.nvim_buf_delete(terminal_buf, { force = true })
+assert(
+	vim.wait(1500, function()
+		return not panels.poll_active()
+	end, 50),
+	"Claude status poll must stop when no AI panel is visible"
+)

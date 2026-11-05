@@ -1,3 +1,7 @@
+-- AI panel visual layer: chat decoration, winbar status and Claude diff
+-- styling. Decoration runs on CodeCompanion's own events plus buffer-local text
+-- changes in chat buffers (coalesced to one pass per tick); the winbar caches
+-- provider/model state per buffer.
 local M = {}
 local api = vim.api
 local ns = api.nvim_create_namespace("MayonAIPanels")
@@ -92,6 +96,30 @@ local function is_chat(buf)
 	return api.nvim_buf_is_valid(buf) and vim.bo[buf].filetype == "codecompanion"
 end
 
+local function terminal_command(buf)
+	local terminal = vim.b[buf].snacks_terminal
+	local cmd = terminal and terminal.cmd
+	if type(cmd) == "table" then
+		return table.concat(cmd, " "):lower()
+	end
+	return type(cmd) == "string" and cmd:lower() or ""
+end
+
+-- Single owner of the "is this an AI terminal" predicate, shared by the
+-- Claude status, the panel width fit and Edgy's terminal filter.
+function M.is_ai_terminal(buf)
+	if not api.nvim_buf_is_valid(buf) then
+		return false
+	end
+	local filetype = vim.bo[buf].filetype
+	return filetype == "claudecode" or terminal_command(buf):find("claude", 1, true) ~= nil
+end
+
+-- Any buffer Edgy/the layout treats as an AI side panel: chat or AI terminal.
+function M.is_panel(buf)
+	return is_chat(buf) or M.is_ai_terminal(buf)
+end
+
 local function user_role()
 	local ok, config = pcall(require, "codecompanion.config")
 	return ok and config.interactions.chat.roles.user or "YOU"
@@ -117,12 +145,12 @@ local function role_headings(buf)
 		elseif type(role) == "string" then
 			assistant[role] = true
 		end
-		assistant[tostring(chat.adapter.formatted_name or chat.adapter.name or "DeepSeek"):upper()] = true
 		local formatted = tostring(chat.adapter.formatted_name or chat.adapter.name or "DeepSeek")
+		assistant[formatted:upper()] = true
 		assistant[formatted] = true
 		assistant["CodeCompanion (" .. formatted .. ")"] = true
 	end
-	return users, assistant
+	return users, assistant, user
 end
 
 local function set_line_hl(buf, row, group, priority)
@@ -140,8 +168,6 @@ local function decorate_loaded_rules(buf, lines)
 		local rule = line:match("^%s*>%s*%-%s*<rules>([^<>]-)</rules>%s*$")
 		if rule and rule:match("AGENTS%.md$") then
 			local filename = vim.fs.basename(rule)
-			-- Replace only this rule row. Other file/buffer context entries and
-			-- their Context heading must remain visible, even when tightly packed.
 			api.nvim_buf_set_extmark(buf, ns, row - 1, 0, {
 				end_col = #line,
 				end_row = row - 1,
@@ -169,14 +195,59 @@ local tool_names = {
 	LSP = true,
 }
 
-local function decorate_chat(buf)
+local decorate_chat
+local hooked = {}
+local pending = {}
+local ensure_poll
+
+-- Coalesce text-change redecoration to at most one pass per event-loop tick.
+local function schedule_decorate(buf)
+	if pending[buf] then
+		return
+	end
+	pending[buf] = true
+	vim.schedule(function()
+		pending[buf] = nil
+		if is_chat(buf) then
+			decorate_chat(buf)
+		end
+	end)
+end
+
+-- Buffer-local, so ordinary buffers never pay for a chat rescan on keystrokes.
+local function hook_chat(buf)
+	if hooked[buf] then
+		return
+	end
+	hooked[buf] = true
+	local group = api.nvim_create_augroup("MayonAIPanelsChat", { clear = false })
+	api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
+		group = group,
+		buffer = buf,
+		callback = function(ev)
+			schedule_decorate(ev.buf)
+		end,
+	})
+	api.nvim_create_autocmd("BufWipeout", {
+		group = group,
+		buffer = buf,
+		once = true,
+		callback = function(ev)
+			hooked[ev.buf] = nil
+			pending[ev.buf] = nil
+		end,
+	})
+end
+
+function decorate_chat(buf)
 	if not is_chat(buf) then
 		return
 	end
+	hook_chat(buf)
 	api.nvim_buf_clear_namespace(buf, ns, 0, -1)
 	local lines = api.nvim_buf_get_lines(buf, 0, -1, false)
 	decorate_loaded_rules(buf, lines)
-	local user_roles, assistant_roles = role_headings(buf)
+	local user_roles, assistant_roles, user = role_headings(buf)
 	local in_user = false
 	local in_code = false
 	for row, line in ipairs(lines) do
@@ -184,7 +255,7 @@ local function decorate_chat(buf)
 		if heading then
 			in_user = user_roles[heading] == true
 			if in_user then
-				local label = user_role() == "Me" and "YOU" or user_role():upper()
+				local label = user == "Me" and "YOU" or user:upper()
 				api.nvim_buf_set_extmark(buf, ns, row - 1, 0, {
 					end_col = #line,
 					conceal = "",
@@ -217,7 +288,6 @@ local function decorate_chat(buf)
 				or "MayonAICode"
 			set_line_hl(buf, row - 1, group)
 		elseif not in_user and tool_names[line:match("^%s*>%s*(%a+)%s") or ""] then
-			-- CodeCompanion emits tool calls as single blockquote summary lines.
 			set_line_hl(buf, row - 1, "MayonAITool")
 		elseif in_user and not heading and line ~= "" then
 			api.nvim_buf_set_extmark(buf, ns, row - 1, 0, {
@@ -242,8 +312,10 @@ local function decorate_chat(buf)
 			.. normal
 			.. ",WinBar:MayonAIPanel,WinBarNC:MayonAIPanel,FloatBorder:FloatBorder,FloatTitle:FloatTitle"
 		vim.wo[win].fillchars = "eob: "
+		vim.w[win].mayon_ai_panel = true
 		vim.wo[win].winbar = "%!v:lua.require'mayon.ui.ai_panels'.winbar()"
 	end
+	ensure_poll()
 end
 
 M.decorate_chat = decorate_chat
@@ -268,23 +340,43 @@ local function diff_counts(buf)
 	return added, removed
 end
 
-local function provider(buf)
-	local ft = vim.bo[buf].filetype
-	local cmd_value = vim.b[buf].snacks_terminal and vim.b[buf].snacks_terminal.cmd or ""
-	local cmd = (type(cmd_value) == "table" and table.concat(cmd_value, " ") or tostring(cmd_value)):lower()
-	if ft == "claudecode" or cmd:find("claude", 1, true) then
+local function claude_connected()
+	-- Never force-load claudecode just to draw a status dot.
+	local claude = package.loaded.claudecode
+	if type(claude) ~= "table" or type(claude.is_claude_connected) ~= "function" then
+		return false
+	end
+	local ok, value = pcall(claude.is_claude_connected)
+	return ok and value == true
+end
+
+-- Per-buffer cache of the resolved provider, invalidated when CodeCompanion
+-- opens/finishes a chat, changes adapter/model, when the Claude connection
+-- flips, and when the buffer is wiped.
+local provider_cache = {}
+local function invalidate_provider(buf)
+	provider_cache[buf] = nil
+end
+
+local function resolve_provider(buf)
+	if provider_cache[buf] then
+		return unpack(provider_cache[buf])
+	end
+	local result
+	if M.is_ai_terminal(buf) then
 		if vim.b[buf].mayon_ai_fixture then
-			return "Claude", "OFFLINE FIXTURE", false
+			result = { "Claude", "OFFLINE FIXTURE", false, "offline" }
+		else
+			local connected = claude_connected()
+			local model = vim.env.ANTHROPIC_MODEL or "Claude Code"
+			result = {
+				"Claude",
+				(connected and "已连接" or "未连接") .. " · " .. model,
+				connected,
+				connected and "connected" or "offline",
+			}
 		end
-		local connected = false
-		local ok, claude = pcall(require, "claudecode")
-		if ok and type(claude.is_claude_connected) == "function" then
-			local connected_ok, value = pcall(claude.is_claude_connected)
-			connected = connected_ok and value == true
-		end
-		local model = vim.env.ANTHROPIC_MODEL or "Claude Code"
-		return "Claude", (connected and "已连接" or "未连接") .. " · " .. model, connected
-	elseif ft == "codecompanion" then
+	elseif is_chat(buf) then
 		local ok, chat = pcall(function()
 			local last = require("codecompanion").last_chat()
 			return last and last.bufnr == buf and last or nil
@@ -303,26 +395,78 @@ local function provider(buf)
 		end
 		local configured = vim.env.DEEPSEEK_API_KEY ~= nil and vim.env.DEEPSEEK_API_KEY ~= ""
 		model = model ~= "" and model or vim.env.DEEPSEEK_MODEL or "deepseek-v4-flash"
-		return name,
+		result = {
+			name,
 			(configured and "已配置" or "未配置密钥") .. " · " .. model .. " · ^S 发送",
 			configured,
-			"configured"
+			configured and "configured" or "offline",
+		}
+	else
+		result = { nil, "", false, "offline" }
 	end
-	return nil, "", false
+	provider_cache[buf] = result
+	return unpack(result)
+end
+
+-- Claude exposes no connection event, so poll it, but only while an AI panel
+-- (which shows the Claude dot) is visible in the current tab.
+local poll_timer
+local last_connected
+
+local function panel_visible()
+	for _, win in ipairs(api.nvim_tabpage_list_wins(0)) do
+		if vim.w[win].mayon_ai_panel and M.is_panel(api.nvim_win_get_buf(win)) then
+			return true
+		end
+	end
+	return false
+end
+
+local function stop_poll()
+	if poll_timer and not poll_timer:is_closing() then
+		poll_timer:stop()
+	end
+end
+
+local function poll_tick()
+	if not panel_visible() then
+		stop_poll()
+		return
+	end
+	local connected = claude_connected()
+	if connected ~= last_connected then
+		last_connected = connected
+		for buf in pairs(provider_cache) do
+			if not api.nvim_buf_is_valid(buf) or M.is_ai_terminal(buf) then
+				provider_cache[buf] = nil
+			end
+		end
+		vim.cmd("redrawstatus!")
+	end
+end
+
+function ensure_poll()
+	if not panel_visible() then
+		return
+	end
+	if not poll_timer or poll_timer:is_closing() then
+		poll_timer = vim.uv.new_timer()
+	end
+	if not poll_timer:is_active() then
+		last_connected = claude_connected()
+		poll_timer:start(500, 500, vim.schedule_wrap(poll_tick))
+	end
+end
+
+-- Exposed for tests: whether the connection poll is currently running.
+function M.poll_active()
+	return poll_timer ~= nil and not poll_timer:is_closing() and poll_timer:is_active()
 end
 
 local function provider_state(label)
 	if label == "Claude" then
-		local ok, claude = pcall(require, "claudecode")
-		local connected = false
-		if ok and type(claude.is_claude_connected) == "function" then
-			local connected_ok, value = pcall(claude.is_claude_connected)
-			connected = connected_ok and value == true
-		end
-		return connected and "connected" or "offline"
+		return claude_connected() and "connected" or "offline"
 	elseif label ~= "DeepSeek" then
-		-- Codex and other ACP adapters only appear as the active panel and
-		-- expose no connection state here.
 		return "configured"
 	end
 	return vim.env.DEEPSEEK_API_KEY ~= nil and vim.env.DEEPSEEK_API_KEY ~= "" and "configured" or "offline"
@@ -333,7 +477,7 @@ function M.winbar(buf)
 	if not api.nvim_buf_is_valid(buf) then
 		return ""
 	end
-	local name, status = provider(buf)
+	local name, status, _, state = resolve_provider(buf)
 	if not name then
 		return ""
 	end
@@ -354,8 +498,8 @@ function M.winbar(buf)
 		labels[#labels + 1] = active
 	end
 	for _, label in ipairs(labels) do
-		local tab_state = provider_state(label)
-		local dot = "%#" .. states[tab_state] .. "#●%*"
+		local dot_state = label == active and state or provider_state(label)
+		local dot = "%#" .. states[dot_state] .. "#●%*"
 		tabs[#tabs + 1] = dot .. (label == active and "%#MayonAIActive# " or "%#MayonAIInactive# ") .. label .. " %*"
 	end
 	return table.concat(tabs, " ") .. "%=%#MayonAIPanelMuted#" .. statusline_text(status) .. " %*"
@@ -394,6 +538,7 @@ function M.style_diff(buf)
 	style(vim.b[buf].claudecode_diff_target_win, false)
 	for _, win in ipairs(vim.fn.win_findbuf(buf)) do
 		style(win, true)
+		vim.w[win].mayon_ai_panel = true
 		vim.wo[win].winbar = "%!v:lua.require'mayon.ui.ai_panels'.diff_winbar()"
 	end
 end
@@ -415,9 +560,17 @@ local function style_terminal(buf)
 		vim.wo[win].winhighlight =
 			"Normal:NormalFloat,EndOfBuffer:NormalFloat,WinBar:MayonAIPanel,WinBarNC:MayonAIPanel"
 		vim.wo[win].fillchars = "eob: "
-		local name = provider(buf)
+		local name = resolve_provider(buf)
 		vim.wo[win].winbar = name and "%!v:lua.require'mayon.ui.ai_panels'.winbar()" or ""
+		vim.w[win].mayon_ai_panel = name ~= nil
 	end
+	ensure_poll()
+end
+
+-- Refresh hook for callers that know the provider state changed.
+function M.refresh_status(buf)
+	invalidate_provider(buf)
+	vim.cmd("redrawstatus!")
 end
 
 function M.setup()
@@ -427,22 +580,42 @@ function M.setup()
 	setup_done = true
 	hl()
 	local group = api.nvim_create_augroup("MayonAIPanels", { clear = true })
-	api.nvim_create_autocmd("ColorScheme", {
-		group = group,
-		callback = hl,
-	})
-	api.nvim_create_autocmd({ "BufEnter", "BufWinEnter", "TextChanged", "TextChangedI" }, {
+	api.nvim_create_autocmd("ColorScheme", { group = group, callback = hl })
+	api.nvim_create_autocmd("BufWipeout", {
 		group = group,
 		callback = function(ev)
-			if is_chat(ev.buf) then
-				vim.schedule(function()
-					decorate_chat(ev.buf)
-				end)
-			elseif vim.bo[ev.buf].buftype == "terminal" or vim.bo[ev.buf].filetype == "snacks_terminal" then
-				style_terminal(ev.buf)
+			provider_cache[ev.buf] = nil
+		end,
+	})
+	api.nvim_create_autocmd({ "BufWinEnter", "WinEnter", "TabEnter" }, {
+		group = group,
+		callback = function()
+			ensure_poll()
+		end,
+	})
+	api.nvim_create_autocmd("VimLeavePre", {
+		group = group,
+		callback = function()
+			if poll_timer and not poll_timer:is_closing() then
+				poll_timer:stop()
+				poll_timer:close()
 			end
 		end,
 	})
+	-- Adapter or model switches inside a chat change the winbar label.
+	api.nvim_create_autocmd("User", {
+		group = group,
+		pattern = { "CodeCompanionChatAdapter", "CodeCompanionChatModel" },
+		callback = function(ev)
+			local buf = ev.data and ev.data.bufnr
+			if buf then
+				vim.schedule(function()
+					M.refresh_status(buf)
+				end)
+			end
+		end,
+	})
+	-- Full redecoration when CodeCompanion opens, restores or completes a chat.
 	api.nvim_create_autocmd("User", {
 		group = group,
 		pattern = { "CodeCompanionChatOpened", "CodeCompanionChatRestored", "CodeCompanionChatDone" },
@@ -451,9 +624,20 @@ function M.setup()
 			if buf and is_chat(buf) then
 				vim.schedule(function()
 					if api.nvim_buf_is_valid(buf) then
+						invalidate_provider(buf)
 						decorate_chat(buf)
 					end
 				end)
+			end
+		end,
+	})
+	-- Style AI terminal windows the moment they open. Ordinary terminals keep
+	-- their Edgy winbar and must not be re-styled here.
+	api.nvim_create_autocmd("BufWinEnter", {
+		group = group,
+		callback = function(ev)
+			if M.is_ai_terminal(ev.buf) then
+				style_terminal(ev.buf)
 			end
 		end,
 	})

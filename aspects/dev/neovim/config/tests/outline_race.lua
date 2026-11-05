@@ -1,107 +1,121 @@
--- A delayed BufEnter reconciliation must retain the tab that raised it.
--- Switching tabs before scheduled callbacks run used to send the first tab's
--- buffer to M.reconcile while that function implicitly operated on tab 2.
+-- The manual outline is tab-local and safe around window/tab teardown: no
+-- reconcile state machine, no automatic open, and closing never raises E444.
 local outline = require("mayon.ui.outline")
 outline.setup()
-vim.wait(50)
+require("lz.n").trigger_load("aerial.nvim")
+vim.o.columns, vim.o.lines = 180, 50
 
-local first_tab = vim.api.nvim_get_current_tabpage()
-local first_window = vim.api.nvim_get_current_win()
 local path = vim.fn.tempname() .. ".lua"
 vim.fn.writefile({ "local function outline_race_fixture() return true end" }, path)
-local source = vim.fn.bufadd(path)
-vim.fn.bufload(source)
-vim.bo[source].filetype = "lua"
-vim.api.nvim_win_set_buf(first_window, source)
-vim.wait(30)
+vim.cmd.edit(vim.fn.fnameescape(path))
+local source_win = vim.api.nvim_get_current_win()
 
-vim.cmd("tabnew")
-local second_tab = vim.api.nvim_get_current_tabpage()
-vim.wait(50)
-assert(first_tab ~= second_tab, "fixture must use two distinct tabs")
-
-local original_reconcile = outline.reconcile
-local seen
-outline.reconcile = function(bufnr, tabpage)
-	if bufnr == source then
-		seen = { bufnr = bufnr, tabpage = tabpage }
-	end
-	return false
-end
-
-vim.api.nvim_set_current_tabpage(first_tab)
-vim.api.nvim_set_current_win(first_window)
-vim.api.nvim_exec_autocmds("BufEnter", { buffer = source, modeline = false })
--- The autocmd schedules its work. Move away before either scheduled callback
--- executes so the test observes the same timing window as a rapid tab switch.
-vim.api.nvim_set_current_tabpage(second_tab)
-assert(
-	vim.wait(1000, function()
-		return seen ~= nil
-	end, 5),
-	"BufEnter should eventually reconcile the source buffer"
-)
-outline.reconcile = original_reconcile
-
-assert(seen.bufnr == source, "reconciliation must retain the event's source buffer")
-assert(seen.tabpage == first_tab, "reconciliation must retain the event's originating tab")
-print("Outline cross-tab scheduled reconciliation passed")
-
--- A background reconciliation must retain that tab's selected source split,
--- even when the foreground tab displays the same buffer.
-require("mayon.features.ai_completion").set("off")
-require("lz.n").trigger_load("aerial.nvim")
-vim.o.columns = 180
-vim.o.lines = 50
-vim.api.nvim_set_current_tabpage(first_tab)
-vim.api.nvim_set_current_win(first_window)
-vim.cmd.vsplit()
-local selected_source = vim.api.nvim_get_current_win()
-vim.api.nvim_win_set_buf(selected_source, source)
+-- Symbols must arrive before the outline can be toggled on.
+local outline_win = nil
 assert(
 	vim.wait(3000, function()
-		outline.reconcile(source, first_tab)
-		return outline.is_open(first_tab)
+		outline.toggle()
+		outline_win = (function()
+			for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+				if vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "aerial" then
+					return win
+				end
+			end
+		end)()
+		return outline_win ~= nil
 	end, 25),
-	"first tab outline did not acquire symbols"
+	"manual toggle on a Lua document should open the outline"
 )
-local function outline_window(tabpage)
-	for _, win in ipairs(vim.api.nvim_tabpage_list_wins(tabpage)) do
+assert(vim.wo[outline_win].statuscolumn:find("outline", 1, true), "outline must install its rail")
+
+-- A second toggle closes it.
+outline.toggle()
+assert(
+	vim.wait(500, function()
+		return not outline.is_open()
+	end),
+	"toggle should close the outline"
+)
+
+-- The default is closed: reopening a fresh tab never auto-opens.
+vim.cmd.tabnew()
+local second_tab = vim.api.nvim_get_current_tabpage()
+assert(not outline.is_open(second_tab), "a fresh tab must not auto-open the outline")
+vim.cmd.tabprevious()
+
+-- Closing the last non-outline window beside an open outline must not raise
+-- E444; Aerial's close is safe and leaves Neovim usable.
+vim.o.columns = 100
+outline.toggle()
+assert(
+	vim.wait(500, function()
+		return outline.is_open()
+	end),
+	"narrow manual open still works"
+)
+vim.cmd("only") -- collapses to the outline+source; no error
+assert(vim.v.errmsg == "", "window teardown raised an error")
+
+print("Manual outline toggle, tab locality and teardown safety passed")
+
+local function find_outline()
+	for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
 		if vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "aerial" then
 			return win
 		end
 	end
 end
-local first_outline = assert(outline_window(first_tab))
-assert(vim.w[first_outline].source_win == selected_source, "outline did not bind selected source split")
-vim.api.nvim_set_current_tabpage(second_tab)
-vim.api.nvim_win_set_buf(0, source)
-vim.wait(150)
-outline.reconcile(source, first_tab)
-first_outline = assert(outline_window(first_tab))
-assert(vim.w[first_outline].source_win == selected_source, "background reconcile rebound the wrong source split")
-assert(vim.api.nvim_get_current_tabpage() == second_tab, "background reconcile changed foreground tab")
-print("Outline same-buffer background-tab source split passed")
 
--- :q on the last source window closes the outline first, so Neovim can exit.
+-- Toggling from a tool window targets the tab's document window and keeps
+-- focus on the tool window.
+vim.o.columns = 180
+if outline.is_open() then
+	outline.toggle()
+end
+vim.api.nvim_set_current_win(source_win)
+vim.cmd("topleft 30vsplit")
+local tool_win = vim.api.nvim_get_current_win()
+local tool_buf = vim.api.nvim_create_buf(false, true)
+vim.bo[tool_buf].filetype = "snacks_picker_list"
+vim.api.nvim_win_set_buf(tool_win, tool_buf)
+assert(outline.toggle(), "toggle from a tool window should open the document's outline")
+assert(vim.api.nvim_get_current_win() == tool_win, "toggle must keep focus in the tool window")
+local opened = assert(find_outline())
+local source_buf = vim.api.nvim_win_get_buf(source_win)
+assert(
+	vim.b[vim.api.nvim_win_get_buf(opened)].source_buffer == source_buf
+		or require("aerial.util").get_source_buffer(vim.api.nvim_win_get_buf(opened)) == source_buf,
+	"outline must belong to the document, not the tool buffer"
+)
+vim.api.nvim_win_close(tool_win, true)
+
+-- :q in the last source window beside the outline closes the outline first,
+-- so the quit closes the tab (or exits Neovim) instead of leaving it alone.
 vim.cmd.tabnew()
+vim.cmd.edit(vim.fn.fnameescape(path))
 local quit_tab = vim.api.nvim_get_current_tabpage()
-local quit_source = vim.api.nvim_get_current_win()
-vim.cmd("rightbelow vsplit")
-local quit_outline = vim.api.nvim_get_current_win()
-vim.api.nvim_win_set_buf(quit_outline, vim.api.nvim_create_buf(false, true))
-vim.bo.filetype = "aerial"
-vim.api.nvim_set_current_win(quit_source)
-vim.api.nvim_exec_autocmds("QuitPre", { modeline = false })
+assert(
+	vim.wait(3000, function()
+		return outline.toggle() or outline.is_open()
+	end, 25),
+	"outline should open in the quit tab"
+)
+local quit_outline = assert(find_outline())
+vim.cmd("quit")
 assert(not vim.api.nvim_win_is_valid(quit_outline), "QuitPre must close the outline beside the last source")
-assert(vim.api.nvim_get_current_tabpage() == quit_tab, "QuitPre must stay on the quitting tab")
+assert(not vim.api.nvim_tabpage_is_valid(quit_tab), ":q on the last source must close its tab")
+assert(vim.v.errmsg == "", "quitting beside the outline raised an error")
 
--- The outline alone in the only tab must not raise E444 while reconciling.
-vim.cmd.only()
-vim.cmd.tabonly()
-vim.api.nvim_win_set_buf(0, vim.api.nvim_create_buf(false, true))
-vim.bo.filetype = "aerial"
-local lone_outline = vim.api.nvim_get_current_win()
-assert(outline.reconcile(nil, quit_tab) == false, "A lone outline cannot be closed")
-assert(vim.api.nvim_win_is_valid(lone_outline), "The lone outline stays valid")
-print("Outline quit handling passed")
+-- A remaining split keeps the outline: only the last real window triggers it.
+vim.cmd.tabnew()
+vim.cmd.edit(vim.fn.fnameescape(path))
+assert(
+	vim.wait(3000, function()
+		return outline.toggle() or outline.is_open()
+	end, 25),
+	"outline should open beside a split"
+)
+vim.cmd.split()
+vim.cmd("quit")
+assert(outline.is_open(), "QuitPre must keep the outline while another source window remains")
+print("Outline toggle target and quit handling passed")

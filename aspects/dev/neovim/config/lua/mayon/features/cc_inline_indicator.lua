@@ -22,7 +22,6 @@ function Spinner.new(o)
 		row = o.line_num - 1,
 		col = center > 0 and math.floor(center / 2) or 0,
 		idx = 1,
-		timer = uv.new_timer(),
 		id = nil,
 	}, Spinner)
 end
@@ -42,28 +41,17 @@ function Spinner:render()
 	end
 end
 
-function Spinner:start()
+function Spinner:advance()
+	if not api.nvim_buf_is_valid(self.bufnr) then
+		return
+	end
+	self.idx = self.idx % #SP_FRAMES + 1
 	self:render()
-	self.timer:start(
-		0,
-		INTERVAL,
-		vim.schedule_wrap(function()
-			if not self.timer or not api.nvim_buf_is_valid(self.bufnr) then
-				return
-			end
-			self.idx = self.idx % #SP_FRAMES + 1
-			self:render()
-		end)
-	)
 end
 
-function Spinner:stop()
-	if self.timer then
-		self.timer:stop()
-		self.timer:close()
-		self.timer = nil
-	end
+function Spinner:clear()
 	local id, bufnr = self.id, self.bufnr
+	self.id = nil
 	if id then
 		vim.schedule(function()
 			pcall(api.nvim_buf_del_extmark, bufnr, ns, id)
@@ -96,7 +84,6 @@ function Block.new(o)
 		ids = {},
 		patterns = patterns,
 		idx = 1,
-		timer = uv.new_timer(),
 		width = width,
 		height = #lines,
 		border_top = "╭" .. hline .. "╮",
@@ -134,28 +121,17 @@ function Block:render(create)
 	end
 end
 
-function Block:start()
-	self:render(true)
-	self.timer:start(
-		0,
-		INTERVAL,
-		vim.schedule_wrap(function()
-			if not self.timer or not api.nvim_buf_is_valid(self.bufnr) then
-				return
-			end
-			self.idx = (self.idx % #self.patterns) + 1
-			self:render(false)
-		end)
-	)
+function Block:advance()
+	if not api.nvim_buf_is_valid(self.bufnr) then
+		return
+	end
+	self.idx = (self.idx % #self.patterns) + 1
+	self:render(false)
 end
 
-function Block:stop()
-	if self.timer then
-		self.timer:stop()
-		self.timer:close()
-		self.timer = nil
-	end
+function Block:clear()
 	local ids, bufnr = self.ids, self.bufnr
+	self.ids = {}
 	vim.schedule(function()
 		for _, id in pairs(ids) do
 			pcall(api.nvim_buf_del_extmark, bufnr, ns, id)
@@ -188,9 +164,23 @@ local function start(bc)
 		line_num = s + math.floor((e - s) / 2),
 		width = block.width,
 	})
-	block:start()
-	spinner:start()
-	active = { bufnr = bufnr, block = block, spinner = spinner }
+	local timer = uv.new_timer()
+	active = { bufnr = bufnr, block = block, spinner = spinner, timer = timer }
+	block:render(true)
+	spinner:render()
+	-- One animation timer drives both the block and the spinner.
+	timer:start(
+		0,
+		INTERVAL,
+		vim.schedule_wrap(function()
+			local a = active
+			if not a or a.timer ~= timer or not api.nvim_buf_is_valid(a.bufnr) then
+				return
+			end
+			a.block:advance()
+			a.spinner:advance()
+		end)
+	)
 
 	if s == e then
 		set_sign(bufnr, s, SIGN.body)
@@ -209,8 +199,12 @@ local function stop()
 	end
 	local a = active
 	active = nil
-	a.spinner:stop()
-	a.block:stop()
+	if a.timer then
+		a.timer:stop()
+		a.timer:close()
+	end
+	a.spinner:clear()
+	a.block:clear()
 	if api.nvim_buf_is_valid(a.bufnr) then
 		api.nvim_buf_clear_namespace(a.bufnr, ns, 0, -1)
 	end
