@@ -12,6 +12,9 @@ ai_completion.set("off")
 ai_completion.copilot_setup()
 
 require("mayon.config.keymaps").setup()
+for _, mode in ipairs({ "n", "i", "x" }) do
+	assert(vim.fn.maparg("<C-s>", mode, false, true).desc == "Save Buffer", "<C-s> should save in mode " .. mode)
+end
 vim.api.nvim_exec_autocmds("User", { pattern = "MayonVeryLazy" })
 local domains = {
 	"snacks",

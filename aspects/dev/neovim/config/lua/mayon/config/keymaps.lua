@@ -129,6 +129,9 @@ function M.setup()
 		require("mayon.features.scratch").scratch()
 	end, "Open Scratch Buffer")
 	map("n", "<leader>w", "<cmd>write<cr>", "Save Buffer")
+	-- Replaces Neovim's insert-mode <C-s> signature help default; signature
+	-- help stays on gK, and Copilot-only buffers would otherwise just error.
+	map({ "n", "i", "x" }, "<C-s>", "<cmd>write<cr>", "Save Buffer")
 	map("n", "<leader>qq", close_smart, "Close Window or Buffer")
 	map("n", "<leader>bd", function()
 		Snacks.bufdelete()
