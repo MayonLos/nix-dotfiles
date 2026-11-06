@@ -20,7 +20,6 @@ lib.filterAttrs (
       "EDITOR"
       "VISUAL"
       "BROWSER"
-      "NVIM_CODEX_ACP"
       "NVIM_CLAUDE_ACP"
     ]
     || builtins.match "JAVA[0-9]+_HOME" name != null

@@ -55,7 +55,7 @@
     mark-shot.url = "github:jswysnemc/mark-shot";
     wayscrollshot.url = "github:jswysnemc/wayscrollshot";
 
-    # Daily-updated packages for AI coding agents: codex, claude-code, dsh, grok
+    # Daily-updated packages for AI coding agents: claude-code, dsh, grok
     # and the review/usage tooling around them. zcode is deliberately NOT
     # installed -- see aspects/dev/ai-agents/ai-agents.nix. Deliberately NOT
     # `follows`-ed: upstream only builds and caches against its own pinned

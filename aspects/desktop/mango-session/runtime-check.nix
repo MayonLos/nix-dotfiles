@@ -51,7 +51,6 @@ let
       shellEnvironment = home.home.sessionVariables;
       fcitxClassicUI = home.i18n.inputMethod.fcitx5.settings.addons.classicui.globalSection;
       acpEnvironment = {
-        NVIM_CODEX_ACP = "${pkgs.local.codex-acp}/bin/codex-acp";
         NVIM_CLAUDE_ACP = "${pkgs.local.claude-agent-acp}/bin/claude-agent-acp";
       };
       sharedTargets = home.nixDotfiles.graphicalSessionTargets;

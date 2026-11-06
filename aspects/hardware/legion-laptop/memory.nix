@@ -18,9 +18,15 @@ _: {
   # 28 logical CPUs do not imply enough RAM for 28 independent builds, each
   # with 28 compiler workers. Leave headroom for this 31 GiB laptop's desktop.
   # These are concurrency budgets, not hard memory limits on individual builds.
-  nix.settings = {
-    max-jobs = 2;
-    cores = 8;
+  nix = {
+    settings = {
+      max-jobs = 2;
+      cores = 8;
+    };
+    # Builds yield CPU and disk to the interactive desktop. The documented cost:
+    # a switch issued while the desktop is busy builds more slowly.
+    daemonCPUSchedPolicy = "idle";
+    daemonIOSchedClass = "idle";
   };
 
   services.earlyoom = {

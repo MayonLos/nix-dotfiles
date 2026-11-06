@@ -94,7 +94,7 @@ let
     "dust"
     "tealdeer"
     "sops"
-    "p7zip"
+    "_7zz"
     "libqalculate"
   ];
   hasCliTools = home: builtins.all (pname: hasPackage home pname) cliToolPackages;

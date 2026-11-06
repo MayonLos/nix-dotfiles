@@ -21,14 +21,14 @@ checks: [neovim]
    与编辑后的文本给 CLI，由 CLI 写入目标文件；CLI 随后 `close_tab` 清理视图。
    拒绝返回 `DIFF_REJECTED`，不会写源文件。未保存的原文件会被上游拒绝打开 diff。
 2. Sidekick（Codex/Grok TUI 与 Copilot NES）已于 2026-11-05 移除；Claude Code 是唯一的 AI CLI 面板，
-   `<Space>af` 把当前文件加入 Claude 上下文。Codex 仍可作为 CodeCompanion 的 ACP adapter 使用。
+   `<Space>af` 把当前文件加入 Claude 上下文。Codex 及其 ACP adapter 已于 2026-11-06 移除。
 3. **CodeCompanion 19.27** 默认 DeepSeek HTTP 对话与内联改写；中文 prompt library 包含解释报错、
    为选区写测试、提交信息草稿、重构与注释。历史扩展保持原目录、自动本地保存、不额外请求标题。
-   对话中 `ga` 切换 adapter，可选 `codex` / `claude_code` ACP；`<Space>aC` 直接打开 `claude_code` 对话。
+   对话中 `ga` 切换 adapter，可选 `claude_code` ACP（上游其余 ACP 预设以 `show_presets = false` 隐藏）；`<Space>aC` 直接打开 `claude_code` 对话。
    这与 CLI 的原生 TUI 是不同入口；CodeCompanion 自带的 CLI interaction 未启用，CLI 由 claudecode.nvim 承担。
-   ACP 使用 llm-agents 的 `codex-acp` 2.2.2 / `claude-agent-acp` 0.95.0，不运行 npx。
+   ACP 使用 llm-agents 的 `claude-agent-acp` 0.95.0，不运行 npx。
    独立 flake 包由 `nix/outputs.nix` 注入绝对路径；HM 消费 ai-workbench 的公开会话变量
-   `NVIM_CODEX_ACP` / `NVIM_CLAUDE_ACP`，应用后需新登录会话。无有效路径时报错。
+   `NVIM_CLAUDE_ACP`，应用后需新登录会话。无有效路径时报错。
 
 用户在 tmux 自己启动 Claude 时，先在 Neovim 执行 `:ClaudeCodeStart`（只启动 IDE 服务），
 再在 Claude 执行 `/ide` 选中这个 Neovim。无需打开插件终端；状态栏 `C●` 表示连接、

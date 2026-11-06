@@ -62,9 +62,7 @@
               inherit (inputs.llm-agents.packages.${system})
                 dsh
                 herdr
-                codex
                 claude-code
-                codex-acp
                 claude-agent-acp
                 grok
                 grok-bot

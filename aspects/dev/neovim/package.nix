@@ -28,7 +28,6 @@ let
       tools = debugTools.tools // {
         copilot = "${pkgs.copilot-language-server}/bin/copilot-language-server";
         sqlite3 = "${pkgs.lib.getLib pkgs.sqlite}/lib/libsqlite3.so";
-        codex_acp = acpAdapters.codex or "";
         claude_acp = acpAdapters.claude or "";
       };
       versions = debugTools.versions // {

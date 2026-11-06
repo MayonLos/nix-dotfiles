@@ -13,6 +13,8 @@ in
     assert !nixos.services.tlp.enable;
     assert nixos.services.scx.scheduler == "scx_lavd";
     assert nixos.services.scx.extraArgs == [ ];
+    assert nixos.nix.daemonCPUSchedPolicy == "idle";
+    assert nixos.nix.daemonIOSchedClass == "idle";
     assert nixos.users.groups ? legion-conservation;
     assert builtins.elem "legion-conservation" nixos.users.users.mayon.extraGroups;
     assert pkgs.lib.hasInfix "DRIVER==\"ideapad_acpi\"" nixos.services.udev.extraRules;

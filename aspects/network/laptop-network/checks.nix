@@ -11,6 +11,7 @@ assert service.serviceConfig.ProtectHome == "read-only";
 assert service.enable;
 assert (service.serviceConfig.Restart or "no") == "no";
 assert builtins.elem "mayon-clash" nixos.networking.firewall.trustedInterfaces;
+assert nixos.networking.nftables.enable;
 assert !(nixos.systemd.services.nix-daemon.environment ? HTTPS_PROXY);
 {
   laptop-network = pkgs.runCommand "laptop-network-check" { } "touch $out";
@@ -25,6 +26,8 @@ assert !(nixos.systemd.services.nix-daemon.environment ? HTTPS_PROXY);
         uid = 1000;
       };
       services.mayon-clash.user = "trial";
+      # Match production: TUN traffic must pass the nftables rpfilter.
+      networking.nftables.enable = true;
       networking.dhcpcd.denyInterfaces = [ "mayon-clash" ];
       environment.systemPackages = [
         pkgs.mayonTui.clash

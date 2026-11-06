@@ -4,7 +4,6 @@ let
     builtins.attrValues
       (import ../languages/contract.nix { inherit (pkgs) lib; }).defaults;
   acpAdapters = {
-    codex = "${pkgs.local.codex-acp}/bin/codex-acp";
     claude = "${pkgs.local.claude-agent-acp}/bin/claude-agent-acp";
   };
   neovim = import ./package.nix {

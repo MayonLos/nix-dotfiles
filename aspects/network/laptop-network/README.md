@@ -30,7 +30,8 @@ v2ray-domain-list-community、dbip-country-lite **复制**，随后属于用户�
 127.0.0.1:7897。allow-lan 是用户可显式修改的设置，不自动放行防火墙。
 
 不设置系统代理、不向 nix-daemon 添加代理环境。native 开启 TUN 时接管网络，
-停止后回到直连；resolved 保留默认 stub listener。防火墙只信任原生
+停止后回到直连；resolved 保留默认 stub listener。防火墙自 2026-11-06 起使用 nftables 后端
+（libvirt NAT 随之切换），只信任原生
 `mayon-clash` 接口。polkit 只允许该服务单元把 TUN 注册为
 resolved 的默认 DNS 链路（dns-servers/domains/default-route）；resolved 的上游查询绑定物理
 网卡，不注册就绕过 dns-hijack。真实 TUN/休眠恢复需在应用后验收。

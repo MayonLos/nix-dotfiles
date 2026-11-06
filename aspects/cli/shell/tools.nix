@@ -102,7 +102,7 @@ in
       hexyl
       dust
       sops
-      p7zip
+      _7zz
       libqalculate
     ];
 

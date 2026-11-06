@@ -483,7 +483,6 @@ function M.winbar(buf)
 	end
 	local states = { connected = "MayonAIConnected", configured = "MayonAIConfigured", offline = "MayonAIDisconnected" }
 	local active = name:lower():find("claude", 1, true) and "Claude"
-		or name:lower():find("codex", 1, true) and "Codex"
 		or name:lower():find("deepseek", 1, true) and "DeepSeek"
 	active = active or statusline_text(name)
 	local win = tonumber(vim.g.statusline_winid) or vim.fn.win_findbuf(buf)[1]

@@ -119,24 +119,24 @@ checks: []
 
 ## AI 应用与编辑器集成
 
-入口：[AI agents](../aspects/dev/ai-agents/ai-agents.nix)、[Grok Bot](../aspects/dev/ai-agents/grok-bot.nix)、[DSH 包装](../aspects/dev/ai-agents/dsh-desktop.nix)、[CodeCompanion](../aspects/dev/neovim/config/lua/mayon/plugins/ai.lua)。2026-10-20 用户决定删除 OpenCode；Codex、Grok Build、DeepSeek Harness、Grok Bot 和 CodeCompanion 继续保留。配置更新已于 2026-10-20 应用，Home Manager 返回 success，OpenCode 命令已从新环境移除。
+入口：[AI agents](../aspects/dev/ai-agents/ai-agents.nix)、[Grok Bot](../aspects/dev/ai-agents/grok-bot.nix)、[DSH 包装](../aspects/dev/ai-agents/dsh-desktop.nix)、[CodeCompanion](../aspects/dev/neovim/config/lua/mayon/plugins/ai.lua)。2026-10-20 用户决定删除 OpenCode；Grok Build、DeepSeek Harness、Grok Bot 和 CodeCompanion 继续保留。2026-11-06 用户决定删除 Codex 与 `codex-acp`。配置更新已于 2026-10-20 应用，Home Manager 返回 success，OpenCode 命令已从新环境移除。
 
 2026-10-22：新增 Claude Code 2.1.299，主机 toplevel 与 treefmt 检查构建通过，系统 switch 成功；新 shell 的 `claude --version` 验证通过。程序由 Nix 管理，未修改既有登录、设置或会话，也未发起模型请求。
 
 | 项目 | 当前定位与建议 | 代价或边界 |
 |---|---|---|
-| Codex | 本地仓库编码主入口候选；原生 CLI、审查、会话和工具集成 | 使用现有原生子代理/MCP 客户端，避免另包一层 `codex exec` 委托脚本。选主力看实际项目体验，不凭模型宣传排名。 |
+| Codex | 用户于 2026-11-06 决定删除 | CLI、`codex-acp`、CodeCompanion adapter 与 `NVIM_CODEX_ACP` 会话变量已从配置移除；`~/.codex` 此前已由用户删除。 |
 | Claude Code | 用户于 2026-10-22 要求安装；通过锁定的 llm-agents 输入提供 `claude` | Nix 管理程序版本，登录、设置与会话历史归用户；在项目目录执行 `claude`，按提示完成账号登录。 |
 | Grok Build | 保留为本地 TUI/脚本式编码工具 | 可承担备用或交叉核验任务；不要和 Grok Bot 云端电脑混为一项。 |
 | OpenCode | 用户于 2026-10-20 决定删除 | 包、命令兼容 wrapper、CodeCompanion CLI 入口和 Quill 的 CLI 调用已从配置移除；Quill AI 改为直接调用 Go。已应用并核验运行时覆盖，保留其他应用及用户数据。 |
 | DeepSeek Harness 桌面入口 | 保留为实验性图形入口 | 当前是官方 Web UI + Chromium 应用窗口和私有后端，不是官方 Linux Electron 安装包。预览版变化与自维护包装有成本，不引入同名第三方桌面客户端。 |
 | Grok Bot | 保留，承担云端持续任务/流程 | 云端电脑可在本机关闭后继续工作；资格/账户和网络依赖不同于本地 CLI。不是本地终端复用器。当前 Electron workaround 另见使用文档，不能随意删除。 |
-| CodeCompanion | 保留 | Nvim 内联/聊天/选区上下文有独立价值；聊天默认 DeepSeek，CLI agent 清单保留 Codex 和 Grok。原生 Lua 配置保留现有历史和快捷键；插件由 `aspects/dev/neovim/plugins.nix` 固定提供。 |
+| CodeCompanion | 保留 | Nvim 内联/聊天/选区上下文有独立价值；聊天默认 DeepSeek，ACP adapter 只保留 Claude Code。原生 Lua 配置保留现有历史和快捷键；插件由 `aspects/dev/neovim/plugins.nix` 固定提供。 |
 | MCPHub | 用户最新确认删除 | 编辑器面板、CodeCompanion 扩展、专用输入与二次 nixpkgs 接线移除；各 agent 的独立 MCP 设置保留。 |
 
-当前保留的本地编码入口是 Codex、Claude Code、DSH headless 与 Grok Build，图形和云端入口按需打开。进程数、模型费用和实际速度取决于使用方式，单纯安装多个 CLI 不等于全部常驻。各工具的账号/密钥及运行时状态不强制合并进 Nix。
+当前保留的本地编码入口是 Claude Code、DSH headless 与 Grok Build，图形和云端入口按需打开。进程数、模型费用和实际速度取决于使用方式，单纯安装多个 CLI 不等于全部常驻。各工具的账号/密钥及运行时状态不强制合并进 Nix。
 
-资料：[Codex CLI](https://learn.chatgpt.com/docs/codex/cli)、[Codex MCP 客户端](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)、[Grok Build](https://docs.x.ai/build/overview)、[DeepSeek Harness 官方仓库](https://github.com/deepseek-ai/deepseek-harness)、[Grok Bot 入门](https://docs.x.ai/grok-bot/get-started)、[Grok Bot FAQ](https://docs.x.ai/grok-bot/faq)。本仓库的 [Grok Bot 说明](grok-bot.md)记录当前包装限制。
+资料：[Grok Build](https://docs.x.ai/build/overview)、[DeepSeek Harness 官方仓库](https://github.com/deepseek-ai/deepseek-harness)、[Grok Bot 入门](https://docs.x.ai/grok-bot/get-started)、[Grok Bot FAQ](https://docs.x.ai/grok-bot/faq)。本仓库的 [Grok Bot 说明](grok-bot.md)记录当前包装限制。
 
 ## 语言工具链、工程与虚拟化
 
@@ -221,8 +221,8 @@ checks: []
 | hexyl | 保留二进制查看；若完全不用可用内建/现有十六进制工具替代基础查看，损失较小。 |
 | tealdeer | 保留命令示例；man 更完整但不同于简明用法，和 nix-index 的“哪个包提供命令”不同。 |
 | qalc / libqalculate | 保留交互计算；Noctalia 计算入口存在不代表 CLI 多余。 |
-| p7zip / unzip / unrar | 保留格式后端；图形归档前端也需要解压工具，不能因加 GUI 就直接删。 |
-| wl-clipboard / xclip | 保留两种显示协议接线；当前跨协议桥仍有需求。 |
+| 7zz / unzip / unrar | 保留格式后端；图形归档前端也需要解压工具，不能因加 GUI 就直接删。2026-11-06 起以官方 7-Zip（`_7zz`）替换停更的 p7zip 分支。 |
+| wl-clipboard / xclip | 保留两种显示协议接线；当前跨协议桥仍有需求。xclip 只作为剪贴板桥、Thunar 与 swayimg 脚本的 `runtimeInputs`，2026-11-06 起不再进入用户 PATH。 |
 | grim / slurp | 保留截图与 OCR 后端，不因已有 GUI 截图入口而删除。 |
 | wget | 保留基础下载入口，暂不因无明确并行/断点任务额外添 aria2。 |
 | lshw | 保留硬件诊断；可按需运行，不需要常驻。 |

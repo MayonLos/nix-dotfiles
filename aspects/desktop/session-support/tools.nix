@@ -13,7 +13,6 @@
   };
   home.packages = with pkgs; [
     qt6Packages.qt6ct
-    xclip
     brightnessctl
     ddcutil
     playerctl

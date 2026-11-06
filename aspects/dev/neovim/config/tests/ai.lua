@@ -15,7 +15,8 @@ assert(not package.loaded.copilot and not package.loaded["blink.cmp"])
 local cc = require("codecompanion.config").config
 assert(cc.interactions.chat.adapter == "deepseek" and cc.interactions.inline.adapter == "deepseek")
 assert(cc.interactions.chat.keymaps.regenerate.modes.n == "<localleader>r", "chat regenerate shadows LSP gr prefixes")
-for _, name in ipairs({ "codex", "claude_code" }) do
+assert(cc.adapters.acp.codex == nil, "Codex ACP adapter was removed")
+for _, name in ipairs({ "claude_code" }) do
 	local adapter = cc.adapters.acp[name]()
 	local path = adapter.commands.default[1]
 	assert(path:sub(1, 11) == "/nix/store/", "ACP adapter is not Nix-injected: " .. path)

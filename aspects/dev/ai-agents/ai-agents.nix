@@ -18,7 +18,6 @@ let
   # because upstream has already removed the native-addon expression.
   dshCli = agents.dsh;
   acpEnvironment = {
-    NVIM_CODEX_ACP = "${agents.codex-acp}/bin/codex-acp";
     NVIM_CLAUDE_ACP = "${agents.claude-agent-acp}/bin/claude-agent-acp";
   };
 
@@ -45,14 +44,6 @@ in
     dshDesktop
     dshCommand
 
-    # OpenAI's CLI agent, authenticated through the user's ChatGPT account.
-    # Its ~/.codex/config.toml remains user-managed, outside Nix.
-    #
-    # llm-agents provides the complete package layout and a daemon patch using
-    # the immutable store package. Verified with an isolated 0.162.1 cold start;
-    # the former --no-daemon wrapper is no longer needed.
-    agents.codex
-    agents.codex-acp
     agents.claude-agent-acp
 
     # Claude Code's Nix-managed CLI; authentication and history stay user-owned.
@@ -71,6 +62,9 @@ in
   # the same static executable paths in the user manager and safe projection.
   systemd.user.sessionVariables = acpEnvironment;
 
+  # NOT here: `agents.codex` / `agents.codex-acp`. Removed 2026-11-06 at the
+  # user's instruction; ~/.codex had already been deleted.
+  #
   # NOT here: `agents.zcode` (Z.ai's Electron IDE). Removed 2026-09-19 at the
   # user's instruction after it was observed pushing to a user repository
   # without being asked. Do not add it back.

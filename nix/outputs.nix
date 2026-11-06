@@ -7,7 +7,6 @@ _: {
         builtins.attrValues
           (import ../aspects/dev/languages/contract.nix { inherit (pkgs) lib; }).defaults;
       acpAdapters = {
-        codex = "${pkgs.local.codex-acp}/bin/codex-acp";
         claude = "${pkgs.local.claude-agent-acp}/bin/claude-agent-acp";
       };
       neovim = import ../aspects/dev/neovim/package.nix {

@@ -35,10 +35,8 @@ local function prompt(alias, description, instruction)
 		},
 	}
 end
-local function acp_path(name)
-	local tools = require("mayon.generated").tools
-	local path = name == "codex" and (vim.env.NVIM_CODEX_ACP or tools.codex_acp)
-		or (vim.env.NVIM_CLAUDE_ACP or tools.claude_acp)
+local function acp_path()
+	local path = vim.env.NVIM_CLAUDE_ACP or require("mayon.generated").tools.claude_acp
 	assert(
 		path and path:sub(1, 1) == "/" and vim.fn.executable(path) == 1,
 		"ACP 可执行路径不可用：请启用 ai-workbench 并重新登录会话"
@@ -63,15 +61,11 @@ local function companion()
 	require("codecompanion").setup({
 		adapters = {
 			acp = {
-				codex = function()
-					return require("codecompanion.adapters").extend("codex", {
-						commands = { default = { acp_path("codex") } },
-						defaults = { auth_method = "chatgpt" },
-					})
-				end,
+				-- Upstream presets (codex, gemini_cli, ...) have no installed binary.
+				opts = { show_presets = false },
 				claude_code = function()
 					return require("codecompanion.adapters").extend("claude_code", {
-						commands = { default = { acp_path("claude") }, yolo = { acp_path("claude"), "--yolo" } },
+						commands = { default = { acp_path() }, yolo = { acp_path(), "--yolo" } },
 					})
 				end,
 			},
