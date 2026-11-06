@@ -75,7 +75,8 @@ git show history-archive-2026-11-06 --stat -- docs/history   # 列出全部原�
 | 2026-11-05 | 删除 Codex 工作流、修正过时文档、包源码排除 Markdown、家目录清理 | `cleanup-2026-11-05.md` |
 | 2026-11-05 | Neovim 按五个领域重写、审查与“一块画布”视觉 | `nvim-rewrite-2026-11-05.md` |
 | 2026-11-06 | 软件清理（删 Codex 与 `codex-acp`、p7zip 换官方 7-Zip、xclip 移出 PATH）、防火墙改 nftables（libvirt 随之切换）、nix-daemon 改 `idle` 调度；Clash TUN VM 测试在 nftables 下通过；构建验证，未应用 | `af05492` |
-| 2026-11-06 | 文档版本漂移修正、`service-policy` Docker 描述矛盾修正、执行记录合并为本索引并打标签 `history-archive-2026-11-06` | 本提交 |
+| 2026-11-06 | 文档版本漂移修正、`service-policy` Docker 描述矛盾修正、`editing-composition` 跟进 clangd `base_cmd`、执行记录合并为本索引并打标签 `history-archive-2026-11-06` | `85a0ef2` |
+| 2026-11-06 | 应用 `85a0ef2` 并重启：运行系统与 HEAD toplevel 一致、无失败单元；实机核对 codex 已移除、`7zz` 在 PATH、xclip 不在 PATH、nftables active、nix-daemon idle/idle、独显 suspended。用户实测 Clash TUN 与 libvirt NAT 虚拟机正常（libvirt 在首次启动时由 `libvirtd-config` 写入 nftables 后端） | 实机 |
 
 ## 被取代的规范全文
 
