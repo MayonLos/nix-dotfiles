@@ -77,6 +77,7 @@ git show history-archive-2026-11-06 --stat -- docs/history   # 列出全部原�
 | 2026-11-06 | 软件清理（删 Codex 与 `codex-acp`、p7zip 换官方 7-Zip、xclip 移出 PATH）、防火墙改 nftables（libvirt 随之切换）、nix-daemon 改 `idle` 调度；Clash TUN VM 测试在 nftables 下通过；构建验证，未应用 | `af05492` |
 | 2026-11-06 | 文档版本漂移修正、`service-policy` Docker 描述矛盾修正、`editing-composition` 跟进 clangd `base_cmd`、执行记录合并为本索引并打标签 `history-archive-2026-11-06` | `85a0ef2` |
 | 2026-11-06 | 应用 `85a0ef2` 并重启：运行系统与 HEAD toplevel 一致、无失败单元；实机核对 codex 已移除、`7zz` 在 PATH、xclip 不在 PATH、nftables active、nix-daemon idle/idle、独显 suspended。用户实测 Clash TUN 与 libvirt NAT 虚拟机正常（libvirt 在首次启动时由 `libvirtd-config` 写入 nftables 后端） | 实机 |
+| 2026-11-06 | MC 中转：Lighthouse（Debian）部署静态 frps 0.66.0（`pkgsStatic.frp`，TLS 强制、只放行 25565、令牌经 `LoadCredential`），nftables 放行 7000/25565 并启用开机加载；笔记本新增 `game-tunnel` feature（按需 frpc 用户服务，令牌为 sops `frp-token`）。Clash baseline 加 `route-exclude-address` 与 fake-ip 过滤让中转直连。端到端测试卡在腾讯云控制台防火墙（7000/25565/22000 均被拦，仅 22 通） | 构建 + 服务器实机；端到端未通 |
 
 ## 被取代的规范全文
 

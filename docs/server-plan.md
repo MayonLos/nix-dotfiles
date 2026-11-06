@@ -7,7 +7,7 @@ checks: [remote-workspace-composition]
 
 # 未来服务器规划
 
-状态：无头复用边界已在根 production 组合检查实现；没有真实服务器资料，不创建可部署的虚构主机，不安装、分区或远程执行。未来机器沿用 [Den 架构](architecture.md)，当前笔记本迁移不以购买服务器为前提。
+状态：现有的腾讯云 Lighthouse 是手工管理的 Debian，只承担 Syncthing 与 MC 中转（frps，见 [game-tunnel](../aspects/network/game-tunnel/README.md)），不进 inventory。无头复用边界已在根 production 组合检查实现；没有可部署的 NixOS 服务器资料，不创建可部署的虚构主机，不安装、分区或远程执行。未来机器沿用 [Den 架构](architecture.md)，当前笔记本迁移不以购买服务器为前提。
 
 ## 固定的边界
 

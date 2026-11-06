@@ -23,6 +23,16 @@ in
           }
         ];
         appearance = import ../../../../aspects/appearance/appearance/onedark.nix;
+        # Minecraft relay through the Lighthouse server; the token file is the
+        # frp-token sops secret declared in ../secrets.nix.
+        gameTunnel = {
+          server = "mayonlos.cloud";
+          tokenFile = "/run/secrets/frp-token";
+          proxies.minecraft = {
+            localPort = 25565;
+            remotePort = 25565;
+          };
+        };
         workspaceProjects = {
           dotfiles = {
             directory = flakePath;
@@ -73,6 +83,7 @@ in
           local-containers
           local-virtual-machines
           voice-input
+          game-tunnel
         ];
       };
     };

@@ -9,6 +9,7 @@
       deepseek-api-key.owner = "mayon";
       opencode-go-api-key.owner = "mayon";
       github-token.owner = "mayon";
+      frp-token.owner = "mayon";
     };
 
     # access-tokens cannot live in nix.settings: every module ends up

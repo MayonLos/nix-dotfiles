@@ -11,6 +11,7 @@ _: {
     ./network/port-tools
     ./network/laptop-network
     ./network/remote-access
+    ./network/game-tunnel
     ./hardware/legion-laptop
     ./cli/shell
     ./cli/keys-mayon
