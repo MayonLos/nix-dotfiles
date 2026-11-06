@@ -43,7 +43,7 @@ packages/                 # 自写程序与补丁包（§8.3）
 lib/                      # 跨功能 helper（§8.4）
 tests/                    # 跨功能组合与负例（§10）
 secrets/                  # sops 加密文件
-docs/                     # 现行文档；history/ 只追加
+docs/                     # 现行文档；history/README.md 按月追加
 ```
 
 ## 3. 功能
@@ -267,7 +267,7 @@ toplevel 求值 ≤ 20s（`NIX_SHOW_STATS=1`，记录 Nix 版本、lock、缓存
 
 ## 12. 文档
 
-入口与写法见 [docs/README.md](README.md)。功能细节写在功能 README；`docs/history/` 只追加。
+入口与写法见 [docs/README.md](README.md)。功能细节写在功能 README；执行记录按月追加到 `docs/history/README.md`。
 
 ## 13. 验证层级
 

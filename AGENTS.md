@@ -34,7 +34,7 @@ Mango 是唯一图形会话；dwm/Xorg 会话已于 2026-11-05 移除。
 | `lib/` | 至少两个功能目录共同使用的纯 helper；不是模块发现器 |
 | `tests/composition/`、`aspects/**/checks.nix` | 跨功能组合与功能检查 |
 | `secrets/` | sops 加密数据 |
-| `docs/` | 现行文档，入口 [`docs/README.md`](docs/README.md) 按任务路由到文档、代码和检查；`docs/history/` 为只追加的执行记录 |
+| `docs/` | 现行文档，入口 [`docs/README.md`](docs/README.md) 按任务路由到文档、代码和检查；`docs/history/README.md` 是按月追加的执行记录索引，旧原文在 Git 标签 `history-archive-2026-11-06` |
 
 `aspects/default.nix` 显式登记 feature 入口。资源、模块和配方就近放在功能目录，不会递归扫描成为模块。`bundles/default.nix` 只通过 `includes` 组合已登记 feature。真实实例只在 `inventory/` 声明；测试 fixture 不属于可部署主机清单。
 

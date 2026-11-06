@@ -26,7 +26,7 @@ checks: [docs]
 | Obsidian 主题与笔记库 | [obsidian](obsidian.md) | `aspects/apps/documents` | `documents-visual-config` |
 | 用 dsh、Grok Bot | [dsh](dsh.md)、[grok-bot](grok-bot.md) | `aspects/dev/ai-agents` | — |
 | 规划服务器 | [server-plan](server-plan.md) | `tests/composition/remote.nix` | `remote-workspace-composition` |
-| 查某次改动的经过 | [history](history/README.md) | `git log` | — |
+| 查某次改动的经过 | [history](history/README.md) | `git log`、标签 `history-archive-2026-11-06` | — |
 
 ## 关键事实
 
@@ -42,6 +42,6 @@ checks: [docs]
 1. 顶层文档开头都有 front matter：`summary`（一句话）、`read_when`（何时该读）、`code`（真实存在的路径）、`checks`（相关检查）。
 2. 每篇顶层文档都登记在上面的路由表。
 3. 本地链接必须有效（`docs/history/` 除外）。
-4. 只写现行事实，不写“本轮”“尚未应用”这类随时间失效的状态；过程和结论写进 `docs/history/`，那里只追加。
+4. 只写现行事实，不写“本轮”“尚未应用”这类随时间失效的状态；过程和结论按月追加到 `docs/history/README.md`，长篇原文写进提交说明。
 5. 能从源码查到的数值，写明源码位置，并以源码为准。
 6. 一个事实只写一处，其他地方放链接。

@@ -197,7 +197,9 @@ let
     local servers = require("mayon.lsp.servers").servers
     if vim.env.EXPECT_CPP == "1" then
       assert(vim.tbl_count(servers) == 1 and servers.clangd, "C/C++ selection must enable only clangd")
-      assert(vim.deep_equal(servers.clangd.cmd, { "clangd", "--background-index", "--clang-tidy", "--header-insertion=never", "--completion-style=detailed", "--function-arg-placeholders=0" }))
+      -- embedded.configure_clangd wraps cmd in a launcher and keeps the arguments in base_cmd.
+      assert(type(servers.clangd.cmd) == "function", "clangd must start through the embedded launcher")
+      assert(vim.deep_equal(servers.clangd.base_cmd, { "clangd", "--background-index", "--clang-tidy", "--header-insertion=never", "--completion-style=detailed", "--function-arg-placeholders=0" }), "production clangd arguments changed")
       assert(vim.deep_equal(servers.clangd.filetypes, { "c", "cpp", "objc", "objcpp", "cuda" }))
       assert(vim.deep_equal(generated.formatters, { c = { "clang-format" }, cpp = { "clang-format" } }))
       assert(vim.tbl_isempty(generated.linters))
@@ -218,7 +220,7 @@ let
       assert(not package.loaded["vim.lsp"], "empty startup must defer LSP")
       vim.cmd.edit(vim.env.CONTRACT_PROJECT .. "/main.cpp")
       assert(vim.bo.filetype == "cpp", "C++ filetype detection is missing")
-      assert(vim.deep_equal(vim.lsp.config.clangd.cmd, {
+      assert(vim.deep_equal(vim.lsp.config.clangd.base_cmd, {
         "clangd", "--background-index", "--clang-tidy",
         "--header-insertion=never", "--completion-style=detailed", "--function-arg-placeholders=0",
       }), "production clangd command or arguments changed")

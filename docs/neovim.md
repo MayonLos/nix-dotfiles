@@ -7,7 +7,7 @@ checks: [neovim]
 
 # Neovim
 
-键位与 AI 工作流重构的构建路径、性能样本、检查结果和实机待验项见[历史记录](history/nvim-ai-2026-10-24.md)。
+键位与 AI 工作流重构的构建路径、性能样本、检查结果和实机待验项见[历史记录](history/README.md)（原文 `nvim-ai-2026-10-24.md`）。
 完整新键位及旧→新对照见[工作流键位表](keymap.md#neovim-键位)。
 
 ## AI 三层与补全
@@ -22,11 +22,11 @@ checks: [neovim]
    拒绝返回 `DIFF_REJECTED`，不会写源文件。未保存的原文件会被上游拒绝打开 diff。
 2. Sidekick（Codex/Grok TUI 与 Copilot NES）已于 2026-11-05 移除；Claude Code 是唯一的 AI CLI 面板，
    `<Space>af` 把当前文件加入 Claude 上下文。Codex 及其 ACP adapter 已于 2026-11-06 移除。
-3. **CodeCompanion 19.27** 默认 DeepSeek HTTP 对话与内联改写；中文 prompt library 包含解释报错、
+3. **CodeCompanion** 默认 DeepSeek HTTP 对话与内联改写；中文 prompt library 包含解释报错、
    为选区写测试、提交信息草稿、重构与注释。历史扩展保持原目录、自动本地保存、不额外请求标题。
    对话中 `ga` 切换 adapter，可选 `claude_code` ACP（上游其余 ACP 预设以 `show_presets = false` 隐藏）；`<Space>aC` 直接打开 `claude_code` 对话。
    这与 CLI 的原生 TUI 是不同入口；CodeCompanion 自带的 CLI interaction 未启用，CLI 由 claudecode.nvim 承担。
-   ACP 使用 llm-agents 的 `claude-agent-acp` 0.95.0，不运行 npx。
+   ACP 使用 llm-agents 锁定的 `claude-agent-acp`，不运行 npx。
    独立 flake 包由 `nix/outputs.nix` 注入绝对路径；HM 消费 ai-workbench 的公开会话变量
    `NVIM_CLAUDE_ACP`，应用后需新登录会话。无有效路径时报错。
 
@@ -34,8 +34,8 @@ checks: [neovim]
 再在 Claude 执行 `/ide` 选中这个 Neovim。无需打开插件终端；状态栏 `C●` 表示连接、
 `C○` 表示已加载但未连接、`C·` 表示尚未加载。状态栏同时显示 CLI 会话名、补全提供者、请求中。
 
-**AI 只提供灰色行内幽灵文本**，不进入菜单。Copilot 使用 Neovim 0.12.4 原生
-`vim.lsp.inline_completion`，Nix 注入 stable `copilot-language-server` 1.495.0 的绝对路径，
+**AI 只提供灰色行内幽灵文本**，不进入菜单。Copilot 使用 Neovim 原生
+`vim.lsp.inline_completion`，Nix 注入 stable `copilot-language-server` 的绝对路径，
 不使用 npm。首次打开普通文件，等待 Copilot LSP attach 后执行 `:LspCopilotSignIn`，按浏览器
 设备码流程登录；退出登录用 `:LspCopilotSignOut`。这两个 buffer-local 命令来自锁定 lspconfig
 的 `lsp/copilot.lua`。认证由服务器在运行时管理，不读取或迁移既有凭据。
@@ -48,7 +48,7 @@ virtualtext 前端，仅读 `DEEPSEEK_API_KEY`，不写入 Nix/store；使用 FI
 **从 blink 换到原生补全**是因为用户只需要基本 LSP，AI 已独立，不再需要多源合并、
 额外的菜单框架和 Rust fuzzy 库。LspAttach 用 `vim.lsp.completion.enable` autotrigger，
 kind 图标复用 kinds、detail 截短；`menuone,noselect,popup,fuzzy` 保持不预选。
-0.12.4 文档明确 nearest 与 fuzzy 同时存在时无效，因此保留 fuzzy，不叠加 nearest。
+Neovim 0.12 文档明确 nearest 与 fuzzy 同时存在时无效，因此保留 fuzzy，不叠加 nearest。
 菜单高宽受限，Pmenu 系列接 palette；pumborder/winborder 均 rounded，原生 popup 显示文档，
 该版本没有 completepopup 选项。`Ctrl+y` / Enter 显式确认所选项，Enter 未选择时换行；
 `Ctrl+n/p` 上下，`Ctrl+e` 关闭，`Ctrl+Space` 请求 LSP。C++ 自有 JSON 片段通过 complete 的
@@ -56,7 +56,7 @@ F/completefunc 源进入候选，用 `vim.snippet.expand` 展开；可 `Ctrl+x C
 路径补全保持 `Ctrl+x Ctrl+f`。命令行 `wildoptions=pum,fuzzy`，Tab 触发；不额外自动弹菜单。
 lazydev 继续给 LuaLS 注入 workspace library，不再配置菜单 source。
 
-CodeCompanion 19.27 仍未提供旧 `display.diff.provider` 选项。`cc_minidiff.lua` 对其
+锁定的 CodeCompanion 20 仍未提供旧 `display.diff.provider` 选项。`cc_minidiff.lua` 对其
 `helpers.show_diff` 的 inline 分支做小型兼容桥：mini.diff 叠加预览，`,a` 接受保留未保存内容，
 `,r` 拒绝还原，禁止同一 buffer 重叠审阅，恢复原局部键位。其他 CodeCompanion diff 沿用上游。
 Gitsigns 单独拥有 Git sign 列；mini.diff 只在内联审阅时用行号/overlay，不启动 Git source。
@@ -70,8 +70,8 @@ Gitsigns 单独拥有 Git sign 列；mini.diff 只在内联审阅时用行号/ov
 cursor_trail 重复。最新原生替换见下表；文件安全和用户状态保留。
 claudecode、Minuet、mini.diff、edgy、smart-splits 与 codediff 来自锁定 stable。
 Home Manager 与独立 flake 包均通过 `pkgs.unstable.codecompanion-nvim` 使用 CodeCompanion
-19.27.0；该包名在 `nix/pkgs.nix` 的 unstable 白名单中登记。原因是 stable 19.13 缺少后续修复与 ACP
-改进，v20 有破坏性变更，待 nixpkgs 收录后另行迁移。其 Plenary runtime 依赖保持 stable，
+（主版本 20，`aspects/dev/neovim/config/tests/ai.lua` 会在主版本变化时失败）；该包名在 `nix/pkgs.nix`
+的 unstable 白名单中登记，原因是 stable 版本缺少后续修复与 ACP 改进。其 Plenary runtime 依赖保持 stable，
 避免混入第二个 LuaJIT；锁定 history 扩展保持原版本，真实 setup 与存储兼容性由 checks 验证。
 
 保留 lz.n 按事件/命令/键位加载。启动路径保留 lz.n、One Dark、Snacks；
@@ -85,7 +85,7 @@ CodeCompanion/Claude 按命令或按键，Minuet 手动切换后加载；Copilot
 
 ## 原生能力替换表
 
-依据是锁定 0.12.4 runtime 的 doc/news.txt、doc/lsp.txt、doc/options.txt 及 pack/dist/opt，
+依据是锁定 Neovim runtime（`pkgs.unstable.neovim-unwrapped`，见 `aspects/dev/neovim/package.nix`）的 doc/news.txt、doc/lsp.txt、doc/options.txt 及 pack/dist/opt，
 [上游原生 LSP 文档](https://neovim.io/doc/user/lsp/)只作背景，实际版本 API 以本机源码为准。
 
 | 替换前 | 替换后 | 行为与边界 |
@@ -104,7 +104,7 @@ CodeCompanion/Claude 按命令或按键，Minuet 手动切换后加载；Copilot
 | 自维护 Git fork | codediff 2.45.0 + libvscode_diff | Nix 构建原生库，禁止在线安装 |
 
 ui2 headless 是否可用与构建测试结果见历史，不把实验接口写成稳定保证。
-CodeLens 默认关闭按需显示；0.12.4 自动 CodeLens 晚到响应在删除 buffer 后可触发无效 buffer
+CodeLens 默认关闭按需显示；Neovim 0.12 的自动 CodeLens 晚到响应在删除 buffer 后可触发无效 buffer
 redraw，隔离测试已复现，故不在 attach 时自动请求。linked editing、on-type formatting 与颜色
 仅在服务器声明支持时启用；签名帮助在 `(` / `,` 后请求。注释已用原生 gc，无额外注释插件；
 插件仍由 Nix 管理，不使用 vim.pack。
@@ -139,8 +139,8 @@ Claude 终端不会引起右侧重排（避免改变 CLI 的 pty 尺寸）。统
 
 ### 2026-11-05 重写
 
-按 ui、面板与 AI、编辑与 LSP、嵌入式调试、核心与会话五个领域重写（审计与设计记录在
-`docs/history/nvim-rewrite-2026-11-05.md`）。视觉为“一块画布”：浮窗、补全、通知、AI 面板与编辑区同底色，
+按 ui、面板与 AI、编辑与 LSP、嵌入式调试、核心与会话五个领域重写（审计与设计记录见[执行记录](history/README.md)，原文
+`nvim-rewrite-2026-11-05.md`）。视觉为“一块画布”：浮窗、补全、通知、AI 面板与编辑区同底色，
 只用圆角细边框（`border` 与 `bg` 0.9 混合）和更淡的分屏线（0.42）分层；唯一的底色变化是选中项
 `selection` 加蓝色 `▎`。浮窗标题用 fg，行号退到 border 色。诊断符号形状互不相同：错误 `●`、警告 `▲`、
 信息 `◆`（cyan）、提示 `○`（muted）。语法配色交还 onedark，主题只保留界面层覆盖。which-key 改用公开尺寸选项，
@@ -152,7 +152,7 @@ tmux 一侧的配置在 `aspects/cli/shell/tmux.nix`。
 同日修复：底部分屏（终端、Trouble、quickfix、旧版 picker）打开时，会先把右侧 Claude 面板压矮，再由 Edgy 恢复。
 经典渲染器在这次"缩小再恢复"之后会留下残影（真实 kitty 截图复现）。现在 picker 改为浮在文档列上方的浮窗；
 内嵌 Claude 使用 `CLAUDE_CODE_NO_FLICKER=1` 与 `CLAUDE_CODE_ALT_SCREEN_FULL_REPAINT=1`（只开 NO_FLICKER 仍会留残影）。
-七种切换方式在真实 Claude 2.1.312 下截图验证干净；流式输出时整屏重绘的 CPU 开销尚未实测。
+七种切换方式在 2026-11-05 的 Claude Code 2.1.312 下截图验证干净；流式输出时整屏重绘的 CPU 开销尚未实测。
 Claude 终端内 `Ctrl+h` 回到文档。
 真实 tmux、TTY Alt/Tab、窗口缩放和美观仍需实机验收。
 
@@ -170,13 +170,12 @@ Oil 继续回收站删除、独占复制、拒绝覆盖或符号链接目标；�
 `nvim_get_keymap` 只能看到最终有效映射，重复扫描不证明初始化期间没有覆盖；另检查 leader 叶节点前缀冲突。
 
 求值、构建、隔离 headless 与实机验证分开记录。不把 mock 回调或协议 fixture 当成联网模型请求、
-Claude CLI 实际写盘或 GUI 美观的证明。实际 health、构建命令与限制见[历史记录](history/nvim-ai-2026-10-24.md)。
+Claude CLI 实际写盘或 GUI 美观的证明。实际 health、构建命令与限制见[历史记录](history/README.md)（原文 `nvim-ai-2026-10-24.md`）。
 
 ## 待办
 
 - 应用后验收 Copilot 登录、灰色建议/逐词/候选/菜单互斥；DeepSeek 实际 FIM；
   codediff 暂存/提交/PR/冲突、ui2 真实 TUI 命令行/pager、restart 保留 UI、窄屏和 Alt 按键。
 
-Home Manager 与独立 `neovim` / `neovim-dev` 输出现均通过
-`pkgs.unstable.codecompanion-nvim` 选择 CodeCompanion 19.27.0。独立输出的 ACP adapter 路径由
+独立 `neovim` / `neovim-dev` 输出的 ACP adapter 路径由
 `nix/outputs.nix` 注入；功能检查由 `aspects/dev/neovim/checks.nix` 负责。

@@ -25,7 +25,7 @@ Neovim、Firefox 等。绑定显式提供当前默认项；CLI Neovim 与 GUI VS
 
 生产检查 `checks.workspace-composition` 与 `checks.command-line-runtime` 覆盖绑定隔离、argv
 边界、工作目录、MIME 和实际 desktop entry。它们不启动 GUI，也不证明配置已应用。每批记录见
-[执行记录](../../../docs/history/den-execution.md)。
+[执行记录](../../../docs/history/README.md)（原文 `den-execution.md`）。
 
 `contract.nix` 是公开的 user schema；`default.nix` 是唯一功能入口，`consumer.nix` 私有。
 本功能拥有上述 wrapper、会话变量和 MIME 声明。移除选择后，下次激活撤销这些声明；它不删除

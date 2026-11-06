@@ -7,7 +7,7 @@ checks: []
 
 # Grok Bot
 
-本仓库通过锁定的 `llm-agents` 输入安装官方 Linux 桌面客户端；当前包为 0.66.0，
+本仓库通过锁定的 `llm-agents` 输入安装官方 Linux 桌面客户端；版本随 `flake.lock` 中的 llm-agents 输入变化，
 来源是官方 Cursor CDN 的 `.deb`，由 Nix 处理运行库，不安装 Flatpak 或 AppImage。
 `aspects/dev/ai-agents/grok-bot.nix` 管理包和 `grokbot://`、旧版 `sand://` 登录回跳。
 

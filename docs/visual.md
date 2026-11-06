@@ -73,4 +73,4 @@ checks: [palette-contrast, gtk-qt-theme, noctalia-osd-pixels, noctalia-template-
 
 ## 实现边界
 
-配置接口按锁定的 Noctalia、Mango 源码核实，不虚构字段。Noctalia 没有的能力才打局部补丁（`noctalia/*.patch`），每个补丁必须有构建期检查，上游升级时失败而不是静默退化。旧版完整规范（含 TUI 外观细节、Firefox、Thunar、Fcitx 的设计依据）归档在 [history/visual-design-2026-10-30.md](history/visual-design-2026-10-30.md)，其中数值可能已过时。
+配置接口按锁定的 Noctalia、Mango 源码核实，不虚构字段。Noctalia 没有的能力才打局部补丁（`noctalia/*.patch`），每个补丁必须有构建期检查，上游升级时失败而不是静默退化。旧版完整规范（含 TUI 外观细节、Firefox、Thunar、Fcitx 的设计依据）归档在 [history/visual-design-2026-10-30.md](history/README.md)（原文 `visual-design-2026-10-30.md`），其中数值可能已过时。

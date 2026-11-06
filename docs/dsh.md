@@ -7,7 +7,7 @@ checks: []
 
 # DeepSeek Harness 命令与桌面入口
 
-2026-10-24。`aspects/dev/ai-agents/ai-agents.nix` 安装 `dsh` 命令与 `dsh-desktop`，两者调用同一个锁定 DSH 0.2.1-rc.3。Node 兼容修正已由上游 llm-agents 配方提供，本地不再重复替换。更新与构建记录见[优化记录](history/optimization-2026-10-24.md)。不需要 OpenCode CLI，也不通过 npm 临时下载另一份运行时。
+2026-10-24。`aspects/dev/ai-agents/ai-agents.nix` 安装 `dsh` 命令与 `dsh-desktop`，两者调用同一个由 llm-agents 锁定的 DSH（版本见 `flake.lock`）。Node 兼容修正已由上游 llm-agents 配方提供，本地不再重复替换。更新与构建记录见[优化记录](history/README.md)（原文 `optimization-2026-10-24.md`）。不需要 OpenCode CLI，也不通过 npm 临时下载另一份运行时。
 
 ## 使用
 
@@ -37,7 +37,7 @@ DSH_HOME=/absolute/path/to/isolated-harness dsh headless --help
 
 本机审核时两个 profile 均已存在，分别声明 `opencode-go` / `deepseek-v4.1-flash`，provider 的凭据引用一致。此次未手工改写模型 patch 或复制密钥。已安装命令的 `headless --dump-config` 也确认最终组合选择为该 Go 模型；此结论属于配置核验，不等同于真实模型请求成功。Go 订阅能否完成当前任务仍取决于额度、端点及服务可用性。
 
-源码与用法依据是已安装包的 `--help`、headless `startup.js`、`profile-boot` 与 credentials/default-model 文档；上游参考：[CLI](https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/cli/README.md)、[官方使用指南](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/guide/index.md)。验证与系统应用见[本次审核](history/repository-audit-2026-10-20.md)。
+源码与用法依据是已安装包的 `--help`、headless `startup.js`、`profile-boot` 与 credentials/default-model 文档；上游参考：[CLI](https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/cli/README.md)、[官方使用指南](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/guide/index.md)。验证与系统应用见[本次审核](history/README.md)（原文 `repository-audit-2026-10-20.md`）。
 
 ## 作为执行代理（官方 key）
 

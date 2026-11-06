@@ -69,4 +69,4 @@ NVIM_CONFIG_DIR="$PWD/aspects/dev/neovim/config" nix run .#neovim-dev
 
 HM 管理的 store 文件只读。应用偏好、历史、认证、模型、项目、容器卷和 VM 镜像属于用户状态；迁移配置不意味着清理这些数据。秘密通过 sops 运行时文件或模板提供，不进入 Nix 字符串、日志或 store。主机秘密声明位于 [`inventory/hosts/nixos-btw/secrets.nix`](inventory/hosts/nixos-btw/secrets.nix)，用户与主机绑定位于 `inventory/hosts/nixos-btw/users/mayon.nix`。
 
-现行文档索引见 [docs/README.md](docs/README.md)；AI 和人都从这里按任务查找；过程记录在 `docs/history/`。
+现行文档索引见 [docs/README.md](docs/README.md)；AI 和人都从这里按任务查找；过程记录按月汇总在 `docs/history/README.md`。

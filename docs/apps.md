@@ -44,7 +44,7 @@ checks: []
 | mark-shot | 保留 | 框选、注释、置顶以及 Mango 窗口检测已有接线。Noctalia 可承接简单截图，但不证明完整等价。 |
 | wayscrollshot | 保留 | 专职滚动拼接。锁定 mark-shot 仍将非 niri 滚动截图列为不完整测试功能，不能据其功能表直接删除本项。 |
 | Tesseract OCR | 保留 | 现有中英 OCR 是独立功能；Noctalia 截图能力不能自动替代语言数据与识别流程。 |
-| Noctalia 剪贴板历史 | 保留，作为日常入口 | 当前锁定的 5.2.1 已有独立、加密持久化的历史，Super+V 已使用此界面。 |
+| Noctalia 剪贴板历史 | 保留，作为日常入口 | 锁定的 Noctalia 5 已有独立、加密持久化的历史，Super+V 已使用此界面。 |
 | cliphist | 已修改：移除 | 用户确认精简后删除两个 watcher 及其包引用。Noctalia 使用独立历史，不迁移/删除原 cliphist 数据。 |
 | X11↔Wayland 剪贴板桥 | 保留 | 解决跨协议同步，和历史界面职责不同；QQ/微信图像粘贴链路仍需回归。 |
 | Fastfetch | 保留 | 终端快照，不与实时监视器等价；若以后发现启动拖慢，再测量并改成显式 `ff`，当前不假定存在延迟问题。 |
@@ -95,7 +95,7 @@ checks: []
 | PyCharm | 保留；可选合并入口 | IDEA 官方有 Python 插件。只有现有许可、插件和 Python 工作流都满足时，才值得试把 PyCharm 项目放入 IDEA；会改变独立设置与窗口习惯。用户已确认常用，保留。 |
 | CLion | 保留 | C/C++ 项目模型、调试与嵌入式支持不是 clangd 的等价功能；无需额外安装 DataGrip 才能获得全部基础数据库入口，具体能力看 IDE 功能和许可。 |
 | VSCode FHS | 保留 | 为扩展附带的二进制和 USB/调试库提供兼容环境。改普通包会重新承担逐个扩展追依赖的工作。Remote-SSH 是否已手动安装需核对。 |
-| Neovim | 已迁移到原生 Lua + Nix 包 | `aspects/dev/neovim/config/` 承载配置，`aspects/dev/neovim/` 固定插件/parser 和 wrapper；保留插件由 Nix 提供，不使用在线插件管理器。专项包检查已通过；见[迁移计划](history/neovim-migration-plan.md)了解尚待核验项目。没有性能比较结论。 |
+| Neovim | 已迁移到原生 Lua + Nix 包 | `aspects/dev/neovim/config/` 承载配置，`aspects/dev/neovim/` 固定插件/parser 和 wrapper；保留插件由 Nix 提供，不使用在线插件管理器。专项包检查已通过；见[迁移计划](history/README.md)（原文 `neovim-migration-plan.md`）了解尚待核验项目。没有性能比较结论。 |
 | colorizer | 已改原生 | 移除外部插件，使用内建 LSP documentColor 和 `<leader>uc` 当前 buffer 开关；不再独立扫描无相关 LSP 的文件/Tailwind 类名，没有新写 CSS 解析器。 |
 | vim-matchup | 已改原生 | 移除外部插件，使用内建 matchit/matchparen；不保留 matchup 离屏 popup、专有 surround/transmute，独立 nvim-surround 保留。 |
 | Heirline | 已恢复固定插件 | 按旧 Nixvim 效果参考重建状态栏、标签和宽度收缩，保留同名消歧、未保存保护和 LSP/Git/AI 状态，主题保持 OneDark。 |

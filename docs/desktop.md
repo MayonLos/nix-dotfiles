@@ -62,4 +62,4 @@ Kitty 背景要和 Neovim `Normal` 同步（OSC 11），否则四周出现色框
 - 服务重启失败：先查残留旧进程（旧 `.fcitx5-wrapped`、旧 noctalia）是否占着 D-Bus 名或单实例锁，结束后 `reset-failed` 再启动。
 - Noctalia 自定义颜色：深色模式下 `colors.<name>` 是 Material 色调 80，原色用 `colors.<name>_value`；内置模板拿不到 `custom_colors`，要在构建主题资源时写入原色。
 
-隔离截图与通用陷阱见 [operations.md](operations.md#隔离视觉验证)。旧版说明归档在 [history/desktop-design-2026-10-30.md](history/desktop-design-2026-10-30.md)。
+隔离截图与通用陷阱见 [operations.md](operations.md#隔离视觉验证)。旧版说明归档在 [history/desktop-design-2026-10-30.md](history/README.md)（原文 `desktop-design-2026-10-30.md`）。
