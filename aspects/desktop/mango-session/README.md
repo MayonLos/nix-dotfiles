@@ -95,9 +95,13 @@ screen-off is not emulated; there is no DND/caffeine switch.
 
 `clipboard-bridge` synchronizes the Wayland and X11 selections because Mango's
 Xwayland does not. cliphist watchers (text and images) and wl-clip-persist keep
-history; `Super+V` runs `clipboard-history` (`cliphist list`, fuzzel, then
-`cliphist decode` into `wl-copy`). The cliphist database is not deleted or
-moved.
+history; `Super+V` runs the repository's `mayon-clipboard` overlay, which reads
+cliphist, renders text rows and PNG/JPEG image thumbnails, copies the selected
+entry through `cliphist decode | wl-copy`, closes and then tries to paste into
+the focused application with `wtype` (it degrades to a notification when
+injection is unavailable). `Super+A` runs the same overlay's text-only
+`mayon-launcher` (`gio launch` for desktop entries); it has no application
+icons. The cliphist database is not deleted or moved.
 
 ## Screenshots and OCR
 

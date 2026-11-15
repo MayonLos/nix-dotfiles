@@ -21,6 +21,12 @@
     palette = appearance;
   };
 
+  # Real headless behavior test for the self-written clipboard history and
+  # text launcher (Sway + private D-Bus; private Mango is not passed here).
+  mayon-overlay = import ../../../packages/mayon-overlay/tests/check.nix {
+    inherit pkgs;
+  };
+
   # Validates Mango, mangobar, fuzzel, mako, swayosd, swaybg, swayidle, the
   # clipboard units, the wallpaper link farm and the avatar hand-off.
   interactive-session-config = import ./runtime-check.nix {

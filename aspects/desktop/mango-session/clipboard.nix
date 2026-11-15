@@ -216,25 +216,6 @@ let
   };
 
   mkGraphicalService = import ../../../lib/service.nix;
-  # Super+V. fuzzel's ini themes --dmenu as well. Cancel and an empty line
-  # leave the clipboard alone. The cliphist database stays at its default
-  # cache path and is not deleted.
-  clipboardHistory = pkgs.writeShellApplication {
-    name = "clipboard-history";
-    runtimeInputs = [
-      pkgs.cliphist
-      pkgs.fuzzel
-      pkgs.wl-clipboard
-    ];
-    text = ''
-      set -euo pipefail
-      selection="$(cliphist list | fuzzel --dmenu)" || exit 0
-      if [ -z "$selection" ]; then
-        exit 0
-      fi
-      printf '%s\n' "$selection" | cliphist decode | wl-copy
-    '';
-  };
   sessionService = {
     Unit = {
       StartLimitIntervalSec = 60;
@@ -250,7 +231,10 @@ in
 {
   home.packages = [
     clipboardBridge
-    clipboardHistory
+    # Super+V clipboard history and Super+A text launcher. The overlay is a
+    # consumer of cliphist; the cliphist and wl-clip-persist services below
+    # still own the history database and selection persistence.
+    pkgs.mayonOverlay
   ];
 
   services = {

@@ -44,7 +44,8 @@ tmux 保留前缀窗口管理；无前缀 `Ctrl+h/j/k/l` 根据 smart-splits 维
 | 特殊工具工作区 | `Super+Shift+S` | 显示/隐藏 Tag 0，默认 scroller |
 | 停放 / 取回特殊窗口 | `Super+Ctrl+S` | 将当前窗口放入 Tag 0；在 Tag 0 使用时送回先前普通 tag，不主动跟随 |
 | 跨工作区可见 / 置顶 | `Super+Ctrl+G` / `Super+Alt+G` | 两个独立手动状态；前者限窗口所在输出，后者可能覆盖全屏窗口 |
-| 剪贴板 | `Super+V` | 用 fuzzel 列出 cliphist |
+| 剪贴板 | `Super+V` | 自写 `mayon-clipboard` 覆盖层：cliphist 文本/图片缩略图，选中即复制并尝试自动粘贴 |
+| 启动器 | `Super+A` | 自写 `mayon-launcher` 纯文字应用列表（无图标），`Alt+Space` 仍是 fuzzel 搜索 |
 | 音量 / 亮度 / 麦克风 | 音量键、亮度键、麦克风静音键 | `swayosd-client`（含 `--input-volume mute-toggle`）。媒体键仍是 playerctl |
 | 锁屏 | `Super+Alt+L` | 独立 swaylock；没有 DND、防空闲开关或会话菜单。自动锁屏/idle 由 swayidle 负责 |
 | 窗口聚焦 | `Super+h/j/k/l` 或方向键 | 保留两组等价入口 |
@@ -94,7 +95,7 @@ Firefox 的英文标题 `Picture-in-Picture` 精确匹配浮动、跨 tag、安�
 
 保留 Thunar 的“在此打开终端”“复制为图片”“复制路径”“粘贴剪贴板图片”“粘贴为链接”。文件 URI、路径文字、图片像素是三种不同用途，不能为了减少代码把它们合并成一种复制。迁移终端入口时保持当前文件夹作为 cwd，路径包含空格/中文/引号仍正常，不经拼接 shell 字符串。当前实现见 [文件动作](../aspects/apps/file-manager/thunar-actions.nix)、[终端入口](../aspects/apps/file-manager/thunar-terminal.nix)、[截图](../aspects/desktop/mango-session/screenshot.nix)。
 
-剪贴板历史由 cliphist 保存，`Super+V` 经 fuzzel 选中后写回 Wayland 剪贴板。Wayland/X11 桥接不是第二个历史库，其退出与轮询策略按 [服务设计](service-policy.md) 核验。保留 WeChat/XWayland 与原生 Wayland 间文字、图片互通。旧 cliphist 数据库不删除。锁屏和秘密复制行为先按锁定实现验证，不声称所有密码管理器内容都会自动排除；不输出剪贴板内容到测试日志。
+剪贴板历史由 cliphist 保存，`Super+V` 由自写 `mayon-clipboard` 显示文本/图片缩略图，选中后写回 Wayland 剪贴板并尝试自动粘贴。Wayland/X11 桥接不是第二个历史库，其退出与轮询策略按 [服务设计](service-policy.md) 核验。保留 WeChat/XWayland 与原生 Wayland 间文字、图片互通。旧 cliphist 数据库不删除。锁屏和秘密复制行为先按锁定实现验证，不声称所有密码管理器内容都会自动排除；不输出剪贴板内容到测试日志。
 
 ## 终端、项目与远程工作
 
