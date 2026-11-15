@@ -5,7 +5,11 @@ use std::{
     collections::HashSet,
     fs::File,
     io::{self, Write},
-    sync::Arc,
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
+    time::{Duration, Instant},
 };
 use wayland_client::{
     Connection, Dispatch, QueueHandle, delegate_noop,
@@ -27,6 +31,10 @@ const KDE_IMAGE: &str = "x-kde-force-image-copy";
 struct State {
     image: Arc<ImageSource>,
     active: HashSet<u32>,
+    /// Transfers currently writing the image into a consumer pipe. A selection
+    /// can be taken over (wl-clip-persist, cliphist) while such a write is still
+    /// draining; exiting the helper at that point truncates the reader's stream.
+    sending: Arc<AtomicUsize>,
 }
 
 /// 【图片剪贴板】【独立服务】接收标准输入 PNG 并占有全部现有座席，primary 选择主选区；返回接管结束或协议错误
@@ -41,6 +49,7 @@ pub(super) fn serve(primary: bool) -> Result<(), Box<dyn std::error::Error>> {
     let mut state = State {
         image,
         active: HashSet::new(),
+        sending: Arc::new(AtomicUsize::new(0)),
     };
     let seats: Vec<_> = globals
         .contents()
@@ -107,6 +116,16 @@ pub(super) fn serve(primary: bool) -> Result<(), Box<dyn std::error::Error>> {
     while !state.active.is_empty() {
         queue.blocking_dispatch(&mut state)?;
     }
+    // 2. 【图片剪贴板】【交接排空】另一客户端（wl-clip-persist/cliphist）接管选区时会取消本来源，
+    //    但消费者可能仍在读管道；必须等正在进行的写入完成，否则读端收到 64KiB 截断 PNG。
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while state.sending.load(Ordering::Acquire) > 0 && Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    let leftover = state.sending.load(Ordering::Acquire);
+    if leftover > 0 {
+        log::error!("【图片剪贴板】【交接超时】仍有 {leftover} 个传输未结束");
+    }
     Ok(())
 }
 
@@ -130,12 +149,20 @@ macro_rules! data_control_dispatch {
                 match event {
                     $source::Event::Send { mime_type, fd } if mime_type == PNG => {
                         let image = Arc::clone(&state.image);
+                        let sending = Arc::clone(&state.sending);
+                        sending.fetch_add(1, Ordering::AcqRel);
                         let result = std::thread::Builder::new().name("clipboard-send".into()).spawn(move || {
-                            if let Err(error) = image.send(File::from(fd)) {
+                            // 1. 【图片剪贴板】【完整交付】无论成功失败都归还计数，只有全部管道写完才允许辅助进程退出
+                            let result = image.send(File::from(fd));
+                            sending.fetch_sub(1, Ordering::AcqRel);
+                            if let Err(error) = result {
                                 log::info!("【图片剪贴板】【发送结束】{error}");
                             }
                         });
-                        if let Err(error) = result { log::error!("【图片剪贴板】【发送启动】{error}"); }
+                        if let Err(error) = result {
+                            state.sending.fetch_sub(1, Ordering::AcqRel);
+                            log::error!("【图片剪贴板】【发送启动】{error}");
+                        }
                     }
                     $source::Event::Cancelled => { state.active.remove(seat); data.destroy(); }
                     _ => {}

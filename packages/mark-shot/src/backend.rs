@@ -63,6 +63,9 @@ pub(crate) mod native_backdrop;
 pub(crate) mod software_scene;
 
 pub trait ScreenOverlay {
+    /// 【截图场景】【物理网格】按目标顺序记录捕获帧的真实像素尺寸；present 时必须用该网格分配缓冲，缺省后端忽略
+    fn set_output_pixels(&mut self, _pixels: &[(u32, u32)]) {}
+
     /// 【截图场景】【能力启用】按 captures 准备共享原图，返回是否支持独立背景和稀疏前景；只在截图呈现前调用
     fn enable_capture_scene(&mut self, _captures: &mut [Capture]) -> crate::AppResult<bool> {
         Ok(false)

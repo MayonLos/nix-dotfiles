@@ -59,8 +59,13 @@ pub async fn full(conn: crate::backend::session::Session, launch: Launch) -> Res
         .iter()
         .map(|f| outputs[f.output].clone())
         .collect();
+    let frame_pixels: Vec<(u32, u32)> = shots
+        .frames
+        .iter()
+        .map(|frame| (frame.pw_width, frame.pw_height))
+        .collect();
     let captures = init::build_captures(shots.frames)?;
-    let placements = init::build_placements(&outputs, false);
+    let placements = init::build_placements_for_frames(&outputs, false, &frame_pixels);
     let region = get_full_workspace_rect(&placements).ok_or("no monitor was captured")?;
     let (pixmap, _, scale) = renderer::composite(&captures, &placements, region, None)
         .ok_or("couldn't put the monitors together")?;

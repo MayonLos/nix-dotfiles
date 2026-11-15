@@ -88,8 +88,13 @@ async fn capture(
                 .ok_or("capture returned an invalid display index")
         })
         .collect::<Result<_, _>>()?;
+    let frame_pixels: Vec<(u32, u32)> = result
+        .frames
+        .iter()
+        .map(|frame| (frame.pw_width, frame.pw_height))
+        .collect();
     let captures = crate::app::build_captures(result.frames)?;
-    let placements = crate::app::build_placements(&kept, false);
+    let placements = crate::app::build_placements_for_frames(&kept, false, &frame_pixels);
     let bounds =
         crate::utils::get_full_workspace_rect(&placements).ok_or("no display was captured")?;
     let region = options

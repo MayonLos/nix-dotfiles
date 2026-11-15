@@ -45,6 +45,8 @@ pub struct WaylandOverlay {
     faulted: usize,
     composited_background: bool,
     targets: Vec<wayland_client::protocol::wl_output::WlOutput>,
+    /// Capture frames in target order; their physical pixel grid sizes the overlay buffers.
+    frame_pixels: Vec<(u32, u32)>,
     suspended: bool,
     scrolling: Option<usize>,
     scroll_window: Option<scroll_window::ScrollWindow>,
@@ -71,6 +73,7 @@ impl WaylandOverlay {
             faulted: 0,
             composited_background: false,
             targets: Vec::new(),
+            frame_pixels: Vec::new(),
             suspended: false,
             scrolling: None,
             scroll_window: None,
@@ -83,6 +86,10 @@ impl WaylandOverlay {
 }
 
 impl ScreenOverlay for WaylandOverlay {
+    /// 【截图场景】【物理网格】按目标顺序记录捕获帧的真实像素尺寸，present 用同一网格分配缓冲
+    fn set_output_pixels(&mut self, pixels: &[(u32, u32)]) {
+        self.frame_pixels = pixels.to_vec();
+    }
     /// 【截图场景】【能力启用】按 captures 准备共享背景，返回当前合成器是否支持完整原生场景
     fn enable_capture_scene(
         &mut self,

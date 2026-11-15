@@ -72,6 +72,11 @@ pub struct SurfaceData {
     pub surface: wl_surface::WlSurface,
     pub viewport: Option<wp_viewport::WpViewport>,
 
+    /// Physical pixel size of the capture frame for this output, when the overlay
+    /// is presenting a full-output screenshot. The shm buffer must use exactly
+    /// this grid; configure's logical size times a fractional scale may round to
+    /// a different number of pixels.
+    pub(crate) native_size: Option<(u32, u32)>,
     pub shm_buffer: Option<ShmBuffer>,
     pub(crate) spare_buffer: Option<ShmBuffer>,
     pub(crate) buffer_history: crate::backend::wayland::overlay::buffer_history::History,
