@@ -150,6 +150,12 @@ pub struct Overlay {
     pub logger: Logger,
     extra_data_dirs: Vec<PathBuf>,
     ready_logged: bool,
+    /// Refreshed when the first frame is ready. Mango repeats a held key binding
+    /// after the keyboard repeat delay, and a repeated launch of a toggle
+    /// overlay closes it immediately. Toggle IPC requests inside this short
+    /// window are treated as the same key press and ignored; explicit close
+    /// requests (Escape/ctl close) always work.
+    opened_at: std::time::Instant,
 }
 
 impl Overlay {
@@ -219,6 +225,7 @@ impl Overlay {
             logger,
             extra_data_dirs: Vec::new(),
             ready_logged: false,
+            opened_at: std::time::Instant::now(),
         }
     }
 
@@ -503,10 +510,17 @@ impl Overlay {
             "" => (self.ipc_error("empty command"), None),
             "ping" => ("{\"ok\":true,\"pong\":true}".to_string(), None),
             "state" => (self.state_json(), None),
-            "toggle" => (
-                "{\"ok\":true,\"action\":\"close\"}".to_string(),
-                Some(self.close("toggle")),
-            ),
+            "toggle" => {
+                if self.opened_at.elapsed() < std::time::Duration::from_millis(1500) {
+                    // A key-repeat or a duplicate spawn from the same press.
+                    ("{\"ok\":true,\"action\":\"debounced\"}".to_string(), None)
+                } else {
+                    (
+                        "{\"ok\":true,\"action\":\"close\"}".to_string(),
+                        Some(self.close("toggle")),
+                    )
+                }
+            }
             "close" => (
                 "{\"ok\":true,\"action\":\"close\"}".to_string(),
                 Some(self.close("ipc-close")),
@@ -659,6 +673,9 @@ impl Overlay {
         if self.ready_logged {
             return;
         }
+        // Key-repeat toggles can arrive just after the first frame appears;
+        // measure the debounce window from readiness rather than process start.
+        self.opened_at = std::time::Instant::now();
         if let Some(layout) = &self.layout {
             self.ready_logged = true;
             self.logger.event(
