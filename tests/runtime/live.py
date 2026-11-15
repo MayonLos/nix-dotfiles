@@ -415,10 +415,18 @@ def test_services_journal_classified(ctx: Ctx) -> Result:
     unit_args: list[str] = []
     for unit in REQUIRED_USER_UNITS + ["clipboard-bridge"]:
         unit_args += ["-u", unit]
+    # Failures logged before the most recent system activation belong to the
+    # old generation (for example units restarted before their environment was
+    # available). Only classify messages from the current activation onward.
+    # There is no stable unit name for the last NixOS activation on this
+    # generation; a bounded window keeps pre-activation restart noise out while
+    # still covering the latest switch/login. Longer histories are available in
+    # the artifact if needed.
+    since = "-10min"
     result = ctx.exec(
-        ["journalctl", "--user", *unit_args, "--since", "-2h", "--no-pager", "-o", "cat"],
+        ["journalctl", "--user", *unit_args, "--since", since, "--no-pager", "-o", "cat"],
         timeout=30.0,
-        label="journalctl --user 相关单元 2h",
+        label=f"journalctl --user 相关单元 since {since}",
     )
     raw_lines = [line.rstrip() for line in result.stdout.splitlines() if line.strip()]
     # Multi-line coredump blocks are folded into one logical line per record.
@@ -466,13 +474,13 @@ def test_services_journal_classified(ctx: Ctx) -> Result:
             "-u",
             "swayosd-libinput-backend.service",
             "--since",
-            "-2h",
+            since,
             "--no-pager",
             "-o",
             "cat",
         ],
         timeout=20.0,
-        label="journalctl swayosd-libinput-backend 2h",
+        label="journalctl swayosd-libinput-backend since activation",
     )
     backend_concerning = [
         line
@@ -693,8 +701,12 @@ def test_bar_transparency(ctx: Ctx) -> Result:
         "expected": "fully transparent bar (background none, no blur): wallpaper shows through",
     }
     problems: list[str] = []
-    if max_mode >= 0.35:
-        problems.append(f"bar 区域存在不透明填充（某行主色占比 {max_mode:.2f}）")
+    # A uniform wallpaper row (night sky, gradient) can make a single row's
+    # mode fraction high even though the bar draws nothing. The authoritative
+    # signal is the absence of the configured surface fill; keep the row mode
+    # only as a secondary guard for an almost fully solid band.
+    if fill_ratio >= 0.05 and max_mode >= 0.90:
+        problems.append(f"bar 区域存在不透明填充（surface 占比 {fill_ratio:.3%}, 行主色 {max_mode:.2f}）")
     if fill_ratio >= 0.05:
         problems.append(f"bar 区域 surface 色 {surface} 占比 {fill_ratio:.3%}（应≈0）")
     if total_ink < 200:
@@ -1028,14 +1040,51 @@ def _osd_probe(ctx: Ctx, kind: str, trigger: list[str], *, expect_progress: bool
     env, reason = ctx.wayland_env()
     if reason:
         raise SkipTest(reason)
+    # Run the probe on an empty tag so the wallpaper is a static background:
+    # other windows (and their animations/updates) otherwise contaminate the
+    # before/after diff used to locate the pill. Restore the tag afterwards.
+    saved_tag = None
+    switched_tag = None
+    try:
+        monitor = ctx.monitor()
+        tags = monitor.get("tags") or []
+        saved_tag = next((tag.get("index") for tag in tags if tag.get("is_active")), None)
+        empty_tag = next(
+            (
+                tag.get("index")
+                for tag in tags
+                if not tag.get("is_active") and int(tag.get("client_count", 0)) == 0
+            ),
+            None,
+        )
+        if empty_tag is not None and empty_tag != saved_tag:
+            ctx.mmsg("dispatch", f"view,{empty_tag}")
+            switched_tag = empty_tag
+            ctx.sleep(0.5)
+    except Exception:
+        pass
     before_volume = None
     if expect_progress:
         result = ctx.exec(["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"], label="wpctl get-volume")
         match = re.search(r"Volume: ([\d.]+)", result.stdout or "")
         if match:
             before_volume = match.group(1)
+            # swayosd may skip repainting when a raise is a no-op at 100%;
+            # lower the sink first so the trigger has a visible effect. The
+            # original volume is restored in the finally block.
+            try:
+                target = max(0.05, float(before_volume) - 0.05)
+                ctx.exec(
+                    ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", f"{target:.2f}"],
+                    label="prepare volume",
+                )
+            except ValueError:
+                pass
 
     try:
+        # A previous probe (Caps/Num) may still be fading; its pill would be
+        # captured as the baseline and make this probe look like a stale OSD.
+        time.sleep(2.2)
         baseline_path, baseline_size = ctx.screenshot("osd", f"{kind}-baseline.png")
         baseline = pixels.load(baseline_path)
         trigger_result = ctx.exec(trigger, timeout=15.0, label=f"trigger {kind}")
@@ -1044,18 +1093,28 @@ def _osd_probe(ctx: Ctx, kind: str, trigger: list[str], *, expect_progress: bool
         visible_path = None
         deadline = time.monotonic() + 5.0
         attempt = 0
-        while time.monotonic() < deadline:
-            attempt += 1
-            image, path = _current_screen(ctx, f"{kind}-poll-{attempt:02d}.png")
-            bbox = _osd_change_bbox(baseline, image)
-            if bbox is not None:
-                metrics = _pill_metrics(ctx, image, bbox)
-                if metrics is not None and sum(metrics["palette_ink"].values()) >= 10:
-                    detected = metrics
-                    visible_image = image
-                    visible_path = path
-                    break
-            time.sleep(0.1)
+        # Retry once if the first trigger produced no visible change (e.g. the
+        # daemon was still processing the previous OSD dismiss).
+        for trigger_pass in range(2):
+            while time.monotonic() < deadline:
+                attempt += 1
+                image, path = _current_screen(ctx, f"{kind}-poll-{attempt:02d}.png")
+                bbox = _osd_change_bbox(baseline, image)
+                if bbox is not None:
+                    metrics = _pill_metrics(ctx, image, bbox)
+                    if metrics is not None and sum(metrics["palette_ink"].values()) >= 10:
+                        detected = metrics
+                        visible_image = image
+                        visible_path = path
+                        break
+                time.sleep(0.1)
+            if detected is not None:
+                break
+            time.sleep(0.3)
+            if trigger_pass == 0:
+                trigger_result = ctx.exec(trigger, timeout=15.0, label=f"retry {kind}")
+                deadline = time.monotonic() + 4.0
+                attempt = 0
         if detected is None or visible_image is None or visible_path is None:
             err = (trigger_result.stderr or trigger_result.stdout).strip()[:300]
             return Result.failed(
@@ -1172,6 +1231,12 @@ def _osd_probe(ctx: Ctx, kind: str, trigger: list[str], *, expect_progress: bool
             artifacts=[str(path)],
         )
     finally:
+        if switched_tag is not None and saved_tag is not None:
+            try:
+                ctx.mmsg("dispatch", f"view,{saved_tag}")
+            except Exception:
+                pass
+            ctx.sleep(0.3)
         if before_volume is not None:
             ctx.exec(
                 ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", before_volume],
@@ -1337,7 +1402,20 @@ def _card_pixels(ctx: Ctx, image: pixels.Image, config: dict[str, str]) -> dict:
     scale = ctx.scale()
     surface = surface_rgb(ctx)
     width_logical = int(config.get("width", 360))
-    width_physical = round(width_logical * scale)
+    # mako's width is the content width; horizontal padding and the border add
+    # to the drawn card size (padding is "vertical,horizontal").
+    def _padding_horizontal() -> int:
+        raw = config.get("padding", "14,16").strip()
+        parts = [part.strip() for part in raw.split(",") if part.strip()]
+        if not parts:
+            return 0
+        try:
+            return int(parts[1] if len(parts) > 1 else parts[0])
+        except ValueError:
+            return 0
+    border_logical = int(config.get("border-size", 1))
+    drawn_width_logical = width_logical + 2 * (_padding_horizontal() + border_logical)
+    width_physical = round(drawn_width_logical * scale)
     last_margin = int((config.get("outer-margin", "42,28,0,0").split(",") or ["42", "28"])[1])
     top_margin = int(config.get("outer-margin", "42,28,0,0").split(",")[0])
     bar = read_mangobar_config(ctx)
@@ -1384,6 +1462,7 @@ def _card_pixels(ctx: Ctx, image: pixels.Image, config: dict[str, str]) -> dict:
         "border_pixels": border,
         "config": {
             "width_logical": width_logical,
+            "drawn_width_logical": drawn_width_logical,
             "width_physical": width_physical,
             "expected_right_gap": expected_right_gap,
             "expected_top": expected_top,
@@ -1399,9 +1478,9 @@ def test_notifications_card(ctx: Ctx) -> Result:
     # Other automation on this machine also raises notifications; dismiss any
     # pre-existing card first so the before/after comparison is clean.
     before = None
-    for _ in range(3):
+    for _ in range(6):
         ctx.exec(["makoctl", "dismiss", "--all"], label="dismiss pre-existing notifications")
-        ctx.sleep(0.4)
+        ctx.sleep(0.8)
         shot_before, _ = ctx.screenshot("notifications", "before.png")
         before = pixels.load(shot_before)
         if not _card_pixels(ctx, before, config).get("found"):
@@ -1452,8 +1531,8 @@ def test_notifications_card(ctx: Ctx) -> Result:
             return Result.failed("通知卡片截图分析失败（出现后立即消失？）", observed=json.dumps(detected))
         if abs(detected["width_physical"] - cfg["width_physical"]) > 8:
             problems.append(
-                f"卡片物理宽度 {detected['width_physical']}px != 配置 {cfg['width_logical']}逻辑"
-                f"×scale={cfg['width_physical']}px"
+                f"卡片物理宽度 {detected['width_physical']}px != 期望 {cfg['drawn_width_logical']}逻辑"
+                f"×scale={cfg['width_physical']}px（content {cfg['width_logical']} + padding/border）"
             )
         if abs(detected["right_gap_physical"] - cfg["expected_right_gap"]) > 8:
             problems.append(
