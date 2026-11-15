@@ -585,6 +585,8 @@ pkgs.runCommand "interactive-session-config"
     assert mako_unit["Service"]["Restart"] == "always"
     def command(value):
         return "\n".join(value) if isinstance(value, list) else str(value)
+    polkit_exec = command(m["units"]["polkit-gnome-authentication-agent-1"]["Service"]["ExecStart"])
+    assert "/libexec/polkit-gnome-authentication-agent-1" in polkit_exec
     swayosd_exec = command(m["units"]["swayosd"]["Service"]["ExecStart"])
     assert "swayosd-libinput" not in swayosd_exec
     assert "--top-margin" in swayosd_exec

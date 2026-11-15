@@ -409,7 +409,8 @@ in
       };
       service = {
         ExecCondition = "${pkgs.runtimeShell} -c '[ -n \"$WAYLAND_DISPLAY\" ]'";
-        ExecStart = "${pkgs.polkit_gnome}/bin/polkit-gnome-authentication-agent-1";
+        # nixpkgs installs the agent under libexec, not bin.
+        ExecStart = "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1";
         Restart = "on-failure";
         RestartSec = 2;
       };
