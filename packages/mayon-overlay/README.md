@@ -20,10 +20,16 @@ compositor 下同样可运行。
 
 ## 构建与安装
 
-本仓库的包工厂已在 `nix/pkgs.nix` 注册为 `pkgs.mayonOverlay`：
+本仓库的包工厂已在 `nix/pkgs.nix` 注册为 `pkgs.mayonOverlay`（合并后由主 flake
+求值即生效；把 `packages/mayon-overlay/tests/check.nix` 注册成 check 后也可直接
+`nix build .#checks.x86_64-linux.mayon-overlay`）。未注册 check 前可用包工厂表达式构建：
 
 ```sh
-nix build --no-link --no-write-lock-file .#nixosConfigurations.nixos-btw.pkgs.mayonOverlay  # 或按下文 checks/表达式构建
+nix build --no-link --print-out-paths --no-write-lock-file --impure --expr '
+let
+  flake = builtins.getFlake "path:/home/mayon/nix-dotfiles-wt/overlay";
+  pkgs = flake.inputs.nixpkgs.legacyPackages.x86_64-linux;
+in import /home/mayon/nix-dotfiles-wt/overlay/packages/mayon-overlay { inherit pkgs; }'
 pkgs.mayonOverlay
 # $out/bin/mayon-overlay    原始二进制（子命令形式）
 # $out/bin/mayon-clipboard  已带 clipboard 子命令的 wrapper
