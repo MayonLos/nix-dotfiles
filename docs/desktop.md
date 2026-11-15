@@ -20,7 +20,7 @@ checks: [desktop-composition, mango-blur-sampling, interactive-session-config, g
 
 ## 服务
 
-Mango 配置用 `mmsg dispatch reload_config` 重载。mangobar、mako、swayosd、swaybg、swayidle、cliphist 和 wl-clip-persist 都挂在 `mango-session.target` 上，生命周期见 [service-policy.md](service-policy.md)。锁屏与 idle 没有常驻 shell 进程；swayidle 只执行固定命令。
+Mango 配置用 `mmsg dispatch reload_config` 重载；Home Manager activation 会在每次 `nixos-rebuild switch` 后自动找到当前 Mango socket 并重载一次，所以新快捷键在切换后立即生效。mangobar、mako、swayosd、swaybg、swayidle、cliphist 和 wl-clip-persist 都挂在 `mango-session.target` 上，生命周期见 [service-policy.md](service-policy.md)。锁屏与 idle 没有常驻 shell 进程；swayidle 只执行固定命令。
 
 ## 窗口规则
 

@@ -63,6 +63,18 @@ in
       );
   };
 
+  # A system switch rewrites ~/.config/mango/config.conf behind the running
+  # compositor, which keeps the old bindings until reload_config is dispatched.
+  # Discover the live Mango socket directly (Home Manager activation runs as a
+  # system service without the user manager's session environment) and reload
+  # so new shortcuts work immediately after `nixos-rebuild switch`.
+  home.activation.reloadMangoConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    socket="$(ls -t "''${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"/mango-*.sock 2>/dev/null | head -n 1 || true)"
+    if [ -n "$socket" ]; then
+      MANGO_INSTANCE_SIGNATURE="$socket" ${lib.getExe' config.wayland.windowManager.mango.package "mmsg"} dispatch reload_config >/dev/null 2>&1 || true
+    fi
+  '';
+
   wayland.windowManager.mango = {
     enable = true;
 
