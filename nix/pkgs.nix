@@ -41,6 +41,10 @@
             bilitui = import ../packages/bilitui { pkgs = final; };
             mayonTui = import ../packages/mayon-tui { pkgs = final; };
             mayonVoice = import ../packages/mayon-voice { pkgs = final; };
+            # Wayland layer-shell clipboard history and text launcher. Its
+            # binary entry points are mayon-overlay / mayon-clipboard /
+            # mayon-launcher; key bindings are wired by the desktop feature.
+            mayonOverlay = import ../packages/mayon-overlay { pkgs = final; };
             # Explicit exceptions to stable; each consumer uses this shared instance.
             unstable = {
               # unstable: Neovim 0.12.6 fixes TUI/runtime issues after stable 0.12.4.
