@@ -46,7 +46,6 @@ PALETTE = {
     "blue": (0x61, 0xAF, 0xEF),
     "red": (0xE0, 0x6C, 0x75),
 }
-TEXT_COLORS = [PALETTE["fg"], PALETTE["brightFg"], PALETTE["muted"] if "muted" in PALETTE else (0x82, 0x8A, 0x95)]
 THUMB_RED = (220, 40, 60)
 THUMB_GREEN = (40, 200, 90)
 
@@ -238,10 +237,6 @@ class Session:
             self.run([self.args.grim, str(path)])
         if not path.exists():
             raise RuntimeError(f"grim failed: {result.stderr.decode(errors='replace')}")
-
-    def start_wev(self) -> None:
-        # The observer is started with the session; see start().
-        return
 
     def stop_wev(self) -> None:
         if self.wev and self.wev.poll() is None:
