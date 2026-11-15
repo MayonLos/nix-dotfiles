@@ -39,7 +39,7 @@
 
         addons.classicui.globalSection = {
           # SNI must render the engine's subModeLabel (Rime 中/英), not a
-          # static input-rime icon. Noctalia pins this native Fcitx tray item.
+          # static input-rime icon. The bar exposes this native Fcitx tray item.
           PreferTextIcon = "True";
           # Fcitx strokes tray labels in opaque black by default; on the translucent
           # bar that reads as a dark box around the schema character.

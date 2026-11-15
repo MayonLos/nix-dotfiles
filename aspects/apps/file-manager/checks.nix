@@ -49,7 +49,7 @@ assert !(home.xdg.dataFile ? "dbus-1/services/org.freedesktop.FileManager1.servi
         actions = {item.findtext("name"): item for item in root.findall("action")}
         expected = {
             "Open Terminal Here", "Open in Neovim", "Open herdr Here",
-            "Open lazygit Here", "Set as Wallpaper", "Copy as Image",
+            "Open lazygit Here", "Copy as Image",
             "Copy Path", "Paste Clipboard Image", "Paste as Link",
         }
         assert expected == actions.keys(), (expected - actions.keys(), actions.keys() - expected)
@@ -79,13 +79,10 @@ assert !(home.xdg.dataFile ? "dbus-1/services/org.freedesktop.FileManager1.servi
             "${pkgs.kitty}/bin/kitty"
             "${pkgs.local.herdr}/bin/herdr"
             "${pkgs.lazygit}/bin/lazygit"
-            "${home.programs.noctalia.package}/bin/noctalia"
             "${pkgs.file-roller}/bin/file-roller"
           ]
         }""".splitlines():
             assert Path(path).is_file() and os.access(path, os.X_OK), path
-        wallpaper = Path(shlex.split(commands["Set as Wallpaper"])[0]).read_text()
-        assert "wallpaper-set" in wallpaper
         PY
 
         test '${builtins.head mimeDefaults."application/pdf"}' = 'org.pwmt.zathura-pdf-mupdf.desktop'

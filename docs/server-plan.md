@@ -18,7 +18,7 @@ checks: [remote-workspace-composition]
 | 库存 | 只有真实主机进入 inventory；硬件事实、网络/存储实例、账号绑定与服务选择分别明确 |
 | 人类账号 | `mayon` 的身份可复用；UID、home、sudo、SSH key、功能选择按主机绑定，不复制笔记本 extraGroups |
 | 服务账号 | daemon 自己的账号与 StateDirectory 等归服务功能；不借 mayon 的 home、登录状态、密钥或 linger 运行生产服务 |
-| 无头环境 | 不选择 interactive-session、显示管理器、Noctalia、桌面 IME、音频或 GUI；可选 CLI/编辑/语言支持 |
+| 无头环境 | 不选择 interactive-session、显示管理器、桌面 shell、桌面 IME、音频或 GUI；可选 CLI/编辑/语言支持 |
 | 系统基础 | stable 优先、锁输入、SSH、网络、防火墙、时间同步、日志、磁盘告警、备份与恢复按实际需求配置 |
 | 项目 | 编译环境仍归项目 flake；长期服务的运行环境归该服务的部署定义，不能依赖某人 `cd` 进入目录后的 direnv |
 

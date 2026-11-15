@@ -1,8 +1,7 @@
 /*
- * One Dark GTK3 overrides. Noctalia renders this file into its existing
- * ~/.config/gtk-3.0/noctalia.css output; it remains the only runtime writer.
+ * One Dark GTK3 overrides. Rendered by Nix into ~/.config/gtk-3.0/gtk.css;
+ * that managed file is the only writer.
  */
-@import url("noctalia-extensions.css");
 
 @define-color accent_color {{ colors.onedark_blue_value.default.hex }};
 @define-color accent_bg_color {{ colors.onedark_selection_value.default.hex }};

@@ -24,17 +24,15 @@ let
     "SUPER+ALT,G,toggleoverlay"
     "SUPER+CTRL,S,tag_special_silent"
     "ALT,space,spawn,fuzzel"
-    # Noctalia's switcher: hold Alt and press Tab to cycle (Shift+Tab back),
-    # release Alt to focus; a quick tap returns to the previous window.
-    "ALT,Tab,spawn,noctalia msg window-switcher hold"
-    "SUPER,A,spawn,noctalia msg plugin nix-dotfiles/launchpad:control all toggle"
-    "SUPER+ALT,D,spawn,noctalia msg notification-dnd-toggle"
-    "SUPER+ALT,I,spawn,noctalia msg caffeine-toggle"
-    "SUPER,S,spawn,noctalia msg panel-toggle control-center"
+    # The old shell's MRU window switcher and panel toggles are gone. Mango
+    # keeps its own `switcher,next` binding below; fuzzel is the only launcher
+    # and there is no replacement control center.
     # No argument: the keybind path has no client, so this toggles tag 0
     # on the selected monitor.
     "SUPER+SHIFT,S,toggle_special_tag"
-    "SUPER+ALT,L,spawn,noctalia msg session lock"
+    # Standalone lock surface (swaylock); PAM service setup lives in
+    # mango-session/host/mango.nix.
+    "SUPER+ALT,L,spawn,session-lock"
     "SUPER,0,toggleoverview"
     "SUPER+SHIFT,0,togglejump"
 
@@ -151,14 +149,13 @@ let
     # programs/apps/screenshot.nix.
     "SUPER,Print,spawn,ocr-region"
     "SUPER+SHIFT,Print,spawn,ocr-screen"
-    "CTRL+ALT,Delete,spawn,noctalia msg panel-toggle session"
+    # The old Ctrl+Alt+Delete session menu is gone. Log out with
+    # `mmsg dispatch quit`; use `loginctl`/`systemctl` for power actions.
     "SUPER,V,spawn,clipboard-history"
     # Bluetooth headset mic: HFP on/off (A2DP otherwise; no autoswitch).
     "SUPER+SHIFT,N,spawn,headset-mic toggle"
     "SUPER+SHIFT,P,sleep_monitor,${display.name}"
     "SUPER+SHIFT,O,wakeup_monitor,${display.name}"
-    "SUPER+SHIFT,W,spawn,noctalia msg wallpaper-random"
-    "SUPER+SHIFT,A,spawn,noctalia msg caffeine-toggle"
 
     "SUPER+SHIFT,R,switch_proportion_preset"
     # These two are a pair. `toggle_scratchpad` only ever acts on a client
@@ -185,14 +182,14 @@ let
 
   ];
   hardwareBinds = [
-    # swayosd-client verbs are raise/lower/mute-toggle. Do not also call
-    # noctalia volume or brightness: the step would run twice. Mic mute stays
-    # on Noctalia because its OSD gate is closed and still performs the mute.
+    # swayosd-client verbs are raise/lower/mute-toggle. Do not call a second
+    # volume or brightness tool: the step would run twice. Input volume uses
+    # the same OSD server, so the microphone mute key still gets feedback.
     # No comma in these commands: the help renderer splits fields on commas.
     "NONE,XF86AudioRaiseVolume,spawn,swayosd-client --output-volume raise"
     "NONE,XF86AudioLowerVolume,spawn,swayosd-client --output-volume lower"
     "NONE,XF86AudioMute,spawn,swayosd-client --output-volume mute-toggle"
-    "NONE,XF86AudioMicMute,spawn,noctalia msg mic-mute"
+    "NONE,XF86AudioMicMute,spawn,swayosd-client --input-volume mute-toggle"
     "NONE,XF86MonBrightnessUp,spawn,swayosd-client --brightness raise"
     "NONE,XF86MonBrightnessDown,spawn,swayosd-client --brightness lower"
     "NONE,XF86AudioPlay,spawn,playerctl play-pause"

@@ -6,9 +6,11 @@
   ...
 }:
 let
-  templates = home.programs.noctalia.settings.theme.templates.user;
-  zathura = templates.documents-zathura.input_path;
-  obsidian = templates.documents-obsidian.input_path;
+  templates = import ./templates.nix {
+    inherit pkgs;
+    palette = appearance;
+  };
+  inherit (templates) zathura obsidian;
   zathuraOptions = home.programs.zathura.options;
   zathuraExtraConfig = home.programs.zathura.extraConfig;
   python = pkgs.python3.withPackages (pythonPackages: [ pythonPackages.tinycss2 ]);
@@ -90,6 +92,7 @@ in
         assert zathura_options["page-h-padding"] == 24
         assert zathura_options["recolor"] is False
         assert "map <F4> toggle_statusbar" in zathura_extra_config
+        assert "include one-dark" in zathura_extra_config
         assert zathura_options["statusbar-page-percent"] is True
         assert zathura_options["statusbar-basename"] is False
         assert "Maple Mono NF CN" in zathura_options["font"]

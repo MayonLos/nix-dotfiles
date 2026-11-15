@@ -1,7 +1,7 @@
 { lib, pkgs }:
 
 # Activation helper for files the running application owns and rewrites
-# (qt6ct config, kitty's Noctalia include, zathura's Noctaliarc):
+# (qt6ct config, zathura's color include):
 # create them once if absent, never overwrite what is already there.
 rec {
   mkScript =

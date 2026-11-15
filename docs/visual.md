@@ -1,13 +1,13 @@
 ---
 summary: One Dark 配色令牌、用色规则、字体和桌面现行尺寸
 read_when: 调整任何界面的颜色、字体、圆角、间距、透明度或动效
-code: [aspects/appearance/appearance/onedark.nix, aspects/desktop/mango-session/mango.nix, aspects/desktop/mango-session/shell.nix, aspects/desktop/mango-session/noctalia.nix, aspects/desktop/mango-session/noctalia/bar.nix]
-checks: [palette-contrast, gtk-qt-theme, noctalia-osd-pixels, noctalia-template-runtime]
+code: [aspects/appearance/appearance/onedark.nix, aspects/desktop/mango-session/mango.nix, aspects/desktop/mango-session/shell.nix, aspects/desktop/mango-session/wallpaper.nix, aspects/desktop/mango-session/lock.nix, aspects/desktop/session-support/gtk.nix]
+checks: [palette-contrast, gtk-qt-theme, interactive-session-config]
 ---
 
 # 视觉规范
 
-**颜色的唯一来源是 `onedark.nix`。** 数值以源码为准，本文记录语义和 2026-10-31 从源码核对的现值。
+**颜色的唯一来源是 `onedark.nix`。** 数值以源码为准，本文记录语义和 2026-11-15 从源码核对的现值。
 所有应用固定深色，不从壁纸取色，不新增源色；派生色只由源色和透明度混合得到。
 
 用户偏好：One Dark、低饱和、下划线指示、简洁。不要高饱和整块蓝底、紫粉配色和 Tokyo Night；不要复杂的 IDE 式布局。技术标签（布局名、键名、模式名）保持英文。
@@ -59,18 +59,18 @@ checks: [palette-contrast, gtk-qt-theme, noctalia-osd-pixels, noctalia-template-
 | 动画 开 / 关 / 移动 / tag / 焦点 | 220 / 180 / 180 / 280 / 120 ms。开合都是 zoom，起止比例 0.92。开窗透明度从 0 到 1，关窗从 1 到 0。工作区切换是横向滑入。焦点时长只插值边框和 dim | `mango.nix` |
 | 非焦点 | 不透明，dim 为 black 的 0x18。浮动窗阴影 size 18、blur 32、下移 10 | `mango.nix` |
 | 顶栏 | 高 30，完全透明（无背景、不模糊），贴顶。字体 Maple Mono NF CN Medium 13px。左侧为布局符号与工作区编号，中间为窗口标题；活动工作区为 blue 数字，无下划线、无色块 | `shell.nix` |
-| Dock | 底部 Smart，不透明度 0.80 | `noctalia/bar.nix` |
 | 搜索 | fuzzel 宽 60 列，水平内边距 16。列宽不是像素 | `shell.nix` |
-| 控制中心 | 宽 360 | `noctalia.nix` |
 | 通知 | mako 宽 360，`outer-margin` 42,28,0,0，最多 3 条，不透明，1 px 边框，无模糊 | `shell.nix`、`mango.nix` |
 | OSD | swayosd 紧凑胶囊：`#container` 内边距 8×14、13px 标签、18px 图标、4px 轨道；Caps/Num/Scroll 由 root `swayosd-libinput-backend` 系统服务触发。`top_margin` 约为 0.8856，把胶囊底部放在距底约 96 逻辑 px | `shell.nix`、`host/mango.nix` |
+| 壁纸 | swaybg 以 fill 模式绘制 appearance 默认图，背景色 bg | `wallpaper.nix` |
+| 锁屏 | swaylock 在 bg 上铺 90% 不透明度，16 px 字体，蓝色盘符键高亮，8×4 背景模糊 | `lock.nix` |
 
 ## 模糊
 
-Dock、系统菜单、Launchpad 和 Noctalia 面板开模糊（`mango.nix` 的 `layer_rule`）；顶栏（`mangobar`）完全透明且保持 `no_blur`。普通窗口除 Kitty 等明确例外外不模糊。
+Mango 的原生 layer blur 只对明确列出的层开放；顶栏（`mangobar`）完全透明且保持 `no_blur`。普通窗口除 Kitty 等明确例外外不模糊。
 
-通知层和 swayosd 必须 `no_blur:1`。通知卡片如果半透明再加模糊，背后内容会让底色发灰、出现斑块（2026-10-31 实机确认）。这两层现在是不透明色块，仍然不开模糊。
+通知层和 swayosd 必须 `no_blur:1`。通知卡片如果半透明再加模糊，背后内容会让底色发灰、出现斑块（2026-10-31 实机确认）。这两层现在是不透明色块，仍然不开模糊。壁纸由 swaybg 的独立层绘制，不参与模糊规则。
 
 ## 实现边界
 
-配置接口按锁定的 Noctalia、Mango 源码核实，不虚构字段。Noctalia 没有的能力才打局部补丁（`noctalia/*.patch`），每个补丁必须有构建期检查，上游升级时失败而不是静默退化。旧版完整规范（含 TUI 外观细节、Firefox、Thunar、Fcitx 的设计依据）归档在 [history/visual-design-2026-10-30.md](history/README.md)（原文 `visual-design-2026-10-30.md`），其中数值可能已过时。
+配置接口按锁定的 Mango 源码核实，不虚构字段。Mango 没有的能力才打局部补丁（`mango/*.patch`），每个补丁必须有构建期检查，上游升级时失败而不是静默退化。锁屏、壁纸渲染和 GTK/Qt 主题现在都由独立组件或 HM 静态文件提供，不依赖桌面 shell 生成。旧版完整规范（含 TUI 外观细节、Firefox、Thunar、Fcitx 的设计依据）归档在 [history/README.md](history/README.md)（原文 `visual-design-2026-10-30.md`），其中数值可能已过时。

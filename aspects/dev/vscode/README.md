@@ -57,15 +57,12 @@ Home Manager **does not own or symlink `Code/User/settings.json`**. Its
   receive missing defaults. Existing explicit settings may require the user to
   opt into these defaults; they are never silently reset.
 
-The feature still contributes the `vscode` Noctalia community integration.
-The inspected community template renders **only**
-`~/.vscode/extensions/noctalia.noctaliatheme-0.0.5/themes/NoctaliaTheme-color-theme.json`
-(and separate VSCodium/Antigravity equivalents), with no settings writer,
-post-hook or undo-hook. Noctalia owns that extension's theme JSON; the seed owns
-only missing user-setting keys; Nix owns the installed One Dark Pro/Nix extension
-links. Selecting One Dark Pro leaves NoctaliaTheme unused. Thus no two writers
-own the same file. The community template is downloaded/cached at runtime and
-is not pinned by `flake.lock`; its target/hook behavior must be rechecked if that
+The feature does not contribute a desktop-shell theme integration.
+The seed owns only missing user-setting keys; Nix owns the installed One Dark
+Pro/Nix extension links. Selecting One Dark Pro is a user choice, so no two
+writers own the same file. A previously generated theme extension from the
+removed desktop shell may still exist in the user's extensions directory and is
+left untouched.
 upstream integration changes. Do not add HM `profiles.default.userSettings` or
 turn this into an overwrite of the user profile.
 
@@ -90,13 +87,12 @@ palette/settings invariants, and JSONC preservation, idempotence, locks and
 symlink fixtures. The central check registry must explicitly include this hook;
 it is not discovered automatically.
 
-Removing the aspect withdraws the package, Nix extension links, Noctalia
-contribution and runtime selection when unused elsewhere. Seeded settings,
-user-installed extensions, profiles, authentication, workspace state, history,
-Noctalia's old theme output and project files are preserved. Reverting seed
-values is a user action, not automatic cleanup.
+Removing the aspect withdraws the package and Nix extension links when unused
+elsewhere. Seeded settings, user-installed extensions, profiles,
+authentication, workspace state, history and project files are preserved.
+Reverting seed values is a user action, not automatic cleanup.
 
 Visual verification uses a private HOME/XDG/D-Bus and headless sway at
 2560×1600, scale 1.5. Fresh profiles verify
 the defaults; they do not prove the existing user profile selected the same
-settings. Main-host activation and Noctalia apply/undo remain integration checks.
+settings. Main-host activation remains an integration check.

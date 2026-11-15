@@ -22,8 +22,7 @@ whole string as greetd's only argv element. The login command is the short
 line and gtkgreet's `-c` default. A command line with arguments would not run.
 
 gtkgreet draws its own clock as `%02d:%02d` at Pango size 32000 (31.25 pt) on the
-focused output. It does not draw the lockscreen's 72 px clock, Chinese date or
-circular avatar; those stay on the Noctalia lock screen. It also has no power
+focused output. It does not draw a lockscreen clock or avatar; swaylock draws only a minimal lock surface. It also has no power
 buttons. The stylesheet only sets the One Dark wallpaper, card, field and cursor
 colors. Inter and Noto Sans CJK SC are system fonts. Bibata-Modern-Ice size 24 is
 passed with `XCURSOR_THEME`, `XCURSOR_SIZE` and `XCURSOR_PATH` because greetd

@@ -8,16 +8,15 @@ mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME" "$out"/{g
 test -f "$GTK_THEME_PACKAGE/share/themes/$GTK_THEME_NAME/gtk-3.0/gtk.css"
 test -f "$ICON_PACKAGE/share/icons/$ICON_NAME/index.theme"
 test -f "$ICON_PACKAGE/share/icons/$ICON_NAME/places/16/folder.svg"
-# Parse the outputs of the config-apply integration check, rather than rendering
-# with extra custom colors unavailable to the production builtin engine.
-cp "$TEMPLATE_RUNTIME/config/gtk-3.0/noctalia.css" "$out/gtk-3.0/noctalia.css"
-cp "$TEMPLATE_RUNTIME/config/gtk-4.0/noctalia.css" "$out/gtk-4.0/noctalia.css"
-cp "$TEMPLATE_RUNTIME/config/qt6ct/colors/noctalia.conf" "$out/qt6ct/noctalia.conf"
-cp "$TEMPLATE_RUNTIME/builtin-apply.log" "$out/render.log"
+# Parse the managed CSS written by Home Manager.
+cp "$GTK3_CSS" "$out/gtk-3.0/gtk.css"
+cp "$GTK4_CSS" "$out/gtk-4.0/gtk.css"
 for version in 3 4; do
-  cp "$TEMPLATE_RUNTIME/config/gtk-$version.0/noctalia-extensions.css" "$out/gtk-$version.0/noctalia-extensions.css"
-  python3 "$CHECK_CSS" "$version.0" "$out/gtk-$version.0/noctalia.css"
+  python3 "$CHECK_CSS" "$version.0" "$out/gtk-$version.0/gtk.css"
 done
+run() { "$@"; }
+source "$QT_PALETTE_SEED"
+cp "$XDG_CONFIG_HOME/qt6ct/colors/one-dark.conf" "$out/qt6ct/one-dark.conf"
 cp "$QSS_SOURCE" "$out/qt6ct/one-dark.qss"
 "$CXX" -std=c++17 "$QT_RENDER_SOURCE" -o qt-render $(pkg-config --cflags --libs Qt6Widgets)
 export QT_QPA_PLATFORM=offscreen
@@ -29,7 +28,7 @@ cp "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf" "$out/qt6ct/seed.conf"
 python3 - "$PALETTE_JSON" "$out" <<'PY'
 import configparser, json, pathlib, sys, tinycss2
 p=json.loads(pathlib.Path(sys.argv[1]).read_text()); out=pathlib.Path(sys.argv[2])
-gtk3=(out/'gtk-3.0/noctalia.css').read_text(); gtk4=(out/'gtk-4.0/noctalia.css').read_text()
+gtk3=(out/'gtk-3.0/gtk.css').read_text(); gtk4=(out/'gtk-4.0/gtk.css').read_text()
 for css in (gtk3, gtk4):
     assert '{{' not in css and '@font' not in css
     assert not [r for r in tinycss2.parse_stylesheet(css) if r.type=='error']
@@ -69,7 +68,7 @@ assert p['fonts']['sans'] not in qss and 'font-size: 14px' not in qss
 assert 'font-weight: 500' in qss and 'font-size: 16px' in qss
 assert '@CHECKMARK@' not in qss and '@CHECKMARK_DISABLED@' not in qss and '@INDETERMINATE@' not in qss
 assert '@INDETERMINATE_DISABLED@' not in qss
-scheme=configparser.ConfigParser(); scheme.read(out/'qt6ct/noctalia.conf')
+scheme=configparser.ConfigParser(); scheme.read(out/'qt6ct/one-dark.conf')
 for group in ('active_colors','inactive_colors','disabled_colors'):
     assert len(scheme['ColorScheme'][group].split(','))==22
 assert [v.strip() for v in scheme['ColorScheme']['active_colors'].split(',')][12]==p['selection']

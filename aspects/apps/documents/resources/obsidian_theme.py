@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 
-SNIPPET_NAME = "noctalia"
+SNIPPET_NAME = "nix-dotfiles-one-dark"
 
 
 class UnsafePathError(RuntimeError):
@@ -121,6 +121,46 @@ def output_paths() -> list[Path]:
     return [_vault_files(vault)[0] for vault in _registered_vaults()]
 
 
+def _write_regular(target: Path, data: bytes, mode_bits: int) -> None:
+    fd, temporary = tempfile.mkstemp(prefix=f".{target.name}.", dir=target.parent)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.chmod(temporary, mode_bits)
+        _assert_no_symlink_components(target.parent)
+        if target.is_symlink():
+            raise UnsafePathError(f"refusing symlink target: {target}")
+        os.replace(temporary, target)
+    finally:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+
+
+def install_snippet(source: Path) -> None:
+    source = _absolute(source)
+    mode = source.lstat().st_mode
+    if stat.S_ISLNK(mode) or not stat.S_ISREG(mode):
+        raise UnsafePathError(f"refusing non-regular snippet source: {source}")
+    data = source.read_bytes()
+    for vault in _registered_vaults():
+        css, _ = _vault_files(vault)
+        existing = 0o600
+        try:
+            css_mode = css.lstat().st_mode
+        except FileNotFoundError:
+            pass
+        else:
+            if not stat.S_ISREG(css_mode):
+                raise UnsafePathError(f"refusing non-regular snippet target: {css}")
+            existing = stat.S_IMODE(css_mode)
+        _write_regular(css, data, existing)
+    enable_snippet()
+
+
 def enable_snippet() -> None:
     for vault in _registered_vaults():
         _, appearance = _vault_files(vault)
@@ -166,13 +206,18 @@ def main() -> int:
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=("outputs", "enable"))
+    parser.add_argument("action", choices=("outputs", "enable", "install"))
+    parser.add_argument("source", nargs="?")
     args = parser.parse_args()
     if args.action == "outputs":
         for path in output_paths():
             print(path)
-    else:
+    elif args.action == "enable":
         enable_snippet()
+    else:
+        if not args.source:
+            parser.error("install requires a source CSS path")
+        install_snippet(Path(args.source))
     return 0
 
 

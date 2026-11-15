@@ -24,7 +24,7 @@ checks: []
 | 已修改 | Discord → Vesktop | 用户确认替换；使用 stable 包及系统 Vencord，Wayland/PipeWire 接线已构建，实际分享待验。 |
 | 按需 | 跨设备同步、远程开发 | 有第二台设备/服务器后，再选 Syncthing、Remote-SSH、Tailscale；不提前把所有服务打开。 |
 
-固定方向继续沿用：Mango + Noctalia、Kitty + tmux、One Dark、原生 Lua + Nix 管理 Neovim 插件、混合工具链、Den 实体与绑定。本文不重新打开这些选择。
+固定方向继续沿用：Mango 桌面、Kitty + tmux、One Dark、原生 Lua + Nix 管理 Neovim 插件、混合工具链、Den 实体与绑定。本文不重新打开这些选择。
 
 ## 日用桌面
 
@@ -43,14 +43,14 @@ checks: []
 | Swayimg | 保留，完善现有配置 | 锁定版本是 **4.7、INI 配置**，已有 gallery、动画及多格式支持。不要直接套主线新版 Lua；可在当前版本内调整缩放、背景、导航和 MIME。 |
 | mpv | 保留 | 现有 Anime4K、Vulkan、NVDEC、字幕和播放脚本值得保留。更有价值的是按内容/电池状态使用不同播放 profile，避免始终启用高成本 shader；收益需实测。 |
 | mark-shot | 保留，源码在仓库 | 框选、注释、置顶和滚动截图。Rust 树在 `packages/mark-shot`，窗口吸附读 `mmsg`。`Print` 标注，`Shift+Print` 为 `mark-shot --scroll`。 |
-| Tesseract OCR | 保留 | 现有中英 OCR 是独立功能；Noctalia 截图能力不能自动替代语言数据与识别流程。 |
-| Noctalia 剪贴板历史 | 关闭 | `clipboard_enabled` 为 false。旧历史文件不删除。`Super+V` 改为 cliphist + fuzzel。 |
+| Tesseract OCR | 保留 | 现有中英 OCR 是独立功能；截图工具不能自动替代语言数据与识别流程。 |
+| 桌面剪贴板历史 | cliphist | `Super+V` 用 cliphist + fuzzel；旧历史文件不删除。 |
 | cliphist | 保留，作为日常历史 | 文字和图片 watcher 随 Mango target 启动。不迁移、不删除原数据库，路径仍是默认缓存。 |
 | X11↔Wayland 剪贴板桥 | 保留 | 解决跨协议同步，和历史界面职责不同；QQ/微信图像粘贴链路仍需回归。 |
 | Fastfetch | 保留 | 终端快照，不与实时监视器等价；若以后发现启动拖慢，再测量并改成显式 `ff`，当前不假定存在延迟问题。 |
-| btop | 保留 | 进程选择、资源排序和结束进程不同于 Noctalia 的资源概览；暂不另加 Mission Center。 |
+| btop | 保留 | 进程选择、资源排序和结束进程；暂不另加 Mission Center。 |
 | pamixer | 已修改：移除 | 仓库无命令消费者，删除安装声明；音量键调用 swayosd-client。 |
-| pavucontrol | 保留 | 由 `session-support` 安装。Noctalia 未提供等价的硬件 card profile 菜单，高级操作也可用 wpctl/pw-cli，命令见 README。 |
+| pavucontrol | 保留 | 由 `session-support` 安装。桌面没有等价的硬件 card profile 菜单，高级操作也可用 wpctl/pw-cli，命令见 README。 |
 | brightnessctl | 保留 | swayosd 的背光写入仍调用它。包内 udev 规则把亮度节点交给 `video` 组。 |
 | ddcutil | 保留 | 外接显示器 DDC/CI 后端，与笔记本背光不同。无支持设备时不会凭空带来功能。 |
 | playerctl | 保留 | MPRIS 媒体控制接线，不是另一个播放器。 |
@@ -58,7 +58,7 @@ checks: []
 
 资料：[Mozilla 定制](https://support.mozilla.org/en-US/kb/firefox-advanced-customization-and-configuration)、[QQ Linux](https://im.qq.com/linuxqq/index.shtml)、[Discord 分享限制](https://support.discord.com/hc/en-us/articles/360040816151-Go-Live-and-Screen-Share)、[Vesktop 排障](https://vesktop.dev/wiki/linux/troubleshooting/)、[Mihomo TUN](https://wiki.metacubex.one/config/inbound/tun/)、[Yazi](https://yazi-rs.github.io/docs/configuration/yazi/)、[Swayimg v4.7](https://github.com/artemsen/swayimg/blob/v4.7/README.md)、[mpv 手册](https://mpv.io/manual/stable/)、[btop](https://github.com/aristocratos/btop)。
 
-版本证据：[锁定 Noctalia 的 clipboard 配置说明](https://raw.githubusercontent.com/noctalia-dev/noctalia-shell/5f864d472676c77e5310881b243f15cc371bb223/docs/user/configuration/shell.mdx)、[本仓库 mark-shot](../packages/mark-shot/README.md)、[Noctalia Audio](https://docs.noctalia.dev/noctalia/control-center/)。音频文档的控件范围不能代替本机面板验证。
+版本证据：[本仓库 mark-shot](../packages/mark-shot/README.md)、[cliphist 上游用法](https://github.com/sentriz/cliphist)。音频与屏幕控制的文档范围不能代替本机实际验证。
 
 社区边界：[Vesktop Wayland 分享 issue #1207](https://github.com/Vencord/Vesktop/issues/1207) 是需要验证 Portal 行为的具体案例，不是当前机器必然故障的证明。
 
@@ -169,7 +169,7 @@ checks: []
 | STM32CubeMX | 保留时钟、引脚和 HAL 工程生成。 |
 | STM32CubeProgrammer | 2026-10-29 移除：官方安装包需登录下载，无法自动获取；烧录改用 OpenOCD、st-flash、probe-rs 或 dfu-util。 |
 | tio | 保留串口终端；不需再添 minicom/picocom。 |
-| Docker rootless | 保留，未来用 SSH context 管远程 Docker。换 Podman 需核对 socket/Compose/Noctalia 插件，不因“无守护进程”就断言更适合。 |
+| Docker rootless | 保留，未来用 SSH context 管远程 Docker。换 Podman 需核对 socket/Compose/既有工具接线，不因“无守护进程”就断言更适合。 |
 | QEMU/KVM | 保留虚拟机执行和硬件加速。 |
 | libvirt | 保留虚拟机、网络、存储管理层，不和 QEMU 二选一。 |
 | virt-manager | 保留现有 GUI；命令行 virsh 可补充操作，不需换 Web 管理面板。 |
@@ -193,9 +193,9 @@ checks: []
 
 社区边界：[Gamescope #1596](https://github.com/ValveSoftware/gamescope/issues/1596) 于 **2024-10-26** 开启，最初是 AMD/Gamescope 3.15.9 的 Steam Remote Play 黑屏；2025 年跟帖包含 NixOS/NVIDIA 550.142 案例，2026 年仍有讨论。它针对远程串流场景，不证明当前普通本地游戏或 Minecraft 必然出问题。实际测试应区分裸跑、GameMode、Gamescope、录制/分享。
 
-## Noctalia 插件与系统集成
+## 桌面集成
 
-入口：[Noctalia 配置](../aspects/desktop/mango-session/noctalia.nix)、[shell](../aspects/desktop/mango-session/shell.nix)、[输入法](../aspects/desktop/session-support/input-method.nix)、[Portal/keyring](../aspects/desktop/mango-session/host/portal.nix)。R47 按用户要求删除全部社区插件，仅保留本仓库 Launchpad、desktop-menus、legion-conservation；用户笔记、历史与其他运行时数据保留。Alt+Space 使用 fuzzel。Super+A 仍是 Launchpad。
+入口：[shell](../aspects/desktop/mango-session/shell.nix)、[壁纸](../aspects/desktop/mango-session/wallpaper.nix)、[锁屏与 idle](../aspects/desktop/mango-session/lock.nix)、[输入法](../aspects/desktop/session-support/input-method.nix)、[Portal/keyring](../aspects/desktop/mango-session/host/portal.nix)。启动器只有 fuzzel（`Alt+Space`）；桌面 shell 已移除，Dock/Launchpad/控制中心/桌面通知历史/壁纸选择器不再提供。旧用户数据保留。
 
 | 项目 | 结论 |
 |---|---|
@@ -203,7 +203,7 @@ checks: []
 | qt6ct / GTK 设置 | 保留现有外观桥接；One Dark 应集中提供语义颜色，再输出各应用格式，避免每个模块各写一份色值。 |
 | GNOME keyring | 保留应用 Secret Service；不是网站密码库或 sops 的替代。 |
 | sops | 保留运行时秘密管理；不能把密码管理器主密钥或服务令牌直接写进 Nix 字符串。 |
-| Noctalia polkit / 锁屏 / idle | 沿用当前统一入口，不再加第二个 agent 或 idle daemon。通知改由 mako 接收，Noctalia 的 notification daemon 关闭。音量和亮度 OSD 是 swayosd。 |
+| polkit / 锁屏 / idle | 图形认证由宿主 polkit 提供；锁屏是 swaylock（PAM `swaylock`），idle 是 swayidle。通知由 mako 接收。音量和亮度 OSD 是 swayosd。 |
 | Portal / 屏幕共享 | 保留当前 workaround。捕获固定 eDP-1；若需共享外接屏，应调整该接线并实测，不是换 Discord 就能解决选择范围。 |
 
 ## 常用小工具
@@ -221,7 +221,7 @@ checks: []
 | dust | 保留目录占用定位，与 duf 不是相同查询。 |
 | hexyl | 保留二进制查看；若完全不用可用内建/现有十六进制工具替代基础查看，损失较小。 |
 | tealdeer | 保留命令示例；man 更完整但不同于简明用法，和 nix-index 的“哪个包提供命令”不同。 |
-| qalc / libqalculate | 保留交互计算；Noctalia 计算入口存在不代表 CLI 多余。 |
+| qalc / libqalculate | 保留交互计算；桌面没有计算器入口不代表 CLI 多余。 |
 | 7zz / unzip / unrar | 保留格式后端；图形归档前端也需要解压工具，不能因加 GUI 就直接删。2026-11-06 起以官方 7-Zip（`_7zz`）替换停更的 p7zip 分支。 |
 | wl-clipboard / xclip | 保留两种显示协议接线；当前跨协议桥仍有需求。xclip 只作为剪贴板桥、Thunar 与 swayimg 脚本的 `runtimeInputs`，2026-11-06 起不再进入用户 PATH。 |
 | grim / slurp | 保留截图与 OCR 后端，不因已有 GUI 截图入口而删除。 |
@@ -247,7 +247,7 @@ checks: []
 | Tailscale（条件） | 多台设备跨网络互联，需要方便地访问 SSH/服务 | 引入账户、控制面和 ACL 管理；只有一台本机时价值有限。Headscale 自建控制面以后有真实需求再选，不同时铺开。 | host 选择网络角色，不复制桌面配置。 |
 | fwupd（条件） | 支持 LVFS 的设备固件更新 | 先核对具体设备是否支持。现有 redistributable firmware 是驱动固件分发，不等于 BIOS/设备更新服务。 | 硬件能力；不预设 Lenovo 全部设备可更新。 |
 | Okular（已移除） | 用户决定移除；PDF 默认仍为 Zathura，批注使用 Zotero 内置阅读器 | 删除包与 MIME association；Zotero 当前锁定版本 9.0.6。 | 不删除 PDF 或应用数据。 |
-| Crosspipe（条件） | 可视化 PipeWire 节点连接，例如复杂录音/直播路由 | 日常音量已有 Noctalia，排障可用 wpctl/pw-cli。锁定 nixpkgs 已移除 Helvum 包别名，不照旧推荐它；Crosspipe 仍需验证实际路由。 | 桌面音频工具，按需打开。 |
+| Crosspipe（条件） | 可视化 PipeWire 节点连接，例如复杂录音/直播路由 | 日常音量已有 swayosd，排障可用 wpctl/pw-cli。锁定 nixpkgs 已移除 Helvum 包别名，不照旧推荐它；Crosspipe 仍需验证实际路由。 | 桌面音频工具，按需打开。 |
 | EasyEffects（条件） | 明确需要麦克风 EQ、降噪、压缩或输出处理 | 系统不常驻 echo-cancel（曾拖垮蓝牙 A2DP），通话应用自带回声消除。效果链增加调试和处理成本，没有需求先不加。 | 用户级音效能力，避免双重处理。 |
 | Heroic（条件） | 确实有 Epic/GOG/Amazon 游戏 | 商店登录和 Wine/游戏兼容另需维护，Steam/Prism 用户不自动需要。 | 游戏桌面角色。 |
 | darktable（条件） | 拍 RAW，需要冲洗和照片库 | 与 GIMP 分工；普通截图/网页图片无需增加。 | 摄影角色。 |

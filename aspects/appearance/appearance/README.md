@@ -4,7 +4,7 @@ This aspect defines the typed `appearance` input for host and user entities and 
 
 Inputs are ordinary palette assignments on `host.appearance` and `user.appearance`. The schema validates color fields, fonts, cursor settings, icon theme values, and the optional `reducedMotion` preference. The active system palette selects Inter 4.1, Noto Sans CJK SC, Maple Mono NF CN, WhiteSur-dark (the upstream blue-folder default), and Bibata-Modern-Ice at 24 px. Renderers consume only the values they need in their own feature.
 
-Outputs are the shared data exports below. `noctaliaIntegrations` belongs to `desktop/mango-session` and is validated by its contract. Palette data does not cross host/user scopes automatically.
+Outputs are the shared data exports below. Palette data does not cross host/user scopes automatically.
 
 Public exports: `onedark.nix`, `ansi.nix`, and `resources/wallpaper/` are public data/assets. The public package factory `resources/wallpaper/package.nix` accepts `{ pkgs, ... }` and returns `default`, `wallpapers` (named paths), and `directory` (a store link farm). It rotates the 18 original `wallpaper-001`–`018` assets (two JPEG, sixteen PNG), with `wallpaper-005.png` as both desktop and greeter default. User images remain supported through `~/Pictures/Wallpapers/local/`; no image is generated or fetched. `default.nix` and `contract.nix` are public entry points; other Nix files are private. `ONEDARK-LICENSE` records the palette source license.
 

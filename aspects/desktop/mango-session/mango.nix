@@ -145,14 +145,14 @@ in
       warp_cursor = 1;
 
       # Mango 0.18.3 has no ext-background-effect-v1. Its native layer blur
-      # supplies the bar/Dock frost; ordered rules below restrict its scope.
+      # is restricted to the top bar by the ordered rules below.
       blur = 1;
       blur_layer = 1;
       blur_optimized = 1;
       blur_params_radius = 5;
       blur_params_num_passes = 2;
-      # Noctalia animates its own panel/notification layer surfaces. Keeping
-      # Mango layer animations off avoids a second compositor transition.
+      # Layer surfaces here do not animate themselves, so a compositor-side
+      # layer animation would only add a second transition.
       layer_animations = 0;
       shadows = 1;
       layer_shadows = 0;
@@ -186,8 +186,8 @@ in
       global_color = "${color palette.blue}";
       overlay_color = "${color palette.blue}";
       maximized_screen_color = "${color palette.blue}";
-      # Match Noctalia's 16px panel/Dock outer radius on every client, not
-      # only when several windows share the output.
+      # Keep one 16px outer radius on every client, not only when several
+      # windows share the output.
       border_radius = 16;
       gap_inner_horizontal = 10;
       gap_inner_vertical = 10;
@@ -369,36 +369,26 @@ in
       enable_floating_snap = 1;
       snap_distance = 16;
 
-      # Rules apply in order: transparent clients and unrelated layer surfaces
-      # stay unblurred; the bar/Dock and selected native panels opt back in.
+      # Rules apply in order: unrelated layer surfaces stay unblurred;
+      # mangobar, mako and swayosd opt back in where their own design needs it.
       layer_rule = [
         "layer_name:.*,no_blur:1"
-        "layer_name:^noctalia-(bar-.*|dock)$,no_blur:0,no_animation:1,no_shadow:1"
-        "layer_name:^(noctalia-system-menu|noctalia-plugin:nix-dotfiles/desktop-menus:preview)$,no_blur:0,no_animation:1,no_shadow:1"
-        "layer_name:^noctalia-plugin:nix-dotfiles/launchpad:drawer$,no_blur:0,no_animation:1,no_shadow:1"
-        "layer_name:^noctalia-(panel|attached-panel|osd)$,no_animation:1,no_blur:0,no_shadow:1"
-        "layer_name:^noctalia-notification$,no_animation:1,no_blur:1,no_shadow:1"
-        "layer_name:^noctalia-(window-switcher|panel-click-shield)$,no_animation:1,no_blur:1,no_shadow:1"
-        "layer_name:^noctalia-(screenshot-region|annotate)$,no_animation:1,no_blur:1,no_shadow:1"
-        # Appended so the earlier indices stay put. mangobar is fully
-        # transparent; blurring its layer would still frost the empty middle
-        # span. mako and swayosd are opaque; blur would grey their fill.
+        # mangobar is fully transparent; blurring its layer would still frost
+        # the empty middle span. mako and swayosd are opaque; blur would grey
+        # their fill. None of them animate through the compositor.
         "layer_name:^mangobar$,no_blur:1,no_animation:1,no_shadow:1"
         "layer_name:^notifications$,no_animation:1,no_blur:1,no_shadow:1"
         "layer_name:^swayosd$,no_animation:1,no_blur:1,no_shadow:1"
       ];
 
       # Single rule owner. Keep app destinations opt-in to preserve current tags.
-      window_rule = (import ./mango/window-rules.nix { inherit lib; }) ++ [
-        # Native settings window uses xdg-toplevel, rather than a panel layer.
-        "no_blur:0,app_id:^dev[.]noctalia[.]Noctalia$"
-      ];
+      window_rule = import ./mango/window-rules.nix { inherit lib; };
       # Mango 0.18.3 supports 0/1/2; 2 gates tearing to fullscreen.
       # The rule table opts normal clients out and games in.
       allow_tearing = 2;
 
-      # Launches, Noctalia shell controls, tag navigation, and dwm-style
-      # master-stack operations.
+      # Launches, session controls, tag navigation, and dwm-style master-stack
+      # operations.
       bind = map renderBind defaultBinds;
       bindr = map renderBind releaseBinds;
 
@@ -464,7 +454,7 @@ in
     # Keep this non-empty for Mango HM's environment/target synchronization
     # hook. Mango's C startup path also requests mango-session.target before
     # exec_once, so target startup does not depend on this hook winning a race.
-    # Noctalia itself is owned by its systemd user unit.
+    # Desktop shell services are owned by their own systemd user units.
     autostart_sh = ":";
     extraConfig = "";
   };

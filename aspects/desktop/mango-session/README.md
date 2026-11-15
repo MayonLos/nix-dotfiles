@@ -1,349 +1,160 @@
 # Mango session
 
-Provides the Mango Wayland desktop and its Noctalia shell integration. Inputs are `user.appearance`, host display facts, selected `noctaliaIntegrations`, and the public `nixDotfiles.graphicalSessionTargets` option from session support.
-
-Outputs include Mango/Noctalia configuration, clipboard bridges, screenshot and OCR tools, per-session environment, and host-side Mango/portal modules routed through `interactive-session-host`. The `noctaliaIntegrations` quirk is declared here and validated by `contract.nix`. This feature owns its session target and Noctalia service lifecycle; it does not select the login greeter. Home Manager follows the NixOS rebuild.
-
-## Bar and Dock
-
-mangobar draws the live top bar from `shell.nix`. Noctalia `bar.main.enabled` is false, so that layer is not created; the Dock block in `noctalia/bar.nix` stays. The bar is 30 logical px, flush (`margin: 0`), and fully transparent: it paints no background and Mango does not blur its layer, so the wallpaper shows through everywhere. There is no launcher button, unread bell, control-center button, CPU, volume or brightness readout.
-
-mangobar loads one font for the whole surface. That font is `Maple Mono NF CN` Medium at 13px (`palette.fonts.mono`). Inter cannot draw the nerd-font status glyphs and has no CJK, and the stylesheet keeps only the first family. `font-weight` becomes an fcft style name, so `Medium` is required; it also applies to every module, and the window title is not a heavier face. There is no underline property. The active workspace number is palette blue with no filled pill; occupied tags use palette fg, empty tags use palette muted and urgent tags palette red. The stylesheet explicitly clears the built-in module decoration: `*` sets `background: none`, `border-radius: 0`, zero padding and zero margin, because mangobar otherwise keeps its compiled defaults (a filled pill and `radius = -1`) for every property the CSS does not set. `border` and `opacity` are ignored. The 8-digit color is `#RRGGBBAA`. `buffer-scale` is omitted because the default of 1 multiplies `wl_output.scale`.
-
-Left to right: Mango's `layout_symbol` rather than the English word `tile`, then workspace numbers with `hide-empty`. The center shows the focused client's window title (Mango IPC, truncated at 300 px, not Noctalia's application name). The right side is the StatusNotifier tray, a network icon, a `custom/bluetooth` poll, the battery glyph plus percent, and one clock `{:L%m月%d日 周%a %H:%M}` under `LC_TIME=zh_CN.UTF-8`. The letters `en` on the tray are fcitx's StatusNotifier text. A `keyboardlayout` module would add a second `us` label and is not declared. Bluetooth is not a built-in module; its poll reads `org.bluez` over the system bus with one bounded `busctl` call instead of `bluetoothctl` (which aborts with SIGABRT and a coredump when the bus is unreachable). Battery click still runs `legion-conservation toggle`. The StatusNotifier tray context menu is drawn by mangobar itself, so one `menu`/`menuitem`/`menuitem:hover`/`menuitem:disabled` block in `style.css` themes the right-click menu of every background program (fcitx, media players, ...) at once.
-
-`active-app-name.patch` still adds opt-in `widget.active_window.show_app_name` for the dormant Noctalia bar contract and accepts the intermediate Pango weight 650 in the shared widget selector. Dock identity uses the same desktop-entry resolver. Unmatched applications fall back to their app ID, never their window/document title. The Neovim desktop entry (`kitty --class=Neovim nvim`) makes its identity explicit. The live bar does not use that application name.
-
-The floating bottom Dock uses native Smart auto-hide: empty workspace shows it, occupied workspace hides it, and the bottom edge reveals it again. `reserve_space=false` means its exclusive zone is zero. `layer=top` stays below Mango's fullscreen clients, so fullscreen games and video cover the reveal strip and bottom-edge pointer motion cannot trigger the Dock; leave fullscreen to reach it. It uses 44 px icons, 8 px edge gap, 16 px corners, opacity 0.80, native running dots and active accent, a leading grid launcher, and restrained 1.2× magnification. Dock client shadow is disabled: isolated Mango tests with both Pixman and GLES2 showed a thick black fringe when client shadow and native layer blur were combined; the fine capsule outline stays. Pinned order is kitty, firefox, obsidian, thunar, code, qq, musicfox; running apps are added natively. The launcher's application icons retain their source colors (`app_icon_colorize=false`); Dock also uses native application icons rather than replacing them with hand-drawn glyphs.
-
-The Dock requests `compositor_blur=true`. Locked Mango 0.18.3 does not implement `ext-background-effect-v1`; its native blur supplies the actual effect. Blur and layer blur are enabled with optimized wallpaper caching, radius 5 and two passes. Ordered `layer_rule` entries first disable blur everywhere, then enable it for `noctalia-bar-*` and `noctalia-dock` (the Dock still matches). The fully transparent `mangobar` layer stays `no_blur`. `notifications` and `swayosd` stay `no_blur`. The focused-output Launchpad layer additionally opts into blur by its exact namespace `noctalia-plugin:nix-dotfiles/launchpad:drawer`. A catch-all window rule keeps normal clients unblurred. R43 extends the blur opt-in to native panels, attached panels, notifications and OSD. Their shared native Soft surface has opacity 0.80 and one outline; native panel client shadow is disabled because it creates an opaque fringe with Mango layer blur, as already observed for Dock; settings uses its native translucent-window option plus a dedicated Mango app-id blur rule. The bar reserves exactly its own height; native floating panels follow the usable edge plus 12 px. Notifications use their native usable-edge positioning plus 28 px horizontally / 24 px vertically (the old absolute-edge SYSTEM-tooltip avoidance is gone). OSD stays bottom-center with a 96 px offset so even a revealed Dock remains below it.
-
-### Function entry points
-
-| Previous bar entry | Current entry |
-| --- | --- |
-| CPU/MEM/GPU/temperature SYSTEM hover | Control Center → native detail navigation → System; full native graphs/details; `Super+Alt+M` still toggles btop |
-| Brightness | Control Center Home slider and Monitor tab; hardware keys call swayosd-client |
-| Power profile / caffeine | Control Center Home performance row; `Super+Alt+I` toggles caffeine |
-| Tile / layout button | `Super+W` cycles Mango layout; native `Super+R` enters resize mode; `Super+F1` shows key help |
-| Notifications | mako draws the popup. Control Center Notifications tab and the Home DND shortcut remain; the bar has no unread icon |
-| Battery conservation | Battery left click still runs `legion-conservation toggle`; local conservation plugin remains enabled |
-
-Control Center Home has no sidebar and a visible width of 360 logical px. Its
-four two-column tiles are Wi-Fi, Clash, Bluetooth and DND: solid palette blue
-with dark text when active, quiet surface fill otherwise, and separate title /
-live status text. The Home header uses the neutral “Control Center” title. Left click toggles the native Wi-Fi, Bluetooth or DND service;
-right click opens its existing details tab. Clash reads only `/version` and one
-`/traffic` sample from `/run/mayon-clash/mihomo.sock`. No socket means
-“controller disconnected”, not proof that the service has stopped.
-Clicking Clash closes Home and reuses the existing named `mayon-clash` scratchpad;
-the TUI owns start/stop confirmation and configuration. The
-tile only reads status and opens the TUI.
-The public package factory is `packages/noctalia-clash-status/default.nix`;
-its `tests.status` checks delayed traffic, stale socket and bad data.
-
-The volume and brightness sliders retain native service bindings and use an
-opt-in Primary→Tertiary (One Dark blue→purple) fill added to the native Slider;
-other sliders and OSD are unchanged. Battery, power profile and instantaneous
-Clash rates use thin separator rows and disappear when data is unavailable.
-Battery opens Power details, performance cycles the native profile, and traffic
-opens the same Clash scratchpad. Unavailable sliders show a dash rather than a
-measured zero.
-Native detail tabs retain at least 600 px and direct Calendar 320 px. Bar
-shortcuts reopen the native panel path when contexts change. Existing hooks,
-services, secrets and application data are preserved.
-
-Notifications share Home's 360 px width and use a 34 px rounded square gradient badge for fallback/native
-glyphs, dark ink, and original application images when supplied. Bold titles
-and muted body text share one text column; the separate bottom-right app-name
-footer and top progress accent are removed. Action buttons retain the native
-click/reply handlers. Offsets stay 28/24, outline/radius/input/blur geometry stays
-in the native card implementation, and the 0.80 Soft surface remains shared.
-
-## Search, clipboard, notifications and OSD
-
-Search is fuzzel. Alt+Space spawns the name on `PATH`. The bottom-left hot corner uses `lib.getExe pkgs.fuzzel` because that shell command can have a thin `PATH`. Width is 60 character columns; fuzzel does not take a pixel width. Horizontal padding is 16. The font is Inter at size 14, and fontconfig supplies CJK. Icons are WhiteSur-dark. The same ini themes `fuzzel --dmenu`. The portal chooser stays `chooser_type=none`.
-
-Clipboard history is cliphist plus wl-clip-persist on `mango-session.target`. Super+V runs `clipboard-history` (`cliphist list`, then `fuzzel --dmenu`, then `cliphist decode` into `wl-copy`). The X11/Wayland bridge in `clipboard.nix` stays. Noctalia `clipboard_enabled` is false. The cliphist database is not deleted or moved.
-
-Notifications are mako: top-right, width 360, opaque surface, 1 px border, at most 3 visible. `outer-margin` is `42,28,0,0` and each card's own margin is `0,0,8,0`, so the first card clears the 30 px bar and stacked cards stay 8 px apart. The layer name is `notifications`. Noctalia's notification daemon is off. mako 1.11.0's D-Bus service file execs the binary and has no `SystemdService=` line; the session unit is still named `mako`. Each opened notification runs `on-notify = exec pw-play .../message-new-instant.oga`, so notifications also play the freedesktop message sound; both the player and the sound file are store paths and failures are ignored (no audio device, daemon restart).
-
-OSD is swayosd from stable nixpkgs (`services.swayosd`). Volume and brightness keys call `swayosd-client --output-volume` and `--brightness`. Mic mute stays `noctalia msg mic-mute`. Media keys stay playerctl. A system-level `swayosd-libinput-backend` service (root, installed through the package's system D-Bus policy and the host's wheel polkit rule) watches Caps, Num and Scroll lock and publishes them on the system bus, so all three keys get an OSD without compositor bindings. The pill stays compact: `#container` inset `8px 14px`, 13 px labels, 18 px icons and a 4 px progress rail. `top_margin` is `(logicalHeight - 96 - 26) / logicalHeight`; on the 2560×1600 panel at scale 1.5 that is about 0.8856, which keeps the smaller pill at roughly the earlier distance above the bottom. The same value is in `~/.config/swayosd/config.toml` together with `show_percentage`. Brightness writes need the package udev rules and the `video` group; the group applies on the next login. Noctalia `osd.enabled` is false.
-
-## Source patches
-
-The package overrides only the locked `pkgs.local.noctalia` derivation. Every retained/new patch has source drift assertions in `noctalia.nix`; `interactive-session-config` validates the actual generated TOML using the built Noctalia binary and asserts the serialized bar/Dock contract.
-
-| Patch | Purpose |
-| --- | --- |
-| `astra-selection.patch` | Launcher/shortcut selection styling and compact vertical Control Center Home with volume/brightness sliders; old workspace and media-widget changes removed |
-| `tech-lockscreen.patch` | Compact identity/password row, circular avatar and feedback below the field |
-| `r43-*.patch` | Independent Control Center, notification, continuous OSD, compact calendar, settings and wallpaper drawing (checked by `r43-check-panels.py`) |
-| `r50-panel-widths.patch` | Permits the declared 360px Home and 520px launcher; keeps detail tabs at least 600px and reopens changed Control Center contexts for correct geometry |
-| `nvidia-sampler.patch` | System-service portions extracted from old hud-sysmon: NVIDIA-only two-second sampling, suspended/unplugged GPU invalidation and short NVML sessions |
-| `active-app-name.patch` | Opt-in application-name label using native identity resolution |
-| `launchpad-native.patch` | Native application index/launch IPC, independent Dock Launchpad entry, opt-in layer capture keys and wheel events |
-| `desktop-menus.patch` | Opt-in minimal active dot and workspace-model hover bridge, validated native window focus, memory-only Dock suppression, custom system-menu chrome and safe session selection |
-
-mangobar itself is upstream 0.1.1 with one small patch on `pkgs.local.mangobar`: `mangobar/menuitem-disabled.patch` adds the `menuitem:disabled` CSS selector that upstream hardcodes to 50% gray. It touches `style.h`, `style.c` and the two menu drawing functions in `mangobar.c`, keeps the compiled gray as the fallback when the stylesheet sets no disabled colour, and is applied with `--fuzz=0` plus post-patch grep assertions so an upstream rewrite fails the build instead of silently losing the colour. The tray menu renderer is exercised end-to-end by `mangobar-tray-pixels` (below).
-
-All eight `hud-*` patches are removed: old bar/workspace decorations, bespoke tooltip payload/renderer, battery renderer, control tooltips, sysmon drawings/threshold options, balanced readouts, centered-clock/drawer clearance and SYSTEM-toast coordination. Their build-time markers, runtime assertions and standalone overlay-clearance test are removed too. Battery rendering and low-discharge warning follow upstream glyph mode; R44 changes only the full/pending-charge glyph to the same battery-outline-and-bolt used while charging. The r39 additions change Dock launcher dispatch and opt-in C2 active-dot and native-model hover previews; notification badges retain upstream rendering.
-
-Legion conservation remains supplied by the local status plugin and the separately owned `hardware/legion-laptop` command. Its readout prefers ideapad_acpi, then standard `charge_control_end_threshold`, and reports unavailable state explicitly. Notification history, encryption migrations and lockscreen validation belong to upstream Noctalia 5.4.
-
-Only the repository-owned `nix-dotfiles/launchpad`, `nix-dotfiles/desktop-menus` and `nix-dotfiles/legion-conservation` plugins are loaded, from the local Nix-built source. Community/official plugin sources, community settings, shortcuts and custom renderers are removed. The native Alt+Space launcher keeps built-in application search; it has no community provider configuration. Launchpad's hidden applications and icon overrides remain declared below.
-
-The pre-start reconciler removes and backs up declared `plugins.enabled`, `plugins.source` and control-center shortcut overrides. Removed plugins' undeclared `plugin_settings` and `widget` tables remain in runtime state and require a separate review while Noctalia is stopped. It never deletes plugin data such as Quill notes. The unused official/community flake inputs remain locked pending integration cleanup; they are no longer referenced by this feature.
-
-## Launchpad, C2 workspaces and system menu
-
-The local `nix-dotfiles/launchpad` plugin owns a lazy full-screen layer and a cache service. Dock's leading grid button and Super+A toggle it; Alt+Space retains fuzzel. Escape, Super+A and blank-area clicks close the drawer. Search focuses on every open and matches names, desktop IDs and native English/localized aliases. Chinese names also match pinyin initials and full-pinyin substrings, including mixed English/Chinese names and alternate heteronym readings. The offline pronunciation table is generated by build-only pypinyin in `noctalia/local.nix`; the running plugin uses only Luau. The generated table packs readings into 256-codepoint pages and caches indexed lookups, keeping all pronunciations while avoiding a large table-constructor AST that exceeded the locked runtime's 100 ms load budget during isolated validation. Lookups use plain substring searches; icon prewarming resolves one application per callback to stay within the separate 25 ms callback budget. Name matches precede initials; desktop IDs/aliases remain searchable ahead of full-pinyin substrings. Ties preserve incoming order and native usage records are untouched.
-
-The drawer is split into `drawer.luau` (state and declarative `ui.*` tree), `page.luau` (pure paging/selection arithmetic), `layout.luau` (responsive geometry) and `model.luau`/`pinyin.luau` (filtering and ranking). Geometry derives 4–7 columns and 1–6 rows from the logical output minus a fixed 104 px bottom Dock area, with icon and label sizes following the cell size, so narrow or short outputs stay positive instead of dividing by zero. The centered content column has a capsule search field with a focus outline and Esc/clear affordance, category chips with a filled selection state, hover/selection states on application cells, and low-saturation capsules as page dots (hidden when there is a single page). Chips, dots and per-application icon+label trees are cached per state or desktop ID; opening the drawer starts from “all” with an empty search, and closing/reopening rebuilds that state. Wheel and PageUp/PageDown page with short throttles; arrows select across rows and pages; Enter and single click launch and close. Empty results show separate loading, failure, no-match, empty-category and empty-index messages.
-
-The `hidden_apps` string-list plugin setting is declared in `noctalia/plugins.nix`. R44 additionally suppresses Thunar Bulk Rename, removable-media settings and the Fcitx daemon launcher from the empty-query grid. Its desktop IDs suppress helper applications only while search is empty; searching still includes them. Native NoDisplay/Hidden/desktop visibility rules always apply. `app-list` reuses native desktop scanning with `zh_CN` names and version/inotify/profile-symlink invalidation. Names are deduplicated; the service preloads, refreshes asynchronously on open and every 30 seconds, and resolves at most one application icon per callback. Failed refreshes preserve the warm cache. `app-launch` calls the original `AppProvider::activate`, retaining terminal handling, output routing, activation tokens, D-Bus activation and systemd/custom-command policy.
-
-The API has no wallpaper blur primitive. The drawer renders one `shadow/0.66` dim layer and relies on the exact-namespace Mango blur rule; no additional surface mask is drawn, so it stays quiet when the compositor supplies no blur. It covers/dims the menu bar; the Dock is temporarily suppressed through new `dock-suppress`/`dock-restore` IPC without writing settings. That suppression reason is independent of the native lockscreen-editor overlay reason. Closing, disabling or reloading the plugin restores Dock. The layout reserves 104 px of bottom clearance for the Dock. Dock's launch callback is independent of the bar's system-menu action. The three local layer input/IPC extensions have build-time drift checks.
-
-C2 uses native `minimal`, `show_labels=true`, `hide_when_empty=true`, 600-weight roughly 12 px digits, theme-muted inactive numbers, bright active number and hover ink. There is no orbit fill or slider capsule. The opt-in `active_dot` extension adds only a non-interactive white 4 px marker below the active number. Native workspace filtering, clicks and wheel behavior remain in charge.
-
-The local `nix-dotfiles/desktop-menus` plugin receives hover snapshots from the existing workspace widget. Its bridge uses `CompositorPlatform::workspaceWindowAssignments` (the taskbar/window-switcher source, including Mango tag membership); there is no mmsg subprocess or new compositor poller. After 250 ms it positions a 314 px card below the number, clamps it inside the output, and shows icon, application identity, title and window count. An 80–120 ms pointer handoff grace keeps the card open when entering it; leaving both targets closes it. Row clicks validate the window ID against the native model and invoke native compositor focus, switching workspace. Rows use a theme-blue left strip and tint on hover; wheel keeps native workspace switching.
-
-The top-left native launcher widget now displays the monochrome Nix snowflake SVG colorized with brightFg at about 15 px. It opens a small plugin panel with its own translucent chrome; the native panel host handles anchoring, output constraints, outside click and Escape. About opens Control Center System; Settings opens native settings. Lock/suspend use native actions. Reboot/shutdown/logout open the original session panel with the relevant entry selected; opening never arms or executes the action. Its existing click/Enter/countdown flow remains the confirmation boundary. Shortcut hints show actual bindings only (lock: Super+Alt+L).
-
-Mango blur opt-ins cover the unchanged bar, Dock, Launchpad, workspace preview and system-menu namespaces, plus R43 native panel/attached-panel/notification/OSD namespaces and the native settings app-id. Headless sway verifies layout/input and source/model wiring, not GPU blur quality or real power actions. Removing these plugins withdraws UI/configuration without deleting applications or user data; caches are in memory.
-
-## R43 panel styling
-
-Each panel adaptation is a separate `noctalia/r43-*.patch`: control center,
-notifications, OSD, calendar, settings, and wallpaper picker. They apply after the
-existing selection and shell integration patches. `r43-check-panels.py` runs at
-postPatch and fails on source drift. `interactive-session-config` checks the
-serialized native configuration and patch set. Global UI Style constants, bar,
-Dock, Launchpad, system menu, workspaces and authentication remain independently
-owned.
-
-Native Soft surface mode is declared once beside its pinned 0.80 opacity; transient
-notification and OSD backgrounds consume the same value. Labels remain opaque.
-The OSD replaces the removed `tech-osd-segments.patch` with 246×46 horizontal
-geometry, an 18px neutral icon, 3px continuous rail, 13px percentage and 96px bottom
-offset. R50 keeps this outer size and the native Tabler glyph viewport. The
-horizontal progress layout uses equal end cells (at least 36px, widened if the
-font needs more room for `100%`), 20px outer insets and 12px rail gaps. The native icon viewport
-aligns to the left inset and centers its glyph ink; percentages use `tnum` and a fixed right-aligned
-cell so 0/7/15/100% do not move the rail. The older layout had an 18px icon cell
-beside the font-dependent percentage cell, which offset the rail; this was a
-spacing issue, not a clipped glyph in the isolated reproduction. Text-only
-status messages retain their centered group and ellipsis, custom progress labels
-retain bounded expansion, and vertical OSD keeps its 16px inset and original font features so `100%`
-still fits its native 34px value budget.
-`noctalia-osd-pixels` renders the actual patched package in a private headless
-Sway at 2560×1600/1.5, with an unreachable system bus and isolated session bus,
-and checks screenshot pixels for symmetric rail bounds, complete icons with symmetric visible outer insets
-and stable percentage alignment. This renderer check is independent of the
-Mango visual audit and does not prove physical-display behavior.
-Notification width remains 320 with compact 13px metadata and 14px title/body.
-Direct calendar opens at 320, without a navigation rail, with the month above agenda
-and an independent 1px today outline (it does not rely on global button borders).
-Settings keeps native categories/groups and neutral 20/14/13 typography. Wallpaper
-selection uses three columns and a viewport capped to exactly two rows (760×430 panel), neutral thumbnails and
-a 1px blue current/selected border with a check; the full collection still scrolls.
-No wallpaper collection, rotation preference, notification timeout or user data is
-removed. Removing these patches reverts drawing, not persisted application state.
-
-## Ownership and removal
-
-`default.nix` and `contract.nix` are public. `mango.nix`, `noctalia.nix`, `noctalia/`, `clipboard.nix`, `screenshot.nix`, `tesseract-ocr.nix`, and `host/` are private implementation. `checks.nix` is the explicit public test hook with signature `{ pkgs, lib, system, nixos, home, appearance }` as needed.
-
-HM owns the generated Mango/Noctalia configurations, palette, pinned Neovim desktop entry and Noctalia unit. The pre-start ownership helper backs up and reconciles only declared public override paths; it does not edit unknown runtime state. The unit sets `LC_TIME=zh_CN.UTF-8`. Removing this feature withdraws configuration and services on the next activation, while preserving documents, notes, histories, settings outside declared paths and other user state. It does not switch or stop the running session during a build.
-
-HM owns `Pictures/Wallpapers/managed` as a store link. The activation only creates a missing `Pictures/Wallpapers/local/`, preserves directories and directory symlinks, and rejects other existing objects without replacement. Native scanning follows directory symlinks with canonical-path deduplication; local images stay outside Git/store. The managed wallpaper collection remains intact (the package/check manifest has 18 images), defaulting to 005; native startup/daily random rotation pauses during fullscreen. Lockscreen follows the current wallpaper; greeter uses the factory default.
-
-## Windows and pointer
-
-The single private window-rule table is `mango/window-rules.nix`, imported by `mango.nix`.
-`interactive-session-config` runs locked Mango's parser and both generated-rule
-fixture suites (`resources/window-rules-check.py`, `mango/check-window-rules.py`).
-They check allowed window/layer fields, UTF-8 value lengths, matching order,
-main-window exclusions, scratchpads, PiP, silent toolbars and game exceptions.
-Fixtures are policy checks, not evidence that a proprietary application's windows
-were opened. Optional `assignAppTags` stays off; no app receives a fixed tag.
-
-Rules use Mango 0.18.3, revision `9c44c664725421fbccaf2619e3641b38614db04d`:
-[`option_defs.c`](https://github.com/mangowm/mango/blob/9c44c664725421fbccaf2619e3641b38614db04d/src/config/option_defs.c),
-[`client.c`](https://github.com/mangowm/mango/blob/9c44c664725421fbccaf2619e3641b38614db04d/src/manage/client.c).
-`app_id` is the native app ID or XWayland WM_CLASS; combining it with `title`
-requires both to match. Properties merge in file order. Titles are matched when
-mapping; later title changes do not rerun rules. Native transient/fixed-size
-windows and X11 modal/splash/utility/toolbar windows with size hints already float.
-Mango centers initial windows unless `no_force_center` is set. Width/height
-between 0 and 1 are output fractions; larger values are initial logical pixels,
-not enforced minimum/maximum sizes. Client hints may constrain them. Offsets are
-percentages of the remaining half-screen, not pixels.
-
-| Windows | Match / behavior |
-|---|---|
-| File choosers, Open/Save | Native transients plus app-scoped exact English/Chinese fallback titles; `dialog` |
-| Preferences/Settings/Properties | App-scoped exact titles; `dialog`; document/tab titles with application suffixes stay tiled |
-| About/confirmation, polkit/pinentry | `compact`; authentication focus stays native; Noctalia's built-in agent is a native panel layer |
-| Firefox | Library/Downloads `dialog`, About `compact`; PiP retains its 480×270 size, offsets and overlay/global/silent behavior |
-| Thunar | Progress/rename `compact`, properties/preferences/Bulk Rename `dialog`; main directories tiled |
-| Audio/Bluetooth/network, calculator/color tools | One centered `tools` size; no former top-right offset |
-| Noctalia settings | `panel`; native `dev.noctalia.Noctalia` ID |
-| Qt/Fcitx, File Roller, keyboard-layout and Legion settings | `dialog`; existing observed Fcitx `org.fcitx.` identity retained |
-| QQ/WeChat/Tencent Meeting/Vesktop | Login `compact`, call/image viewer `dialog`; existing notification/sharing silent/focus semantics retained |
-| JetBrains/LibreOffice/Zotero/GIMP/Prism | Existing scoped modal/splash rules; JetBrains agreements retain client size workaround |
-| virt-manager | Main “Virtual Machine Manager” / “虚拟系统管理器” `workspace`; Add Connection / New VM and connection-name + Connection Details `dialog` |
-| mpv/swayimg/imv/feh | Centered `workspace`, compositor opacity 1; swayimg was already matched and now shares this size |
-| Steam / games | Friends `tools`, Settings/Login `dialog`, main Steam tiled; notifications and games retain `no_animation` and existing focus/tearing policy |
-| Capture tools | mark-shot editor, pin and scroll windows float; full-output selection layers retain native geometry. Scrolling capture is `mark-shot --scroll` |
-| Kitty/scratchpads | Named TUI scratchpads share `workspace` ratios and compositor opacity 1, with native Kitty alpha + blur opt-in |
-
-| Size | Width × height ratio | Use |
-|---|---|---|
-| `compact` | 0.42 × 0.42 | Authentication, confirmation, small progress/rename |
-| `dialog` | 0.56 × 0.64 | Choosers, preferences and modal editors |
-| `tools` | 0.46 × 0.58 | Audio/network and small standalone tools |
-| `panel` | 0.68 × 0.78 | Noctalia settings |
-| `workspace` | 0.78 × 0.78 | Viewers, VM manager and named TUI scratchpads |
-
-Every named size is centered without offsets. PiP remains an explicit exception.
-Locked Mango `client.c:set_float_malposition` otherwise cascades a new floating
-window when another has a nearby origin. An isolated real Mango run reproduced
-a 52px displacement for workspace-sized swayimg opened over a scratchpad.
-`r52-center-rule-sized-floats.patch` skips that cascade only for explicit rule
-sizes (`iscustomsize`) and lets those declared sizes center XWayland clients too,
-retaining native placement for windows without a size rule and preserving
-explicit PiP offsets. Its source marker is checked at build
-time and the real host package's patch list is asserted by the runtime check.
-The locked virt-manager package's `share/virt-manager/ui/manager.ui` supplies its
-translatable main title; its desktop entry supplies `.virt-manager-wrapped`.
-`ui/createconn.ui`, `ui/createvm.ui` and `virtManager/host.py` supply the actual
-Add Connection / New VM / connection-name + Connection Details titles; the
-locked zh_CN gettext catalogue supplies their translations. Generic old
-“New Connection” / “Virtual Machine Details” matches are removed.
-Noctalia's `settings_window.cpp` declares `dev.noctalia.Noctalia`. Title fixtures
-cover both English and Simplified Chinese; proprietary post-login windows still
-need real-session acceptance.
-
-There is no Mango rule for `keep_aspect_ratio`, `opaque`, window role/type criteria,
-min/max size or dynamic title matching. PiP retains client size/aspect hints, but
-an arbitrary resize is not compositor-constrained to 16:9. Opacity 1 removes only
-compositor-added transparency; it cannot replace pixels a client draws with alpha.
-`is_global` means all tags on the owning output, not all outputs. Layer rules
-match `layer_name` and only support animation types, `shield_when_capture`,
-`no_blur`, `no_animation`, `no_shadow`; they cannot reposition/focus a capture layer.
-
-Community references, inspected 2026-10-30 (behavior adapted, syntax not copied):
-
-- [Hyprland wiki](https://github.com/hyprwm/hyprland-wiki/blob/main/content/configuring/core/rules/window-rules.md): matching, initial versus dynamic effects and fullscreen policy.
-- [end-4](https://github.com/end-4/dots-hyprland/blob/2f2a376fdb2ad738bf55f693dd0b474b64bb0ab8/dots/.config/hypr/hyprland/rules.lua): chooser/control sizing and pinned PiP. Its broad title and all-Zotero floating rules are deliberately narrowed here.
-- [HyDE](https://github.com/HyDE-Project/HyDE/blob/fa2fd57afc7203b1b5653d3271f3a57ea3873f97/Configs/.local/share/hypr/lua/window_rules.lua): grouped controls, modals and PiP.
-- [JaKooLit](https://github.com/JaKooLit/Hyprland-Dots/blob/c093e836764d62346390ba307c9163ca11d0229b/config/hypr/configs/WindowRules.conf): Thunar progress, settings utilities, PiP and numeric Steam game classes.
-- [Sway-DE](https://github.com/madic-creates/Sway-DE/blob/ddfc746b3851ed495b027edb927915c4d00d8396/config/sway/sway.d/06_floating.conf): transient roles/types and pinentry; Mango handles supported types natively rather than exposing these criteria.
-- [Mango examples](https://github.com/mangowm/mango/blob/9c44c664725421fbccaf2619e3641b38614db04d/docs/window-management/rules.md): initial sizes/offsets, game tearing and named scratchpads. The bundled `assets/config.conf` only supplies layer animation examples; parser source takes precedence over documentation tables.
-- [ML4W](https://github.com/mylinuxforwork/dotfiles/blob/d6bfb5a4d2ca9fd9f0e69510b75f7aa59fe57a34/dotfiles/.config/hypr/conf/windowrules/default.lua): current default file is empty, so it supplies no additional rules. [Earlier default](https://github.com/mylinuxforwork/dotfiles/blob/437a2eb26540bc66215f6a3a53af959095b5dc6d/dotfiles/.config/hypr/conf/windowrules/default.conf) contains optional commented examples, not a reason to force a global XWayland workaround.
-
-R45 isolation uses real headless Mango, private HOME/XDG/socket/D-Bus and per-app
-mount/PID/network namespaces. It never opens existing profiles or starts user
-session services. Screenshots/IPC observations are separate from configuration
-application. In the installed QQ build, the login is `QQ` / `QQ`; WeChat login is
-XWayland `wechat` / `Weixin`. Mango cannot distinguish them from a main window
-with the same identifiers. No unconditional floating rule is applied to these ambiguous IDs (WeChat may
-float natively through fixed-size hints); `Super+Space`
-provides the existing manual floating toggle. Distinct login-title fallbacks are
-conditional, not a claim that post-login chat/call/share windows were observed.
-
-Mango uses 16 px outer / 10 px inner gaps and 16 px client corners matching panel/Dock outlines. These apply to a single tiled window too, and floating clients keep the frame even when the only tiled client is that lone window. Monocle is the one deliberate full-screen stack, so it still drops gaps, border and radius. Tiled and floating frames are 2 px: unfocused `border`, focused blue. Only floating clients receive shadows (size 18, blur 32, offset y 10). Inactive clients stay opaque with a 0x18 dim, and fullscreen is exempt. Open and close zoom between 0.92 and 1 over 220/180 ms and fade across the full opacity range; tag changes slide horizontally in 280 ms; moves take 180 ms; focus spends 120 ms interpolating the border and dim while both opacities stay 1. The ease-out curve is unchanged. `reducedMotion` disables animation. `focus_on_activate=0` prevents unsolicited activation jumps. Tearing remains restricted to fullscreen games by the existing rules. Noctalia panels/notifications keep their native 200 ms ease-out motion and
-100 ms hover/press feedback (active tiles use subtle same-blue alpha changes); its MotionService observes `shell.animation.enabled`
-from `reducedMotion`. Sliders follow direct input immediately. `layer_animations=0`
-is retained because locked Mango `manage/layer.c` gates compositor layer animation
-on that flag and Noctalia already animates its content/clip/input regions; enabling
-both would animate the same surface twice. These choices use the locked sources.
-
-Fcitx keeps `ClassicUI.PreferTextIcon=True` and the bar's pinned `fcitx` SNI, so the native tray image can express Rime's Chinese/English submode. No polling service or synthetic real-session keys are added. Bibata-Modern-Ice 24 (nixpkgs bibata-cursors) is shared by Mango, HM session environment, GTK and Xresources; at 1.5 scale this is nominally 36 device pixels.
-
-Build-time validation, isolated sway/Mango screenshots and activation are separate evidence levels. Headless sway can verify layout and layer-shell behavior but provides no blur; actual GPU blur quality, real tray submode changes, external outputs and application focus/launch require the main agent's real-session acceptance after applying the generation.
-
-`mangobar-tray-pixels` is the renderer check for the tray menu: it runs the real patched package and the real generated stylesheet in a private headless sway at 2560x1600/1.5, registers two independent StatusNotifierItem + DBusMenu services (own bus names, two menu trees), injects real pointer moves and right-clicks through a wlr virtual pointer (the headless backend has no pointer device), and asserts the rendered pixels: menu rectangle against the logged layout, 12px rounded corners, `surface` background, `border` outline, `brightFg` item text, `selection` hover fill and `muted` disabled text (plus the side submenu). It also runs in `--mode measure` against the previous stylesheet, which reproduces the compiled brown/gray menu and fails the same assertions.
-
-The same private headless Mango setup (NVIDIA EGL on this host, `WLR_BACKENDS=headless`) was used for the top-bar regressions: with a striped wallpaper and the production config, the bar's top/bottom rows match the wallpaper pixel-for-pixel (no fill, no frost), the only middle-row differences are glyph ink columns; mako renders the generated 360px card in `surface` with `brightFg` text and executes `on-notify` (`pw-play` exec confirmed under strace, exit 1 because the isolated session has no audio daemon). swayosd 0.3.1 does not claim its D-Bus name in these private sessions (`swayosd-client` exits 1), so Caps/Num OSD pixels were not produced here; the generated `swayosd` style/config are checked statically and by the real session after applying.
-
-
-## Authentication scene (R41)
-
-Lockscreen uses the current wallpaper with native blur/tint (0.75/0.58), Inter
-clock/date and no independent seconds widget. The two managed clock widgets use 72/16px normal-weight Inter with OpenType
-`tnum`; the private authentication font-size API leaves other desktop clocks
-unchanged. Their managed boxes use natural text metrics. The compact login box is a transparent 400px group with a 40px
-password row, reveal control and neutral arrow button. `tech-lockscreen.patch`
-adds the circular 56px `~/.face` and account name above it, and moves the native
-error/Caps Lock/PAM hint below it. No machine telemetry or gradient footer remains. Below 700 logical pixels the
-clock/date and identity anchors move apart using actual surface dimensions, so
-1280×800 at scale 1.5 does not overlap.
-The appearance feature still owns missing-only avatar seeding; personal `.face`
-is preserved. `lockscreen-avatar.nix` no longer adds a second sticker.
-
-Noctalia 5.4 resolves `XDG_SESSION_ID` with login1 `GetSession` before falling back
-to `GetSessionByPID`; both brightness and lock monitoring use this order. A user
-service is outside the graphical logind scope. `host/mango.nix` therefore extends
-Mango's early C dynamic environment list with `XDG_SESSION_ID`, before its existing
-`mango-session.target` request, and clears it through the same exit list. HM's
-supplementary hook imports the same variable; both modules use the same package.
-No session ID is stored in Nix or added to the static whitelist. Noctalia remains
-a bounded systemd user service owned by the Mango target.
-
-logind handles lid-triggered suspend. Noctalia subscribes to `PrepareForSleep`,
-locks before sleep by default and holds its sleep-delay inhibitor until the lock
-surfaces are ready; Mango does not own this locking path. Native idle
-`lock_and_suspend` locks before requesting suspend. Application and physical lid /
-suspend / wake / actual PAM unlock still require the integrator's live test.
-After deployment, log out and back in so the early hook runs; inspect
-`systemctl --user show-environment` for `XDG_SESSION_ID`, then Noctalia's journal
-for `logind session lock monitor active`. The integrator can run
-`loginctl lock-session "$XDG_SESSION_ID"` and test lid/suspend only when prepared
-to authenticate. Never run those commands during isolated visual verification.
-
-## R44 desk corrections (2026-10-29)
-
-Bibata-Modern-Ice from `bibata-cursors` replaces the previous pointer at 24 logical px (nominally 36 device px at scale 1.5; 32 looked oversized). Shared appearance, HM GTK/Xresources/environment, Mango and greeter all consume that theme and size; greeter also installs the matching package. Qt inherits the shared cursor environment and Xresources, with no additional GUI settings migration.
-
-Tray items render inline (`drawer=false`), which removes the attached reverse-corner capsule for the usual one or two application items. Native symbolic icons retain brightFg tint; application colour artwork remains intact. Tray, network, Bluetooth, battery, unread notification and control-center use a common 18 logical px box (`scale=1.125` against native 16). The bar explicitly sets `icon_color=brightFg`; disconnected network/Bluetooth and muted audio use secondary grey. Network/Bluetooth retain the locked Tabler shapes and native state models. Battery charging, full and pending-charge/charge-limit states use `battery-charging`, with the native percentage and original low-battery threshold/colour preserved. `r44-status-icons.patch` and its build-time source checks fail closed on upstream drift. The resolver also checks hicolor `1024x1024/apps` when theme indexes omit that directory; this fixes the real DeepSeek Harness fallback.
-
-Launchpad's `icon_overrides` string list accepts `desktop-id=icon-name-or-absolute-path`; it changes artwork only (absolute paths bypass desktop-ID fuzzy matching) and falls back to native lookup if the override is unavailable. Neovim uses its packaged upstream icon, long-task terminal uses the original `resources/terminal-clock.svg`, and the user's Dead by Daylight launcher uses its actual Steam app icon instead of the Steam logo. No desktop files, launch commands, histories or GUI state are rewritten. `resources/dead-by-daylight.jpg` is the unmodified 32×32 public app thumbnail from Steam's library cache for app 381210 (Behaviour Interactive artwork; SHA256 `2f308ff02f87f002d757a24f54e590118ad3e13ac5e860a3fe2bd5f25af5de93`). Yazi and Legion GUI already resolve their package pixmaps and retain them.
-
-Icon rendering is verified in private headless Sway at 2560×1600/scale 1.5 with synthetic D-Bus devices; that does not cover physical hardware transitions. Removal withdraws these package/settings/plugin assets and leaves user desktop entries and application data intact.
-
-## Blur edge sampling
-
-Mango's locked scenefx (`37ccd723bef49e6891156ffafce8f549f01446cc`)
-uses full-output-size ping-pong FBOs for the dual-Kawase pyramid. Each reduced
-level populates only its top-left rectangle. `GL_CLAMP_TO_EDGE` is already set
-in `render/fx_renderer/fx_texture.c`, but protects the whole allocation rather
-than that rectangle. Upsample taps at its right/bottom boundary can therefore
-read stale pixels from a previous pass. A bright-center/dark-right wallpaper
-reproduces the right-edge light band in isolated Mango at 2560×1600, scale 1.5.
-This is a reduced-level sampling defect, not evidence of `GL_REPEAT` or a
-Noctalia bar width mismatch; fractional scaling exposes it in the reported setup.
-
-`mango/scenefx-blur-level-clamp.patch` adds populated-level texel-center bounds
-to both blur shaders; `fx_pass.c` supplies the source level for each down/up pass.
-Where supported, the new sampling bounds use high precision so rounding cannot
-move a texel-center limit into the stale region (the poison fixture also
-detects this with mediump bounds).
-`host/mango.nix` overrides only the locked Mango dependency, preserving its
-wlroots package set. Radius 5, two passes, optimized wallpaper caching, a fully transparent
-flush top bar and Dock opacity 0.80/radius 16/margin 8 remain.
-No Noctalia source or configuration writer changes are required. Removal
-withdraws the renderer patch on the next compositor restart and touches no state.
-
-`mango-blur-sampling` renders the actual upstream and patched fragment shaders
-through surfaceless Mesa GLES with deliberately poisoned unused FBO regions.
-It checks edge color differences and preservation of blur at the physical
-2560×1600 size and an odd-size fixture. This sandboxed shader regression does
-not start a compositor or connect to a desktop session. Full compositor and
-Noctalia screenshots are a separate isolated runtime check; `grim -s 1`
-resamples the 2560×1600 output to 1707×1067, so the final row/column can have
-resampling alpha and should also be inspected in `grim -s 1.5` physical pixels.
-Apply the built system through the normal main-agent workflow and log out/in
-before checking the new Mango renderer on the real display.
+Selectable Mango Wayland desktop. It bundles the compositor configuration, the
+independent desktop components, per-session environment, clipboard bridges,
+screenshots/OCR, and the host-side Mango/portal modules. It does not select the
+login greeter; greeter is a separate feature.
+
+## Inputs and outputs
+
+Inputs are `user.appearance` (palette, fonts, cursor, icon theme,
+`reducedMotion`), host display/GPU facts, and the public
+`nixDotfiles.graphicalSessionTargets` option from `desktop/session-support`.
+
+Outputs are:
+
+- `~/.config/mango/config.conf`, its keybind help and the append-only
+  `keys-mayon/bindings.json` export;
+- mangobar (`~/.config/mangobar/`), fuzzel, mako and swayosd configuration and
+  their `mango-session.target` user units;
+- swaybg wallpaper rendering plus the `~/Pictures/Wallpapers/managed` link farm;
+- swaylock/swayidle lock and idle handling;
+- Wayland/X11 clipboard bridge, cliphist watchers and wl-clip-persist;
+- screenshot and OCR tools;
+- host-side `programs.mango`, portal routing and the swayosd libinput backend.
+
+`default.nix` is the public aspect entry. `mango.nix`, `shell.nix`,
+`wallpaper.nix`, `lock.nix`, `clipboard.nix`, `screenshot.nix`,
+`tesseract-ocr.nix`, `session-environment.nix`, `mango/`, `resources/` and
+`host/` are private implementation. `checks.nix` is the explicit public test
+hook.
+
+## Top bar
+
+mangobar draws a 30 logical px bar, flush and fully transparent: it paints no
+background and Mango does not blur its layer, so the wallpaper shows through.
+Left to right: Mango's `layout_symbol`, workspace numbers with `hide-empty`, the
+focused client title from Mango IPC (truncated at 300 px), the StatusNotifier
+tray, a network glyph, a `custom/bluetooth` poll, battery glyph plus percent and
+one clock `{:L%m月%d日 周%a %H:%M}` under `LC_TIME=zh_CN.UTF-8`. There is no
+launcher button, unread bell, control-center button, CPU, volume or brightness
+readout. Font is `Maple Mono NF CN` Medium 13px; the active workspace is blue
+without an underline.
+
+The StatusNotifier tray draws its own DBusMenu popups, so the same stylesheet
+themes them: `menu`, `menuitem`, `menuitem:hover` and a local
+`menuitem-disabled.patch` give One Dark surface/border, hover fill and a muted
+disabled colour. That one stylesheet is the global entry point, so every SNI
+application's right-click menu is themed. The `custom/bluetooth` poll uses a
+bounded `busctl` query instead of `bluetoothctl` (which aborts with SIGABRT when
+the system bus is unreachable) and falls back to the off glyph; the 5 s interval
+and the three glyph states are unchanged.
+
+The Neovim desktop entry (`kitty --class=Neovim nvim`) is generated here so the
+tray/window identity is explicit.
+
+## Launcher, notifications, OSD
+
+`Alt+Space` and the bottom-left hot corner run fuzzel; it is the only launcher
+(60 columns, centered, palette colors). There is no dock, control center or
+desktop notification history.
+
+mako owns `org.freedesktop.Notifications`: top-right, width 360, opaque surface,
+1 px border, at most 3 visible, `outer-margin = "42,28,0,0"` so the first card
+clears the bar. Its package removes the upstream mis-named D-Bus service file
+and installs `org.freedesktop.Notifications.service` with
+`SystemdService=mako.service`. Each opened notification plays the freedesktop
+message sound through `pw-play`; failures are ignored.
+
+swayosd draws volume/brightness OSDs: compact pill (`#container` inset
+`8px 14px`, 13 px labels, 18 px icons, 4 px progress rail), `top_margin =
+(logicalHeight - 96 - 26) / logicalHeight`. Volume, brightness and microphone
+keys all call `swayosd-client` (including `--input-volume mute-toggle`); media
+keys call playerctl. A root `swayosd-libinput-backend` service watches
+Caps/Num/Scroll and publishes them on the system bus. Brightness writes need the
+package udev rules and the `video` group (applies on next login).
+
+## Wallpaper
+
+Mango itself has no wallpaper renderer. `swaybg` runs as a static session
+service and draws the appearance wallpaper factory's default image with
+`-m fill` on the palette background. `~/Pictures/Wallpapers/managed` is a HM
+link farm of the 18 bundled images; activation only creates a missing
+`local/` directory for user images and never rewrites either side. Changing the
+wallpaper is a Nix declaration change plus rebuild; there is no runtime picker.
+
+## Lock and idle
+
+Mango implements `ext-session-lock-v1`, so standalone `swaylock` owns the lock
+surface. `Super+Alt+L` locks. Host-side `security.pam.services.swaylock` makes
+unlocking possible. `swayidle` (bound to `mango-session.target`) locks after 900s
+and locks plus suspends after 3600s, and locks before logind sleep. Automatic
+screen-off is not emulated; there is no DND/caffeine switch.
+
+## Clipboard
+
+`clipboard-bridge` synchronizes the Wayland and X11 selections because Mango's
+Xwayland does not. cliphist watchers (text and images) and wl-clip-persist keep
+history; `Super+V` runs `clipboard-history` (`cliphist list`, fuzzel, then
+`cliphist decode` into `wl-copy`). The cliphist database is not deleted or
+moved.
+
+## Screenshots and OCR
+
+`Print` runs mark-shot, `Ctrl+Print` copies the current screen and
+`Shift+Print` runs mark-shot's scrolling mode. `Super+Print` OCRs a selection
+and `Super+Shift+Print` OCRs the whole desktop; both use the local Tesseract
+data and exit quietly when cancelled.
+
+## Session services
+
+All desktop units are `PartOf`/`After`/`WantedBy` `mango-session.target`:
+mangobar, mako, swayosd, swaybg, swayidle and the session polkit agent
+(`polkit-gnome-authentication-agent-1`). Clipboard units run on the same
+target. Mango itself starts the target from its C startup path; HM's non-empty
+`autostart_sh = ":"` keeps the synchronization hook active without being the
+only startup path. Service lifecycle details are in
+[service-policy.md](../../../docs/service-policy.md).
+
+Mango is exec'd from the session desktop file, not a login shell, so the module
+copies a filtered whitelist of `systemd.user.sessionVariables` into Mango's
+`env` rows (`session-environment.nix` drops values needing shell expansion,
+secrets and over-long rows). Dynamic `DISPLAY`/`WAYLAND_DISPLAY`/cursor
+variables are imported by Mango.
+
+## Window rules
+
+The only rule table is `mango/window-rules.nix`. Rules apply in order; when
+`app_id` and `title` are both present they are AND-ed, and titles are matched at
+map time. Normal clients tile. Dialogs, progress/preferences/bulk-rename
+windows, polkit/pinentry prompts and small standalone tools float at fixed
+proportions. Audio/Bluetooth/network tools and calculators share one centered
+`tools` size. Viewers and named TUI scratchpads use a workspace-sized surface.
+Firefox PiP floats at its own 480×270 size with offsets and stays out of the way.
+Games (`steam_app_*`, Minecraft) opt into tearing and lose border/shadow/radius.
+`mango/check-window-rules.py` drives representative app IDs/titles through the
+generated config and asserts the resulting geometry.
+
+## Mango visual settings
+
+2 px border, 16 px radius, 10/16 px inner/outer gaps with `smart_gaps = 0` so a
+single tiled window keeps the frame; only monocle drops its frame. Floating
+clients get a soft shadow (size 18, blur 32, offset y 10). Inactive clients dim
+at `0x18` while staying opaque; fullscreen is exempt. Open/close zoom between
+0.92 and 1 over 220/180 ms, tag changes slide in 280 ms, focus interpolates
+border and dim in 120 ms. `reducedMotion` disables animation. Native layer blur
+is on only for the bar/notification/OSD layers declared in `layer_rule`; all
+other layers and normal windows stay unblurred.
+
+## Checks and removal
+
+`mango-blur-sampling` builds the patched compositor and checks the blur sampler;
+`interactive-session-config` parses the generated Mango config with the real
+binary, validates the window rules, fonts, avatar hand-off, wallpaper activation,
+session units and the bar/mako/swayosd/fuzzel contract. Neither starts a
+compositor or connects to a real session.
+
+Removing the selection withdraws the generated configuration and session units
+on the next activation. It preserves user state: cliphist database, scrollback,
+screenshots, `Pictures/Wallpapers/local/`, `~/.face`, and AccountsService files.
+No build or check switches or stops the running session.

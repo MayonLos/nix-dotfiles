@@ -8,7 +8,7 @@ only protects the allocation boundary, so an upsample tap near the right or
 bottom of a reduced level reads stale content outside that level. Clamp to
 the populated texel centers, retaining the radius, passes and optimized cache.
 Reproduced with Mango 0.18.3, 2560x1600 at scale 1.5 and a bright center/dark
-right wallpaper. No Noctalia geometry or opacity changes are needed.
+right wallpaper. No shell geometry or opacity changes are needed.
 
 --- a/include/render/fx_renderer/shaders.h
 +++ b/include/render/fx_renderer/shaders.h

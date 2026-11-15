@@ -10,7 +10,6 @@
     avatar =
       { host, user, ... }:
       {
-        noctaliaIntegrations = [ { id = "avatar"; } ];
         homeManager = import ./home.nix { inherit host user; };
         provides.${host.name}.includes = [ den.aspects.avatar-host ];
       };

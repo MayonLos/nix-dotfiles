@@ -1,4 +1,4 @@
-/* Firefox browser chrome follows Noctalia's active palette. */
+/* Firefox browser chrome follows the declared One Dark palette. */
 :root {
   --tn-bg: {{ colors.onedark_bg_value.default.hex }};
   --tn-surface: {{ colors.onedark_surface_value.default.hex }};

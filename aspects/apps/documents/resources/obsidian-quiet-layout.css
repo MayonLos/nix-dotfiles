@@ -1,5 +1,5 @@
 /* Optional synthetic-vault layout trial. Palette remains owned by Minimal and
-   noctalia.css; this snippet only reduces workspace chrome. */
+   the managed palette snippet; this snippet only reduces workspace chrome. */
 .workspace-tab-header-container {
   min-height: 32px;
   padding-inline: 8px;

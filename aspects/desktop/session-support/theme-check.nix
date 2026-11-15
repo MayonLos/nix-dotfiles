@@ -2,18 +2,20 @@
   pkgs,
   home,
   palette,
-  templateRuntime,
 }:
 let
-  inherit (pkgs) lib;
   python = pkgs.python3.withPackages (p: [
     p.pygobject3
     p.tinycss2
   ]);
   paletteJson = pkgs.writeText "gtk-qt-palette.json" (builtins.toJSON palette);
-  replaceConfig = lib.replaceStrings [ home.xdg.configHome ] [ "$XDG_CONFIG_HOME" ];
+  replaceConfig =
+    strings: builtins.replaceStrings [ home.xdg.configHome ] [ "$XDG_CONFIG_HOME" ] strings;
   qtSeed = pkgs.writeText "qt-theme-seed.sh" (
     replaceConfig home.home.activation.seedQt6ctConfig.data
+  );
+  qtPaletteSeed = pkgs.writeText "qt-palette-seed.sh" (
+    replaceConfig home.home.activation.seedQt6ctPalette.data
   );
   qtMigration = pkgs.writeText "qt-theme-migrate.sh" (
     replaceConfig home.home.activation.migrateQt6ctFonts.data
@@ -30,16 +32,18 @@ assert home.home.pointerCursor.name == "Bibata-Modern-Ice";
 assert home.home.pointerCursor.size == 24;
 assert home.home.pointerCursor.package == pkgs.bibata-cursors;
 assert home.dconf.settings."org/gnome/desktop/interface".icon-theme == palette.iconTheme;
-assert !(home.xdg.configFile ? "gtk-3.0/gtk.css");
-assert !(home.xdg.configFile ? "gtk-4.0/gtk.css");
+assert home.xdg.configFile ? "gtk-3.0/gtk.css";
+assert home.xdg.configFile ? "gtk-4.0/gtk.css";
 pkgs.runCommand "gtk-qt-theme-check" {
-  TEMPLATE_RUNTIME = templateRuntime;
   PALETTE_JSON = paletteJson;
   CHECK_CSS = ./resources/gtk/check-css.py;
+  GTK3_CSS = home.xdg.configFile."gtk-3.0/gtk.css".source;
+  GTK4_CSS = home.xdg.configFile."gtk-4.0/gtk.css".source;
   QSS_SOURCE = qss;
   QT_RENDER_SOURCE = ./resources/qt/check-render.cpp;
   QT_SVG_PLUGIN_PATH = "${pkgs.qt6Packages.qtsvg}/${pkgs.qt6Packages.qtbase.qtPluginPrefix}";
   QT_SEED = qtSeed;
+  QT_PALETTE_SEED = qtPaletteSeed;
   QT_MIGRATION = qtMigration;
   GTK_THEME_PACKAGE = home.gtk.theme.package;
   GTK_THEME_NAME = home.gtk.theme.name;
