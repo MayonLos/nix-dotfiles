@@ -6,6 +6,11 @@
 let
   # rust-toolchain.toml in this tree pins 1.99.1. Stable nixpkgs rustc is older.
   rustPlatform = pkgs.makeRustPlatform { inherit rustc cargo; };
+  # In-process recording/export library. `crates/shot-media` dlopens
+  # media/libmarkshot-media.so from the executable's directory and cannot use
+  # a GPL FFmpeg, so media.nix builds its own LGPL-only FFmpeg 9.0.2 plus
+  # OpenH264/nv-codec-headers. See media.nix for the pinned sources and install layout.
+  media = import ./media.nix { inherit pkgs; };
 in
 rustPlatform.buildRustPackage {
   pname = "mark-shot";
@@ -18,6 +23,7 @@ rustPlatform.buildRustPackage {
     clang
     nasm
     makeWrapper
+    patchelf
   ];
   buildInputs = with pkgs; [
     libclang
@@ -40,12 +46,34 @@ rustPlatform.buildRustPackage {
   doCheck = false;
 
   postInstall = ''
+    # crates/shot-media/src/lib.rs loads `media/libmarkshot-media.so` relative
+    # to the running executable (or an absolute MARK_SHOT_MEDIA_LIBRARY), so
+    # install it beside the real binary exactly like the upstream release
+    # tarballs do.
+    install -Dm755 ${media.library}/lib/mark-shot/media/libmarkshot-media.so \
+      "$out/bin/media/libmarkshot-media.so"
+    install -d "$out/share/licenses/mark-shot-media"
+    cp -a ${media.library}/share/licenses/mark-shot-media/. \
+      "$out/share/licenses/mark-shot-media/"
     wrapProgram "$out/bin/mark-shot" --prefix PATH : ${
       pkgs.lib.makeBinPath [
         pkgs.fontconfig
       ]
     }
   '';
+
+  # The package fixup runs patchelf --shrink-rpath over every ELF file in $out,
+  # including the copied media library, which drops the PulseAudio directory
+  # again (shot-media dlopens libpulse.so.0 instead of linking it). Restore it
+  # after fixup; see media.nix for the same step on the library's own output.
+  postFixup = ''
+    patchelf --add-rpath "${pkgs.lib.makeLibraryPath [ pkgs.libpulseaudio ]}" \
+      "$out/bin/media/libmarkshot-media.so"
+  '';
+
+  passthru = {
+    inherit media;
+  };
 
   meta = {
     description = "Local Rust screenshot, annotation and scrolling capture tool";
