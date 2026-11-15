@@ -1,0 +1,88 @@
+--- a/style.h	1970-01-01 08:00:01.000000000 +0800
++++ b/style.h	2026-11-15 20:31:42.027741177 +0800
+@@ -59,6 +59,7 @@
+     Style menu;
+     Style menuitem;
+     Style menuitem_hover;
++    Style menuitem_disabled;
+     int menu_font_size; // 0 = use default
+     int menu_radius; // 0 = use default 10
+     bool loaded;
+--- a/style.c	1970-01-01 08:00:01.000000000 +0800
++++ b/style.c	2026-11-15 20:31:42.027847172 +0800
+@@ -828,6 +828,9 @@
+       } else if (strcmp(r->module, "menuitem") == 0 &&
+                  strcmp(r->state, "hover") == 0) {
+         apply_rule(&ss->menuitem_hover, r);
++      } else if (strcmp(r->module, "menuitem") == 0 &&
++                 strcmp(r->state, "disabled") == 0) {
++        apply_rule(&ss->menuitem_disabled, r);
+       }
+       tok = strtok(NULL, ",");
+     }
+--- a/mangobar.c	1970-01-01 08:00:01.000000000 +0800
++++ b/mangobar.c	2026-11-15 20:32:07.176053584 +0800
+@@ -3429,6 +3429,7 @@
+   double bg_r, bg_g, bg_b, bd_r, bd_g, bd_b;
+   double it_r, it_g, it_b, hov_r, hov_g, hov_b;
+   double hovbg_r, hovbg_g, hovbg_b;
++  double dis_r, dis_g, dis_b;
+   if (g_style_sheet.menu.background_set)
+     argb_to_rgb(g_style_sheet.menu.background, &bg_r, &bg_g, &bg_b);
+   else {
+@@ -3465,6 +3466,12 @@
+     hovbg_g = 0.17;
+     hovbg_b = 0.16;
+   }
++  if (g_style_sheet.menuitem_disabled.color_set)
++    argb_to_rgb(g_style_sheet.menuitem_disabled.color, &dis_r, &dis_g,
++                &dis_b);
++  else {
++    dis_r = dis_g = dis_b = 0.5;
++  }
+   // Background (rounded)
+   cairo_rounded_rect(cr, 0, 0, popup.width, popup.height, rad);
+   cairo_set_source_rgb(cr, bg_r, bg_g, bg_b);
+@@ -3506,7 +3513,9 @@
+       lg = hov ? hov_g : it_g;
+       lb = hov ? hov_b : it_b;
+     } else {
+-      lr = lg = lb = 0.5;
++      lr = dis_r;
++      lg = dis_g;
++      lb = dis_b;
+     }
+     int ig = menu_indicator_gap(n);
+     double tx = MENU_PAD_H + ig;
+@@ -3687,6 +3696,7 @@
+   double rad = g_style_sheet.menu_radius > 0 ? g_style_sheet.menu_radius : 10;
+   double bg_r, bg_g, bg_b, bd_r, bd_g, bd_b;
+   double it_r, it_g, it_b, hov_r, hov_g, hov_b, hovbg_r, hovbg_g, hovbg_b;
++  double dis_r, dis_g, dis_b;
+   if (g_style_sheet.menu.background_set)
+     argb_to_rgb(g_style_sheet.menu.background, &bg_r, &bg_g, &bg_b);
+   else {
+@@ -3723,6 +3733,12 @@
+     hovbg_g = 0.17;
+     hovbg_b = 0.16;
+   }
++  if (g_style_sheet.menuitem_disabled.color_set)
++    argb_to_rgb(g_style_sheet.menuitem_disabled.color, &dis_r, &dis_g,
++                &dis_b);
++  else {
++    dis_r = dis_g = dis_b = 0.5;
++  }
+ 
+   cairo_rounded_rect(cr, 0, 0, popup.sub_width, popup.sub_height, rad);
+   cairo_set_source_rgb(cr, bg_r, bg_g, bg_b);
+@@ -3750,7 +3766,9 @@
+       lg = hov ? hov_g : it_g;
+       lb = hov ? hov_b : it_b;
+     } else {
+-      lr = lg = lb = 0.5;
++      lr = dis_r;
++      lg = dis_g;
++      lb = dis_b;
+     }
+     int ig = menu_indicator_gap(n);
+     double tx = MENU_PAD_H + ig;
