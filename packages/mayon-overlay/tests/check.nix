@@ -33,6 +33,7 @@ pkgs.runCommand "mayon-overlay-headless-check"
       --glib ${pkgs.glib.bin}/bin/gio \
       --fontconfig ${pkgs.fontconfig}/bin/fc-match \
       --coreutils ${pkgs.coreutils}/bin \
+      --shell ${pkgs.runtimeShell} \
       --font ${pkgs.inter}/share/fonts/truetype/InterVariable.ttf \
       --font-fallback ${pkgs.maple-mono.NF-CN}/share/fonts/truetype/MapleMono-NF-CN-Regular.ttf \
       --out "$out"

@@ -604,15 +604,15 @@ def sway_scenarios(session: Session, args: argparse.Namespace, result: Result) -
     marker_two = session.root / "launched-two.txt"
     target_script = session.root / "launch-target.sh"
     target_script.write_text(
-        "#!/usr/bin/env bash\n"
-        f'printf "one %s\\n" "$(date +%s%N)" > "{marker_one}"\n',
+        f"#!{args.shell}\n"
+        f'printf "one launched\\n" > "{marker_one}"\n',
         encoding="utf-8",
     )
     target_script.chmod(0o755)
     second_script = session.root / "launch-second.sh"
     second_script.write_text(
-        "#!/usr/bin/env bash\n"
-        f'printf "two %s\\n" "$(date +%s%N)" > "{marker_two}"\n',
+        f"#!{args.shell}\n"
+        f'printf "two launched\\n" > "{marker_two}"\n',
         encoding="utf-8",
     )
     second_script.chmod(0o755)
@@ -833,7 +833,10 @@ def mango_scenarios(session: Session, args: argparse.Namespace, result: Result) 
     apps_dir.mkdir(parents=True, exist_ok=True)
     marker = session.root / "mango-launched.txt"
     script = session.root / "mango-target.sh"
-    script.write_text("#!/usr/bin/env bash\n" f'printf "mango %s\\n" "$(date +%s%N)" > "{marker}"\n', encoding="utf-8")
+    script.write_text(
+        f"#!{args.shell}\n" f'printf "mango launched\\n" > "{marker}"\n',
+        encoding="utf-8",
+    )
     script.chmod(0o755)
     (apps_dir / "mayon-mango-target.desktop").write_text(
         "[Desktop Entry]\n"
@@ -884,6 +887,7 @@ def main() -> int:
     parser.add_argument("--coreutils", required=True, help="coreutils bin directory")
     parser.add_argument("--font", help="UI font file")
     parser.add_argument("--font-fallback", dest="font_fallback", help="fallback font file")
+    parser.add_argument("--shell", default="/bin/sh", help="interpreter for generated test launch targets (runtimeShell inside Nix builds)")
     parser.add_argument("--out", required=True, help="output directory for screenshots, logs and metrics.json")
     parser.add_argument("--only", choices=["sway", "mango"], help="run a single compositor scenario")
     args = parser.parse_args()
