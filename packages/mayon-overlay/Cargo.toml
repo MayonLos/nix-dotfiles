@@ -1,0 +1,34 @@
+[package]
+name = "mayon-overlay"
+version = "0.1.0"
+edition = "2021"
+description = "Wayland layer-shell clipboard history and application launcher for the Mayon One Dark desktop"
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "mayon-overlay"
+path = "src/main.rs"
+
+[dependencies]
+# Wayland client and the stable protocol extensions we consume. Layer shell is
+# the only compositor extension used: it gives a keyboard-exclusive overlay on
+# the focused output without taking over the session.
+wayland-client = "0.31"
+wayland-protocols = { version = "0.32", features = ["client", "unstable"] }
+wayland-protocols-wlr = { version = "0.3", features = ["client"] }
+# Translate the compositor's own keymap. Reading the keymap and translating
+# keycodes here keeps text entry correct for non-US layouts instead of baking
+# an evdev-to-character table.
+xkbcommon = { version = "0.9", default-features = false }
+
+# CPU rasterizer plus a tiny glyph rasterizer. No GPU or GTK dependency: the
+# overlay must run under pixman headless compositors in tests and under Mango
+# without pulling a toolkit into the session.
+tiny-skia = { version = "0.11", default-features = false, features = ["std"] }
+fontdue = "0.9"
+# PNG only: clipboard images from cliphist are decoded, scaled and drawn as
+# thumbnails. We never write images, so no encoder feature is pulled in.
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+
+libc = "0.2"

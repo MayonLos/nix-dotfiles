@@ -18,5 +18,8 @@ __pycache__/
 # In-tree cargo output for the vendored screenshot tool.
 packages/mark-shot/target/
 
+# In-tree cargo output for the overlay binaries.
+packages/mayon-overlay/target/
+
 # Local CMake build output.
 /build/
