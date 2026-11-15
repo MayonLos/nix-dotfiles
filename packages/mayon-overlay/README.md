@@ -147,7 +147,9 @@ checks.x86_64-linux.mayon-overlay = import ../packages/mayon-overlay/tests/check
 ```
 
 `tests/check.nix` 用 `python3.withPackages [pillow]` 运行同一脚本，sandbox 内自建
-`$XDG_RUNTIME_DIR`、fake HOME，不接触真实会话。
+`$XDG_RUNTIME_DIR`、fake HOME，不接触真实会话。已验证：sandbox 内 Sway 场景
+30/30 checks 通过（输出目录含 `metrics.json` 与截图）；把 `mango` 参数传进来后
+本机人工执行完整 40/40（Sway + 私有 headless Mango）。
 
 ## 已知限制
 
