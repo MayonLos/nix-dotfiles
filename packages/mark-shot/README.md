@@ -31,15 +31,66 @@ prefer-dark（本仓库 GTK/门户设置为 prefer-dark）时即使用上述 One
 
 ## 本仓库构建的功能覆盖
 
-`pkgs.local.mark-shot` 只构建主程序。录制与媒体导出需要的进程内媒体库 `libmarkshot-media.so`
-由上游 `scripts/media/build-libraries.sh` 单独构建（下载固定版本的 FFmpeg 9.0、OpenH264 2.6
-与 nv-codec-headers），本仓库的 Nix 包尚未接入这一步：`$out` 下没有 `media/libmarkshot-media.so`，
-`crates/shot-media/src/lib.rs` 按可执行文件旁的 `media/` 目录加载，因此 `--record` 能打开控制器但
-开始录制缺少媒体库。内置 OCR 模型首次使用需联网下载，翻译与上传分别需要 API 凭据和配置，离线只能
-验证功能入口。上游当前 release 同样是 0.2.0，没有需要同步的更新版本。
+`pkgs.local.mark-shot` 现在同时构建主程序和录制/导出需要的进程内媒体库：
 
-隔离验证（私有 headless Sway + 私有 D-Bus，见 `.work/preview/mark-shot/`）已覆盖 `--version`、
-`--list-displays`、`--capture-to`（整屏与区域）、`--scan-json`、编辑器覆盖层、`--pin-clipboard`、
-`--record` 控制器与 `--recording-status`。上游要求的 `cargo fmt --all -- --check`、
+- 产物 `$out/bin/media/libmarkshot-media.so`。`crates/shot-media/src/lib.rs` 默认从可执行文件
+  所在目录的 `media/` 加载（也可用 `MARK_SHOT_MEDIA_LIBRARY` 指向绝对路径覆盖），所以安装位置
+  与上游发布包一致，`--record` 能直接开始录制。
+- 构建表达式在 `packages/mark-shot/media.nix`，由 `default.nix` 引用：
+  - `ffmpeg-lgpl-9.0.2`：从 ffmpeg.org 固定 tarball（`sha256-...`）自建，LGPL-only。
+    `--disable-autodetect --disable-everything` 后只显式打开 shot-media 用到的组件；GPL/nonfree
+    关闭（x264/x265 不存在），静态 PIC。configure 后检查 `CONFIG_GPL=0`、`CONFIG_NONFREE=0`，
+    违反时构建直接失败。软件编码用 OpenH264，硬件保留 VAAPI 与 NVENC（CUDA 头只在编译期使用，
+    运行时由 FFmpeg 自己 dlopen 驱动）。
+  - `openh264-2.6.0`：codeload 固定 tarball（`sha256-...`），`libraries` + `install-static`，PIC。
+  - `nv-codec-headers-n13.0.19.0`：与 vendored `scripts/media/build-libraries.sh` 相同的版本。
+    没有采用某些 nixpkgs 渠道的 9.1.23.1：FFmpeg 9.0.2 的 configure 要求
+    `ffnvcodec >= 12.1.14.0`，而 git.videolan.org 重新编号后的 9.1.23.1 不满足该范围，会被静默
+    判为不可用并丢掉 NVENC。若以后 FFmpeg 更新了该检查，可再切换。
+  - 包装代码按上游参数编译链接：`-fPIC -O2 -fvisibility=hidden -Wall -Wextra -Werror`、
+    `-Wl,-z,defs -Wl,-Bsymbolic -Wl,--exclude-libs,ALL`；只导出 `ms_*` ABI
+    （`ms_media_abi` 返回 2），FFmpeg 符号全部隐藏。
+- 许可：`$out/share/licenses/mark-shot-media/` 安装 FFmpeg LGPL 文本与
+  `FFMPEG-CONFIG.{h,mak,COMPONENTS.h}`、OpenH264 BSD 文本、nv-codec-headers README 和
+  `NOTICES.txt`。不要改用 nixpkgs 的 `ffmpeg`：它是 GPL 构建（含 libx264/libx265），会污染
+  这个按 LGPL 发布的共享库。
+- 构建（flake 输出仍由 `nix/pkgs.nix` 的 `pkgs.local.mark-shot` 提供；下面这条用于直接构建本包）：
+
+```sh
+nix build --no-link --no-write-lock-file --impure --print-out-paths --expr '
+let
+  root = "/path/to/nix-dotfiles/packages/mark-shot";
+  f = builtins.getFlake "/path/to/nix-dotfiles";
+  pkgs = import f.inputs.nixpkgs {
+    system = "x86_64-linux";
+    config.allowUnfree = true; # CUDA headers are compile-time only
+  };
+  u = import f.inputs.nixpkgs-unstable {
+    system = "x86_64-linux";
+    config.allowUnfree = true;
+  };
+in import root { inherit pkgs; inherit (u) rustc cargo; }'
+```
+
+- 验证脚本 `scripts/media/verify-nix-package.py`：私有 headless Sway（`WLR_BACKENDS=headless`
+  + pixman）+ 私有 D-Bus 中驱动打包后的真实 GUI 流程（`--record` → `wtype` 虚拟键盘 Enter 开始 →
+  `--recording-status` 轮询 → `--stop-recording`），再用 ffprobe 校验编码/尺寸/时长、完整解码、
+  解码帧数与首帧 fixture 颜色；录制进程跑在 `strace` 下以记录媒体库打开路径。2026-11-15 在
+  本 worktree 实测（媒体库 runpath 完整，`ldd` 无 `libav*`/`libx264`/`libx265` 共享依赖）：
+  - MP4：`h264` 1280×720、约 2.3 s、35 帧；GIF：`gif` 1280×720、约 2.26 s、28 帧；
+    两者首帧都有 74576 个 fixture 颜色像素。
+  - 状态详情为 `Wayland image-copy SHM · libopenh264 · in-process`，`strace` 记录
+    `openat("<store>/bin/media/libmarkshot-media.so")`，没有打开任何 GPL FFmpeg 共享库。
+  - 证据（截图、录制文件、probe JSON、strace）在 `.work/media/evidence/final/`，已被 gitignore。
+- 交互自动化的注意点：headless Sway 没有输入设备，sway 的 `seat cursor press` 不会给客户端
+  `wl_pointer` 能力；必须用 `wtype` 之类创建 wlroots 虚拟键盘，并让连接保持一小段时间
+  （脚本用 `-s 800`）等客户端完成键盘能力绑定后再按 Enter。脚本里的滚动终端用于持续产生真实
+  合成器 damage，否则 mark-shot 会把无变化输出的编码帧率节流到约 1 fps，测不到 15 fps 帧数。
+
+内置 OCR 模型首次使用需联网下载，翻译与上传分别需要 API 凭据和配置，离线只能验证功能入口。
+上游当前 release 同样是 0.2.0，没有需要同步的更新版本。隔离验证（私有 headless Sway + 私有
+D-Bus，见 `.work/preview/mark-shot/`）已覆盖 `--version`、`--list-displays`、`--capture-to`
+（整屏与区域）、`--scan-json`、编辑器覆盖层、`--pin-clipboard`、`--record` 控制器与
+`--recording-status`。上游要求的 `cargo fmt --all -- --check`、
 `cargo clippy --workspace --all-targets --locked -- -D warnings`、`cargo test --workspace --locked`
 在此包构建里没有执行（`doCheck = false`）。
