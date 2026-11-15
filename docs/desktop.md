@@ -2,7 +2,7 @@
 summary: Mango + Noctalia 桌面的组成、窗口规则和跨应用外观分工
 read_when: 修改顶栏、Dock、面板、通知、锁屏、窗口规则或应用主题接线
 code: [aspects/desktop/mango-session, aspects/desktop/session-support, aspects/desktop/greeter]
-checks: [desktop-composition, mango-blur-sampling, noctalia-osd-pixels, noctalia-template-runtime, greeter-tech, gtk-qt-theme]
+checks: [desktop-composition, mango-blur-sampling, noctalia-osd-pixels, mangobar-tray-pixels, noctalia-template-runtime, greeter-tech, gtk-qt-theme]
 ---
 
 # Mango + Noctalia 桌面
@@ -11,7 +11,7 @@ checks: [desktop-composition, mango-blur-sampling, noctalia-osd-pixels, noctalia
 
 ## 组成
 
-- **顶栏**：mangobar，高 30，完全透明（无背景、不模糊）。左侧为布局符号与工作区编号；中间是窗口标题；右侧托盘、网络、蓝牙、电池百分比、中文日期时间。没有启动器、未读铃铛、控制中心、CPU、音量或亮度。整条栏只有一种字体 `Maple Mono NF CN` Medium，活动工作区是蓝色数字，没有下划线。窗口标题来自 Mango 的客户标题，布局是 `layout_symbol`，托盘里的 `en` 是 fcitx。Noctalia 的 bar 层关闭，Dock 仍由 Noctalia 绘制。
+- **顶栏**：mangobar，高 30，完全透明（无背景、不模糊）。左侧为布局符号与工作区编号；中间是窗口标题；右侧托盘、网络、蓝牙、电池百分比、中文日期时间。没有启动器、未读铃铛、控制中心、CPU、音量或亮度。整条栏只有一种字体 `Maple Mono NF CN` Medium，活动工作区是蓝色数字，没有下划线。窗口标题来自 Mango 的客户标题，布局是 `layout_symbol`，托盘里的 `en` 是 fcitx。mangobar 自己绘制 StatusNotifier 托盘和右键 DBusMenu，所以 `style.css` 里同一组 `menu` / `menuitem` / `menuitem:hover` / `menuitem:disabled` 样式会同时作用于所有后台程序的托盘右键菜单；mangobar 上游把禁用项写死 50% 灰，`mangobar/menuitem-disabled.patch` 补上该选择器。蓝牙轮询改读 `org.bluez` 的一次 `busctl` 调用，不再用系统总线不可达时会 SIGABRT 并留 coredump 的 `bluetoothctl`。Noctalia 的 bar 层关闭，Dock 仍由 Noctalia 绘制。
 - **Dock**：Smart，空工作区显示，有窗口收起，碰底边唤出；全屏窗口（含游戏）会盖住底边触发条，不会误触；固定 kitty、firefox、obsidian、thunar、code、qq、musicfox。
 - **插件**：只有本仓库的 Launchpad、desktop-menus、legion-conservation，不用社区插件。
 - **搜索**：`Alt+Space` 和左下角热角打开 fuzzel。`Super+A` 仍是 Launchpad。门户选择器保持 `chooser_type=none`。
@@ -51,6 +51,7 @@ Mango 配置用 `mmsg dispatch reload_config` 重载。mangobar、mako、swayosd
 | KDE 组件 | `kdeglobals` 配色与图标（否则会回到亮色） |
 | Firefox | 单一 seed 维护 `userChrome.css` 标记块，页面不反色 |
 | Fcitx5 | SVG 主题，横排 7 项 |
+| 托盘右键菜单 | mangobar 自绘 DBusMenu 弹层；`style.css` 的 `menu`/`menuitem` 块统一 One Dark 表面、边框、圆角和 hover/禁用文字 |
 | Kitty、btop、Yazi | HM 独占渲染，不用 Noctalia 模板 |
 | Zathura、Obsidian | documents 拥有的原色模板 |
 

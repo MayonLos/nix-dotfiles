@@ -20,6 +20,16 @@
     palette = home.programs.noctalia.customPalettes.onedark;
   };
 
+  # Renders the real patched mangobar package and generated stylesheet in a
+  # private headless sway, with two independent StatusNotifierItem/DBusMenu
+  # services and injected pointer clicks; checks menu geometry, corner radius
+  # and palette pixels for background, border, item text, hover and disabled
+  # rows, plus the side submenu.
+  mangobar-tray-pixels = import ./mangobar/check.nix {
+    inherit pkgs home;
+    palette = appearance;
+  };
+
   # Validates mangobar, fuzzel, mako, swayosd, the dormant Noctalia bar,
   # the Smart Dock, source patches, parser output and tool bindings.
   interactive-session-config = import ./runtime-check.nix {

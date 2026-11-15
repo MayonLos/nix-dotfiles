@@ -29,20 +29,35 @@ let
   osdTopMargin = (logicalHeight - 96.0 - 26.0) / logicalHeight;
   bluetoothStatus = pkgs.writeShellScript "mangobar-bluetooth" ''
     set -eu
-    # popen waits on the main thread and the command buffer is 256 bytes,
-    # so this stays a store path. stdin is closed and both calls are capped:
-    # bluetoothctl must not sit in the bar.
-    show="$(${pkgs.coreutils}/bin/timeout 1 ${pkgs.bluez}/bin/bluetoothctl --timeout 1 show </dev/null 2>/dev/null || true)"
-    if ! printf '%s\n' "$show" | ${pkgs.gnugrep}/bin/grep -q 'Powered: yes'; then
+    # popen waits on the main thread and the command buffer is 256 bytes, so
+    # this stays a store path with one bounded D-Bus call.
+    #
+    # Do not use bluetoothctl here: when the system bus is unreachable (boot
+    # races, private headless test sessions) its libdbus assertion aborts the
+    # process with SIGABRT and systemd-coredump writes a core file on every
+    # 5s poll. busctl reports the same failure as a normal exit code, so a
+    # missing bus now only degrades the icon.
+    #
+    # One GetManagedObjects reply carries everything: Adapter1 Powered and
+    # Device1 Connected. "Connected" is the Device1/Network1 property; both
+    # mean a live connection.
+    busctl="${pkgs.systemd}/bin/busctl"
+    grep="${pkgs.gnugrep}/bin/grep"
+    objects="$(${pkgs.coreutils}/bin/timeout 2 "$busctl" --system --timeout=2 \
+      call org.bluez / org.freedesktop.DBus.ObjectManager GetManagedObjects \
+      2>/dev/null || true)"
+    # No bus, no BlueZ, no adapter, or adapter powered off: same off glyph.
+    if [ -z "$objects" ] \
+      || ! printf '%s' "$objects" | "$grep" -q '"org.bluez.Adapter1"' \
+      || ! printf '%s' "$objects" | "$grep" -qE '"Powered" b true'; then
       printf '\U000F00B2'
       exit 0
     fi
-    connected="$(${pkgs.coreutils}/bin/timeout 1 ${pkgs.bluez}/bin/bluetoothctl --timeout 1 devices Connected </dev/null 2>/dev/null || true)"
-    if printf '%s\n' "$connected" | ${pkgs.gnugrep}/bin/grep -q '^Device '; then
+    if printf '%s' "$objects" | "$grep" -qE '"Connected" b true'; then
       printf '\U000F00B1'
-    else
-      printf '\U000F00AF'
+      exit 0
     fi
+    printf '\U000F00AF'
   '';
   osdStyle = pkgs.writeText "swayosd-style.css" ''
     /* Compact pill: the 16px default inset and default GTK label/icon sizes made
@@ -89,6 +104,22 @@ let
       rm -f $out/share/dbus-1/services/fr.emersion.mako.service
     '';
   });
+  # mangobar 0.1.1 draws disabled DBusMenu items with a hardcoded 50% gray and
+  # only applies CSS to `menuitem` / `menuitem:hover`, so the One Dark muted
+  # colour cannot be expressed from the stylesheet. The patch adds that one
+  # selector; it keeps the compiled 50% gray as the default when the stylesheet
+  # does not set one.
+  mangobarPackage = pkgs.local.mangobar.overrideAttrs (old: {
+    patches = (old.patches or [ ]) ++ [ ./mangobar/menuitem-disabled.patch ];
+    # The patch touches three files; fail rather than fuzz it into the wrong
+    # place when upstream rewrites the menu drawing.
+    patchFlags = "-p1 --fuzz=0";
+    postPatch = (old.postPatch or "") + ''
+      grep -Fq 'Style menuitem_disabled;' style.h
+      grep -Fq 'ss->menuitem_disabled' style.c
+      grep -Fq 'lr = dis_r;' mangobar.c
+    '';
+  });
 in
 {
   imports = [ inputs.mangobar.homeManagerModules.default ];
@@ -130,7 +161,7 @@ in
   services = {
     mangobar = {
       enable = true;
-      package = pkgs.local.mangobar;
+      package = mangobarPackage;
       systemdTarget = "mango-session.target";
       settings = {
         layer = "top";
@@ -325,6 +356,32 @@ in
       }
       #tray {
         padding: 0 4px;
+      }
+      /*
+       * Tray context menus (StatusNotifierItem DBusMenu) belong to whichever
+       * background program registered the item, so this block is the only
+       * place that themes all of them at once: fcitx, Bluetooth, network and
+       * any other SNI host use the same mangobar-drawn popup. mangobar draws
+       * the popup itself with a 1px border and clamps the item rows to one
+       * font; `menu`/`menuitem`/`menuitem:hover`/`menuitem:disabled` are the
+       * only selectors it understands (style.c). Keep the same surface,
+       * border and 12px radius as mako and fuzzel, and the bar text colour.
+       */
+      menu {
+        background-color: ${palette.surface};
+        border-color: ${palette.border};
+        border-radius: 12px;
+        font-size: 13px;
+      }
+      menuitem {
+        color: ${palette.brightFg};
+      }
+      menuitem:hover {
+        color: ${palette.brightFg};
+        background-color: ${palette.selection};
+      }
+      menuitem:disabled {
+        color: ${palette.muted};
       }
     '';
 

@@ -55,6 +55,12 @@ let
       ] home.systemd.user.services;
       mangobar = home.services.mangobar.settings;
       mangobarStyle = home.xdg.configFile."mangobar/style.css".text;
+      # The poll script is a store path; the checker reads it after the build.
+      mangobarBluetoothScript = home.services.mangobar.settings."custom/bluetooth".exec;
+      mangobarPatches = map (path: {
+        name = builtins.baseNameOf path;
+        content = builtins.readFile path;
+      }) home.services.mangobar.package.patches;
       fuzzel = home.programs.fuzzel.settings;
       mako = home.services.mako.settings;
       # Store path, read by the checker after the package is built.
@@ -72,9 +78,9 @@ let
         execStart = host.systemd.services.swayosd-libinput-backend.serviceConfig.ExecStart;
         restart = host.systemd.services.swayosd-libinput-backend.serviceConfig.Restart;
       };
-      swayosdSystemBusPolicy = builtins.any
-        (pkg: (pkg.pname or "") == "swayosd")
-        host.services.dbus.packages;
+      swayosdSystemBusPolicy = builtins.any (
+        pkg: (pkg.pname or "") == "swayosd"
+      ) host.services.dbus.packages;
       swayosdPolkit = host.security.polkit.extraConfig;
       videoGroup = builtins.elem "video" host.users.users.mayon.extraGroups;
       swayosdUdev = builtins.any (pkg: (pkg.pname or "") == "swayosd") host.services.udev.packages;
@@ -676,7 +682,20 @@ pkgs.runCommand "interactive-session-config"
     assert bar["battery"]["on-click"] == "legion-conservation toggle"
     assert bar["battery"]["hide-on-ac"] is False
     assert bar["custom/bluetooth"]["interval"] == 5
+    bluetooth_script = Path(m["mangobarBluetoothScript"]).read_text()
     assert "mangobar-bluetooth" in bar["custom/bluetooth"]["exec"]
+    # bluetoothctl aborts with SIGABRT and a coredump when the system bus is
+    # unreachable; the poll must use busctl and degrade to the off glyph.
+    assert "/bin/bluetoothctl" not in bluetooth_script
+    assert "bluetoothctl --timeout" not in bluetooth_script
+    assert "busctl" in bluetooth_script and "org.bluez" in bluetooth_script
+    assert "GetManagedObjects" in bluetooth_script
+    assert '"Powered" b true' in bluetooth_script
+    assert '"Connected" b true' in bluetooth_script
+    assert "U000F00B2" in bluetooth_script
+    assert "U000F00B1" in bluetooth_script
+    assert "U000F00AF" in bluetooth_script
+    assert "timeout 2" in bluetooth_script
     style = m["mangobarStyle"]
     assert 'font-family: "Maple Mono NF CN"' in style
     assert "font-weight: Medium" in style
@@ -684,6 +703,18 @@ pkgs.runCommand "interactive-session-config"
     assert "background: none" in style and "border-radius: 0" in style
     assert "#tags.active" in style
     assert m["palette"]["blue"] in style
+    # Tray DBusMenu popup: One Dark surface/border/radius, item text, hover
+    # highlight and the patched disabled-item colour.
+    assert "menu {" in style
+    assert "border-radius: 12px" in style
+    assert "menuitem:disabled" in style
+    for key in ("surface", "border", "selection", "brightFg", "muted"):
+        assert m["palette"][key] in style, key
+    mangobar_patches = {patch["name"]: patch["content"] for patch in m["mangobarPatches"]}
+    assert set(mangobar_patches) == {"menuitem-disabled.patch"}
+    disabled_patch = mangobar_patches["menuitem-disabled.patch"]
+    assert "menuitem_disabled" in disabled_patch
+    assert "lr = dis_r;" in disabled_patch
     # Fully transparent bar: no palette background fill (and no blur opt-in).
     assert (m["palette"]["bg"] + "9e") not in style
     assert "background: none" in style
