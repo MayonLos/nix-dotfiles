@@ -30,6 +30,9 @@
         # registered vault and enabled in its appearance.json.
         home.activation.seedObsidianTheme = lib.mkIf hasPalette (
           lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+            # Home Manager activation does not export XDG_CONFIG_HOME; the
+            # seed must fall back to the default path itself.
+            export XDG_CONFIG_HOME="''${XDG_CONFIG_HOME:-$HOME/.config}"
             if [ -d "$XDG_CONFIG_HOME" ]; then
               run ${pkgs.python3}/bin/python ${./resources/obsidian_theme.py} install \
                 ${lib.escapeShellArg "${templates.obsidian}"} \
