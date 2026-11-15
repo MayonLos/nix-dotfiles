@@ -28,11 +28,14 @@
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
 
-    # Graphical greetd login matching the Noctalia desktop. Separate repo from the
-    # shell, single `nixpkgs` input pinned to nixos-unstable. Deliberately NOT
-    # `follows`-ed — the greeter builds from source (no cachix), so we let it build
-    # against its own tested nixpkgs to avoid attr/version drift breaking the build.
-    noctalia-greeter.url = "github:noctalia-dev/noctalia-greeter";
+    # Status bar. Follow unstable rather than stable: upstream still imports
+    # that nixpkgs inside its own outputs, so locking it costs one extra
+    # evaluation. Do not follow mango's scenefx/wlroots; this package does
+    # not build the compositor.
+    mangobar = {
+      url = "github:mangowm/mangobar";
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
+    };
 
     # MangoWC: the compositor this host runs (aspects/desktop/mango-session/host/mango.nix,
     # aspects/desktop/mango-session/), a dwl derivative. It is in
@@ -48,14 +51,7 @@
     # seconds.
     mango.url = "github:mangowm/mango";
 
-    # Wayland screenshot tools, neither in nixpkgs. Both build from source with
-    # no cachix, so deliberately NOT `follows`-ed — same reasoning as
-    # noctalia-greeter: let them build against their own tested nixpkgs rather
-    # than risk attr/version drift breaking the build.
-    mark-shot.url = "github:jswysnemc/mark-shot";
-    wayscrollshot.url = "github:jswysnemc/wayscrollshot";
-
-    # Daily-updated packages for AI coding agents: claude-code, dsh, grok
+    # Daily-updated packages for AI coding agents: dsh, grok, antigravity
     # and the review/usage tooling around them. zcode is deliberately NOT
     # installed -- see aspects/dev/ai-agents/ai-agents.nix. Deliberately NOT
     # `follows`-ed: upstream only builds and caches against its own pinned

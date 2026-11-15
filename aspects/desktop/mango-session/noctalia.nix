@@ -247,9 +247,9 @@ in
             # Panels still close on Escape/outside click; keep the surfaces clear
             # of repeated close glyphs. Notifications remain dismissible by right-click.
             show_close_buttons = false;
-            # Native history owns collection and persistence; no parallel
-            # cliphist watchers. The X11/Wayland bridge is a separate service.
-            clipboard_enabled = true;
+            # cliphist owns history. Leave Noctalia's database alone and do not
+            # run its watcher beside cliphist. The X11/Wayland bridge stays.
+            clipboard_enabled = false;
             show_location = true;
             # Alt+Tab (keybinds.nix). Most-recently-used order like other
             # desktops, every window on every tag. Mango 0.18 has no toplevel
@@ -429,11 +429,16 @@ in
           # action only accepts none / launcher / control_center / window_switcher
           # / command (hotCornerActionSelect in settings_registry.cpp); note it is
           # a free-form string in the schema, so a typo passes validation and then
-          # silently does nothing at runtime.
+          # silently does nothing at runtime. fuzzel owns search, so the corner
+          # runs that binary. The absolute path matters: this shell command's
+          # PATH can be thinner than a login shell.
           hot_corners = {
             enabled = true;
             delay_ms = 200; # dwell time, so a cursor merely passing by does not fire it
-            bottom_left.action = "launcher";
+            bottom_left = {
+              action = "command";
+              command = lib.getExe pkgs.fuzzel;
+            };
             bottom_right.action = "none";
             top_left.action = "none";
             top_right.action = "none";
@@ -465,7 +470,9 @@ in
           };
 
           notification = {
-            enable_daemon = true;
+            # mako owns org.freedesktop.Notifications. These fields stay so the
+            # dormant card contract remains described.
+            enable_daemon = false;
             show_app_name = true;
             show_actions = true;
             position = "top_right";
@@ -485,6 +492,11 @@ in
           };
 
           osd = {
+            # swayosd draws volume and brightness. The hardware keys no longer
+            # call Noctalia, and this gate stops a second pill if something else
+            # still sends an OSD message. Mic mute still uses Noctalia and does
+            # not draw this surface while the gate is closed.
+            enabled = false;
             # Keep transient feedback above the revealed floating Dock.
             position = "bottom_center";
             orientation = "horizontal";

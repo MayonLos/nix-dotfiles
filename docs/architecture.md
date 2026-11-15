@@ -21,7 +21,7 @@ checks: [architecture, deadnix, statix, treefmt]
 2. **事实与实现分离**：inventory 只描述有什么、谁选择什么；实现全部在功能里。
 3. **只依赖公开接口**：功能之间只经 §4 列出的通道与 §5 的公开入口交换数据。
 4. **保留 Den，保持身份稳定**：实体、aspect、includes、class 分发由 Den 负责。剖析显示求值 16s 中 Home Manager 占 63%、
-   nixpkgs-unstable 19%、noctalia-greeter 自带 nixpkgs 12%，Den 本身可忽略；性能工作不针对组合机制。
+   nixpkgs-unstable 19%，Den 本身可忽略；性能工作不针对组合机制。
 5. **规则可执行**：能静态判断的规则自动检查；其余写成语义测试。
 
 ## 2. 顶层布局
@@ -196,7 +196,7 @@ inventory/
 ### 8.3 配方位置
 
 - 私有配方留在功能目录；带参数的配方以**包工厂**公开（不要固定成全局单例）。
-- `packages/` 放本仓库自写程序的源码与包工厂（`mayon-tui`、`bilitui`、`mayon-voice`、`noctalia-clash-status`）和需要整机替换的上游补丁包（`gamemode`）；
+- `packages/` 放本仓库自写程序的源码与包工厂（`mayon-tui`、`bilitui`、`mayon-voice`、`noctalia-clash-status`、`mark-shot`）和需要整机替换的上游补丁包（`gamemode`）；
   多数经 `nix/pkgs.nix` 的 overlay 公开为 `pkgs.<名>`（`gamemode` 替换同名上游包）；只有一个消费者的可由其直接导入包工厂
   （`noctalia-clash-status` → `desktop/mango-session`）。功能目录只负责安装、快捷键与配置。
 - flake 对外导出（如 `.#neovim`）由 `nix/outputs.nix` 调用功能的公开包工厂并显式传入默认数据。
@@ -208,7 +208,7 @@ inventory/
 
 ### 8.5 输入管理 [硬]
 
-- `flake.nix` 中每个输入注明 follows 策略与理由；`mango`、`noctalia-greeter`、`mark-shot`、`wayscrollshot`、`llm-agents` **不加 follows**（源码依赖组合或预构建缓存依赖其 pin）。
+- `flake.nix` 中每个输入注明 follows 策略与理由；`mango`、`llm-agents` **不加 follows**（源码依赖组合或预构建缓存依赖其 pin）。`mangobar` follows `nixpkgs-unstable`：上游 flake 在自己的 `outputs` 里 import 这份 nixpkgs，因此多一次求值；不要改跟 stable，也不要跟 mango 的 scenefx/wlroots。`pkgs.local.mangobar` 是上游 derivation 的别名。登录屏是 nixpkgs 里的 gtkgreet，不再是 flake 输入。截图工具源码在 `packages/mark-shot`，不再是 flake 输入。
 - 架构重构期间冻结 `flake.lock`、`stateVersion`、包版本与依赖组合。
 - 更新输入后必须：构建 toplevel、`nix store diff-closures` 摘要、对照 workaround 原因复核。
 

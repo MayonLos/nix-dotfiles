@@ -3,15 +3,12 @@ let
   contributions =
     builtins.attrValues
       (import ../languages/contract.nix { inherit (pkgs) lib; }).defaults;
-  acpAdapters = {
-    claude = "${pkgs.local.claude-agent-acp}/bin/claude-agent-acp";
-  };
   neovim = import ./package.nix {
-    inherit pkgs contributions acpAdapters;
+    inherit pkgs contributions;
     palette = appearance;
   };
   reduced = import ./package.nix {
-    inherit pkgs contributions acpAdapters;
+    inherit pkgs contributions;
     palette = appearance // {
       reducedMotion = true;
     };
@@ -105,7 +102,7 @@ in
             done
             # Round 44 exercises the document workbench, responsive outline,
             # same-canvas float surfaces and native completion before integrations.
-            for test in overhaul startup completion completion_ui integration workflow document_workbench fileops lua_workspace modern interface ai native codediff panels_picker panels_ai panels_aux panels_surface picker_lsp embedded refinement runtime_smoke debug debug_gdb java_debug keymap_discovery; do
+            for test in overhaul startup completion completion_ui integration workflow document_workbench fileops lua_workspace modern interface ai native codediff panels_picker panels_ai panels_aux panels_surface picker_lsp embedded refinement runtime_smoke debug debug_gdb java_debug keymap_discovery markdown_writing text_editing; do
               export NVIM_TEST_FILE="${neovim.configDir}/tests/$test.lua"
               ${neovim.normal}/bin/nvim --headless --cmd 'luafile ${neovim.configDir}/tests/selfcheck_offline.lua' -c 'luafile ${neovim.configDir}/tests/run.lua'
             done

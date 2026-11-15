@@ -13,6 +13,22 @@ function M.setup()
 			end
 		end,
 	})
+	-- 'autoread' only acts when Neovim runs a check; nothing watches the disk.
+	-- Agents and other tools edit open files, so check on focus, buffer entry
+	-- and idle (CursorHold follows 'updatetime').
+	vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter", "CursorHold", "CursorHoldI", "TermLeave" }, {
+		group = group,
+		callback = function(ev)
+			if vim.fn.mode() == "c" or vim.fn.getcmdwintype() ~= "" then
+				return
+			end
+			if ev.event == "FocusGained" then
+				pcall(vim.cmd.checktime)
+			elseif util.is_document(ev.buf) then
+				pcall(vim.cmd.checktime, ev.buf)
+			end
+		end,
+	})
 	-- Scratch/picker styles may change inherited window options. Reassert the
 	-- editor cursor line when a normal document becomes the active view.
 	vim.api.nvim_create_autocmd({ "BufWinEnter", "WinEnter" }, {

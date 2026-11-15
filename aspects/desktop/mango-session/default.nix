@@ -7,6 +7,9 @@
   den.aspects = {
     interactive-session = { host, user, ... }: {
       includes = [ den.aspects.graphical-session-support ];
+      # swayosd's udev rules hand the backlight node to video. Volume does not
+      # need the group. Membership applies on the next login.
+      user.extraGroups = [ "video" ];
       homeManager =
         {
           noctaliaIntegrations ? [ ],
@@ -20,6 +23,7 @@
         {
           imports = [
             (import ./mango.nix { palette = user.appearance; })
+            (import ./shell.nix { palette = user.appearance; })
             (import ./noctalia.nix {
               palette = user.appearance;
               avatar = if builtins.elem "avatar" integrations.ids then user.avatar else null;

@@ -1,7 +1,7 @@
 ---
 summary: 自写工具清单、入口、数据位置、统一交互约定和资源测量
 read_when: 修改或新增自写 TUI、查工具的快捷键和数据目录、判断某个工具是否还存在
-code: [packages/mayon-tui, packages/bilitui, packages/mayon-voice, packages/noctalia-clash-status, aspects/cli/mayon-tools, aspects/cli/keys-mayon]
+code: [packages/mayon-tui, packages/bilitui, packages/mayon-voice, packages/noctalia-clash-status, packages/mark-shot, aspects/cli/mayon-tools, aspects/cli/keys-mayon]
 checks: [mayon-tui, bilitui, serial-mayon, keys-mayon, keys-mayon-bindings, mayon-voice, mayon-voice-fcitx]
 ---
 
@@ -35,7 +35,7 @@ checks: [mayon-tui, bilitui, serial-mayon, keys-mayon, keys-mayon-bindings, mayo
 ## 已移除（不要找也不要恢复接线）
 
 `seek`、`power-mayon`、`mcsrv-mayon`、`study-mayon`、`shots-mayon` 于 2026-10-31 删除，
-相关数据目录已由用户清理。截图功能不受影响，仍由 mark-shot、wayscrollshot 提供。
+相关数据目录已由用户清理。截图由本仓库维护的 Rust [mark-shot](../packages/mark-shot/README.md) 提供，含滚动截图。
 `musicfox` 决定继续使用上游，不自写。代码可从 Git 历史 `47fcebe` 找回。
 
 ## 统一约定（新增工具必须遵守）

@@ -26,10 +26,11 @@ let
       # unstable Plenary would introduce a second LuaJIT into the wrapper env.
       dependencies = [ vimPlugins.plenary-nvim ];
     }))
-    vimPlugins.claudecode-nvim
     vimPlugins.minuet-ai-nvim
     vimPlugins.mini-diff
     vimPlugins.mini-sessions
+    vimPlugins.mini-ai
+    vimPlugins.dial-nvim
     vimPlugins.edgy-nvim
     vimPlugins.smart-splits-nvim
     (vimPlugins.codecompanion-history-nvim.overrideAttrs (_: {
@@ -59,6 +60,8 @@ let
     vimPlugins.nvim-web-devicons
     vimPlugins.onedark-nvim
     vimPlugins.render-markdown-nvim
+    vimPlugins.img-clip-nvim
+    vimPlugins.vim-table-mode
     (vimPlugins.snacks-nvim.overrideAttrs (old: {
       # LSP responses must enter the finder coroutine before its time-budget yield.
       patches = (old.patches or [ ]) ++ [ ./patches/snacks-lsp-coroutine.patch ];

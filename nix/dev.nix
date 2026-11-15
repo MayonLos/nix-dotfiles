@@ -55,6 +55,9 @@ _: {
           rustfmt = {
             enable = true;
             edition = "2021";
+            # Vendored mark-shot is edition 2024 and pins rustfmt 1.99.
+            # This formatter is the stable 2021 toolchain and must not rewrite it.
+            excludes = [ "packages/mark-shot/**" ];
           };
         };
       };

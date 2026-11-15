@@ -37,23 +37,8 @@ local function setup_textobjects()
 		select = { lookahead = true },
 		move = { set_jumps = true },
 	})
-	local select = require("nvim-treesitter-textobjects.select").select_textobject
-	for _, spec in ipairs({
-		{ "af", "@function.outer", "Select Outer Function" },
-		{ "if", "@function.inner", "Select Inner Function" },
-		{ "ac", "@class.outer", "Select Outer Class" },
-		{ "ic", "@class.inner", "Select Inner Class" },
-		{ "aa", "@parameter.outer", "Select Outer Parameter" },
-		{ "ia", "@parameter.inner", "Select Inner Parameter" },
-		{ "al", "@loop.outer", "Select Outer Loop" },
-		{ "il", "@loop.inner", "Select Inner Loop" },
-		{ "ai", "@conditional.outer", "Select Outer Conditional" },
-		{ "ii", "@conditional.inner", "Select Inner Conditional" },
-	}) do
-		map({ "x", "o" }, spec[1], function()
-			select(spec[2], "textobjects")
-		end, spec[3])
-	end
+	-- Selection belongs to mini.ai (see setup_ai); this plugin keeps the
+	-- query files plus the motions and swaps below.
 	local move = require("nvim-treesitter-textobjects.move")
 	for _, spec in ipairs({
 		{ "]m", move.goto_next_start, "@function.outer", "Jump to Next Function Start" },
@@ -73,6 +58,31 @@ local function setup_textobjects()
 	map("n", "<leader>c[", function()
 		require("nvim-treesitter-textobjects.swap").swap_previous("@parameter.inner")
 	end, "Swap Parameter with Prev")
+end
+
+-- mini.ai owns every a/i textobject. Tree-sitter queries keep the previous
+-- f/c/l/i meanings; mini.ai's own `a` (argument) matches the old query result
+-- and also works without a parser. It adds q (quote), b (bracket), t (tag),
+-- F (call), g (buffer) and count/next-search on all of them. Next/last use
+-- aN/aL so al/il stay loops and Neovim's an/in node selection is untouched.
+local function setup_ai()
+	local ai = require("mini.ai")
+	local ts = ai.gen_spec.treesitter
+	ai.setup({
+		n_lines = 500,
+		custom_textobjects = {
+			f = ts({ a = "@function.outer", i = "@function.inner" }),
+			c = ts({ a = "@class.outer", i = "@class.inner" }),
+			l = ts({ a = "@loop.outer", i = "@loop.inner" }),
+			i = ts({ a = "@conditional.outer", i = "@conditional.inner" }),
+			F = ai.gen_spec.function_call(),
+			g = function()
+				local last = vim.fn.line("$")
+				return { from = { line = 1, col = 1 }, to = { line = last, col = math.max(#vim.fn.getline(last), 1) } }
+			end,
+		},
+		mappings = { around_next = "aN", inside_next = "iN", around_last = "aL", inside_last = "iL" },
+	})
 end
 
 local function setup_multicursor()
@@ -138,15 +148,58 @@ local function setup_multicursor()
 	end
 end
 
+local function setup_dial()
+	local augend = require("dial.augend")
+	require("dial.config").augends:register_group({
+		default = {
+			augend.integer.alias.decimal_int,
+			augend.integer.alias.hex,
+			augend.date.alias["%Y-%m-%d"],
+			augend.date.alias["%Y/%m/%d"],
+			augend.constant.alias.bool,
+			augend.constant.alias.Bool,
+			augend.semver.alias.semver,
+			augend.constant.new({ elements = { "&&", "||" }, word = false, cyclic = true }),
+			augend.constant.new({ elements = { "and", "or" } }),
+			augend.constant.new({ elements = { "yes", "no" } }),
+			augend.constant.new({ elements = { "on", "off" } }),
+			augend.misc.alias.markdown_header,
+		},
+	})
+end
+
+-- Ctrl+a/x keep their builtin meaning, extended to booleans, dates, versions,
+-- operators and Markdown headings. g-variants increment progressively.
+local function dial(direction, mode)
+	return function()
+		require("dial.map").manipulate(direction, mode)
+	end
+end
+
 local function setup()
 	setup_surround()
 	setup_flash()
 	setup_context()
 	setup_textobjects()
+	setup_ai()
 	setup_multicursor()
 end
 
 return {
+	{
+		"dial.nvim",
+		keys = {
+			{ "<C-a>", dial("increment", "normal"), desc = "Increment" },
+			{ "<C-x>", dial("decrement", "normal"), desc = "Decrement" },
+			{ "g<C-a>", dial("increment", "gnormal"), desc = "Increment Progressively" },
+			{ "g<C-x>", dial("decrement", "gnormal"), desc = "Decrement Progressively" },
+			{ "<C-a>", dial("increment", "visual"), desc = "Increment", mode = "x" },
+			{ "<C-x>", dial("decrement", "visual"), desc = "Decrement", mode = "x" },
+			{ "g<C-a>", dial("increment", "gvisual"), desc = "Increment Progressively", mode = "x" },
+			{ "g<C-x>", dial("decrement", "gvisual"), desc = "Decrement Progressively", mode = "x" },
+		},
+		after = setup_dial,
+	},
 	{
 		"nvim-autopairs",
 		event = "InsertEnter",
@@ -162,6 +215,7 @@ return {
 				"nvim-surround",
 				"nvim-treesitter-context",
 				"nvim-treesitter-textobjects",
+				"mini.ai",
 				"multicursor.nvim",
 			}) do
 				require("mayon.config.loader").pack(n)

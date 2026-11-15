@@ -57,15 +57,24 @@
             # Aliases preserve upstream derivations and their pinned build caches.
             local = {
               noctalia = inputs.noctalia.packages.${system}.default;
-              mark-shot = inputs.mark-shot.packages.${system}.default;
-              wayscrollshot = inputs.wayscrollshot.packages.${system}.default;
+              # Upstream derivation alias. The mangobar flake still imports
+              # the followed nixpkgs-unstable while producing this package.
+              mangobar = inputs.mangobar.packages.${system}.default;
+              # Vendored Rust tree. rust-toolchain.toml pins 1.99.1; stable rustc
+              # is 1.95.0 and this unstable instance provides rustc 1.99.1.
+              # System libraries stay on `final` (stable).
+              mark-shot = import ../packages/mark-shot {
+                pkgs = final;
+                inherit (u) rustc cargo;
+              };
               inherit (inputs.llm-agents.packages.${system})
                 dsh
                 herdr
-                claude-code
-                claude-agent-acp
                 grok
                 grok-bot
+                # Google Antigravity desktop (`antigravity`) and CLI (`agy`).
+                antigravity-hub
+                antigravity-cli
                 ;
             };
           })

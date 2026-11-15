@@ -18,8 +18,8 @@ checks: []
 | 高 | Zotero Connector | 已使用 Zotero 和 Firefox，适合补齐浏览器论文/网页采集；先核对是否已经手动安装。 |
 | 已定归档 | File Roller | GTK4 归档 GUI，Thunar TAP 固定其可执行路径；替换旧 Xarchiver。 |
 | 已移除 | Okular | 用户决定不安装；PDF 默认 Zathura，PDF 批注使用 Zotero 内置阅读器。 |
-| 已修改 | `cliphist` | 删除两个 watcher，日常历史统一使用 Noctalia；保留旧数据库和 X11↔Wayland 剪贴板桥。 |
-| 已修改 | `pamixer` | 移除无消费者的安装声明；音量键继续走 Noctalia。 |
+| 已修改 | `cliphist` | 重新作为日常历史：文字和图片 watcher 都在，选单用 fuzzel。旧数据库不删除。X11↔Wayland 桥保留。 |
+| 已修改 | `pamixer` | 移除无消费者的安装声明；音量键走 swayosd-client。 |
 | 已修改 | `pavucontrol` | 由 `session-support` 安装，可从启动器打开并按浮窗规则显示；用于精细调节。音量键负责日常调节，顶栏不放音量图标。 |
 | 已修改 | Discord → Vesktop | 用户确认替换；使用 stable 包及系统 Vencord，Wayland/PipeWire 接线已构建，实际分享待验。 |
 | 按需 | 跨设备同步、远程开发 | 有第二台设备/服务器后，再选 Syncthing、Remote-SSH、Tailscale；不提前把所有服务打开。 |
@@ -33,6 +33,7 @@ checks: []
 | 应用 | 判断 | 更优解、收益和代价 |
 |---|---|---|
 | Firefox | 保留 | 已有 Dark Reader、受管深色主题和界面接线。后续统一 One Dark；没有证据支持为优化而换浏览器。迁移会重做扩展、登录和界面。 |
+| Google Chrome | 用户决定删除 | 包、`chrome` feature 与 Mango 规则中的 `google-chrome` 已从配置移除。Firefox 仍是默认浏览器。 |
 | QQ | 保留当前包与 wrapper | PipeWire、Wayland、输入法及桌面入口已有处理。官方 Linux 包仍维护，但换包装不等于解决当前 Nix 兼容问题。 |
 | 微信 Linux | 已替换 UOS | 使用 unstable 官方版 4.1.13.26；按锁定 AppImage/FHS wrapper 保留官方后端探测，登录、中文输入及剪贴板待实机回归。旧数据保留。 |
 | Vesktop | 已替换 Discord | 用户确认使用系统 Vencord；锁定包包含 PipeWire/venmic，Wayland wrapper 跟随会话环境。实际音频与屏幕分享仍待验证，Discord 数据保留。 |
@@ -41,24 +42,23 @@ checks: []
 | Yazi | 保留 | 终端文件管理、Git/文档预览和 Kitty 图像与 Thunar 互补。换 lf/ranger 要重写插件与预览，不是现成精简。 |
 | Swayimg | 保留，完善现有配置 | 锁定版本是 **4.7、INI 配置**，已有 gallery、动画及多格式支持。不要直接套主线新版 Lua；可在当前版本内调整缩放、背景、导航和 MIME。 |
 | mpv | 保留 | 现有 Anime4K、Vulkan、NVDEC、字幕和播放脚本值得保留。更有价值的是按内容/电池状态使用不同播放 profile，避免始终启用高成本 shader；收益需实测。 |
-| mark-shot | 保留 | 框选、注释、置顶以及 Mango 窗口检测已有接线。Noctalia 可承接简单截图，但不证明完整等价。 |
-| wayscrollshot | 保留 | 专职滚动拼接。锁定 mark-shot 仍将非 niri 滚动截图列为不完整测试功能，不能据其功能表直接删除本项。 |
+| mark-shot | 保留，源码在仓库 | 框选、注释、置顶和滚动截图。Rust 树在 `packages/mark-shot`，窗口吸附读 `mmsg`。`Print` 标注，`Shift+Print` 为 `mark-shot --scroll`。 |
 | Tesseract OCR | 保留 | 现有中英 OCR 是独立功能；Noctalia 截图能力不能自动替代语言数据与识别流程。 |
-| Noctalia 剪贴板历史 | 保留，作为日常入口 | 锁定的 Noctalia 5 已有独立、加密持久化的历史，Super+V 已使用此界面。 |
-| cliphist | 已修改：移除 | 用户确认精简后删除两个 watcher 及其包引用。Noctalia 使用独立历史，不迁移/删除原 cliphist 数据。 |
+| Noctalia 剪贴板历史 | 关闭 | `clipboard_enabled` 为 false。旧历史文件不删除。`Super+V` 改为 cliphist + fuzzel。 |
+| cliphist | 保留，作为日常历史 | 文字和图片 watcher 随 Mango target 启动。不迁移、不删除原数据库，路径仍是默认缓存。 |
 | X11↔Wayland 剪贴板桥 | 保留 | 解决跨协议同步，和历史界面职责不同；QQ/微信图像粘贴链路仍需回归。 |
 | Fastfetch | 保留 | 终端快照，不与实时监视器等价；若以后发现启动拖慢，再测量并改成显式 `ff`，当前不假定存在延迟问题。 |
 | btop | 保留 | 进程选择、资源排序和结束进程不同于 Noctalia 的资源概览；暂不另加 Mission Center。 |
-| pamixer | 已修改：移除 | 仓库无命令消费者，删除安装声明；音量键仍直接使用 Noctalia IPC。 |
+| pamixer | 已修改：移除 | 仓库无命令消费者，删除安装声明；音量键调用 swayosd-client。 |
 | pavucontrol | 保留 | 由 `session-support` 安装。Noctalia 未提供等价的硬件 card profile 菜单，高级操作也可用 wpctl/pw-cli，命令见 README。 |
-| brightnessctl | 保留 | 笔记本背光命令后端，不因面板有亮度滑块就视为重复。 |
+| brightnessctl | 保留 | swayosd 的背光写入仍调用它。包内 udev 规则把亮度节点交给 `video` 组。 |
 | ddcutil | 保留 | 外接显示器 DDC/CI 后端，与笔记本背光不同。无支持设备时不会凭空带来功能。 |
 | playerctl | 保留 | MPRIS 媒体控制接线，不是另一个播放器。 |
 | Lenovo Legion 工具 | 保留主机专属 | 面向该笔记本；后续放入 host 硬件能力，服务器不继承。不能仅凭包名判断硬件功能已生效。 |
 
 资料：[Mozilla 定制](https://support.mozilla.org/en-US/kb/firefox-advanced-customization-and-configuration)、[QQ Linux](https://im.qq.com/linuxqq/index.shtml)、[Discord 分享限制](https://support.discord.com/hc/en-us/articles/360040816151-Go-Live-and-Screen-Share)、[Vesktop 排障](https://vesktop.dev/wiki/linux/troubleshooting/)、[Mihomo TUN](https://wiki.metacubex.one/config/inbound/tun/)、[Yazi](https://yazi-rs.github.io/docs/configuration/yazi/)、[Swayimg v4.7](https://github.com/artemsen/swayimg/blob/v4.7/README.md)、[mpv 手册](https://mpv.io/manual/stable/)、[btop](https://github.com/aristocratos/btop)。
 
-版本证据：[锁定 Noctalia 的 clipboard 配置说明](https://raw.githubusercontent.com/noctalia-dev/noctalia-shell/5f864d472676c77e5310881b243f15cc371bb223/docs/user/configuration/shell.mdx)、[锁定 mark-shot](https://raw.githubusercontent.com/jswysnemc/mark-shot/fd481ed87902a26600b872ed33a9e951dd637423/README.md)、[锁定 wayscrollshot](https://raw.githubusercontent.com/jswysnemc/wayscrollshot/703474ad7b94a504306d7a93d21668ee162ebf1c/README.md)、[Noctalia Audio](https://docs.noctalia.dev/noctalia/control-center/)。音频文档的控件范围不能代替本机面板验证。
+版本证据：[锁定 Noctalia 的 clipboard 配置说明](https://raw.githubusercontent.com/noctalia-dev/noctalia-shell/5f864d472676c77e5310881b243f15cc371bb223/docs/user/configuration/shell.mdx)、[本仓库 mark-shot](../packages/mark-shot/README.md)、[Noctalia Audio](https://docs.noctalia.dev/noctalia/control-center/)。音频文档的控件范围不能代替本机面板验证。
 
 社区边界：[Vesktop Wayland 分享 issue #1207](https://github.com/Vencord/Vesktop/issues/1207) 是需要验证 Portal 行为的具体案例，不是当前机器必然故障的证明。
 
@@ -126,15 +126,16 @@ checks: []
 | 项目 | 当前定位与建议 | 代价或边界 |
 |---|---|---|
 | Codex | 用户于 2026-11-06 决定删除 | CLI、`codex-acp`、CodeCompanion adapter 与 `NVIM_CODEX_ACP` 会话变量已从配置移除；`~/.codex` 此前已由用户删除。 |
-| Claude Code | 用户于 2026-10-22 要求安装；通过锁定的 llm-agents 输入提供 `claude` | Nix 管理程序版本，登录、设置与会话历史归用户；在项目目录执行 `claude`，按提示完成账号登录。 |
+| Claude Code | 用户决定删除 | `claude`、`claude-agent-acp`、状态栏脚本、`NVIM_CLAUDE_ACP` 与 Neovim 的 Claude 面板已从配置移除。 |
 | Grok Build | 保留为本地 TUI/脚本式编码工具 | 可承担备用或交叉核验任务；不要和 Grok Bot 云端电脑混为一项。 |
+| Google Antigravity | 保留 | `pkgs.local.antigravity-hub` 提供桌面命令 `antigravity`，`pkgs.local.antigravity-cli` 提供命令 `agy`。两者都是 `llm-agents` 的原始 derivation，登录态不进 Nix。 |
 | OpenCode | 用户于 2026-10-20 决定删除 | 包、命令兼容 wrapper、CodeCompanion CLI 入口和 Quill 的 CLI 调用已从配置移除；Quill AI 改为直接调用 Go。已应用并核验运行时覆盖，保留其他应用及用户数据。 |
 | DeepSeek Harness 桌面入口 | 保留为实验性图形入口 | 当前是官方 Web UI + Chromium 应用窗口和私有后端，不是官方 Linux Electron 安装包。预览版变化与自维护包装有成本，不引入同名第三方桌面客户端。 |
 | Grok Bot | 保留，承担云端持续任务/流程 | 云端电脑可在本机关闭后继续工作；资格/账户和网络依赖不同于本地 CLI。不是本地终端复用器。当前 Electron workaround 另见使用文档，不能随意删除。 |
-| CodeCompanion | 保留 | Nvim 内联/聊天/选区上下文有独立价值；聊天默认 DeepSeek，ACP adapter 只保留 Claude Code。原生 Lua 配置保留现有历史和快捷键；插件由 `aspects/dev/neovim/plugins.nix` 固定提供。 |
+| CodeCompanion | 保留 | Nvim 内联/聊天/选区上下文有独立价值；聊天默认 DeepSeek，不再注册 ACP adapter。原生 Lua 配置保留现有历史和快捷键；插件由 `aspects/dev/neovim/plugins.nix` 固定提供。 |
 | MCPHub | 用户最新确认删除 | 编辑器面板、CodeCompanion 扩展、专用输入与二次 nixpkgs 接线移除；各 agent 的独立 MCP 设置保留。 |
 
-当前保留的本地编码入口是 Claude Code、DSH headless 与 Grok Build，图形和云端入口按需打开。进程数、模型费用和实际速度取决于使用方式，单纯安装多个 CLI 不等于全部常驻。各工具的账号/密钥及运行时状态不强制合并进 Nix。
+当前保留的本地编码入口是 DSH headless、Grok Build 与 Antigravity（桌面 `antigravity`、命令行 `agy`），图形和云端入口按需打开。进程数、模型费用和实际速度取决于使用方式，单纯安装多个 CLI 不等于全部常驻。各工具的账号/密钥及运行时状态不强制合并进 Nix。
 
 资料：[Grok Build](https://docs.x.ai/build/overview)、[DeepSeek Harness 官方仓库](https://github.com/deepseek-ai/deepseek-harness)、[Grok Bot 入门](https://docs.x.ai/grok-bot/get-started)、[Grok Bot FAQ](https://docs.x.ai/grok-bot/faq)。本仓库的 [Grok Bot 说明](grok-bot.md)记录当前包装限制。
 
@@ -194,7 +195,7 @@ checks: []
 
 ## Noctalia 插件与系统集成
 
-入口：[Noctalia 配置](../aspects/desktop/mango-session/noctalia.nix)、[输入法](../aspects/desktop/session-support/input-method.nix)、[Portal/keyring](../aspects/desktop/mango-session/host/portal.nix)。R47 按用户要求删除全部社区插件，仅保留本仓库 Launchpad、desktop-menus、legion-conservation；用户笔记、历史与其他运行时数据保留。Alt+Space 使用原生启动器。
+入口：[Noctalia 配置](../aspects/desktop/mango-session/noctalia.nix)、[shell](../aspects/desktop/mango-session/shell.nix)、[输入法](../aspects/desktop/session-support/input-method.nix)、[Portal/keyring](../aspects/desktop/mango-session/host/portal.nix)。R47 按用户要求删除全部社区插件，仅保留本仓库 Launchpad、desktop-menus、legion-conservation；用户笔记、历史与其他运行时数据保留。Alt+Space 使用 fuzzel。Super+A 仍是 Launchpad。
 
 | 项目 | 结论 |
 |---|---|
@@ -202,7 +203,7 @@ checks: []
 | qt6ct / GTK 设置 | 保留现有外观桥接；One Dark 应集中提供语义颜色，再输出各应用格式，避免每个模块各写一份色值。 |
 | GNOME keyring | 保留应用 Secret Service；不是网站密码库或 sops 的替代。 |
 | sops | 保留运行时秘密管理；不能把密码管理器主密钥或服务令牌直接写进 Nix 字符串。 |
-| Noctalia polkit / 锁屏 / idle / 通知 | 沿用当前统一入口，不再推荐重复的 agent、idle daemon 或通知 daemon。 |
+| Noctalia polkit / 锁屏 / idle | 沿用当前统一入口，不再加第二个 agent 或 idle daemon。通知改由 mako 接收，Noctalia 的 notification daemon 关闭。音量和亮度 OSD 是 swayosd。 |
 | Portal / 屏幕共享 | 保留当前 workaround。捕获固定 eDP-1；若需共享外接屏，应调整该接线并实测，不是换 Discord 就能解决选择范围。 |
 
 ## 常用小工具
@@ -260,7 +261,7 @@ checks: []
 ## 后续执行顺序与验收
 
 1. 软件选型已结束；压缩包改用 File Roller，移除 Okular。用户后续决定移除 OnlyOffice，由 LibreOffice 统一处理九种 Office MIME；备份、密码库、Connector 及其他条件项以后有实际需求再纳入，不继续阻塞 Neovim 迁移。
-2. `pamixer`、重复 `cliphist` 和 `pavucontrol` 已按用户确认精简配置；验证状态单列在执行计划。不顺带删截图/OCR、剪贴板桥或用户历史。
+2. `pamixer` 与 `pavucontrol` 的安装决定不变：pamixer 不安装，pavucontrol 保留。cliphist 重新作为历史后端。不顺带删截图/OCR、剪贴板桥或用户历史。
 3. 先删无用，再原生替换；Neovim Lua + Nix 入口现已接入。先前 Heirline/Navic 原生替代已被用户后续重建要求覆盖；现恢复成熟界面插件与公式预览，OneDark 继续固定，主题选择器不恢复。完整 LaTeX 保留。当前状态见[重建记录](neovim.md)，性能结论需独立测量。
 4. 在 Den 重构中，把桌面、开发、游戏、备份和服务器能力组合起来；实际主机只启用需要的能力，不把笔记本应用全集给服务器。
 5. 每批实现后做模块求值、相关构建；涉及剪贴板、音频、截图、分享、游戏和编辑器交互时做运行验证。应用配置另作明确步骤。

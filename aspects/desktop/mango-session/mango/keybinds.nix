@@ -23,7 +23,7 @@ let
     "SUPER+CTRL,G,toggleglobal"
     "SUPER+ALT,G,toggleoverlay"
     "SUPER+CTRL,S,tag_special_silent"
-    "ALT,space,spawn,noctalia msg panel-toggle launcher"
+    "ALT,space,spawn,fuzzel"
     # Noctalia's switcher: hold Alt and press Tab to cycle (Shift+Tab back),
     # release Alt to focus; a quick tap returns to the previous window.
     "ALT,Tab,spawn,noctalia msg window-switcher hold"
@@ -143,7 +143,7 @@ let
 
     "NONE,Print,spawn,mark-shot"
     "CTRL,Print,spawn,screenshot-screen"
-    "SHIFT,Print,spawn,wayscrollshot"
+    "SHIFT,Print,spawn,mark-shot --scroll"
     # Screen-text OCR, so the whole Print family is capture: bare = region
     # screenshot, Ctrl = copy current screen, Shift = scrolling capture,
     # Super = OCR the selection,
@@ -152,7 +152,7 @@ let
     "SUPER,Print,spawn,ocr-region"
     "SUPER+SHIFT,Print,spawn,ocr-screen"
     "CTRL+ALT,Delete,spawn,noctalia msg panel-toggle session"
-    "SUPER,V,spawn,noctalia msg panel-toggle clipboard"
+    "SUPER,V,spawn,clipboard-history"
     # Bluetooth headset mic: HFP on/off (A2DP otherwise; no autoswitch).
     "SUPER+SHIFT,N,spawn,headset-mic toggle"
     "SUPER+SHIFT,P,sleep_monitor,${display.name}"
@@ -185,12 +185,16 @@ let
 
   ];
   hardwareBinds = [
-    "NONE,XF86AudioRaiseVolume,spawn,noctalia msg volume-up"
-    "NONE,XF86AudioLowerVolume,spawn,noctalia msg volume-down"
-    "NONE,XF86AudioMute,spawn,noctalia msg volume-mute"
+    # swayosd-client verbs are raise/lower/mute-toggle. Do not also call
+    # noctalia volume or brightness: the step would run twice. Mic mute stays
+    # on Noctalia because its OSD gate is closed and still performs the mute.
+    # No comma in these commands: the help renderer splits fields on commas.
+    "NONE,XF86AudioRaiseVolume,spawn,swayosd-client --output-volume raise"
+    "NONE,XF86AudioLowerVolume,spawn,swayosd-client --output-volume lower"
+    "NONE,XF86AudioMute,spawn,swayosd-client --output-volume mute-toggle"
     "NONE,XF86AudioMicMute,spawn,noctalia msg mic-mute"
-    "NONE,XF86MonBrightnessUp,spawn,noctalia msg brightness-up"
-    "NONE,XF86MonBrightnessDown,spawn,noctalia msg brightness-down"
+    "NONE,XF86MonBrightnessUp,spawn,swayosd-client --brightness raise"
+    "NONE,XF86MonBrightnessDown,spawn,swayosd-client --brightness lower"
     "NONE,XF86AudioPlay,spawn,playerctl play-pause"
     "NONE,XF86AudioStop,spawn,playerctl stop"
     "NONE,XF86AudioPrev,spawn,playerctl previous"

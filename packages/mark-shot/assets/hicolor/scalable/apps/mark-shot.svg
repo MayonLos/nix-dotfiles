@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="tile" x1="64" y1="9" x2="64" y2="117" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f1f4f8"/>
+    </linearGradient>
+    <linearGradient id="lens" x1="54" y1="53" x2="75" y2="76" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2dd4bf"/>
+      <stop offset="1" stop-color="#0d9488"/>
+    </linearGradient>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#0f172a" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+  <rect x="10" y="9" width="108" height="108" rx="26" fill="url(#tile)" filter="url(#lift)"/>
+  <rect x="10.5" y="9.5" width="107" height="107" rx="25.5" fill="none" stroke="#0f172a" stroke-opacity="0.09"/>
+  <path d="M33 47V40a7 7 0 0 1 7-7h7M33 81v7a7 7 0 0 0 7 7h7M81 95h7a7 7 0 0 0 7-7v-7" fill="none" stroke="#111827" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="64" cy="64" r="18.5" fill="none" stroke="#111827" stroke-width="4.5"/>
+  <circle cx="64" cy="64" r="10.5" fill="url(#lens)"/>
+  <path d="M90 29.5v17M81.5 38h17" stroke="#f97316" stroke-width="4.5" stroke-linecap="round"/>
+</svg>

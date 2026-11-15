@@ -4,10 +4,15 @@ local pinyin = require("./pinyin.luau")
 -- Desktop IDs remain the launch identity; overrides affect only the picture.
 function M.iconOverrides(entries)
 	local result = {}
-	for _, entry in ipairs(entries or {}) do
-		local id, icon = string.match(entry, "^([^=]+)=(.+)$")
-		if id and icon then
-			result[string.lower(id):gsub("%.desktop$", "")] = icon
+	if type(entries) ~= "table" then
+		return result
+	end
+	for _, entry in ipairs(entries) do
+		if type(entry) == "string" then
+			local id, icon = string.match(entry, "^([^=]+)=(.+)$")
+			if id and icon then
+				result[string.lower(id):gsub("%.desktop$", "")] = icon
+			end
 		end
 	end
 	return result
@@ -22,6 +27,16 @@ local definitions = {
 	{ id = "games", label = "游戏", tokens = { "Game" } },
 	{ id = "system", label = "系统", tokens = { "System", "Settings", "Utility" } },
 }
+-- Ordered chip definitions. Unlike M.categories(), this always reports every
+-- category, so the drawer's chip row keeps stable positions while the user
+-- types or changes category.
+function M.list()
+	local result = {}
+	for _, cat in ipairs(definitions) do
+		table.insert(result, { id = cat.id, label = cat.label })
+	end
+	return result
+end
 local function inCategory(app, id)
 	if id == "all" then
 		return true

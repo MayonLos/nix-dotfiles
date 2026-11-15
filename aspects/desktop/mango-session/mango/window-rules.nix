@@ -57,12 +57,12 @@ let
     "${compact},app_id:^(polkit-gnome-authentication-agent-1|lxqt-policykit-agent|org[.]kde[.]polkit-kde-authentication-agent-1|pinentry.*)$"
     "${panel},app_id:^dev[.]noctalia[.]Noctalia$"
 
-    # Browser utility windows; Firefox's actual native app_id is "firefox".
+    # Browser utility windows; the native app_id is "firefox".
     "${dialog},app_id:^(${browser})$,title:^(Library|Downloads|下载|我的足迹|资料库)$"
     "${compact},app_id:^(${browser})$,title:^(About (Mozilla )?Firefox|关于.*Firefox|Profile Missing)$"
     # No forced aspect rule exists in Mango. Retain the client's size/aspect
     # hints (no_size_hint remains unset); 480 x 270 is only the initial size.
-    "${float},is_global:1,is_overlay:1,${silent},width:480,height:270,offset_x:96,offset_y:92,app_id:^(${browser})$,title:^(Picture-in-Picture|画中画)$"
+    "${float},is_global:1,is_overlay:1,${silent},width:480,height:270,offset_x:96,offset_y:92,app_id:^(${browser})$,title:^(Picture-in-Picture|Picture in picture|画中画)$"
     "${float},no_focus:1,${silent},app_id:^(${browser})$,title:^.*(Sharing Indicator|共享指示器)$"
     # Image viewers own one centered workspace-sized surface when launched.
     "${workspace},app_id:^(mpv|imv|swayimg|feh)$"
@@ -74,9 +74,9 @@ let
     "${tools},app_id:^(gcolor3|org[.]gnome[.]Gcolor3|org[.]kde[.]kcolorchooser|hyprpicker)$"
     "${dialog},app_id:^(qt[56]ct|fcitx5-config-qt|org[.]fcitx[.].*|org[.]fcitx[.]Fcitx5[.]Config)$"
     "${dialog},app_id:^(org[.]gnome[.]FileRoller|file-roller|kbd-layout-viewer5?|legion_gui)$"
-    # mark-shot capture and wayscrollshot selection are layer surfaces. Do not
-    # resize their full-output capture areas; this only catches editor toplevels.
-    "${float},no_animation:1,app_id:^(mark-shot|markshot|MarkShot)$"
+    # Capture overlays are layer surfaces. Do not resize their full-output
+    # areas; this catches the editor, pin and scroll toplevels as well.
+    "${float},no_animation:1,app_id:^(mark-shot|mark-shot-editor|mark-shot-pin|mark-shot-scroll|markshot|MarkShot)$"
 
     # Thunar: exact progress/preferences/bulk rename titles, main view tiled.
     "${compact},app_id:^([Tt]hunar|org[.]xfce[.]Thunar)$,title:^(Rename|重命名)"

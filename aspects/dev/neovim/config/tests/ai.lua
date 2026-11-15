@@ -1,7 +1,6 @@
 -- Integration against the real pinned plugins, without model requests.
 local load = require("lz.n").trigger_load
 load({
-	"claudecode.nvim",
 	"codecompanion.nvim",
 	"minuet-ai.nvim",
 	"edgy.nvim",
@@ -16,13 +15,7 @@ local cc = require("codecompanion.config").config
 assert(cc.interactions.chat.adapter == "deepseek" and cc.interactions.inline.adapter == "deepseek")
 assert(cc.interactions.chat.keymaps.regenerate.modes.n == "<localleader>r", "chat regenerate shadows LSP gr prefixes")
 assert(cc.adapters.acp.codex == nil, "Codex ACP adapter was removed")
-for _, name in ipairs({ "claude_code" }) do
-	local adapter = cc.adapters.acp[name]()
-	local path = adapter.commands.default[1]
-	assert(path:sub(1, 11) == "/nix/store/", "ACP adapter is not Nix-injected: " .. path)
-	assert(vim.fn.executable(path) == 1, "missing ACP executable: " .. path)
-	assert(not path:find("npx", 1, true))
-end
+assert(cc.adapters.acp.claude_code == nil, "Claude ACP adapter was removed")
 assert(cc.extensions.history.enabled)
 assert(require("codecompanion").version() == codecompanion_version, "loaded CodeCompanion version drift")
 local chat = require("codecompanion.interactions.chat").new({
@@ -347,73 +340,6 @@ assert(inline_accepted.diff_ui == nil, "accepted Inline review was not reset")
 assert(not vim.b[inline_buf].mayon_inline_review, "accepted Inline review left the buffer locked")
 assert(vim.bo.modified and not vim.b.mayon_inline_review)
 vim.bo.modified = false
--- Real native Claude diff: accept/reject via its public commands, no CLI.
-local path = vim.fn.tempname() .. ".lua"
-vim.fn.writefile({ "return 1" }, path)
-vim.cmd.edit(path)
-local diff = require("claudecode.diff")
-local function review(title, decision)
-	local resolved
-	diff._setup_blocking_diff(
-		{ old_file_path = path, new_file_path = path, new_file_contents = "return 3\n", tab_name = title },
-		function(result)
-			resolved = result
-		end
-	)
-	vim.wait(50)
-	assert(vim.b.claudecode_diff_tab_name == title)
-	assert(vim.wo.winhighlight:find("DiffChange:DiffAdd", 1, true), "Claude proposed lines must use a green background")
-	local target = vim.b.claudecode_diff_target_win
-	assert(
-		target and vim.wo[target].winhighlight:find("DiffChange:DiffDelete", 1, true),
-		"Claude original lines must use a red background"
-	)
-	local proposed = vim.api.nvim_get_current_win()
-	local original_style = vim.w[proposed].mayon_claude_style
-	vim.cmd("diffoff")
-	-- -c tests run before VimEnter, when Neovim suppresses OptionSet.
-	if vim.v.vim_did_enter == 0 then
-		vim.api.nvim_exec_autocmds("OptionSet", { pattern = "diff" })
-	end
-	vim.wait(30)
-	assert(not vim.w[proposed].mayon_claude_style, "diffoff must restore a retained review window")
-	assert(vim.wo.winhighlight == original_style.winhighlight, "diffoff left red/green mappings in a normal window")
-	vim.api.nvim_set_current_win(target)
-	assert(not vim.wo.cursorline, "entering the original diff window overlaid its review colors")
-	vim.api.nvim_set_current_win(proposed)
-	vim.wait(30)
-	assert(not vim.w[proposed].mayon_claude_style, "re-entering a non-diff review window reapplied diff styles")
-	vim.cmd("diffthis")
-	if vim.v.vim_did_enter == 0 then
-		vim.api.nvim_exec_autocmds("OptionSet", { pattern = "diff" })
-	end
-	vim.wait(30)
-	assert(vim.wo.winhighlight:find("DiffChange:DiffAdd", 1, true), "diffthis must restore the review palette")
-	assert(vim.fn.maparg(",a", "n") ~= "" and vim.fn.maparg(",r", "n") ~= "")
-	assert(
-		vim.api.nvim_eval_statusline(vim.wo.winbar, { winid = 0 }).str:find(",a 接受", 1, true),
-		"Claude diff tool window should retain its on-demand review hint"
-	)
-	vim.cmd(decision)
-	assert(resolved, "Claude diff did not resolve")
-	diff.close_diff_by_tab_name(title)
-	vim.wait(20)
-	if vim.api.nvim_win_is_valid(target) then
-		assert(not vim.w[target].mayon_claude_style, "closing Claude review must restore the original window style")
-	end
-	return resolved
-end
-review("fixture-deny", "ClaudeCodeDiffDeny")
-assert(vim.fn.readfile(path)[1] == "return 1", "reject wrote Claude changes")
-local response = review("fixture-accept", "ClaudeCodeDiffAccept")
-assert(
-	response.content[1].text == "FILE_SAVED" and response.content[2].text == "return 3\n",
-	"accept did not return edited content to Claude"
-)
--- The protocol returns content to the CLI; the CLI writes the target file.
-assert(vim.fn.readfile(path)[1] == "return 1", "protocol test unexpectedly wrote the source file")
-vim.fn.delete(path)
-require("claudecode").stop()
 -- Runtime API scan: unique mappings per mode and no leaf-prefix conflict in
 -- our leader namespace (the API exposes only final effective mappings).
 for _, mode in ipairs({ "n", "x", "i", "t" }) do
@@ -431,19 +357,6 @@ for _, mode in ipairs({ "n", "x", "i", "t" }) do
 	end
 	print("keymaps " .. mode .. ": " .. vim.tbl_count(seen) .. ", duplicate/prefix conflicts=0")
 end
--- The Claude terminal position follows the current width, not the width at
--- plugin load time.
-local claude_terminal = require("claudecode.terminal")
-vim.o.columns = 100
-assert(claude_terminal.defaults.snacks_win_opts.position == "float", "narrow Claude terminal should float")
-vim.o.columns = 200
-assert(claude_terminal.defaults.snacks_win_opts.position == "right", "wide Claude terminal should split right")
--- Squeeze-and-restore of the panel must not leave stale classic-renderer frames.
-local claude_env = claude_terminal.defaults.env
-assert(
-	claude_env.CLAUDE_CODE_NO_FLICKER == "1" and claude_env.CLAUDE_CODE_ALT_SCREEN_FULL_REPAINT == "1",
-	"embedded Claude should use the full-repaint alt-screen renderer"
-)
 -- A narrower terminal re-fits the fixed-width AI side panel instead of
 -- squeezing the document window.
 local columns_before = vim.o.columns
@@ -455,8 +368,7 @@ for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
 	end
 end
 local panel_buf = vim.api.nvim_create_buf(false, true)
-vim.api.nvim_open_term(panel_buf, {})
-vim.bo[panel_buf].filetype = "claudecode"
+vim.bo[panel_buf].filetype = "codecompanion"
 vim.cmd("botright 76vsplit")
 vim.api.nvim_win_set_buf(0, panel_buf)
 local panel_win = vim.api.nvim_get_current_win()
@@ -470,4 +382,4 @@ assert(
 vim.api.nvim_win_close(panel_win, true)
 vim.o.columns = columns_before
 assert(vim.v.errmsg == "", vim.v.errmsg)
-print("AI adapters, provider switching, inline and Claude accept/reject, layouts and keys passed")
+print("AI adapters, provider switching, inline review, layouts and keys passed")

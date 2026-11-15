@@ -1,0 +1,51 @@
+#!/usr/bin/make -f
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export CARGO_HOME = $(CURDIR)/debian/cargo-home
+export CARGO_TARGET_DIR = $(CURDIR)/target
+export CARGO_NET_OFFLINE = true
+export XDG_CONFIG_HOME = $(CURDIR)/target/ci-private/config
+export XDG_DATA_HOME = $(CURDIR)/target/ci-private/data
+export XDG_STATE_HOME = $(CURDIR)/target/ci-private/state
+# 【原生打包】【系统工具链】Launchpad 只使用发行版 rustc，不调用联网安装工具
+
+%:
+	dh $@ --buildsystem=none
+
+# 【原生打包】【第三方保护】Cargo 校验全部 vendor 文件，禁止递归替换第三方 config.sub 或运行 autoreconf
+override_dh_update_autotools_config:
+	@:
+
+override_dh_autoreconf:
+	@:
+
+override_dh_auto_build:
+	bash scripts/packaging/build_linux.sh --offline
+
+# 【原生打包】【测试隔离】几何对照只使用源码中的固定字体，配置与状态不读取构建账户环境
+override_dh_auto_test:
+	mkdir -p "$(XDG_CONFIG_HOME)" "$(XDG_DATA_HOME)" "$(XDG_STATE_HOME)"
+	python3 scripts/ci-reference-fonts.py --root target/ci-private/fonts \
+		--archive reference-fonts/NotoSans-v2.015.zip
+	FONTCONFIG_FILE="$(CURDIR)/target/ci-private/fonts/fonts.conf" LANG=C.UTF-8 LC_ALL=C.UTF-8 \
+		CARGO_HOME="$(CARGO_HOME)" cargo test --workspace --locked --offline -j 2 \
+		--config 'source.crates-io.replace-with="vendored-sources"' \
+		--config 'source.vendored-sources.directory="$(CURDIR)/vendor"'
+
+override_dh_auto_install:
+	python3 scripts/packaging/install_linux.py --destination debian/mark-shot \
+		--source-sha "$$(cat debian/source-commit)" --licenses debian/dependency-licenses
+
+# 【原生打包】【来源校验】第三方 Cargo.toml.orig 必须保留，清理时不改变 vendor 内容
+override_dh_auto_clean:
+	rm -rf target debian/cargo-home
+
+override_dh_clean:
+	dh_clean -Xvendor/ -Xmedia/
+
+override_dh_shlibdeps:
+	dh_shlibdeps -- -ldebian/mark-shot/usr/lib/mark-shot/media
+
+override_dh_strip:
+	dh_strip
+	python3 scripts/packaging/media_checksums.py --directory debian/mark-shot/usr/lib/mark-shot/media --refresh

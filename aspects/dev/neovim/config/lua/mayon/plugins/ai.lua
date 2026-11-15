@@ -35,25 +35,6 @@ local function prompt(alias, description, instruction)
 		},
 	}
 end
-local function acp_path()
-	local path = vim.env.NVIM_CLAUDE_ACP or require("mayon.generated").tools.claude_acp
-	assert(
-		path and path:sub(1, 1) == "/" and vim.fn.executable(path) == 1,
-		"ACP 可执行路径不可用：请启用 ai-workbench 并重新登录会话"
-	)
-	return path
-end
-local function notify_cli_missing(name, label)
-	if vim.fn.executable(name) == 1 then
-		return false
-	end
-	vim.notify(
-		label .. " 命令不在 PATH 中；请先安装或启用对应环境",
-		vim.log.levels.WARN,
-		{ title = "AI 助手" }
-	)
-	return true
-end
 local function companion()
 	require("mayon.config.loader").pack("codecompanion-history.nvim")
 	require("mayon.config.loader").pack("mini.diff")
@@ -61,13 +42,8 @@ local function companion()
 	require("codecompanion").setup({
 		adapters = {
 			acp = {
-				-- Upstream presets (codex, gemini_cli, ...) have no installed binary.
+				-- Upstream presets (codex, claude_code, gemini_cli, ...) have no installed binary.
 				opts = { show_presets = false },
-				claude_code = function()
-					return require("codecompanion.adapters").extend("claude_code", {
-						commands = { default = { acp_path() }, yolo = { acp_path(), "--yolo" } },
-					})
-				end,
 			},
 		},
 		interactions = {
@@ -184,101 +160,6 @@ local function companion()
 	require("mayon.features.cc_minidiff").setup()
 	require("mayon.features.cc_inline_indicator").setup()
 end
-local function claude_position()
-	return vim.o.columns < 120 and "float" or "right"
-end
--- Snacks reads the position each time it shows a window. Keep both the
--- template for a new Claude terminal and a hidden existing one in step with
--- the current width, so a session started narrow does not stay a float.
-local function sync_claude_position()
-	local position = claude_position()
-	local terminal = require("claudecode.terminal")
-	terminal.defaults.snacks_win_opts.position = position
-	local bufnr = terminal.get_active_terminal_bufnr()
-	for _, term in ipairs(bufnr and Snacks.terminal.list() or {}) do
-		if term.buf == bufnr and not term:win_valid() then
-			term.opts.position = position
-		end
-	end
-end
-local function claude()
-	require("mayon.ui.ai_panels").setup()
-	require("claudecode").setup({
-		auto_start = true,
-		track_selection = true,
-		focus_after_send = false,
-		-- The alt-screen renderer repaints the whole screen on resize. The
-		-- classic one leaves stale frames when a split briefly squeezes the
-		-- panel before Edgy restores it.
-		env = { CLAUDE_CODE_NO_FLICKER = "1", CLAUDE_CODE_ALT_SCREEN_FULL_REPAINT = "1" },
-		terminal = {
-			provider = "snacks",
-			split_side = "right",
-			split_width_percentage = 0.36,
-			snacks_win_opts = {
-				position = claude_position(),
-				border = border,
-				title = " Claude Code ",
-				bo = { filetype = "claudecode" },
-				wo = { winhighlight = "Normal:NormalFloat,WinBar:FloatTitle" },
-			},
-		},
-		diff_opts = {
-			layout = "vertical",
-			open_in_new_tab = true,
-			hide_terminal_in_new_tab = true,
-			keep_terminal_focus = false,
-		},
-	})
-	-- The pinned plugin has no public connection User event. Refresh connection
-	-- state on demand instead of polling: when an AI panel window is entered or
-	-- opened, invalidate the provider cache so the winbar re-resolves once, and
-	-- redraw. Panel visibility uses the window marker set by ai_panels, never a
-	-- winbar string scan.
-	local panels = require("mayon.ui.ai_panels")
-	local function refresh_status()
-		for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
-			if vim.w[win].mayon_ai_panel then
-				panels.refresh_status(vim.api.nvim_win_get_buf(win))
-			end
-		end
-	end
-	vim.api.nvim_create_autocmd({ "BufWinEnter", "WinEnter", "TabEnter" }, {
-		group = vim.api.nvim_create_augroup("MayonClaudeStatus", { clear = true }),
-		callback = function()
-			vim.schedule(refresh_status)
-		end,
-	})
-
-	vim.api.nvim_create_autocmd("VimResized", {
-		group = vim.api.nvim_create_augroup("MayonClaudePosition", { clear = true }),
-		callback = sync_claude_position,
-	})
-
-	vim.api.nvim_create_autocmd({ "BufWinEnter", "WinEnter" }, {
-		group = vim.api.nvim_create_augroup("MayonClaudeReview", { clear = true }),
-		callback = function(ev)
-			vim.schedule(function()
-				if not vim.api.nvim_buf_is_valid(ev.buf) or not vim.b[ev.buf].claudecode_diff_tab_name then
-					return
-				end
-				vim.keymap.set(
-					"n",
-					"<localleader>a",
-					"<cmd>ClaudeCodeDiffAccept<cr>",
-					{ buffer = ev.buf, desc = "Accept Claude File Changes" }
-				)
-				vim.keymap.set(
-					"n",
-					"<localleader>r",
-					"<cmd>ClaudeCodeDiffDeny<cr>",
-					{ buffer = ev.buf, desc = "Reject Claude File Changes" }
-				)
-				require("mayon.ui.ai_panels").style_diff(ev.buf)
-			end)
-		end,
-	})
-end
 local function cc_prompt(name)
 	if not require("mayon.features.ai_completion").require_deepseek_key() then
 		return false
@@ -292,38 +173,6 @@ local function map(lhs, rhs, desc, mode)
 end
 return {
 	{
-		"claudecode.nvim",
-		cmd = {
-			"ClaudeCode",
-			"ClaudeCodeStart",
-			"ClaudeCodeStop",
-			"ClaudeCodeSend",
-			"ClaudeCodeAdd",
-			"ClaudeCodeDiffAccept",
-			"ClaudeCodeDiffDeny",
-		},
-		keys = {
-			map("<leader>ac", function()
-				if not notify_cli_missing("claude", "Claude Code") then
-					vim.cmd("ClaudeCode")
-				end
-			end, "Toggle Claude Code"),
-			map("<leader>as", function()
-				if not notify_cli_missing("claude", "Claude Code") then
-					vim.cmd("ClaudeCodeSend")
-				end
-			end, "Send Selection to Claude", "v"),
-			map("<leader>af", function()
-				if not notify_cli_missing("claude", "Claude Code") then
-					vim.cmd("ClaudeCodeAdd %")
-				end
-			end, "Add File to Claude"),
-			map("<leader>aA", "<cmd>ClaudeCodeDiffAccept<cr>", "Accept Claude Changes"),
-			map("<leader>aD", "<cmd>ClaudeCodeDiffDeny<cr>", "Reject Claude Changes"),
-		},
-		after = claude,
-	},
-	{
 		"codecompanion.nvim",
 		cmd = { "CodeCompanion", "CodeCompanionChat", "CodeCompanionActions", "CodeCompanionCmd" },
 		keys = {
@@ -333,10 +182,6 @@ return {
 					vim.cmd("CodeCompanionChat Toggle")
 				end
 			end, "Open DeepSeek Chat", { "n", "v" }),
-			map("<leader>aC", function()
-				require("lz.n").trigger_load("codecompanion.nvim")
-				vim.cmd.CodeCompanionChat("adapter=claude_code")
-			end, "Open Claude ACP Chat", { "n", "v" }),
 			map("<leader>ai", function()
 				if require("mayon.features.ai_completion").require_deepseek_key() then
 					require("lz.n").trigger_load("codecompanion.nvim")

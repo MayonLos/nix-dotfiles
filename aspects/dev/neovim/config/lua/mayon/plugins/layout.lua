@@ -73,17 +73,6 @@ local function setup_edgy()
 	require("edgy").setup({
 		right = {
 			{
-				ft = "claudecode",
-				title = "Claude Code",
-				wo = {
-					winbar = ai_winbar,
-					winhighlight = "WinBar:EdgyWinBar,Normal:EdgyNormal",
-					signcolumn = "yes:1",
-					fillchars = "eob: ",
-				},
-				filter = wide_enough,
-			},
-			{
 				ft = "codecompanion",
 				title = "CodeCompanion",
 				wo = {

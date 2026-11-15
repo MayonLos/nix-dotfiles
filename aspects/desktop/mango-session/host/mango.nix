@@ -43,7 +43,42 @@ in
   #
   # The only thing that stops working is "read aloud" in browsers. Flip this
   # back if that is ever wanted.
-  services.speechd.enable = false;
+  services = {
+    speechd.enable = false;
+
+    # The package rules chgrp the backlight brightness node to video. The
+    # interactive-session aspect puts the account in that group.
+    udev.packages = [ pkgs.swayosd ];
+
+    # The package ships the system D-Bus policy and an activation unit name
+    # (org.erikreider.swayosd -> swayosd-libinput-backend.service). Installing
+    # the package here makes the system bus policy available; the unit below
+    # owns the name while the user's swayosd-server is running.
+    dbus.packages = [ pkgs.swayosd ];
+  };
+
+  # SwayOSD's lock-key OSDs come from a root libinput watcher, not from the
+  # user server. It reads /dev/input directly (the user is already in `input`
+  # for the udev backlight rules) and publishes Caps/Num/Scroll state on the
+  # system bus, where swayosd-server consumes it. The wheel polkit rule keeps
+  # the manual `pkexec swayosd-libinput-backend` path usable.
+  systemd.services.swayosd-libinput-backend = {
+    description = "SwayOSD libinput backend";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "dbus.service" ];
+    serviceConfig = {
+      ExecStart = "${pkgs.swayosd}/bin/swayosd-libinput-backend";
+      Restart = "always";
+      RestartSec = 2;
+    };
+  };
+  security.polkit.extraConfig = ''
+    polkit.addRule(function(action, subject) {
+      if (action.id == "org.erikreider.swayosd-libinput-backend" && subject.isInGroup("wheel")) {
+        return polkit.Result.YES;
+      }
+    });
+  '';
 
   # Portal packages are composed upstream; session support deduplicates the
   # generated D-Bus service directories without replacing the portal list.

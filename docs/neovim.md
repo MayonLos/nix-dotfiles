@@ -12,27 +12,12 @@ checks: [neovim]
 
 ## AI 三层与补全
 
-1. **claudecode.nvim** 是 Claude Code 的 IDE 协议入口：跟踪当前文件、打开文件和选区；
-   `<Space>ac` 由插件自己的 Snacks 终端启动 Claude，宽屏右侧固定，窄屏浮动。
-   `<Space>as` 发送可视选区。Claude 的 `openDiff` 会在独立标签页打开左右原生 diff，
-   隐藏终端并聚焦建议，配色与 codediff/mini.diff 统一。顶部显示接受/拒绝提示；
-   在建议缓冲区用 `,a` / `<Space>aA` 接受，`,r` / `<Space>aD` 拒绝，可先手动编辑建议。
-   每次审阅对应一个文件提案，不是逐 hunk 批准。锁定 0.3.0 的接受命令返回 `FILE_SAVED`
-   与编辑后的文本给 CLI，由 CLI 写入目标文件；CLI 随后 `close_tab` 清理视图。
-   拒绝返回 `DIFF_REJECTED`，不会写源文件。未保存的原文件会被上游拒绝打开 diff。
-2. Sidekick（Codex/Grok TUI 与 Copilot NES）已于 2026-11-05 移除；Claude Code 是唯一的 AI CLI 面板，
-   `<Space>af` 把当前文件加入 Claude 上下文。Codex 及其 ACP adapter 已于 2026-11-06 移除。
-3. **CodeCompanion** 默认 DeepSeek HTTP 对话与内联改写；中文 prompt library 包含解释报错、
+1. Claude Code、`claudecode.nvim` 与 `claude-agent-acp` 已移除。Codex 及其 ACP adapter 已于 2026-11-06 移除。Sidekick 已于 2026-11-05 移除。
+2. **CodeCompanion** 默认 DeepSeek HTTP 对话与内联改写；中文 prompt library 包含解释报错、
    为选区写测试、提交信息草稿、重构与注释。历史扩展保持原目录、自动本地保存、不额外请求标题。
-   对话中 `ga` 切换 adapter，可选 `claude_code` ACP（上游其余 ACP 预设以 `show_presets = false` 隐藏）；`<Space>aC` 直接打开 `claude_code` 对话。
-   这与 CLI 的原生 TUI 是不同入口；CodeCompanion 自带的 CLI interaction 未启用，CLI 由 claudecode.nvim 承担。
-   ACP 使用 llm-agents 锁定的 `claude-agent-acp`，不运行 npx。
-   独立 flake 包由 `nix/outputs.nix` 注入绝对路径；HM 消费 ai-workbench 的公开会话变量
-   `NVIM_CLAUDE_ACP`，应用后需新登录会话。无有效路径时报错。
+   上游 ACP 预设以 `show_presets = false` 隐藏，不再注册 Claude adapter。
 
-用户在 tmux 自己启动 Claude 时，先在 Neovim 执行 `:ClaudeCodeStart`（只启动 IDE 服务），
-再在 Claude 执行 `/ide` 选中这个 Neovim。无需打开插件终端；状态栏 `C●` 表示连接、
-`C○` 表示已加载但未连接、`C·` 表示尚未加载。状态栏同时显示 CLI 会话名、补全提供者、请求中。
+状态栏显示补全提供者与请求中。
 
 **AI 只提供灰色行内幽灵文本**，不进入菜单。Copilot 使用 Neovim 原生
 `vim.lsp.inline_completion`，Nix 注入 stable `copilot-language-server` 的绝对路径，
@@ -161,6 +146,20 @@ Claude 终端内 `Ctrl+h` 回到文档。
 rainbow、colorizer 和 gitsigns 保留。语言工具与 parser 仍由原有契约生成。
 undo、会话、草稿、shada 和 AI 历史保持原路径及格式，不转换或清除用户数据。
 Oil 继续回收站删除、独占复制、拒绝覆盖或符号链接目标；不清理普通源文件 undo。
+
+外部改动的文件在 FocusGained（全部缓冲）以及文档缓冲的 BufEnter、CursorHold(I)、TermLeave 时
+`:checktime`，配合默认 `autoread` 自动重载（`config/autocmds.lua`）；有未保存修改时仍由 Neovim 提示冲突。
+tmux 内需 `focus-events on` 才有 FocusGained，CursorHold 随 `updatetime` 兜底。
+Markdown 任务列表键位在 `config/after/ftplugin/markdown.lua`（放在 after 是因为运行时 ftplugin 会重设 `comments`）。
+Markdown 另有 vim-table-mode（`,t` 前缀，避开 `␣t` 终端组）与 img-clip（`,p`，图片存到当前文件旁 `assets/`，不接管 `vim.paste`），均在打开 Markdown/首次命令时懒加载。
+
+文本对象由 mini.ai 统一负责：f/c/l/i 沿用 nvim-treesitter-textobjects 查询，参数 `a` 用 mini.ai 自带实现（无 parser 也可用，结果与旧查询一致）；
+下一个/上一个改为 `aN`/`aL`，保留 `al/il` 循环和 Neovim 0.12 的 `an/in` 节点选择。treesitter-textobjects 仍负责 `]m` 等移动与参数交换。
+dial.nvim 接管 `Ctrl+a/x`，按键时懒加载。
+
+输入法跟随模式（`features/ime.lua`）：离开插入、终端模式或 `/`、`?` 搜索时，若 Fcitx5 处于 Rime 就 `fcitx5-remote -c` 切回英文键盘；
+仅在 Markdown/text/gitcommit/typst/tex/codecompanion 和终端缓冲中，再次进入时按该缓冲上次状态 `-o` 恢复 Rime，代码缓冲始终保持英文。
+Rime 自身的中/英子模式不受影响。没有 `fcitx5-remote` 或图形会话（SSH、TTY、检查环境）时不注册。
 
 ## 验证边界
 

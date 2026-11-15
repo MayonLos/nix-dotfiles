@@ -14,3 +14,9 @@ __pycache__/
 
 # Local work directories stay outside Git flakes and architecture scans.
 **/.work/
+
+# In-tree cargo output for the vendored screenshot tool.
+packages/mark-shot/target/
+
+# Local CMake build output.
+/build/

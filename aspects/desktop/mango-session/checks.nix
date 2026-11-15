@@ -20,8 +20,8 @@
     palette = home.programs.noctalia.customPalettes.onedark;
   };
 
-  # Validates the generated 30px bar / Smart top-layer Dock, source patch set,
-  # native parser output, Launchpad model/manifest and tool bindings in the actual host config.
+  # Validates mangobar, fuzzel, mako, swayosd, the dormant Noctalia bar,
+  # the Smart Dock, source patches, parser output and tool bindings.
   interactive-session-config = import ./runtime-check.nix {
     inherit pkgs home;
     host = nixos;

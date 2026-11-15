@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
 
 let
   # Selection sync between Xwayland and Wayland does not happen on this host,
@@ -216,28 +216,85 @@ let
   };
 
   mkGraphicalService = import ../../../lib/service.nix;
-in
-{
-  home.packages = [ clipboardBridge ];
-
-  systemd.user.services.clipboard-bridge = mkGraphicalService {
-    target = "mango-session.target";
-    unit = {
+  # Super+V. fuzzel's ini themes --dmenu as well. Cancel and an empty line
+  # leave the clipboard alone. The cliphist database stays at its default
+  # cache path and is not deleted.
+  clipboardHistory = pkgs.writeShellApplication {
+    name = "clipboard-history";
+    runtimeInputs = [
+      pkgs.cliphist
+      pkgs.fuzzel
+      pkgs.wl-clipboard
+    ];
+    text = ''
+      set -euo pipefail
+      selection="$(cliphist list | fuzzel --dmenu)" || exit 0
+      if [ -z "$selection" ]; then
+        exit 0
+      fi
+      printf '%s\n' "$selection" | cliphist decode | wl-copy
+    '';
+  };
+  sessionService = {
+    Unit = {
       StartLimitIntervalSec = 60;
       StartLimitBurst = 3;
     };
-    description = "Clipboard bridge between Wayland and X11 (the compositor does not sync selections)";
-    service = {
-      Type = "simple";
-      # Mango's C startup imports dynamic DISPLAY/WAYLAND environment before
-      # requesting its session target; HM autostart supplies an additional sync.
-      # Verify actual manager values on cold login, rather than assuming ordering.
-      ExecStart = "${clipboardBridge}/bin/clipboard-bridge bridge";
-      # `wait` in bridge() returns as soon as the first watcher exits, so the
-      # service can end with status 0 while the clipboard is no longer bridged.
-      # on-failure would leave that dead; always brings it back.
-      Restart = "always";
+    Service = {
+      # force: cliphist and wl-clip-persist restart only on failure; a clean exit still drops history.
+      Restart = lib.mkForce "always";
       RestartSec = 2;
+    };
+  };
+in
+{
+  home.packages = [
+    clipboardBridge
+    clipboardHistory
+  ];
+
+  services = {
+    cliphist = {
+      enable = true;
+      allowImages = true;
+      systemdTargets = [ "mango-session.target" ];
+    };
+
+    wl-clip-persist = {
+      enable = true;
+      clipboardType = "regular";
+      extraOptions = [
+        "--reconnect-tries"
+        "0"
+      ];
+      systemdTargets = [ "mango-session.target" ];
+    };
+  };
+
+  systemd.user.services = {
+    cliphist = sessionService;
+    cliphist-images = sessionService;
+    wl-clip-persist = sessionService;
+
+    clipboard-bridge = mkGraphicalService {
+      target = "mango-session.target";
+      unit = {
+        StartLimitIntervalSec = 60;
+        StartLimitBurst = 3;
+      };
+      description = "Clipboard bridge between Wayland and X11 (the compositor does not sync selections)";
+      service = {
+        Type = "simple";
+        # Mango's C startup imports dynamic DISPLAY/WAYLAND environment before
+        # requesting its session target; HM autostart supplies an additional sync.
+        # Verify actual manager values on cold login, rather than assuming ordering.
+        ExecStart = "${clipboardBridge}/bin/clipboard-bridge bridge";
+        # `wait` in bridge() returns as soon as the first watcher exits, so the
+        # service can end with status 0 while the clipboard is no longer bridged.
+        # on-failure would leave that dead; always brings it back.
+        Restart = "always";
+        RestartSec = 2;
+      };
     };
   };
 }

@@ -46,15 +46,48 @@ let
         "fcitx5-daemon"
         "clipboard-bridge"
         "xrdb-merge"
+        "mangobar"
+        "mako"
+        "swayosd"
+        "cliphist"
+        "cliphist-images"
+        "wl-clip-persist"
       ] home.systemd.user.services;
+      mangobar = home.services.mangobar.settings;
+      mangobarStyle = home.xdg.configFile."mangobar/style.css".text;
+      fuzzel = home.programs.fuzzel.settings;
+      mako = home.services.mako.settings;
+      # Store path, read by the checker after the package is built.
+      makoPackage = "${home.services.mako.package}";
+      makoDbusService = home.xdg.dataFile."dbus-1/services/org.freedesktop.Notifications.service".text;
+      swayosd = {
+        topMargin = home.services.swayosd.topMargin;
+        # A store path, read by the checker after the stylesheet is built.
+        # readFile here would import the derivation during evaluation.
+        style = "${home.services.swayosd.stylePath}";
+      };
+      swayosdConfig = home.xdg.configFile."swayosd/config.toml".text;
+      swayosdBackend = {
+        wantedBy = host.systemd.services.swayosd-libinput-backend.wantedBy;
+        execStart = host.systemd.services.swayosd-libinput-backend.serviceConfig.ExecStart;
+        restart = host.systemd.services.swayosd-libinput-backend.serviceConfig.Restart;
+      };
+      swayosdSystemBusPolicy = builtins.any
+        (pkg: (pkg.pname or "") == "swayosd")
+        host.services.dbus.packages;
+      swayosdPolkit = host.security.polkit.extraConfig;
+      videoGroup = builtins.elem "video" host.users.users.mayon.extraGroups;
+      swayosdUdev = builtins.any (pkg: (pkg.pname or "") == "swayosd") host.services.udev.packages;
       environment = home.systemd.user.sessionVariables;
       shellEnvironment = home.home.sessionVariables;
       fcitxClassicUI = home.i18n.inputMethod.fcitx5.settings.addons.classicui.globalSection;
-      acpEnvironment = {
-        NVIM_CLAUDE_ACP = "${pkgs.local.claude-agent-acp}/bin/claude-agent-acp";
-      };
       sharedTargets = home.nixDotfiles.graphicalSessionTargets;
-      greeter = host.services.displayManager.noctalia-greeter.settings;
+      greeter = {
+        command = host.services.greetd.settings.default_session.command;
+        environments = host.environment.etc."greetd/environments".text;
+        css = host.environment.etc."greetd/gtkgreet.css".text;
+        sway = host.environment.etc."greetd/sway.conf".text;
+      };
       boot = {
         inherit (host.boot) kernelParams;
         inherit (host.boot.loader) timeout;
@@ -398,6 +431,12 @@ pkgs.runCommand "interactive-session-config"
                 root = root[key]
             assert root == value, (keys, root, value)
     for root in (settings, generated):
+        assert root["bar"]["main"]["enabled"] is False
+        assert root["shell"]["clipboard_enabled"] is False
+        assert root["notification"]["enable_daemon"] is False
+        assert root["osd"]["enabled"] is False
+        corner = root["hot_corners"]["bottom_left"]
+        assert corner["action"] == "command" and str(corner["command"]).endswith("/bin/fuzzel")
         bar = root["bar"]["main"]
         assert bar["start"] == ["launcher", "active_window", "workspaces"]
         assert bar["center"] == []
@@ -428,7 +467,6 @@ pkgs.runCommand "interactive-session-config"
         assert Path(entry.split("=", 1)[1]).is_file(), entry
     assert p["dark"]["mOutline"] == m["palette"]["border"]
     assert abs(settings["shell"]["corner_radius_scale"] - 4 / 3) < 1e-6
-    assert settings["shell"]["corner_radius_scale"] == m["greeter"]["appearance"]["corner_radius_scale"]
     mango = m["mango"]
     # All 12 title_message_bar options must reach config.conf with the palette
     # mapping, not just be accepted by a parser that tolerates defaults.
@@ -464,10 +502,31 @@ pkgs.runCommand "interactive-session-config"
     assert mango["layer_rule"][3] == "layer_name:^noctalia-plugin:nix-dotfiles/launchpad:drawer$,no_blur:0,no_animation:1,no_shadow:1"
     assert mango["layer_rule"][4] == "layer_name:^noctalia-(panel|attached-panel|osd)$,no_animation:1,no_blur:0,no_shadow:1"
     assert mango["layer_rule"][5] == "layer_name:^noctalia-notification$,no_animation:1,no_blur:1,no_shadow:1"
-    assert mango["zoom_initial_ratio"] == 0.985
+    assert mango["layer_rule"][-3:] == [
+        "layer_name:^mangobar$,no_blur:1,no_animation:1,no_shadow:1",
+        "layer_name:^notifications$,no_animation:1,no_blur:1,no_shadow:1",
+        "layer_name:^swayosd$,no_animation:1,no_blur:1,no_shadow:1",
+    ]
+    assert mango["zoom_initial_ratio"] == 0.92 and mango["zoom_end_ratio"] == 0.92
+    assert mango["fade_in_begin_opacity"] == 0 and mango["fade_out_begin_opacity"] == 1
+    assert mango["animation_type_open"] == mango["animation_type_close"] == "zoom"
     assert "tech-osd-segments.patch" not in patches
     assert "SUPER,A,spawn,noctalia msg plugin nix-dotfiles/launchpad:control all toggle" in mango["bind"]
-    assert "ALT,space,spawn,noctalia msg panel-toggle launcher" in mango["bind"]
+    assert "ALT,space,spawn,fuzzel" in mango["bind"]
+    assert "SUPER,V,spawn,clipboard-history" in mango["bind"]
+    hardware = mango["key_mode"]["common"]["bindl"]
+    assert "NONE,XF86AudioRaiseVolume,spawn,swayosd-client --output-volume raise" in hardware
+    assert "NONE,XF86AudioLowerVolume,spawn,swayosd-client --output-volume lower" in hardware
+    assert "NONE,XF86AudioMute,spawn,swayosd-client --output-volume mute-toggle" in hardware
+    assert "NONE,XF86MonBrightnessUp,spawn,swayosd-client --brightness raise" in hardware
+    assert "NONE,XF86MonBrightnessDown,spawn,swayosd-client --brightness lower" in hardware
+    assert "NONE,XF86AudioMicMute,spawn,noctalia msg mic-mute" in hardware
+    assert not any("panel-toggle launcher" in binding or "panel-toggle clipboard" in binding for binding in mango["bind"])
+    assert not any(
+        token in binding
+        for binding in list(mango["bind"]) + list(hardware)
+        for token in ("volume-up", "volume-down", "volume-mute", "brightness-up", "brightness-down")
+    )
     assert "ALT,Tab,spawn,noctalia msg window-switcher hold" in mango["bind"]
     assert "force_tearing:0,no_blur:1,app_id:.*" in mango["window_rule"]
     assert mango["window_rule"][-1] == "no_blur:0,app_id:^dev[.]noctalia[.]Noctalia$"
@@ -484,21 +543,28 @@ pkgs.runCommand "interactive-session-config"
     assert not any("XF86Assistant" in binding for binding in mango["bind"])
     assert "SUPER,R,setkeymode,resize" in mango["bind"]
     assert not settings["shell"]["panel"]["shadow"] and not settings["bar"]["main"]["shadow"]
-    assert mango["border_px"] == 1 and mango["border_radius"] == 16
+    assert mango["border_px"] == 2 and mango["border_radius"] == 16
+    assert mango["border_color"] == "0x" + m["palette"]["border"].removeprefix("#") + "ff"
     assert mango["focus_color"] == "0x" + m["palette"]["blue"].removeprefix("#") + "ff"
-    assert mango["gap_inner_horizontal"] == mango["gap_inner_vertical"] == 8
-    assert mango["gap_outer_horizontal"] == mango["gap_outer_vertical"] == 12
-    assert mango["overview_gap_inner"] == 16 and mango["overview_gap_outer"] == 32
-    assert mango["shadows_position_x"] == 0 and mango["shadows_position_y"] == 6
-    assert mango["shadows_color"] == "0x" + m["palette"]["black"].removeprefix("#") + "52"
+    assert mango["gap_inner_horizontal"] == mango["gap_inner_vertical"] == 10
+    assert mango["gap_outer_horizontal"] == mango["gap_outer_vertical"] == 16
+    # One window keeps the same gap/border/radius as several windows; only
+    # monocle (a full-screen stack) drops its frame.
+    assert mango["smart_gaps"] == mango["no_border_when_single"] == mango["no_radius_when_single"] == 0
+    assert mango["monocle_no_border"] == mango["monocle_no_gap"] == mango["monocle_no_radius"] == 1
+    assert mango["overview_gap_inner"] == 12 and mango["overview_gap_outer"] == 24
+    assert mango["overcircle_center_ratio"] == 0.68
+    assert mango["shadows_position_x"] == 0 and mango["shadows_position_y"] == 10
+    assert mango["shadows_size"] == 18 and mango["shadows_blur"] == 32
+    assert mango["shadows_color"] == "0x" + m["palette"]["black"].removeprefix("#") + "66"
     assert mango["shadow_only_floating"] == 1 and "focused_shadows_color" not in mango
     assert mango["dim_enable"] == 1
     assert mango["dim_focused_color"] == "0x" + m["palette"]["black"].removeprefix("#") + "00"
-    assert mango["dim_unfocused_color"] == "0x" + m["palette"]["black"].removeprefix("#") + "10"
+    assert mango["dim_unfocused_color"] == "0x" + m["palette"]["black"].removeprefix("#") + "18"
     assert mango["focus_on_activate"] == 0
     assert mango["allow_tearing"] == 2
     assert mango["animations"] == (0 if m["palette"]["reducedMotion"] else 1)
-    for event, duration in {"open": 190, "close": 150, "move": 200, "tag": 190, "focus": 0}.items():
+    for event, duration in {"open": 220, "close": 180, "move": 180, "tag": 280, "focus": 120}.items():
         assert mango["animation_duration_" + event] == duration
         assert mango["animation_curve_" + event] == "0.16,1.0,0.3,1.0"
     assert m["fcitxClassicUI"]["PreferTextIcon"] == "True"
@@ -545,7 +611,9 @@ pkgs.runCommand "interactive-session-config"
     assert sorted(path.name for path in managed_source.iterdir()) == expected_names
     assert all(path.is_symlink() and path.is_file() for path in managed_source.iterdir())
     assert Path(wallpaper["default"]["path"]).resolve() == Path(m["wallpaperFactoryDefault"]).resolve()
-    assert Path(m["greeter"]["appearance"]["wallpaper"]["path"]).is_file()
+    greeter_wallpaper = re.search(r'url\("file://(/nix/store/[^"]+)"\)', m["greeter"]["css"])
+    assert greeter_wallpaper and Path(greeter_wallpaper.group(1)).is_file()
+    assert "background-size: cover" in m["greeter"]["css"]
     assert all(Path(asset["path"]).is_file() for asset in m["wallpaperAssets"])
     activation = m["wallpaperActivation"]
     local_path = str(wallpaper_root / "local")
@@ -595,8 +663,77 @@ pkgs.runCommand "interactive-session-config"
     assert settings["lockscreen"]["blur_intensity"] == 0.75
     assert settings["lockscreen"]["lock_before_suspend"]
     assert "XDG_SESSION_ID" in m["mangoSessionVariables"]
+    bar = m["mangobar"]
+    assert bar["height"] == 30 and bar["layer"] == "top"
+    assert "buffer-scale" not in bar and "keyboardlayout" not in bar
+    assert bar["modules-left"] == ["layout", "workspaces"]
+    assert bar["modules-center"] == ["window"]
+    assert bar["modules-right"] == ["tray", "network", "custom/bluetooth", "battery", "clock"]
+    assert bar["window"]["max-length"] == 300 and "on-click" not in bar["window"]
+    assert bar["clock"]["format"] == "{:L%m月%d日 周%a %H:%M}"
+    assert bar["network"]["format-wifi"] == "{signal}"
+    assert ord(bar["network"]["icon-wifi"]) == 0xF05A9
+    assert bar["battery"]["on-click"] == "legion-conservation toggle"
+    assert bar["battery"]["hide-on-ac"] is False
+    assert bar["custom/bluetooth"]["interval"] == 5
+    assert "mangobar-bluetooth" in bar["custom/bluetooth"]["exec"]
+    style = m["mangobarStyle"]
+    assert 'font-family: "Maple Mono NF CN"' in style
+    assert "font-weight: Medium" in style
+    assert "text-decoration" not in style and "underline" not in style
+    assert "background: none" in style and "border-radius: 0" in style
+    assert "#tags.active" in style
+    assert m["palette"]["blue"] in style
+    # Fully transparent bar: no palette background fill (and no blur opt-in).
+    assert (m["palette"]["bg"] + "9e") not in style
+    assert "background: none" in style
+    assert "margin: 0;" in style
+    fuzzel = m["fuzzel"]
+    assert fuzzel["main"]["font"] == m["palette"]["fonts"]["sans"] + ":size=14"
+    assert fuzzel["main"]["icon-theme"] == m["palette"]["iconTheme"]
+    assert fuzzel["main"]["width"] == 60 and fuzzel["main"]["anchor"] == "center"
+    assert fuzzel["main"]["lines"] == 8
+    assert fuzzel["main"]["horizontal-pad"] == 20 and fuzzel["main"]["vertical-pad"] == 10
+    assert fuzzel["main"]["line-height"] == 22
+    assert fuzzel["colors"]["background"] == m["palette"]["surface"].removeprefix("#") + "ff"
+    assert fuzzel["border"]["width"] == 1
+    mako = m["mako"]
+    assert not (
+        Path(m["makoPackage"]) / "share/dbus-1/services/fr.emersion.mako.service"
+    ).exists()
+    mako_dbus = m["makoDbusService"]
+    assert "Name=org.freedesktop.Notifications" in mako_dbus
+    assert "SystemdService=mako.service" in mako_dbus
+    assert mako["anchor"] == "top-right" and mako["width"] == 360
+    assert mako["background-color"] == m["palette"]["surface"]
+    assert mako["outer-margin"] == "42,28,0,0" and mako["margin"] == "0,0,8,0"
+    assert mako["max-visible"] == 3 and mako["border-size"] == 1
+    on_notify = mako["on-notify"]
+    assert on_notify.startswith("exec ")
+    assert "/bin/pw-play" in on_notify
+    assert "message-new-instant.oga" in on_notify
+    logical = 1600 / 1.5
+    assert abs(m["swayosd"]["topMargin"] - ((logical - 96 - 26) / logical)) < 1e-6
+    swayosd_style = Path(m["swayosd"]["style"]).read_text()
+    assert "border-radius: 999px" in swayosd_style
+    assert m["palette"]["surface"] in swayosd_style
+    assert "show_percentage = true" in m["swayosdConfig"]
+    # Lock-key OSD comes from the root libinput backend, not key bindings.
+    backend = m["swayosdBackend"]
+    assert backend["wantedBy"] == [ "multi-user.target" ]
+    assert backend["execStart"].endswith("/bin/swayosd-libinput-backend")
+    assert backend["restart"] == "always"
+    assert m["swayosdSystemBusPolicy"]
+    assert "org.erikreider.swayosd-libinput-backend" in m["swayosdPolkit"]
+    assert "margin: 8px 14px" in swayosd_style
+    assert "font-size: 13px" in swayosd_style
+    assert "min-height: 4px" in swayosd_style
+    # swayosd 0.3.1's config parser rejects unknown keys and panics, so the
+    # config must not carry keys its schema does not know.
+    assert "duration" not in m["swayosdConfig"]
+    assert m["videoGroup"] and m["swayosdUdev"]
     assert widgets["lockscreen-login-box@eDP-1"]["settings"]["background_opacity"] == 0.0
-    assert m["greeter"]["appearance"]["font_family"] == m["palette"]["fonts"]["sans"]
+    assert m["palette"]["fonts"]["sans"] in m["greeter"]["css"]
     assert "noctalia-firefox" in settings["theme"]["templates"]["user"]
     assert "noctalia-mango" not in settings["theme"]["templates"]["user"]
     assert settings["shell"]["launch_apps_as_systemd_services"]
@@ -605,6 +742,27 @@ pkgs.runCommand "interactive-session-config"
         assert unit["Unit"]["PartOf"] == targets, name
         assert unit["Unit"]["After"] == targets, name
         assert unit["Install"]["WantedBy"] == targets, name
+    for name in ("mangobar", "mako", "swayosd", "cliphist", "cliphist-images", "wl-clip-persist"):
+        assert name in m["units"], name
+    mangobar_unit = m["units"]["mangobar"]
+    assert mangobar_unit["Service"]["Restart"] == "on-failure"
+    assert mangobar_unit["Service"]["RestartSec"] in (2, "2")
+    assert mangobar_unit["Unit"]["StartLimitBurst"] == 3
+    assert "LC_TIME=zh_CN.UTF-8" in mangobar_unit["Service"]["Environment"]
+    mako_unit = m["units"]["mako"]
+    assert mako_unit["Service"]["Type"] == "dbus"
+    assert mako_unit["Service"]["BusName"] == "org.freedesktop.Notifications"
+    assert mako_unit["Service"]["Restart"] == "always"
+    def command(value):
+        return "\n".join(value) if isinstance(value, list) else str(value)
+    swayosd_exec = command(m["units"]["swayosd"]["Service"]["ExecStart"])
+    assert "swayosd-libinput" not in swayosd_exec
+    assert "--top-margin" in swayosd_exec
+    assert m["units"]["swayosd"]["Unit"]["StartLimitBurst"] == 3
+    assert m["units"]["cliphist"]["Service"]["Restart"] == "always"
+    assert m["units"]["cliphist-images"]["Service"]["Restart"] == "always"
+    assert "--reconnect-tries 0" in command(m["units"]["wl-clip-persist"]["Service"]["ExecStart"])
+    assert m["units"]["wl-clip-persist"]["Service"]["Restart"] == "always"
     noctalia = m["units"]["noctalia"]
     assert noctalia["Service"]["Restart"] == "on-failure"
     assert noctalia["Unit"]["StartLimitBurst"] == 3
@@ -612,12 +770,18 @@ pkgs.runCommand "interactive-session-config"
     assert noctalia["Service"]["UnsetEnvironment"] == ["LC_ALL"]
     env = dict(value.split("=", 1) for value in noctalia["Service"]["Environment"])
     assert env["QT_QPA_PLATFORMTHEME"] == "qt6ct" and env["XMODIFIERS"] == "@im=fcitx"
-    mango_env = dict(value.split(",", 1) for value in mango["env"])
-    for name, path in m["acpEnvironment"].items():
-        assert m["shellEnvironment"][name] == m["environment"][name] == env[name] == mango_env[name] == path
-        assert path.startswith("/nix/store/") and os.access(path, os.X_OK), (name, path)
     assert not any("KEY" in key or "TOKEN" in key or "SECRET" in key for key in env)
-    assert m["greeter"]["appearance"]["palette"]["surface"] == m["palette"]["bg"]
-    assert m["greeter"]["output"]["scales"] == "eDP-1:1.5"
+    assert "NVIM_CLAUDE_ACP" not in env
+    assert "NVIM_CLAUDE_ACP" not in m["environment"]
+    assert "NVIM_CLAUDE_ACP" not in m["shellEnvironment"]
+    assert m["palette"]["bg"] in m["greeter"]["css"]
+    assert "output eDP-1 scale 1.5" in m["greeter"]["sway"]
+    session = m["greeter"]["environments"].strip()
+    assert " " not in session and len(session) < 128
+    assert session in m["greeter"]["sway"]
+    login = Path(session).read_text()
+    assert "XDG_SESSION_TYPE=wayland" in login
+    assert "XDG_CURRENT_DESKTOP=mango:wlroots" in login
+    assert "XDG_SESSION_DESKTOP=mango" in login
     PY
   ''

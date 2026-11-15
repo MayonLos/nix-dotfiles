@@ -17,9 +17,6 @@ let
   # require() with --expose-internals. Reapplying our old replacement fails
   # because upstream has already removed the native-addon expression.
   dshCli = agents.dsh;
-  acpEnvironment = {
-    NVIM_CLAUDE_ACP = "${agents.claude-agent-acp}/bin/claude-agent-acp";
-  };
 
   dshDesktop = pkgs.callPackage ./dsh-desktop.nix { dsh = dshCli; };
 
@@ -44,24 +41,20 @@ in
     dshDesktop
     dshCommand
 
-    agents.claude-agent-acp
-
-    # Claude Code's Nix-managed CLI; authentication and history stay user-owned.
-    agents.claude-code
-
     # xAI's official Grok Build coding agent. Provides both `grok` for
     # interactive sessions and `agent` for automation. Authentication is via
     # browser OAuth on first launch or XAI_API_KEY for non-browser use.
     agents.grok
+
+    # Google Antigravity desktop (command `antigravity`) and CLI (`agy`).
+    # Both are the llm-agents binaries; login stays outside Nix.
+    agents.antigravity-hub
+    agents.antigravity-cli
   ];
 
-  # Public runtime hand-off to editor consumers; only executable paths, no credentials.
-  # The standalone Neovim factory also accepts these as explicit build inputs.
-  home.sessionVariables = acpEnvironment;
-  # Mango does not source shell variables; systemd-launched desktop apps need
-  # the same static executable paths in the user manager and safe projection.
-  systemd.user.sessionVariables = acpEnvironment;
-
+  # NOT here: `agents.claude-code` / `agents.claude-agent-acp`. Removed
+  # 2026-11-15 at the user's instruction; ~/.claude and the CLI cache were deleted.
+  #
   # NOT here: `agents.codex` / `agents.codex-acp`. Removed 2026-11-06 at the
   # user's instruction; ~/.codex had already been deleted.
   #

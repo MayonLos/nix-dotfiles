@@ -2,7 +2,6 @@
   pkgs,
   palette,
   contributions,
-  acpAdapters ? { },
   nixOptions ? null,
 }:
 
@@ -28,7 +27,6 @@ let
       tools = debugTools.tools // {
         copilot = "${pkgs.copilot-language-server}/bin/copilot-language-server";
         sqlite3 = "${pkgs.lib.getLib pkgs.sqlite}/lib/libsqlite3.so";
-        claude_acp = acpAdapters.claude or "";
       };
       versions = debugTools.versions // {
         codecompanion = pkgs.unstable.codecompanion-nvim.version;

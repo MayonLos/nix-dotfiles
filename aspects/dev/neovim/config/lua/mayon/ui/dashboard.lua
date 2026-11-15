@@ -125,7 +125,6 @@ local actions = {
 local hidden_actions = {
 	{ key = "r", action = ":lua Snacks.picker.recent()" },
 	{ key = "p", action = ":lua Snacks.picker.projects()" },
-	{ key = "a", action = ":ClaudeCode" },
 	{
 		key = "s",
 		action = function()

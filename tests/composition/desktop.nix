@@ -233,11 +233,9 @@ let
       && !((host sharedHost "hostB").programs.mango.enable or false);
 
     desktopDoesNotSelectLoginScreen =
-      !(selectedHost.services.displayManager.noctalia-greeter.enable or false)
-      && !((host sharedHost "hostA").services.displayManager.noctalia-greeter.enable or false)
-      && !((host afterLastConsumerRemoved "hostA").services.displayManager.noctalia-greeter.enable
-        or false
-      );
+      !(selectedHost.services.greetd.enable or false)
+      && !((host sharedHost "hostA").services.greetd.enable or false)
+      && !((host afterLastConsumerRemoved "hostA").services.greetd.enable or false);
 
     unselectedHostHasNoSecretProxyOrDeviceAuthorization =
       !(unselectedHost ? sops)

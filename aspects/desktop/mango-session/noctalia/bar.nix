@@ -1,6 +1,9 @@
 { palette }:
 {
   bar.main = {
+    # mangobar draws the live bar. Keep this block for Dock and the dormant
+    # widget contract; enabled = false removes the Noctalia bar layer.
+    enabled = false;
     position = "top";
     thickness = 30;
     reserve_space = true;

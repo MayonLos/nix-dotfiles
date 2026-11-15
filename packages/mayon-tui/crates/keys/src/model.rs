@@ -388,14 +388,14 @@ fn describe_spawn(args: &[String], binding: &Binding) -> String {
     if lower.contains("wallpaper-random") {
         return "随机更换壁纸".into();
     }
+    if lower.contains("mark-shot --scroll") {
+        return "滚动截图".into();
+    }
     if lower.contains("mark-shot") {
         return "区域截图".into();
     }
     if lower.contains("screenshot-screen") {
         return "截图并复制全屏".into();
-    }
-    if lower.contains("wayscrollshot") {
-        return "滚动截图".into();
     }
     if lower.contains("ocr-region") {
         return "识别选区文字".into();

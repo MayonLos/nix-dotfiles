@@ -80,6 +80,16 @@ git show history-archive-2026-11-06 --stat -- docs/history   # 列出全部原�
 | 2026-11-06 | MC 中转：Lighthouse（Debian）部署静态 frps 0.66.0（`pkgsStatic.frp`，TLS 强制、只放行 25565、令牌经 `LoadCredential`），nftables 放行 7000/25565 并启用开机加载；笔记本新增 `game-tunnel` feature（按需 frpc 用户服务，令牌为 sops `frp-token`）。Clash baseline 加 `route-exclude-address` 与 fake-ip 过滤让中转直连。端到端测试卡在腾讯云控制台防火墙（7000/25565/22000 均被拦，仅 22 通） | 构建 + 服务器实机；端到端未通 |
 | 2026-11-06 | 用户在腾讯云控制台放行 TCP 7000/25565（22000 按用户决定不放行）。端到端实测：frpc 登录成功，公网 `mayonlos.cloud:25565` 经 frps 到本机 127.0.0.1:25565 测试服务，60 ms 收到回包；笔记本到服务器 RTT 约 18 ms。笔记本侧配置尚未应用（需 `nr` 生成 `/run/secrets/frp-token`） | 实机（临时令牌文件） |
 | 2026-11-06 | 用户决定改用樱花内网穿透，撤销自建中转：删除 `game-tunnel` feature 与 sops `frp-token`；服务器停用并删除 frps（服务、二进制、`/etc/frp`），nftables 恢复为只开 22/22000（保留开机加载）。笔记本 Clash baseline 的服务器直连例外保留 | 实机 |
+| 2026-11-09 | 新增 `chrome` feature：stable `google-chrome` 156 + `--wayland-text-input-version=3`；一次性写入 profile（深色灰阶、竖排标签）与 Local State（关闭后台运行、Memory Saver）；Mango 浏览器规则加入 `google-chrome`。私有无头 sway 中实测：推荐策略会显示“由组织管理”且 `BrowserThemeColor` 推荐级无效，GTK 主题模式渲染为浅色，均未采用 | 构建 + 隔离运行 |
+| 2026-11-15 | 用户决定移除 Claude Code 与 Google Chrome：配置不再安装 `claude`、`claude-agent-acp` 与 `google-chrome`，Neovim 不再提供 Claude 面板；本机 Claude 与 Chrome 数据目录已删除 | 配置 |
+| 2026-11-15 | 安装 Google Antigravity：`antigravity` 2.32.1 与 `agy` 1.5.9，来自 llm-agents。`nix flake update` 后 Noctalia shell 仍停在 `e439042`（本地补丁打不上 `3e17932`），mark-shot 仍停在 `9dcc564`（上游 main 已没有 `flake.nix`）。系统切换到 `26.05.20261113.f1e5c35` | 应用 |
+| 2026-11-15 | 删除 wayscrollshot。把 mark-shot Rust `main` `4cf89101` 放进 `packages/mark-shot`，用 nixpkgs-unstable 的 rustc 1.99.1 构建出 `mark-shot-0.2.0`。窗口矩形改为程序内查询 `mmsg`，`Shift+Print` 改为 `mark-shot --scroll`。运行系统仍是 `26.05.20261113.f1e5c35` | 构建 |
+| 2026-11-15 | 登录屏从 Noctalia Greeter 换成 gtkgreet 0.8。外层用 sway 把 `eDP-1` 设为 1.5，因为 cage 0.3.0 不能按输出设缩放。登录命令是不超过 127 字节的 `mango-login`。72px 时钟、中文日期和头像留在锁屏。去掉 flake 输入 `noctalia-greeter`。运行系统仍是 `26.05.20261113.f1e5c35` | 构建 |
+| 2026-11-15 | 顶栏改为 mangobar，搜索改为 fuzzel，通知改为 mako，音量/亮度 OSD 改为 swayosd。剪贴板历史改为 cliphist + wl-clip-persist，X11 桥保留。Noctalia 的 bar、通知 daemon、OSD 和 clipboard 关闭，Dock、锁屏和 Launchpad 保留。mangobar 只有一种字体，活动工作区用蓝色数字。运行系统仍是 `26.05.20261113.f1e5c35` | 构建 |
+| 2026-11-15 | 重做 Mango 窗口和动画：2 px 描边，单窗口与 monocle 贴边，多窗口间距 10/16，开合 zoom 0.92，工作区横向滑入 280 ms，焦点 120 ms 过渡描边和 dim。运行系统仍是 `26.05.20261113.f1e5c35` | 构建 |
+| 2026-11-15 | 修 system-28 激活后的失败项：swayosd 配置去掉 0.3.1 不识别的 `duration`；mako 包不再安装命名不符的 D-Bus 文件，改由 HM 写入 `org.freedesktop.Notifications.service` 并带 `SystemdService=mako.service`。mangobar 样式改成显式清除默认 pill/radius 的平铺布局，活动工作区仍是蓝色数字；fuzzel 间距/行数微调。实机（不切换 generation）验证：swayosd-server 不再 panic，顶栏样式通过环境覆盖渲染成功 | 构建 + 实机片段 |
+| 2026-11-15 | mark-shot 0.2.0 修分数缩放覆盖层：Mango 给的 layer configure 尺寸 1706×1066×1.5 = 2559×1599，而截图帧按 1707×1067 取整为 2561×1601，旧代码直接报 “the native frame does not match the configured buffer”，`Print` 框选完全打不开。覆盖层现在按交付字节数反推真实像素网格并重配 shm 缓冲，viewport destination 保持逻辑尺寸。真实会话里框选覆盖层已能正常显示 | 实机 |
+| 2026-11-15 | 登录屏：gtkgreet 单会话时隐藏命令选择器（补丁打在被锁定的 gtkgreet 0.8 上），不再把 `/nix/store/...-mango-login` 显示在登录卡里；登录卡/输入框/按钮样式加圆角和蓝色主按钮。Launchpad 插件重写：拆出 `page.luau`/`layout.luau`，响应式 4–7 列、胶囊搜索框、分类 chip、分页胶囊、空状态分区，交互与 IPC 语义保持不变 | 构建 + 静态检查 |
 
 ## 被取代的规范全文
 

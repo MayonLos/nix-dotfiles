@@ -33,6 +33,7 @@ function M.setup()
 		require("mayon.features.urls").pick_buffer()
 	end, { desc = "Pick URL from Buffer" })
 	require("mayon.features.scratch").setup()
+	require("mayon.features.ime").setup()
 	-- Formula handling is only initialized in relevant documents.
 	vim.api.nvim_create_autocmd("FileType", {
 		pattern = { "markdown", "tex", "latex", "typst", "codecompanion" },

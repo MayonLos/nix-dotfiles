@@ -1,17 +1,33 @@
---- a/pkg/gui/gui.go
-+++ b/pkg/gui/gui.go
-@@ -1166,7 +1166,7 @@
- 	gui.g.FgColor = theme.InactiveBorderColor
- 	gui.g.SelFgColor = theme.ActiveBorderColor
- 	gui.g.FrameColor = theme.InactiveBorderColor
--	gui.g.SelFrameColor = theme.ActiveBorderColor
-+	gui.g.SelFrameColor = theme.InactiveBorderColor
- }
+--- a/pkg/gocui/gui.go
++++ b/pkg/gocui/gui.go
+@@ -1475,6 +1475,10 @@
  
- func (gui *Gui) onUIThread(f func() error) {
+ // drawTitle draws the title of the view.
+ func (g *Gui) drawTitle(v *View, fgColor, bgColor Attribute) {
++	// Titles remain readable while the frame edges stay low contrast.
++	if v != g.currentView {
++		fgColor = v.FgColor
++	}
+ 	if v.y0 < 0 || v.y0 >= g.maxY {
+ 		return
+ 	}
+@@ -1530,9 +1534,10 @@
+ 		}
+ 
+ 		if i >= currentTabStart && i <= currentTabEnd && g.IsFocused() {
+-			currentFgColor = v.SelFgColor
+-			if v != g.currentView {
+-				currentFgColor &= ^AttrBold
++			if v == g.currentView {
++				currentFgColor = v.SelFgColor
++			} else {
++				currentFgColor = v.FgColor & ^AttrBold
+ 			}
+ 		}
+ 		g.SetRune(x, v.y0, ch, currentFgColor, currentBgColor)
 --- a/pkg/gui/controllers/helpers/search_helper.go
 +++ b/pkg/gui/controllers/helpers/search_helper.go
-@@ -319,10 +319,10 @@
+@@ -325,10 +325,10 @@
  
  func (self *SearchHelper) setSearchingFrameColor() {
  	self.c.GocuiGui().SelFgColor = theme.SearchingActiveBorderColor
@@ -22,33 +38,16 @@
  func (self *SearchHelper) setNonSearchingFrameColor() {
  	self.c.GocuiGui().SelFgColor = theme.ActiveBorderColor
 -	self.c.GocuiGui().SelFrameColor = theme.ActiveBorderColor
--}
 +	self.c.GocuiGui().SelFrameColor = theme.InactiveBorderColor
-+}
---- a/vendor/github.com/jesseduffield/gocui/gui.go
-+++ b/vendor/github.com/jesseduffield/gocui/gui.go
-@@ -1080,6 +1080,10 @@
+ }
+--- a/pkg/gui/gui.go
++++ b/pkg/gui/gui.go
+@@ -1286,7 +1286,7 @@
+ 	gui.g.FgColor = theme.InactiveBorderColor
+ 	gui.g.SelFgColor = theme.ActiveBorderColor
+ 	gui.g.FrameColor = theme.InactiveBorderColor
+-	gui.g.SelFrameColor = theme.ActiveBorderColor
++	gui.g.SelFrameColor = theme.InactiveBorderColor
  
- // drawTitle draws the title of the view.
- func (g *Gui) drawTitle(v *View, fgColor, bgColor Attribute) error {
-+	// Titles remain readable while the frame edges stay low contrast.
-+	if v != g.currentView {
-+		fgColor = v.FgColor
-+	}
- 	if v.y0 < 0 || v.y0 >= g.maxY {
- 		return nil
- 	}
-@@ -1137,9 +1141,10 @@
- 		}
- 
- 		if i >= currentTabStart && i <= currentTabEnd {
--			currentFgColor = v.SelFgColor
--			if v != g.currentView {
--				currentFgColor &= ^AttrBold
-+			if v == g.currentView {
-+				currentFgColor = v.SelFgColor
-+			} else {
-+				currentFgColor = v.FgColor & ^AttrBold
- 			}
- 		}
- 		if err := g.SetRune(x, v.y0, ch, currentFgColor, currentBgColor); err != nil {
+ 	gui.applyTerminalBackground()
+ }

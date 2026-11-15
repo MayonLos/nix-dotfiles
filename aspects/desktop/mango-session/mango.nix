@@ -156,60 +156,83 @@ in
       layer_animations = 0;
       shadows = 1;
       layer_shadows = 0;
-      # Only floating windows need elevation; focus is the native 1 px blue border.
+      # Tiled windows use the border. Floating windows get a soft drop so
+      # dialogs lift off the tiled surface. Layer shadows stay off: combined
+      # with layer blur they leave an opaque fringe.
       shadow_only_floating = 1;
-      shadows_size = 10;
-      shadows_blur = 20;
+      shadows_size = 18;
+      shadows_blur = 32;
       shadows_position_x = 0;
-      shadows_position_y = 6;
-      shadows_color = alphaColor palette.black "52";
+      shadows_position_y = 10;
+      shadows_color = alphaColor palette.black "66";
 
-      # A light native dim overlay distinguishes inactive clients without transparency.
-      # Fullscreen is exempt upstream; 0.18.3 has no per-window no_dim rule.
+      # Inactive clients dim in place. Opacity stays 1. Fullscreen is exempt
+      # upstream; this Mango has no per-window no_dim rule.
       dim_enable = 1;
       dim_focused_color = alphaColor palette.black "00";
-      dim_unfocused_color = alphaColor palette.black "10";
+      dim_unfocused_color = alphaColor palette.black "18";
 
       # Include the fallback canvas and drag/split hints in the same palette.
       root_color = color palette.bg;
       drop_color = "0x${lib.removePrefix "#" palette.blue}80";
       split_color = color palette.cyan;
-      border_px = 1;
-      border_color = "${color palette.surface}";
+      # 2 logical px is 3 device px at scale 1.5, so the focus stroke reads.
+      # Unfocused uses the border token; focus stays blue.
+      border_px = 2;
+      border_color = "${color palette.border}";
       focus_color = "${color palette.blue}";
       urgent_color = "${color palette.red}";
       scratchpad_color = "${color palette.blue}";
       global_color = "${color palette.blue}";
       overlay_color = "${color palette.blue}";
       maximized_screen_color = "${color palette.blue}";
-      # Match Noctalia's 16px panel/Dock outer radius.
+      # Match Noctalia's 16px panel/Dock outer radius on every client, not
+      # only when several windows share the output.
       border_radius = 16;
-      gap_inner_horizontal = 8;
-      gap_inner_vertical = 8;
-      gap_outer_horizontal = 12;
-      gap_outer_vertical = 12;
+      gap_inner_horizontal = 10;
+      gap_inner_vertical = 10;
+      gap_outer_horizontal = 16;
+      gap_outer_vertical = 16;
+      # Keep the same gap, 2px border and 16px radius with a single tiled
+      # window. The old "a lone tiled window fills the usable area" set
+      # (smart_gaps plus no_border/no_radius_when_single) made one window look
+      # fullscreen and then jump to a 10/16px gap, 2px border and 16px radius
+      # as soon as a second client appeared. no_radius_when_single also
+      # squared floating clients whenever the only tiled client was that lone
+      # window, so removing all three options is what keeps floating windows
+      # consistently framed. Monocle remains an intentional full-screen
+      # stack; its own no-border/no-gap/no-radius options are separate and
+      # stay on.
       smart_gaps = 0;
       no_border_when_single = 0;
       no_radius_when_single = 0;
-      monocle_no_border = 0;
-      monocle_no_gap = 0;
+      monocle_no_border = 1;
+      monocle_no_gap = 1;
+      monocle_no_radius = 1;
 
       animations = if reducedMotion then 0 else 1;
+      # Open and close share one zoom. Tag changes slide a full output width
+      # on their own path (tag_animation_direction), not this type.
       animation_type_open = "zoom";
       animation_type_close = "zoom";
       animation_fade_in = 1;
       animation_fade_out = 1;
-      fade_in_begin_opacity = 0.5;
-      fade_out_begin_opacity = 0.5;
-      zoom_initial_ratio = 0.985;
-      zoom_end_ratio = 0.98;
-      animation_duration_move = 200;
-      animation_duration_open = 190;
-      animation_duration_tag = 190;
-      animation_duration_close = 150;
-      animation_duration_focus = 0;
-      # One ease-out curve across opens/closes/moves/tags; no overshoot.
-      # Focus still responds immediately and reducedMotion disables animations.
+      # Close opacity starts at this value and eases to 0. 1 keeps the first
+      # frame solid. Open eases from this value up to the client opacity.
+      fade_in_begin_opacity = 0;
+      fade_out_begin_opacity = 1;
+      # 0.92 is visible on a 165 Hz panel. The upstream 0.4 reads as a pop,
+      # and 0.985 does not read as motion.
+      zoom_initial_ratio = 0.92;
+      zoom_end_ratio = 0.92;
+      animation_duration_move = 180;
+      animation_duration_open = 220;
+      animation_duration_tag = 280;
+      animation_duration_close = 180;
+      # Focus duration interpolates border and dim, not a layout move.
+      # Both client opacities stay 1, so this does not fade the window.
+      animation_duration_focus = 120;
+      # One ease-out curve. No overshoot. reducedMotion disables the set.
       animation_curve_open = "0.16,1.0,0.3,1.0";
       animation_curve_move = "0.16,1.0,0.3,1.0";
       animation_curve_tag = "0.16,1.0,0.3,1.0";
@@ -245,12 +268,12 @@ in
         "id:*,layout_name:tile"
       ];
       # A larger centered preview makes titles/content readable on 1.5x DPI.
-      overcircle_center_ratio = 0.60;
+      overcircle_center_ratio = 0.68;
       jump_labels = "HJKLASDFGQWERTYUIOPZXCVBNM";
       # Preserve numbered tag navigation without wrapping at either end.
       tag_carousel = 0;
-      overview_gap_inner = 16;
-      overview_gap_outer = 32;
+      overview_gap_inner = 12;
+      overview_gap_outer = 24;
       scratchpad_width_ratio = 0.78;
       scratchpad_height_ratio = 0.78;
       single_scratchpad = 1;
@@ -273,7 +296,7 @@ in
       tab_bar_decorate_bg_color = "${color palette.deep}";
       tab_bar_decorate_focus_fg_color = "${color palette.blue}";
       tab_bar_decorate_focus_bg_color = "${color palette.selection}";
-      tab_bar_decorate_border_color = "${color palette.surface}";
+      tab_bar_decorate_border_color = "${color palette.border}";
       tab_bar_decorate_border_width = 1;
       tab_bar_decorate_corner_radius = 8;
       tab_bar_decorate_padding_x = 8;
@@ -288,7 +311,7 @@ in
       group_bar_decorate_bg_color = "${color palette.deep}";
       group_bar_decorate_focus_fg_color = "${color palette.blue}";
       group_bar_decorate_focus_bg_color = "${color palette.selection}";
-      group_bar_decorate_border_color = "${color palette.surface}";
+      group_bar_decorate_border_color = "${color palette.border}";
       group_bar_decorate_border_width = 1;
       group_bar_decorate_corner_radius = 8;
       group_bar_decorate_padding_x = 8;
@@ -298,7 +321,7 @@ in
       jump_label_decorate_bg_color = "${color palette.deep}";
       jump_label_decorate_focus_fg_color = "${color palette.blue}";
       jump_label_decorate_focus_bg_color = "${color palette.selection}";
-      jump_label_decorate_border_color = "${color palette.surface}";
+      jump_label_decorate_border_color = "${color palette.border}";
       jump_label_decorate_border_width = 1;
       jump_label_decorate_corner_radius = 8;
       jump_label_decorate_padding_x = 8;
@@ -344,7 +367,7 @@ in
       border_resize_size = 8;
       drag_tile_to_tile = 1;
       enable_floating_snap = 1;
-      snap_distance = 12;
+      snap_distance = 16;
 
       # Rules apply in order: transparent clients and unrelated layer surfaces
       # stay unblurred; the bar/Dock and selected native panels opt back in.
@@ -357,6 +380,12 @@ in
         "layer_name:^noctalia-notification$,no_animation:1,no_blur:1,no_shadow:1"
         "layer_name:^noctalia-(window-switcher|panel-click-shield)$,no_animation:1,no_blur:1,no_shadow:1"
         "layer_name:^noctalia-(screenshot-region|annotate)$,no_animation:1,no_blur:1,no_shadow:1"
+        # Appended so the earlier indices stay put. mangobar is fully
+        # transparent; blurring its layer would still frost the empty middle
+        # span. mako and swayosd are opaque; blur would grey their fill.
+        "layer_name:^mangobar$,no_blur:1,no_animation:1,no_shadow:1"
+        "layer_name:^notifications$,no_animation:1,no_blur:1,no_shadow:1"
+        "layer_name:^swayosd$,no_animation:1,no_blur:1,no_shadow:1"
       ];
 
       # Single rule owner. Keep app destinations opt-in to preserve current tags.

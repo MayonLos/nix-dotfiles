@@ -68,12 +68,12 @@ let
       rm "$out/bin/qq"
       cp ${qqLauncher} "$out/bin/qq"
 
-      # qq.desktop hardcodes the unwrapped store path, so the launcher would
-      # bypass the wrapper entirely without this.
-      rm $out/share/applications/qq.desktop
-      substitute ${pkgs.unstable.qq}/share/applications/qq.desktop \
-        $out/share/applications/qq.desktop \
-        --replace-fail "${pkgs.unstable.qq}/bin/qq" "$out/bin/qq"
+      # qq.desktop runs `Exec=qq %U`, which resolves to this wrapper on PATH.
+      # Fail if upstream returns to a store path that would bypass it.
+      if grep -q '^Exec=/' $out/share/applications/qq.desktop; then
+        echo "qq.desktop Exec bypasses the wrapper" >&2
+        exit 1
+      fi
     '';
   };
   # WeChat 4.1.13.26 bundles Qt: its non-portal IBus context requires an

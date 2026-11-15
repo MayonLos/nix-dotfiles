@@ -56,4 +56,31 @@ local function setup()
 	})
 end
 
-return { { "render-markdown.nvim", ft = { "markdown", "codecompanion" }, after = setup } }
+return {
+	{ "render-markdown.nvim", ft = { "markdown", "codecompanion" }, after = setup },
+	{
+		"img-clip.nvim",
+		cmd = "PasteImage",
+		after = function()
+			require("img-clip").setup({
+				default = {
+					-- Images live beside the note, not under the shell's cwd.
+					relative_to_current_file = true,
+					prompt_for_file_name = false,
+					-- Not wrapping vim.paste: text pastes keep their native path.
+					drag_and_drop = { enabled = false },
+				},
+			})
+		end,
+	},
+	{
+		"vim-table-mode",
+		ft = "markdown",
+		before = function()
+			vim.g.table_mode_corner = "|"
+			-- ,tm toggles; ,tr realigns. Leader t is the terminal group.
+			vim.g.table_mode_map_prefix = "<localleader>t"
+			vim.g.table_mode_disable_tableize_mappings = 1
+		end,
+	},
+}

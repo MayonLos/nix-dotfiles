@@ -11,12 +11,14 @@ checks: [desktop-composition, mango-blur-sampling, noctalia-osd-pixels, noctalia
 
 ## 组成
 
-- **顶栏**：左侧启动器、当前应用名、工作区；中间留空；右侧托盘（内联）、网络、蓝牙、电池、未读通知、控制中心、中文日期时间。状态图标正常为 brightFg，断开才灰色。
+- **顶栏**：mangobar，高 30，完全透明（无背景、不模糊）。左侧为布局符号与工作区编号；中间是窗口标题；右侧托盘、网络、蓝牙、电池百分比、中文日期时间。没有启动器、未读铃铛、控制中心、CPU、音量或亮度。整条栏只有一种字体 `Maple Mono NF CN` Medium，活动工作区是蓝色数字，没有下划线。窗口标题来自 Mango 的客户标题，布局是 `layout_symbol`，托盘里的 `en` 是 fcitx。Noctalia 的 bar 层关闭，Dock 仍由 Noctalia 绘制。
 - **Dock**：Smart，空工作区显示，有窗口收起，碰底边唤出；全屏窗口（含游戏）会盖住底边触发条，不会误触；固定 kitty、firefox、obsidian、thunar、code、qq、musicfox。
 - **插件**：只有本仓库的 Launchpad、desktop-menus、legion-conservation，不用社区插件。
-- **启动器**：`Alt+Space` 是原生应用搜索，`Super+A` 是 Launchpad。
+- **搜索**：`Alt+Space` 和左下角热角打开 fuzzel。`Super+A` 仍是 Launchpad。门户选择器保持 `chooser_type=none`。
+- **通知与 OSD**：mako 在右上，宽 360，不透明、无模糊；D-Bus 激活文件由包覆盖改成正确命名并带 `SystemdService=mako.service`，通知早到也只会拉起同一个用户单元。音量和亮度是 swayosd；麦克风静音仍走 Noctalia，媒体键仍是 playerctl。swayosd 0.3.1 对未知配置键会 panic，配置只写它认识的键。
 - **夜灯**：关闭且没有入口。
 - **壁纸**：`~/Pictures/Wallpapers/managed` 只读内置，`local/` 归用户，Noctalia 递归扫描两者。
+- **登录**：gtkgreet 0.8，外层 sway 按 host facts 设置内屏缩放，背景用 CSS `cover`。只有 Mango 一个会话，登录卡会隐藏命令选择器，不再显示 `mango-login` 的 store 路径。gtkgreet 自带 `HH:MM` 时钟。72px 时钟、中文日期和圆形头像只在 Noctalia 锁屏。细节在 [greeter README](../aspects/desktop/greeter/README.md)。
 
 ## 服务
 
@@ -27,7 +29,7 @@ loginctl show-session <id> -p LockedHint   # 必须是 no，锁屏时重启会�
 systemctl --user restart noctalia.service
 ```
 
-Mango 配置用 `mmsg dispatch reload_config` 重载。
+Mango 配置用 `mmsg dispatch reload_config` 重载。mangobar、mako、swayosd、cliphist 和 wl-clip-persist 都挂在 `mango-session.target` 上，生命周期见 [service-policy.md](service-policy.md)。
 
 ## 窗口规则
 
@@ -37,6 +39,7 @@ Mango 配置用 `mmsg dispatch reload_config` 重载。
 - 音量、蓝牙、网络控制放右上；Firefox PiP 右下置顶、不抢焦点。
 - 聊天主窗、IDE 工程、办公文档继续平铺；只有可区分标题的子窗才浮动。QQ、微信的登录窗和主窗标识可能相同，无法只靠规则区分，用 `Super+Space` 手动浮动。
 - 没有固定工作区分配。`steam_app_*` 与 Minecraft 无边框、无阴影、无圆角。
+- 一个平铺窗口或 monocle 贴住可用区域，不留边框和圆角。两个及以上窗口用 2 px 描边、16 px 圆角和 10/16 间距。开合窗口从 0.92 缩放并带透明度，工作区横向滑入，焦点在 120 ms 内过渡描边和 dim。数值在 [visual.md](visual.md)。
 
 ## 跨应用外观分工
 

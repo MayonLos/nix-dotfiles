@@ -1,0 +1,49 @@
+app-id: io.github.jswysnemc.MarkShot
+branch: stable
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+  - org.freedesktop.Sdk.Extension.llvm20
+command: mark-shot
+cleanup:
+  - /share/icons/hicolor/scalable/apps/io.github.jswysnemc.MarkShot.svg
+
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --socket=pulseaudio
+  - --device=dri
+  - --filesystem=xdg-pictures
+  - --filesystem=xdg-download
+  - --talk-name=org.freedesktop.Notifications
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --talk-name=com.canonical.AppMenu.Registrar
+  - --talk-name=org.freedesktop.portal.Desktop
+  - --talk-name=org.kde.KWin.ScreenShot2
+
+modules:
+  - name: mark-shot
+    buildsystem: simple
+    build-options:
+      # 【原生打包】【媒体摘要】构建脚本已剥离符号，避免封装时再次修改已校验的 ELF
+      no-strip: true
+      append-path: /usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm20/bin
+      env:
+        CARGO_HOME: /run/build/mark-shot/cargo-home
+        CARGO_NET_OFFLINE: 'true'
+        # 【原生打包】【沙箱工具链】SDK 提供 rustc，禁止 rustup 尝试联网安装固定版本
+        RUSTUP_TOOLCHAIN: stable
+        LIBCLANG_PATH: /usr/lib/sdk/llvm20/lib
+    build-commands:
+      - bash scripts/packaging/build_linux.sh --offline
+      - python3 scripts/packaging/install_linux.py --destination / --prefix /app --source-sha "$(cat SOURCE-COMMIT)" --licenses packaging/licenses
+      - install -Dm644 packaging/desktop/icons/128x128/io.github.jswysnemc.MarkShot.png /app/share/icons/hicolor/128x128/apps/io.github.jswysnemc.MarkShot.png
+      - install -Dm644 packaging/desktop/icons/256x256/io.github.jswysnemc.MarkShot.png /app/share/icons/hicolor/256x256/apps/io.github.jswysnemc.MarkShot.png
+    sources:
+      # 【原生打包】【离线来源】工作流将此路径替换为固定提交生成的完整源码归档
+      - type: archive
+        path: mark-shot-source.tar.xz

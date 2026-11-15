@@ -25,7 +25,7 @@ checks: [keys-mayon-bindings, desktop-composition]
 | 范围 | 入口 | 规则 |
 |---|---|---|
 | 桌面窗口与工作区 | `Super` | Mango 拥有，不占用编辑器常用的 Ctrl/Alt 字母 |
-| 桌面启动器 | `Alt+Space` | 保留现有入口；键盘、面板点击调用同一 Noctalia 功能 |
+| 桌面搜索 | `Alt+Space` | fuzzel。左下角热角调用同一个程序。`Super+A` 仍是 Launchpad |
 | 终端复用 | `Ctrl+a` 前缀，方向键跨层集成 | tmux 管 pane/window/session；`Ctrl+h/j/k/l` 移动、`Alt+h/j/k/l` 调整大小 |
 | 编辑器窗口与功能 | `Ctrl+h/j/k/l`、Space leader | smart-splits 用 pane-local `@pane-is-vim` 与 tmux 协作，编辑器边缘可移到相邻 pane |
 | shell 与 TUI | 原应用按键 | `Alt+b/f`、`Ctrl+r`、Esc 等正常到达应用 |
@@ -44,7 +44,8 @@ tmux 保留前缀窗口管理；无前缀 `Ctrl+h/j/k/l` 根据 smart-splits 维
 | 特殊工具工作区 | `Super+Shift+S` | 显示/隐藏 Tag 0，默认 scroller |
 | 停放 / 取回特殊窗口 | `Super+Ctrl+S` | 将当前窗口放入 Tag 0；在 Tag 0 使用时送回先前普通 tag，不主动跟随 |
 | 跨工作区可见 / 置顶 | `Super+Ctrl+G` / `Super+Alt+G` | 两个独立手动状态；前者限窗口所在输出，后者可能覆盖全屏窗口 |
-| 控制中心 / 剪贴板 | `Super+S` / `Super+V` | 保留 Noctalia 单一入口 |
+| 控制中心 / 剪贴板 | `Super+S` / `Super+V` | 控制中心仍是 Noctalia。`Super+V` 用 fuzzel 列出 cliphist |
+| 音量 / 亮度 | 音量键、亮度键 | `swayosd-client`。麦克风静音仍是 `noctalia msg mic-mute`。媒体键仍是 playerctl |
 | 勿扰 / 防空闲 | `Super+Alt+D` / `Super+Alt+I` | 原生 DND / caffeine；面板铃铛与咖啡状态可见 |
 | 锁屏 / 会话菜单 | `Super+Alt+L` / `Ctrl+Alt+Delete` | 菜单含有文字的退出/重启/关机确认；锁屏可直接触发 |
 | 窗口聚焦 | `Super+h/j/k/l` 或方向键 | 保留两组等价入口 |
@@ -85,16 +86,16 @@ Noctalia 设置、portal 文件选择及 Swayimg 使用相对输出尺寸；Thun
 
 | 操作 | 入口 | 保留的行为 |
 |---|---|---|
-| 区域/窗口截图与标注 | `Print` | mark-shot，保留 Mango 窗口检测适配 |
+| 区域/窗口截图与标注 | `Print` | mark-shot，窗口矩形来自 `mmsg` |
 | 当前屏幕到剪贴板 | `Ctrl+Print` | 按指针所在输出选择，不能固定 eDP-1 |
-| 滚动截图 | `Shift+Print` | wayscrollshot |
+| 滚动截图 | `Shift+Print` | `mark-shot --scroll` |
 | 区域 / 全桌面 OCR | `Super+Print` / `Super+Shift+Print` | 英文+简体中文；取消选区安静退出，失败有提示 |
 | 截图文件位置 | 应用保存动作 | 显示真实目标路径；用户已选路径不被激活脚本重置 |
 | 打开 / 看图 | MIME 默认 | Thunar；图片 Swayimg；PDF Zathura 默认、批注用 Zotero 内置阅读器；文本图形默认 VS Code，CLI 默认 Neovim |
 
 保留 Thunar 的“在此打开终端”“复制为图片”“复制路径”“粘贴剪贴板图片”“粘贴为链接”。文件 URI、路径文字、图片像素是三种不同用途，不能为了减少代码把它们合并成一种复制。迁移终端入口时保持当前文件夹作为 cwd，路径包含空格/中文/引号仍正常，不经拼接 shell 字符串。当前实现见 [文件动作](../aspects/apps/file-manager/thunar-actions.nix)、[终端入口](../aspects/apps/file-manager/thunar-terminal.nix)、[截图](../aspects/desktop/mango-session/screenshot.nix)。
 
-剪贴板历史只由 Noctalia 管理；现有 Wayland/X11 桥接不是第二个历史后端，其退出与轮询策略按 [服务设计](service-policy.md) 核验。保留 WeChat/XWayland 与原生 Wayland 间文字、图片互通。锁屏和秘密复制行为先按锁定实现验证，不声称所有密码管理器内容都会自动排除；不输出剪贴板内容到测试日志。
+剪贴板历史由 cliphist 保存，`Super+V` 经 fuzzel 选中后写回 Wayland 剪贴板。Wayland/X11 桥接不是第二个历史库，其退出与轮询策略按 [服务设计](service-policy.md) 核验。保留 WeChat/XWayland 与原生 Wayland 间文字、图片互通。旧 cliphist 数据库不删除。锁屏和秘密复制行为先按锁定实现验证，不声称所有密码管理器内容都会自动排除；不输出剪贴板内容到测试日志。
 
 ## 终端、项目与远程工作
 
@@ -167,12 +168,7 @@ Leader 为 Space（下表 `␣`），localleader 为逗号。which-key 分组为
 | `␣gD` / `gC` / `gT` | 输入提交或分支比较 / 当前文件冲突逐块解决 / 原生双目录 DiffTool |
 | `␣gs` / `gr` / `gp` | hunk 暂存（可视模式为选区）/ 还原 / 内联预览 |
 | `␣gS` / `gR` / `gq` / `gB` | 暂存整个文件 / 还原整个文件 / hunk quickfix / 远程浏览 |
-| `␣ac` / `as` | Claude 终端 / 发送可视选区到 Claude |
-| `␣aA` / `aD`；建议 buffer `,a` / `,r` | 接受 / 拒绝 Claude 当前文件提案 |
-| `␣af` | 把当前文件加入 Claude 上下文 |
-| Claude 终端内 `Ctrl+h` | 回到文档窗口（浮动面板回到上一个窗口）；Esc 仍交给 Claude |
 | `␣ad` / `ai` | DeepSeek 对话 / 内联改写（普通或可视） |
-| `␣aC` | Claude Code ACP 对话（CodeCompanion 缓冲区，可搜索/复制/存历史） |
 | `␣ae` / `at`（可视）/ `am` | 解释诊断 / 为选区写测试 / 起草提交信息 |
 | `␣ap` / `ah` | 中文 prompt library / 对话历史 |
 | `␣au` 或 `␣ua` | copilot → deepseek → off 补全切换 |
@@ -186,11 +182,16 @@ Leader 为 Space（下表 `␣`），localleader 为逗号。which-key 分组为
 | `s`；可视 `an/in`、`]n/[n`、`]N/[N` | Flash 跳转；原生 Treesitter 节点选择/导航，无 parser 时 an/in 使用 LSP selectionRange |
 | `[d ]d` / `[h ]h` / `[t ]t` / `[q ]q` | 上下诊断 / hunk / TODO / quickfix |
 | `[c`；`[m ]m [M ]M`；`[[ ]]` | 上层上下文；函数首尾；类开头 |
-| `af/if`、`ac/ic`、`aa/ia`、`al/il`、`ai/ii`（可视/操作符） | 函数、类、参数、循环、条件块文本对象 |
+| `af/if`、`ac/ic`、`aa/ia`、`al/il`、`ai/ii`（可视/操作符） | 函数、类、参数、循环、条件块文本对象（mini.ai；f/c/l/i 用 Tree-sitter） |
+| `aq/iq`、`ab/ib`、`at/it`、`aF/iF`、`ag/ig`；`aN`/`aL` 前缀；`g[` / `g]` | 任意引号、任意括号、标签、函数调用、整个缓冲；下一个 / 上一个对象；跳到对象左右边缘 |
+| `Ctrl+a` / `Ctrl+x`（普通/可视，`g` 前缀递增） | 数字、十六进制、日期、`true/false`、semver、`&&/\|\|`、`and/or`、`yes/no`、`on/off`、Markdown 标题级别（dial）；tmux 内按两次 `Ctrl+a` |
 | `␣mn/mN` / `ms/mS` / `mj/mk` | 下/上匹配加光标 / 跳过匹配 / 下/上行加光标 |
 | `␣ma` / `mt` / `mq` / `mg`；多光标层 `␣mx`、左右箭头、Esc | 所有匹配 / 光标开关 / 清空 / 动作添加；删主光标、切换、退出 |
 | `gd` / `gD` / `grt` / `gi` / `K` / `grx` | LSP 定义 / 声明 / 类型 / 实现 / 文档 / codelens |
 | `␣lh` / `ll` / `lr` | 源/头文件切换 / 诊断虚拟行 / 重启语言服务 |
+| Markdown `,x`（普通可带计数 / 可视） | 切换任务框 `[ ]`↔`[x]`；普通列表项或文本先变成 `- [ ]`；插入 Enter 续写 `- [ ] ` |
+| Markdown `,tm` / `,tr`；表格模式内 `\|` | 表格模式开关 / 重新对齐；输入 `\|` 自动对齐（vim-table-mode，前缀 `,t`） |
+| Markdown `,p` | 粘贴剪贴板图片到笔记旁 `assets/` 并插入图片标记（img-clip，`:PasteImage`） |
 | `gx`（普通/可视） | 打开光标/选区链接；`:Urls` / `:UrlsBuffer` 搜索链接 |
 | 插入 `Tab` / `Shift+Tab` | 接受整条 AI 幽灵文本 → 原生片段跳转 → 缩进；反向片段跳转或反缩进 |
 | 插入 `Ctrl+y` / `Enter`；`Ctrl+n/p`；`Ctrl+e` | 显式确认所选项（Enter 未选择则换行）；上下选择；关闭菜单 |
