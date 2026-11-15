@@ -23,8 +23,6 @@ const CACHE_LIMIT: usize = 4096;
 pub struct Glyph {
     pub metrics: fontdue::Metrics,
     pub coverage: Vec<u8>,
-    /// Which loaded font produced the glyph (0 = UI font, 1 = fallback).
-    pub font: u8,
 }
 
 pub struct Fonts {
@@ -48,16 +46,30 @@ impl Fonts {
         let primary = Font::from_bytes(primary_data, FontSettings::default())
             .map_err(|err| format!("cannot parse font {}: {}", primary_path, err))?;
 
-        // Fallbacks are best effort: without a CJK face the overlay still works
-        // for Latin text, it just draws tofu for CJK graphemes.
+        // Fallbacks are best effort: without a usable CJK face the overlay
+        // still works for Latin text, it just draws tofu for CJK graphemes.
+        //
+        // A face is only accepted when a representative CJK glyph actually
+        // rasterises to a non-empty bitmap: ttf-parser accepts variable CFF2
+        // collections like Noto Sans CJK 2.004, but fontdue cannot outline
+        // their glyphs and would silently draw nothing.
+        let mut candidates: Vec<Option<&str>> = Vec::new();
+        if fallback_override.is_some() {
+            candidates.push(fallback_override);
+        }
+        candidates.extend([None, None, None]);
+        let names = ["Noto Sans CJK SC", "Maple Mono NF CN", "Noto Sans CJK JP"];
         let mut fallback = None;
         let mut fallback_path = None;
-        for name in ["Noto Sans CJK SC", "Maple Mono NF CN", "Noto Sans CJK JP"] {
-            if let Some((path, data)) = resolve_font(name, fallback_override) {
+        for (index, name) in names.iter().enumerate() {
+            let override_path = candidates.get(index).copied().flatten();
+            if let Some((path, data)) = resolve_font(name, override_path) {
                 if let Ok(font) = Font::from_bytes(data, FontSettings::default()) {
-                    fallback = Some(font);
-                    fallback_path = Some(path);
-                    break;
+                    if rasterizes_cjk(&font) {
+                        fallback = Some(font);
+                        fallback_path = Some(path);
+                        break;
+                    }
                 }
             }
         }
@@ -92,7 +104,6 @@ impl Fonts {
                 Glyph {
                     metrics: glyph.metrics,
                     coverage: glyph.coverage.clone(),
-                    font: font_id,
                 },
                 advance,
             );
@@ -108,18 +119,10 @@ impl Fonts {
             Glyph {
                 metrics: metrics.clone(),
                 coverage: coverage.clone(),
-                font: font_id,
             },
         );
         let advance = metrics.advance_width;
-        (
-            Glyph {
-                metrics,
-                coverage,
-                font: font_id,
-            },
-            advance,
-        )
+        (Glyph { metrics, coverage }, advance)
     }
 
     pub fn text_width(&mut self, text: &str, px: f32) -> f32 {
@@ -155,6 +158,16 @@ impl Fonts {
         out.push_str(ellipsis);
         out
     }
+}
+
+/// True when the face produces actual coverage for a CJK codepoint.
+fn rasterizes_cjk(font: &Font) -> bool {
+    let index = font.lookup_glyph_index('剪');
+    if index == 0 {
+        return false;
+    }
+    let (metrics, coverage) = font.rasterize_indexed(index, 24.0);
+    metrics.width > 0 && metrics.height > 0 && coverage.iter().any(|value| *value > 0)
 }
 
 fn resolve_font(family: &str, override_path: Option<&str>) -> Option<(String, Vec<u8>)> {

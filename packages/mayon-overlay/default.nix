@@ -2,7 +2,10 @@
   pkgs,
   # Fonts are palette data (Inter / Noto Sans CJK SC); callers may override.
   inter ? pkgs.inter,
-  cjkFont ? pkgs.noto-fonts-cjk-sans,
+  # Noto Sans CJK 2.004 in nixpkgs is a variable CFF2 collection that
+  # fontdue cannot outline; Maple Mono NF CN is the palette mono font and
+  # ships static TrueType glyphs, so it is the default CJK fallback.
+  cjkFont ? pkgs.maple-mono.NF-CN,
 }:
 let
   palette = import ../../aspects/appearance/appearance/onedark.nix;
@@ -59,7 +62,7 @@ pkgs.rustPlatform.buildRustPackage {
     wrapProgram $out/bin/mayon-overlay \
       --prefix PATH : ${runtimePath} \
       --set-default MAYON_OVERLAY_FONT ${inter}/share/fonts/truetype/InterVariable.ttf \
-      --set-default MAYON_OVERLAY_FONT_FALLBACK ${cjkFont}/share/fonts/opentype/noto-cjk/NotoSansCJK-VF.otf.ttc
+      --set-default MAYON_OVERLAY_FONT_FALLBACK ${cjkFont}/share/fonts/truetype/MapleMono-NF-CN-Regular.ttf
     makeWrapper $out/bin/mayon-overlay $out/bin/mayon-clipboard --add-flags clipboard
     makeWrapper $out/bin/mayon-overlay $out/bin/mayon-launcher --add-flags launcher
   '';

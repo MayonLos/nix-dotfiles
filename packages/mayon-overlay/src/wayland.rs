@@ -18,13 +18,11 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use wayland_client::protocol::{
-    wl_buffer, wl_compositor, wl_keyboard, wl_output, wl_pointer, wl_registry, wl_seat, wl_shm,
-    wl_region, wl_shm_pool, wl_surface,
+    wl_buffer, wl_compositor, wl_keyboard, wl_output, wl_pointer, wl_region, wl_registry, wl_seat,
+    wl_shm, wl_shm_pool, wl_surface,
 };
 use wayland_client::{Connection, Dispatch, EventQueue, QueueHandle, WEnum};
-use wayland_protocols_wlr::layer_shell::v1::client::{
-    zwlr_layer_shell_v1, zwlr_layer_surface_v1,
-};
+use wayland_protocols_wlr::layer_shell::v1::client::{zwlr_layer_shell_v1, zwlr_layer_surface_v1};
 use xkbcommon::xkb;
 
 use crate::ipc::IpcServer;
@@ -46,6 +44,8 @@ struct Globals {
     /// `set_buffer_scale` needs.
     output_scale: i32,
     output_name: Option<String>,
+    /// Physical mode of the first output, used to size the layer surface.
+    output_mode: Option<(i32, i32)>,
 }
 
 struct LayerSurface {
@@ -154,11 +154,19 @@ impl WaylandHost {
         queue
             .roundtrip(&mut self)
             .map_err(|err| format!("registry roundtrip failed: {}", err))?;
+        // A second roundtrip collects the output geometry/mode events for the
+        // wl_output objects bound from the registry globals; the layer surface
+        // needs the logical output size before it can request a full-cover size.
+        queue
+            .roundtrip(&mut self)
+            .map_err(|err| format!("output roundtrip failed: {}", err))?;
         if self.globals.compositor.is_none()
             || self.globals.shm.is_none()
             || self.globals.layer_shell.is_none()
         {
-            return Err("compositor is missing wl_compositor, wl_shm or zwlr_layer_shell_v1".into());
+            return Err(
+                "compositor is missing wl_compositor, wl_shm or zwlr_layer_shell_v1".into(),
+            );
         }
         self.scale = self.globals.output_scale.max(1) as f32;
         self.create_layer(&qh)?;
@@ -266,11 +274,25 @@ impl WaylandHost {
                 | zwlr_layer_surface_v1::Anchor::Left
                 | zwlr_layer_surface_v1::Anchor::Right,
         );
-        layer_surface.set_exclusive_zone(0);
-        layer_surface.set_keyboard_interactivity(
-            zwlr_layer_surface_v1::KeyboardInteractivity::Exclusive,
-        );
-        layer_surface.set_size(0, 0);
+        // -1 keeps the overlay out of exclusive-zone computation, so it spans
+        // the whole output instead of the area left over between the panel and
+        // the screen edge.
+        layer_surface.set_exclusive_zone(-1);
+        layer_surface
+            .set_keyboard_interactivity(zwlr_layer_surface_v1::KeyboardInteractivity::Exclusive);
+        // An explicit size that covers the whole logical output. With
+        // set_size(0, 0) Mango configures the surface to only part of the
+        // output (it subtracts an area reserved for its own layers), which
+        // leaves a strip of the desktop visible behind the backdrop.
+        let scale = self.scale.max(1.0);
+        let (width, height) = match self.globals.output_mode {
+            Some((width, height)) => (
+                (width as f32 / scale).round() as u32,
+                (height as f32 / scale).round() as u32,
+            ),
+            None => (0, 0),
+        };
+        layer_surface.set_size(width, height);
         surface.set_buffer_scale(self.scale.max(1.0) as i32);
         surface.commit();
         self.layer = Some(LayerSurface {
@@ -328,6 +350,12 @@ impl WaylandHost {
         }
     }
 
+    fn debug(&self, name: &str, fields: &[(&str, String)]) {
+        if std::env::var_os("MAYON_OVERLAY_DEBUG").is_some() {
+            self.logger.event(name, fields);
+        }
+    }
+
     fn mark_buffer_released(&mut self, index: usize) {
         if let Some(slot) = self.buffers.get_mut(index) {
             slot.busy = false;
@@ -371,10 +399,7 @@ impl WaylandHost {
             )
         };
         if ptr == libc::MAP_FAILED {
-            return Err(format!(
-                "mmap failed: {}",
-                std::io::Error::last_os_error()
-            ));
+            return Err(format!("mmap failed: {}", std::io::Error::last_os_error()));
         }
         let ptr = ptr as *mut u8;
         let pool = shm.create_pool(fd.as_fd(), len as i32, qh, ());
@@ -423,7 +448,11 @@ impl WaylandHost {
         {
             let slot = &mut self.buffers[index];
             unsafe {
-                std::ptr::copy_nonoverlapping(pixels.as_ptr(), slot.ptr, slot.len.min(pixels.len()));
+                std::ptr::copy_nonoverlapping(
+                    pixels.as_ptr(),
+                    slot.ptr,
+                    slot.len.min(pixels.len()),
+                );
             }
             slot.busy = true;
         }
@@ -502,6 +531,15 @@ impl WaylandHost {
                 },
             }
         };
+        self.debug(
+            "interpreted",
+            &[
+                ("key", key.to_string()),
+                ("ctrl", ctrl.to_string()),
+                ("utf8", json_string(&utf8)),
+                ("key_class", format!("{:?}", interpreted)),
+            ],
+        );
         if let Some(action) = self.overlay.handle_key(interpreted) {
             self.exit = Some(action);
         }
@@ -518,7 +556,6 @@ impl WaylandHost {
         }
         self.need_redraw = true;
     }
-
 }
 
 fn create_memfd(name: &str, len: usize) -> Result<OwnedFd, String> {
@@ -559,8 +596,7 @@ impl Dispatch<wl_registry::WlRegistry, ()> for WaylandHost {
                 version,
             } => match interface.as_str() {
                 "wl_compositor" => {
-                    state.globals.compositor =
-                        Some(registry.bind(name, version.min(4), qh, ()));
+                    state.globals.compositor = Some(registry.bind(name, version.min(4), qh, ()));
                 }
                 "wl_shm" => {
                     state.globals.shm = Some(registry.bind(name, version.min(1), qh, ()));
@@ -575,8 +611,7 @@ impl Dispatch<wl_registry::WlRegistry, ()> for WaylandHost {
                     }
                 }
                 "zwlr_layer_shell_v1" => {
-                    state.globals.layer_shell =
-                        Some(registry.bind(name, version.min(4), qh, ()));
+                    state.globals.layer_shell = Some(registry.bind(name, version.min(4), qh, ()));
                 }
                 _ => {}
             },
@@ -670,11 +705,19 @@ impl Dispatch<wl_output::WlOutput, ()> for WaylandHost {
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
     ) {
-        if let wl_output::Event::Scale { factor } = event {
-            state.globals.output_scale = state.globals.output_scale.max(factor);
-        }
-        if let wl_output::Event::Name { name } = event {
-            state.globals.output_name = Some(name);
+        match event {
+            wl_output::Event::Scale { factor } => {
+                state.globals.output_scale = state.globals.output_scale.max(factor);
+            }
+            wl_output::Event::Name { name } => {
+                state.globals.output_name = Some(name);
+            }
+            wl_output::Event::Mode { width, height, .. } => {
+                if state.globals.output_mode.is_none() && width > 0 && height > 0 {
+                    state.globals.output_mode = Some((width, height));
+                }
+            }
+            _ => {}
         }
     }
 }
@@ -692,6 +735,23 @@ impl Dispatch<wl_seat::WlSeat, ()> for WaylandHost {
             let WEnum::Value(capabilities) = capabilities else {
                 return;
             };
+            state.debug(
+                "seat_caps",
+                &[
+                    (
+                        "keyboard",
+                        capabilities
+                            .contains(wl_seat::Capability::Keyboard)
+                            .to_string(),
+                    ),
+                    (
+                        "pointer",
+                        capabilities
+                            .contains(wl_seat::Capability::Pointer)
+                            .to_string(),
+                    ),
+                ],
+            );
             if capabilities.contains(wl_seat::Capability::Keyboard) && state.keyboard.is_none() {
                 state.keyboard = Some(KeyboardState {
                     keyboard: seat.get_keyboard(qh, ()),
@@ -725,19 +785,30 @@ impl Dispatch<wl_keyboard::WlKeyboard, ()> for WaylandHost {
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
     ) {
+        state.debug(
+            "kbd_event",
+            &[("variant", format!("{:?}", std::mem::discriminant(&event)))],
+        );
         match event {
             wl_keyboard::Event::Keymap { format, fd, size } => {
                 if !matches!(format, WEnum::Value(wl_keyboard::KeymapFormat::XkbV1)) {
                     return;
                 }
-                let Some(keyboard) = &mut state.keyboard else {
-                    return;
-                };
                 let mut bytes = Vec::with_capacity(size as usize);
                 let file = std::fs::File::from(fd);
                 if file.take(size as u64).read_to_end(&mut bytes).is_err() {
                     return;
                 }
+                state.debug(
+                    "keymap",
+                    &[
+                        ("size", size.to_string()),
+                        ("bytes", bytes.len().to_string()),
+                    ],
+                );
+                let Some(keyboard) = &mut state.keyboard else {
+                    return;
+                };
                 let text = String::from_utf8_lossy(&bytes).to_string();
                 keyboard.context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
                 let Some(keymap) = xkb::Keymap::new_from_string(
@@ -757,7 +828,17 @@ impl Dispatch<wl_keyboard::WlKeyboard, ()> for WaylandHost {
                 ..
             } => {
                 let pressed = matches!(key_state, WEnum::Value(wl_keyboard::KeyState::Pressed));
+                state.debug(
+                    "key",
+                    &[("key", key.to_string()), ("pressed", pressed.to_string())],
+                );
                 state.handle_key(key, pressed);
+            }
+            wl_keyboard::Event::Enter { serial, .. } => {
+                state.debug("kbd_enter", &[("serial", serial.to_string())]);
+            }
+            wl_keyboard::Event::Leave { serial, .. } => {
+                state.debug("kbd_leave", &[("serial", serial.to_string())]);
             }
             wl_keyboard::Event::Modifiers {
                 mods_depressed,
@@ -815,10 +896,8 @@ impl Dispatch<wl_pointer::WlPointer, ()> for WaylandHost {
                 state: button_state,
                 ..
             } => {
-                let pressed = matches!(
-                    button_state,
-                    WEnum::Value(wl_pointer::ButtonState::Pressed)
-                );
+                let pressed =
+                    matches!(button_state, WEnum::Value(wl_pointer::ButtonState::Pressed));
                 state.handle_pointer_button(button, pressed);
             }
             wl_pointer::Event::Axis { axis, .. } => {
@@ -877,9 +956,7 @@ impl Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, ()> for WaylandHost {
                 state.width_px = width.saturating_mul(state.scale as u32).max(1);
                 state.height_px = height.saturating_mul(state.scale as u32).max(1);
                 if let Some(layer) = &state.layer {
-                    layer
-                        .surface
-                        .set_buffer_scale(state.scale.max(1.0) as i32);
+                    layer.surface.set_buffer_scale(state.scale.max(1.0) as i32);
                 }
                 state.need_redraw = true;
             }
@@ -890,4 +967,3 @@ impl Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, ()> for WaylandHost {
         }
     }
 }
-

@@ -70,6 +70,7 @@ pub enum Item {
         id: i64,
         preview: String,
         dimensions: Option<(u32, u32)>,
+        mime: String,
     },
     App {
         app: AppEntry,
@@ -119,13 +120,7 @@ pub struct Layout {
     pub card_y: f32,
     pub card_w: f32,
     pub card_h: f32,
-    pub list_x: f32,
-    pub list_y: f32,
-    pub list_w: f32,
-    pub list_h: f32,
-    pub row_h: f32,
     pub capacity: usize,
-    pub first_visible: usize,
     pub rows: Vec<(usize, f32, f32, f32, f32)>,
 }
 
@@ -137,7 +132,6 @@ struct Geometry {
     list_x: f32,
     list_y: f32,
     list_w: f32,
-    list_h: f32,
     row_h: f32,
     capacity: usize,
 }
@@ -169,6 +163,7 @@ impl Overlay {
                             id: entry.id,
                             dimensions: parse_dimensions(&entry.preview),
                             preview: entry.preview,
+                            mime: entry.image_mime.unwrap_or_else(|| "image/png".to_string()),
                         });
                     } else {
                         overlay.items.push(Item::ClipText {
@@ -229,10 +224,7 @@ impl Overlay {
 
     pub fn reload_apps(&mut self) {
         let apps = desktop::load_apps(&self.extra_data_dirs);
-        self.items = apps
-            .into_iter()
-            .map(|app| Item::App { app })
-            .collect();
+        self.items = apps.into_iter().map(|app| Item::App { app }).collect();
         let count = self.items.len();
         self.logger.event(
             "apps",
@@ -280,10 +272,6 @@ impl Overlay {
         self.layout = None;
     }
 
-    pub fn visible_len(&self) -> usize {
-        self.visible.len()
-    }
-
     pub fn set_query(&mut self, query: String) {
         self.query = query;
         self.refilter();
@@ -318,9 +306,11 @@ impl Overlay {
         }
         let item_index = self.visible[self.selected];
         let item = &self.items[item_index];
-        let (id, is_image, preview) = match item {
-            Item::ClipText { id, text } => (*id, false, text.chars().take(80).collect::<String>()),
-            Item::ClipImage { id, preview, .. } => (*id, true, preview.chars().take(80).collect()),
+        let (id, image_mime, preview) = match item {
+            Item::ClipText { id, text } => (*id, None, text.chars().take(80).collect::<String>()),
+            Item::ClipImage {
+                id, preview, mime, ..
+            } => (*id, Some(mime.clone()), preview.chars().take(80).collect()),
             Item::App { app } => {
                 let name = app.name.clone();
                 let desktop_path = app.desktop_path.to_string_lossy().to_string();
@@ -349,7 +339,7 @@ impl Overlay {
             }
         };
         match cliphist::decode(id) {
-            Ok(bytes) => match cliphist::copy(&bytes, is_image) {
+            Ok(bytes) => match cliphist::copy(&bytes, image_mime.as_deref()) {
                 Ok(()) => {
                     self.logger.event(
                         "copy",
@@ -357,14 +347,18 @@ impl Overlay {
                             ("mode", logger::json_string("clipboard")),
                             (
                                 "kind",
-                                logger::json_string(if is_image { "image" } else { "text" }),
+                                logger::json_string(if image_mime.is_some() {
+                                    "image"
+                                } else {
+                                    "text"
+                                }),
                             ),
                             ("bytes", bytes.len().to_string()),
                             ("preview", logger::json_string(&preview)),
                         ],
                     );
                     Some(ExitAction::ClipboardCopied {
-                        is_image,
+                        is_image: image_mime.is_some(),
                         bytes: bytes.len(),
                         preview,
                     })
@@ -558,7 +552,10 @@ impl Overlay {
                     _ => (self.ipc_error("click requires x and y"), None),
                 }
             }
-            _ => (self.ipc_error(&format!("unknown command {}", command)), None),
+            _ => (
+                self.ipc_error(&format!("unknown command {}", command)),
+                None,
+            ),
         }
     }
 
@@ -567,7 +564,10 @@ impl Overlay {
         self.reply_to_action_value(action)
     }
 
-    fn reply_to_action_value(&mut self, action: Option<ExitAction>) -> (String, Option<ExitAction>) {
+    fn reply_to_action_value(
+        &mut self,
+        action: Option<ExitAction>,
+    ) -> (String, Option<ExitAction>) {
         let reply = match &action {
             Some(ExitAction::ClipboardCopied { is_image, .. }) => format!(
                 "{{\"ok\":true,\"action\":\"copy\",\"kind\":\"{}\"}}",
@@ -584,7 +584,10 @@ impl Overlay {
     }
 
     fn ipc_error(&self, message: &str) -> String {
-        format!("{{\"ok\":false,\"error\":{}}}", logger::json_string(message))
+        format!(
+            "{{\"ok\":false,\"error\":{}}}",
+            logger::json_string(message)
+        )
     }
 
     pub fn state_json(&self) -> String {
@@ -693,7 +696,6 @@ impl Overlay {
             list_x,
             list_y,
             list_w,
-            list_h,
             row_h,
             capacity,
         }
@@ -831,15 +833,23 @@ impl Overlay {
             );
         }
 
-        let count = visible.len().saturating_sub(first_visible).min(geo.capacity);
+        let count = visible
+            .len()
+            .saturating_sub(first_visible)
+            .min(geo.capacity);
         enum RowView {
-            Text { text: String },
+            Text {
+                text: String,
+            },
             Image {
                 id: i64,
                 preview: String,
                 dimensions: Option<(u32, u32)>,
             },
-            App { name: String, subtitle: String },
+            App {
+                name: String,
+                subtitle: String,
+            },
         }
         let row_views: Vec<(usize, RowView)> = (first_visible..(first_visible + count))
             .map(|position| {
@@ -852,6 +862,7 @@ impl Overlay {
                         id,
                         preview,
                         dimensions,
+                        ..
                     } => RowView::Image {
                         id: *id,
                         preview: truncate_chars(preview, 90),
@@ -900,13 +911,7 @@ impl Overlay {
                         colors::bright_fg(),
                         text_max_width,
                     );
-                    canvas.draw_text(
-                        text_x,
-                        row_y + 54.0,
-                        "文本",
-                        ROW_SUB_SIZE,
-                        colors::muted(),
-                    );
+                    canvas.draw_text(text_x, row_y + 54.0, "文本", ROW_SUB_SIZE, colors::muted());
                 }
                 RowView::Image {
                     id,
@@ -1081,13 +1086,7 @@ impl Overlay {
             card_y: geo.card_y,
             card_w: geo.card_w,
             card_h: geo.card_h,
-            list_x: geo.list_x,
-            list_y: geo.list_y,
-            list_w: geo.list_w,
-            list_h: geo.list_h,
-            row_h: geo.row_h,
             capacity: geo.capacity,
-            first_visible,
             rows,
         });
     }

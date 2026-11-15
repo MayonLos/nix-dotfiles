@@ -16,9 +16,7 @@ pub struct AppEntry {
     pub generic_name: String,
     pub comment: String,
     pub keywords: Vec<String>,
-    pub exec: String,
     pub desktop_path: PathBuf,
-    pub terminal: bool,
     pub categories: String,
 }
 
@@ -61,9 +59,8 @@ pub fn data_dirs(extra: &[PathBuf]) -> Vec<PathBuf> {
     } else if let Some(home) = std::env::var_os("HOME") {
         dirs.push(PathBuf::from(home).join(".local/share"));
     }
-    let defaults = std::env::var("XDG_DATA_DIRS").unwrap_or_else(|_| {
-        "/usr/local/share:/usr/share".to_string()
-    });
+    let defaults = std::env::var("XDG_DATA_DIRS")
+        .unwrap_or_else(|_| "/usr/local/share:/usr/share".to_string());
     for dir in defaults.split(':') {
         if !dir.is_empty() {
             dirs.push(PathBuf::from(dir));
@@ -118,7 +115,6 @@ fn parse_entry(path: &Path) -> Option<AppEntry> {
     let mut comment = String::new();
     let mut keywords = Vec::new();
     let mut exec = String::new();
-    let mut terminal = false;
     let mut categories = String::new();
     let mut entry_type = String::new();
     let mut hidden = false;
@@ -152,7 +148,6 @@ fn parse_entry(path: &Path) -> Option<AppEntry> {
                     .collect()
             }
             "Exec" => exec = value.to_string(),
-            "Terminal" => terminal = value.eq_ignore_ascii_case("true"),
             "Categories" => categories = value.to_string(),
             "Hidden" => hidden = value.eq_ignore_ascii_case("true"),
             "NoDisplay" => no_display = value.eq_ignore_ascii_case("true"),
@@ -179,9 +174,7 @@ fn parse_entry(path: &Path) -> Option<AppEntry> {
         generic_name,
         comment,
         keywords,
-        exec,
         desktop_path: path.to_path_buf(),
-        terminal,
         categories,
     })
 }

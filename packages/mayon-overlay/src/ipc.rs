@@ -48,10 +48,6 @@ impl IpcServer {
         }
     }
 
-    pub fn path(&self) -> &Path {
-        &self.path
-    }
-
     /// Raw file descriptor for `poll(2)` integration in the Wayland loop.
     pub fn listener_fd(&self) -> std::os::fd::RawFd {
         use std::os::fd::AsRawFd;
@@ -59,7 +55,11 @@ impl IpcServer {
     }
 
     /// Serve one request and write the newline-terminated reply.
-    pub fn serve(&self, mut stream: UnixStream, handler: impl FnOnce(&str) -> String) -> Result<(), String> {
+    pub fn serve(
+        &self,
+        mut stream: UnixStream,
+        handler: impl FnOnce(&str) -> String,
+    ) -> Result<(), String> {
         stream
             .set_read_timeout(Some(Duration::from_secs(2)))
             .map_err(|err| format!("control socket timeout: {}", err))?;

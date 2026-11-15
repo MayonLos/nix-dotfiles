@@ -167,13 +167,13 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
         match argument.as_str() {
             "--socket" => args.socket = Some(PathBuf::from(take_value("--socket")?)),
             "--log" => args.log = Some(PathBuf::from(take_value("--log")?)),
-            "--ready-file" => {
-                args.ready_file = Some(PathBuf::from(take_value("--ready-file")?))
-            }
+            "--ready-file" => args.ready_file = Some(PathBuf::from(take_value("--ready-file")?)),
             "--font" => args.font = Some(take_value("--font")?),
             "--font-fallback" => args.font_fallback = Some(take_value("--font-fallback")?),
             "--query" => args.query = Some(take_value("--query")?),
-            "--data-dir" => args.data_dirs.push(PathBuf::from(take_value("--data-dir")?)),
+            "--data-dir" => args
+                .data_dirs
+                .push(PathBuf::from(take_value("--data-dir")?)),
             "--scale" => {
                 args.scale = Some(
                     take_value("--scale")?
@@ -265,6 +265,19 @@ fn run_overlay(args: &Args) -> ExitCode {
             return ExitCode::from(2);
         }
     };
+    logger.event(
+        "fonts",
+        &[
+            ("primary", json_string(&fonts.primary_path)),
+            (
+                "fallback",
+                match &fonts.fallback_path {
+                    Some(path) => json_string(path),
+                    None => "null".to_string(),
+                },
+            ),
+        ],
+    );
     let mut overlay = match mode {
         Mode::Clipboard => Overlay::new_clipboard(fonts, logger.clone()),
         Mode::Launcher => Overlay::new_launcher(fonts, logger.clone(), args.data_dirs.clone()),
@@ -313,10 +326,7 @@ fn run_overlay(args: &Args) -> ExitCode {
                 .clone()
                 .unwrap_or_else(|| "ctrl+v".to_string());
             if args.no_paste {
-                logger.event(
-                    "paste_skipped",
-                    &[("reason", json_string("--no-paste"))],
-                );
+                logger.event("paste_skipped", &[("reason", json_string("--no-paste"))]);
             } else {
                 let outcome = paste::inject(&chord, &logger);
                 logger.event(
@@ -360,10 +370,7 @@ fn run_overlay(args: &Args) -> ExitCode {
             Err(error) => {
                 logger.event(
                     "launch_error",
-                    &[
-                        ("name", json_string(&name)),
-                        ("error", json_string(&error)),
-                    ],
+                    &[("name", json_string(&name)), ("error", json_string(&error))],
                 );
                 eprintln!("mayon-overlay: launch failed: {}", error);
                 return ExitCode::from(1);

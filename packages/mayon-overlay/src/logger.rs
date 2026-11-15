@@ -21,11 +21,7 @@ impl Logger {
             if let Some(parent) = path.parent() {
                 let _ = std::fs::create_dir_all(parent);
             }
-            OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(path)
-                .ok()
+            OpenOptions::new().create(true).append(true).open(path).ok()
         });
         Logger {
             file: file.map(|file| Arc::new(Mutex::new(file))),

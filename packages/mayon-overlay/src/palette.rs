@@ -1,5 +1,8 @@
 //! Colours for the overlay. Byte values are generated from the repository's
 //! One Dark palette (`aspects/appearance/appearance/onedark.nix`) by build.rs.
+//! The module intentionally exposes every palette entry, not only the ones the
+//! current layout happens to use.
+#![allow(dead_code)]
 
 include!(concat!(env!("OUT_DIR"), "/palette.rs"));
 

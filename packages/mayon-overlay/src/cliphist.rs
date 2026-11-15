@@ -15,13 +15,9 @@ pub struct ClipEntry {
     /// `[[ binary data N bytes png WxH ]]` marker.
     pub preview: String,
     pub is_image: bool,
-    pub thumbnail: ThumbnailState,
-}
-
-pub enum ThumbnailState {
-    Pending,
-    Loaded(RgbaImage),
-    Failed(String),
+    /// MIME type cliphist recorded for an image entry (defaults to image/png
+    /// when the preview marker cannot be parsed).
+    pub image_mime: Option<String>,
 }
 
 pub fn load_history() -> Result<Vec<ClipEntry>, String> {
@@ -46,21 +42,43 @@ pub fn load_history() -> Result<Vec<ClipEntry>, String> {
         let Ok(id) = id_text.trim().parse::<i64>() else {
             continue;
         };
+        let is_image = is_image_preview(preview);
         entries.push(ClipEntry {
             id,
             preview: preview.to_string(),
-            is_image: is_image_preview(preview),
-            thumbnail: ThumbnailState::Pending,
+            is_image,
+            image_mime: if is_image {
+                Some(mime_from_preview(preview))
+            } else {
+                None
+            },
         });
     }
     Ok(entries)
 }
 
 /// cliphist marks binary entries in the preview; PNG screenshots are the
-/// image case this host produces. JPEG/WebP copies are still detected as
-/// images and reported as undecodable rather than shown as text garbage.
+/// common case on this host, and the preview also carries the recorded MIME
+/// hint so JPEG/GIF copies are written back with the correct type.
 fn is_image_preview(preview: &str) -> bool {
     preview.contains("[[ binary data")
+}
+
+fn mime_from_preview(preview: &str) -> String {
+    for token in preview.split_whitespace() {
+        let lowered = token.trim_end_matches(']').to_lowercase();
+        let subtype = match lowered.as_str() {
+            "png" => "png",
+            "jpeg" | "jpg" => "jpeg",
+            "gif" => "gif",
+            "webp" => "webp",
+            "bmp" => "bmp",
+            "tiff" => "tiff",
+            _ => continue,
+        };
+        return format!("image/{}", subtype);
+    }
+    "image/png".to_string()
 }
 
 pub fn decode(id: i64) -> Result<Vec<u8>, String> {
@@ -97,11 +115,13 @@ pub fn thumbnail(bytes: &[u8], max_width: u32, max_height: u32) -> Result<RgbaIm
     ))
 }
 
-/// Hand the decoded entry back to the Wayland clipboard.
-pub fn copy(bytes: &[u8], is_image: bool) -> Result<(), String> {
+/// Hand the decoded entry back to the Wayland clipboard. Text keeps wl-copy's
+/// automatic text MIME choice; image entries are written with the MIME type
+/// cliphist recorded so a JPEG copied earlier is not relabelled as PNG.
+pub fn copy(bytes: &[u8], image_mime: Option<&str>) -> Result<(), String> {
     let mut command = Command::new("wl-copy");
-    if is_image {
-        command.args(["--type", "image/png"]);
+    if let Some(mime) = image_mime {
+        command.args(["--type", mime]);
     }
     // wl-copy forks a background owner process that serves the selection until
     // it is replaced. That child inherits every pipe not redirected to /dev/null,

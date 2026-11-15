@@ -29,6 +29,6 @@ tiny-skia = { version = "0.11", default-features = false, features = ["std"] }
 fontdue = "0.9"
 # PNG only: clipboard images from cliphist are decoded, scaled and drawn as
 # thumbnails. We never write images, so no encoder feature is pulled in.
-image = { version = "0.25", default-features = false, features = ["png"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 
 libc = "0.2"
