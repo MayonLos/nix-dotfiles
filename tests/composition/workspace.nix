@@ -152,11 +152,10 @@ let
     remoteCliHasNoDesktopOrLocalOnlyFeatures =
       !(selectedHome.programs.kitty.enable or false)
       && !(selectedHome.programs ? mango)
-      && !(selectedHome.programs ? noctalia)
+      && !(selectedHome.systemd.user.services ? swaybg)
       && !(selectedHome.programs.java.enable or false)
       && !(selectedHome.i18n.inputMethod.enable or false)
       && !(hasPackage selectedHome "kitty")
-      && !(hasPackage selectedHome "noctalia-shell")
       && !(hasPackage selectedHome "jdk")
       && !(host aliceOnly "hostA").services.greetd.enable
       && !(host aliceOnly "hostA").services.xserver.enable;

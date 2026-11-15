@@ -1,6 +1,6 @@
 # Terminal
 
-Installs Kitty and renders its configuration from `user.appearance`, including the shared ANSI palette and reduced-motion preference. Kitty uses its documented `tab_bar_style custom` hook to underline the active tab in the palette blue; other tabs stay on the deep background. Selecting this aspect makes Kitty configuration a complete managed file; Noctalia is not a second Kitty template writer.
+Installs Kitty and renders its configuration from `user.appearance`, including the shared ANSI palette and reduced-motion preference. Kitty uses its documented `tab_bar_style custom` hook to underline the active tab in the palette blue; other tabs stay on the deep background. Selecting this aspect makes Kitty configuration a complete managed file; no other component writes a second theme file.
 
 Owned files are `default.nix`, `kitty.nix`, and `tab-bar.nix`, all private. Outputs are the Kitty package, `kitty/kitty.conf`, and `kitty/tab_bar.py`. Removing the aspect removes those declarations in the next generation; Kitty scrollback files and other user data remain intact.
 

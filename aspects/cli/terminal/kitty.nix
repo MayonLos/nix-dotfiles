@@ -10,9 +10,8 @@ in
 {
   home.packages = [ pkgs.kitty ];
 
-  # This aspect is the sole renderer for kitty.conf. Noctalia's Kitty template
-  # must be disabled for the selected user so it cannot rewrite or include a
-  # second palette file at runtime.
+  # This aspect is the sole renderer for kitty.conf, so no other component can
+  # rewrite or include a second palette file at runtime.
   xdg.configFile."kitty/kitty.conf".text = ''
     # Managed by Den's command-line Kitty aspect.
 

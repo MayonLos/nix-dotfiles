@@ -15,7 +15,6 @@ from firefox_profile import BEGIN, CONTENT_BEGIN, CONTENT_END, END, split_styles
 
 RESOURCE_DIR = Path(__file__).resolve().parent
 SEED_SCRIPT = RESOURCE_DIR / "seed-firefox-ui.py"
-NOCTALIA_HOOK = RESOURCE_DIR / "apply-noctalia-userChrome.py"
 FALLBACK_CSS_PATH: Path | None = None
 
 
@@ -219,18 +218,6 @@ class FirefoxUiTests(unittest.TestCase):
         self.assertNotIn('user_pref("sidebar.revamp"', self.prefs_path.read_text())
         self.assertNotIn('browser.uiCustomization.state', self.prefs_path.read_text())
         self.assertEqual((self.profile / "prefs.js").read_text(), saved)
-
-    def test_noctalia_hook_updates_both_stylesheet_blocks(self) -> None:
-        self.run_script(NOCTALIA_HOOK)
-        chrome = self.chrome_path.read_text(encoding="utf-8")
-        content = self.content_path.read_text(encoding="utf-8")
-        self.assertIn(BEGIN, chrome)
-        self.assertIn(END, chrome)
-        self.assertIn(BEGIN, content)
-        self.assertIn(END, content)
-        self.assertIn("manual chrome rules", chrome)
-        self.assertIn("manual content rules", content)
-        self.assertIn('url("about:newtab")', content)
 
     def test_managed_writer_refuses_symlinks_and_bad_markers(self) -> None:
         linked_target = self.root / "linked-target"

@@ -25,7 +25,7 @@ checks: [keys-mayon-bindings, desktop-composition]
 | 范围 | 入口 | 规则 |
 |---|---|---|
 | 桌面窗口与工作区 | `Super` | Mango 拥有，不占用编辑器常用的 Ctrl/Alt 字母 |
-| 桌面搜索 | `Alt+Space` | fuzzel。左下角热角调用同一个程序。`Super+A` 仍是 Launchpad |
+| 桌面搜索 | `Alt+Space` | fuzzel，唯一的启动器。左下角热角调用同一个程序 |
 | 终端复用 | `Ctrl+a` 前缀，方向键跨层集成 | tmux 管 pane/window/session；`Ctrl+h/j/k/l` 移动、`Alt+h/j/k/l` 调整大小 |
 | 编辑器窗口与功能 | `Ctrl+h/j/k/l`、Space leader | smart-splits 用 pane-local `@pane-is-vim` 与 tmux 协作，编辑器边缘可移到相邻 pane |
 | shell 与 TUI | 原应用按键 | `Alt+b/f`、`Ctrl+r`、Esc 等正常到达应用 |
@@ -44,10 +44,9 @@ tmux 保留前缀窗口管理；无前缀 `Ctrl+h/j/k/l` 根据 smart-splits 维
 | 特殊工具工作区 | `Super+Shift+S` | 显示/隐藏 Tag 0，默认 scroller |
 | 停放 / 取回特殊窗口 | `Super+Ctrl+S` | 将当前窗口放入 Tag 0；在 Tag 0 使用时送回先前普通 tag，不主动跟随 |
 | 跨工作区可见 / 置顶 | `Super+Ctrl+G` / `Super+Alt+G` | 两个独立手动状态；前者限窗口所在输出，后者可能覆盖全屏窗口 |
-| 控制中心 / 剪贴板 | `Super+S` / `Super+V` | 控制中心仍是 Noctalia。`Super+V` 用 fuzzel 列出 cliphist |
-| 音量 / 亮度 | 音量键、亮度键 | `swayosd-client`。麦克风静音仍是 `noctalia msg mic-mute`。媒体键仍是 playerctl |
-| 勿扰 / 防空闲 | `Super+Alt+D` / `Super+Alt+I` | 原生 DND / caffeine；面板铃铛与咖啡状态可见 |
-| 锁屏 / 会话菜单 | `Super+Alt+L` / `Ctrl+Alt+Delete` | 菜单含有文字的退出/重启/关机确认；锁屏可直接触发 |
+| 剪贴板 | `Super+V` | 用 fuzzel 列出 cliphist |
+| 音量 / 亮度 / 麦克风 | 音量键、亮度键、麦克风静音键 | `swayosd-client`（含 `--input-volume mute-toggle`）。媒体键仍是 playerctl |
+| 锁屏 | `Super+Alt+L` | 独立 swaylock；没有 DND、防空闲开关或会话菜单。自动锁屏/idle 由 swayidle 负责 |
 | 窗口聚焦 | `Super+h/j/k/l` 或方向键 | 保留两组等价入口 |
 | 移动窗口 | `Super+Shift+h/j/k/l` 或方向键 | 保留；不混作显示器移动 |
 | 移到相邻显示器 | `Super+Ctrl+方向键` | 保留，不为当前锁定版本捏造 HJKL 方向语义 |
@@ -76,7 +75,7 @@ named scratchpad 只有一个可见，呼出另一工具会隐藏前一个；跨
 
 Firefox 的英文标题 `Picture-in-Picture` 精确匹配浮动、跨 tag、安静打开，默认 480×270，
 靠右下方放置；不默认 overlay，避免主动压住全屏内容。需要置顶时手动 `Super+Alt+G`。
-Noctalia 设置、portal 文件选择及 Swayimg 使用相对输出尺寸；Thunar 重命名保留应用尺寸提示。
+截图、portal 文件选择及 Swayimg 使用相对输出尺寸；Thunar 重命名保留应用尺寸提示。
 父窗口关联、模态与 IDE 弹窗沿用 Mango/应用逻辑；未用宽泛规则让整个 IDE 浮动或禁止聚焦。
 精确到父窗口中心、跨屏 DPI 无缝恢复和所有应用的焦点策略不是当前实现承诺。
 
@@ -138,11 +137,11 @@ Zsh 的 `Ctrl+R` 由 Atuin 搜索本地命令历史，使用 compact 视图、�
 
 启动器“长任务终端”及 `workspace-task -- 命令 参数` 仅在命令运行期间持有 sleep inhibitor，
 结束后自动释放。它仍允许自动锁屏和关屏，不是后台常驻模式，也不能保证抵抗断电或强制
-睡眠。`Super+Alt+I` / 面板咖啡是独立的 Noctalia 防空闲开关，会影响自动 idle actions；
-不能把它当成对手动休眠或盖盖子行为的全面保护。两个入口不自动套在已有任务上。
+睡眠。没有独立的防空闲开关；长任务用自己的 inhibitor，不能当成对手动休眠或盖盖子行为
+的全面保护。两个入口不自动套在已有任务上。
 
-`Super+Alt+D` 或右键铃铛切换勿扰，被隐藏的外部通知保留在 Noctalia 历史中，退出勿扰
-不会重放旧弹窗。Kitty 有前台任务时关闭窗口会请求确认；tmux/编辑器不会被强制重载。
+通知由 mako 直接显示，没有勿扰/历史面板；Kitty 有前台任务时关闭窗口会请求确认；
+tmux/编辑器不会被强制重载。
 
 ## Neovim 键位
 

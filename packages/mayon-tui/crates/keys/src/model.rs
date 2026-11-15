@@ -358,35 +358,38 @@ fn describe_spawn(args: &[String], binding: &Binding) -> String {
     if lower.contains("mango-keybindings") || lower.contains("/less ") {
         return "查看 Mango 快捷键说明".into();
     }
-    if lower.contains("launchpad") {
+    if lower.contains("fuzzel") {
         return "打开应用启动器".into();
     }
-    if lower.contains("window-switcher") {
-        return "按住 Alt 切换窗口，松开确认".into();
-    }
-    if lower.contains("notification-dnd-toggle") {
-        return "切换勿扰模式".into();
-    }
-    if lower.contains("caffeine-toggle") {
-        return "切换防休眠".into();
-    }
-    if lower.contains("panel-toggle control-center") {
-        return "打开控制中心".into();
-    }
-    if lower.contains("panel-toggle launcher") {
-        return "打开启动器".into();
-    }
-    if lower.contains("panel-toggle session") {
-        return "打开会话菜单".into();
-    }
-    if lower.contains("panel-toggle clipboard") {
+    if lower.contains("clipboard-history") {
         return "打开剪贴板历史".into();
     }
-    if lower.contains("session lock") {
+    if lower.contains("swaylock") {
         return "锁定屏幕".into();
     }
-    if lower.contains("wallpaper-random") {
-        return "随机更换壁纸".into();
+    if lower.contains("swayosd-client") {
+        if lower.contains("--input-volume") {
+            return "切换麦克风静音".into();
+        }
+        if lower.contains("--brightness") {
+            return if lower.contains("raise") {
+                "调亮屏幕"
+            } else {
+                "调暗屏幕"
+            }
+            .into();
+        }
+        if lower.contains("--output-volume") {
+            if lower.contains("mute-toggle") {
+                return "切换静音".into();
+            }
+            return if lower.contains("raise") {
+                "调高音量"
+            } else {
+                "调低音量"
+            }
+            .into();
+        }
     }
     if lower.contains("mark-shot --scroll") {
         return "滚动截图".into();
@@ -408,24 +411,6 @@ fn describe_spawn(args: &[String], binding: &Binding) -> String {
     }
     if lower.contains("playerctl") {
         return media_description(&lower);
-    }
-    if lower.contains("mic-mute") {
-        return "切换麦克风静音".into();
-    }
-    if lower.contains("volume-up") {
-        return "调高音量".into();
-    }
-    if lower.contains("volume-down") {
-        return "调低音量".into();
-    }
-    if lower.contains("volume-mute") {
-        return "切换静音".into();
-    }
-    if lower.contains("brightness-up") {
-        return "调亮屏幕".into();
-    }
-    if lower.contains("brightness-down") {
-        return "调暗屏幕".into();
     }
     if raw.contains("mayon-voice") || raw.contains("toggle") && binding.raw.contains("mayonVoice") {
         return if binding.kind == "bindr" {
@@ -548,17 +533,7 @@ fn group_for(parsed: &Parsed, description: &str) -> usize {
     {
         return 5;
     }
-    if matches!(
-        description,
-        "锁定屏幕"
-            | "切换勿扰模式"
-            | "切换防休眠"
-            | "打开控制中心"
-            | "打开会话菜单"
-            | "随机更换壁纸"
-            | "调亮屏幕"
-            | "调暗屏幕"
-    ) {
+    if matches!(description, "锁定屏幕" | "调亮屏幕" | "调暗屏幕") {
         return 6;
     }
     if parsed.action == "spawn"
@@ -673,50 +648,58 @@ mod tests {
     #[test]
     fn system_spawn_actions_and_mouse_resize_are_grouped_by_purpose() {
         let result = model(vec![
-            binding("default", "bind", "SUPER,L,spawn,noctalia msg session lock"),
             binding(
-                "default",
-                "bind",
-                "SUPER,D,spawn,noctalia msg notification-dnd-toggle",
+                "common",
+                "bindl",
+                "NONE,XF86MonBrightnessUp,spawn,swayosd-client --brightness raise",
+            ),
+            binding(
+                "common",
+                "bindl",
+                "NONE,XF86MonBrightnessDown,spawn,swayosd-client --brightness lower",
             ),
             binding(
                 "default",
                 "bind",
-                "SUPER,I,spawn,noctalia msg caffeine-toggle",
+                "SUPER+ALT,L,spawn,/nix/store/fixture-swaylock/bin/swaylock -f",
             ),
             binding(
-                "default",
-                "bind",
-                "SUPER,S,spawn,noctalia msg panel-toggle control-center",
+                "common",
+                "bindl",
+                "NONE,XF86AudioRaiseVolume,spawn,swayosd-client --output-volume raise",
             ),
             binding(
-                "default",
-                "bind",
-                "SUPER,X,spawn,noctalia msg wallpaper-random",
+                "common",
+                "bindl",
+                "NONE,XF86AudioLowerVolume,spawn,swayosd-client --output-volume lower",
             ),
             binding(
-                "default",
-                "bind",
-                "SUPER,B,spawn,noctalia msg brightness-up",
+                "common",
+                "bindl",
+                "NONE,XF86AudioMute,spawn,swayosd-client --output-volume mute-toggle",
+            ),
+            binding(
+                "common",
+                "bindl",
+                "NONE,XF86AudioMicMute,spawn,swayosd-client --input-volume mute-toggle",
             ),
             binding("default", "bind", "SUPER,T,spawn,unknown-command"),
-            binding(
-                "default",
-                "bind",
-                "ALT,Tab,spawn,noctalia msg window-switcher hold",
-            ),
+            binding("default", "bind", "SUPER,Print,spawn,ocr-region"),
             binding(
                 "default",
                 "mousebind",
                 "SUPER,btn_right,moveresize,curresize",
             ),
         ]);
-        for entry in result.iter().take(6) {
+        for entry in result.iter().take(3) {
             assert_eq!(entry.group, 6, "{}", entry.description);
         }
-        assert_eq!(result[6].group, 2);
-        assert_eq!(result[7].group, 0);
-        assert_eq!(result[8].group, 0);
+        for entry in result.iter().skip(3).take(4) {
+            assert_eq!(entry.group, 5, "{}", entry.description);
+        }
+        assert_eq!(result[7].group, 2);
+        assert_eq!(result[8].group, 4);
+        assert_eq!(result[9].group, 0);
     }
 
     #[test]

@@ -13,8 +13,9 @@ in
 
   programs.mango = {
     enable = true;
-    # Noctalia's user service has no logind scope. Import the greetd-provided
-    # session ID in Mango's early C hook, before it starts the session target.
+    # Session services have no logind scope of their own. Import the
+    # greetd-provided session ID in Mango's early C hook, before it starts the
+    # session target.
     # This same list is cleared on exit; no ID is captured at Nix evaluation.
     package =
       (inputs.mango.packages.${pkgs.stdenv.hostPlatform.system}.mango.override {
@@ -79,6 +80,10 @@ in
       }
     });
   '';
+
+  # The session lock surface is swaylock; it authenticates through PAM. No other
+  # PAM service for the lock client is installed by the compositor modules.
+  security.pam.services.swaylock = { };
 
   # Portal packages are composed upstream; session support deduplicates the
   # generated D-Bus service directories without replacing the portal list.

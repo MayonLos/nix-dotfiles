@@ -14,7 +14,7 @@
 | `checks.protocols-composition` | `composition/protocols.nix` | 外观/默认工具的数据边界、类型与冲突负例、两绑定 palette/Kitty 动效偏好和固定参数 argv |
 | `checks.workspace-composition` | `composition/workspace.nix` | 多 host/user 的命令行选择、共享/移除、CLI/桌面隔离和账号权限 |
 | `checks.editing-composition` | `composition/editing.nix` | 编辑器与所选语言组合、数据冲突、未选择工具隔离、实际 clangd 工作负载 |
-| `checks.desktop-composition` | `composition/desktop.nix` | 两 host/two user 的 Mango 选择、共享支持、未选绑定隔离与移除行为；palette/动效偏好及减少动画分支的锁定 Mango/Noctalia 解析检查 |
+| `checks.desktop-composition` | `composition/desktop.nix` | 两 host/two user 的 Mango 选择、共享支持、未选绑定隔离与移除行为；palette/动效偏好及减少动画分支的锁定 Mango 解析检查 |
 | `checks.local-services-composition` | `composition/local-services.nix` | 本地容器/VM daemon 与远程 client 的隔离、宿主资源去重和撤销行为 |
 | `checks.embedded-composition` | `composition/embedded.nix` | 嵌入式工具、权限组、udev host provider 的选择/共享/移除边界 |
 
@@ -69,7 +69,7 @@ aspect 和嵌入式组合 fixture 中：
 服务器。多 host/user fixture 只是组合输入，不输出额外可部署主机。
 
 配置构建不会运行 HM activation、切换系统或停止旧服务。headless/parser 检查不能证明 Mango、
-Noctalia、输入法、显示器、NVIDIA、音频、USB、休眠或游戏的实机行为。需要图形/设备的验收项
+锁屏、壁纸渲染、输入法、显示器、NVIDIA、音频、USB、休眠或游戏的实机行为。需要图形/设备的验收项
 按应用后记录；未运行的项目保持未验证状态，不因静态检查通过标记完成。
 
 检查实际运行结果和限制见[Den 执行记录](../docs/history/README.md)（原文 `den-execution.md`）及

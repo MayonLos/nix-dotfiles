@@ -16,7 +16,7 @@ Home Manager 不部署笔记、插件、主题目录或账户数据。
 ## 主题与插件
 
 主题为 Minimal，Minimal Theme Settings 使用 Atom / One Dark scheme。
-Noctalia 的 `noctalia.css` **只声明调色板变量**；笔记库 Git 管理的
+Nix 生成的 `nix-dotfiles-one-dark.css` snippet **只声明调色板变量**；笔记库 Git 管理的
 `.obsidian/snippets/vaults-ui.css` 负责组件和布局，两者均启用。
 读宽约 680px；首页更宽；蓝色用于短竖条、标签页下划线和选中边线。
 callout、代码块、菜单和设置窗口使用低饱和色与实色背景。

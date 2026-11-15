@@ -16,7 +16,7 @@
     brightnessctl
     ddcutil
     playerctl
-    # Fine-grained card profiles; Noctalia has no equivalent menu.
+    # Fine-grained card profiles for the shell-less desktop mixers.
     pavucontrol
   ];
 }

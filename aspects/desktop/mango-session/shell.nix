@@ -45,8 +45,8 @@ let
     fi
   '';
   osdStyle = pkgs.writeText "swayosd-style.css" ''
-    /* Compact pill: the 16px default inset and default GTK label/icon sizes made
-       the volume and lock OSD read as oversized next to the 30px bar. */
+    /* Compact pill: the default inset and default GTK label/icon sizes made the
+       volume OSD read as oversized next to the 30px bar. */
     window#osd {
       border-radius: 999px;
       background-color: ${palette.surface};
@@ -156,7 +156,7 @@ in
           "on-click" = "activate";
           "on-click-right" = "toggle";
         };
-        # Client title from Mango IPC, not the Noctalia application name.
+        # Client title from Mango IPC, not an application-resolved name.
         # max-length is pixels.
         window = {
           format = "{}";
@@ -340,6 +340,24 @@ in
   # A notification that arrives before it is up can start a second process
   # through that Exec line; the second one fails to bind the name.
   systemd.user.services = {
+    # The desktop has no shell-provided authentication agent. Keep one
+    # session-scoped polkit agent so pkexec/GUI actions can prompt. The system
+    # polkit daemon itself is enabled by session-support's host side.
+    polkit-gnome-authentication-agent-1 = mkGraphicalService {
+      target = "mango-session.target";
+      description = "polkit authentication agent";
+      unit = {
+        StartLimitIntervalSec = 60;
+        StartLimitBurst = 3;
+      };
+      service = {
+        ExecCondition = "${pkgs.runtimeShell} -c '[ -n \"$WAYLAND_DISPLAY\" ]'";
+        ExecStart = "${pkgs.polkit_gnome}/bin/polkit-gnome-authentication-agent-1";
+        Restart = "on-failure";
+        RestartSec = 2;
+      };
+    };
+
     mangobar = {
       Unit = {
         StartLimitIntervalSec = 60;

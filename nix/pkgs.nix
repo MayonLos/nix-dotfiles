@@ -56,7 +56,6 @@
             };
             # Aliases preserve upstream derivations and their pinned build caches.
             local = {
-              noctalia = inputs.noctalia.packages.${system}.default;
               # Upstream derivation alias. The mangobar flake still imports
               # the followed nixpkgs-unstable while producing this package.
               mangobar = inputs.mangobar.packages.${system}.default;

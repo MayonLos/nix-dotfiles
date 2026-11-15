@@ -56,7 +56,7 @@ let
         && !host.services.greetd.enable
         && !(host.programs.mango.enable or false)
         && !host.services.pipewire.enable
-        && !(home.programs.noctalia.enable or false)
+        && !(home.programs.swaylock.enable or false)
         && !home.i18n.inputMethod.enable
         && !(home.xdg.configFile ? "kitty/kitty.conf");
       noLocalDaemons =

@@ -1,4 +1,4 @@
-{ inputs, ... }: {
+{
   imports = [
     ../../desktop/mango-session
     ../../appearance/appearance
@@ -8,7 +8,6 @@
       {
         pkgs,
         lib,
-        config,
         ...
       }:
       let
@@ -16,6 +15,8 @@
         templates =
           if hasPalette then
             import ./templates.nix {
+              # The palette is consumed directly by zathura/obsidian; a missing
+              # appearance leaves the stock application theme in place.
               inherit pkgs;
               palette = user.appearance;
             }
@@ -23,24 +24,19 @@
             { };
       in
       {
-        imports = [
-          inputs.noctalia.homeModules.default
-          (import ./zathura.nix { palette = user.appearance; })
-        ];
-        programs.noctalia.settings.theme.templates.user =
-          lib.mkIf (config.programs.noctalia.enable && hasPalette)
-            {
-              documents-zathura = {
-                input_path = templates.zathura;
-                output_path = "$XDG_CONFIG_HOME/zathura/noctaliarc";
-              };
-              documents-obsidian = {
-                input_path = templates.obsidian;
-                output_path_dynamic = "${pkgs.python3}/bin/python ${./resources/obsidian_theme.py} outputs";
-                post_hook = "${pkgs.python3}/bin/python ${./resources/obsidian_theme.py} enable";
-                hook_async = false;
-              };
-            };
+        imports = [ (import ./zathura.nix { palette = user.appearance; }) ];
+        # Both document themes are plain files rendered by Nix. Zathura reads a
+        # seeded include file; Obsidian gets a managed snippet written into each
+        # registered vault and enabled in its appearance.json.
+        home.activation.seedObsidianTheme = lib.mkIf hasPalette (
+          lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+            if [ -d "$XDG_CONFIG_HOME" ]; then
+              run ${pkgs.python3}/bin/python ${./resources/obsidian_theme.py} install \
+                ${lib.escapeShellArg "${templates.obsidian}"} \
+                || echo "warning: could not write the Obsidian theme snippet" >&2
+            fi
+          ''
+        );
         xdg.mimeApps = {
           enable = true;
           associations.added = {

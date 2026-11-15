@@ -48,14 +48,6 @@ let
       exec ${pkgs.kitty}/bin/kitty --directory="$1" -e ${pkgs.lazygit}/bin/lazygit
     '';
   };
-  setWallpaper = pkgs.writeShellApplication {
-    name = "thunar-set-wallpaper";
-    runtimeInputs = [ config.programs.noctalia.package ];
-    text = ''
-      [ "$#" -eq 1 ] && [ -f "$1" ] || exit 2
-      exec ${config.programs.noctalia.package}/bin/noctalia msg wallpaper-set "$1"
-    '';
-  };
   failFunction = appName: message: ''
     fail() {
       notify-send --app-name=${appName} --icon=dialog-error "${message}" "$1"
@@ -303,7 +295,6 @@ in
       neovimAction
       herdrAction
       lazygitAction
-      setWallpaper
     ];
 
     # uca.xml used to be Thunar's own file (mode 600); home-manager owns it now.
@@ -373,19 +364,6 @@ in
          <range>*</range>
          <patterns>*</patterns>
          <directories/>
-        </action>
-        <action>
-         <icon>preferences-desktop-wallpaper</icon>
-         <name>Set as Wallpaper</name>
-         <name xml:lang="zh_CN">设为壁纸</name>
-         <submenu></submenu>
-         <unique-id>set-as-wallpaper-1</unique-id>
-         <command>${setWallpaper}/bin/thunar-set-wallpaper %f</command>
-         <description>Set the selected image as the current session wallpaper</description>
-         <description xml:lang="zh_CN">将所选图片设为当前桌面会话的壁纸</description>
-         <range>1</range>
-         <patterns>*</patterns>
-         <image-files/>
         </action>
         <action>
           <icon>edit-copy</icon>

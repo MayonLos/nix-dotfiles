@@ -1,8 +1,7 @@
 /*
- * One Dark GTK4/libadwaita overrides. The GTK4 stylesheet is still rendered
- * and installed by Noctalia's existing template lifecycle.
+ * One Dark GTK4/libadwaita overrides. Rendered by Nix into
+ * ~/.config/gtk-4.0/gtk.css; that managed file is the only writer.
  */
-@import url("noctalia-extensions.css");
 
 @define-color accent_color {{ colors.onedark_blue_value.default.hex }};
 @define-color accent_bg_color {{ colors.onedark_selection_value.default.hex }};

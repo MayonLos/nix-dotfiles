@@ -12,7 +12,6 @@ let
   dialog = "${float},width:0.56,height:0.64";
   compact = "${float},width:0.42,height:0.42";
   tools = "${float},width:0.46,height:0.58";
-  panel = "${float},width:0.68,height:0.78";
   workspace = "${float},width:0.78,height:0.78";
   silent = "is_open_silent:1,is_tag_silent:1";
   opaque = "focused_opacity:1.0,unfocused_opacity:1.0";
@@ -55,7 +54,6 @@ let
     "${dialog},app_id:^(xdg-desktop-portal-(gtk|gnome)|org[.]gtk[.]GtkFileChooserDialog)$"
     # Keep authentication prompts small while leaving their focus behavior native.
     "${compact},app_id:^(polkit-gnome-authentication-agent-1|lxqt-policykit-agent|org[.]kde[.]polkit-kde-authentication-agent-1|pinentry.*)$"
-    "${panel},app_id:^dev[.]noctalia[.]Noctalia$"
 
     # Browser utility windows; the native app_id is "firefox".
     "${dialog},app_id:^(${browser})$,title:^(Library|Downloads|下载|我的足迹|资料库)$"

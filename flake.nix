@@ -22,12 +22,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Shell follows unstable; preserve the existing tested shell dependency set.
-    noctalia = {
-      url = "github:noctalia-dev/noctalia-shell";
-      inputs.nixpkgs.follows = "nixpkgs-unstable";
-    };
-
     # Status bar. Follow unstable rather than stable: upstream still imports
     # that nixpkgs inside its own outputs, so locking it costs one extra
     # evaluation. Do not follow mango's scenefx/wlroots; this package does

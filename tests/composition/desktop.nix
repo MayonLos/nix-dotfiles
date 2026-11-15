@@ -4,7 +4,7 @@ let
   system = "x86_64-linux";
   palette = import ../../aspects/appearance/appearance/onedark.nix;
 
-  # Public fixture facts only. These values make the actual Mango/Noctalia
+  # Public fixture facts only. These values make the actual Mango/session
   # modules evaluable; the fixture does not represent another deployable host.
   hostFacts = {
     inherit system;
@@ -120,12 +120,6 @@ let
     "bob@hostA" = [ "interactive-session" ];
   };
   afterLastConsumerRemoved = evaluate { };
-  avatarMango = evaluate {
-    "alice@hostA" = [
-      "avatar"
-      "interactive-session"
-    ];
-  };
   avatarOnly = evaluate { "alice@hostA" = [ "avatar" ]; };
 
   host = configs: name: configs.${name}.config;
@@ -135,13 +129,15 @@ let
 
   hasHomeUnit = hm: name: builtins.hasAttr name hm.systemd.user.services;
   desktopUnits = [
-    "noctalia"
+    "swaybg"
+    "swayidle"
     "fcitx5-daemon"
     "clipboard-bridge"
   ];
   hasAllDesktopUnits = hm: builtins.all (hasHomeUnit hm) desktopUnits;
   hasNoDesktopUnits = hm: builtins.all (name: !(hasHomeUnit hm name)) desktopUnits;
   hasInputGroup = config: user: builtins.elem "input" config.users.users.${user}.extraGroups;
+  hasPackage = hm: name: builtins.any (package: (package.pname or "") == name) hm.home.packages;
 
   selectedHost = host aliceOnly "hostA";
   unselectedHost = host aliceOnly "hostB";
@@ -157,7 +153,6 @@ let
     fontRolesAndCursorReachTheirConsumers =
       selectedHost.fonts.fontconfig.defaultFonts.monospace == [ palette.fonts.mono ]
       && selectedHome.gtk.font.name == palette.fonts.sans
-      && selectedHome.programs.noctalia.settings.shell.font_family == palette.fonts.sans
       &&
         selectedHome.i18n.inputMethod.fcitx5.settings.addons.classicui.globalSection.Font
         == "${palette.fonts.cjk} 10"
@@ -175,8 +170,7 @@ let
       && builtins.elem "pipewire.socket" selectedHome.systemd.user.targets.mango-session.Unit.Wants
       && !(unselectedHome.systemd.user.targets ? mango-session);
 
-    browserIntegrationRequiresBrowserSelection =
-      !(selectedHome.programs.noctalia.settings.theme.templates.user ? noctalia-firefox);
+    browserIntegrationRequiresBrowserSelection = !(hasPackage selectedHome "firefox");
 
     selectedUserGetsDesktopAndInputAuthorization =
       selectedHost.programs.mango.enable
@@ -188,8 +182,6 @@ let
           palette.fonts.sans
           palette.fonts.cjk
         ]
-      && selectedHome.programs.noctalia.enable
-      && selectedHome.programs.noctalia.customPalettes.onedark.dark.mSurface == palette.bg
       && selectedHome.i18n.inputMethod.enable
       && hasAllDesktopUnits selectedHome
       && hasInputGroup selectedHost "alice";
@@ -221,15 +213,6 @@ let
       ]
       && sharedAliceHome.wayland.windowManager.mango.settings.animations == 0
       && sharedBobHome.wayland.windowManager.mango.settings.animations == 1
-      && !sharedAliceHome.programs.noctalia.settings.shell.animation.enabled
-      && sharedBobHome.programs.noctalia.settings.shell.animation.enabled
-      && sharedAliceHome.programs.noctalia.settings.wallpaper.transition == [ ]
-      && !sharedAliceHome.programs.noctalia.settings.wallpaper.transition_on_startup
-      && sharedAliceHome.programs.noctalia.settings.wallpaper.automation.enabled
-      && sharedBobHome.programs.noctalia.settings.wallpaper.automation.enabled
-      && sharedBobHome.programs.noctalia.settings.wallpaper.transition == [ "fade" ]
-      && sharedAliceHome.programs.noctalia.settings.lockscreen.transition == [ ]
-      && sharedBobHome.programs.noctalia.settings.lockscreen.transition == [ "fade" ]
       && !((host sharedHost "hostB").programs.mango.enable or false);
 
     desktopDoesNotSelectLoginScreen =
@@ -251,20 +234,9 @@ let
       && hasNoDesktopUnits (home afterLastConsumerRemoved "hostA" "alice")
       && hasNoDesktopUnits (home afterLastConsumerRemoved "hostA" "bob");
 
-    # The lock surface draws ~/.face in its own identity group, so no
-    # free-positioned avatar sticker is added with or without the avatar.
-    lockscreenHasNoAvatarSticker =
-      !(
-        selectedHome.programs.noctalia.settings.lockscreen_widgets.widget or { } ? lockscreen-widget-avatar
-      )
-      && !(
-        (home avatarMango "hostA" "alice").programs.noctalia.settings.lockscreen_widgets.widget or { }
-        ? lockscreen-widget-avatar
-      );
-
     avatarDoesNotSelectMango =
       (home avatarOnly "hostA" "alice").xdg.dataFile ? "nix-dotfiles/alice-avatar.png"
-      && !((home avatarOnly "hostA" "alice").programs.noctalia.enable or false);
+      && !((home avatarOnly "hostA" "alice").programs.swaylock.enable or false);
 
   };
 
@@ -292,7 +264,7 @@ pkgs.runCommand "den-interactive-session-composition" { nativeBuildInputs = [ pk
   cp ${report} "$out/results.json"
   run() { "$@"; }
   source ${qtSeed}
-  python3 - "$XDG_CONFIG_HOME/qt6ct/colors/noctalia.conf" '${palette.bg}' <<'PY_QT'
+  python3 - "$XDG_CONFIG_HOME/qt6ct/colors/one-dark.conf" '${palette.bg}' <<'PY_QT'
   import configparser, re, sys
   from pathlib import Path
   path = Path(sys.argv[1])
@@ -305,7 +277,7 @@ pkgs.runCommand "den-interactive-session-composition" { nativeBuildInputs = [ pk
   path.write_text("existing GUI-owned palette\n")
   PY_QT
   source ${qtSeed}
-  grep -Fx 'existing GUI-owned palette' "$XDG_CONFIG_HOME/qt6ct/colors/noctalia.conf" > "$out/qt-seed-preserves-existing.txt"
+  grep -Fx 'existing GUI-owned palette' "$XDG_CONFIG_HOME/qt6ct/colors/one-dark.conf" > "$out/qt-seed-preserves-existing.txt"
   mkdir -p "$XDG_CONFIG_HOME/qt6ct"
   cat > "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf" <<'QT_OLD'
   [Appearance]
@@ -328,12 +300,8 @@ pkgs.runCommand "den-interactive-session-composition" { nativeBuildInputs = [ pk
   cp "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf" "$out/qt-font-custom.conf"
   source ${qtFontMigration}
   cmp "$out/qt-font-custom.conf" "$XDG_CONFIG_HOME/qt6ct/qt6ct.conf"
-  # Validate the reduced-motion branch with the actual pinned parsers as well
+  # Validate the reduced-motion branch with the actual pinned parser as well
   # as checking its composition. The real host check covers the rich default.
-  ${lib.getExe sharedAliceHome.programs.noctalia.package} config validate ${
-    sharedAliceHome.xdg.configFile."noctalia/config.toml".source
-  } > "$out/noctalia-reduced-motion.log" 2>&1 || { cat "$out/noctalia-reduced-motion.log"; exit 1; }
-  if grep -iE '\[WARN\]|warning:|\[ERROR\]|^WARN[[:space:]]|[1-9][0-9]* warning\(s\)' "$out/noctalia-reduced-motion.log"; then exit 1; fi
   ${lib.getExe sharedAliceHome.wayland.windowManager.mango.package} -c ${
     sharedAliceHome.xdg.configFile."mango/config.conf".source
   } -p > "$out/mango-reduced-motion.log" 2>&1 || { cat "$out/mango-reduced-motion.log"; exit 1; }

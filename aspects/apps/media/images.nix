@@ -100,7 +100,7 @@ in
     };
 
     # The packaged entry has NoDisplay=true. Override the same desktop ID so
-    # the viewer is also discoverable in Noctalia and Open With menus.
+    # the viewer is also discoverable in Open With menus.
     desktopEntries.swayimg = {
       name = "Swayimg";
       genericName = "Image Viewer";

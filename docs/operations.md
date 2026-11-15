@@ -35,7 +35,7 @@ nix eval --no-write-lock-file --raw .#checks.x86_64-linux --apply 'c: builtins.c
 
 - `nr`（`nh os switch`）或 `sudo nixos-rebuild switch --flake .#nixos-btw` 会改变运行系统，只有任务明确包含应用时才执行。需要在真实终端输入密码。
 - Home Manager 随系统一起切换，没有独立 switch。`nixos-rebuild test` 也会激活配置，不是只读检查。
-- 应用后要手动处理的：Noctalia 不会自动重启（见 [desktop.md](desktop.md)）；合成器、greeter、内核相关改动要重新登录或重启。
+- 应用后要手动处理的：合成器、greeter、内核相关改动要重新登录或重启；会话服务（mangobar/mako/swayosd/swaybg/swayidle）随新 generation 重启。
 - 回滚：启动菜单选上一代，或 `sudo nixos-rebuild switch --rollback`。之后核对 system 和 Home Manager generation。回滚不能替代应用数据备份。
 - 清理：`nc`（`nh clean all --keep 5 --keep-since 14d --keep-one`）会删旧 generation，确认不再需要回退和诊断后再用。`--keep-one` 为每个 direnv 项目保留一个 gcroot，避免项目 devshell 的源码（如 HAL flake inputs）被回收后 clangd 找不到头文件。
 
@@ -49,22 +49,21 @@ Git flake 只包含已跟踪文件，新文件 `git add` 后才进入求值。`p
 
 ## 隔离视觉验证
 
-不在用户的 Wayland 会话里开窗口、模拟按键，也不重启 noctalia、fcitx5、mango 等桌面守护进程。
+不在用户的 Wayland 会话里开窗口、模拟按键，也不重启 fcitx5、mango 等桌面守护进程。
 
 | 对象 | 方式 |
 |---|---|
 | Wayland 应用（Kitty、Neovim、GTK/Qt、文件选择器） | 私有无头 sway：`WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1`，独立 `XDG_RUNTIME_DIR`（路径要短，超过 `sun_path` 起不来）、`WAYLAND_DISPLAY`、`HOME`/XDG 与 D-Bus 会话；输出 2560×1600、scale 1.5；`grim` 指定该 socket 截图 |
 | 终端界面 | 必须用真实 Kitty（放进上面的无头 sway）。tmux→HTML 转换看不出内边距、字体图标、背景色差异 |
-| Noctalia 模板 | 运行锁定 Noctalia 的真实模板引擎，确认输出写出且无 template error；只检查模板文本会漏掉运行时失败 |
 | 设计稿 | HTML 用 nixpkgs chromium `--headless=new --screenshot` 渲染；`html{zoom:1.5}` 对应实机 1.5 缩放 |
 
 验证要先在旧版本上复现问题：新版“通过”本身不是证据。
 
 ## 已知陷阱
 
-桌面相关陷阱（Noctalia 锁屏、主题、服务）见 [desktop.md](desktop.md#排障)。
+桌面相关陷阱（锁屏、主题、服务）见 [desktop.md](desktop.md#排障)。
 
-- **补丁型美化**（Mango、Noctalia 源码补丁）每个都配构建期检查，上游升级时失败而不是静默退化。
+- **补丁型美化**（Mango 源码补丁）每个都配构建期检查，上游升级时失败而不是静默退化。
 - **独显断电**：用户常主动给 NVIDIA 断电，`nvidia-smi` 报 No devices 属正常。
 - **zsh**：交互 shell 是 zsh，`$var` 不按空格拆分、没有 `$PIPESTATUS`；`pkill -f`/`pgrep -f` 的模式会匹配自己的命令行。多 PID 操作用 bash 脚本。
 - **`git worktree remove --force`** 会删掉其中被忽略的 `.work/`，要保留的产物先拷出。

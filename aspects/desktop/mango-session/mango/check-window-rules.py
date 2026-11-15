@@ -170,7 +170,6 @@ for app, title, size in (
     ("firefox", "Open File", (0.56, 0.64)),
     ("pinentry-qt", "Authentication Required", (0.42, 0.42)),
     ("org.pulseaudio.pavucontrol", "Volume Control", (0.46, 0.58)),
-    ("dev.noctalia.Noctalia", "Noctalia Settings", (0.68, 0.78)),
     ("swayimg", "image.png", (0.78, 0.78)),
     ("virt-manager", "Virtual Machine Manager", (0.78, 0.78)),
     (".virt-manager-wrapped", "虚拟系统管理器", (0.78, 0.78)),

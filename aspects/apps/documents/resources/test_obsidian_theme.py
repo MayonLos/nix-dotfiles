@@ -35,9 +35,12 @@ class ObsidianThemeTest(unittest.TestCase):
     def write_registry(self, vaults):
         self.registry.write_text(json.dumps({"vaults": vaults}), encoding="utf-8")
 
-    def run_script(self, action, succeeds=True):
+    def run_script(self, action, succeeds=True, source=None):
+        command = [sys.executable, str(SCRIPT), action]
+        if source is not None:
+            command.append(str(source))
         result = subprocess.run(
-            [sys.executable, str(SCRIPT), action],
+            command,
             env=self.env,
             text=True,
             stdout=subprocess.PIPE,
@@ -56,10 +59,37 @@ class ObsidianThemeTest(unittest.TestCase):
         (self.root / "decoy").mkdir()
         (self.root / "decoy" / ".obsidian").mkdir()
         result = self.run_script("outputs")
-        expected = self.vault / ".obsidian" / "snippets" / "noctalia.css"
+        expected = self.vault / ".obsidian" / "snippets" / "nix-dotfiles-one-dark.css"
         self.assertEqual(result.stdout.splitlines(), [str(expected)])
         self.assertTrue(expected.parent.is_dir())
         self.assertFalse((self.root / "decoy" / ".obsidian" / "snippets").exists())
+
+    def test_install_writes_managed_snippet_and_enables_it(self):
+        source = self.root / "palette.css"
+        source.write_text(".theme-dark { --background-primary: #1e2228; }\n", encoding="utf-8")
+        self.run_script("install", source=source)
+        snippet = self.vault / ".obsidian" / "snippets" / "nix-dotfiles-one-dark.css"
+        self.assertEqual(snippet.read_text(encoding="utf-8"), source.read_text(encoding="utf-8"))
+        appearance = json.loads((self.vault / ".obsidian" / "appearance.json").read_text(encoding="utf-8"))
+        self.assertEqual(appearance["enabledCssSnippets"], ["nix-dotfiles-one-dark"])
+        before = snippet.read_bytes()
+        self.run_script("install", source=source)
+        self.assertEqual(snippet.read_bytes(), before)
+
+    def test_install_refuses_non_regular_source(self):
+        source = self.root / "missing.css"
+        self.run_script("install", succeeds=False, source=source)
+
+    def test_install_refuses_symlinked_snippet_target(self):
+        source = self.root / "palette.css"
+        source.write_text("body {}\n", encoding="utf-8")
+        snippets = self.vault / ".obsidian" / "snippets"
+        snippets.mkdir(parents=True)
+        outside = self.root / "outside.css"
+        outside.write_text("user-owned", encoding="utf-8")
+        (snippets / "nix-dotfiles-one-dark.css").symlink_to(outside)
+        self.run_script("install", succeeds=False, source=source)
+        self.assertEqual(outside.read_text(encoding="utf-8"), "user-owned")
 
     def test_missing_registered_vault_does_not_block_existing_vault(self):
         self.write_registry({
@@ -67,7 +97,7 @@ class ObsidianThemeTest(unittest.TestCase):
             "offline": {"path": str(self.root / "offline")},
         })
         result = self.run_script("outputs")
-        self.assertEqual(result.stdout.splitlines(), [str(self.vault / ".obsidian/snippets/noctalia.css")])
+        self.assertEqual(result.stdout.splitlines(), [str(self.vault / ".obsidian/snippets/nix-dotfiles-one-dark.css")])
         self.run_script("enable")
         self.assertFalse((self.root / "offline").exists())
 
@@ -80,7 +110,7 @@ class ObsidianThemeTest(unittest.TestCase):
         first = appearance.read_bytes()
         self.run_script("enable")
         self.assertEqual(appearance.read_bytes(), first)
-        self.assertEqual(json.loads(first), {"cssTheme": "Minimal", "enabledCssSnippets": ["vaults-ui", "noctalia"]})
+        self.assertEqual(json.loads(first), {"cssTheme": "Minimal", "enabledCssSnippets": ["vaults-ui", "nix-dotfiles-one-dark"]})
 
     def test_quiet_layout_is_opt_in_and_does_not_hide_navigation(self):
         obsidian = self.vault / ".obsidian"
@@ -102,7 +132,7 @@ class ObsidianThemeTest(unittest.TestCase):
         self.run_script("enable")
         updated = json.loads(appearance.read_text(encoding="utf-8"))
         self.assertEqual(updated["cssTheme"], "Minimal")
-        self.assertEqual(updated["enabledCssSnippets"], ["vaults-ui", "noctalia"])
+        self.assertEqual(updated["enabledCssSnippets"], ["vaults-ui", "nix-dotfiles-one-dark"])
         self.assertNotIn("obsidian-quiet-layout", updated["enabledCssSnippets"])
 
     def test_bad_appearance_json_is_rejected_without_rewrite(self):
@@ -127,13 +157,13 @@ class ObsidianThemeTest(unittest.TestCase):
         snippets.mkdir(parents=True)
         outside = self.root / "outside.css"
         outside.write_text("user-owned", encoding="utf-8")
-        (snippets / "noctalia.css").symlink_to(outside)
+        (snippets / "nix-dotfiles-one-dark.css").symlink_to(outside)
         self.run_script("outputs", succeeds=False)
 
     def test_non_regular_css_target_is_rejected(self):
         snippets = self.vault / ".obsidian" / "snippets"
         snippets.mkdir(parents=True)
-        (snippets / "noctalia.css").mkdir()
+        (snippets / "nix-dotfiles-one-dark.css").mkdir()
         self.run_script("outputs", succeeds=False)
 
     def test_symlink_appearance_file_is_rejected(self):

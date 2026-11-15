@@ -9,8 +9,8 @@
   imports = [ (import ./kde.nix { inherit palette; }) ];
   xdg.configFile."qt6ct/qss/one-dark.qss".source =
     (import ./qt-style.nix { inherit pkgs palette; }).stylesheet;
-  # qt6ct owns the mutable GUI configuration and Noctalia owns only the
-  # palette file. HM provides a read-only stylesheet and seeds defaults once.
+  # qt6ct owns the mutable GUI configuration. HM provides a read-only
+  # stylesheet and seeds the missing palette/default files once.
   home.activation =
     let
       seedFile = import ../../../lib/seed-file.nix { inherit lib pkgs; };
@@ -18,7 +18,7 @@
       configHome = config.xdg.configHome;
       qt6ctDir = "${configHome}/qt6ct";
       qt6ctConfig = "${qt6ctDir}/qt6ct.conf";
-      colorScheme = "${qt6ctDir}/colors/noctalia.conf";
+      colorScheme = "${qt6ctDir}/colors/one-dark.conf";
       # qt6ct 0.11's stylesheet picker scans userStyleSheetPath(), which is
       # <config>/qt6ct/qss; keep the HM resource discoverable there.
       stylesheet = "${qt6ctDir}/qss/one-dark.qss";

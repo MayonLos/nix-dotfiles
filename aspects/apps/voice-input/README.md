@@ -1,7 +1,7 @@
 # voice-input
 
 可选择的个人离线中文语音输入 feature，ID `voice-input`。放在 apps：它消费已有桌面
-输入法/音频能力，不拥有 compositor、快捷键、Noctalia、PipeWire 或 Fcitx daemon 生命周期。
+输入法/音频能力，不拥有 compositor、快捷键、桌面 shell、PipeWire 或 Fcitx daemon 生命周期。
 默认不加入真实 host/bundle，主代理在用户 binding 的 `includes` 中选择。
 
 输入：已有 Fcitx5 和 PipeWire session support、公开 `pkgs.mayonVoice`、

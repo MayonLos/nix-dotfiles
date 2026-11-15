@@ -3,7 +3,6 @@
     ../../appearance/appearance
     ../../workspace/workspace-task
   ];
-  den.quirks.noctaliaIntegrations.description = "Selected applications requesting Noctalia palette integration";
   den.aspects = {
     interactive-session = { host, user, ... }: {
       includes = [ den.aspects.graphical-session-support ];
@@ -12,31 +11,36 @@
       user.extraGroups = [ "video" ];
       homeManager =
         {
-          noctaliaIntegrations ? [ ],
-          lib,
           pkgs,
           ...
         }:
-        let
-          integrations = (import ./contract.nix { inherit lib; }).collect noctaliaIntegrations;
-        in
         {
           imports = [
             (import ./mango.nix { palette = user.appearance; })
             (import ./shell.nix { palette = user.appearance; })
-            (import ./noctalia.nix {
-              palette = user.appearance;
-              avatar = if builtins.elem "avatar" integrations.ids then user.avatar else null;
-              noctaliaIntegrations = integrations.ids;
-              integrationTemplates = integrations.entries;
-            })
+            (import ./wallpaper.nix { palette = user.appearance; })
+            (import ./lock.nix { palette = user.appearance; })
             ./clipboard.nix
             ./screenshot.nix
           ];
+          xdg.dataFile."applications/nvim.desktop".text = ''
+            [Desktop Entry]
+            Type=Application
+            Name=Neovim
+            Comment=Terminal text editor
+            Exec=kitty --class=Neovim nvim
+            Icon=utilities-terminal
+            Terminal=false
+            Categories=Development;TextEditor;
+            StartupWMClass=Neovim
+          '';
           nixDotfiles.graphicalSessionTargets = [ "mango-session.target" ];
           home.sessionVariables.NIXOS_OZONE_WL = "1";
           systemd.user.sessionVariables.NIXOS_OZONE_WL = "1";
+          # Keep the native notification client available for scripts and for
+          # reviewing what the mako daemon draws.
           home.packages = with pkgs; [
+            libnotify
             wl-clipboard
             grim
             slurp

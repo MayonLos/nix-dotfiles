@@ -57,7 +57,7 @@ docs/                     # 现行文档；history/README.md 按月追加
 | `system/` | nix 设置与维护、locale、sudo/安全策略、账号公共策略 |
 | `hardware/` | 机型驱动与策略（legion-laptop：NVIDIA PRIME、电源、启动、gamemode GPU、mpv 硬解等，由 facts 参数化） |
 | `appearance/` | 外观契约、主题数据（onedark、ansi、壁纸、头像生成） |
-| `desktop/` | `session-support`（输入法、GTK/Qt、字体、portal、音频 socket、session targets）、`mango-session`（Mango+Noctalia+剪贴板+截图）、`greeter` |
+| `desktop/` | `session-support`（输入法、GTK/Qt、字体、portal、音频 socket、session targets）、`mango-session`（Mango+顶栏+通知/OSD+壁纸+锁屏+剪贴板+截图）、`greeter` |
 | `cli/` | shell、terminal、git、tmux、yazi、系统信息、CLI 工具 |
 | `dev/` | 编辑器（neovim、vscode、jetbrains）、languages（契约+各语言）、embedded、containers、virtual-machines、ai-agents |
 | `apps/` | firefox、communication、documents、media、file-manager、gaming |
@@ -98,7 +98,7 @@ Den 只对**函数值**注入上下文，路径字面量原样交给模块系统
 |---|---|---|
 | `includes` | **选择与组合** aspect；不承载数据 | bundles、绑定 |
 | 实体 schema 属性 | 实体输入（由 `den.schema.{host,user}.imports` 的契约定义） | `host.appearance`、`user.defaultTools`、`user.workspaceProjects`、`host.facts` |
-| quirks（必要时 pipes） | 已选功能向消费者**贡献数据** | `editorLanguages`、`noctaliaIntegrations` |
+| quirks（必要时 pipes） | 已选功能向消费者**贡献数据** | `editorLanguages` |
 | 公开模块选项 | 同一模块系统内的合并接线 | `nixDotfiles.graphicalSessionTargets` |
 | 公开包工厂 | 带参数的包 | Neovim 配置包、`qt-style.nix` |
 
@@ -152,7 +152,6 @@ Den 只对**函数值**注入上下文，路径字面量原样交给模块系统
 | workspace-projects | `workspace/project-workbench` | schema（user） | 绑定 → 项目工作台 |
 | facts | `hardware/` 下契约 | schema（host） | inventory facts → hardware、desktop、greeter |
 | languages | `dev/languages` | quirk `editorLanguages` + collector | 各语言 → neovim（已实现）；vscode（计划） |
-| desktop-integrations | `desktop/mango-session` | quirk `noctaliaIntegrations` + validator | 选用的应用 → Noctalia 模板 |
 | session-targets | `desktop/session-support` | 公开模块选项 `nixDotfiles.graphicalSessionTargets` | 会话 → 输入法、Xresources、音频 socket 等 |
 
 ## 6. inventory [硬]
@@ -196,9 +195,9 @@ inventory/
 ### 8.3 配方位置
 
 - 私有配方留在功能目录；带参数的配方以**包工厂**公开（不要固定成全局单例）。
-- `packages/` 放本仓库自写程序的源码与包工厂（`mayon-tui`、`bilitui`、`mayon-voice`、`noctalia-clash-status`、`mark-shot`）和需要整机替换的上游补丁包（`gamemode`）；
-  多数经 `nix/pkgs.nix` 的 overlay 公开为 `pkgs.<名>`（`gamemode` 替换同名上游包）；只有一个消费者的可由其直接导入包工厂
-  （`noctalia-clash-status` → `desktop/mango-session`）。功能目录只负责安装、快捷键与配置。
+- `packages/` 放本仓库自写程序的源码与包工厂（`mayon-tui`、`bilitui`、`mayon-voice`、`mark-shot`）和需要整机替换的上游补丁包（`gamemode`）；
+  多数经 `nix/pkgs.nix` 的 overlay 公开为 `pkgs.<名>`（`gamemode` 替换同名上游包）；只有一个消费者的可由其直接导入包工厂。
+  功能目录只负责安装、快捷键与配置。
 - flake 对外导出（如 `.#neovim`）由 `nix/outputs.nix` 调用功能的公开包工厂并显式传入默认数据。
 
 ### 8.4 lib [硬]
@@ -217,7 +216,7 @@ inventory/
 - **秘密**：声明在 `inventory/hosts/<h>/secrets.nix`；消费者只用 `config.sops.secrets.<n>.path` 或 `config.sops.templates.<n>.path` / placeholder；
   禁止求值期读取明文、写入 Nix 字符串/store/日志，禁止硬编码 `/run/secrets/...`。
 - **用户状态**：功能停用或迁移不清理历史、认证、模型、项目、容器卷、VM 镜像；seed/迁移必须幂等，明确对软链与用户自定义值的处理。
-- **写入归属**：每个声明式输出或可变字段有唯一权威写入者；seed、迁移、运行时交接（如 Noctalia sidecar、Qt seed/GUI、mark-shot 字段补丁）在 `docs/config-ownership.md` 单列。
+- **写入归属**：每个声明式输出或可变字段有唯一权威写入者；seed、迁移、运行时交接（如 Qt seed/GUI、mark-shot 字段补丁）在 `docs/config-ownership.md` 单列。
 - **服务**：system/user/session 生命周期、`WantedBy`/`PartOf`/`After`、socket/D-Bus 激活按 `docs/service-policy.md`；客户端与 daemon 分开选择。
 
 ## 10. 测试与检查

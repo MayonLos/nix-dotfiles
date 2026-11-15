@@ -17,7 +17,7 @@ in
     package = pkgs.zathura;
 
     extraConfig = ''
-      include noctaliarc
+      include one-dark
       map <F4> toggle_statusbar
     '';
 
@@ -35,9 +35,9 @@ in
 
       # Keep PDF recoloring off by default so documents open with their original
       # colors; `^r` can still toggle the dark rendering described by the
-      # feature-owned palette template.
+      # feature-owned palette file.
       #
-      # The recolor colors live in the feature-owned palette template. This
+      # The recolor colors live in the feature-owned palette file. This
       # keeps the declared default at false while making `^r` use
       # the same colors as the rest of the application.
       recolor = false;
@@ -63,8 +63,8 @@ in
     };
   };
 
-  home.activation.seedZathuraNoctaliaTheme =
-    seedFile.mkActivation "${config.xdg.configHome}/zathura/noctaliarc"
+  home.activation.seedZathuraTheme =
+    seedFile.mkActivation "${config.xdg.configHome}/zathura/one-dark"
       {
         source = if theme == null then null else theme.zathura;
       };

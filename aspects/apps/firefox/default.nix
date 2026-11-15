@@ -1,40 +1,16 @@
-{ inputs, ... }:
 {
   imports = [
     ../../desktop/mango-session
     ../../appearance/appearance
   ];
   den.aspects.firefox = { user, ... }: {
-    noctaliaIntegrations = [
-      {
-        id = "firefox";
-        templateFile = ./resources/noctalia-userChrome.css;
-        hookDirectory = ./resources;
-      }
-    ];
     homeManager =
       {
-        config,
         lib,
         pkgs,
         ...
       }:
       let
-        firefoxNoctaliaPaletteColors = {
-          onedark_bg = user.appearance.bg;
-          onedark_deep = user.appearance.deep;
-          onedark_surface = user.appearance.surface;
-          onedark_selection = user.appearance.selection;
-          onedark_bright_fg = user.appearance.brightFg;
-          onedark_fg = user.appearance.fg;
-          onedark_muted = user.appearance.muted;
-          onedark_border = user.appearance.border;
-          onedark_blue = user.appearance.blue;
-          onedark_black = user.appearance.black;
-          onedark_red = user.appearance.red;
-          onedark_purple = user.appearance.purple;
-          onedark_cyan = user.appearance.cyan;
-        };
         firefoxWithManagedThemeAndExtensions = pkgs.firefox.override {
           extraPolicies = {
             ExtensionSettings = {
@@ -74,19 +50,10 @@
               user.appearance.cyan
               user.appearance.purple
             ]
-            (builtins.readFile ./resources/noctalia-userChrome.css)
+            (builtins.readFile ./resources/userChrome.css)
         );
       in
       {
-        imports = [ inputs.noctalia.homeModules.default ];
-        programs.noctalia.settings.theme.templates.custom_colors =
-          lib.mkIf config.programs.noctalia.enable
-            (
-              lib.mapAttrs (_: color: {
-                inherit color;
-                blend = false;
-              }) firefoxNoctaliaPaletteColors
-            );
         xdg.mimeApps.enable = true;
         xdg.mimeApps.defaultApplications = {
           "x-scheme-handler/about" = [ "firefox.desktop" ];

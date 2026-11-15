@@ -57,7 +57,7 @@ in
     };
   };
   # No login wants. GameMode hooks acquire only this game's idle inhibitor;
-  # Noctalia observes logind BlockInhibited and suppresses its idle actions.
+  # desktop idle actions observe logind BlockInhibited and stay suspended.
   systemd.user.services.gaming-idle-inhibit = {
     description = "GameMode idle inhibitor";
     partOf = [ "gamemoded.service" ];

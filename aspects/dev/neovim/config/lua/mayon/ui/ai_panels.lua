@@ -688,7 +688,7 @@ function M.open_fixture(kind)
 		chat:add_buf_message({ role = "user", content = "把通知宽度改成 320，并保持右上角。" })
 		chat:add_buf_message({
 			role = "llm",
-			content = "好的，修改如下：\n\n> Read noctalia.nix · 226 行\n\n```diff\n- width = 380;\n+ width = 320;\n```",
+			content = "好的，修改如下：\n\n> Read mango.nix · 226 行\n\n```diff\n- width = 380;\n+ width = 320;\n```",
 		})
 		chat:add_buf_message({ role = "user", content = "" })
 		chat.ui:open()
