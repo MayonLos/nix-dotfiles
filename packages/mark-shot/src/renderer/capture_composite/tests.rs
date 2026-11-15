@@ -41,19 +41,33 @@ fn fractional_native_crops_keep_frozen_pixels() {
                 height as f32 / scale,
             )
             .unwrap();
-            let (actual, _, _) = composite_precise(
+            let (actual, origin, _) = composite_precise(
                 std::slice::from_ref(&capture),
                 std::slice::from_ref(&placement),
                 region,
                 None,
             )
             .unwrap();
-            assert_eq!((actual.width(), actual.height()), (width, height));
-            for row in 0..height as usize {
-                let start = ((y as usize + row) * 1280 + x as usize) * 4;
+            // 2. 【截图裁切回归】【覆盖边缘】映射使用捕获帧与逻辑尺寸的精确轴比例：分数原点
+            //    按 floor/ceil 覆盖部分像素，输出最多比逻辑请求各轴多 1 像素。
+            let scale_x = 1280.0_f32 / 853.0_f32;
+            let scale_y = 800.0_f32 / 533.0_f32;
+            let left = (origin.0 * f64::from(scale_x)).round() as usize;
+            let top = (origin.1 * f64::from(scale_y)).round() as usize;
+            let (crop_width, crop_height) = (actual.width() as usize, actual.height() as usize);
+            assert!(
+                crop_width == width as usize || crop_width == width as usize + 1,
+                "scale={scale}, crop=({x},{y},{width},{height}), width={crop_width}"
+            );
+            assert!(
+                crop_height == height as usize || crop_height == height as usize + 1,
+                "scale={scale}, crop=({x},{y},{width},{height}), height={crop_height}"
+            );
+            for row in 0..crop_height {
+                let start = ((top + row) * 1280 + left) * 4;
                 assert_eq!(
-                    &actual.data()[row * width as usize * 4..(row + 1) * width as usize * 4],
-                    &capture.pixmap.data()[start..start + width as usize * 4],
+                    &actual.data()[row * crop_width * 4..(row + 1) * crop_width * 4],
+                    &capture.pixmap.data()[start..start + crop_width * 4],
                     "scale={scale}, crop=({x},{y},{width},{height}), row={row}"
                 );
             }

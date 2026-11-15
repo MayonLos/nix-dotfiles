@@ -114,6 +114,12 @@ impl OverlayState {
             );
         let (bw, bh) = if transparent_parent && sd.viewport.is_some() {
             (1, 1)
+        } else if let Some((width, height)) = sd.native_size {
+            // Full-output capture: the delivered frame's physical grid is the buffer
+            // grid. Deriving it from the logical configure size times a fractional
+            // scale rounds to a different pixel count (1706 * 1.5 = 2559 against a
+            // 2560-wide frame) and desynchronises the canvas from the buffer.
+            (width, height)
         } else {
             crate::types::px_size((w, h), sd.scale)
         };

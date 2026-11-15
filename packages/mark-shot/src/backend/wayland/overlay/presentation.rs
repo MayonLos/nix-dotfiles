@@ -80,6 +80,13 @@ impl WaylandOverlay {
                 (rect.width().ceil() as u32, rect.height().ceil() as u32)
             });
             let (w, h) = rt.state.image_window.unwrap_or((w, h));
+            // The capture frame is the authoritative physical grid for a full-output
+            // overlay; panels, popups and image windows keep deriving their buffer
+            // from the configured logical size.
+            let capture_pixels = (self.scrolling.is_none() && rt.state.image_window.is_none())
+                .then(|| self.frame_pixels.get(i).copied())
+                .flatten()
+                .filter(|(width, height)| *width > 0 && *height > 0);
 
             let surface = rt.state.compositor_state.create_surface(&qh);
 
@@ -110,6 +117,13 @@ impl WaylandOverlay {
                         Some(namespace),
                         Some(&wl_output),
                     );
+                    // A full-output layer surface must cover the whole logical output. Mango
+                    // otherwise answers with floor(physical / scale) (1706x1066 for 2560x1600
+                    // at 1.5) while wl_output reports 1707x1067; requesting the reported
+                    // logical size keeps the surface grid equal to the frame grid.
+                    if self.scrolling.is_none() && rt.state.image_window.is_none() {
+                        layer.set_size(w.max(1) as u32, h.max(1) as u32);
+                    }
                     layer.set_anchor(Anchor::all());
                     layer.set_exclusive_zone(-1);
                     layer.set_keyboard_interactivity(if self.scrolling.is_some() {
@@ -143,6 +157,7 @@ impl WaylandOverlay {
                                 surface: parent_surface,
                                 viewport: parent_viewport,
                                 role: Role::ScrollParent(parent),
+                                native_size: None,
                                 shm_buffer: None,
                                 spare_buffer: None,
                                 buffer_history: Default::default(),
@@ -233,6 +248,7 @@ impl WaylandOverlay {
                     surface,
                     viewport,
                     role,
+                    native_size: capture_pixels,
                     shm_buffer: None,
                     spare_buffer: None,
                     buffer_history: Default::default(),

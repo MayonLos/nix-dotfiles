@@ -60,34 +60,6 @@ pub(super) fn idle_timeout(state: &OverlayState) -> Option<std::time::Duration> 
         .min()
 }
 
-/// 【截图覆盖层】【像素网格】按已配置尺寸和交付字节数寻找实际缓冲尺寸；仅在分数缩放取整差 1-3 像素时使用，返回空表示不匹配
-fn fit_pixel_size(expected: (u32, u32), pixels_len: usize) -> Option<(u32, u32)> {
-    if pixels_len % 4 != 0 {
-        return None;
-    }
-    let area = (pixels_len / 4) as u64;
-    let mut best: Option<((u32, u32), u32)> = None;
-    for dw in 0..=3u32 {
-        for dh in 0..=3u32 {
-            for (w, h) in [
-                (expected.0.saturating_sub(dw), expected.1.saturating_sub(dh)),
-                (expected.0.saturating_sub(dw), expected.1.saturating_add(dh)),
-                (expected.0.saturating_add(dw), expected.1.saturating_sub(dh)),
-                (expected.0.saturating_add(dw), expected.1.saturating_add(dh)),
-            ] {
-                if w == 0 || h == 0 || u64::from(w) * u64::from(h) != area {
-                    continue;
-                }
-                let cost = dw + dh;
-                if best.is_none_or(|(_, best_cost)| cost < best_cost) {
-                    best = Some(((w, h), cost));
-                }
-            }
-        }
-    }
-    best.map(|(size, _)| size)
-}
-
 impl WaylandOverlay {
     /// 【截图覆盖层】【像素交付】按monitor_idx、pixels、background和damage写入已释放槽位，返回协议结果；局部帧继承最新完整内容
     pub(super) fn stage_pixels(
@@ -120,33 +92,20 @@ impl WaylandOverlay {
             .surfaces
             .get_mut(&monitor_idx)
             .ok_or("surface not found")?;
-        let mut size = surface.buffer_size();
-        if pixels.len() != size.0 as usize * size.1 as usize * 4 {
-            // Fractional scaling: the logical surface size times the output
-            // scale can round one pixel larger than the physical frame the
-            // compositor actually captured. Re-fit the native buffer to the
-            // delivered pixel grid instead of rejecting the frame. The
-            // viewport destination keeps the logical size, so the surface is
-            // still mapped correctly.
-            let actual = fit_pixel_size(size, pixels.len())
-                .ok_or("the native frame does not match the configured buffer")?;
-            if std::env::var_os("MARK_SHOT_DEBUG").is_some() {
-                eprintln!(
-                    "mark-shot: overlay buffer {}x{} re-fitted to captured frame {}x{}",
-                    size.0, size.1, actual.0, actual.1
-                );
-            }
-            let pool = &mut runtime.state.pool;
-            surface.shm_buffer = Some(create_shm_buffer(pool, actual.0, actual.1)?);
-            surface.spare_buffer = None;
-            surface.buffer_history = Default::default();
-            surface.waiting_release = false;
-            surface.frame_sent = None;
-            size = actual;
-        }
+        let size = surface.buffer_size();
         let length = size.0 as usize * size.1 as usize * 4;
+        // The capture frame, editor canvas and overlay buffer must share one
+        // physical pixel grid. Guessing a nearby size here hides a real
+        // mismatch and leaves viewport, canvas and damage rectangles on
+        // different grids, which shows up as shifted or torn content.
         if pixels.len() != length {
-            return Err("the native frame does not match the configured buffer".into());
+            return Err(format!(
+                "the native frame ({} bytes) does not match the configured buffer {}x{}",
+                pixels.len(),
+                size.0,
+                size.1
+            )
+            .into());
         }
         let current = surface
             .shm_buffer

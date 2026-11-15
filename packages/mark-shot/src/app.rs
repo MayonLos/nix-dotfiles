@@ -63,7 +63,7 @@ pub(crate) mod text_context_menu;
 pub(crate) mod text_input;
 pub(crate) mod text_menu_surface;
 
-pub(crate) use init::{build_captures, build_placements, load_icons_cache};
+pub(crate) use init::{build_captures, build_placements_for_frames, load_icons_cache};
 pub(crate) use input::select_tool;
 pub(crate) use input::text_reedit;
 

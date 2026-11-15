@@ -23,9 +23,14 @@ pub fn build_captures(frames: Vec<MonitorFrame>) -> Result<Vec<Capture>, String>
             })?;
             let logical_w = f.info.size.map_or(src_w as i32, |s| s.0).max(1);
             let ratio = src_w as f32 / logical_w as f32;
-            // 1. 【截图初始化】【分数比例】协议使用一百二十分之一单位，逻辑尺寸取整不能引入额外像素缩放
-            let quantized = (ratio * 120.0).round() / 120.0;
-            let scale = if quantized > 0.0 { quantized } else { ratio };
+            // 1. 【截图初始化】【物理网格】捕获帧的物理宽度才是像素网格的真值：逻辑宽度按整数上报，
+            // 协议比例（如 1.5）与 2560/1707 不同；量化到 1/120 会把 2560x1600 的帧画进
+            // 2559x1599 的缓冲并在导出时多出透明边。直接使用精确比例让画布、缓冲和导出共用同一网格。
+            let scale = if ratio.is_finite() && ratio > 0.0 {
+                ratio
+            } else {
+                1.0
+            };
 
             let row_bytes = (src_w as usize) * 4;
             let src_stride = f.pw_stride as usize;
@@ -104,6 +109,29 @@ pub fn build_placements(outputs: &[Output], hidpi: bool) -> Vec<Placement> {
             scale: if hidpi { o.scale() } else { 1.0 },
         })
         .collect()
+}
+
+/// 【截图初始化】【物理网格】在输出布局上按真实捕获帧宽度确定比例，返回与冻结图像素完全一致的布局
+///
+/// 分数缩放合成器把逻辑宽度取整上报：2560 物理 / 1.5 = 1706.67 → 1707。若布局仍用协议比例
+/// 1.5，`px_size()` 得到 2561x1601，画布、覆盖层缓冲与导出都比真实帧多一像素。这里以帧宽除以
+/// 逻辑宽得到精确比例（2560/1707），让 `px_size()` 与捕获缓冲逐像素一致。
+pub fn build_placements_for_frames(
+    outputs: &[Output],
+    hidpi: bool,
+    frames: &[(u32, u32)],
+) -> Vec<Placement> {
+    let mut placements = build_placements(outputs, hidpi);
+    for (placement, &(frame_w, frame_h)) in placements.iter_mut().zip(frames) {
+        let logical_w = placement.size.0.max(1) as f32;
+        if hidpi && frame_w > 0 {
+            let ratio = frame_w as f32 / logical_w;
+            if ratio.is_finite() && ratio > 0.0 {
+                placement.scale = ratio;
+            }
+        }
+    }
+    placements
 }
 
 pub fn load_icons_cache() -> HashMap<&'static str, Tree> {
@@ -238,15 +266,43 @@ mod tests {
         );
     }
 
+    /// 【截图初始化】【物理网格】无参数，检查 2560x1600@1.5 报 1707x1067 时画布像素网格仍是真实帧尺寸；无返回值
+    #[test]
+    fn placements_use_the_captured_pixel_grid() {
+        // Mango reports logical 1707x1067 for a 2560x1600 output at scale 1.5;
+        // 1707 * 1.5 = 2560.5 would round to a 2561-wide canvas.
+        let output = Output {
+            wl_output: None,
+            info: crate::types::linux_output::Info {
+                id: 0,
+                name: Some("eDP-1".into()),
+                description: None,
+                location: (0, 0),
+                logical_position: Some((0, 0)),
+                logical_size: Some((1707, 1067)),
+                physical_size: (0, 0),
+                make: String::new(),
+                model: String::new(),
+                scale_factor: 2,
+                subpixel: wayland_client::protocol::wl_output::Subpixel::Unknown,
+                transform: wayland_client::protocol::wl_output::Transform::Normal,
+                modes: Vec::new(),
+            },
+        };
+        let placements = build_placements_for_frames(&[output], true, &[(2560, 1600)]);
+        assert_eq!(placements[0].px_size(), (2560, 1600));
+        assert!((placements[0].scale - 2560.0 / 1707.0).abs() < 0.0001);
+    }
+
     #[test]
     fn the_scale_comes_from_the_logical_size() {
         let cases = [
             ("hidpi", 3840u32, Some((1920, 1080)), 2.0),
             (
-                "fractional logical dimensions are rounded",
+                "fractional logical dimensions keep the smaller physical ratio",
                 1280,
                 Some((853, 533)),
-                1.5,
+                1280.0 / 853.0,
             ),
             ("no logical size at all", 1920, None, 1.0),
         ];

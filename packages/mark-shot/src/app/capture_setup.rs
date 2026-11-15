@@ -83,9 +83,14 @@ pub(super) async fn start_capture(
     }
     let shrunk = kept.len() < outputs.len();
     let outputs: Vec<_> = kept.iter().map(|&i| outputs[i].clone()).collect();
+    let frame_pixels: Vec<(u32, u32)> = screenshots
+        .frames
+        .iter()
+        .map(|frame| (frame.pw_width, frame.pw_height))
+        .collect();
 
     let mut captures = init::build_captures(screenshots.frames)?;
-    let placements = init::build_placements(&outputs, hidpi);
+    let placements = init::build_placements_for_frames(&outputs, hidpi, &frame_pixels);
     let compatible = super::frame_backdrop::compatible(&captures, &placements);
     if !compatible {
         overlay.set_composited_background(false);
@@ -95,6 +100,8 @@ pub(super) async fn start_capture(
         && overlay.enable_capture_scene(&mut captures)?;
     log::info!("【截图场景】【能力选择】稀疏前景={native_scene}，原始网格兼容={compatible}");
     // 3. 【截图】【覆盖层显示】原始帧已经进入私有来源后才分配绘制与原生表面，避免两份整屏缓冲叠加缓存写入峰值
+    //    覆盖层缓冲必须使用捕获帧的物理像素网格，不能从 configure 的逻辑尺寸乘比例再取整
+    overlay.set_output_pixels(&frame_pixels);
     let present_at = std::time::Instant::now();
     overlay.present(&targets)?;
     let present_dt = present_at.elapsed();

@@ -74,12 +74,10 @@ pub(in crate::app) fn render_final_precise(
     };
 
     let scale = renderer::capture_scale(&editor_state.captures, &editor_state.placements, sel);
-    let (mut out, origin, _) = renderer::composite_precise(
-        &editor_state.captures,
-        &editor_state.placements,
-        sel,
-        Some(scale),
-    )?;
+    // 1. 【截图导出】【精确网格】让合成器按捕获帧与逻辑尺寸的两轴真实比例映射像素边缘，
+    //    完整桌面得到 2560x1600 而不是逻辑尺寸乘 1.5 向上取整的 2561x1601。
+    let (mut out, origin, _) =
+        renderer::composite_precise(&editor_state.captures, &editor_state.placements, sel, None)?;
 
     let offset = (
         (origin.0 * f64::from(scale)) as f32,

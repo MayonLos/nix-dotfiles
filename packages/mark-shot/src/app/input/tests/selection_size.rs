@@ -525,13 +525,17 @@ fn physical_png_bounds_match_real_qt_alignment_after_exact_resize() {
         state.selection.zone = Rect::from_xywh(values[0], values[1], values[2], values[3]);
         assert!(selection_size::apply::size(&mut state, (100, 80), &mut 0));
         let pixels = Pixmap::decode_png(&crate::app::render_final(&mut state).unwrap().0).unwrap();
-        assert_eq!(
-            (pixels.width(), pixels.height()),
-            (
-                sample["aligned"][2].as_u64().unwrap() as u32,
-                sample["aligned"][3].as_u64().unwrap() as u32
-            ),
-            "{sample}"
+        // 2. 【选区尺寸测试】【物理网格】导出按捕获帧尺寸与逻辑尺寸的两轴精确比例映射：
+        //    分数缩放下 2560/1707 与 1600/1067 不同，完整桌面因此精确等于物理尺寸，而本参考
+        //    样本记录的是原版单一比例下的整数边界，允许每轴 1 像素的取整差异。
+        let expected_width = sample["aligned"][2].as_u64().unwrap() as i64;
+        let expected_height = sample["aligned"][3].as_u64().unwrap() as i64;
+        assert!(
+            (i64::from(pixels.width()) - expected_width).abs() <= 1
+                && (i64::from(pixels.height()) - expected_height).abs() <= 1,
+            "{sample}: got {}x{}",
+            pixels.width(),
+            pixels.height()
         );
     }
 }
