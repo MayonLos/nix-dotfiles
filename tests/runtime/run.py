@@ -89,6 +89,8 @@ TESTS = [
     ("mark-shot/editor-cleanup", "mark-shot", "mark-shot 编辑器无残留", live.test_markshot_editor_closed),
     # 7. launcher / Noctalia
     ("launcher/binding", "launcher", "SUPER+A 启动器绑定与实现可用性", live.test_launcher_binding),
+    ("launcher/overlay-open", "launcher", "mayon-launcher 真实打开/关闭与状态", live.test_launcher_overlay),
+    ("clipboard/overlay-open", "clipboard", "mayon-clipboard 真实打开/关闭与状态", live.test_clipboard_overlay),
     ("launcher/noctalia-open", "launcher", "Noctalia Launchpad 真实打开 + 截图像素", live.test_launcher_noctalia_open),
     ("launcher/noctalia-closed", "launcher", "Launchpad 关闭后无残留层", live.test_launcher_noctalia_closed),
     # 8. greeter
