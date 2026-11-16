@@ -36,10 +36,6 @@ in
       # Keep PDF recoloring off by default so documents open with their original
       # colors; `^r` can still toggle the dark rendering described by the
       # feature-owned palette file.
-      #
-      # The recolor colors live in the feature-owned palette file. This
-      # keeps the declared default at false while making `^r` use
-      # the same colors as the rest of the application.
       recolor = false;
       recolor-keephue = true;
       recolor-reverse-video = true;

@@ -57,7 +57,8 @@ in
     };
   };
   # No login wants. GameMode hooks acquire only this game's idle inhibitor;
-  # desktop idle actions observe logind BlockInhibited and stay suspended.
+  # the session has no idle-timeout actions, so it does not affect the
+  # pre-sleep lock.
   systemd.user.services.gaming-idle-inhibit = {
     description = "GameMode idle inhibitor";
     partOf = [ "gamemoded.service" ];

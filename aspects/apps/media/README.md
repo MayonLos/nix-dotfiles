@@ -1,6 +1,6 @@
 # Media
 
-Installs and configures media playback, capture and conversion, downloading and streaming, image viewing, music, volume routing, and editing tools. `user.appearance` supplies mpv and Swayimg colors/fonts; mpv retains its packaged color defaults when no palette is selected. Hardware decoding remains a host fact owned by the hardware feature.
+Installs and configures media playback, capture and conversion, downloading and streaming, image viewing, music, and editing tools. `user.appearance` supplies mpv and Swayimg colors/fonts; mpv retains its packaged color defaults when no palette is selected. Hardware decoding remains a host fact owned by the hardware feature.
 
 Outputs include mpv with uosc/MPRIS/autoload/thumbnail scripts and Anime4K shaders, Musicfox, OBS with PipeWire/wlrobs/Vulkan capture plugins, Blender, GIMP, Kdenlive, FFmpeg, ImageMagick, Swayimg, yt-dlp, Streamlink and wl-screenrec. yt-dlp and Streamlink handle downloads and stream URLs; wl-screenrec records the Wayland session; `session-support` keeps pavucontrol as the volume/routing GUI. mpv is the default handler for MP4, Matroska, WebM, AVI, MPEG, Ogg, FLV, and QuickTime video. Swayimg is the only image viewer registered by this feature. Its locked 4.7 build reports BMP, PNM, TGA, DICOM, JPEG, PNG, GIF, WebP, SVG, HEIF (including HEIC), AVIF, JXL, EXR, TIFF, Sixel, and RAW support; its nixpkgs recipe links the matching decoder libraries. The feature registers video and image MIME handlers and publishes a visible Swayimg desktop entry.
 

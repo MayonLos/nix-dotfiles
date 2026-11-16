@@ -11,8 +11,7 @@
 
 socket 随所选图形 target 启停，`0600`；service 无登录 wants，仅 socket 激活，
 空闲默认 10 分钟退出释放模型；退出图形会话由 `PartOf` 停止整组子进程。
-不修改桌面目录；快捷键由桌面 owner 并入，推荐 `SUPER,V` toggle。
-若锁定 Mango 的 release 行为通过现场验证，可用 press start / release stop。
+不修改桌面目录；快捷键由桌面 owner 并入。
 
 拥有文件：仅包内 immutable 程序、addon、用户 unit 声明。配置
 `~/.config/mayon-voice/config.toml`、模型 `~/.local/share/mayon-voice/models/`
