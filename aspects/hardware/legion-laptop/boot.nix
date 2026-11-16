@@ -61,7 +61,11 @@
       "systemd.show_status=auto"
       "split_lock_detect=off"
     ];
-    consoleLogLevel = 3;
+    # Firmware and closed-driver messages (ACPI namespace collisions, NVRM
+    # SBIOS queries, iTCO watchdog) are not actionable from NixOS and would
+    # otherwise fill the boot console. Keep them in the journal at level 0
+    # console verbosity; systemd service status still prints.
+    consoleLogLevel = 0;
     kernel.sysctl = {
       "vm.max_map_count" = 2147483642;
       "net.core.default_qdisc" = "fq";
