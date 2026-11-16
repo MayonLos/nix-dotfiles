@@ -254,7 +254,7 @@ checks: []
 
 官方依据：[Borg](https://borgbackup.readthedocs.io/en/stable/)、[Connector](https://www.zotero.org/support/connector)、[uBlock Origin](https://github.com/gorhill/uBlock)、[Xarchiver](https://github.com/ib/xarchiver)、[Syncthing FAQ](https://docs.syncthing.net/users/faq.html)、[Zotero 数据目录限制](https://www.zotero.org/support/kb/data_directory_in_cloud_storage_folder)、[rclone](https://rclone.org/)、[Tailscale](https://tailscale.com/docs/concepts/what-is-tailscale)、[LVFS/fwupd](https://fwupd.org/)、[Okular](https://apps.kde.org/okular/)、[Xournal++](https://xournalpp.github.io/)、[Crosspipe](https://github.com/dp0sk/crosspipe)、[EasyEffects](https://github.com/wwmm/easyeffects)、[Heroic](https://github.com/Heroic-Games-Launcher/HeroicGamesLauncher)、[darktable](https://www.darktable.org/)。
 
-早期选型时只读求值过的候选包版本包括 Restic 0.18.1、Borg 1.4.4、Vorta 0.11.0、Syncthing 2.1.3、KeePassXC 2.7.12、Bitwarden Desktop 2026.8.0、Xarchiver 0.5.4.26、Tailscale 1.98.10、fwupd 2.1.4、rclone 1.75.1、Okular 26.04.3、Xournal++ 1.3.4、Crosspipe 0.1.1、EasyEffects 8.2.4、Heroic 2.22.1；这是候选版本记录，不代表当前安装清单。**属性/版本可求值不等于构建、运行和桌面集成已经通过**；在线最新文档也不能替代锁定版本验证。
+早期选型时只读求值过的候选包版本包括 Borg 1.4.4、Vorta 0.11.0、Syncthing 2.1.3、Xarchiver 0.5.4.26、Tailscale 1.98.10、fwupd 2.1.4、rclone 1.75.1、Okular 26.04.3、Xournal++ 1.3.4、Crosspipe 0.1.1、EasyEffects 8.2.4、Heroic 2.22.1；这是候选版本记录，不代表当前安装清单。**属性/版本可求值不等于构建、运行和桌面集成已经通过**；在线最新文档也不能替代锁定版本验证。
 
 ## 后续执行顺序与验收
 

@@ -45,7 +45,7 @@ lazydev 继续给 LuaLS 注入 workspace library，不再配置菜单 source。
 `helpers.show_diff` 的 inline 分支做小型兼容桥：mini.diff 叠加预览，`,a` 接受保留未保存内容，
 `,r` 拒绝还原，禁止同一 buffer 重叠审阅，恢复原局部键位。其他 CodeCompanion diff 沿用上游。
 Gitsigns 单独拥有 Git sign 列；mini.diff 只在内联审阅时用行号/overlay，不启动 Git source。
-升级 CodeCompanion/Minuet 时要复核两个回调桥，相关行为测试会执行真实 MiniDiff/Claude diff。
+升级 CodeCompanion/Minuet 时要复核两个回调桥，相关行为测试会执行真实 MiniDiff/CodeCompanion diff。
 
 ## 插件与加载
 
@@ -64,7 +64,7 @@ Heirline 在首次 UIEnter/FileType 时初始化，devicons 在首次界面/文�
 LSP 在首个 FileType 初始化。Explorer actions/tree/git 由首次 explorer 配置触发，安全删除与重命名保护在动作可执行前安装。
 URL 入口延迟载入解析器，会话在首文件、目录切换或显式恢复时初始化。One Dark 高亮在构建期由锁定插件和 palette
 预编译为同版 LuaJIT bytecode，开发配置没有缓存时即时生成；颜色重载与插件刷新仍执行编辑器的语义覆盖。
-CodeCompanion/Claude 按命令或按键，Minuet 手动切换后加载；Copilot 配置随 LSP 初始化，
+CodeCompanion 按命令或按键，Minuet 手动切换后加载；Copilot 配置随 LSP 初始化，
 服务器按普通文件 attach。Edgy/smart-splits 由 MayonVeryLazy 或方向键加载。
 空启动性能预算为三次独立 HOME/XDG 的 NVIM STARTED 中位数 ≤30ms，样本见历史。
 
@@ -85,7 +85,7 @@ CodeCompanion/Claude 按命令或按键，Minuet 手动切换后加载；Copilot
 | colorizer 包含 CSS/HTML | LSP 处理支持的 document color | colorizer 只负责 Lua/Nix，避免重复覆盖 |
 | 单一诊断列表 | 原生 workspace_diagnostics | `␣xw` 收集工作区诊断，Trouble 入口仍保留 |
 | 无原生 restart/目录比较入口 | `:restart` / `:DiffTool` | `␣qr` / `␣gT`；关闭迁到 `␣qq` 避免 leader 前缀冲突 |
-| 默认字符 diff | `diffopt+=inline:word` | 原生 Claude diff 与其它 diff 保持统一配色 |
+| 默认字符 diff | `diffopt+=inline:word` | CodeCompanion 与其它 diff 保持统一配色 |
 | 自维护 Git fork | codediff 2.45.0 + libvscode_diff | Nix 构建原生库，禁止在线安装 |
 
 ui2 headless 是否可用与构建测试结果见历史，不把实验接口写成稳定保证。
@@ -107,8 +107,8 @@ redraw，隔离测试已复现，故不在 attach 时自动请求。linked editi
 PR refs 需先由外部 Git 获取，不会替用户执行联网 checkout。界面 `t` 切换布局，实际键位见
 `:h codediff-keymaps`；保留 Gitsigns 的 hunk 暂存/还原与 LazyGit。
 Explorer 左侧 30 列、树形图标与 Edgy 文件树相同；独立 Git 审阅 tab 的窗口仍由 codediff 管理。
-字符增删与原生 diff/Claude 使用同一 palette；Claude 继续用 `,a/,r` 接受/拒绝整文件提案，
-codediff 的工作区视图只审阅已有文件变化，不等同 Claude 协议接受。
+字符增删与 CodeCompanion diff 使用同一 palette；codediff 的工作区视图只审阅已有文件变化，
+不替代 CodeCompanion 的提案接受流程。
 
 已复核保留：heirline（API 稳定且自写状态/标签栏成熟）、nvim-autopairs（blink.pairs 尚年轻）、
 surround、edgy、trouble、todo-comments、flash 跳转、multicursor、oil、yazi、grug-far、conform、
@@ -117,10 +117,10 @@ nvim-lint、render-markdown、rainbow-delimiters 和限定 filetypes 的 coloriz
 
 ## 布局、语言与状态
 
-Edgy 左 Explorer，右 Claude/CodeCompanion，下 Trouble、quickfix 与普通终端；
-小窗口不固定左右侧栏，AI 面板用浮窗；Claude 终端每次显示时按当前宽度选择浮窗或右侧栏。终端缩放（如 Mango 平铺成半屏）后 AI 侧栏重新按
+Edgy 左 Explorer，右 CodeCompanion，下 Trouble、quickfix 与普通终端；
+小窗口不固定左右侧栏，AI 面板用浮窗；CodeCompanion 面板每次显示时按当前宽度选择浮窗或右侧栏。终端缩放（如 Mango 平铺成半屏）后 AI 侧栏重新按
 `max(36, 38% 宽度)` 取宽，文档窗口不会被挤成一列。符号大纲只在手动 toggle 时打开，焦点进入
-Claude 终端不会引起右侧重排（避免改变 CLI 的 pty 尺寸）。统一标题、圆角浮窗和 palette 面板/diff 高亮。
+AI 面板不会引起右侧重排（避免改变终端 pty 尺寸）。统一标题、圆角浮窗和 palette 面板/diff 高亮。
 
 ### 2026-11-05 重写
 
@@ -134,11 +134,9 @@ Claude 终端不会引起右侧重排（避免改变 CLI 的 pty 尺寸）。统
 `gK` 仍显示完整签名帮助。补全文档窗在 CompleteChanged 与 completionItem/resolve 后设置样式，不再轮询。
 Ctrl+h/j/k/l 用 smart-splits 穿过 Neovim 与 tmux 面板，Alt+h/j/k/l 调整大小。
 tmux 一侧的配置在 `aspects/cli/shell/tmux.nix`。
-同日修复：底部分屏（终端、Trouble、quickfix、旧版 picker）打开时，会先把右侧 Claude 面板压矮，再由 Edgy 恢复。
-经典渲染器在这次"缩小再恢复"之后会留下残影（真实 kitty 截图复现）。现在 picker 改为浮在文档列上方的浮窗；
-内嵌 Claude 使用 `CLAUDE_CODE_NO_FLICKER=1` 与 `CLAUDE_CODE_ALT_SCREEN_FULL_REPAINT=1`（只开 NO_FLICKER 仍会留残影）。
-七种切换方式在 2026-11-05 的 Claude Code 2.1.312 下截图验证干净；流式输出时整屏重绘的 CPU 开销尚未实测。
-Claude 终端内 `Ctrl+h` 回到文档。
+同日修复：底部分屏（终端、Trouble、quickfix、旧版 picker）打开时，会先把右侧 AI 面板压矮，再由 Edgy 恢复。
+经典渲染器在这次"缩小再恢复"之后会留下残影（真实 kitty 截图复现）；现在 picker 改为浮在文档列上方的浮窗。
+CodeCompanion 面板按当前宽度选择浮窗或右侧栏，终端内 `Ctrl+h` 回到文档。
 真实 tmux、TTY Alt/Tab、窗口缩放和美观仍需实机验收。
 
 原生 LSP、basedpyright、Taplo、Treesitter、flash、多光标、surround、Oil/Yazi、Snacks、Markdown、
@@ -165,11 +163,11 @@ Rime 自身的中/英子模式不受影响。没有 `fcitx5-remote` 或图形会
 
 检查含原有 startup/completion/integration/workflow/fileops/lua_workspace/modern/interface、六语言首文件、
 真实 CSS 未保存诊断、normal/dev/reduced wrapper 与故意失败 runner；新增 AI 加载、ACP 可执行路径、
-补全切换、多 buffer/晚到响应、真实 mini.diff 接受/拒绝、Claude 协议 diff 接受/拒绝与键位 API 扫描。
+补全切换、多 buffer/晚到响应、真实 mini.diff 接受/拒绝、AI diff 接受/拒绝与键位 API 扫描。
 `nvim_get_keymap` 只能看到最终有效映射，重复扫描不证明初始化期间没有覆盖；另检查 leader 叶节点前缀冲突。
 
 求值、构建、隔离 headless 与实机验证分开记录。不把 mock 回调或协议 fixture 当成联网模型请求、
-Claude CLI 实际写盘或 GUI 美观的证明。实际 health、构建命令与限制见[历史记录](history/README.md)（原文 `nvim-ai-2026-10-24.md`）。
+真实模型请求或 GUI 美观的证明。实际 health、构建命令与限制见[历史记录](history/README.md)（原文 `nvim-ai-2026-10-24.md`）。
 
 ## 待办
 
