@@ -18,6 +18,8 @@ let
     value: builtins.isString value && builtins.substring 0 1 value == "#"
   ) (builtins.attrValues appearance);
   pdfApplications = home.xdg.mimeApps.defaultApplications."application/pdf" or [ ];
+  epubApplications = home.xdg.mimeApps.defaultApplications."application/epub+zip" or [ ];
+  epubAssociations = home.xdg.mimeApps.associations.added."application/epub+zip" or [ ];
   okularInstalled = builtins.any (package: (package.pname or "") == "okular") home.home.packages;
   okularAssociated = lib.hasInfix "okular" (
     builtins.toJSON {
@@ -41,6 +43,8 @@ in
 {
   documents-mime-config =
     assert pdfApplications == [ "org.pwmt.zathura-pdf-mupdf.desktop" ];
+    assert epubApplications == [ "com.github.johnfactotum.Foliate.desktop" ];
+    assert epubAssociations == [ "com.github.johnfactotum.Foliate.desktop" ];
     assert !okularInstalled;
     assert !okularAssociated;
     assert !(builtins.elem "onlyoffice-desktopeditors" packageNames);
@@ -57,6 +61,8 @@ in
     ) (builtins.attrNames officeDefaults);
     pkgs.runCommand "documents-mime-config-check" { } ''
       test '${builtins.head pdfApplications}' = org.pwmt.zathura-pdf-mupdf.desktop
+      test '${builtins.head epubApplications}' = com.github.johnfactotum.Foliate.desktop
+      test '${builtins.head epubAssociations}' = com.github.johnfactotum.Foliate.desktop
       test '${
         officeDefaults."application/vnd.openxmlformats-officedocument.wordprocessingml.document"
       }' = writer.desktop
