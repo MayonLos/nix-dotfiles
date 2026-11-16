@@ -104,6 +104,18 @@ in
       sops
       _7zz
       libqalculate
+      sqlite
+      usql
+      pkgs."yq-go"
+      xh
+      hurl
+      hyperfine
+      pkgs."nix-tree"
+      pkgs."nix-search-tv"
+      carapace
+      glow
+      presenterm
+      perf
     ];
 
     # The same immutable, precompiled cache serves bat and delta. No activation
