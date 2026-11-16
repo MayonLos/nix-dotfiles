@@ -83,6 +83,8 @@ checks: []
 | FFmpeg | 保留 | 视频/音频转换、截取和工作流后端；OBS 自带库不等于 shell 有可用命令。 |
 | ImageMagick | 保留 | Thunar 图片动作及编辑器 PDF/图像处理有消费者；不要因存在 GIMP 就删命令行图像后端。 |
 
+2026-11-16 补齐（安装级）：`wl-screenrec`、`yt-dlp`、`streamlink`、`pwvucontrol`、`ocrmypdf`、`qpdf`、`foliate`、`pandoc`、`typst`。`wl-screenrec` 的 Intel VAAPI、`ocrmypdf` 的 `chi_sim`、`pwvucontrol` 的 profile/峰值仍需实机验证；`pwvucontrol` 与 `pavucontrol` 并存，未替换默认。`restic`、`keepassxc` 以及系统工具 `lm_sensors`、`s-tui`、`nvme-cli`、`smartmontools`、`nvd`、`argyllcms`、`bluetui`、`gdu`、`newsboat`、`trippy`、`bind.dnsutils` 只安装，未启用服务、密码库、新闻源或 raw-socket 权限。
+
 资料：[Blender GPU](https://docs.blender.org/manual/en/5.0/render/cycles/gpu_rendering.html)、[OBS 捕获源](https://obsproject.com/kb/display-capture-sources)、[wlrobs](https://github.com/zsien-debian-repo/wlrobs)、[Kdenlive](https://apps.kde.org/kdenlive/)、[Thunderbird](https://www.thunderbird.net/en-GB/)、[LibreOffice 格式](https://help.libreoffice.org/latest/ug/text/shared/guide/ms_user.html)、[Zotero Connector](https://www.zotero.org/support/connector)、[Typora](https://support.typora.io/Quick-Start/)。
 
 ## 编辑器、终端与 Git
@@ -235,9 +237,9 @@ checks: []
 
 | 候选 | 补什么、适合什么场景 | 成本与现有功能边界 | 建议落点 |
 |---|---|---|---|
-| **Restic**（优先） | 用户文档、照片、项目未提交内容和应用数据的版本化备份；未来笔记本/服务器可复用 | 需要备份目的地、保留策略、加密凭据及恢复验证。Nix 世代回滚不包含这些用户数据。 | 共享 backup 能力，host 分别选路径/目的地，凭据走运行时秘密。 |
+| **Restic**（已安装，未配置） | 用户文档、照片、项目未提交内容和应用数据的版本化备份；未来笔记本/服务器可复用 | 包已安装，但没有备份目的地、保留策略、凭据或恢复演练；在补齐这些之前不能算备份已覆盖。Nix 世代回滚不包含这些用户数据。 | 共享 backup 能力，host 分别选路径/目的地，凭据走运行时秘密。 |
 | Borg + Vorta（备选） | 偏重本地/SSH 备份，想用 GUI 管档案 | 多一个 GUI 集成；不要和 Restic 同时成为默认引擎。Pika 可另作更简化的 Borg GUI 比较，不装三个前端。 | 桌面前端与备份引擎分开。 |
-| **KeePassXC 或 Bitwarden** | 跨网站/设备统一密码库、浏览器填充 | KeePassXC 是本地 KDBX，自选同步和备份；Bitwarden 更偏账号同步。Secret Service 和 sops 分别服务应用/部署秘密，不能视作密码库已完整覆盖。 | 桌面应用 + Firefox 扩展；凭据不进入仓库。先不自建 Vaultwarden。 |
+| **KeePassXC**（已安装，未配置） | 跨网站/设备统一密码库、浏览器填充 | 包已安装；KDBX 数据库位置、Firefox 扩展和 native-messaging host 未配置。Bitwarden 更偏账号同步。Secret Service 和 sops 分别服务应用/部署秘密，不能视作密码库已完整覆盖。 | 桌面应用 + Firefox 扩展；凭据不进入仓库。先不自建 Vaultwarden。 |
 | **Zotero Connector** | 浏览器一键收集网页、论文元数据/附件 | 当前仅声明 Dark Reader；可能已手动安装。增量维护小，实际导入仍看站点支持。 | Firefox 扩展声明，保留 Zotero 本体。 |
 | uBlock Origin（条件） | Firefox 的广告/内容过滤；尚未使用同类方案时值得补 | 未在仓库扩展清单声明，不代表运行时没有安装。Clash 的整机代理与浏览器内容过滤分工不同；少数站点需单独放行，不盲目叠加大量过滤列表。 | Firefox 扩展；与密码库扩展、Connector 一并整理。 |
 | **File Roller（替换 Xarchiver）** | 浏览压缩包、选择性解压，与 Thunar archive plugin 配合 | 使用 GTK4 版本，TAP 指向包的绝对可执行路径；不再安装 Xarchiver。 | 桌面文件工具能力；保留 Thunar。 |
