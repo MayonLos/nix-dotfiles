@@ -465,6 +465,7 @@ pkgs.runCommand "interactive-session-config"
     wallpaper_apply = Path(m["wallpaperApply"]).read_text()
     assert "sweetbg" in wallpaper_apply and " img " in wallpaper_apply
     assert "--restore" in wallpaper_apply and "query" in wallpaper_apply
+    assert "readlink -f" in wallpaper_apply
     assert ".local/state/mango-session" in wallpaper_apply
     wallpaper_pick = Path(m["wallpaperPick"]).read_text()
     assert "matuwall" in wallpaper_pick

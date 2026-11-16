@@ -66,6 +66,28 @@ let
         return 1
       }
 
+      # Matuwall resolves symlinks for the backend, so managed/ images arrive
+      # as their /nix/store target. Map such a target back to the managed or
+      # local entry that owns it; accept a direct entry path as before.
+      resolve() {
+        local candidate=$1 entry resolved side
+        if valid "$candidate"; then
+          image=$candidate
+          return 0
+        fi
+        [[ -f $candidate ]] || return 1
+        for side in managed local; do
+          for entry in "$root/$side"/*; do
+            resolved=$(readlink -f -- "$entry" 2>/dev/null) || continue
+            if [[ $resolved == "$candidate" ]]; then
+              image=$entry
+              return 0
+            fi
+          done
+        done
+        return 1
+      }
+
       case ''${1:-} in
         --restore)
           image=$factory
@@ -78,11 +100,10 @@ let
           fi
           ;;
         *)
-          if [ "$#" -ne 1 ] || ! valid "$1"; then
+          if [ "$#" -ne 1 ] || ! resolve "$1"; then
             echo "usage: wallpaper-apply <managed|local image>" >&2
             exit 2
           fi
-          image=$1
           ;;
       esac
 
