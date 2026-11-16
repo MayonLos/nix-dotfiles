@@ -17,7 +17,7 @@ _: {
       homeManager = { pkgs, ... }: {
         programs.mpv.config.hwdec = host.facts.gpu.mpvHwdec;
         home.packages = [
-          pkgs.lenovo-legion
+          pkgs.unstable.lenovo-legion
           (import ./conservation.nix { inherit pkgs; })
         ];
       };

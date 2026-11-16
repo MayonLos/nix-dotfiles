@@ -54,6 +54,12 @@
               inherit (u) wechat;
               # Stable CodeCompanion 19.13 lacks the ACP fixes; the editor uses the reviewed v20 API.
               codecompanion-nvim = u.vimPlugins.codecompanion-nvim;
+              # Unstable provides the Legion 0.1.4 fan-table fix (83DG/NMCN).
+              # Its kernel is the same 6.18.63 release as stable; boot.nix
+              # asserts that before using the kernel module.
+              inherit (u) lenovo-legion;
+              lenovo-legion-module = u.linuxPackages.lenovo-legion-module;
+              linuxKernelVersion = u.linuxPackages.kernel.version;
               # JDK 26 is absent from stable 26.05.
               jdk26 = u.javaPackages.compiler.temurin-bin.jdk-26;
             };

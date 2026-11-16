@@ -1,7 +1,6 @@
 _: {
-  den.aspects.extra-tools = _: {
+  den.aspects.extra-tools = {
     homeManager = { pkgs, ... }: {
-      # Installation only: no service, daemon, activation or application config.
       home.packages = with pkgs; [
         lm_sensors
         s-tui
@@ -17,6 +16,58 @@ _: {
         restic
         keepassxc
       ];
+
+      # KeePassXC ships the Firefox native-messaging manifest with an absolute
+      # proxy path. Firefox reads per-user hosts from this directory; the
+      # extension itself is force-installed by the Firefox policy below.
+      home.file.".mozilla/native-messaging-hosts/org.keepassxc.keepassxc_browser.json".source =
+        "${pkgs.keepassxc}/lib/mozilla/native-messaging-hosts/org.keepassxc.keepassxc_browser.json";
+
+      programs.newsboat = {
+        enable = true;
+        maxItems = 200;
+        autoReload = false;
+        reloadTime = 120;
+        urls = [
+          {
+            url = "https://discourse.nixos.org/latest.rss";
+            tags = [ "nixos" ];
+            title = "NixOS Discourse";
+          }
+          {
+            url = "https://lwn.net/headlines/rss";
+            tags = [ "linux" ];
+            title = "LWN";
+          }
+          {
+            url = "https://www.phoronix.com/rss.php";
+            tags = [ "linux" ];
+            title = "Phoronix";
+          }
+          {
+            url = "https://sspai.com/feed";
+            tags = [ "tech" ];
+            title = "少数派";
+          }
+          {
+            url = "https://www.ithome.com/rss/";
+            tags = [ "tech" ];
+            title = "IT之家";
+          }
+        ];
+      };
+    };
+
+    nixos = { pkgs, ... }: {
+      # trip needs CAP_NET_RAW. /run/wrappers/bin is first in PATH; this
+      # wrapper shadows the plain package binary.
+      security.wrappers.trip = {
+        source = "${pkgs.trippy}/bin/trip";
+        capabilities = "cap_net_raw+ep";
+        owner = "root";
+        group = "root";
+      };
+
     };
   };
 }

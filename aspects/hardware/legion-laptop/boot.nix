@@ -10,6 +10,12 @@
       assertion = pkgs.stdenv.hostPlatform.system == "x86_64-linux";
       message = "legion-laptop requires the verified x86_64-linux platform";
     }
+    {
+      # The unstable Legion module is built against its own kernel headers.
+      # Only use it while both channels still agree on the exact release.
+      assertion = pkgs.unstable.linuxKernelVersion == config.boot.kernelPackages.kernel.version;
+      message = "unstable Legion module and stable kernel versions diverged";
+    }
   ];
   boot = {
     # Keep the LTS kernel and NVIDIA driver on stable's matching package set,
@@ -20,7 +26,7 @@
       "tun"
       "legion_laptop"
     ];
-    extraModulePackages = [ config.boot.kernelPackages.lenovo-legion-module ];
+    extraModulePackages = [ pkgs.unstable.lenovo-legion-module ];
     extraModprobeConfig = ''
       options legion_laptop force=1
     '';
