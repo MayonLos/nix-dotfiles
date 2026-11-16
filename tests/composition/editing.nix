@@ -153,7 +153,7 @@ let
       && !(host editorAndCpp "hostB").services.xserver.enable
       && !((host editorAndCpp "hostB").programs.mango.enable or false)
       && !(combinedHome.programs.kitty.enable or false)
-      && !(combinedHome.systemd.user.services ? swaybg)
+      && !(combinedHome.systemd.user.services ? sweetbgd)
       && !((host editorAndCpp "hostB") ? sops)
       && !(lib.hasInfix "/run/secrets" (combinedHome.home.sessionVariables.EDITOR or ""))
       && (host editorAndCpp "hostB").users.users.alice.extraGroups == [ ];

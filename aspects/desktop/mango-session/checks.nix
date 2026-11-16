@@ -22,12 +22,12 @@
   };
 
   # Headless test for the unused overlay package. The session launcher is
-  # fuzzel and Super+V is cliphist; this check does not wire either binding.
+  # fuzzel is the launcher and Super+V is cliphist-tui; this check does not wire either binding.
   mayon-overlay = import ../../../packages/mayon-overlay/tests/check.nix {
     inherit pkgs;
   };
 
-  # Validates Mango, mangobar, fuzzel, mako, swayosd, swaybg, swayidle, the
+  # Validates Mango, mangobar, fuzzel, mako, swayosd, sweetbgd, swayidle, the
   # clipboard units, the wallpaper link farm and the avatar hand-off.
   interactive-session-config = import ./runtime-check.nix {
     inherit pkgs home;

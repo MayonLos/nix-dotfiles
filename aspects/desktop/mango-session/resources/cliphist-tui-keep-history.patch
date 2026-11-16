@@ -1,0 +1,16 @@
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -808,7 +808,12 @@ fn run_copy(id: &str, cache_dir: &Path) {
+         Clip::Binary(_) | Clip::Text(_) => wl_copy(&raw_bytes, None),
+     }
+ 
+-    delete_clip_by_id(id);
++    // Upstream deletes the chosen cliphist row after copying it. This session
++    // keeps that database; Ctrl-X and Alt+X still delete on purpose.
++    // CT_COPY_MARK lets the Super+V launcher paste after Kitty has closed.
++    if let Ok(path) = env::var("CT_COPY_MARK") {
++        let _ = fs::write(path, "copied\n");
++    }
+ }
+ 
+ fn run_open(id: &str, cache_dir: &Path) {

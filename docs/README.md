@@ -30,7 +30,7 @@ checks: [docs]
 
 ## 关键事实
 
-- 单主机 `nixos-btw`，用户 `mayon`，Intel + NVIDIA 笔记本，Mango 桌面（mangobar/mako/swayosd/swaybg/swaylock/swayidle）。Home Manager 随系统重建。
+- 单主机 `nixos-btw`，用户 `mayon`，Intel + NVIDIA 笔记本，Mango 桌面（mangobar/mako/swayosd/sweetbgd/swaylock/swayidle）。Home Manager 随系统重建。
 - 仓库总规则在 [AGENTS.md](../AGENTS.md)。功能细节在各功能目录的 `README.md`。
 - 秘密只经 sops 运行时文件传递，不进 Nix 字符串、日志或 store。
 - 回复用户用中文；技术标签保持英文。

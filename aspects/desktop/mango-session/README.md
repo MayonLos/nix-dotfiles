@@ -17,8 +17,9 @@ Outputs are:
   `keys-mayon/bindings.json` export;
 - mangobar (`~/.config/mangobar/`), fuzzel, mako and swayosd configuration and
   their `mango-session.target` user units;
-- swaybg wallpaper rendering plus the `~/Pictures/Wallpapers/managed` link farm;
-- swaylock/swayidle lock and idle handling;
+- sweetbg wallpaper daemon, the Matuwall picker and the
+  `~/Pictures/Wallpapers/managed` link farm;
+- swaylock manual lock, with swayidle locking before sleep;
 - Wayland/X11 clipboard bridge, cliphist watchers and wl-clip-persist;
 - screenshot and OCR tools;
 - host-side `programs.mango`, portal routing and the swayosd libinput backend.
@@ -33,31 +34,35 @@ hook.
 
 mangobar draws a 30 logical px bar, flush and fully transparent: it paints no
 background and Mango does not blur its layer, so the wallpaper shows through.
-Left to right: Mango's `layout_symbol`, workspace numbers with `hide-empty`, the
+Left to right: Mango's `layout_symbol`, workspace numbers with `hide-empty`,
+the minimized-client count (`hideclients`, omitted while the count is 0), the
 focused client title from Mango IPC (truncated at 300 px), the StatusNotifier
-tray, a network glyph, a `custom/bluetooth` poll, battery glyph plus percent and
-one clock `{:L%m月%d日 周%a %H:%M}` under `LC_TIME=zh_CN.UTF-8`. There is no
-launcher button, unread bell, control-center button, CPU, volume or brightness
-readout. Font is `Maple Mono NF CN` Medium 13px; the active workspace is blue
-without an underline.
+tray, `CPU {usage}%`, `MEM {}%`, a network glyph, battery glyph plus percent and
+one clock `{:L%m月%d日 周%a %H:%M}` under `LC_TIME=zh_CN.UTF-8`. `{usage}` is the
+`/proc/stat` percentage sampled at 2 s; memory `{}` is
+`(MemTotal-MemAvailable)/MemTotal`. `{load}` is the 1-minute load average and
+is not shown. There is no Bluetooth readout, launcher button, unread bell,
+control-center button, volume or brightness readout. Font is `Maple Mono NF CN`
+Medium 13px; the active workspace is blue without an underline. CPU, memory and
+the minimized count use CSS `#cpu`, `#mem` and `#hideclients`.
 
 The StatusNotifier tray draws its own DBusMenu popups, so the same stylesheet
 themes them: `menu`, `menuitem`, `menuitem:hover` and a local
 `menuitem-disabled.patch` give One Dark surface/border, hover fill and a muted
 disabled colour. That one stylesheet is the global entry point, so every SNI
-application's right-click menu is themed. The `custom/bluetooth` poll uses a
-bounded `busctl` query instead of `bluetoothctl` (which aborts with SIGABRT when
-the system bus is unreachable) and falls back to the off glyph; the 5 s interval
-and the three glyph states are unchanged.
+application's right-click menu is themed. Bluetooth hardware policy stays in
+the Legion feature; the bar does not poll BlueZ.
 
 The Neovim desktop entry (`kitty --class=Neovim nvim`) is generated here so the
 tray/window identity is explicit.
 
 ## Launcher, notifications, OSD
 
-`Alt+Space` and the bottom-left hot corner run fuzzel; it is the only launcher
-(60 columns, centered, palette colors). There is no dock, control center or
-desktop notification history.
+`Alt+Space` runs `fuzzel --no-icons`; it is the only launcher (60 columns,
+centered, palette colors). The ini leaves icons enabled because `Super+V` uses
+fuzzel's dmenu image protocol. Pinned Mango keeps `enable_hotarea` at its
+default of 0; turning it on opens the overview, not the launcher. There is no
+dock, control center or desktop notification history.
 
 mako owns `org.freedesktop.Notifications`: top-right, width 360, opaque surface,
 1 px border, at most 3 visible, `outer-margin = "42,28,0,0"` so the first card
@@ -76,30 +81,51 @@ package udev rules and the `video` group (applies on next login).
 
 ## Wallpaper
 
-Mango itself has no wallpaper renderer. `swaybg` runs as a static session
-service and draws the appearance wallpaper factory's default image with
-`-m fill` on the palette background. `~/Pictures/Wallpapers/managed` is a HM
-link farm of the 18 bundled images; activation only creates a missing
-`local/` directory for user images and never rewrites either side. Changing the
-wallpaper is a Nix declaration change plus rebuild; there is no runtime picker.
+Mango itself has no wallpaper renderer. One `sweetbgd` session daemon owns the
+layer surface; Home Manager renders `~/.config/sweetbg/config.toml` with the
+factory image, palette background and `cover` mode. `~/Pictures/Wallpapers/managed`
+is a HM link farm of the 18 bundled images; activation only creates a missing
+`local/` directory for user images and never rewrites either side. `Super+W`
+runs `wallpaper-pick`, which opens Matuwall on those two directories. Its
+command backend calls `wallpaper-apply <path>`, the single apply path: it
+validates the file, writes `~/.local/state/mango-session/wallpaper`, and sends
+`sweetbg img` over the daemon socket instead of restarting a process. The
+daemon's `ExecStartPost` restores that state after every start; a missing or
+invalid state file leaves the factory default `wallpaper-005.png`. The greeter
+and the lock screen keep that factory default and do not read the state file.
+The local Matuwall patch follows symlinked directories because `managed/` is a
+link farm.
 
 ## Lock and idle
 
 Mango implements `ext-session-lock-v1`, so standalone `swaylock` owns the lock
-surface. `Super+Alt+L` locks. Host-side `security.pam.services.swaylock` makes
-unlocking possible. `swayidle` (bound to `mango-session.target`) locks after 900s
-and locks plus suspends after 3600s, and locks before logind sleep. Automatic
-screen-off is not emulated; there is no DND/caffeine switch.
+surface. `Super+Alt+L` locks on demand. Host-side
+`security.pam.services.swaylock` makes unlocking possible. `swayidle` (bound to
+`mango-session.target`) has no idle timeouts: nothing locks or suspends from
+inactivity. It only locks before a logind sleep request, such as a lid close or
+a manual suspend. Automatic screen-off is not emulated; there is no
+DND/caffeine switch.
 
 ## Clipboard
 
 `clipboard-bridge` synchronizes the Wayland and X11 selections because Mango's
 Xwayland does not. cliphist watchers (text and images) and wl-clip-persist keep
-history. `Super+V` runs `clipboard-history`: `cliphist list` in fuzzel
-(`--with-nth 2` hides the id column), then `cliphist decode | wl-copy`. Image
-rows are text placeholders in the list; the selected entry is still the
-original bytes. There is no second launcher: `Alt+Space` is fuzzel. The
-cliphist database is not deleted or moved.
+history. `Super+V` runs `clipboard-history`, which opens `cliphist-tui` in a
+floating Kitty window (`app_id` `cliphist-tui`, 0.78 by 0.78). Images are
+drawn with the Kitty graphics protocol, not as fuzzel row icons. Enter copies
+the entry with `wl-copy` and records `CT_COPY_MARK`; the local patch stops
+upstream from deleting that cliphist row. Escape leaves the mark empty. The
+focused `appid` is read with `mmsg get focusing-client` before Kitty takes the
+seat. After a short pause, `paste-key` sends evdev `KEY_V` (47) with Ctrl, plus
+Shift for kitty, Alacritty, foot, wezterm, ghostty and the GNOME/xterm ids, and
+Ctrl alone otherwise. It uploads a normal evdev keymap first, because wlroots
+rejects modifiers until that request. `wtype` is not used: its `-k`
+mapping is keycode 1, which this Mango reads as Escape, so Ctrl+Shift+V opened
+the btop scratchpad. Image rows are not typed into those terminals. `paste-key`
+failures leave the copied bytes in place. Inside the TUI, `Ctrl-X` deletes one
+row and `Alt+X` wipes the database. The TUI's `wl-paste --watch` only reloads
+the open list. Preview files live in `~/.cache/cliphist-tui` and can be deleted. There is no second
+launcher. The cliphist database is not deleted or moved by configuration.
 
 ## Screenshots and OCR
 
@@ -111,7 +137,7 @@ data and exit quietly when cancelled.
 ## Session services
 
 All desktop units are `PartOf`/`After`/`WantedBy` `mango-session.target`:
-mangobar, mako, swayosd, swaybg, swayidle and the session polkit agent
+mangobar, mako, swayosd, sweetbgd, swayidle and the session polkit agent
 (`polkit-gnome-authentication-agent-1`). Clipboard units run on the same
 target. Mango itself starts the target from its C startup path; HM's non-empty
 `autostart_sh = ":"` keeps the synchronization hook active without being the

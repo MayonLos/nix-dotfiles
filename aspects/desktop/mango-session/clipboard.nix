@@ -1,4 +1,9 @@
-{ lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   # Selection sync between Xwayland and Wayland does not happen on this host,
@@ -216,24 +221,96 @@ let
   };
 
   mkGraphicalService = import ../../../lib/service.nix;
-  # Super+V. fuzzel's ini themes --dmenu as well. cliphist rows are
-  # "<id>\t<preview>": --with-nth only hides the id, and the full row is what
-  # decode needs. Cancel or an empty line leaves the clipboard alone. The
-  # database stays at cliphist's default cache path and is not deleted.
+  cliphistTui = import ./cliphist-tui.nix { inherit pkgs; };
+  # Sends evdev KEY_V (47). wtype `-k v` sends keycode 1, which this Mango
+  # reads as Escape and opens the btop scratchpad on Ctrl+Shift.
+  pasteKey = pkgs.stdenv.mkDerivation {
+    pname = "paste-key";
+    version = "0.1.0";
+    src = ./resources;
+    nativeBuildInputs = [
+      pkgs.pkg-config
+      pkgs.wayland-scanner
+    ];
+    buildInputs = [ pkgs.wayland ];
+    buildPhase = ''
+      # wayland-protocols 1.49 no longer ships this XML. The copy in resources
+      # is virtual-keyboard-unstable-v1, the interface Mango's wlroots implements.
+      wayland-scanner client-header virtual-keyboard-unstable-v1.xml virtual-keyboard-unstable-v1-client-protocol.h
+      wayland-scanner private-code virtual-keyboard-unstable-v1.xml virtual-keyboard-unstable-v1-protocol.c
+      $CC -O2 -o paste-key paste-key.c virtual-keyboard-unstable-v1-protocol.c \
+        $(pkg-config --cflags --libs wayland-client)
+    '';
+    installPhase = ''
+      install -Dm755 paste-key $out/bin/paste-key
+    '';
+  };
+  # Super+V. cliphist still owns the database. cliphist-tui draws the list in
+  # a floating Kitty window and previews images with the Kitty graphics
+  # protocol. Enter copies the entry back through wl-copy and writes
+  # CT_COPY_MARK; Escape leaves the mark empty. The focused appid is read
+  # before Kitty takes the seat. After the window closes, paste-key sends
+  # KEY_V with Ctrl, plus Shift in a terminal. Image rows are not typed into
+  # terminals. The TUI's own wl-paste --watch only reloads the open list; it
+  # does not call `cliphist store`. Alt+X inside the TUI wipes the database.
   clipboardHistory = pkgs.writeShellApplication {
     name = "clipboard-history";
     runtimeInputs = [
-      pkgs.cliphist
-      pkgs.fuzzel
+      pkgs.coreutils
+      pkgs.gnugrep
+      pkgs.jq
+      pkgs.kitty
+      cliphistTui
       pkgs.wl-clipboard
+      pasteKey
     ];
     text = ''
       set -euo pipefail
-      selection="$(cliphist list | fuzzel --dmenu --with-nth 2 --only-match --prompt "剪贴板 ")" || exit 0
-      if [ -z "$selection" ]; then
+
+      mmsg=${config.wayland.windowManager.mango.package}/bin/mmsg
+      appid=""
+      socket="''${MANGO_INSTANCE_SIGNATURE:-}"
+      if [ -z "$socket" ]; then
+        for candidate in /run/user/"$(id -u)"/mango-*.sock; do
+          if [ -S "$candidate" ]; then
+            socket=$candidate
+            break
+          fi
+        done
+      fi
+      if [ -n "$socket" ] && [ -S "$socket" ]; then
+        client=$(MANGO_INSTANCE_SIGNATURE="$socket" "$mmsg" get focusing-client 2>/dev/null || true)
+        appid=$(printf '%s' "$client" | jq -r 'if type == "object" then (.appid // empty) else empty end' 2>/dev/null || true)
+      fi
+
+      mark=$(mktemp)
+      trap 'rm -f "$mark"' EXIT
+
+      CT_COPY_MARK=$mark kitty --class=cliphist-tui --title "剪贴板" cliphist-tui || true
+      if [ ! -s "$mark" ]; then
         exit 0
       fi
-      printf '%s\n' "$selection" | cliphist decode | wl-copy
+
+      # Kitty has released the seat. A short pause lets the previous client
+      # take focus before the synthetic paste. A terminal image paste would
+      # dump bytes into the shell, so images there stay on the clipboard.
+      sleep 0.08
+      types=$(timeout 2 wl-paste --list-types 2>/dev/null || true)
+      is_image=0
+      if printf '%s\n' "$types" | grep -q '^image/'; then
+        is_image=1
+      fi
+      case "$appid" in
+        kitty | Alacritty | foot | wezterm | org.wezfurlong.wezterm | com.mitchellh.ghostty | org.gnome.Terminal | xterm)
+          if [ "$is_image" -eq 1 ]; then
+            exit 0
+          fi
+          paste-key ctrl shift v || true
+          ;;
+        *)
+          paste-key ctrl v || true
+          ;;
+      esac
     '';
   };
   sessionService = {

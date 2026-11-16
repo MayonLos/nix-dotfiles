@@ -23,7 +23,8 @@ let
     "SUPER+CTRL,G,toggleglobal"
     "SUPER+ALT,G,toggleoverlay"
     "SUPER+CTRL,S,tag_special_silent"
-    "ALT,space,spawn,fuzzel"
+    # --no-icons is only the launcher. Super+V opens cliphist-tui in Kitty.
+    "ALT,space,spawn,fuzzel --no-icons"
     # The old shell's MRU window switcher and panel toggles are gone. Mango
     # keeps its own `switcher,next` binding below; fuzzel is the only launcher
     # and there is no replacement control center.
@@ -36,7 +37,7 @@ let
     "SUPER,0,toggleoverview"
     "SUPER+SHIFT,0,togglejump"
 
-    "SUPER,H,focusdir,left"
+    # H is minimize/restore below. Left focus stays on the arrow key.
     "SUPER,Left,focusdir,left"
     "SUPER,J,focusdir,down"
     "SUPER,Down,focusdir,down"
@@ -45,7 +46,7 @@ let
     "SUPER,L,focusdir,right"
     "SUPER,Right,focusdir,right"
 
-    "SUPER+SHIFT,H,move_client,left"
+    # H is minimize below. Left move stays on the arrow key.
     "SUPER+SHIFT,Left,move_client,left"
     "SUPER+SHIFT,J,move_client,down"
     "SUPER+SHIFT,Down,move_client,down"
@@ -129,13 +130,17 @@ let
     "SUPER+CTRL,F,setmfact,1.9"
     "SUPER,C,centerwin"
     "SUPER,Minus,setmfact,-0.05"
-    "SUPER,Equal,setmfact,+0.05"
+    # Super+= cycles layouts. The old increase-mfact binding moved to
+    # Super+Ctrl+= so the equals key is free. Super+Shift+= still grows
+    # a window. Super+Shift+W is intentionally unbound.
+    "SUPER+CTRL,Equal,setmfact,+0.05"
     # Unsigned 0 is a target size on a floating window. +0 is a zero delta
     # on both tiled and floating windows, so the other axis stays put.
     "SUPER+SHIFT,Minus,resizewin,+0,-10"
     "SUPER+SHIFT,Equal,resizewin,+0,+10"
     "SUPER,space,togglefloating"
-    "SUPER,W,switch_layout"
+    "SUPER,Equal,switch_layout"
+    "SUPER,W,spawn,wallpaper-pick"
     "SUPER,Z,zoom"
     "SUPER+SHIFT,G,togglegaps"
 
@@ -151,7 +156,7 @@ let
     "SUPER+SHIFT,Print,spawn,ocr-screen"
     # The old Ctrl+Alt+Delete session menu is gone. Log out with
     # `mmsg dispatch quit`; use `loginctl`/`systemctl` for power actions.
-    # cliphist owns history. fuzzel only displays the row; there is no second
+    # cliphist owns history. cliphist-tui only displays it. There is no second
     # launcher on Super+A.
     "SUPER,V,spawn,clipboard-history"
     # Bluetooth headset mic: HFP on/off (A2DP otherwise; no autoswitch).
@@ -165,8 +170,8 @@ let
     # inside `set_minimized()` (src/manage/client.c) -- so without a
     # minimize bind the toggle is a permanent no-op. It was: dispatching it
     # by hand returned `{"success":true}` and changed nothing.
-    "SUPER+SHIFT,grave,minimized"
-    "SUPER,grave,toggle_scratchpad"
+    "SUPER+SHIFT,H,minimized"
+    "SUPER,H,toggle_scratchpad"
     "SUPER+SHIFT,T,switcher,next"
 
   ];
@@ -276,7 +281,11 @@ let
       fields = lib.splitString "," (builtins.unsafeDiscardStringContext row);
       key = lib.concatStringsSep "," (lib.take 2 fields);
       action = lib.elemAt fields 2;
-      label = actionNames.${action} or action;
+      label =
+        if action == "spawn" && lib.hasInfix "wallpaper-pick" row then
+          "切换壁纸"
+        else
+          actionNames.${action} or action;
       scratchpadNames = {
         mayon-scratch = "临时终端";
         mayon-files = "临时文件 Yazi";
@@ -286,7 +295,9 @@ let
         mayon-bili = "哔哩哔哩";
       };
       args =
-        if action == "toggle_named_scratchpad" then
+        if action == "spawn" && lib.hasInfix "wallpaper-pick" row then
+          ""
+        else if action == "toggle_named_scratchpad" then
           scratchpadNames.${lib.elemAt fields 3} or (lib.elemAt fields 3)
         else
           lib.concatStringsSep "," (lib.drop 3 fields);

@@ -18,7 +18,7 @@ checks: []
 | 高 | Zotero Connector | 已使用 Zotero 和 Firefox，适合补齐浏览器论文/网页采集；先核对是否已经手动安装。 |
 | 已定归档 | File Roller | GTK4 归档 GUI，Thunar TAP 固定其可执行路径；替换旧 Xarchiver。 |
 | 已移除 | Okular | 用户决定不安装；PDF 默认 Zathura，PDF 批注使用 Zotero 内置阅读器。 |
-| 已修改 | `cliphist` | 重新作为日常历史：文字和图片 watcher 都在，选单用 fuzzel。旧数据库不删除。X11↔Wayland 桥保留。 |
+| 已修改 | `cliphist` | 重新作为日常历史：文字和图片 watcher 都在。`Super+V` 用 cliphist-tui 在 Kitty 里预览，不另建数据库。X11↔Wayland 桥保留。 |
 | 已修改 | `pamixer` | 移除无消费者的安装声明；音量键走 swayosd-client。 |
 | 已修改 | `pavucontrol` | 由 `session-support` 安装，可从启动器打开并按浮窗规则显示；用于精细调节。音量键负责日常调节，顶栏不放音量图标。 |
 | 已修改 | Discord → Vesktop | 用户确认替换；使用 stable 包及系统 Vencord，Wayland/PipeWire 接线已构建，实际分享待验。 |
@@ -44,7 +44,7 @@ checks: []
 | mpv | 保留 | 现有 Anime4K、Vulkan、NVDEC、字幕和播放脚本值得保留。更有价值的是按内容/电池状态使用不同播放 profile，避免始终启用高成本 shader；收益需实测。 |
 | mark-shot | 保留，源码在仓库 | 框选、注释、置顶和滚动截图。Rust 树在 `packages/mark-shot`，窗口吸附读 `mmsg`。`Print` 标注，`Shift+Print` 为 `mark-shot --scroll`。 |
 | Tesseract OCR | 保留 | 现有中英 OCR 是独立功能；截图工具不能自动替代语言数据与识别流程。 |
-| 桌面剪贴板历史 | cliphist | `Super+V` 用 cliphist + fuzzel；旧历史文件不删除。 |
+| 桌面剪贴板历史 | cliphist + cliphist-tui | `Super+V` 在 Kitty 浮窗里预览 cliphist。图片走 Kitty 图形协议。回车写回并粘贴；旧历史文件不删除、不改路径。 |
 | cliphist | 保留，作为日常历史 | 文字和图片 watcher 随 Mango target 启动。不迁移、不删除原数据库，路径仍是默认缓存。 |
 | X11↔Wayland 剪贴板桥 | 保留 | 解决跨协议同步，和历史界面职责不同；QQ/微信图像粘贴链路仍需回归。 |
 | Fastfetch | 保留 | 终端快照，不与实时监视器等价；若以后发现启动拖慢，再测量并改成显式 `ff`，当前不假定存在延迟问题。 |
@@ -195,7 +195,7 @@ checks: []
 
 ## 桌面集成
 
-入口：[shell](../aspects/desktop/mango-session/shell.nix)、[壁纸](../aspects/desktop/mango-session/wallpaper.nix)、[锁屏与 idle](../aspects/desktop/mango-session/lock.nix)、[输入法](../aspects/desktop/session-support/input-method.nix)、[Portal/keyring](../aspects/desktop/mango-session/host/portal.nix)。启动器只有 fuzzel（`Alt+Space`）；桌面 shell 已移除，Dock/Launchpad/控制中心/桌面通知历史/壁纸选择器不再提供。旧用户数据保留。
+入口：[shell](../aspects/desktop/mango-session/shell.nix)、[壁纸](../aspects/desktop/mango-session/wallpaper.nix)、[锁屏与 idle](../aspects/desktop/mango-session/lock.nix)、[输入法](../aspects/desktop/session-support/input-method.nix)、[Portal/keyring](../aspects/desktop/mango-session/host/portal.nix)。启动器只有 fuzzel（`Alt+Space`，`--no-icons`）。`Super+W` 用 Matuwall 网格选择壁纸，选择经 `wallpaper-apply` 写状态并调用 sweetbg，不是第二个启动器。桌面 shell 已移除，Dock/Launchpad/控制中心和桌面通知历史不再提供。旧用户数据保留。
 
 | 项目 | 结论 |
 |---|---|

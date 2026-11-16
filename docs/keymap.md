@@ -25,7 +25,7 @@ checks: [keys-mayon-bindings, desktop-composition]
 | 范围 | 入口 | 规则 |
 |---|---|---|
 | 桌面窗口与工作区 | `Super` | Mango 拥有，不占用编辑器常用的 Ctrl/Alt 字母 |
-| 桌面搜索 | `Alt+Space` | fuzzel，唯一的启动器。左下角热角调用同一个程序 |
+| 桌面搜索 | `Alt+Space` | `fuzzel --no-icons`，唯一的启动器。锁定 Mango 的热区默认关闭，打开后是概览 |
 | 终端复用 | `Ctrl+a` 前缀，方向键跨层集成 | tmux 管 pane/window/session；`Ctrl+h/j/k/l` 移动、`Alt+h/j/k/l` 调整大小 |
 | 编辑器窗口与功能 | `Ctrl+h/j/k/l`、Space leader | smart-splits 用 pane-local `@pane-is-vim` 与 tmux 协作，编辑器边缘可移到相邻 pane |
 | shell 与 TUI | 原应用按键 | `Alt+b/f`、`Ctrl+r`、Esc 等正常到达应用 |
@@ -44,11 +44,11 @@ tmux 保留前缀窗口管理；无前缀 `Ctrl+h/j/k/l` 根据 smart-splits 维
 | 特殊工具工作区 | `Super+Shift+S` | 显示/隐藏 Tag 0，默认 scroller |
 | 停放 / 取回特殊窗口 | `Super+Ctrl+S` | 将当前窗口放入 Tag 0；在 Tag 0 使用时送回先前普通 tag，不主动跟随 |
 | 跨工作区可见 / 置顶 | `Super+Ctrl+G` / `Super+Alt+G` | 两个独立手动状态；前者限窗口所在输出，后者可能覆盖全屏窗口 |
-| 剪贴板 | `Super+V` | cliphist 历史经 fuzzel 选择后写回 Wayland。图片条目在列表里是文字占位，选中后仍是原始字节 |
+| 剪贴板 | `Super+V` | cliphist-tui 在 Kitty 浮窗里列出 cliphist。图片在下方预览区按原图显示。回车写回 Wayland，再按打开前的焦点应用粘贴（终端 `Ctrl+Shift+V`，其他 `Ctrl+V`）。终端里的图片只写回剪贴板。`Ctrl-X` 删除一条，`Alt+X` 清空整个历史库 |
 | 音量 / 亮度 / 麦克风 | 音量键、亮度键、麦克风静音键 | `swayosd-client`（含 `--input-volume mute-toggle`）。媒体键仍是 playerctl |
-| 锁屏 | `Super+Alt+L` | 独立 swaylock；没有 DND、防空闲开关或会话菜单。自动锁屏/idle 由 swayidle 负责 |
-| 窗口聚焦 | `Super+h/j/k/l` 或方向键 | 保留两组等价入口 |
-| 移动窗口 | `Super+Shift+h/j/k/l` 或方向键 | 保留；不混作显示器移动 |
+| 锁屏 | `Super+Alt+L` | 独立 swaylock；没有 DND、防空闲开关或会话菜单。swayidle 没有空闲计时器，只在 logind 睡眠前锁屏 |
+| 窗口聚焦 | `Super+j/k/l` 或方向键 | 向左只用方向键。`Super+H` 用来找回最小化窗口 |
+| 移动窗口 | `Super+Shift+j/k/l` 或方向键 | 向左只用方向键。`Super+Shift+H` 用来最小化 |
 | 移到相邻显示器 | `Super+Ctrl+方向键` | 保留，不为当前锁定版本捏造 HJKL 方向语义 |
 | 去工作区 | `Super+1…9` | 编号稳定，不随应用关闭重排 |
 | 移窗口并跟随 | `Super+Shift+1…9` | 保留 Mango `tag` 的实际语义 |
@@ -58,15 +58,16 @@ tmux 保留前缀窗口管理；无前缀 `Ctrl+h/j/k/l` 根据 smart-splits 维
 | 跳转标签 | `Super+Shift+0` | 保留 togglejump，按 US 布局 HJKL 优先的字母标签选择窗口 |
 | 调整大小 | `Super+R`，随后 HJKL/方向键 | 保留模式；模式内 Esc 退出，所有模式下 `Super+Esc` 可退出 |
 | 最大化 / 真全屏 | `Super+F` / `Super+Shift+F` | 保留二者差异 |
-| 浮动 / 布局 / 主窗口 | `Super+Space` / `Super+W` / `Super+Z` | 布局仍为 tile/scroller/monocle；不模拟不存在的 niri 操作 |
+| 浮动 / 布局 / 主窗口 | `Super+Space` / `Super+=` / `Super+Z` | 布局仍为 tile/scroller/monocle。`Super+=` 循环这三种。主区域比例用 `Super+Minus` 减小、`Super+Ctrl+=` 增大。`Super+Shift+W` 不绑定 |
+| 壁纸 | `Super+W` | `wallpaper-pick`：Matuwall 网格列出 `~/Pictures/Wallpapers/managed` 与 `local/`，选中后经 `wallpaper-apply` 写状态并 IPC 切到 sweetbg。取消不改当前图 |
 | 关闭窗口 / 重载配置 | `Super+Q` / `Super+Alt+R` | 所有 Mango 模式可达；不全局拦截裸 Esc |
-| 最小化 / 找回 | `Super+Shift+grave` / `Super+grave` | 成对保留，帮助说明与命名临时终端不同 |
+| 最小化 / 找回 | `Super+Shift+H` / `Super+H` | 最小化同时进入 scratchpad；`Super+H` 取回。与命名临时终端不同 |
 | 操作帮助 | `Super+F1` | 显示同一份按键数据生成的分组帮助；新增工具键同步出现在帮助中 |
 
-工作区默认按用途设置布局：1 开发 tile（主区域 60%）；2 浏览/资料 scroller（默认宽度 80%）；
-3 通讯 tile；4 文档 monocle；5 专业工具 tile（主区域 65%）；6 媒体 monocle；7 虚拟化 tile；
-8 游戏 monocle；9 临时 tile。Tag 0 使用 scroller（65%），为临时工具提供独立层次。
-这是布局默认值，不是 app-id 自动分配；任意应用仍能放在任意 tag，`Super+W` 仍可切换布局。
+所有 tag 默认使用 tile 布局，主区域比例 60%（`tag_rule = id:*,layout_name:tile`、
+`default_master_factor = 0.60`）；没有按用途或 app-id 预设的逐 tag 布局。`Super+=`
+循环当前 tag 的 tile/scroller/monocle，各 tag 的布局状态相互独立；任意应用仍能放在
+任意 tag。Tag 0 也按同一默认启动，用作临时工具的独立层次。
 显示器使用各自真实输出事实，没有硬编码外屏分配或 niri 式自动恢复承诺。
 
 named scratchpad 只有一个可见，呼出另一工具会隐藏前一个；跨屏呼出会使用当前输出。
@@ -94,7 +95,7 @@ Firefox 的英文标题 `Picture-in-Picture` 精确匹配浮动、跨 tag、安�
 
 保留 Thunar 的“在此打开终端”“复制为图片”“复制路径”“粘贴剪贴板图片”“粘贴为链接”。文件 URI、路径文字、图片像素是三种不同用途，不能为了减少代码把它们合并成一种复制。迁移终端入口时保持当前文件夹作为 cwd，路径包含空格/中文/引号仍正常，不经拼接 shell 字符串。当前实现见 [文件动作](../aspects/apps/file-manager/thunar-actions.nix)、[终端入口](../aspects/apps/file-manager/thunar-terminal.nix)、[截图](../aspects/desktop/mango-session/screenshot.nix)。
 
-剪贴板历史由 cliphist 保存，`Super+V` 经 fuzzel 选中后写回 Wayland 剪贴板。Wayland/X11 桥接不是第二个历史库，其退出与轮询策略按 [服务设计](service-policy.md) 核验。保留 WeChat/XWayland 与原生 Wayland 间文字、图片互通。旧 cliphist 数据库不删除。锁屏和秘密复制行为先按锁定实现验证，不声称所有密码管理器内容都会自动排除；不输出剪贴板内容到测试日志。
+剪贴板历史由 cliphist 保存。`Super+V` 打开 cliphist-tui（Kitty 图形协议预览图片），回车后写回 Wayland 剪贴板，并按打开窗口前的焦点 `appid` 用 `paste-key` 粘贴。`paste-key` 先上传一份普通 evdev keymap（wlroots 在这之前拒绝修饰键），再发送 evdev `KEY_V`（47），加上 Ctrl，终端再加 Shift。不用 `wtype`：它的 `-k` 把该键编成 keycode 1，在这套 Mango 上是 Escape，`Ctrl+Shift+Escape` 会打开 btop scratchpad。预览缓存在 `~/.cache/cliphist-tui`，可以删除，不是历史库。选中一条不会从历史里删掉；`Ctrl-X` 删一条，`Alt+X` 清空整个库。Wayland/X11 桥接不是第二个历史库，其退出与轮询策略按 [服务设计](service-policy.md) 核验。保留 WeChat/XWayland 与原生 Wayland 间文字、图片互通。旧 cliphist 数据库不删除、不改路径。锁屏和秘密复制行为先按锁定实现验证，不声称所有密码管理器内容都会自动排除；不输出剪贴板内容到测试日志。虚拟键盘粘贴依赖 compositor 的 virtual-keyboard 协议，失败时内容仍留在剪贴板。
 
 ## 终端、项目与远程工作
 
@@ -136,7 +137,7 @@ Zsh 的 `Ctrl+R` 由 Atuin 搜索本地命令历史，使用 compact 视图、�
 `direnv exec`，不自动 allow、不绕过信任失败，不自动运行构建或恢复历史命令。
 
 启动器“长任务终端”及 `workspace-task -- 命令 参数` 仅在命令运行期间持有 sleep inhibitor，
-结束后自动释放。它仍允许自动锁屏和关屏，不是后台常驻模式，也不能保证抵抗断电或强制
+结束后自动释放。它不阻止手动锁屏，不是后台常驻模式，也不能保证抵抗断电或强制
 睡眠。没有独立的防空闲开关；长任务用自己的 inhibitor，不能当成对手动休眠或盖盖子行为
 的全面保护。两个入口不自动套在已有任务上。
 

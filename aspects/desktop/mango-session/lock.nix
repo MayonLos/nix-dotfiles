@@ -56,23 +56,14 @@ in
     };
   };
 
-  # swayidle owns the idle actions. Lock at 15 minutes and suspend
-  # (locking first) after an hour; a logind sleep request from any source also
-  # locks before the system suspends. Screen-off is intentionally not emulated
-  # here: Mango has no IPC action for output power in the pinned version.
+  # swayidle has no idle timeouts on purpose: the machine is never locked or
+  # suspended for inactivity. It still locks before a logind sleep request
+  # (lid close or a manual suspend); the keybind locks on demand. Screen-off is
+  # intentionally not emulated here: Mango has no IPC action for output power
+  # in the pinned version.
   services.swayidle = {
     enable = true;
     systemdTargets = [ "mango-session.target" ];
-    timeouts = [
-      {
-        timeout = 900;
-        command = lockCommand;
-      }
-      {
-        timeout = 3600;
-        command = "${lockCommand}; ${pkgs.systemd}/bin/systemctl suspend";
-      }
-    ];
     events = {
       before-sleep = lockCommand;
     };

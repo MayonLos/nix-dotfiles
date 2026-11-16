@@ -45,6 +45,18 @@
     # seconds.
     mango.url = "github:mangowm/mango";
 
+    # Small C wallpaper daemon + picker, both outside nixpkgs. They follow the
+    # host stable channel: neither publishes a binary cache, and the packages
+    # build in seconds, so a second nixpkgs evaluation buys nothing.
+    sweetbg = {
+      url = "github:sweetwm/sweetbg";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    matuwall = {
+      url = "github:naurissteins/Matuwall";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # Daily-updated packages for AI coding agents: dsh, grok, antigravity
     # and the review/usage tooling around them. zcode is deliberately NOT
     # installed -- see aspects/dev/ai-agents/ai-agents.nix. Deliberately NOT

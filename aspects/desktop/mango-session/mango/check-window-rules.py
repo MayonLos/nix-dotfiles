@@ -182,6 +182,12 @@ for app in ("mayon-scratch", "mayon-files", "mayon-monitor", "mayon-clash", "may
     assert (float(row["width"]), float(row["height"])) == (0.78, 0.78), row
     assert row["focused_opacity"] == row["unfocused_opacity"] == "1.0", row
     assert row["no_blur"] == "0", row
+picker = resolve("cliphist-tui", "剪贴板")
+assert picker["is_floating"] == "1", picker
+assert "is_named_scratchpad" not in picker, picker
+assert (float(picker["width"]), float(picker["height"])) == (0.78, 0.78), picker
+assert picker["focused_opacity"] == picker["unfocused_opacity"] == "1.0", picker
+assert picker["no_blur"] == "0", picker
 for app in ("mayon-docker", "mayon-ports", "serial-mayon", "shots-mayon", "keys-mayon"):
     row = resolve(app, app)
     assert "is_named_scratchpad" not in row, (app, row)

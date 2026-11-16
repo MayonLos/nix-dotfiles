@@ -47,7 +47,7 @@ let
     # allow_tearing=2: opt normal clients out; only games opt in below.
     "force_tearing:0,no_blur:1,app_id:.*"
     # Kitty supplies its own translucent background; preserve native frost.
-    "no_blur:0,app_id:^(kitty|Neovim|mayon-scratch|mayon-files|mayon-monitor|mayon-clash|mayon-tools|mayon-bili|mayon-docker-exec|mayon-herdr)$"
+    "no_blur:0,app_id:^(kitty|Neovim|mayon-scratch|mayon-files|mayon-monitor|mayon-clash|mayon-tools|mayon-bili|mayon-docker-exec|mayon-herdr|cliphist-tui)$"
 
     # Native transients / X11 modal, splash, utility types already float.
     # These standalone portal windows have no reliable transient parent.
@@ -111,9 +111,11 @@ let
     "${workspace},app_id:^(virt-manager|[.]virt-manager-wrapped)$,title:^(Virtual Machine Manager|虚拟系统管理器)$"
 
     # Preserve named scratch launch identities and their established sizes.
-    "${opaque},app_id:^(kitty|mayon-scratch|mayon-files|mayon-monitor|mayon-clash|mayon-tools|mayon-bili|mayon-docker-exec|mayon-herdr)$"
+    "${opaque},app_id:^(kitty|mayon-scratch|mayon-files|mayon-monitor|mayon-clash|mayon-tools|mayon-bili|mayon-docker-exec|mayon-herdr|cliphist-tui)$"
     # TUI scratchpads share one centered, opaque Kitty window ratio.
     "is_named_scratchpad:1,width:0.78,height:0.78,app_id:^(mayon-scratch|mayon-files|mayon-monitor|mayon-clash|mayon-tools|mayon-bili)$"
+    # Super+V. A fresh Kitty each time, not a scratchpad, so Escape closes it.
+    "${float},width:0.78,height:0.78,app_id:^(cliphist-tui)$"
     "${workspace},app_id:^(mayon-docker-exec)$"
   ]
   # Community modal/chooser patterns, scoped to apps and anchored to avoid

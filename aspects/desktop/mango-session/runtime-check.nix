@@ -45,7 +45,7 @@ let
         "mangobar"
         "mako"
         "swayosd"
-        "swaybg"
+        "sweetbgd"
         "swayidle"
         "polkit-gnome-authentication-agent-1"
         "cliphist"
@@ -54,13 +54,23 @@ let
       ] home.systemd.user.services;
       mangobar = home.services.mangobar.settings;
       mangobarStyle = home.xdg.configFile."mangobar/style.css".text;
-      # The poll script is a store path; the checker reads it after the build.
-      mangobarBluetoothScript = home.services.mangobar.settings."custom/bluetooth".exec;
+      clipboardHistory =
+        let
+          match = builtins.filter (
+            pkg: (builtins.parseDrvName pkg.name).name == "clipboard-history"
+          ) home.home.packages;
+        in
+        if match == [ ] then
+          throw "clipboard-history is not installed in the session"
+        else
+          "${builtins.head match}/bin/clipboard-history";
       mangobarPatches = map (path: {
         name = builtins.baseNameOf path;
         content = builtins.readFile path;
       }) home.services.mangobar.package.patches;
       fuzzel = home.programs.fuzzel.settings;
+      cliphistTuiNix = builtins.readFile ./cliphist-tui.nix;
+      cliphistTuiPatch = builtins.readFile ./resources/cliphist-tui-keep-history.patch;
       mako = home.services.mako.settings;
       # Store path, read by the checker after the package is built.
       makoPackage = "${home.services.mako.package}";
@@ -83,10 +93,27 @@ let
       swayosdPolkit = host.security.polkit.extraConfig;
       videoGroup = builtins.elem "video" host.users.users.mayon.extraGroups;
       swayosdUdev = builtins.any (pkg: (pkg.pname or "") == "swayosd") host.services.udev.packages;
-      swaybg = {
-        execStart = builtins.head home.systemd.user.services.swaybg.Service.ExecStart;
-        restart = home.systemd.user.services.swaybg.Service.Restart;
-      };
+      sweetbgConfig = home.xdg.configFile."sweetbg/config.toml".text;
+      wallpaperApply =
+        let
+          match = builtins.filter (
+            pkg: (builtins.parseDrvName pkg.name).name == "wallpaper-apply"
+          ) home.home.packages;
+        in
+        if match == [ ] then
+          throw "wallpaper-apply is not installed in the session"
+        else
+          "${builtins.head match}/bin/wallpaper-apply";
+      wallpaperPick =
+        let
+          match = builtins.filter (
+            pkg: (builtins.parseDrvName pkg.name).name == "wallpaper-pick"
+          ) home.home.packages;
+        in
+        if match == [ ] then
+          throw "wallpaper-pick is not installed in the session"
+        else
+          "${builtins.head match}/bin/wallpaper-pick";
       swaylock = {
         enable = home.programs.swaylock.enable;
         settings = home.programs.swaylock.settings;
@@ -360,13 +387,25 @@ pkgs.runCommand "interactive-session-config"
     # Bindings: the standalone session keeps fuzzel, clipboard history,
     # swaylock, swayosd and OCR; the old shell controls are gone.
     bind = mango["bind"]
-    assert "ALT,space,spawn,fuzzel" in bind
+    assert "ALT,space,spawn,fuzzel --no-icons" in bind
     assert "SUPER,V,spawn,clipboard-history" in bind
     assert not any(item.startswith("SUPER,A,") for item in bind)
     assert "SUPER+ALT,L,spawn,session-lock" in bind
     assert "SUPER,Print,spawn,ocr-region" in bind
     assert "SUPER+SHIFT,Print,spawn,ocr-screen" in bind
     assert "SUPER+SHIFT,T,switcher,next" in bind
+    assert "SUPER,Equal,switch_layout" in bind
+    assert "SUPER,Minus,setmfact,-0.05" in bind
+    assert "SUPER+CTRL,Equal,setmfact,+0.05" in bind
+    assert "SUPER+SHIFT,Equal,resizewin,+0,+10" in bind
+    assert "SUPER,W,spawn,wallpaper-pick" in bind
+    assert "SUPER+ALT,J,overcircle,current_prev" in bind
+    assert "SUPER+ALT,K,overcircle,current_next" in bind
+    assert "SUPER,0,toggleoverview" in bind
+    assert not any(item.startswith("SUPER+SHIFT,W,") for item in bind)
+    assert mango["circle_layout"] == "tile,scroller,monocle"
+    assert mango["tag_rule"] == [ "id:*,layout_name:tile" ]
+    assert mango["default_master_factor"] == 0.6
     hardware = mango["key_mode"]["common"]["bindl"]
     assert "NONE,XF86AudioRaiseVolume,spawn,swayosd-client --output-volume raise" in hardware
     assert "NONE,XF86AudioLowerVolume,spawn,swayosd-client --output-volume lower" in hardware
@@ -409,12 +448,31 @@ pkgs.runCommand "interactive-session-config"
     assert {key for key in parsed if key.startswith(prefix)} == {prefix + key for key in title}
     assert m["fcitxClassicUI"]["PreferTextIcon"] == "True"
 
-    # Wallpaper: one static swaybg renderer draws the appearance default; the
-    # managed link farm and the user local/ directory stay untouched.
-    swaybg = m["swaybg"]
-    assert "swaybg" in swaybg["execStart"] and "-m fill" in swaybg["execStart"]
-    assert m["wallpaperFactoryDefault"] in swaybg["execStart"]
-    assert swaybg["restart"] == "always"
+    # Wallpaper: one sweetbgd daemon owns the layer surface. Its declarative
+    # config starts on the factory image; ExecStartPost restores the saved
+    # choice after every daemon start. The picker only calls wallpaper-apply.
+    def unit_command(value):
+        return "\n".join(value) if isinstance(value, list) else str(value)
+
+    sweetbg = m["units"]["sweetbgd"]
+    assert unit_command(sweetbg["Service"]["ExecStart"]).endswith("/bin/sweetbgd")
+    assert "--restore" in unit_command(sweetbg["Service"]["ExecStartPost"])
+    assert sweetbg["Service"]["Restart"] == "always"
+    sweetbg_config = m["sweetbgConfig"]
+    assert f'image = "{m["wallpaperFactoryDefault"]}"' in sweetbg_config
+    assert f'color = "{palette["bg"]}"' in sweetbg_config
+    assert 'fit = "cover"' in sweetbg_config
+    wallpaper_apply = Path(m["wallpaperApply"]).read_text()
+    assert "sweetbg" in wallpaper_apply and " img " in wallpaper_apply
+    assert "--restore" in wallpaper_apply and "query" in wallpaper_apply
+    assert ".local/state/mango-session" in wallpaper_apply
+    wallpaper_pick = Path(m["wallpaperPick"]).read_text()
+    assert "matuwall" in wallpaper_pick
+    assert "--backend-command" in wallpaper_pick
+    assert "wallpaper-apply {path}" in wallpaper_pick
+    assert "--recursive" in wallpaper_pick
+    assert "fuzzel" not in wallpaper_pick and "swaybg" not in wallpaper_pick
+    assert "swaybg" not in m["units"]
     managed_source = Path(m["wallpaperManagedSource"])
     expected_names = sorted(["wallpaper-001.jpg", "wallpaper-002.jpg"] + [f"wallpaper-{n:03d}.png" for n in range(3, 19)])
     assert sorted(asset["name"] for asset in m["wallpaperAssets"]) == expected_names
@@ -458,51 +516,45 @@ pkgs.runCommand "interactive-session-config"
     finally:
         shutil.rmtree(fixture_root, ignore_errors=True)
 
-    # Lock/idle: standalone swaylock for ext-session-lock, swayidle for timeouts.
+    # Lock/idle: standalone swaylock for ext-session-lock; swayidle only locks
+    # before sleep and has no inactivity timers.
     lock = m["swaylock"]
     assert lock["enable"] and lock["pamService"]
     assert lock["settings"]["inside-color"].endswith("e6")
     assert lock["settings"]["text-color"] == palette["brightFg"].removeprefix("#") + "ff"
     idle = m["swayidle"]
     assert idle["enable"]
-    timeouts = {item["timeout"]: item["command"] for item in idle["timeouts"]}
-    assert 900 in timeouts and 3600 in timeouts
-    assert all("session-lock" in command for command in timeouts.values())
+    assert idle["timeouts"] == []
     assert "session-lock" in idle["events"]["before-sleep"]
 
-    # mangobar: unchanged live bar contract.
+    # mangobar: tray, real CPU/memory percents, network, battery, clock.
+    # Bluetooth stays a hardware feature; the bar does not poll it.
     bar = m["mangobar"]
     assert bar["height"] == 30 and bar["layer"] == "top"
     assert "buffer-scale" not in bar and "keyboardlayout" not in bar
-    assert bar["modules-left"] == ["layout", "workspaces"]
+    assert "custom/bluetooth" not in bar
+    assert bar["modules-left"] == ["layout", "workspaces", "hideclients"]
+    assert bar["hideclients"]["format"].endswith(" {}")
+    assert ord(bar["hideclients"]["format"][0]) == 0xF0209
     assert bar["modules-center"] == ["window"]
-    assert bar["modules-right"] == ["tray", "network", "custom/bluetooth", "battery", "clock"]
+    assert bar["modules-right"] == ["tray", "cpu", "memory", "network", "battery", "clock"]
     assert bar["window"]["max-length"] == 300 and "on-click" not in bar["window"]
     assert bar["clock"]["format"] == "{:L%m月%d日 周%a %H:%M}"
     assert bar["network"]["format-wifi"] == "{signal}"
     assert ord(bar["network"]["icon-wifi"]) == 0xF05A9
     assert bar["battery"]["on-click"] == "legion-conservation toggle"
     assert bar["battery"]["hide-on-ac"] is False
-    assert bar["custom/bluetooth"]["interval"] == 5
-    assert "mangobar-bluetooth" in bar["custom/bluetooth"]["exec"]
-    bluetooth_script = Path(m["mangobarBluetoothScript"]).read_text()
-    # bluetoothctl aborts with SIGABRT and a coredump when the system bus is
-    # unreachable; the poll must use busctl and degrade to the off glyph.
-    assert "/bin/bluetoothctl" not in bluetooth_script
-    assert "bluetoothctl --timeout" not in bluetooth_script
-    assert "busctl" in bluetooth_script and "org.bluez" in bluetooth_script
-    assert "GetManagedObjects" in bluetooth_script
-    assert '"Powered" b true' in bluetooth_script
-    assert '"Connected" b true' in bluetooth_script
-    assert "U000F00B2" in bluetooth_script
-    assert "U000F00B1" in bluetooth_script
-    assert "U000F00AF" in bluetooth_script
-    assert "timeout 2" in bluetooth_script
+    # {usage} is /proc/stat. {load} is the 1-minute load average.
+    assert bar["cpu"]["format"] == "CPU {usage}%" and bar["cpu"]["interval"] == 2
+    assert "{load}" not in bar["cpu"]["format"]
+    assert bar["memory"]["format"] == "MEM {}%" and bar["memory"]["interval"] == 2
     style = m["mangobarStyle"]
     assert 'font-family: "Maple Mono NF CN"' in style
     assert "font-weight: Medium" in style
     assert "text-decoration" not in style and "underline" not in style
     assert "background: none" in style and "border-radius: 0" in style
+    assert "#cpu" in style and "#mem" in style and "#hideclients" in style
+    assert "#custom-bluetooth" not in style
     assert "#tags.active" in style
     assert palette["blue"] in style
     # Tray DBusMenu popup: One Dark surface/border/radius, item text, hover
@@ -518,10 +570,25 @@ pkgs.runCommand "interactive-session-config"
     assert "menuitem_disabled" in disabled_patch
     assert "lr = dis_r;" in disabled_patch
 
-    # fuzzel: the only launcher.
+    # fuzzel: the only launcher. Icons stay at the ini default; Alt+Space
+    # passes --no-icons. Super+V does not use fuzzel.
     fuzzel = m["fuzzel"]
     assert fuzzel["main"]["font"] == palette["fonts"]["sans"] + ":size=14"
     assert fuzzel["main"]["icon-theme"] == palette["iconTheme"]
+    assert "icons-enabled" not in fuzzel["main"]
+    clipboard = Path(m["clipboardHistory"]).read_text()
+    assert "kitty --class=cliphist-tui" in clipboard
+    assert "CT_COPY_MARK" in clipboard
+    assert "cliphist-tui" in clipboard
+    assert "fuzzel" not in clipboard
+    assert "\\0icon" not in clipboard
+    assert "-thumbnail" not in clipboard
+    assert "paste-key ctrl shift v" in clipboard
+    assert "paste-key ctrl v" in clipboard
+    assert "wtype" not in clipboard
+    assert "cliphist-tui-keep-history.patch" in m["cliphistTuiNix"]
+    assert "CT_COPY_MARK" in m["cliphistTuiPatch"]
+    assert "-    delete_clip_by_id(id);" in m["cliphistTuiPatch"]
     assert fuzzel["main"]["width"] == 60 and fuzzel["main"]["anchor"] == "center"
     assert fuzzel["main"]["lines"] == 8
     assert fuzzel["main"]["horizontal-pad"] == 20 and fuzzel["main"]["vertical-pad"] == 10
@@ -572,7 +639,7 @@ pkgs.runCommand "interactive-session-config"
         assert unit["Unit"]["PartOf"] == targets, name
         assert unit["Unit"]["After"] == targets, name
         assert unit["Install"]["WantedBy"] == targets, name
-    for name in ("mangobar", "mako", "swayosd", "swaybg", "swayidle", "polkit-gnome-authentication-agent-1", "cliphist", "cliphist-images", "wl-clip-persist"):
+    for name in ("mangobar", "mako", "swayosd", "sweetbgd", "swayidle", "polkit-gnome-authentication-agent-1", "cliphist", "cliphist-images", "wl-clip-persist"):
         assert name in m["units"], name
     mangobar_unit = m["units"]["mangobar"]
     assert mangobar_unit["Service"]["Restart"] == "on-failure"
@@ -597,6 +664,7 @@ pkgs.runCommand "interactive-session-config"
     assert m["units"]["wl-clip-persist"]["Service"]["Restart"] == "always"
     lock_before_sleep = m["units"]["swayidle"]["Service"]["ExecStart"]
     assert "before-sleep" in command(lock_before_sleep)
+    assert "suspend" not in command(lock_before_sleep)
 
     # Session environment: only the static whitelist reaches the user manager,
     # and no credential-looking name is present.

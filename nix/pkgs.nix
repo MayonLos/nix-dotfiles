@@ -42,7 +42,7 @@
             mayonTui = import ../packages/mayon-tui { pkgs = final; };
             mayonVoice = import ../packages/mayon-voice { pkgs = final; };
             # Standalone layer-shell clipboard/launcher. The Mango session does
-            # not install or bind it; Alt+Space is fuzzel and Super+V is cliphist.
+            # not install or bind it; Alt+Space is fuzzel and Super+V is cliphist-tui.
             mayonOverlay = import ../packages/mayon-overlay { pkgs = final; };
             # Explicit exceptions to stable; each consumer uses this shared instance.
             unstable = {
@@ -62,6 +62,10 @@
               # Upstream derivation alias. The mangobar flake still imports
               # the followed nixpkgs-unstable while producing this package.
               mangobar = inputs.mangobar.packages.${system}.default;
+              # Small C Wayland wallpaper daemon and picker. The picker's
+              # symlinked-directory patch lives with the wallpaper feature.
+              sweetbg = inputs.sweetbg.packages.${system}.default;
+              matuwall = inputs.matuwall.packages.${system}.default;
               # Vendored Rust tree. rust-toolchain.toml pins 1.99.1; stable rustc
               # is 1.95.0 and this unstable instance provides rustc 1.99.1.
               # System libraries stay on `final` (stable).

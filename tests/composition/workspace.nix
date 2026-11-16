@@ -152,7 +152,7 @@ let
     remoteCliHasNoDesktopOrLocalOnlyFeatures =
       !(selectedHome.programs.kitty.enable or false)
       && !(selectedHome.programs ? mango)
-      && !(selectedHome.systemd.user.services ? swaybg)
+      && !(selectedHome.systemd.user.services ? sweetbgd)
       && !(selectedHome.programs.java.enable or false)
       && !(selectedHome.i18n.inputMethod.enable or false)
       && !(hasPackage selectedHome "kitty")

@@ -27,38 +27,6 @@ let
   # toml reader). Assume a 52px pill whose center is 96 + 26 logical px above
   # the bottom edge, matching the old OSD clearance on this panel.
   osdTopMargin = (logicalHeight - 96.0 - 26.0) / logicalHeight;
-  bluetoothStatus = pkgs.writeShellScript "mangobar-bluetooth" ''
-    set -eu
-    # popen waits on the main thread and the command buffer is 256 bytes, so
-    # this stays a store path with one bounded D-Bus call.
-    #
-    # Do not use bluetoothctl here: when the system bus is unreachable (boot
-    # races, private headless test sessions) its libdbus assertion aborts the
-    # process with SIGABRT and systemd-coredump writes a core file on every
-    # 5s poll. busctl reports the same failure as a normal exit code, so a
-    # missing bus now only degrades the icon.
-    #
-    # One GetManagedObjects reply carries everything: Adapter1 Powered and
-    # Device1 Connected. "Connected" is the Device1/Network1 property; both
-    # mean a live connection.
-    busctl="${pkgs.systemd}/bin/busctl"
-    grep="${pkgs.gnugrep}/bin/grep"
-    objects="$(${pkgs.coreutils}/bin/timeout 2 "$busctl" --system --timeout=2 \
-      call org.bluez / org.freedesktop.DBus.ObjectManager GetManagedObjects \
-      2>/dev/null || true)"
-    # No bus, no BlueZ, no adapter, or adapter powered off: same off glyph.
-    if [ -z "$objects" ] \
-      || ! printf '%s' "$objects" | "$grep" -q '"org.bluez.Adapter1"' \
-      || ! printf '%s' "$objects" | "$grep" -qE '"Powered" b true'; then
-      printf '\U000F00B2'
-      exit 0
-    fi
-    if printf '%s' "$objects" | "$grep" -qE '"Connected" b true'; then
-      printf '\U000F00B1'
-      exit 0
-    fi
-    printf '\U000F00AF'
-  '';
   osdStyle = pkgs.writeText "swayosd-style.css" ''
     /* Compact pill: the default inset and default GTK label/icon sizes made the
        volume OSD read as oversized next to the 30px bar. */
@@ -173,12 +141,15 @@ in
         "modules-left" = [
           "layout"
           "workspaces"
+          # Drawn only while the minimized count is greater than 0.
+          "hideclients"
         ];
         "modules-center" = [ "window" ];
         "modules-right" = [
           "tray"
+          "cpu"
+          "memory"
           "network"
-          "custom/bluetooth"
           "battery"
           "clock"
         ];
@@ -235,13 +206,22 @@ in
           "hide-on-ac" = false;
           "on-click" = "legion-conservation toggle";
         };
-        # Not a built-in module. The fcitx tray already shows "en"; a
-        # keyboardlayout module would add a second "us" label.
-        "custom/bluetooth" = {
-          exec = "${bluetoothStatus}";
-          interval = 5;
-          format = "{}";
+        # The fcitx tray already shows "en"; a keyboardlayout module would add
+        # a second "us" label. {usage} is the /proc/stat percentage. {load} is
+        # the 1-minute load average; the upstream example "{load}%" prints that
+        # average with a percent sign. Memory {} is
+        # (MemTotal-MemAvailable)/MemTotal. CSS ids are #cpu and #mem.
+        cpu = {
+          format = "CPU {usage}%";
+          interval = 2;
         };
+        memory = {
+          format = "MEM {}%";
+          interval = 2;
+        };
+        # Count of minimized clients. mangobar omits the module at 0.
+        # CSS id is #hideclients. The glyph is nf-md-eye-off.
+        hideclients.format = "${g "F0209"} {}";
         clock.format = "{:L%m月%d日 周%a %H:%M}";
       };
     };
@@ -334,6 +314,10 @@ in
         padding: 0;
         margin: 0 4px;
       }
+      #hideclients {
+        color: ${palette.muted};
+        padding: 0 6px;
+      }
       #title {
         color: ${palette.brightFg};
         padding: 0 8px;
@@ -350,9 +334,9 @@ in
         color: ${palette.brightFg};
         padding: 0 7px;
       }
-      #custom-bluetooth {
+      #cpu, #mem {
         color: ${palette.brightFg};
-        padding: 0 6px;
+        padding: 0 7px;
       }
       #tray {
         padding: 0 4px;

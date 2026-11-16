@@ -129,7 +129,7 @@ let
 
   hasHomeUnit = hm: name: builtins.hasAttr name hm.systemd.user.services;
   desktopUnits = [
-    "swaybg"
+    "sweetbgd"
     "swayidle"
     "fcitx5-daemon"
     "clipboard-bridge"

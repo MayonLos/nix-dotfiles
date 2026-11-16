@@ -278,8 +278,8 @@ SYSTEM_UNITS = ["swayosd-libinput-backend.service"]
 KNOWN_JOURNAL_NOISE = [
     (
         re.compile(r"bluetoothctl"),
-        "mangobar custom/bluetooth 每 5s 轮询 bluetoothctl；当前 nixpkgs bluetoothctl 在系统 bus 不可达时 abort 并 core dump，"
-        "属于第三方进程噪音，bar 会降级为断开图标（不影响显示）",
+        "旧 mangobar custom/bluetooth 曾轮询 bluetoothctl，系统 bus 不可达时会 abort 并留下 coredump。"
+        "现行顶栏不再轮询蓝牙；历史 coredump 仍算已知噪音",
     ),
     (
         re.compile(r"mangobar\.service: Failed with result 'exit-code'"),
@@ -450,9 +450,9 @@ def test_services_journal_classified(ctx: Ctx) -> Result:
                 break
         else:
             unknown.append(record[:400])
-    # The system journal is readable here as well. Coredumps from the bar's
-    # custom/bluetooth poll are real upstream noise; anything else is recorded
-    # as an observation (other automation shares this machine), not a suite FAIL.
+    # The system journal is readable here as well. Leftover bluetoothctl
+    # coredumps from the removed bar poll stay known noise; anything else is
+    # recorded as an observation, not a suite FAIL.
     system = ctx.exec(
         ["journalctl", "-b", "-q", "--no-pager", "-o", "cat", "--since", "-1h"],
         timeout=30.0,
@@ -515,8 +515,7 @@ def test_services_journal_classified(ctx: Ctx) -> Result:
     if bluetooth_dumps:
         note = (
             f"；观察：最近 1h 系统 coredump 中 bluetoothctl {bluetooth_dumps} 次"
-            "（mangobar custom/bluetooth 每 5s 轮询触发上游 bluetoothctl abort，bar 图标降级，"
-            "建议后续把该 polling 改为不崩溃的实现）"
+            "（旧 bluetoothctl 轮询留下的 coredump；现行顶栏不再调用它）"
         )
     return Result.passed(
         f"journal 2h（相关单元 + 系统 1h）: {len(raw_lines)} 行单元日志, "
@@ -1971,21 +1970,13 @@ def test_clipboard_image_roundtrip(ctx: Ctx) -> Result:
         )
 
 
-# Known pre-rewrite Super+V implementation: cliphist list piped into fuzzel
-# --dmenu, i.e. a text-only picker where image entries render as a binary
-# placeholder and cannot be previewed. The clipboard/launcher rewrite branch
-# replaces this; the check must flip to PASS once the binding no longer points
-# at that flow.
-LEGACY_CLIPBOARD_FLOW = re.compile(r"cliphist\s+list.*fuzzel\s+--dmenu|fuzzel\s+--dmenu", re.DOTALL)
-
-
 def test_clipboard_super_v_preview(ctx: Ctx) -> Result:
     require_live(ctx)
     command = mango_bind(ctx, "SUPER,V")
     if not command:
         return Result.failed(
             "Mango 配置中缺少 SUPER,V 绑定",
-            expected="SUPER,V,spawn,<剪贴板 UI>",
+            expected="SUPER,V,spawn,clipboard-history",
         )
     executable = command.split()[0]
     resolved = which(executable) if "/" not in executable else executable
@@ -2002,28 +1993,26 @@ def test_clipboard_super_v_preview(ctx: Ctx) -> Result:
     except OSError:
         pass
     data["implementation_is_script"] = bool(text)
-    if LEGACY_CLIPBOARD_FLOW.search(text) or ("cliphist" in text and "fuzzel" in text):
+    has_preview = "cliphist-tui" in text and "--class=cliphist-tui" in text and "CT_COPY_MARK" in text
+    has_paste = (
+        "paste-key ctrl v" in text
+        and "paste-key ctrl shift v" in text
+        and "wtype" not in text
+    )
+    if has_preview and has_paste and "fuzzel" not in text:
         return Result.passed(
-            "SUPER,V 是 cliphist + fuzzel：列表只显示文字，图片条目是占位行，"
-            "选中后 cliphist decode 仍写回原始字节",
+            "SUPER+V 是 cliphist-tui：Kitty 浮窗预览图片，回车写回并用 paste-key 粘贴",
             data=data,
         )
-    if not text:
-        # Binary replacement (new clipboard program): can only verify it exists
-        # and responds to a non-interactive probe.
-        version = ctx.exec([resolved, "--version"], timeout=10.0)
-        data["probe_exit"] = version.returncode
-        if version.ok:
-            return Result.passed(
-                f"SUPER,V 已指向非 fuzzel 实现 {command}（{version.stdout.strip()[:120]}）；"
-                "图片预览的交互验证仍需人工",
-                data=data,
-            )
-        raise SkipTest(
-            f"SUPER,V 现指向二进制程序 {command}，但无 --version 且无法非交互验证图片预览"
+    if "fuzzel" in text:
+        return Result.failed(
+            "SUPER+V 仍是 fuzzel 列表，图片预览看不清",
+            expected="clipboard-history 启动 cliphist-tui，并用 paste-key 粘贴",
+            data=data,
         )
-    return Result.passed(
-        f"SUPER,V 不再是 fuzzel 文本 dmenu（{command}）；新实现的交互行为需人工确认",
+    return Result.failed(
+        f"SUPER,V 不是 cliphist-tui 启动脚本（{command}）",
+        expected="clipboard-history 含 cliphist-tui、CT_COPY_MARK 和 paste-key 粘贴",
         data=data,
     )
 
@@ -2412,10 +2401,10 @@ def test_launcher_binding(ctx: Ctx) -> Result:
         "super_a": super_a or "",
         "resolved": resolved or "",
     }
-    if command != "fuzzel":
+    if command != "fuzzel --no-icons":
         return Result.failed(
-            f"Alt+Space 绑定 {command or '空'}，启动器应为 fuzzel",
-            expected="ALT,space,spawn,fuzzel",
+            f"Alt+Space 绑定 {command or '空'}，启动器应为不带图标的 fuzzel",
+            expected="ALT,space,spawn,fuzzel --no-icons",
             data=data,
         )
     if super_a:
@@ -2426,7 +2415,7 @@ def test_launcher_binding(ctx: Ctx) -> Result:
         )
     if not resolved:
         return Result.failed("找不到 fuzzel", expected="fuzzel 在 PATH", data=data)
-    return Result.passed("启动器只有 Alt+Space → fuzzel，Super+A 没有启动绑定", data=data)
+    return Result.passed("启动器只有 Alt+Space → fuzzel --no-icons，Super+A 没有启动绑定", data=data)
 
 
 def _overlay_live_probe(ctx: Ctx, category: str, mode: str) -> Result:
@@ -2548,7 +2537,7 @@ def test_launcher_overlay(ctx: Ctx) -> Result:
 def test_clipboard_overlay(ctx: Ctx) -> Result:
     require_live(ctx)
     if mango_bind(ctx, "SUPER,V") != "mayon-clipboard":
-        raise SkipTest("会话剪贴板是 cliphist + fuzzel，不打开 mayon-clipboard")
+        raise SkipTest("会话剪贴板是 cliphist-tui，不打开 mayon-clipboard")
     return _overlay_live_probe(ctx, "clipboard", "clipboard")
 
 

@@ -62,14 +62,14 @@ checks: [palette-contrast, gtk-qt-theme, interactive-session-config]
 | 搜索 | fuzzel 宽 60 列，水平内边距 16。列宽不是像素 | `shell.nix` |
 | 通知 | mako 宽 360，`outer-margin` 42,28,0,0，最多 3 条，不透明，1 px 边框，无模糊 | `shell.nix`、`mango.nix` |
 | OSD | swayosd 紧凑胶囊：`#container` 内边距 8×14、13px 标签、18px 图标、4px 轨道；Caps/Num/Scroll 由 root `swayosd-libinput-backend` 系统服务触发。`top_margin` 约为 0.8856，把胶囊底部放在距底约 96 逻辑 px | `shell.nix`、`host/mango.nix` |
-| 壁纸 | swaybg 以 fill 模式绘制 appearance 默认图，背景色 bg | `wallpaper.nix` |
+| 壁纸 | sweetbg 以 cover 模式绘制当前选择，背景色 bg。没有有效状态文件时用 appearance 默认图 | `wallpaper.nix` |
 | 锁屏 | swaylock 在 bg 上铺 90% 不透明度，16 px 字体，蓝色盘符键高亮，8×4 背景模糊 | `lock.nix` |
 
 ## 模糊
 
 Mango 的原生 layer blur 只对明确列出的层开放；顶栏（`mangobar`）完全透明且保持 `no_blur`。普通窗口除 Kitty 等明确例外外不模糊。
 
-通知层和 swayosd 必须 `no_blur:1`。通知卡片如果半透明再加模糊，背后内容会让底色发灰、出现斑块（2026-10-31 实机确认）。这两层现在是不透明色块，仍然不开模糊。壁纸由 swaybg 的独立层绘制，不参与模糊规则。
+通知层和 swayosd 必须 `no_blur:1`。通知卡片如果半透明再加模糊，背后内容会让底色发灰、出现斑块（2026-10-31 实机确认）。这两层现在是不透明色块，仍然不开模糊。壁纸由 sweetbg 的独立层绘制，不参与模糊规则。
 
 ## 实现边界
 

@@ -79,7 +79,7 @@ TESTS = [
     # 5. clipboard
     ("clipboard/text-roundtrip", "clipboard", "文本 wl-copy→cliphist→wl-paste 往返", live.test_clipboard_text_roundtrip),
     ("clipboard/image-roundtrip", "clipboard", "PNG wl-copy→cliphist decode→wl-paste 无损往返", live.test_clipboard_image_roundtrip),
-    ("clipboard/super-v-preview", "clipboard", "Super+V 是否支持图片预览（基线失败项）", live.test_clipboard_super_v_preview),
+    ("clipboard/super-v-preview", "clipboard", "Super+V 用 cliphist-tui 预览并自动粘贴", live.test_clipboard_super_v_preview),
     # 6. mark-shot
     ("mark-shot/version", "mark-shot", "真实 mark-shot --version", live.test_markshot_version),
     ("mark-shot/list-displays", "mark-shot", "--list-displays 输出与物理/逻辑尺寸", live.test_markshot_list_displays),
@@ -88,7 +88,7 @@ TESTS = [
     ("mark-shot/editor", "mark-shot", "--fullscreen 编辑器真实出现（测试进程立即关闭）", live.test_markshot_editor),
     ("mark-shot/editor-cleanup", "mark-shot", "mark-shot 编辑器无残留", live.test_markshot_editor_closed),
     # 7. launcher / Noctalia
-    ("launcher/binding", "launcher", "Alt+Space 为 fuzzel，Super+A 无启动绑定", live.test_launcher_binding),
+    ("launcher/binding", "launcher", "Alt+Space 为 fuzzel --no-icons，Super+A 无启动绑定", live.test_launcher_binding),
     ("launcher/overlay-open", "launcher", "mayon-launcher 仅在会话仍绑定时打开", live.test_launcher_overlay),
     ("clipboard/overlay-open", "clipboard", "mayon-clipboard 仅在会话仍绑定时打开", live.test_clipboard_overlay),
     ("launcher/noctalia-open", "launcher", "Noctalia Launchpad 真实打开 + 截图像素", live.test_launcher_noctalia_open),

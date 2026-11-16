@@ -1,8 +1,8 @@
 # mayon-overlay
 
 Wayland layer-shell 剪贴板历史与纯文字应用启动器。Mango 会话不安装、也不绑定它：
-启动器是 fuzzel（`Alt+Space`），剪贴板历史是 cliphist，`Super+V` 用 fuzzel 的
-dmenu 模式。单二进制、Rust 编写、CPU 光栅化（tiny-skia + fontdue）直接写
+启动器是 fuzzel（`Alt+Space`），剪贴板历史是 cliphist，`Super+V` 用 cliphist-tui。
+单二进制、Rust 编写、CPU 光栅化（tiny-skia + fontdue）直接写
 `wl_shm`，不依赖 GTK/Qt，也不使用 EGL/Vulkan，因此在 pixman headless
 compositor 下同样可运行。
 

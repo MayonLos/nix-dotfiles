@@ -11,16 +11,16 @@ checks: [desktop-composition, mango-blur-sampling, interactive-session-config, g
 
 ## 组成
 
-- **顶栏**：mangobar，高 30，完全透明（无背景、不模糊）。左侧为布局符号与工作区编号；中间是窗口标题；右侧托盘、网络、蓝牙、电池百分比、中文日期时间。整条栏只有一种字体 `Maple Mono NF CN` Medium，活动工作区是蓝色数字，没有下划线。窗口标题来自 Mango 的客户标题，布局是 `layout_symbol`，托盘里的 `en` 是 fcitx。托盘右键 DBusMenu 由 mangobar 自绘，同一份 stylesheet 以 One Dark 着色（surface/border/hover/禁用项），对所有 SNI 程序生效；蓝牙轮询改用有界 `busctl` 查询，避免 `bluetoothctl` 在系统总线不可达时 abort 产生 coredump。
-- **搜索与启动器**：`Alt+Space` 和左下角热角打开 fuzzel，这是唯一的启动器。`Super+V` 用同一个 fuzzel 列出 cliphist。门户选择器保持 `chooser_type=none`。没有 Dock、控制中心或会话菜单。
+- **顶栏**：mangobar，高 30，完全透明（无背景、不模糊）。左侧为布局符号、工作区编号，以及最小化窗口数量（`hideclients`，数量为 0 时不画）；中间是窗口标题；右侧托盘、`CPU {usage}%`、`MEM {}%`、网络、电池百分比、中文日期时间。`{usage}` 是 `/proc/stat` 的占用百分比，内存 `{}` 是 `(MemTotal−MemAvailable)/MemTotal`；不用 `{load}`，那是 1 分钟 load average。栏上没有蓝牙状态。整条栏只有一种字体 `Maple Mono NF CN` Medium，活动工作区是蓝色数字，没有下划线。窗口标题来自 Mango 的客户标题，布局是 `layout_symbol`，托盘里的 `en` 是 fcitx。托盘右键 DBusMenu 由 mangobar 自绘，同一份 stylesheet 以 One Dark 着色（surface/border/hover/禁用项），对所有 SNI 程序生效。
+- **搜索与启动器**：`Alt+Space` 打开 `fuzzel --no-icons`，这是唯一的启动器，列表不画应用图标。`Super+V` 用 Kitty 浮窗打开 cliphist-tui，在现有 cliphist 历史里预览图片（Kitty 图形协议），回车写回 Wayland 并尝试粘贴。锁定的 Mango 热区默认关闭（`enable_hotarea` 为 0）；打开后进入概览，不是启动器。门户选择器保持 `chooser_type=none`。没有 Dock、控制中心或会话菜单。
 - **通知与 OSD**：mako 在右上，宽 360，不透明、无模糊；D-Bus 激活文件由包覆盖改成正确命名并带 `SystemdService=mako.service`，通知早到也只会拉起同一个用户单元。音量和亮度是 swayosd（含麦克风静音的 `--input-volume`），媒体键仍是 playerctl。swayosd 0.3.1 对未知配置键会 panic，配置只写它认识的键。
-- **壁纸**：`~/Pictures/Wallpapers/managed` 只读内置，`local/` 归用户。`swaybg` 作为静态会话服务绘制工厂默认图；Mango 自己不渲染壁纸。更换壁纸需要改 Nix 参数并重建，不提供运行时选择器。
-- **锁屏与 idle**：独立 `swaylock`（Mango 支持 ext-session-lock-v1）+ `swayidle`。15 分钟锁屏、60 分钟锁屏后挂起，logind 睡眠前也会先锁；PAM 服务在 host 侧声明。不模拟自动关屏。
+- **壁纸**：`~/Pictures/Wallpapers/managed` 只读内置，`local/` 归用户。`sweetbgd` 作为会话服务绘制，HM 声明 `~/.config/sweetbg/config.toml`（工厂默认图、背景色、`cover`）；Mango 自己不渲染壁纸。`Super+W` 打开 Matuwall 网格，列出这两处的图片；选中后 `wallpaper-apply` 写 `~/.local/state/mango-session/wallpaper` 并通过 IPC 切图，不重启渲染器。状态无效或缺失时仍画工厂默认图 `wallpaper-005.png`。登录屏和锁屏继续用这张默认图，不读该状态文件。
+- **锁屏与 idle**：独立 `swaylock`（Mango 支持 ext-session-lock-v1）+ `swayidle`。没有空闲计时器：不会因为一段时间没操作而锁屏或挂起。`Super+Alt+L` 手动锁屏；logind 发起睡眠（合盖、手动 suspend）前会先锁。PAM 服务在 host 侧声明。不模拟自动关屏。
 - **登录**：gtkgreet 0.8，外层 sway 按 host facts 设置内屏缩放，背景用 CSS `cover`。只有 Mango 一个会话，登录卡会隐藏命令选择器，不再显示 `mango-login` 的 store 路径。gtkgreet 自带 `HH:MM` 时钟。细节在 [greeter README](../aspects/desktop/greeter/README.md)。
 
 ## 服务
 
-Mango 配置用 `mmsg dispatch reload_config` 重载；Home Manager activation 会在每次 `nixos-rebuild switch` 后自动找到当前 Mango socket 并重载一次，所以新快捷键在切换后立即生效。mangobar、mako、swayosd、swaybg、swayidle、cliphist 和 wl-clip-persist 都挂在 `mango-session.target` 上，生命周期见 [service-policy.md](service-policy.md)。锁屏与 idle 没有常驻 shell 进程；swayidle 只执行固定命令。
+Mango 配置用 `mmsg dispatch reload_config` 重载；Home Manager activation 会在每次 `nixos-rebuild switch` 后自动找到当前 Mango socket 并重载一次，所以新快捷键在切换后立即生效。mangobar、mako、swayosd、sweetbgd、swayidle、cliphist 和 wl-clip-persist 都挂在 `mango-session.target` 上，生命周期见 [service-policy.md](service-policy.md)。锁屏与 idle 没有常驻 shell 进程；swayidle 只执行固定命令。
 
 ## 窗口规则
 

@@ -77,7 +77,7 @@ stdout 会打印逐测试行、分类矩阵、FAIL/SKIP 清单。证据 PNG 只�
 | `notifications/on-notify-sound` | 从 config 提取 `on-notify` 的真实 `pw-play` 命令并执行一次，记录退出码（无声卡时允许非零，记为降级） | `bash -c <on-notify>` |
 | `clipboard/text-roundtrip` | 文本 `wl-copy → wl-paste → cliphist list → decode → wl-paste` | `wl-clipboard`/`cliphist` |
 | `clipboard/image-roundtrip` | 生成 96×64 PNG → `wl-copy --type image/png` → cliphist 条目 → decode → `wl-paste`，sha256/尺寸一致 | 真实 PNG 字节往返（并发占用剪贴板时 SKIP 并注明） |
-| `clipboard/super-v-preview` | SUPER+V 绑定是否仍是无图片预览的 fuzzel 流（**当前基线 FAIL**） | 读 live Mango config + 解析绑定脚本 |
+| `clipboard/super-v-preview` | 脚本启动 Kitty 里的 cliphist-tui，并用 `paste-key` 发送 KEY_V（47）粘贴 | 读 live Mango config + 解析绑定脚本 |
 | `mark-shot/version` | 真实 `mark-shot --version` | 命令 |
 | `mark-shot/list-displays` | `--list-displays` JSON 与 mmsg 的 active/scale 一致，并记录逻辑尺寸取整（1707×1067）作为 2561 像素 bug 的根因候选 | 命令 |
 | `mark-shot/capture-size` | `--capture-to` PNG 物理尺寸必须等于 `grim`（**当前基线 FAIL：2561×1601 vs 2560×1600**） | 真实截图 + ImageMagick |
@@ -138,12 +138,12 @@ SKIP 清单：
 
 1. **mark-shot**：`mark-shot/capture-size`、`mark-shot/copy` 必须从 FAIL 变 PASS（尺寸
    2560×1600、剪贴板 PNG 完整）；`mark-shot/editor` 不能因新编辑器/媒体库变化而残留。
-2. **剪贴板**：`Super+V` 是 cliphist + fuzzel，`clipboard/super-v-preview` 以此为通过；
-   图片在列表里是文字占位，`clipboard/image-roundtrip` 仍须无损。
+2. **剪贴板**：`clipboard/super-v-preview` 要求脚本含 `--class=cliphist-tui`、`CT_COPY_MARK`，并用 `paste-key` 粘贴；
+   `clipboard/image-roundtrip` 仍须无损。交互弹出选单不在这套断言里。
 3. **mangobar tray One Dark**：`bar/config`、`bar/transparency`、`bar/tray-items` 会按新
    的 live `config.jsonc`/`style.css` 重新取期望值；如果 tray 配色/模块名变化，`bar/modules`
    的右三分区仍有 palette 像素即可通过，具体颜色断言按 palette 源码自适应。
-4. **启动器**：`launcher/binding` 要求 `Alt+Space` 为 fuzzel 且没有 `Super+A` 启动绑定。
+4. **启动器**：`launcher/binding` 要求 `Alt+Space` 为 `fuzzel --no-icons` 且没有 `Super+A` 启动绑定。
    `launcher/noctalia-*` 在 Noctalia 不在时 SKIP。覆盖层用例只在会话仍绑定
    `mayon-launcher` / `mayon-clipboard` 时才打开。
 5. **OSD/greeter**：`osd/*` 不依赖 Noctalia；`greeter/render` 从 `/etc/greetd/sway.conf`
