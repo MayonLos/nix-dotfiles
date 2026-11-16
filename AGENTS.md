@@ -51,6 +51,13 @@ Mango 是唯一图形会话；dwm/Xorg 会话已于 2026-11-05 移除。
 - 修改 workaround 前先读原因，按当前锁定源码或实际行为核验；历史测量有时间范围。当前 `flake.lock` 与源码优先，发现矛盾时更新说明。
 - 服务生命周期与配置 writer 归属分别遵循 [`docs/service-policy.md`](docs/service-policy.md) 和 [`docs/config-ownership.md`](docs/config-ownership.md)。
 
+## 代码注释
+
+- Nix、Python、C、Rust、Lua 和 shell 注释用英文，说明为什么、约束和不明显的取舍；不写复述代码的 what，也不翻译已有正确注释。
+- 不保留注释掉的代码；删除功能时同步删除其注释、README 和文档引用。注释必须与当前源码一致，过程和历史写进 [`docs/history/README.md`](docs/history/README.md)。
+- 顶层文档与 feature README 沿用现有语言：`docs/` 用中文，feature README 可保持英文；不要为了统一语言重写所有说明。
+- 注释与格式问题先交给 `nix fmt`（含 nixfmt、deadnix、statix、stylua、rustfmt）；`deadnix`/`statix` 是检查门，不自动删除被框架按 lambda 形状使用的绑定。
+
 ## 工作与验证
 
 审核请求先给带路径和证据的发现，区分缺陷、可选改进和未验证推测。要求修改时完成实现、文档及相关验证。求值、构建、应用和实机验证是不同证据层级：不把前者写成后者。
