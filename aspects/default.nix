@@ -4,6 +4,7 @@ _: {
     ./appearance/avatar
     ./appearance/appearance
     ./system/default-tools
+    ./system/extra-tools
     ./workspace/workspace-task
     ./workspace/project-workbench
     ./dev/languages

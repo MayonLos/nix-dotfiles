@@ -5,6 +5,7 @@
       terminal
       keys-mayon
       default-tools
+      extra-tools
       firefox
       communication
       documents
