@@ -180,8 +180,8 @@ local function setup(overrides)
 						opts.diagnostics = false
 						opts.diagnostics_open = false
 						opts.title = "Project"
-						-- Window options belong to the public picker config; the
-						-- explorer no longer rewrites picker internals from on_show.
+						-- Window options belong to the public picker config; do not
+						-- rewrite picker internals from on_show.
 						opts.win = vim.tbl_deep_extend("force", opts.win or {}, {
 							input = { title = "", wo = { winbar = "" } },
 							list = {

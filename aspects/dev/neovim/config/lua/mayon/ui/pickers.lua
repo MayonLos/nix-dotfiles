@@ -143,7 +143,6 @@ function M.configure(opts)
 	end
 
 	opts.prompt = "❯ "
-	-- Public picker title; the old footer/count patch is gone.
 	opts.title = opts.title or opts.mayon_label or labels[opts.source]
 	opts.formatters = vim.tbl_deep_extend("force", opts.formatters or {}, { file = { filename_first = true } })
 	if opts.source == "files" or opts.source == "recent" then

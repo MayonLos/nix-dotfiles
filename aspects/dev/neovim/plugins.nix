@@ -20,7 +20,8 @@ let
     vimPlugins.tiny-glimmer-nvim
     vimPlugins.tiny-inline-diagnostic-nvim
     vimPlugins.satellite-nvim
-    # unstable: stable 19.13 缺少 ACP 修复；当前 20.0.1 已核对 interactions/inline/ACP API
+    # unstable: stable 19.13 lacks the ACP fix; the current 20.0.1 has been
+    # checked against the interactions/inline/ACP API.
     (pkgs.unstable.codecompanion-nvim.overrideAttrs (_: {
       # Keep the runtime graph on the editor's stable LuaJIT/Plenary. Mixing
       # unstable Plenary would introduce a second LuaJIT into the wrapper env.

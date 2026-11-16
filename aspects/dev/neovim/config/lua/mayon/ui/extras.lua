@@ -1,7 +1,6 @@
 -- Window-local surfaces for built-in buffers and secondary plugin views.
--- Most of this module's work moved into util.winhl / theme / statusline;
--- what remains is the shared secondary-surface titles and the highlight-colors
--- option table that decorations.lua applies.
+-- Shared secondary-surface titles and the highlight-colors option table that
+-- decorations.lua applies.
 local M = {}
 local util = require("mayon.util")
 

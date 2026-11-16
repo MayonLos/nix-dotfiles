@@ -329,7 +329,7 @@ local function overrides()
 	set("GitSignsChange", { fg = blend(c.blue, c.bg, 0.75), bg = c.bg })
 	set("GitSignsDelete", { fg = c.red, bg = c.bg })
 
-	-- Native Claude/codediff and MiniDiff overlays share the palette.
+	-- Native CodeDiff and MiniDiff overlays share the palette.
 	set("DiffAdd", { bg = blend(c.green, c.bg, 0.12), fg = c.brightFg })
 	set("DiffChange", { bg = blend(c.blue, c.bg, 0.12), fg = c.brightFg })
 	set("DiffText", { bg = blend(c.blue, c.bg, 0.18), fg = c.brightFg, bold = true })

@@ -66,9 +66,9 @@ function M.setup()
 		undofile = true,
 		updatetime = 250,
 		winborder = require("mayon.util").border,
-		-- The Nixvim baseline left `wrap` at Neovim's default (`true`). Keep
-		-- long prose and Markdown lines visible instead of clipping them at the
-		-- right edge; break at word boundaries without noisy continuation arrows.
+		-- Keep long prose and Markdown lines visible instead of clipping them
+		-- at the right edge; break at word boundaries without noisy
+		-- continuation arrows.
 		wrap = true,
 	}
 	for name, value in pairs(options) do

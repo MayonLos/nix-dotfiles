@@ -4,8 +4,8 @@
     includes = [ den.aspects.mayon-tools ];
     homeManager = { pkgs, ... }: {
       imports = [ ./home.nix ];
-      # The old module relied on llvm.nix for these common build tools. Make
-      # that dependency explicit without installing the entire host LLVM set.
+      # Declare these common build tools explicitly rather than taking the
+      # whole host LLVM set.
       home.packages = with pkgs; [
         cmake
         ninja

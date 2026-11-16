@@ -104,8 +104,8 @@ in
             }
         );
       };
-      # LazyGit 0.61 uses the native pagers array. Reuse the same immutable
-      # cache wrapper and Git settings as command-line diff review.
+      # The pinned LazyGit uses the native pagers array. Reuse the same
+      # immutable cache wrapper and Git settings as command-line diff review.
       settings.git.pagers = lib.optionals (palette != null) [
         {
           colorArg = "always";

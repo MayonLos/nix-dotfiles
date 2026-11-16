@@ -51,14 +51,4 @@ in
     agents.antigravity-hub
     agents.antigravity-cli
   ];
-
-  # NOT here: `agents.claude-code` / `agents.claude-agent-acp`. Removed
-  # 2026-11-15 at the user's instruction; ~/.claude and the CLI cache were deleted.
-  #
-  # NOT here: `agents.codex` / `agents.codex-acp`. Removed 2026-11-06 at the
-  # user's instruction; ~/.codex had already been deleted.
-  #
-  # NOT here: `agents.zcode` (Z.ai's Electron IDE). Removed 2026-09-19 at the
-  # user's instruction after it was observed pushing to a user repository
-  # without being asked. Do not add it back.
 }

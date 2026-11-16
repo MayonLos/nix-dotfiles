@@ -42,7 +42,7 @@ local function companion()
 	require("codecompanion").setup({
 		adapters = {
 			acp = {
-				-- Upstream presets (codex, claude_code, gemini_cli, ...) have no installed binary.
+				-- Upstream ACP presets expect binaries that are not installed.
 				opts = { show_presets = false },
 			},
 		},
