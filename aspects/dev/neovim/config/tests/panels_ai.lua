@@ -146,7 +146,7 @@ vim.api.nvim_set_current_win(terminal_win)
 leave.callback()
 assert(vim.api.nvim_get_current_win() ~= terminal_win, "Ctrl-h should leave the AI terminal window")
 
--- The Claude connection poll runs only while an AI panel is visible.
+-- The AI terminal connection poll runs only while an AI panel is visible.
 assert(panels.poll_active(), "Claude status poll should run while an AI panel is visible")
 vim.api.nvim_buf_delete(chat_buf, { force = true })
 vim.api.nvim_buf_delete(terminal_buf, { force = true })

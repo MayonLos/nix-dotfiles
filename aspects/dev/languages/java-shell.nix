@@ -6,8 +6,8 @@
 let
   java = import ../../../lib/java.nix { inherit pkgs; };
 
-  # Built from the same JDK set as java.nix and session-vars.nix, so the
-  # selectors cannot drift from what is installed.
+  # Built from the same JDK set as java-tools.nix, so the selectors cannot
+  # drift from what is installed.
   javaSwitchFns = lib.concatStringsSep "\n" (
     lib.mapAttrsToList (version: _: "use-java${version}() { use-java JAVA${version}_HOME; }") java.jdks
   );

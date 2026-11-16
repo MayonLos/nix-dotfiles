@@ -1,4 +1,4 @@
--- AI panel visual layer: chat decoration, winbar status and Claude diff
+-- AI panel visual layer: chat decoration, winbar status and AI terminal diff
 -- styling. Decoration runs on CodeCompanion's own events plus buffer-local text
 -- changes in chat buffers (coalesced to one pass per tick); the winbar caches
 -- provider/model state per buffer.
@@ -106,7 +106,7 @@ local function terminal_command(buf)
 end
 
 -- Single owner of the "is this an AI terminal" predicate, shared by the
--- Claude status, the panel width fit and Edgy's terminal filter.
+-- terminal status, the panel width fit and Edgy's terminal filter.
 function M.is_ai_terminal(buf)
 	if not api.nvim_buf_is_valid(buf) then
 		return false
@@ -341,7 +341,7 @@ local function diff_counts(buf)
 end
 
 local function claude_connected()
-	-- Never force-load claudecode just to draw a status dot.
+	-- Never force-load the AI terminal plugin just to draw a status dot.
 	local claude = package.loaded.claudecode
 	if type(claude) ~= "table" or type(claude.is_claude_connected) ~= "function" then
 		return false
@@ -351,7 +351,7 @@ local function claude_connected()
 end
 
 -- Per-buffer cache of the resolved provider, invalidated when CodeCompanion
--- opens/finishes a chat, changes adapter/model, when the Claude connection
+-- opens/finishes a chat, changes adapter/model, when the terminal connection
 -- flips, and when the buffer is wiped.
 local provider_cache = {}
 local function invalidate_provider(buf)
@@ -408,8 +408,8 @@ local function resolve_provider(buf)
 	return unpack(result)
 end
 
--- Claude exposes no connection event, so poll it, but only while an AI panel
--- (which shows the Claude dot) is visible in the current tab.
+-- The terminal integration exposes no connection event, so poll it, but only
+-- while an AI panel (which shows the terminal dot) is visible in the current tab.
 local poll_timer
 local last_connected
 
@@ -569,7 +569,7 @@ local function style_terminal(buf)
 		vim.wo[win].winbar = name and "%!v:lua.require'mayon.ui.ai_panels'.winbar()" or ""
 		vim.w[win].mayon_ai_panel = name ~= nil
 	end
-	-- Every other key belongs to the CLI (Esc interrupts Claude), so Ctrl-h is
+	-- Every other key belongs to the CLI (Esc interrupts the CLI), so Ctrl-h is
 	-- the one way back to the document; in the CLI it only duplicated Backspace.
 	vim.keymap.set("t", "<C-h>", function()
 		vim.cmd.wincmd(api.nvim_win_get_config(0).relative == "" and "h" or "p")
