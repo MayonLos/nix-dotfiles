@@ -8,8 +8,8 @@ import re
 import sys
 from pathlib import Path
 
-# Mango 9c44c664, src/config/option_defs.c:1341-1638. Keep this explicit so an
-# accidental Hyprland/Sway field cannot silently enter a generated rule.
+# Pinned Mango 0.18.5, src/config/option_defs.c window_rule parsing. Keep this
+# explicit so an unknown field fails instead of silently entering a rule.
 WINDOW_FIELDS = set("""
     is_floating title app_id animation_type_open animation_type_close tags monitor
     offset_x offset_y no_focus no_fade_in no_fade_out no_force_center width height

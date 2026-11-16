@@ -125,7 +125,7 @@ in
       # hm-session-vars.sh. Selected static session variables are copied from
       # systemd.user.sessionVariables so Mango and its children see the same
       # safe shared values. `env=` is setenv'd into the compositor's own
-      # process at config-parse time (src/config/parse_config.c:335).
+      # process at startup (src/main.c), not into child shells.
       #
       # The one that bites hardest is NIXOS_OZONE_WL: the nixpkgs Electron
       # wrappers add `--ozone-platform=wayland` only when it is set, so without
@@ -156,8 +156,9 @@ in
       focus_on_activate = 0;
       warp_cursor = 1;
 
-      # Mango 0.18.3 has no ext-background-effect-v1. Its native layer blur
-      # is restricted to the top bar by the ordered rules below.
+      # Pinned Mango 0.18.5 has no ext-background-effect-v1, so blur is
+      # per-surface: the window rules below opt kitty and scratchpads in, and
+      # the layer rules disable it for the transparent bar and opaque popups.
       blur = 1;
       blur_layer = 1;
       blur_optimized = 1;
@@ -381,8 +382,9 @@ in
       enable_floating_snap = 1;
       snap_distance = 16;
 
-      # Rules apply in order: unrelated layer surfaces stay unblurred;
-      # mangobar, mako and swayosd opt back in where their own design needs it.
+      # Rules apply in order: layer surfaces are unblurred; mangobar, mako and
+      # swayosd also opt out of animation and shadows to match their own
+      # design (transparent bar, opaque popups).
       layer_rule = [
         "layer_name:.*,no_blur:1"
         # mangobar is fully transparent; blurring its layer would still frost
@@ -395,7 +397,7 @@ in
 
       # Single rule owner. Keep app destinations opt-in to preserve current tags.
       window_rule = import ./mango/window-rules.nix { inherit lib; };
-      # Mango 0.18.3 supports 0/1/2; 2 gates tearing to fullscreen.
+      # Pinned Mango 0.18.5 supports 0/1/2; 2 gates tearing to fullscreen.
       # The rule table opts normal clients out and games in.
       allow_tearing = 2;
 

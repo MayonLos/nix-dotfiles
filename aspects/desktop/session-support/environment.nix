@@ -44,9 +44,8 @@ in
       "$HOME/.local/bin"
     ];
 
-    # IME variables now live in `shared` above; the HM fcitx5 module only
-    # contributes the home-side set, so systemd-launched apps needed the
-    # mirror to get them too.
+    # `shared` already covers the mirrored IME variables; this block only adds
+    # the shell-side preferences.
     sessionVariables = shared // {
       # A built-in syntax preset; terminal surfaces and ANSI colors remain
       # owned by the shared fixed palette. No runtime theme writer is needed.

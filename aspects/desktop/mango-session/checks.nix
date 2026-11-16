@@ -21,8 +21,9 @@
     palette = appearance;
   };
 
-  # Headless test for the unused overlay package. The session launcher is
-  # fuzzel is the launcher and Super+V is cliphist-tui; this check does not wire either binding.
+  # Headless test for the overlay package. The session does not use it:
+  # fuzzel is the launcher and Super+V is cliphist-tui, so this check wires
+  # neither binding.
   mayon-overlay = import ../../../packages/mayon-overlay/tests/check.nix {
     inherit pkgs;
   };

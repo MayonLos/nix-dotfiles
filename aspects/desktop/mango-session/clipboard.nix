@@ -30,7 +30,7 @@ let
   # while idle, input over text-input-v3) but X11 for the clipboard, which it
   # reaches through DISPLAY=:0 only when copying. So "copy in QQ does nothing"
   # is this bug, not a QQ-side one, and re-pinning QQ to --ozone-platform=x11
-  # to work around it would wreck the fcitx5 setup described in desktop-mango.
+  # to work around it would wreck the fcitx5 setup described in docs/desktop.md.
   #
   # Compared to the previous version of this bridge, the mime type is taken
   # from the *offered type list* on each side instead of being guessed by
@@ -222,8 +222,8 @@ let
 
   mkGraphicalService = import ../../../lib/service.nix;
   cliphistTui = import ./cliphist-tui.nix { inherit pkgs; };
-  # Sends evdev KEY_V (47). wtype `-k v` sends keycode 1, which this Mango
-  # reads as Escape and opens the btop scratchpad on Ctrl+Shift.
+  # Sends evdev KEY_V (47). A symbolic `v` maps to keycode 1 here, which this
+  # Mango reads as Escape and opens the btop scratchpad on Ctrl+Shift.
   pasteKey = pkgs.stdenv.mkDerivation {
     pname = "paste-key";
     version = "0.1.0";
@@ -234,7 +234,7 @@ let
     ];
     buildInputs = [ pkgs.wayland ];
     buildPhase = ''
-      # wayland-protocols 1.49 no longer ships this XML. The copy in resources
+      # wayland-protocols 1.48 no longer ships this XML. The copy in resources
       # is virtual-keyboard-unstable-v1, the interface Mango's wlroots implements.
       wayland-scanner client-header virtual-keyboard-unstable-v1.xml virtual-keyboard-unstable-v1-client-protocol.h
       wayland-scanner private-code virtual-keyboard-unstable-v1.xml virtual-keyboard-unstable-v1-protocol.c

@@ -376,10 +376,6 @@ in
     '';
   };
 
-  # mako 1.11.0 ships a D-Bus service that Exec's the binary and has no
-  # SystemdService= line. This unit still owns the name for the session.
-  # A notification that arrives before it is up can start a second process
-  # through that Exec line; the second one fails to bind the name.
   systemd.user.services = {
     # The desktop has no shell-provided authentication agent. Keep one
     # session-scoped polkit agent so pkexec/GUI actions can prompt. The system

@@ -25,9 +25,8 @@ let
     "SUPER+CTRL,S,tag_special_silent"
     # --no-icons is only the launcher. Super+V opens cliphist-tui in Kitty.
     "ALT,space,spawn,fuzzel --no-icons"
-    # The old shell's MRU window switcher and panel toggles are gone. Mango
-    # keeps its own `switcher,next` binding below; fuzzel is the only launcher
-    # and there is no replacement control center.
+    # Mango's own `switcher,next` binding below is the window switcher;
+    # fuzzel is the only launcher and no control center is provided.
     # No argument: the keybind path has no client, so this toggles tag 0
     # on the selected monitor.
     "SUPER+SHIFT,S,toggle_special_tag"
@@ -151,7 +150,7 @@ let
     # screenshot, Ctrl = copy current screen, Shift = scrolling capture,
     # Super = OCR the selection,
     # Super+Shift = OCR the entire desktop. Scripts come from
-    # programs/apps/screenshot.nix.
+    # aspects/desktop/mango-session/screenshot.nix.
     "SUPER,Print,spawn,ocr-region"
     "SUPER+SHIFT,Print,spawn,ocr-screen"
     # The old Ctrl+Alt+Delete session menu is gone. Log out with
