@@ -54,7 +54,7 @@ tmux 保留前缀窗口管理；无前缀 `Ctrl+h/j/k/l` 根据 smart-splits 维
 | 移窗口并跟随 | `Super+Shift+1…9` | 保留 Mango `tag` 的实际语义 |
 | 停放窗口、不跟随 | `Super+Ctrl+1…9` | 保留 `tagsilent`，帮助中说清差异 |
 | 最近窗口 / 概览 | `Super+Tab` / `Super+0` | 保留 |
-| 带标题预览 / 原生切换器 | `Super+Alt+J/K` / `Super+Shift+T`、`Alt+Tab` | `Super+Alt+J/K` 是当前 tag 的 overcircle 前后；switcher 是缩略图面板，`Alt+Tab`/`Alt+Shift+Tab` 在当前 tag 内正向/反向循环，松开修饰键选中，`Super+Shift+T` 只进下一张 |
+| 带标题预览 / 原生切换器 | `Super+Alt+J/K` / `Alt+Tab` | `Super+Alt+J/K` 是当前 tag 的 overcircle 前后；switcher 是缩略图面板，`Alt+Tab`/`Alt+Shift+Tab` 在当前 tag 内正向/反向循环，松开修饰键选中。`Super+Shift+T` 不再绑定 |
 | 跳转标签 | `Super+Shift+0` | 保留 togglejump，按 US 布局 HJKL 优先的字母标签选择窗口 |
 | 调整大小 | `Super+R`，随后 HJKL/方向键 | 保留模式；模式内 Esc 退出，所有模式下 `Super+Esc` 可退出 |
 | 最大化 / 真全屏 | `Super+F` / `Super+Shift+F` | 保留二者差异 |

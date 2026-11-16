@@ -393,7 +393,6 @@ pkgs.runCommand "interactive-session-config"
     assert "SUPER+ALT,L,spawn,session-lock" in bind
     assert "SUPER,Print,spawn,ocr-region" in bind
     assert "SUPER+SHIFT,Print,spawn,ocr-screen" in bind
-    assert "SUPER+SHIFT,T,switcher,next" in bind
     assert "ALT,Tab,switcher,next" in bind
     assert "ALT+SHIFT,Tab,switcher,prev" in bind
     assert "SUPER,Equal,switch_layout" in bind
@@ -405,6 +404,7 @@ pkgs.runCommand "interactive-session-config"
     assert "SUPER+ALT,K,overcircle,current_next" in bind
     assert "SUPER,0,toggleoverview" in bind
     assert not any(item.startswith("SUPER+SHIFT,W,") for item in bind)
+    assert not any(item.startswith("SUPER+SHIFT,T,") for item in bind)
     assert mango["circle_layout"] == "tile,scroller,monocle"
     assert mango["tag_rule"] == [ "id:*,layout_name:tile" ]
     assert mango["default_master_factor"] == 0.6
@@ -416,7 +416,6 @@ pkgs.runCommand "interactive-session-config"
     assert "NONE,XF86MonBrightnessDown,spawn,swayosd-client --brightness lower" in hardware
     assert "NONE,XF86AudioMicMute,spawn,swayosd-client --input-volume mute-toggle" in hardware
     assert "SUPER,R,setkeymode,resize" in bind
-    assert "SUPER+SHIFT,T,switcher,next" in bind
     for chord, scratch, tool in (("SUPER+SHIFT,D,", "mayon-tools", "mayon-tools"), ("SUPER+SHIFT,B,", "mayon-bili", "bilitui-mayon")):
         matches = [binding for binding in bind if binding.startswith(chord)]
         assert len(matches) == 1
