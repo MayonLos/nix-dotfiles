@@ -95,6 +95,7 @@ git show history-archive-2026-11-06 --stat -- docs/history   # 列出全部原�
 
 | 2026-11-15 | 应用 system-34：main 上移除 Noctalia（壁纸改 swaybg 静态、锁屏/idle 改 swaylock/swayidle、polkit 会话 agent 修到 libexec）、Super+V 改自写 `mayon-clipboard`、Super+A 改自写纯文字 `mayon-launcher`、mangobar 顶栏全透明且窗口标题居中、mako 通知音、tray DBusMenu One Dark、mark-shot 物理像素网格与剪贴板整包传输修复、mark-shot LGPL 媒体库（OpenH264 录制/GIF 真实跑通）、gtkgreet 单会话隐藏命令下拉。应用后逐项核对：用户服务无 failed，mark-shot 复制剪贴板为 2560×1600 完整 PNG，剪贴板/启动器覆盖层实机截图正常，空格子工作区壁纸+透明顶栏正常；E2E 最终最佳一轮 33 PASS / 1 FAIL / 4 SKIP（剩余为 live 会话干扰造成的 OSD 偶发检测、需重新登录的 session env、新启动器 Noctalia 旧项和 tray 指针注入） | 实机（system-34） |
 | 2026-11-15 | 真实运行 E2E 套件落地（`tests/runtime/`）：live 会话 + 私有 headless 环境，真实调用 grim/notify-send/swayosd-client/wl-copy/mark-shot/gtkgreet 并做像素/文件断言；应用后 28 PASS / 1 FAIL（音量 OSD 检测受自动化环境影响，手动截图已验证）/ 7 SKIP（新启动器交互、tray 指针、旧 Noctalia 项、重新登录后的 session env）。 | 实机 + 私有渲染 |
+| 2026-11-16 | 撤销 Noctalia 回退。启动器只留 fuzzel（`Alt+Space`），`Super+A` 不再绑定。剪贴板继续用已有的 cliphist，`Super+V` 用 fuzzel 列出历史后 `cliphist decode \| wl-copy` 写回；自写 `mayon-clipboard` / `mayon-launcher` 不进入会话。应用 `/nix/store/m6j85vhhry3l4911n5vwny2phlia1p86-nixos-system-nixos-btw-26.05.20261113.f1e5c35`。首次激活被已有的 `gtk.css.backup` 挡住，两份 2026-06-28 的备份改名保留后再次切换成功。Noctalia 已退出，壁纸为 swaybg，`reload_config` 成功 | 应用 |
 ## 被取代的规范全文
 
 | 日期 | 内容 | 原文件 |
