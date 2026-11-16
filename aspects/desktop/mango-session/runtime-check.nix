@@ -394,6 +394,8 @@ pkgs.runCommand "interactive-session-config"
     assert "SUPER,Print,spawn,ocr-region" in bind
     assert "SUPER+SHIFT,Print,spawn,ocr-screen" in bind
     assert "SUPER+SHIFT,T,switcher,next" in bind
+    assert "ALT,Tab,switcher,next" in bind
+    assert "ALT+SHIFT,Tab,switcher,prev" in bind
     assert "SUPER,Equal,switch_layout" in bind
     assert "SUPER,Minus,setmfact,-0.05" in bind
     assert "SUPER+CTRL,Equal,setmfact,+0.05" in bind
