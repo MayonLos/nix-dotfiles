@@ -2003,11 +2003,9 @@ def test_clipboard_super_v_preview(ctx: Ctx) -> Result:
         pass
     data["implementation_is_script"] = bool(text)
     if LEGACY_CLIPBOARD_FLOW.search(text) or ("cliphist" in text and "fuzzel" in text):
-        return Result.failed(
-            "当前 SUPER,V 仍是 fuzzel 文本 dmenu 流（cliphist list | fuzzel --dmenu）："
-            "图片条目只能显示 binary placeholder，没有图片预览",
-            expected="剪贴板 UI 能预览并选择图片（新实现）",
-            observed=f"binding={command}",
+        return Result.passed(
+            "SUPER,V 是 cliphist + fuzzel：列表只显示文字，图片条目是占位行，"
+            "选中后 cliphist decode 仍写回原始字节",
             data=data,
         )
     if not text:
@@ -2406,46 +2404,29 @@ def _noctalia_available(ctx: Ctx) -> tuple[bool, str]:
 
 def test_launcher_binding(ctx: Ctx) -> Result:
     require_live(ctx)
-    command = mango_bind(ctx, "SUPER,A")
-    available, info = _noctalia_available(ctx)
-    data: dict[str, object] = {"binding": command, "noctalia": info}
-    if not command:
+    command = mango_bind(ctx, "ALT,space")
+    super_a = mango_bind(ctx, "SUPER,A")
+    resolved = which("fuzzel")
+    data: dict[str, object] = {
+        "binding": command,
+        "super_a": super_a or "",
+        "resolved": resolved or "",
+    }
+    if command != "fuzzel":
         return Result.failed(
-            "Mango 配置中缺少 SUPER+A 启动器绑定",
-            expected="SUPER,A,spawn,<启动器>",
+            f"Alt+Space 绑定 {command or '空'}，启动器应为 fuzzel",
+            expected="ALT,space,spawn,fuzzel",
             data=data,
         )
-    if available and "launchpad" in command:
-        data["implementation"] = "noctalia launchpad plugin"
-        return Result.passed(
-            f"SUPER+A 绑定 Noctalia Launchpad，Noctalia 可用（{info}），实现待运行验证",
-            data=data,
-        )
-    if available:
+    if super_a:
         return Result.failed(
-            f"SUPER+A 绑定 {command} 但当前 Noctalia Launchpad 未使用？(不一致)",
-            expected="noctalia launchpad toggle 或新启动器",
+            f"Super+A 仍有启动绑定 {super_a}",
+            expected="没有 SUPER,A spawn",
             data=data,
         )
-    # Noctalia removed / replaced: the new launcher must at least exist.
-    executable = command.split()[0]
-    resolved = which(executable) if "/" not in executable else executable
-    data["resolved"] = resolved
     if not resolved:
-        return Result.failed(
-            f"SUPER+A 绑定 {command} 但程序不存在（Noctalia 已移除且新启动器缺失）",
-            expected="存在的启动器可执行文件",
-            data=data,
-        )
-    if "mayon-launcher" in command:
-        return Result.passed(
-            f"SUPER+A 绑定自写 mayon-launcher（{resolved}）；真实打开/关闭由 launcher/overlay-open 覆盖",
-            data=data,
-        )
-    raise SkipTest(
-        f"当前不是 Noctalia Launchpad（Noctalia: {info}）；SUPER+A → {command}，"
-        "未知启动器实现，跳过"
-    )
+        return Result.failed("找不到 fuzzel", expected="fuzzel 在 PATH", data=data)
+    return Result.passed("启动器只有 Alt+Space → fuzzel，Super+A 没有启动绑定", data=data)
 
 
 def _overlay_live_probe(ctx: Ctx, category: str, mode: str) -> Result:
@@ -2558,10 +2539,16 @@ def _overlay_live_probe(ctx: Ctx, category: str, mode: str) -> Result:
 
 
 def test_launcher_overlay(ctx: Ctx) -> Result:
+    require_live(ctx)
+    if mango_bind(ctx, "SUPER,A") != "mayon-launcher":
+        raise SkipTest("会话启动器是 fuzzel，不打开 mayon-launcher")
     return _overlay_live_probe(ctx, "launcher", "launcher")
 
 
 def test_clipboard_overlay(ctx: Ctx) -> Result:
+    require_live(ctx)
+    if mango_bind(ctx, "SUPER,V") != "mayon-clipboard":
+        raise SkipTest("会话剪贴板是 cliphist + fuzzel，不打开 mayon-clipboard")
     return _overlay_live_probe(ctx, "clipboard", "clipboard")
 
 

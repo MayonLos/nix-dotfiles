@@ -41,9 +41,8 @@
             bilitui = import ../packages/bilitui { pkgs = final; };
             mayonTui = import ../packages/mayon-tui { pkgs = final; };
             mayonVoice = import ../packages/mayon-voice { pkgs = final; };
-            # Wayland layer-shell clipboard history and text launcher. Its
-            # binary entry points are mayon-overlay / mayon-clipboard /
-            # mayon-launcher; key bindings are wired by the desktop feature.
+            # Standalone layer-shell clipboard/launcher. The Mango session does
+            # not install or bind it; Alt+Space is fuzzel and Super+V is cliphist.
             mayonOverlay = import ../packages/mayon-overlay { pkgs = final; };
             # Explicit exceptions to stable; each consumer uses this shared instance.
             unstable = {

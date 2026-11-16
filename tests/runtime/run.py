@@ -88,9 +88,9 @@ TESTS = [
     ("mark-shot/editor", "mark-shot", "--fullscreen 编辑器真实出现（测试进程立即关闭）", live.test_markshot_editor),
     ("mark-shot/editor-cleanup", "mark-shot", "mark-shot 编辑器无残留", live.test_markshot_editor_closed),
     # 7. launcher / Noctalia
-    ("launcher/binding", "launcher", "SUPER+A 启动器绑定与实现可用性", live.test_launcher_binding),
-    ("launcher/overlay-open", "launcher", "mayon-launcher 真实打开/关闭与状态", live.test_launcher_overlay),
-    ("clipboard/overlay-open", "clipboard", "mayon-clipboard 真实打开/关闭与状态", live.test_clipboard_overlay),
+    ("launcher/binding", "launcher", "Alt+Space 为 fuzzel，Super+A 无启动绑定", live.test_launcher_binding),
+    ("launcher/overlay-open", "launcher", "mayon-launcher 仅在会话仍绑定时打开", live.test_launcher_overlay),
+    ("clipboard/overlay-open", "clipboard", "mayon-clipboard 仅在会话仍绑定时打开", live.test_clipboard_overlay),
     ("launcher/noctalia-open", "launcher", "Noctalia Launchpad 真实打开 + 截图像素", live.test_launcher_noctalia_open),
     ("launcher/noctalia-closed", "launcher", "Launchpad 关闭后无残留层", live.test_launcher_noctalia_closed),
     # 8. greeter

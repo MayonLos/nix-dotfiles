@@ -151,10 +151,9 @@ let
     "SUPER+SHIFT,Print,spawn,ocr-screen"
     # The old Ctrl+Alt+Delete session menu is gone. Log out with
     # `mmsg dispatch quit`; use `loginctl`/`systemctl` for power actions.
-    # Self-written overlay: no fuzzel, no Noctalia. Clipboard supports image
-    # thumbnails and auto-paste; the launcher is a plain text list.
-    "SUPER,V,spawn,mayon-clipboard"
-    "SUPER,A,spawn,mayon-launcher"
+    # cliphist owns history. fuzzel only displays the row; there is no second
+    # launcher on Super+A.
+    "SUPER,V,spawn,clipboard-history"
     # Bluetooth headset mic: HFP on/off (A2DP otherwise; no autoswitch).
     "SUPER+SHIFT,N,spawn,headset-mic toggle"
     "SUPER+SHIFT,P,sleep_monitor,${display.name}"

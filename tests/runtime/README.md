@@ -138,14 +138,14 @@ SKIP 清单：
 
 1. **mark-shot**：`mark-shot/capture-size`、`mark-shot/copy` 必须从 FAIL 变 PASS（尺寸
    2560×1600、剪贴板 PNG 完整）；`mark-shot/editor` 不能因新编辑器/媒体库变化而残留。
-2. **剪贴板**：`clipboard/super-v-preview` 应因新剪贴板 UI 变成 PASS/SKIP（套件会自动
-   识别“不再是 fuzzel 流”）；`clipboard/image-roundtrip` 在新 UI 下仍须无损。
+2. **剪贴板**：`Super+V` 是 cliphist + fuzzel，`clipboard/super-v-preview` 以此为通过；
+   图片在列表里是文字占位，`clipboard/image-roundtrip` 仍须无损。
 3. **mangobar tray One Dark**：`bar/config`、`bar/transparency`、`bar/tray-items` 会按新
    的 live `config.jsonc`/`style.css` 重新取期望值；如果 tray 配色/模块名变化，`bar/modules`
    的右三分区仍有 palette 像素即可通过，具体颜色断言按 palette 源码自适应。
-4. **移除 Noctalia**：`launcher/*` 会检测 Noctalia 是否仍 active。移除后
-   `launcher/binding` 应 PASS（绑定到新启动器），`launcher/noctalia-*` 自动 SKIP
-   （迁移后预期），不产生假 FAIL；`clipboard/super-v-preview` 同理。
+4. **启动器**：`launcher/binding` 要求 `Alt+Space` 为 fuzzel 且没有 `Super+A` 启动绑定。
+   `launcher/noctalia-*` 在 Noctalia 不在时 SKIP。覆盖层用例只在会话仍绑定
+   `mayon-launcher` / `mayon-clipboard` 时才打开。
 5. **OSD/greeter**：`osd/*` 不依赖 Noctalia；`greeter/render` 从 `/etc/greetd/sway.conf`
    动态发现 gtkgreet/CSS，`nr` 后自动使用新 generation 的真实二进制与 CSS（`data.css_sha256`
    会变化，这是预期）。

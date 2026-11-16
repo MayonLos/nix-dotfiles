@@ -361,8 +361,8 @@ pkgs.runCommand "interactive-session-config"
     # swaylock, swayosd and OCR; the old shell controls are gone.
     bind = mango["bind"]
     assert "ALT,space,spawn,fuzzel" in bind
-    assert "SUPER,V,spawn,mayon-clipboard" in bind
-    assert "SUPER,A,spawn,mayon-launcher" in bind
+    assert "SUPER,V,spawn,clipboard-history" in bind
+    assert not any(item.startswith("SUPER,A,") for item in bind)
     assert "SUPER+ALT,L,spawn,session-lock" in bind
     assert "SUPER,Print,spawn,ocr-region" in bind
     assert "SUPER+SHIFT,Print,spawn,ocr-screen" in bind

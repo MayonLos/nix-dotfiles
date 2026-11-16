@@ -12,7 +12,7 @@ checks: [desktop-composition, mango-blur-sampling, interactive-session-config, g
 ## 组成
 
 - **顶栏**：mangobar，高 30，完全透明（无背景、不模糊）。左侧为布局符号与工作区编号；中间是窗口标题；右侧托盘、网络、蓝牙、电池百分比、中文日期时间。整条栏只有一种字体 `Maple Mono NF CN` Medium，活动工作区是蓝色数字，没有下划线。窗口标题来自 Mango 的客户标题，布局是 `layout_symbol`，托盘里的 `en` 是 fcitx。托盘右键 DBusMenu 由 mangobar 自绘，同一份 stylesheet 以 One Dark 着色（surface/border/hover/禁用项），对所有 SNI 程序生效；蓝牙轮询改用有界 `busctl` 查询，避免 `bluetoothctl` 在系统总线不可达时 abort 产生 coredump。
-- **搜索与启动器**：`Alt+Space` 打开 fuzzel 做搜索；`Super+A` 打开自写 `mayon-launcher` 纯文字应用列表（无图标，`gio launch`）。门户选择器保持 `chooser_type=none`。没有 Dock、控制中心或会话菜单。
+- **搜索与启动器**：`Alt+Space` 和左下角热角打开 fuzzel，这是唯一的启动器。`Super+V` 用同一个 fuzzel 列出 cliphist。门户选择器保持 `chooser_type=none`。没有 Dock、控制中心或会话菜单。
 - **通知与 OSD**：mako 在右上，宽 360，不透明、无模糊；D-Bus 激活文件由包覆盖改成正确命名并带 `SystemdService=mako.service`，通知早到也只会拉起同一个用户单元。音量和亮度是 swayosd（含麦克风静音的 `--input-volume`），媒体键仍是 playerctl。swayosd 0.3.1 对未知配置键会 panic，配置只写它认识的键。
 - **壁纸**：`~/Pictures/Wallpapers/managed` 只读内置，`local/` 归用户。`swaybg` 作为静态会话服务绘制工厂默认图；Mango 自己不渲染壁纸。更换壁纸需要改 Nix 参数并重建，不提供运行时选择器。
 - **锁屏与 idle**：独立 `swaylock`（Mango 支持 ext-session-lock-v1）+ `swayidle`。15 分钟锁屏、60 分钟锁屏后挂起，logind 睡眠前也会先锁；PAM 服务在 host 侧声明。不模拟自动关屏。

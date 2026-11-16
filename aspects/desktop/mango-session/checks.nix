@@ -21,8 +21,8 @@
     palette = appearance;
   };
 
-  # Real headless behavior test for the self-written clipboard history and
-  # text launcher (Sway + private D-Bus; private Mango is not passed here).
+  # Headless test for the unused overlay package. The session launcher is
+  # fuzzel and Super+V is cliphist; this check does not wire either binding.
   mayon-overlay = import ../../../packages/mayon-overlay/tests/check.nix {
     inherit pkgs;
   };
