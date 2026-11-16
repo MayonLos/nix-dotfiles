@@ -2,8 +2,8 @@
 //!
 //! Modes:
 //!
-//! * `mayon-overlay clipboard` — cliphist history overlay (Super+V)
-//! * `mayon-overlay launcher`  — text-only application launcher (Super+A)
+//! * `mayon-overlay clipboard` — cliphist history overlay
+//! * `mayon-overlay launcher`  — text-only application launcher
 //! * `mayon-overlay ctl <command>` — talk to a running overlay over its Unix
 //!   socket (used by scripts and the headless test; see `ipc.rs`).
 //!
