@@ -300,7 +300,7 @@ in
     # uca.xml used to be Thunar's own file (mode 600); home-manager owns it now.
     # The cost is that the "Configure custom actions" dialog can no longer save —
     # new actions go here instead. backupFileExtension = "backup" in
-    # inventory/hosts/nixos-btw/default.nix preserves the old file as uca.xml.backup.
+    # nix/hosts.nix preserves the old file as uca.xml.backup.
     #
     # "Open Terminal Here" calls the workspace terminal launcher with the
     # selected item's containing directory. The terminal itself comes from the

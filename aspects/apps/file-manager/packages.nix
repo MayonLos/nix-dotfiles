@@ -49,9 +49,10 @@ let
       thunarPlugins = plugins;
     }).overrideAttrs
       (old: {
-        # Upstream's wallpaper action only supports XFCE/GNOME and otherwise does
-        # nothing. Keep our session-aware UCA as the only wallpaper action. This
-        # removes symlinks from this wrapper, never files in the original package.
+        # Upstream's wallpaper plugin only supports XFCE/GNOME and otherwise
+        # does nothing, so drop the wrapper's symlinks to it. The files remain
+        # in the original package, and wallpaper is owned by the desktop
+        # feature (sweetbg), not by a Thunar action.
         buildCommand = old.buildCommand + ''
                       test -L "$out/lib/thunarx-3/thunar-wallpaper-plugin.so"
                       rm "$out/lib/thunarx-3/thunar-wallpaper-plugin.so"
