@@ -3,7 +3,7 @@
 //! cliphist owns the history database; this program never touches it directly.
 //! `cliphist list` gives `id<TAB>preview` lines, `cliphist decode <id>` gives
 //! the original bytes, and the selected bytes are handed back to the compositor
-//! through `wl-copy` exactly like the previous fuzzel-based binding did.
+//! through `wl-copy`.
 
 use image::RgbaImage;
 use std::io::Write;

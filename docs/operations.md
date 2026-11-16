@@ -59,6 +59,19 @@ Git flake 只包含已跟踪文件，新文件 `git add` 后才进入求值。`p
 
 验证要先在旧版本上复现问题：新版“通过”本身不是证据。
 
+## 启动与关闭检查
+
+```sh
+systemctl --failed
+journalctl -b -p 3 --no-pager | tail -50
+journalctl -b -1 --no-pager | tail -50
+systemd-analyze blame
+```
+
+已修的仓库侧问题：`mayon-voice.socket` 的隐式 `Before=sockets.target` 曾在关机时造成 ordering cycle，现由 `DefaultDependencies=false` 只保留 session 顺序；Tumbler 的 D-Bus 文件名与 bus name 不一致会产生 dbus-broker 警告，现由 `nix/pkgs.nix` 重命名；`pwvucontrol` 启动崩溃已移除。
+
+仍会出现在日志里的固件/驱动噪声：ACPI `AE_ALREADY_EXISTS`/`AE_AML_PACKAGE_LIMIT`、`spd5118` 的 PM 读写错误、关机时 `iTCO_wdt` 的 `watchdog did not stop`。这些不是仓库配置能修的行为，不能用清空日志代替；硬件/BIOS 更新或驱动变更要单独实测。
+
 ## 已知陷阱
 
 桌面相关陷阱（锁屏、主题、服务）见 [desktop.md](desktop.md#排障)。

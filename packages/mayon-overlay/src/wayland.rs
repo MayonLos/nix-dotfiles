@@ -5,8 +5,8 @@
 //! Design constraints that shaped this file:
 //!
 //! * The overlay must be a `zwlr_layer_shell_v1` surface on the focused output
-//!   with exclusive keyboard, so Super+V/Super+A behave like a modal UI without
-//!   stealing a toplevel slot.
+//!   with exclusive keyboard, so it behaves like a modal UI without stealing a
+//!   toplevel slot.
 //! * Rendering is CPU-side into `wl_shm` XRGB8888 buffers. No EGL/Vulkan/GTK:
 //!   the same binary has to run under the pixman renderer in the headless test.
 //! * The control socket is part of the same `poll` loop instead of a second

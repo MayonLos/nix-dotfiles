@@ -60,7 +60,7 @@ checks: [remote-workspace-composition]
 
 当前不选文件系统、不生成 disko 分区方案、不启用全盘擦除或 impermanence。单盘 VPS、NAS 和加密物理机的约束不同；首次实际安装再形成可审查的分区表与迁移说明。普通服务使用原生 StateDirectory/明确 `/var/lib/<service>` 等路径，不把所有应用混到一个共享可写目录；需要持久卷时逐个声明所有者和权限。
 
-备份方案的默认候选是 **NixOS restic 定时任务**，理由是可按路径/目标集成；这只是规划选型，尚未安装或运行。锁定 nixpkgs 已有 `services.restic.backups` 模块。后端、容量和保留值必须随实例填写，不凭空设置删快照周期。restic 支持快照备份与恢复；参见 [官方备份](https://restic.readthedocs.io/en/stable/040_backup.html) 和 [恢复](https://restic.readthedocs.io/en/stable/050_restore.html) 文档。
+备份方案尚未选定。规划时必须先有仓库之外的独立目标（另一台机器、对象存储或外接盘）、容量和恢复演练；没有目标时不安装引擎，也不凭空设置快照保留周期。
 
 | 数据 | 备份/恢复要求 |
 |---|---|

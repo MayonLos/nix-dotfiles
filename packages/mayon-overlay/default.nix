@@ -1,6 +1,6 @@
 {
   pkgs,
-  # Fonts are palette data (Inter / Noto Sans CJK SC); callers may override.
+  # Fonts are palette data (Inter / Maple Mono NF CN); callers may override.
   inter ? pkgs.inter,
   # Noto Sans CJK 2.004 in nixpkgs is a variable CFF2 collection that
   # fontdue cannot outline; Maple Mono NF CN is the palette mono font and
@@ -57,8 +57,8 @@ pkgs.rustPlatform.buildRustPackage {
   ];
 
   postInstall = ''
-    # One binary, three entry points: the raw binary plus the two key-binding
-    # wrappers used by the desktop session.
+    # One binary, three entry points: the raw binary plus two wrappers that
+    # preselect a mode. The Mango session does not install or bind them.
     wrapProgram $out/bin/mayon-overlay \
       --prefix PATH : ${runtimePath} \
       --set-default MAYON_OVERLAY_FONT ${inter}/share/fonts/truetype/InterVariable.ttf \

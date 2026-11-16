@@ -79,7 +79,7 @@
               # Upstream derivation alias. The mangobar flake still imports
               # the followed nixpkgs-unstable while producing this package.
               mangobar = inputs.mangobar.packages.${system}.default;
-              # Small C Wayland wallpaper daemon and picker. The picker's
+              # Wallpaper daemon (sweetbg) and picker (Matuwall). Matuwall's
               # symlinked-directory patch lives with the wallpaper feature.
               sweetbg = inputs.sweetbg.packages.${system}.default;
               matuwall = inputs.matuwall.packages.${system}.default;
