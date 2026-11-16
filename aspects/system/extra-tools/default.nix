@@ -7,21 +7,12 @@ _: {
         nvme-cli
         smartmontools
         nvd
-        argyllcms
         bluetui
         gdu
         newsboat
         trippy
         bind.dnsutils
-        restic
-        keepassxc
       ];
-
-      # KeePassXC ships the Firefox native-messaging manifest with an absolute
-      # proxy path. Firefox reads per-user hosts from this directory; the
-      # extension itself is force-installed by the Firefox policy below.
-      home.file.".mozilla/native-messaging-hosts/org.keepassxc.keepassxc_browser.json".source =
-        "${pkgs.keepassxc}/lib/mozilla/native-messaging-hosts/org.keepassxc.keepassxc_browser.json";
 
       programs.newsboat = {
         enable = true;

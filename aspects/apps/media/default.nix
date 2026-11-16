@@ -24,7 +24,6 @@ _: {
         yt-dlp
         streamlink
         wl-screenrec
-        pwvucontrol
         bilitui
         gimp
         kdePackages.kdenlive

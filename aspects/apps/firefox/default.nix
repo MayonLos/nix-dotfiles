@@ -14,12 +14,6 @@
         firefoxWithManagedThemeAndExtensions = pkgs.firefox.override {
           extraPolicies = {
             ExtensionSettings = {
-              # KeePassXC-Browser talks to keepassxc-proxy through the
-              # per-user native-messaging manifest installed by extra-tools.
-              "keepassxc-browser@keepassxc.org" = {
-                installation_mode = "force_installed";
-                install_url = "https://addons.mozilla.org/firefox/downloads/latest/keepassxc-browser/latest.xpi";
-              };
               # These synchronized theme add-ons override Firefox's dark theme.
               "{74da71cc-4d66-48f5-95d1-1f017f18ffab}".installation_mode = "blocked";
               "{443bf4af-0884-4c22-886b-21f936e899df}".installation_mode = "blocked";

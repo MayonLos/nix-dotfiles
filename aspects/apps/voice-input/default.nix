@@ -5,6 +5,10 @@ _: {
     systemd.user.sockets.mayon-voice = {
       Unit = {
         Description = "Local voice input control socket";
+        # The implicit Before=sockets.target creates a shutdown ordering cycle
+        # with mango-session.target. The socket is owned by the session target,
+        # so keep only that ordering.
+        DefaultDependencies = false;
         PartOf = config.nixDotfiles.graphicalSessionTargets;
         After = config.nixDotfiles.graphicalSessionTargets;
       };

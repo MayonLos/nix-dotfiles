@@ -22,7 +22,6 @@ in
   den.aspects.nixos-btw = {
     includes = with den.aspects; [
       system-maintenance
-      backup
       legion-laptop
       laptop-network
       closed-ssh-socket

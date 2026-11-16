@@ -35,6 +35,17 @@
               inherit (previous) gamemode;
               inherit (final) runCommandCC;
             };
+            # tumbler 4.20.1 installs D-Bus service files named after the Xfce
+            # vendor prefix while the bus name is org.freedesktop.thumbnails.*;
+            # dbus-broker warns about every mismatch. Rename the files only.
+            tumbler = previous.tumbler.overrideAttrs (old: {
+              postInstall = (old.postInstall or "") + ''
+                for n in Cache1 Manager1 Thumbnailer1; do
+                  mv "$out/share/dbus-1/services/org.xfce.Tumbler.$n.service" \
+                    "$out/share/dbus-1/services/org.freedesktop.thumbnails.$n.service"
+                done
+              '';
+            });
           })
           (final: _: {
             # Local programs have a separate public entry; local remains upstream aliases.

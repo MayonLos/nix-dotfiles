@@ -9,8 +9,6 @@
       deepseek-api-key.owner = "mayon";
       opencode-go-api-key.owner = "mayon";
       github-token.owner = "mayon";
-      # Read by services.restic.backups.home; root-owned runtime file.
-      restic-password.owner = "root";
     };
 
     # access-tokens cannot live in nix.settings: every module ends up

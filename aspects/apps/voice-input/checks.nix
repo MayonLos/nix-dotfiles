@@ -10,6 +10,7 @@ let
 in
 assert !(service ? Install);
 assert service.Unit.PartOf == [ "voice-fixture.target" ];
+assert socket.Unit.DefaultDependencies == false;
 assert socket.Install.WantedBy == [ "voice-fixture.target" ];
 assert socket.Socket.ListenStream == "%t/mayon-voice/control.sock";
 assert socket.Socket.SocketMode == "0600";

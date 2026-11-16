@@ -28,7 +28,6 @@ checks: []
 | Docker prune | 只由 local-containers binding 声明每周、Persistent timer，拉起 oneshot `docker --host unix://%t/docker.sock builder prune -f --filter until=168h`。 | 2026-10-20 起自动清理限于一周未使用的构建缓存，停止容器、镜像与卷不属于该命令清理范围；保留原计时器名称和每周调度。没有手动执行 prune；清理不替代备份。 |
 | 本地虚拟机 | [local-virtual-machines](../aspects/dev/virtual-machines/default.nix) 授予所选 binding 的 libvirtd/kvm，host 配置 QEMU KVM、runAsRoot=false、swtpm、SPICE USB。virt-manager 客户端可单选。 | `libvirtd.service` 的开机 wants 明确清空，保留 Unix sockets；不由 multi-user wants 在开机拉起。`libvirt-guests` 保持关闭，不设置或改变 domain autostart。镜像、TPM 和 guest 生命周期属用户数据。 |
 | AI / 应用 | [AI workbench](../aspects/dev/ai-agents/default.nix) 和其他应用 feature 安装 CLI/desktop entry；认证与可变设置留给应用。 | 不新增开机 daemon。工具启动后自身的按需子进程不等同 Nix 服务；模型、OAuth、Codex/OpenCode 配置与历史保留。 |
-| 备份 | [backup](../aspects/system/backup/default.nix) 的 `services.restic.backups.home` 每日把 `~/Documents`、`~/Pictures`、`~/nix-dotfiles` 备份到 `/home/mayon/Backups/restic`；密码来自 sops `restic-password`（root/0400）。 | timer `Persistent`，首次备份 1.53 GiB，保留 7 日/4 周/6 月，恢复演练通过。仓库与本机根盘同盘，**不防磁盘损坏、整机丢失或同时加密**；没有远端/外接盘目标。 |
 | 维护 | system-maintenance 提供 Nix optimise 和既有 NH 清理调度；真实 repo path 属于当前 host。 | 保留既有 generation 保留规则；不在回退验收前手动 GC 或清理备份、构建产物。 |
 
 ## 环境、文件与授权
