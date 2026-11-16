@@ -1,6 +1,6 @@
-# Private rule table. Locked Mango 0.18.3: option_defs.c / client_apply_rules().
+# Private rule table. Pinned Mango 0.18.5: option_defs.c / client_set_rules().
 # Later matches override properties; app_id AND title must match. Titles are
-# matched at map time, NOT on later title changes. No Hyprland-only fields here.
+# matched at map time, NOT on later title changes. Only Mango rule fields here.
 {
   lib,
   assignAppTags ? false,

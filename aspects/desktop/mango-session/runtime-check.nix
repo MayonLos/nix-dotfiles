@@ -385,7 +385,7 @@ pkgs.runCommand "interactive-session-config"
     assert not any("/" in name for name in allowed)
 
     # Bindings: the standalone session keeps fuzzel, clipboard history,
-    # swaylock, swayosd and OCR; the old shell controls are gone.
+    # swaylock, swayosd and OCR; Super+A is deliberately unbound.
     bind = mango["bind"]
     assert "ALT,space,spawn,fuzzel --no-icons" in bind
     assert "SUPER,V,spawn,clipboard-history" in bind

@@ -6,9 +6,9 @@
   ...
 }:
 let
-  # One entry point for keybind, idle timeout and sleep hook. Pausing media
-  # mirrors the removed shell's session-locked hook; a missing player must not
-  # prevent locking.
+  # One entry point for keybind, idle timeout and sleep hook. Pause media
+  # before locking so audio does not continue behind the lock surface; a
+  # missing player must not prevent locking.
   lock = pkgs.writeShellScriptBin "session-lock" ''
     ${lib.getExe pkgs.playerctl} pause >/dev/null 2>&1 || true
     exec ${lib.getExe config.programs.swaylock.package} -f

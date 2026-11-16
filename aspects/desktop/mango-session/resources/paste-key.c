@@ -1,8 +1,9 @@
 /*
  * Send Ctrl+V or Ctrl+Shift+V through the virtual-keyboard protocol.
  *
- * wtype 0.4's `-k v` assigns that key evdev code 1. On this Mango that is
- * Escape, and Ctrl+Shift+Escape opens the btop scratchpad. wlroots 0.20 also
+ * Sending `v` by key symbol rather than evdev code maps it to code 1 here.
+ * On this Mango that is Escape, and Ctrl+Shift+Escape opens the btop
+ * scratchpad, so paste must use the real evdev position. wlroots 0.20 also
  * rejects modifiers until the client has defined a keymap. Upload a normal
  * evdev keymap, then send KEY_V (47): that position is V, not Escape.
  */
