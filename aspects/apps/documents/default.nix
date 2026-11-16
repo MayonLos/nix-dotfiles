@@ -43,6 +43,7 @@
         xdg.mimeApps = {
           enable = true;
           associations.added = {
+            "application/epub+zip" = [ "com.github.johnfactotum.Foliate.desktop" ];
             "application/msword" = [
               "writer.desktop"
             ];
@@ -73,6 +74,7 @@
           };
           defaultApplications = {
             "application/pdf" = [ "org.pwmt.zathura-pdf-mupdf.desktop" ];
+            "application/epub+zip" = [ "com.github.johnfactotum.Foliate.desktop" ];
             "application/msword" = [ "writer.desktop" ];
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document" = [
               "writer.desktop"
@@ -91,6 +93,11 @@
           };
         };
         home.packages = with pkgs; [
+          ocrmypdf
+          qpdf
+          foliate
+          pandoc
+          typst
           obsidian
           zotero
           # The Qt-enabled package can still auto-select GTK under Mango.

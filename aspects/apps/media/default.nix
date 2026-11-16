@@ -13,10 +13,18 @@ _: {
         "video/mp4" = [ "mpv.desktop" ];
         "video/x-matroska" = [ "mpv.desktop" ];
         "video/webm" = [ "mpv.desktop" ];
+        "video/x-msvideo" = [ "mpv.desktop" ];
+        "video/mpeg" = [ "mpv.desktop" ];
+        "video/ogg" = [ "mpv.desktop" ];
+        "video/x-flv" = [ "mpv.desktop" ];
         "video/quicktime" = [ "mpv.desktop" ];
       };
       home.packages = with pkgs; [
         ffmpeg
+        yt-dlp
+        streamlink
+        wl-screenrec
+        pwvucontrol
         bilitui
         gimp
         kdePackages.kdenlive
