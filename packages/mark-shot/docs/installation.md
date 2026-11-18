@@ -128,6 +128,12 @@ downloaded only after you click the download buttons in the OCR panel.
 `ocr-dynamic` (the default) and `bundled-ocr` are mutually exclusive, so do not use
 `--all-features`.
 
+On NixOS the downloaded library is not patched by Nix, and its loader dependencies include
+`libstdc++.so.6` and `libgcc_s.so.1`, which NixOS deliberately keeps out of a global `/usr/lib`.
+The package wrapper in this repository therefore prepends the compiler's C++ runtime directory to
+`LD_LIBRARY_PATH`; see [the package notes](../README.md). A manual source build on NixOS needs the
+same paths on the loader search path, for example through a small wrapper script.
+
 ### Windows
 
 Build with the MSVC toolchain:

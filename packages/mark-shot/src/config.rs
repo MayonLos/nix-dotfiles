@@ -73,6 +73,9 @@ pub use region_detection::Detection;
 #[path = "config/tests/capture_behavior.rs"]
 mod capture_behavior_tests;
 #[cfg(test)]
+#[path = "config/tests/json_recovery.rs"]
+mod json_recovery_tests;
+#[cfg(test)]
 #[path = "config/tests/legacy_config.rs"]
 mod legacy_config_tests;
 #[cfg(test)]

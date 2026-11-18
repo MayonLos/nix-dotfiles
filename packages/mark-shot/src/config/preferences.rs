@@ -47,7 +47,22 @@ pub fn load(path: &Path) -> io::Result<super::Config> {
         Ok(text) => {
             super::document::root(path, &text)?;
             if super::document::is_json(path, &text) {
-                return super::legacy::decode(&text);
+                // The settings window must not edit a document whose typed
+                // config is broken, but the error has to name the fields so
+                // the repair entry can explain what it will drop.
+                let recovered = super::legacy::decode_recovering(&text)?;
+                if !recovered.removed.is_empty() {
+                    let fields = recovered
+                        .removed
+                        .iter()
+                        .map(|(field, _)| field.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    return Err(io::Error::other(format!(
+                        "无效配置字段 / invalid configuration fields: {fields}"
+                    )));
+                }
+                return Ok(recovered.config);
             }
             toml::from_str::<super::Config>(&text).map_err(io::Error::other)?;
             super::loading::parse(&text, &path.to_string_lossy())

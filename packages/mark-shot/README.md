@@ -49,6 +49,49 @@ prefer-dark（本仓库 GTK/门户设置为 prefer-dark）时即使用上述 One
 的 dark 段同步更新。界面字体继续使用程序自带的 Inter（与 `palette.fonts.sans` 一致），
 工具栏只继承主题颜色、几何未改。
 
+**配置容错与修复（2026-11-18，真实会话复现修复）**：`~/.config/mark-shot/config.json` 里
+`toolbar.fontSize`/`iconSize` 被写成字符串 `"middle"` 后，`legacy::decode` 的整份强类型解码失败：
+启动日志是「无法读取 ... 使用默认配置」，设置窗口所有保存都报 `Unable to save configuration`，
+框选翻译的目标语言保存报 `invalid type: string "middle", expected u32`，上传环境变量也因此存不进去。
+
+- `config/legacy` 新增 `decode_recovering`/`recover_root`：在原始 JSON 形状上逐字段验证，只剔除
+  被类型拒绝的字段并在日志写明路径（`invalid value for toolbar.fontSize ("middle")`），
+  其余配置照常生效，不再整份回退默认。
+- 启动用容错解码；设置窗口的加载错误列出具体字段；`recovery::repair` 对 JSON 从「重置为 `{}`」
+  改为「备份后只删非法字段」，只有无法解析的语法错误才恢复空对象。
+- `settings_store::write` 在保存前只剔除无关非法字段，翻译目标语言、上传环境变量保存不再被历史
+  脏字段阻塞；同时修正 `upload.*` 写入 `uploader`/`imageHost` 兼容组时会新建重复 `upload` 组、
+  触发 `duplicate field 'upload'` 的路径映射 bug。
+
+验证：损坏 config 下 `mark-shot --list-displays --debug` 只报这两个字段，`save.directory` 等设置
+仍生效；`cargo test --lib config::` 91 passed（含新增 `json_recovery` 回归）。本机原
+`config.json` 已备份为 `config.json.broken-20261118.bak` 后去掉这两个值。
+
+**OCR 运行库加载（2026-11-18，真实会话复现修复）**：OCR 与「框选翻译」都停在
+`ort::init_from` 失败。用户目录下载的 ONNX Runtime 1.28.0 的 NEEDED 含 `libstdc++.so.6` /
+`libgcc_s.so.1`，NixOS 没有全局 `/usr/lib`，而旧 wrapper 只给 `PATH` 加 fontconfig，因此真实会话
+必然 `dlopen failed`。现在 `default.nix` 用 `--prefix LD_LIBRARY_PATH` 提供 stable nixpkgs 的
+C++ 运行库（`ortRuntime = makeLibraryPath (unique [ stdenv.cc.cc.lib libgcc.lib ])`，只加运行库，
+不动 `media.nix` 的 LGPL FFmpeg 媒体库）；`runtime_library::load` 的错误通过
+`ort::LoadDynamicError` 的 `std::error::Error::source()` 保留 dlerror 文本，日志不再只有
+`dlopen failed`。
+
+验证（A/B 均在本机真实执行）：打包后二进制在 `env -i` 干净环境下
+`mark-shot --ocr-daemon calibrate` → `CPU wins (CPU 2434 ms, GPU failed)`（真实 PP-OCRv5 推理
+成功）；修复前的 store 二进制同一命令 → `CPU wins (CPU failed, GPU failed)`。开发树里
+`tests/ocr_runtime.rs` 的 ignored `installed_runtime_runs_real_ocr` 用已安装运行库与模型识别
+`tests/fixtures/ocr.png`，得到 `Wayland Native Screenshot / Mark Shot OCR 2026 / Local text
+recognition` 三行，并带「移除 LD_LIBRARY_PATH 后错误必须点名 libstdc++」的负对照。
+
+**翻译与上传（2026-11-18）**：翻译链路本身没有坏，日志里的「任务失败」都是 OCR 级联（OCR 失败时
+翻译任务根本不会启动）。未设置任何凭据时 `auto` 按设计落到无需 key 的 Bilibili 免费服务，
+`apiBase`/`model` 只有在对应凭据存在时才生效。真实网络探针
+`cargo test --test translation_bilibili -- --ignored` 3 passed，生产形状配置得到真实日文译文。
+上传按设计没有默认图床：未配置时编辑器 toast 与日志都指向 设置 → 上传与集成，日志给出
+`MARK_SHOT_UPLOAD_URL` 示例；内置 HTTP 的配置/HTTP/超时/响应解析错误都带可操作提示且不打印凭据。
+`tests/upload.rs` 用本地 mock HTTP 与真实命令进程覆盖 multipart 字节、常见响应形状、重定向、超时
+与取消，21 passed。
+
 ## 使用
 
 | 命令 | 作用 |
@@ -119,16 +162,13 @@ in import root { inherit pkgs; inherit (u) rustc cargo; }'
   合成器 damage，否则 mark-shot 会把无变化输出的编码帧率节流到约 1 fps，测不到 15 fps 帧数。
 
 内置 OCR 模型首次使用需联网下载，翻译与上传分别需要 API 凭据和配置，离线只能验证功能入口。
+本机已安装 1.28.0 运行库与 PP-OCRv5 模型；当前网络访问 `github.com/microsoft/onnxruntime`
+（仓库页、releases 与资产）一律 404，因此在面板里重装/修复运行库会失败，这是网络侧限制，
+不是下载器或校验逻辑的问题；已有安装不受影响。
 上游当前 release 同样是 0.2.0，没有需要同步的更新版本。隔离验证（私有 headless Sway + 私有
 D-Bus，见 `.work/preview/mark-shot/`）已覆盖 `--version`、`--list-displays`、`--capture-to`
 （整屏与区域）、`--scan-json`、编辑器覆盖层、`--pin-clipboard`、`--record` 控制器与
 `--recording-status`。上游要求的 `cargo fmt --all -- --check`、
-`cargo clippy --workspace --all-targets --locked -- -D warnings`、`cargo test --workspace --locked`
-在此包构建里没有执行（`doCheck = false`）。
-||||||| 804af3f
-隔离验证（私有 headless Sway + 私有 D-Bus，见 `.work/preview/mark-shot/`）已覆盖 `--version`、
-`--list-displays`、`--capture-to`（整屏与区域）、`--scan-json`、编辑器覆盖层、`--pin-clipboard`、
-`--record` 控制器与 `--recording-status`。上游要求的 `cargo fmt --all -- --check`、
 `cargo clippy --workspace --all-targets --locked -- -D warnings`、`cargo test --workspace --locked`
 在此包构建里没有执行（`doCheck = false`）。
 
@@ -158,5 +198,11 @@ MS_E2E_OUT=/tmp/mark-shot-e2e /nix/store/...-mark-shot-e2e/bin/mark-shot-e2e --p
 （页面锁定时只能验证捕获/剪贴板/保存，不能验证覆盖层像素）。
 
 上游要求的 `cargo fmt --all -- --check`、`cargo clippy --workspace --all-targets --locked -- -D
-warnings`、`cargo test --workspace --locked` 在此包构建里没有执行（`doCheck = false`）；本分支
-改动已单独跑过 `cargo test --lib`，失败集合与改动前基线完全一致（38 项环境/Qt 参考字体类失败）。
+warnings`、`cargo test --workspace --locked` 在此包构建里没有执行（`doCheck = false`）。2026-11-18
+本分支单独验证：`cargo fmt --all -- --check` 通过；`cargo test --lib` 为 1185 passed / 31 failed，
+31 项全部是既有环境/Qt 参考字体基线（干净 HEAD 实测 38 failed，本轮把 7 项硬编码
+`/usr/bin/python3` 改为 PATH 解析，无新增失败）；`tests/upload.rs` 21 passed、翻译真实网络探针
+3 passed、`tests/ocr_runtime.rs` 真实 OCR ignored 探针 positive/negative 均通过；`cargo clippy
+--lib --tests` 仍有 3 条既有告警（`app/init.rs`、`backend/wayland/overlay`），未作为门槛。
+`nix build` 出的 0.2.0 包已验证 wrapper 的 `LD_LIBRARY_PATH`，并在 `env -i` 干净环境下用
+`--ocr-daemon calibrate` 跑通真实 PP-OCRv5 推理（见上文 OCR 段）。

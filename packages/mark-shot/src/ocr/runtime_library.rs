@@ -50,6 +50,24 @@ pub fn installed() -> bool {
     install::verify(&root.join("installed"), dist).is_ok()
 }
 
+/// Appends the dynamic loader's own reason to an ONNX Runtime load failure.
+/// `libloading` renders every `dlopen` failure as just "dlopen failed"; the
+/// missing dependency name is only in the error source, so the bare Display
+/// would hide which system library the downloaded runtime needed.
+fn loader_detail(error: &ort::LoadDynamicError) -> String {
+    let ort::LoadDynamicError::Dlopen {
+        error: loader_error,
+        ..
+    } = error
+    else {
+        return error.to_string();
+    };
+    match std::error::Error::source(loader_error) {
+        Some(cause) => format!("{error}: {cause}"),
+        None => error.to_string(),
+    }
+}
+
 /// 【识别运行库】【加载入口】无参数，串行校验和初始化当前进程的运行库；未安装时返回引导信息，绝不自动下载
 pub fn load() -> Result<(), String> {
     #[cfg(feature = "ocr-dynamic")]
@@ -69,7 +87,12 @@ pub fn load() -> Result<(), String> {
             format!("请在 OCR 面板下载或修复推理库 / Install or repair the OCR runtime: {error}")
         })?;
         ort::init_from(root.join(dist.library.file))
-            .map_err(|error| format!("Install or repair the OCR runtime: {error}"))?
+            .map_err(|error| {
+                format!(
+                    "Install or repair the OCR runtime: {}",
+                    loader_detail(&error)
+                )
+            })?
             .commit();
         let _ = LOADED.set(());
     }

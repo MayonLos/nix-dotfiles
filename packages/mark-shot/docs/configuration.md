@@ -126,7 +126,20 @@ include content that was cropped out or covered in the final image, so it is off
 
 ### Upload
 
-The upload button sends a multipart POST request with the PNG. There is no default host.
+The upload button (upload icon in the action toolbar; it has no default key, assign one in
+[Settings → Shortcuts](shortcuts.md#actions-without-a-default-key)) sends the finished PNG as a
+multipart POST request and copies the URL returned by the image host. **There is no default image
+host**: until `MARK_SHOT_UPLOAD_URL` is configured, the upload fails with
+`Upload endpoint is not configured` and the log entry points back to the settings page.
+
+Configure it in **Settings → Integrations → Upload environment (JSON)**. That field takes one JSON
+object whose values are all strings; the smallest working value is:
+
+```json
+{"MARK_SHOT_UPLOAD_URL":"https://image-host.example/upload"}
+```
+
+The same setup in the configuration file:
 
 ```toml
 [upload]
@@ -135,22 +148,46 @@ timeout_ms = 60000
 
 [upload.env]
 MARK_SHOT_UPLOAD_URL = "https://image-host.example/upload"
-MARK_SHOT_UPLOAD_FIELD = "image"
+```
+
+For an authenticated host add the optional variables. By default the token is sent as
+`Authorization: Bearer <token>`; set the header name and scheme your host expects, and never put
+credentials into `MARK_SHOT_UPLOAD_URL` itself:
+
+```toml
+[upload.env]
+MARK_SHOT_UPLOAD_URL = "https://image-host.example/upload"
 MARK_SHOT_UPLOAD_API_KEY = "token"
 MARK_SHOT_UPLOAD_AUTH_HEADER = "Authorization"
 MARK_SHOT_UPLOAD_AUTH_SCHEME = "Bearer"
-MARK_SHOT_UPLOAD_URL_PATH = "data.url"
 ```
 
+- `MARK_SHOT_UPLOAD_FIELD` is the multipart field name for the image (default `image`).
 - `MARK_SHOT_UPLOAD_URL_PATH` is the dot-separated path of the image URL in the JSON response.
-  Without it, `url`, `data.url`, `data.link`, `link` and `image.url` are tried in turn.
+  Without it, `url`, `data.url`, `data.link`, `link` and `image.url` are tried in turn. A plain
+  text response also works when its first line is an `http(s)` URL.
 - Keys starting with `MARK_SHOT_UPLOAD_HEADER_` add request headers; keys starting with
-  `MARK_SHOT_UPLOAD_FIELD_` add form fields.
-- With `command` set, Mark Shot runs that command instead. `{image}` is replaced by the path of a
-  temporary PNG, or the path is appended when there is no placeholder. The command prints the URL
-  on its first output line, or a JSON object with a `url` field.
+  `MARK_SHOT_UPLOAD_FIELD_` add form fields, for example `MARK_SHOT_UPLOAD_FIELD_album = "shots"`.
+- A non-2xx response is reported with its status code (`Upload failed (HTTP 403)`); the response
+  body and the configured credentials are never printed, and the same request can be retried.
+- `timeout_ms` limits one upload; raise it for large images or slow hosts.
 
-The same variables can be set in the process environment instead of the file.
+Instead of the built-in uploader, a command can be configured (Settings → Integrations → Upload
+command, or `[upload] command` in the file):
+
+```toml
+[upload]
+command = "my-upload-script {image}"   # {image}, {imagePath} and {imageUrl} are replaced
+```
+
+`{image}` is replaced by the path of a temporary PNG, or the path is appended when there is no
+placeholder. The command prints the URL on its first output line, or a JSON object with a `url`
+field. It runs through `/bin/sh -c` (or `$SHELL`) with the process environment plus the configured
+`[upload.env]` pairs, and its output is limited to 1 MiB. A non-zero exit status is reported as a
+command failure.
+
+The same variables can be set in the process environment instead of the file, for example
+`MARK_SHOT_UPLOAD_URL=https://image-host.example/upload mark-shot`.
 
 ### Notifications and logging
 

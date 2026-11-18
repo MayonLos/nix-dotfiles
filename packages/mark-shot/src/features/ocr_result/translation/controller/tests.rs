@@ -324,3 +324,27 @@ fn canceled_notice_survives_composition_cancellation_and_noop_undo() {
     assert_eq!(window.source.text(), "alpha\nbeta");
     assert_eq!(window.translation.state.notice(), "Translation canceled");
 }
+
+/// Accepting a free-form target inside the OCR result window must persist it even while an
+/// unrelated stale value has the wrong type, and the committed value must be the one the window
+/// uses for the next request.
+#[test]
+fn target_commit_persists_and_applies_around_an_unrelated_invalid_value() {
+    let (_root, mut window) = window("true");
+    let path = window.translation.config_path.clone().unwrap();
+    std::fs::write(
+        &path,
+        r#"{"toolbar":{"fontSize":"middle","iconSize":"middle"},"translation":{"targetLanguage":"English","apiKey":"local-test-value"},"custom":{"keep":"yes"}}"#,
+    )
+    .unwrap();
+    set_target(&mut window.translation, &mut window.fonts, "Japanese");
+    assert!(commit_target(&mut window));
+    assert_eq!(window.translation.saved_target, "Japanese");
+    assert_eq!(window.translation.config.target_language, "Japanese");
+    assert_eq!(window.translation.target(), "Japanese");
+    let saved: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    assert_eq!(saved["translation"]["targetLanguage"], "Japanese");
+    assert_eq!(saved["translation"]["apiKey"], "local-test-value");
+    assert_eq!(saved["custom"]["keep"], "yes");
+}

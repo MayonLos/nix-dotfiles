@@ -91,9 +91,12 @@ pub(super) async fn run(
         .stderr(Stdio::piped())
         .kill_on_drop(true);
     crate::utils::process_group::configure(&mut builder);
-    let mut child = builder
-        .spawn()
-        .map_err(|_| Error::new(ErrorKind::StartFailed, "Upload command failed to start"))?;
+    let mut child = builder.spawn().map_err(|_| {
+        Error::new(
+            ErrorKind::StartFailed,
+            "Upload command failed to start; check the upload command in Settings → Integrations",
+        )
+    })?;
     let mut group = Group::new(&child)
         .map_err(|_| Error::new(ErrorKind::StartFailed, "Cannot track upload command"))?;
     let stdout = child.stdout.take().unwrap();
@@ -102,7 +105,7 @@ pub(super) async fn run(
     let completed = tokio::select! {
         biased;
         _ = &mut cancellation => Err(Error::new(ErrorKind::Canceled, "Upload canceled")),
-        _ = tokio::time::sleep(Duration::from_millis(config.timeout_ms)) => Err(Error::new(ErrorKind::Timeout, "Upload timed out")),
+        _ = tokio::time::sleep(Duration::from_millis(config.timeout_ms)) => Err(Error::new(ErrorKind::Timeout, "Upload timed out; increase MARK_SHOT_UPLOAD_TIMEOUT_MS in Settings → Integrations or check the upload command")),
         result = async { tokio::try_join!(async { child.wait().await.map_err(|_| Error::new(ErrorKind::Command, "Cannot wait for upload command")) }, read_limited(stdout, MAX_RESPONSE), read_limited(stderr, 512 * 1024)) } => result,
     };
     // 2. 【图片上传】【明确回收】先终止所属组，再确认直接子进程退出，最后由文件句柄删除私有 PNG
@@ -111,9 +114,14 @@ pub(super) async fn run(
         .wait()
         .await
         .map_err(|_| Error::new(ErrorKind::Command, "Cannot reap upload command"))?;
-    let (status, bytes, _) = completed?;
+    // The command may print the reason on stderr, but stderr can also contain
+    // credentials, so only the exit status is reported to the user.
+    let (status, bytes, _stderr) = completed?;
     if !status.success() {
-        return Err(Error::new(ErrorKind::Command, "Upload failed"));
+        return Err(Error::new(
+            ErrorKind::Command,
+            "Upload command exited with a non-zero status; check the upload command in Settings → Integrations",
+        ));
     }
     super::request::output(&bytes, "", "", true)
 }

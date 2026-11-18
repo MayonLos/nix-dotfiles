@@ -228,7 +228,9 @@ fn real_external_process_receives_original_png_arguments_and_cwd() {
     std::fs::write(&capture, &png).unwrap();
     let script = root.path().join("receiver.py");
     std::fs::write(&script, "import sys, os, json, pathlib\na=sys.argv[2:]\npathlib.Path(sys.argv[1]).write_text(json.dumps({'args':a,'cwd':os.getcwd(),'png':pathlib.Path(a[0]).read_bytes().hex(),'ppid':os.getppid()}))\n").unwrap();
-    let python = "/usr/bin/python3";
+    // NixOS has no /usr/bin; use the interpreter from PATH (or $PYTHON) so
+    // the subprocess probe runs in sandboxed and regular environments alike.
+    let python = std::env::var("PYTHON").unwrap_or_else(|_| "python3".into());
     let first = root.path().join("desktop.json");
     let mut desktop = app(&format!(
         "{python} \"{}\" \"{}\" %f %c",

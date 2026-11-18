@@ -125,7 +125,14 @@ local and needs no model download.
 ## Upload and external programs
 
 - **Upload** sends the annotated PNG to an image host and copies the returned URL. There is no
-  default host; configure one first, see [Configuration](configuration.md#upload).
+  default host, so the first upload fails with a configuration error. Open **Settings →
+  Integrations**, edit **Upload environment (JSON)** and paste at least
+  `{"MARK_SHOT_UPLOAD_URL":"https://image-host.example/upload"}`; add
+  `MARK_SHOT_UPLOAD_API_KEY` (and, when the host needs it, `MARK_SHOT_UPLOAD_AUTH_HEADER` /
+  `MARK_SHOT_UPLOAD_AUTH_SCHEME`) for authenticated hosts. See
+  [Configuration](configuration.md#upload) for response paths, timeouts and the command
+  alternative. The upload action has no default shortcut; assign one in **Settings → Shortcuts**
+  if wanted.
 - **Open with** lists installed desktop applications and passes the image to the chosen one.
 
 Both buttons are in the action toolbar.

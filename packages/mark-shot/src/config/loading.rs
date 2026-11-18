@@ -28,12 +28,23 @@ pub(super) const MAX_BAD_LINES: usize = 64;
 
 pub(super) fn parse(text: &str, origin: &str) -> Config {
     if super::document::is_json(std::path::Path::new(origin), text) {
-        return super::legacy::decode(text).unwrap_or_else(|_| {
-            complain(format!(
-                "【应用配置】【JSON 读取】无法读取 {origin}，使用默认配置"
-            ));
-            Config::default()
-        });
+        return match super::legacy::decode_recovering(text) {
+            Ok(recovered) => {
+                for (field, value) in &recovered.removed {
+                    complain(format!(
+                        "config: {origin}: invalid value for `{field}` ({value}), using the default"
+                    ));
+                }
+                recovered.config
+            }
+            Err(error) => {
+                complain(format!("config: {origin}: {error}; using the defaults"));
+                complain(format!(
+                    "【应用配置】【JSON 读取】无法读取 {origin}，使用默认配置"
+                ));
+                Config::default()
+            }
+        };
     }
     let mut text = text.to_owned();
     for _ in 0..MAX_BAD_LINES {

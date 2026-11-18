@@ -21,7 +21,10 @@ impl Task {
         if png.is_empty() || png.len() > MAX_IMAGE {
             return Err(Error::new(
                 ErrorKind::Configuration,
-                "Upload image exceeds limit or is empty",
+                format!(
+                    "Upload image is empty or exceeds the {} MiB limit",
+                    MAX_IMAGE / 1024 / 1024
+                ),
             ));
         }
         let (cancel, cancellation) = oneshot::channel();
@@ -35,7 +38,7 @@ impl Task {
                         tokio::select! {
                             biased;
                             _ = cancellation => Err(Error::new(ErrorKind::Canceled, "Upload canceled")),
-                            result = tokio::time::timeout(Duration::from_millis(config.timeout_ms), super::request::send(&config, &png)) => result.unwrap_or_else(|_| Err(Error::new(ErrorKind::Timeout, "Upload timed out"))),
+                            result = tokio::time::timeout(Duration::from_millis(config.timeout_ms), super::request::send(&config, &png)) => result.unwrap_or_else(|_| Err(Error::new(ErrorKind::Timeout, "Upload timed out; increase MARK_SHOT_UPLOAD_TIMEOUT_MS in Settings → Integrations or check the image host"))),
                         }
                     } else { super::process::run(&config, &png, cancellation).await }
                 });

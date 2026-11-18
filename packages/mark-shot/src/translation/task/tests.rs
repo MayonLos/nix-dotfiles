@@ -293,3 +293,9 @@ fn command_priority_and_cancel_reclaim_the_owned_process_group() {
         "canceled command retained its direct child as a zombie"
     );
 }
+
+/// Return the Python 3 interpreter used by test commands. `PYTHON` may point at an absolute
+/// interpreter; otherwise the child shells resolve `python3` from `PATH`.
+pub(super) fn python() -> String {
+    std::env::var("PYTHON").unwrap_or_else(|_| "python3".into())
+}

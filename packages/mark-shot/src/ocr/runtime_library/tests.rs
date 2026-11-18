@@ -40,6 +40,22 @@ fn archive(path: &std::path::Path, entries: &[(&str, &[u8])]) {
 }
 
 #[test]
+fn load_failure_keeps_the_dynamic_loader_detail() {
+    let missing = tempfile::tempdir().unwrap().path().join("missing-ort.so");
+    let error = match ort::init_from(&missing) {
+        Ok(_) => panic!("a missing library cannot load"),
+        Err(error) => error,
+    };
+    let message = super::loader_detail(&error);
+    assert!(message.contains("failed to load from"), "{message}");
+    assert!(message.contains("missing-ort.so"), "{message}");
+    assert!(
+        message.contains("cannot open shared object file") || message.contains("No such file"),
+        "the dlerror detail was dropped: {message}"
+    );
+}
+
+#[test]
 fn extracts_only_verified_libraries_and_notices() {
     let root = tempfile::tempdir().unwrap();
     let dest = tempfile::tempdir().unwrap();

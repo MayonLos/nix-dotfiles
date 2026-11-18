@@ -1,6 +1,7 @@
 //! 【翻译服务测试】【配置与映射】对照原版实际记录，测试不读取用户环境、配置或剪贴板
 
 use super::*;
+use crate::config::Translation;
 use serde_json::{Value, json};
 
 /// 【翻译服务测试】【原版记录】返回只读探针冻结的协议记录，无参数，不连接原版运行窗口
@@ -164,4 +165,80 @@ fn ordered_results_reject_misalignment_while_models_keep_original_fallback() {
             .text(),
         "first\n译文"
     );
+}
+
+/// Production-shaped configuration: with an OpenAI base URL/model but no key, `auto` falls back to
+/// the default Bilibili service; once the environment supplies the key, the same configuration uses
+/// the configured compatible endpoint.
+#[test]
+fn automatic_selection_uses_the_default_service_until_the_configured_vendor_has_credentials() {
+    let config: Translation = serde_json::from_value(json!({
+        "apiBase": "https://api.openai.com/v1",
+        "apiKey": "",
+        "apiKeyEnv": "OPENAI_API_KEY",
+        "autoAfterOcr": false,
+        "command": "",
+        "model": "gpt-4o-mini",
+        "systemPrompt": "",
+        "targetLanguage": "Simplified Chinese",
+        "temperature": 0.2,
+        "timeoutMs": 60000,
+        "timeoutSeconds": 60
+    }))
+    .unwrap();
+    assert_eq!(config.provider, "auto");
+    assert_eq!(config.target_language, "Simplified Chinese");
+    // The configured OpenAI address and model do not form a complete service, so `auto` neither
+    // reports an error nor uses that address.
+    let automatic = resolve::service(&config.root(), &config.provider, &|_| None).unwrap();
+    assert_eq!(automatic.provider(), Provider::Bilibili);
+    let resolve::Service::Llm(default) = automatic else {
+        panic!("expected model service");
+    };
+    assert_eq!(
+        providers::llm::endpoint(&default),
+        "https://index-translate.bilibili.com/v1/chat/completions"
+    );
+    assert_eq!(default.model, "Index-Translate-9B");
+    assert_eq!(default.key.0, "empty");
+    assert_eq!(default.timeout.as_millis(), 60000);
+    assert!(default.temperature.is_none());
+    // The request body keeps the requested target language and disables the model's reasoning mode.
+    let payload = providers::llm::payload(&default, &source_segments("alpha\nbeta"), "Japanese");
+    assert_eq!(payload["model"], "Index-Translate-9B");
+    assert_eq!(payload["stream"], false);
+    assert_eq!(
+        payload["chat_template_kwargs"]["enable_thinking"],
+        json!(false)
+    );
+    let user: Value =
+        serde_json::from_str(payload["messages"][1]["content"].as_str().unwrap()).unwrap();
+    assert_eq!(user["target_language"], "Japanese");
+    assert_eq!(user["segments"][1]["text"], "beta");
+    assert_eq!(
+        providers::llm::headers(&default),
+        vec![("Authorization".to_owned(), "Bearer empty".to_owned())]
+    );
+    // An explicitly selected vendor never falls back to another one for missing credentials.
+    assert_eq!(
+        resolve::service(&config.root(), "plugin:openai-compatible", &|_| None)
+            .unwrap_err()
+            .kind,
+        ErrorKind::Configuration
+    );
+    // The same configuration uses the configured apiBase and model when OPENAI_API_KEY exists.
+    let service = resolve::service(&config.root(), &config.provider, &|name| {
+        (name == "OPENAI_API_KEY").then(|| "environment-key".into())
+    })
+    .unwrap();
+    assert_eq!(service.provider(), Provider::OpenAi);
+    let resolve::Service::Llm(openai) = service else {
+        panic!("expected model service");
+    };
+    assert_eq!(
+        providers::llm::endpoint(&openai),
+        "https://api.openai.com/v1/chat/completions"
+    );
+    assert_eq!(openai.model, "gpt-4o-mini");
+    assert_eq!(openai.key.0, "environment-key");
 }

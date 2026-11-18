@@ -11,6 +11,20 @@ let
   # a GPL FFmpeg, so media.nix builds its own LGPL-only FFmpeg 9.0.2 plus
   # OpenH264/nv-codec-headers. See media.nix for the pinned sources and layout.
   media = import ./media.nix { inherit pkgs; };
+  # ONNX Runtime is downloaded into the user's data directory at runtime
+  # (`~/.local/share/mark-shot/runtime`), so it is not linked or patched by
+  # Nix. Its NEEDED entries include libstdc++.so.6 and libgcc_s.so.1, which
+  # NixOS deliberately keeps out of a global /usr/lib; without these store
+  # paths on the loader search path `ort::init_from` can never dlopen the
+  # user-installed library. This is only the C/C++ support runtime -- the
+  # recording/export FFmpeg remains the separate LGPL build in media.nix.
+  # libgcc can alias the compiler's lib output, hence `unique`.
+  ortRuntime = pkgs.lib.makeLibraryPath (
+    pkgs.lib.unique [
+      pkgs.stdenv.cc.cc.lib
+      pkgs.libgcc.lib
+    ]
+  );
 
   package = rustPlatform.buildRustPackage {
     pname = "mark-shot";
@@ -56,11 +70,13 @@ let
       install -d "$out/share/licenses/mark-shot-media"
       cp -a ${media.library}/share/licenses/mark-shot-media/. \
         "$out/share/licenses/mark-shot-media/"
-      wrapProgram "$out/bin/mark-shot" --prefix PATH : ${
-        pkgs.lib.makeBinPath [
-          pkgs.fontconfig
-        ]
-      }
+      wrapProgram "$out/bin/mark-shot" \
+        --prefix PATH : ${
+          pkgs.lib.makeBinPath [
+            pkgs.fontconfig
+          ]
+        } \
+        --prefix LD_LIBRARY_PATH : ${ortRuntime}
     '';
 
     # The package fixup runs patchelf --shrink-rpath over every ELF file in

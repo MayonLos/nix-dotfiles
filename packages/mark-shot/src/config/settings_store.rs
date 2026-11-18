@@ -62,6 +62,18 @@ fn alias(key: &str) -> String {
 /// 【应用设置】【文档路径】按 root、path 和 json 返回原文档采用的路径，旧 JSON 优先更新原结构
 fn path_in(root: &Value, path: &str, json: bool) -> Vec<String> {
     let mut keys: Vec<String> = path.split('.').map(snake).collect();
+    // The upload section accepts three legacy JSON group names. Writing a
+    // second group would make the typed decoder report `duplicate field
+    // 'upload'`, so keep edits inside whichever alias the file already uses.
+    if json
+        && path.starts_with("upload.")
+        && root.get("upload").is_none()
+        && let Some(group) = ["imageUpload", "uploader", "imageHost"]
+            .into_iter()
+            .find(|key| root.get(*key).is_some_and(Value::is_object))
+    {
+        keys[0] = group.to_owned();
+    }
     if json && let Some(field) = path.strip_prefix("capture.") {
         let section = super::legacy::capture::capture_key(root);
         if field == "freeze_scope"
@@ -321,7 +333,17 @@ pub fn write(path: &Path, changes: &[(String, Value)]) -> io::Result<()> {
         let mut root = super::document::root(path, text)?;
         let json = super::document::is_json(path, text);
         if json {
-            super::legacy::decode(text)?;
+            if let Err(error) = super::legacy::decode(text) {
+                // A user save must not be blocked by an unrelated stale value:
+                // drop only the fields the typed config rejects, keep everything
+                // else and let the rewritten document pass the strict decoder.
+                let (cleaned, removed) = super::legacy::recover_root(&root)
+                    .map_err(|_| io::Error::other(error.to_string()))?;
+                for (field, value) in &removed {
+                    log::warn!("config: dropping invalid `{field}` ({value}) before saving");
+                }
+                root = cleaned;
+            }
         } else {
             toml::from_str::<super::Config>(text).map_err(io::Error::other)?;
         }

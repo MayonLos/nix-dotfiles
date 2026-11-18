@@ -3,6 +3,12 @@
 use super::*;
 use serde_json::json;
 
+/// Return the Python 3 interpreter used by test commands. `PYTHON` may point at an absolute
+/// interpreter; otherwise the child shell resolves `python3` from `PATH`.
+fn python() -> String {
+    std::env::var("PYTHON").unwrap_or_else(|_| "python3".into())
+}
+
 /// 【翻译命令测试】【占位符引用】路径和目标中的 shell 元字符保持字面参数，缺少占位符时只追加输入文件，无参数、无返回值
 #[test]
 fn placeholders_are_quoted_and_preserve_original_append_rules() {
@@ -52,7 +58,8 @@ fn command_receives_private_original_protocol_and_cleans_up_input() {
     let record = root.path().join("record.json");
     let script = "import json,os,sys; p=sys.argv[1]; data=json.load(open(p)); json.dump({'path':p,'mode':os.stat(p).st_mode & 511,'data':data,'target':sys.argv[2]},open(sys.argv[3],'w')); print(json.dumps({'tokens':[{'text':'translated'}]}))";
     let template = format!(
-        "/usr/bin/python3 -c {} {{input}} {{targetLanguage}} {{config}}",
+        "{} -c {} {{input}} {{targetLanguage}} {{config}}",
+        quote(&python()),
         quote(script)
     );
     let target = "English'; exit 7; #";

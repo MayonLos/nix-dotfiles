@@ -190,12 +190,16 @@ impl Entry {
                 "Empty inherits the common default tool",
             ),
             ("upload", "command") => (
-                "主动上传时执行；环境变量可覆盖",
-                "Runs on upload; environment may override",
+                "留空使用内置 HTTP 上传；填写后由命令输出图片地址",
+                "Empty uses the built-in HTTP upload; otherwise the command prints the URL",
             ),
             ("upload", "env") => (
-                "键值均为字符串，如 {\"TOKEN\":\"value\"}",
-                "String values, e.g. {\"TOKEN\":\"value\"}",
+                "必须包含 MARK_SHOT_UPLOAD_URL；键值均为字符串",
+                "Must contain MARK_SHOT_UPLOAD_URL; string values only",
+            ),
+            ("upload", "timeout_ms") => (
+                "内置 HTTP 与上传命令共用的最长等待时间",
+                "Longest wait shared by the built-in HTTP and the upload command",
             ),
             ("ocr", "device") => (
                 "下一次引擎初始化时使用；GPU 需要对应构建",

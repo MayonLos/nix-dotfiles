@@ -78,15 +78,29 @@ fn selected_outputs(
     let active: Vec<String> = monitors
         .iter()
         .filter(|monitor| flag(monitor, "active"))
-        .filter_map(|monitor| monitor.get("name").and_then(Value::as_str).map(str::to_owned))
+        .filter_map(|monitor| {
+            monitor
+                .get("name")
+                .and_then(Value::as_str)
+                .map(str::to_owned)
+        })
         .collect();
-    if active.is_empty() { None } else { Some(active) }
+    if active.is_empty() {
+        None
+    } else {
+        Some(active)
+    }
 }
 
 fn capture_bounds() -> Option<Bounds> {
     let mut values = Vec::with_capacity(4);
     for name in ["X", "Y", "WIDTH", "HEIGHT"] {
-        values.push(std::env::var(format!("MARK_SHOT_CAPTURE_{name}")).ok()?.parse().ok()?);
+        values.push(
+            std::env::var(format!("MARK_SHOT_CAPTURE_{name}"))
+                .ok()?
+                .parse()
+                .ok()?,
+        );
     }
     let [x, y, width, height] = values.try_into().ok()?;
     if width <= 0.0 || height <= 0.0 {
@@ -136,14 +150,18 @@ fn collect(clients: &[Value], allowed: Option<&[String]>, bounds: Option<Bounds>
             continue;
         }
         if let Some(allowed) = allowed
-            && !allowed.iter().any(|name| {
-                client.get("monitor").and_then(Value::as_str) == Some(name.as_str())
-            })
+            && !allowed
+                .iter()
+                .any(|name| client.get("monitor").and_then(Value::as_str) == Some(name.as_str()))
         {
             continue;
         }
-        let Some(x) = number(client, "x") else { continue };
-        let Some(y) = number(client, "y") else { continue };
+        let Some(x) = number(client, "x") else {
+            continue;
+        };
+        let Some(y) = number(client, "y") else {
+            continue;
+        };
         let Some(width) = number(client, "width") else {
             continue;
         };

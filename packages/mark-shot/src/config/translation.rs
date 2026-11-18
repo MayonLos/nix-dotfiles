@@ -134,3 +134,34 @@ pub(crate) fn save_target_at(path: &Path, target: &str) -> io::Result<String> {
 #[cfg(test)]
 #[path = "tests/translation.rs"]
 mod tests;
+
+#[cfg(test)]
+mod persistence_tests {
+    use super::*;
+
+    /// A stale unrelated value with the wrong type must not block saving the target language: the
+    /// shared writer drops only the rejected field, the target is persisted, the remaining document
+    /// keeps its shape, and the rewritten file passes the strict decoder again.
+    #[test]
+    fn target_language_save_survives_unrelated_invalid_configuration() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("config.json");
+        std::fs::write(
+            &path,
+            r#"{"toolbar":{"fontSize":"middle","iconSize":"middle"},"save":{"directory":"shots"},"translation":{"targetLanguage":"English","apiBase":"https://api.openai.com/v1","apiKey":"local-test-value","model":"gpt-4o-mini"},"custom":{"keep":"yes"}}"#,
+        )
+        .unwrap();
+        assert_eq!(save_target_at(&path, "Japanese").unwrap(), "Japanese");
+        let saved = crate::config::settings_store::source(&path).unwrap();
+        // The writer keeps the key casing of the existing document.
+        assert_eq!(saved["translation"]["targetLanguage"], "Japanese");
+        assert!(saved["translation"].get("target_language").is_none());
+        assert_eq!(saved["translation"]["apiKey"], "local-test-value");
+        assert_eq!(saved["save"]["directory"], "shots");
+        assert_eq!(saved["custom"]["keep"], "yes");
+        assert!(saved["toolbar"].get("fontSize").is_none());
+        let text = std::fs::read_to_string(&path).unwrap();
+        crate::config::legacy::decode(&text).unwrap();
+        assert_eq!(read_at(&path).unwrap().target_language, "Japanese");
+    }
+}

@@ -5,11 +5,19 @@ use crate::backend::window::{WindowContent, WindowEvent};
 use serde_json::Value;
 use std::path::Path;
 
+/// Return the Python 3 interpreter used by test commands. `PYTHON` may point at an absolute
+/// interpreter; otherwise the child shell resolves `python3` from `PATH`.
+fn python() -> String {
+    std::env::var("PYTHON").unwrap_or_else(|_| "python3".into())
+}
+
 /// 【OCR 翻译测试】【阻塞任务】创建只访问私有配置的窗口及临时目录，返回两者；命令启动后代并记录资源后等待一分钟
 fn running() -> (tempfile::TempDir, ResultWindow, Value) {
-    let script = "import json,os,subprocess,sys,time; child=subprocess.Popen(['/bin/sleep','60']); json.dump({'pid':os.getpid(),'child':child.pid,'input':sys.argv[1]},open(sys.argv[2]+'.record.json','w')); time.sleep(60)";
+    // The descendant must be a portable sleeping process: /bin/sleep does not exist on NixOS.
+    let script = "import json,os,subprocess,sys,time; child=subprocess.Popen([sys.executable,'-c','import time;time.sleep(60)']); json.dump({'pid':os.getpid(),'child':child.pid,'input':sys.argv[1]},open(sys.argv[2]+'.record.json','w')); time.sleep(60)";
     let command = format!(
-        "exec /usr/bin/python3 -c '{}' {{input}} {{config}}",
+        "exec '{}' -c '{}' {{input}} {{config}}",
+        python(),
         script.replace('\'', "'\\''")
     );
     let (root, mut window) = super::tests::window(&command);

@@ -213,8 +213,8 @@ pub(super) const ENTRIES: &[Entry] = &[
         Integrations,
         "upload",
         "env",
-        "上传环境变量（JSON）",
-        "Upload environment (JSON)",
+        "上传环境变量（JSON，需含上传地址）",
+        "Upload environment (JSON, upload URL required)",
         Kind::Text
     ),
     field!(

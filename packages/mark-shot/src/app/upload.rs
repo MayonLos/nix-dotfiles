@@ -174,15 +174,17 @@ pub(super) fn complete(
             },
             Err(error) => {
                 log::error!("【图片上传】【任务失败】{error}");
-                feedback(
-                    state,
-                    if error.kind == crate::upload::ErrorKind::Timeout {
-                        "Upload timed out"
-                    } else {
-                        "Upload failed"
-                    },
-                    dirty,
-                );
+                // A missing or malformed endpoint is the most common failure and
+                // cannot be fixed from the editor, so the toast names the settings
+                // page instead of repeating the generic upload failure.
+                let message = match error.kind {
+                    crate::upload::ErrorKind::Configuration => {
+                        "Upload not configured — open Settings → Integrations"
+                    }
+                    crate::upload::ErrorKind::Timeout => "Upload timed out",
+                    _ => "Upload failed",
+                };
+                feedback(state, message, dirty);
             }
         }
     }

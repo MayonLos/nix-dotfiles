@@ -5,6 +5,9 @@ pub(super) fn lookup(source: &str) -> Option<&'static str> {
     Some(match source {
         "Group %1" => "组合 %1",
         "Upload failed" => "上传失败",
+        "Upload not configured — open Settings → Integrations" => {
+            "未配置图床，请在设置 → 上传与集成中填写"
+        }
         "Upload timed out" => "上传超时",
         "Upload canceled" => "已取消上传",
         "Image URL copied" => "已复制图片链接",

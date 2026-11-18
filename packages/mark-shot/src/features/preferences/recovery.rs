@@ -26,9 +26,9 @@ pub(super) fn draw(state: &mut Preferences, canvas: &mut tiny_skia::Pixmap, scal
         "Configuration needs repair"
     };
     let detail = if chinese {
-        "先备份原文，再移除无效行。损坏的 JSON 将恢复默认。"
+        "先备份原文，再移除无效字段；其余设置保留。无法解析的 JSON 恢复默认。"
     } else {
-        "Back up first, then remove invalid lines. Invalid JSON resets to defaults."
+        "Back up first, then remove invalid fields; other settings are kept. Unparseable JSON resets to defaults."
     };
     let action = if chinese {
         "备份并修复配置"

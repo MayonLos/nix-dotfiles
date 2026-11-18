@@ -7,6 +7,14 @@ use std::collections::BTreeMap;
 
 pub const BOUNDARY: &str = "----mark-shot-upload-boundary";
 
+/// Settings window page that owns the upload fields. Configuration errors use the
+/// exact page title so the hint can be followed without reading the source.
+const INTEGRATIONS_PAGE: &str = "Settings → Integrations";
+
+/// Example upload environment that can be pasted into the settings window. It is
+/// intentionally a placeholder host and never contains a real credential.
+const ENVIRONMENT_EXAMPLE: &str = r#"{"MARK_SHOT_UPLOAD_URL":"https://image-host.example/upload"}"#;
+
 /// 【图片上传】【环境默认】按 env、name 和 default 返回去除首尾空白的非空环境值，未配置时使用原版默认
 fn variable<'a>(env: &'a BTreeMap<String, String>, name: &str, default: &'a str) -> &'a str {
     env.get(name)
@@ -15,10 +23,45 @@ fn variable<'a>(env: &'a BTreeMap<String, String>, name: &str, default: &'a str)
         .unwrap_or(default)
 }
 
+/// Parses and validates the configured HTTP endpoint. Missing and malformed
+/// values are configuration errors that name the setting to change, because the
+/// upload button otherwise only reports a generic failure.
+fn endpoint(env: &BTreeMap<String, String>) -> Result<url::Url> {
+    let value = variable(env, "MARK_SHOT_UPLOAD_URL", "");
+    if value.is_empty() {
+        return Err(Error::new(
+            ErrorKind::Configuration,
+            format!(
+                "Upload endpoint is not configured; open {INTEGRATIONS_PAGE} and set the upload environment, e.g. {ENVIRONMENT_EXAMPLE}; optional MARK_SHOT_UPLOAD_API_KEY with MARK_SHOT_UPLOAD_AUTH_HEADER and MARK_SHOT_UPLOAD_AUTH_SCHEME for authenticated hosts"
+            ),
+        ));
+    }
+    let invalid = || {
+        Error::new(
+            ErrorKind::Configuration,
+            format!(
+                "Invalid upload endpoint; MARK_SHOT_UPLOAD_URL in {INTEGRATIONS_PAGE} must be an absolute http(s) URL without embedded credentials, e.g. https://image-host.example/upload"
+            ),
+        )
+    };
+    let endpoint = url::Url::parse(value).map_err(|_| invalid())?;
+    if !matches!(endpoint.scheme(), "http" | "https")
+        || endpoint.host_str().is_none()
+        || !endpoint.username().is_empty()
+        || endpoint.password().is_some()
+    {
+        return Err(invalid());
+    }
+    Ok(endpoint)
+}
+
 /// 【图片上传】【字段引用】按 value 返回 multipart 引用值，拒绝换行、控制字符和过大名称，返回字段或配置错误
 fn field_name(value: &str) -> Result<String> {
     if value.is_empty() || value.len() > 1024 || value.chars().any(char::is_control) {
-        return Err(Error::new(ErrorKind::Configuration, "Invalid upload field"));
+        return Err(Error::new(
+            ErrorKind::Configuration,
+            "Invalid upload field name; MARK_SHOT_UPLOAD_FIELD and MARK_SHOT_UPLOAD_FIELD_* must be 1-1024 characters without control characters",
+        ));
     }
     Ok(value.replace('\\', "\\\\").replace('"', "\\\""))
 }
@@ -28,7 +71,10 @@ pub fn multipart(config: &Upload, png: &[u8], filename: &str) -> Result<Vec<u8>>
     if png.is_empty() || png.len() > MAX_IMAGE {
         return Err(Error::new(
             ErrorKind::Configuration,
-            "Upload image exceeds limit or is empty",
+            format!(
+                "Upload image is empty or exceeds the {} MiB limit",
+                MAX_IMAGE / 1024 / 1024
+            ),
         ));
     }
     let name = field_name(variable(&config.env, "MARK_SHOT_UPLOAD_FIELD", "image"))?;
@@ -76,7 +122,11 @@ pub fn output(bytes: &[u8], url_path: &str, delete_path: &str, command: bool) ->
     if bytes.len() > MAX_RESPONSE {
         return Err(Error::new(
             ErrorKind::Protocol,
-            "Upload response exceeds limit",
+            if command {
+                "Upload command output exceeds the 1 MiB limit; print only the URL or a small JSON object"
+            } else {
+                "Upload response exceeds the 1 MiB limit; the image host returned too much data"
+            },
         ));
     }
     let text = String::from_utf8_lossy(bytes);
@@ -105,14 +155,28 @@ pub fn output(bytes: &[u8], url_path: &str, delete_path: &str, command: bool) ->
             first.to_owned()
         };
         if !prefix.starts_with("http://") && !prefix.starts_with("https://") {
-            return Err(Error::new(ErrorKind::Protocol, "Upload failed"));
+            return Err(Error::new(
+                ErrorKind::Protocol,
+                if command {
+                    "Upload command printed no URL; print an http(s) URL on the first line or a JSON object with a url field"
+                } else {
+                    "Upload response is not an http(s) URL; set MARK_SHOT_UPLOAD_URL_PATH to the JSON field holding the URL in Settings → Integrations"
+                },
+            ));
         }
         (first.to_owned(), String::new())
     };
     // 1. 【图片上传】【原版返回值】JSON 服务只要求 url 字符串非空，不额外限制地址协议或改写用户返回内容
     let url = url.trim().to_owned();
     if url.is_empty() {
-        return Err(Error::new(ErrorKind::Protocol, "Upload failed"));
+        return Err(Error::new(
+            ErrorKind::Protocol,
+            if command {
+                "Upload command JSON has no non-empty url field; print the URL on the first line or as {\"url\":\"https://...\"}"
+            } else {
+                "Upload response contained no image URL; set MARK_SHOT_UPLOAD_URL_PATH to the JSON field holding the URL in Settings → Integrations"
+            },
+        ));
     }
     Ok(Output { url, delete_url })
 }
@@ -120,31 +184,39 @@ pub fn output(bytes: &[u8], url_path: &str, delete_path: &str, command: bool) ->
 /// 【图片上传】【网络错误】按 error 返回超时或网络错误，屏蔽完整 URL、响应正文和请求凭据
 fn network_error(error: reqwest::Error) -> Error {
     if error.is_timeout() {
-        Error::new(ErrorKind::Timeout, "Upload timed out")
+        Error::new(
+            ErrorKind::Timeout,
+            "Upload timed out; increase MARK_SHOT_UPLOAD_TIMEOUT_MS in Settings → Integrations or check the image host",
+        )
     } else {
-        Error::new(ErrorKind::Network, "Upload failed")
+        Error::new(
+            ErrorKind::Network,
+            "Upload request failed; check MARK_SHOT_UPLOAD_URL and the network connection",
+        )
     }
+}
+
+/// Maps a non-2xx status to a hint for the most common host failures without
+/// echoing the response body or any credential value.
+fn http_error(status: reqwest::StatusCode) -> Error {
+    let hint = match status.as_u16() {
+        401 | 403 => {
+            "check MARK_SHOT_UPLOAD_API_KEY, MARK_SHOT_UPLOAD_AUTH_HEADER and MARK_SHOT_UPLOAD_AUTH_SCHEME in Settings → Integrations"
+        }
+        404 | 405 => "check MARK_SHOT_UPLOAD_URL in Settings → Integrations",
+        413 => "the image host rejected the image size",
+        429 => "the image host rate-limited the upload; retry later",
+        _ => "the image host rejected the request",
+    };
+    Error::new(
+        ErrorKind::Http,
+        format!("Upload failed (HTTP {}); {hint}", status.as_u16()),
+    )
 }
 
 /// 【图片上传】【HTTP执行】按 config、png 发送单次 POST，返回有限 URL 响应；调用方控制任务取消与总超时
 pub async fn send(config: &Upload, png: &[u8]) -> Result<Output> {
-    let endpoint = variable(&config.env, "MARK_SHOT_UPLOAD_URL", "");
-    let endpoint = url::Url::parse(endpoint).map_err(|_| {
-        Error::new(
-            ErrorKind::Configuration,
-            "Upload endpoint is not configured",
-        )
-    })?;
-    if !matches!(endpoint.scheme(), "http" | "https")
-        || endpoint.host_str().is_none()
-        || !endpoint.username().is_empty()
-        || endpoint.password().is_some()
-    {
-        return Err(Error::new(
-            ErrorKind::Configuration,
-            "Invalid upload endpoint",
-        ));
-    }
+    let endpoint = endpoint(&config.env)?;
     let client = reqwest::Client::builder()
         .hickory_dns(true)
         .pool_max_idle_per_host(0)
@@ -178,10 +250,7 @@ pub async fn send(config: &Upload, png: &[u8]) -> Result<Output> {
         .await
         .map_err(network_error)?;
     if !response.status().is_success() {
-        return Err(Error::new(
-            ErrorKind::Http,
-            format!("Upload failed (HTTP {})", response.status().as_u16()),
-        ));
+        return Err(http_error(response.status()));
     }
     if response
         .content_length()
@@ -189,7 +258,7 @@ pub async fn send(config: &Upload, png: &[u8]) -> Result<Output> {
     {
         return Err(Error::new(
             ErrorKind::Protocol,
-            "Upload response exceeds limit",
+            "Upload response exceeds the 1 MiB limit; the image host returned too much data",
         ));
     }
     let mut bytes = Vec::new();
@@ -197,7 +266,7 @@ pub async fn send(config: &Upload, png: &[u8]) -> Result<Output> {
         if bytes.len().saturating_add(chunk.len()) > MAX_RESPONSE {
             return Err(Error::new(
                 ErrorKind::Protocol,
-                "Upload response exceeds limit",
+                "Upload response exceeds the 1 MiB limit; the image host returned too much data",
             ));
         }
         bytes.extend_from_slice(&chunk);
@@ -212,10 +281,14 @@ pub async fn send(config: &Upload, png: &[u8]) -> Result<Output> {
 
 /// 【图片上传】【请求头校验】把 name、value 加入 headers，返回校验结果；配置错误不回显凭据值
 fn insert_header(headers: &mut reqwest::header::HeaderMap, name: &str, value: &str) -> Result<()> {
-    let name = reqwest::header::HeaderName::from_bytes(name.as_bytes())
-        .map_err(|_| Error::new(ErrorKind::Configuration, "Invalid upload header"))?;
-    let value = reqwest::header::HeaderValue::from_str(value)
-        .map_err(|_| Error::new(ErrorKind::Configuration, "Invalid upload header"))?;
+    let invalid = || {
+        Error::new(
+            ErrorKind::Configuration,
+            "Invalid upload header; check MARK_SHOT_UPLOAD_AUTH_HEADER, MARK_SHOT_UPLOAD_AUTH_SCHEME and MARK_SHOT_UPLOAD_HEADER_* in Settings → Integrations",
+        )
+    };
+    let name = reqwest::header::HeaderName::from_bytes(name.as_bytes()).map_err(|_| invalid())?;
+    let value = reqwest::header::HeaderValue::from_str(value).map_err(|_| invalid())?;
     headers.insert(name, value);
     Ok(())
 }

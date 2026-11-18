@@ -32,7 +32,8 @@ fn real_command_preserves_image_geometry_and_notifies_once_after_mapping() {
     let config = Translation {
         provider: "plugin:missing".into(),
         command: format!(
-            "exec /usr/bin/python3 -c '{}' {{input}} {{config}}",
+            "exec '{}' -c '{}' {{input}} {{config}}",
+            super::python(),
             script.replace('\'', "'\\''")
         ),
         ..Default::default()

@@ -18,6 +18,26 @@ fn record(path: &Path) -> String {
     }
 }
 
+/// Resolve an absolute Python interpreter for command-mode probes. NixOS has no
+/// /usr/bin/python3, and the upload command runs with a cleared environment, so
+/// PATH inside the child cannot be used: honour PYTHON, then search the test
+/// process PATH, and only then fall back to a bare name.
+fn python() -> String {
+    std::env::var("PYTHON")
+        .ok()
+        .map(|value| value.trim().to_owned())
+        .filter(|value| !value.is_empty())
+        .or_else(|| {
+            std::env::var_os("PATH").and_then(|paths| {
+                std::env::split_paths(&paths)
+                    .map(|directory| directory.join("python3"))
+                    .find(|candidate| candidate.is_file())
+                    .map(|candidate| candidate.to_string_lossy().into_owned())
+            })
+        })
+        .unwrap_or_else(|| "python3".into())
+}
+
 /// 【上传测试】【命令文件】真实命令读取完整私有 PNG 和配置环境，完成后输入文件必须删除，结果使用原版纯 URL 回退
 #[test]
 fn command_receives_private_png_env_and_removes_file() {
@@ -29,7 +49,8 @@ fn command_receives_private_png_env_and_removes_file() {
     let quote = mark_shot::features::external_actions::launch::shell_quote;
     let config = Upload {
         command: format!(
-            "/usr/bin/python3 {} {} {} {{image}}",
+            "{} {} {} {} {{image}}",
+            python(),
             quote(&script.to_string_lossy()),
             quote(&receipt.to_string_lossy()),
             quote(&image_copy.to_string_lossy())
@@ -55,20 +76,26 @@ fn command_receives_private_png_env_and_removes_file() {
 #[test]
 fn actual_commands_check_exit_output_limits_and_append_image() {
     for (command, expected) in [
-        ("exit 4", upload::ErrorKind::Command),
-        ("printf '%s' '{\"url\":\"\"}'", upload::ErrorKind::Protocol),
+        ("exit 4".to_owned(), upload::ErrorKind::Command),
         (
-            "/usr/bin/python3 -c 'print(\"x\"*1100000)'",
+            "printf '%s' '{\"url\":\"\"}'".to_owned(),
             upload::ErrorKind::Protocol,
         ),
         (
-            "/usr/bin/python3 -c 'import sys; sys.stderr.write(\"x\"*600000)'",
+            format!("{} -c 'print(\"x\"*1100000)'", python()),
+            upload::ErrorKind::Protocol,
+        ),
+        (
+            format!(
+                "{} -c 'import sys; sys.stderr.write(\"x\"*600000)'",
+                python()
+            ),
             upload::ErrorKind::Protocol,
         ),
     ] {
         let error = run(
             Upload {
-                command: command.into(),
+                command: command.clone(),
                 ..Default::default()
             },
             vec![1, 2, 3],
@@ -76,11 +103,24 @@ fn actual_commands_check_exit_output_limits_and_append_image() {
         .unwrap_err();
         assert_eq!(error.kind, expected, "{command}");
     }
-    let result = run(Upload { command: "/usr/bin/python3 -c 'import pathlib,sys; assert pathlib.Path(sys.argv[1]).read_bytes()==bytes([1,2,3]); print(\"https://images.example/appended\")'".into(), ..Default::default() }, vec![1, 2, 3]).unwrap();
+    let result = run(
+        Upload {
+            command: format!(
+                "{} -c 'import pathlib,sys; assert pathlib.Path(sys.argv[1]).read_bytes()==bytes([1,2,3]); print(\"https://images.example/appended\")'",
+                python()
+            ),
+            ..Default::default()
+        },
+        vec![1, 2, 3],
+    )
+    .unwrap();
     assert_eq!(result.url, "https://images.example/appended");
     let result = run(
         Upload {
-            command: "/usr/bin/python3 -c 'import json; print(json.dumps({\"url\":\"file:///tmp/image.png\"}))'".into(),
+            command: format!(
+                "{} -c 'import json; print(json.dumps({{\"url\":\"file:///tmp/image.png\"}}))'",
+                python()
+            ),
             ..Default::default()
         },
         vec![1, 2, 3],
@@ -98,7 +138,8 @@ fn terminate_command(cancel: bool) {
     let quote = mark_shot::features::external_actions::launch::shell_quote;
     let config = Upload {
         command: format!(
-            "/usr/bin/python3 {} {} {{imagePath}}",
+            "{} {} {} {{imagePath}}",
+            python(),
             quote(&script.to_string_lossy()),
             quote(&receipt.to_string_lossy())
         ),
@@ -148,6 +189,29 @@ fn terminate_command(cancel: bool) {
     assert!(
         !Path::new(parts[2]).exists(),
         "cancel or timeout leaked upload PNG"
+    );
+}
+
+/// 【上传测试】【默认外壳】命令模式在默认 /bin/sh -c 下运行，纯 URL 与 JSON url 输出都能解析
+#[test]
+fn default_command_shell_parses_plain_and_json_urls() {
+    let config = Upload {
+        command: "printf '%s\\n' 'https://images.example/sh-plain.png'  # {image}".into(),
+        ..Default::default()
+    };
+    assert_eq!(config.command_shell, "/bin/sh");
+    assert_eq!(
+        run(config, vec![1, 2, 3]).unwrap().url,
+        "https://images.example/sh-plain.png"
+    );
+    let config = Upload {
+        command: "printf '%s\\n' '{\"url\":\"https://images.example/sh-json.png\"}'  # {image}"
+            .into(),
+        ..Default::default()
+    };
+    assert_eq!(
+        run(config, vec![1, 2, 3]).unwrap().url,
+        "https://images.example/sh-json.png"
     );
 }
 

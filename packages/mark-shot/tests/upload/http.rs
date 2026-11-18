@@ -78,10 +78,113 @@ fn actual_http_upload_preserves_multipart_and_provider_response() {
         headers.contains("authorization: bearer local-only-token")
             && headers.contains("x-application: test")
     );
+    let body = &bytes[end + 4..];
     assert_eq!(
-        &bytes[end + 4..],
+        body,
         upload::request::multipart(&config, &image, "screenshot.png").unwrap()
     );
+    assert!(
+        body.windows(image.len())
+            .any(|window| window == image.as_slice()),
+        "uploaded PNG bytes changed inside the multipart body"
+    );
+}
+
+/// 【上传测试】【响应形状】真实 HTTP 响应覆盖 url、data.url 与纯文本三种成功格式，不依赖外部图床
+#[test]
+fn actual_http_parses_common_provider_response_shapes() {
+    for (body, expected) in [
+        (
+            r#"{"url":"https://images.example/top"}"#,
+            "https://images.example/top",
+        ),
+        (
+            r#"{"data":{"url":"https://images.example/data"}}"#,
+            "https://images.example/data",
+        ),
+        (
+            "\nhttps://images.example/plain\nignored-note",
+            "https://images.example/plain",
+        ),
+    ] {
+        let (endpoint, worker) = server(response("200 OK", body.as_bytes()));
+        let config =
+            Upload::from_value(&serde_json::json!({"env":{"MARK_SHOT_UPLOAD_URL":endpoint}}));
+        let result = run(config, vec![1, 2, 3]).unwrap();
+        assert_eq!(result.url, expected);
+        assert!(result.delete_url.is_empty());
+        worker.join().unwrap();
+    }
+}
+
+/// 【上传测试】【实际超时】接收连接但不回包的图床必须触发可调超时，错误提示指向设置项
+#[test]
+fn actual_http_timeout_is_reported_with_actionable_detail() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let endpoint = format!("http://{}/upload", listener.local_addr().unwrap());
+    let worker = std::thread::spawn(move || {
+        let (_client, _) = listener.accept().unwrap();
+        std::thread::sleep(Duration::from_secs(1));
+    });
+    let config = Upload {
+        timeout_ms: 250,
+        env: std::collections::BTreeMap::from([("MARK_SHOT_UPLOAD_URL".into(), endpoint)]),
+        ..Default::default()
+    };
+    let start = std::time::Instant::now();
+    let error = run(config, vec![1, 2, 3]).unwrap_err();
+    assert_eq!(error.kind, upload::ErrorKind::Timeout);
+    assert!(
+        error.to_string().contains("MARK_SHOT_UPLOAD_TIMEOUT_MS"),
+        "{error}"
+    );
+    assert!(start.elapsed() < Duration::from_secs(2));
+    worker.join().unwrap();
+}
+
+/// 【上传测试】【配置提示】未配置或非法端点必须指向设置页并给出示例，且不回显任何凭据
+#[test]
+fn configuration_errors_name_settings_page_and_never_leak_credentials() {
+    for env in [
+        serde_json::json!({}),
+        serde_json::json!({"MARK_SHOT_UPLOAD_URL":"  ","MARK_SHOT_UPLOAD_API_KEY":"local-private-token"}),
+    ] {
+        let error = run(
+            Upload::from_value(&serde_json::json!({"env": env})),
+            vec![1, 2, 3],
+        )
+        .unwrap_err();
+        assert_eq!(error.kind, upload::ErrorKind::Configuration);
+        let detail = error.to_string();
+        assert!(
+            detail.contains("Settings → Integrations"),
+            "missing settings hint: {detail}"
+        );
+        assert!(
+            detail.contains("MARK_SHOT_UPLOAD_URL") && detail.contains("image-host.example"),
+            "missing configurable example: {detail}"
+        );
+        assert!(!detail.contains("local-private-token"));
+    }
+    for endpoint in [
+        "localhost:8080/upload",
+        "ftp://image-host.example/upload",
+        "https://user:pass@image-host.example/upload",
+    ] {
+        let error = run(
+            Upload::from_value(&serde_json::json!({"env":{"MARK_SHOT_UPLOAD_URL":endpoint}})),
+            vec![1, 2, 3],
+        )
+        .unwrap_err();
+        assert_eq!(error.kind, upload::ErrorKind::Configuration);
+        let detail = error.to_string();
+        assert!(
+            detail.contains("Invalid upload endpoint")
+                && detail.contains("Settings → Integrations"),
+            "invalid endpoint error is not actionable: {detail}"
+        );
+        assert!(!detail.contains("user:pass"));
+    }
 }
 
 /// 【上传测试】【失败边界】验证实际 HTTP 错误、无长度超限响应、无 URL 和取消；错误不包含端点凭据或响应正文

@@ -403,6 +403,24 @@ fn bilibili_retries_transient_transport_failures_within_the_same_request() {
     assert_eq!(requests[0].endpoint, requests[1].endpoint);
     assert_eq!(requests[0].body, requests[1].body);
     assert!(requests[1].timeout < requests[0].timeout);
+    // The default free service uses the OpenAI-compatible generation path with the literal
+    // placeholder key and the requested target language inside the user message.
+    assert_eq!(
+        requests[0].endpoint,
+        "https://index-translate.bilibili.com/v1/chat/completions"
+    );
+    assert_eq!(
+        requests[0].headers,
+        vec![("Authorization".to_owned(), "Bearer empty".to_owned())]
+    );
+    let body: Value = serde_json::from_slice(&requests[0].body).unwrap();
+    assert_eq!(body["model"], "Index-Translate-9B");
+    assert_eq!(body["stream"], false);
+    assert_eq!(body["chat_template_kwargs"]["enable_thinking"], false);
+    let user: Value =
+        serde_json::from_str(body["messages"][1]["content"].as_str().unwrap()).unwrap();
+    assert_eq!(user["target_language"], "Chinese");
+    assert_eq!(user["segments"][0]["text"], "source");
 }
 
 /// 【翻译协议测试】【永久失败边界】无参数，参数及鉴权错误不重试，连续网络故障最多三次
