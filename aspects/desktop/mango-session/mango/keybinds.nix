@@ -169,8 +169,8 @@ let
     # inside `set_minimized()` (src/manage/client.c) -- so without a
     # minimize bind the toggle is a permanent no-op. It was: dispatching it
     # by hand returned `{"success":true}` and changed nothing.
-    "SUPER+SHIFT,H,minimized"
-    "SUPER,H,toggle_scratchpad"
+    "SUPER,H,minimized"
+    "SUPER+SHIFT,H,toggle_scratchpad"
     # Classic Alt+Tab: hold Alt and tap Tab to cycle the current tag's live
     # thumbnails; releasing any modifier selects. Shift reverses direction.
     "ALT,Tab,switcher,next"

@@ -47,8 +47,8 @@ tmux 保留前缀窗口管理；无前缀 `Ctrl+h/j/k/l` 根据 smart-splits 维
 | 剪贴板 | `Super+V` | cliphist-tui 在 Kitty 浮窗里列出 cliphist。图片在下方预览区按原图显示。回车写回 Wayland，再按打开前的焦点应用粘贴（终端 `Ctrl+Shift+V`，其他 `Ctrl+V`）。终端里的图片只写回剪贴板。`Ctrl-X` 删除一条，`Alt+X` 清空整个历史库 |
 | 音量 / 亮度 / 麦克风 | 音量键、亮度键、麦克风静音键 | `swayosd-client`（含 `--input-volume mute-toggle`）。媒体键仍是 playerctl |
 | 锁屏 | `Super+Alt+L` | 独立 swaylock；没有 DND、防空闲开关或会话菜单。swayidle 没有空闲计时器，只在 logind 睡眠前锁屏 |
-| 窗口聚焦 | `Super+j/k/l` 或方向键 | 向左只用方向键。`Super+H` 用来找回最小化窗口 |
-| 移动窗口 | `Super+Shift+j/k/l` 或方向键 | 向左只用方向键。`Super+Shift+H` 用来最小化 |
+| 窗口聚焦 | `Super+j/k/l` 或方向键 | 向左只用方向键。`Super+H` 用来最小化窗口 |
+| 移动窗口 | `Super+Shift+j/k/l` 或方向键 | 向左只用方向键。`Super+Shift+H` 用来找回最小化窗口 |
 | 移到相邻显示器 | `Super+Ctrl+方向键` | 保留，不为当前锁定版本捏造 HJKL 方向语义 |
 | 去工作区 | `Super+1…9` | 编号稳定，不随应用关闭重排 |
 | 移窗口并跟随 | `Super+Shift+1…9` | 保留 Mango `tag` 的实际语义 |
@@ -61,7 +61,7 @@ tmux 保留前缀窗口管理；无前缀 `Ctrl+h/j/k/l` 根据 smart-splits 维
 | 浮动 / 布局 / 主窗口 | `Super+Space` / `Super+=` / `Super+Z` | 布局仍为 tile/scroller/monocle。`Super+=` 循环这三种。主区域比例用 `Super+Minus` 减小、`Super+Ctrl+=` 增大。`Super+Shift+W` 不绑定 |
 | 壁纸 | `Super+W` | `wallpaper-pick`：Matuwall 网格列出 `~/Pictures/Wallpapers/managed` 与 `local/`，选中后经 `wallpaper-apply` 写状态并 IPC 切到 sweetbg。取消不改当前图 |
 | 关闭窗口 / 重载配置 | `Super+Q` / `Super+Alt+R` | 所有 Mango 模式可达；不全局拦截裸 Esc |
-| 最小化 / 找回 | `Super+Shift+H` / `Super+H` | 最小化同时进入 scratchpad；`Super+H` 取回。与命名临时终端不同 |
+| 最小化 / 找回 | `Super+H` / `Super+Shift+H` | 最小化同时进入 scratchpad 池；`Super+Shift+H`（`toggle_scratchpad`）取回。与命名临时终端不同 |
 | 操作帮助 | `Super+F1` | 显示同一份按键数据生成的分组帮助；新增工具键同步出现在帮助中 |
 
 所有 tag 默认使用 tile 布局，主区域比例 60%（`tag_rule = id:*,layout_name:tile`、

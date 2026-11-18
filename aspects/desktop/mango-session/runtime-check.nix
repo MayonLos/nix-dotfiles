@@ -393,6 +393,8 @@ pkgs.runCommand "interactive-session-config"
     assert "SUPER+ALT,L,spawn,session-lock" in bind
     assert "SUPER,Print,spawn,ocr-region" in bind
     assert "SUPER+SHIFT,Print,spawn,ocr-screen" in bind
+    assert "SUPER,H,minimized" in bind
+    assert "SUPER+SHIFT,H,toggle_scratchpad" in bind
     assert "ALT,Tab,switcher,next" in bind
     assert "ALT+SHIFT,Tab,switcher,prev" in bind
     assert "SUPER,Equal,switch_layout" in bind
