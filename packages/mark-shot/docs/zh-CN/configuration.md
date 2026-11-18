@@ -123,7 +123,10 @@ directory = ""           # 留空使用默认数据目录
 
 ### 上传
 
-上传按钮以 multipart POST 请求发送 PNG。程序没有默认图床。
+上传按钮以 multipart POST 请求发送 PNG，并复制图床返回的地址。程序没有默认图床：未配置
+`MARK_SHOT_UPLOAD_URL` 时上传会失败，日志与提示会指向「设置 → 上传与集成」。在该页把
+`MARK_SHOT_UPLOAD_URL` 填进「上传环境变量（JSON）」，例如
+`{"MARK_SHOT_UPLOAD_URL":"https://image-host.example/upload"}`，或写入下面的 `[upload.env]`。
 
 ```toml
 [upload]
