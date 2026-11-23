@@ -14,10 +14,19 @@ _: {
             clippy
             rustfmt
             clang-tools
+            sccache
+            mold
             sops
             age
             ssh-to-age
           ];
+          # sccache caches library and proc-macro crates; the final binary crate
+          # is linked on every build, which is what mold covers. Incremental
+          # output would store the same objects a second time.
+          RUSTC_WRAPPER = "${pkgs.sccache}/bin/sccache";
+          CARGO_INCREMENTAL = "0";
+          # Native target only: wasm and cross builds keep their own linker.
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS = "-C link-arg=-fuse-ld=mold";
         };
 
         cuda = pkgs.mkShell {

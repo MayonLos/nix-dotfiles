@@ -2,6 +2,7 @@
 {
   pkgs,
   lib,
+  config,
   ...
 }:
 let
@@ -44,9 +45,18 @@ let
   ];
 in
 {
-  home.packages = builtins.filter (value: value != null) (builtins.attrValues selected);
+  home = {
+    packages = builtins.filter (value: value != null) (builtins.attrValues selected);
 
-  home.sessionVariables = sharedVariables;
+    sessionVariables = sharedVariables;
+
+    # xdg-mime and some installers rewrite the data-home copy because the .config
+    # copy is a read-only store symlink. Home Manager's backup step then collides
+    # with its own older .backup name and aborts the whole activation.
+    # force: the locked module pins force = false, and a backup cannot succeed while that .backup exists.
+    file."${config.xdg.dataHome}/applications/mimeapps.list".force = lib.mkForce true;
+  };
+
   systemd.user.sessionVariables = sharedVariables;
 
   xdg.mimeApps = lib.mkIf (mimeDefaults != { }) {

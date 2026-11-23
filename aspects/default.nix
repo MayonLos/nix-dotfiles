@@ -27,6 +27,7 @@ _: {
     ./desktop/greeter
     ./dev/embedded
     ./dev/ai-agents
+    ./dev/local-inference
     ./apps/firefox
     ./apps/communication
     ./apps/documents

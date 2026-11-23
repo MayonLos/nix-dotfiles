@@ -71,6 +71,7 @@ in
           embedded-workbench
           gaming
           local-containers
+          local-inference
           local-virtual-machines
           voice-input
         ];

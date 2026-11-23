@@ -12,9 +12,11 @@ Nix local build concurrency is capped at two derivations with eight workers each
 
 Power profiles, lavd's load-based autopilot, Intel driver defaults, NVIDIA offload and the persistence workaround remain unchanged. Fine-grained NVIDIA runtime PM is disabled pending external-monitor, CUDA, gaming and suspend validation. Runtime sysfs queries during the 2026-10-29 audit showed the NVIDIA device in D0, so the declaration must not be described as verified D3cold power-off.
 
+`hardware.nvidia-container-toolkit.enable` makes the locked NixOS module generate a CDI specification at boot (`nvidia-container-toolkit-cdi-generator.service`). That module also enables Docker's CDI feature on the rootful and rootless daemons and lists `/etc/cdi` and `/var/run/cdi` in `containers.conf`, so a container can request `--device nvidia.com/gpu=all` without the legacy NVIDIA runtime. Device access still depends on the driver's device nodes and the account's `video` group; a generated spec is not evidence that a container actually used the GPU.
+
 The host aspect owns kernel/driver/system declarations; hardware facts are supplied by inventory. `contract.nix` defines the host facts schema. `checks.nix` is the public test hook; `default.nix` is the feature entry and other imported Nix modules are private. The CLI's runtime file is the kernel-owned `/sys/bus/platform/drivers/ideapad_acpi/*/conservation_mode`, not a managed user config. A desktop consumer may call the CLI but does not own the hardware permission policy.
 
-Removing the feature withdraws driver, boot, and hardware policy declarations on the next system generation. It does not delete user files, firmware, laptop state, or NVIDIA/Steam profiles; removing drivers while the machine is running requires a later deliberate system switch and reboot.
+Removing the feature withdraws driver, boot, and hardware policy declarations on the next system generation, including the CDI generator and Docker's CDI flag. It does not delete user files, firmware, laptop state, or NVIDIA/Steam profiles; removing drivers while the machine is running requires a later deliberate system switch and reboot.
 
 Removing the user aspect withdraws its group grant and CLI. Removing the host rule does not reset the current firmware charge setting or retroactively revoke a sysfs mode until device recreation/reboot; no removal hook writes charge state.
 

@@ -160,6 +160,9 @@ checks: []
 | trash-cli | 保留，Neovim 文件树的安全适配需要回收站命令；不是无消费者的杂项。 |
 | MATLAB | 保留课程/工具箱/Simulink 工作流；Python 科学计算和 Octave 都不是保证等价的替代，且 Octave 已确认删除。 |
 | CUDA toolkit / cuDNN | 继续放 `.#cuda`，不迁入全局。重复 nvcc 声明已经精简，不把共享闭包去重说成额外释放空间。 |
+| llama.cpp（CUDA） | 新增 [local-inference](../aspects/dev/local-inference/README.md)，只在 `mayon@nixos-btw` 绑定选择，不进 bundle。CUDA 构建不在任何二进制缓存里，nixpkgs pin 变化会重编；模型是用户数据。服务器角色不继承。 |
+| sccache / mold | 只进 `nix develop` 默认 shell：`RUSTC_WRAPPER=sccache`（缓存库/proc-macro crate，最终 bin crate 按设计不缓存）、`CARGO_INCREMENTAL=0`、原生目标 `-fuse-ld=mold` 负责链接。nix 构建在沙箱内，不经过这两个缓存。实测 C 与 Rust 库 crate 都是首次 miss、再次 hit。 |
+| 容器 GPU | 硬件功能开机生成 CDI spec，并把 Docker 的 CDI 开关同时交给 rootful/rootless daemon；容器用 `--device nvidia.com/gpu=all`。设备节点与 `video` 组仍是前提。 |
 | ARM GCC / 交叉 GDB | 保留 STM32 编译调试；与主机 Clang/GDB 分工。 |
 | OpenOCD | 保留通用探针与 GDB server。 |
 | stlink | 保留 ST-Link 专用的简短烧录/诊断入口；实际长期不用时再按探针选择精简。 |
@@ -188,6 +191,7 @@ checks: []
 | MangoHud | 保留，基准测试时显示关键指标；日常可简化 HUD，减少视觉干扰。 |
 | Gamescope | 保留按游戏启用；用于分辨率/显示封装，不能保证每个游戏增帧。不默认给 Minecraft 再套一层。 |
 | GameMode | 保留，与 HUD/兼容层职责不同。当前 GPU 设备编号等硬件设置应在迁移 host 时核对，不能复制到所有服务器/机器。 |
+| 游戏加速器 | 不装客户端。UU/迅游/奇游一类是 Windows 客户端加虚拟网卡驱动，没有 Linux 版本，Wine 也跑不通。可行的只有路由器插件（厂商固件，另有梅林固件的网件/领势）和 UU 加速盒：两者都由手机「主机加速」App 下发，加速对象是 PS/Xbox/Switch/Steam Deck 一类主机和它们的下载，不是给桌面 Linux 全量加速。本机只能做帧率侧优化（GameMode/MangoHud/Gamescope）和路由器 QoS。 |
 
 资料：[Proton](https://github.com/ValveSoftware/Proton)、[MangoHud](https://github.com/flightlessmango/MangoHud)、[Gamescope](https://github.com/ValveSoftware/gamescope)、[GameMode](https://github.com/FeralInteractive/gamemode)。
 
