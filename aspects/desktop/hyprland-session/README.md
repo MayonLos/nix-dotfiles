@@ -13,8 +13,7 @@ Mango（默认）、Umbriel 与 Hyprland 三种会话。默认登录项仍是 Ma
 - **Shell**：Noctalia v5.6.0，与 Umbriel 会话共用同一份 `noctalia.nix`（顶栏、启动器、
   通知、OSD、锁屏、壁纸、剪贴板面板、控制中心、系统监视）。Umbriel 的 `luciole.nix`
   一并复用，文件管理器仍是全用户 MIME 默认（Mango 会话的 Thunar），本实验不动它。
-- **登录**：沿用仓库的 greetd + gtkgreet，host 侧通过 `nixDotfiles.extraLoginCommands`
-  注入第三个登录命令；gtkgreet 在命令数 >1 时显示选择器。
+- **登录**：由仓库共享的 greetd 登录器列出 wayland-sessions；本分支默认 Noctalia Greeter，可切回 gtkgreet。
 - **会话服务**：`graphical-session-support` 的 fcitx5、GTK/Qt、X resources 等服务同时挂到
   `mango-session.target`、`umbriel-session.target` 与 `hyprland-session.target`。
 - **systemd target**：`hyprland-session.target` 由 Home Manager 的 Hyprland 模块在

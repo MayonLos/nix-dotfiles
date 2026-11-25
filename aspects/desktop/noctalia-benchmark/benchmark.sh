@@ -28,7 +28,7 @@ collect() {
     printf '  "user_slice_bytes": %s,\n' "$(systemctl show "user-$(id -u).slice" -p MemoryCurrent --value 2>/dev/null || echo null)"
     printf '  "noctalia_unit_bytes": %s,\n' "$(mem_current noctalia.service || echo null)"
     printf '  "running_user_services": %s,\n' "$(systemctl --user list-units --type=service --state=running --no-legend --plain 2>/dev/null | wc -l)"
-    printf '  "compositor_rss_kb": %s,\n' "$(rss_kb '^(mango|umbriel|Hyprland)$|^\.umbriel-wrappe$')"
+    printf '  "compositor_rss_kb": %s,\n' "$(rss_kb '^(mango|umbriel|Hyprland)$|^\.umbriel-wrappe$|^\.Hyprland-wrapp$')"
     printf '  "noctalia_rss_kb": %s,\n' "$(rss_kb '^\.noctalia-wrapp$|^noctalia$')"
     printf '  "fcitx5_rss_kb": %s,\n' "$(rss_kb '^\.fcitx5-wrapped$|^fcitx5$')"
     printf '  "xwayland_rss_kb": %s,\n' "$(rss_kb '^Xwayland$')"

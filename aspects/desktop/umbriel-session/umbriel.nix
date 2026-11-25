@@ -50,8 +50,7 @@ let
       repeat = false;
     };
 
-    # Shell
-    "Mod" = "spawn " + nc "panel-toggle launcher";
+    # Shell: the launcher stays on Alt+Space so tapping Mod alone never opens it.
     "Mod+V" = "spawn " + nc "panel-toggle clipboard";
     "Mod+Escape" = "spawn " + nc "panel-toggle session";
     "Mod+Shift+Escape" = {

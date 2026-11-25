@@ -7,7 +7,7 @@ checks: [desktop-composition, mango-blur-sampling, unified-noctalia-session, gre
 
 # 桌面
 
-登录器（greetd + gtkgreet）提供三个可选会话：**Mango**（默认，第 1 项）、**Umbriel**（第 2 项）、**Hyprland 0.55.4**（第 3 项）。三个会话共享同一份 Noctalia v5 shell 和同一套 input method / GTK / Qt 会话支持；合成器只负责窗口管理、键位和窗口规则。参数值见 [visual.md](visual.md)，按键见 [keymap.md](keymap.md)，文件归属见 [config-ownership.md](config-ownership.md)。
+登录器（greetd + Noctalia Greeter，实验分支默认；可切回 gtkgreet）列出三个可选会话：**Mango**（默认）、**Umbriel**、**Hyprland 0.55.4**。三个会话共享同一份 Noctalia v5 shell 和同一套 input method / GTK / Qt 会话支持；合成器只负责窗口管理、键位和窗口规则。参数值见 [visual.md](visual.md)，按键见 [keymap.md](keymap.md)，文件归属见 [config-ownership.md](config-ownership.md)。
 
 ## 共享 Shell（Noctalia）
 

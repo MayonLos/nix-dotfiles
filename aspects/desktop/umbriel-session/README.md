@@ -13,8 +13,7 @@
   在 Umbriel 会话中不启动，由 Noctalia 对应部件替代。
 - **文件管理器**：Luciole 随会话安装（Mango 会话仍是 Thunar；MIME 默认是全用户共享的，
   本实验不动它）。Umbriel 的 portal 后端会优先使用 Luciole 的文件选择器。
-- **登录**：沿用仓库的 greetd + gtkgreet。`greeter.nix` 增加了 `extraLoginCommands` 选项，
-  本 feature 通过 host 侧注入第二个登录命令；gtkgreet 在命令数 >1 时显示选择器
+- **登录**：由仓库共享的 greetd 登录器列出 wayland-sessions；本分支默认 Noctalia Greeter，可切回 gtkgreet
   （单会话隐藏选择器的本地补丁只在恰好一个命令时生效）。
 - **会话服务**：`graphical-session-support` 的 fcitx5、GTK/Qt、X resources 等服务同时挂到
   `mango-session.target` 与 `umbriel-session.target`，两个会话都能用；Mango 专属单元仍然只挂
@@ -33,7 +32,7 @@
 | `~/.config/umbriel/config.toml` | 本 feature（Home Manager 生成，TOML） |
 | `~/.config/noctalia/config.toml`、`~/.config/noctalia/palettes/one-dark.json` | 本 feature |
 | 用户 systemd：`umbriel.service`/`umbriel-session.target` 等 | Umbriel 包（`systemd.packages`） |
-| `/etc/greetd/sway.conf` 的 gtkgreet 命令列表 | `aspects/desktop/greeter/greeter.nix`（新增 `-c` 条目） |
+| 登录器会话列表 | `aspects/desktop/greeter/noctalia.nix`（Noctalia Greeter 从 wayland-sessions 读取） |
 | 系统包与 portal | `host.nix`（`environment.systemPackages`、`xdg.portal`） |
 
 Noctalia 运行时写入的应用数据（`~/.local/state/noctalia/`、`~/.cache/noctalia/`）归程序所有；

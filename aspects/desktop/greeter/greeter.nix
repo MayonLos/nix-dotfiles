@@ -120,6 +120,21 @@ let
   '';
 in
 {
+  imports = [ (import ./noctalia.nix { inherit palette; }) ];
+
+  options.nixDotfiles.greeterBackend = lib.mkOption {
+    type = lib.types.enum [
+      "gtkgreet"
+      "noctalia"
+    ];
+    default = "noctalia";
+    description = ''
+      Login greeter backend. `gtkgreet` keeps the previous sway+gtkgreet
+      wrapper; `noctalia` runs Noctalia Greeter's own wlroots compositor and
+      lists the installed wayland-sessions.
+    '';
+  };
+
   options.nixDotfiles.extraLoginCommands = lib.mkOption {
     type = lib.types.listOf (
       lib.types.submodule {
@@ -130,10 +145,10 @@ in
       }
     );
     default = [ ];
-    description = "Extra login commands offered by gtkgreet, after the Mango session.";
+    description = "Extra login commands offered by gtkgreet, after the Mango session (gtkgreet backend only).";
   };
 
-  config = {
+  config = lib.mkIf (config.nixDotfiles.greeterBackend == "gtkgreet") {
     assertions = [
       {
         assertion = config.programs.mango.enable or false;

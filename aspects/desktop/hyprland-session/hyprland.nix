@@ -33,7 +33,11 @@ let
       "${toString display.width}x${toString display.height}${refreshSuffix}"
     else
       "preferred";
-  monitor = "${display.name}, ${mode}, 0x0, ${builtins.toJSON display.scale}";
+  # Hyprland requires the logical size to be integral: 1.5 maps 2560x1600 to
+  # 1706.67 px and triggers its "invalid scale" notification. 1.6 gives an
+  # exact 1600x1000 logical output (same size Noctalia reports for this panel).
+  scale = 1.6;
+  monitor = "${display.name}, ${mode}, 0x0, ${builtins.toJSON scale}";
 
   # Numbered workspaces mirror the Mango tag digits and the Umbriel binds.
   workspaces = builtins.concatMap (
@@ -177,15 +181,6 @@ in
         ", XF86AudioPrev, exec, ${nc "media previous"}"
       ];
 
-      # "Super alone" launcher, the Mango/Umbriel Super-click chord. A press
-      # bind cannot match: Hyprland emits the key event before applying the
-      # modifier state, so SUPER+Super_L never meets its own modmask. The
-      # supported spelling is a release bind on the modifier; any other bind
-      # triggered while Super is held shadows it (KeybindManager's own comment
-      # names "bindr = SUPER, SUPER_L, exec, $launcher" as the pattern).
-      bindr = [
-        "SUPER, Super_L, exec, ${nc "panel-toggle launcher"}"
-      ];
     };
   };
 }
