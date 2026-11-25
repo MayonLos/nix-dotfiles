@@ -25,6 +25,7 @@ _: {
     ./desktop/session-support
     ./desktop/mango-session
     ./desktop/greeter
+    ./desktop/umbriel-session
     ./dev/embedded
     ./dev/ai-agents
     ./dev/local-inference

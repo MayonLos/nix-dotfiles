@@ -90,6 +90,13 @@
                 pkgs = final;
                 inherit (u) rustc cargo;
               };
+              # Experimental Noctalia desktop stack (work/noctalia-desktop):
+              # Noctalia 5.6.0, Umbriel, Luciole and the Umbriel portal, each
+              # pinned to an upstream revision inside the package factory.
+              # They build against the unstable instance: 5.6.0 and Luciole
+              # need stb_image_resize2.h / wayland-protocols >= 1.49, which
+              # stable 26.05 does not have yet. The system itself stays stable.
+              noctaliaDesktop = import ../packages/noctalia-desktop { pkgs = u; };
               inherit (inputs.llm-agents.packages.${system})
                 dsh
                 herdr

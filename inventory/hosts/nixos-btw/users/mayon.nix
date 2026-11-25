@@ -66,6 +66,9 @@ in
           port-tools
           legion-laptop-user
           personal-desktop
+          # Experimental second session (Umbriel + Noctalia); Mango stays the
+          # default login entry and its configuration is untouched.
+          umbriel-session
           engineering-workbench
           project-workbench
           embedded-workbench

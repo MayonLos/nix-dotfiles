@@ -30,6 +30,17 @@ let
     export XDG_SESSION_DESKTOP=mango
     exec ${lib.getExe config.programs.mango.package}
   '';
+  # The experiment branch may append more sessions. The first entry stays the
+  # default selection, so a plain Enter keeps logging into Mango.
+  loginCommands = [
+    {
+      name = "Mango";
+      command = mangoLogin;
+    }
+  ]
+  ++ config.nixDotfiles.extraLoginCommands;
+  loginArgs = lib.concatMapStringsSep " " (entry: "-c ${entry.command}") loginCommands;
+
   # gtkgreet always draws its "Command to run on login" chooser, and for the
   # single-session case it shows the whole /nix/store path of the login
   # command. The patch hides the chooser when only one command is available;
@@ -107,54 +118,68 @@ let
     seat seat0 xcursor_theme ${palette.cursor.name} ${toString palette.cursor.size}
     input type:keyboard xkb_layout us
     xwayland disable
-    exec '${lib.getExe gtkgreet} -l -s /etc/greetd/gtkgreet.css -c ${mangoLogin}; ${lib.getExe' pkgs.sway "swaymsg"} exit'
+    exec '${lib.getExe gtkgreet} -l -s /etc/greetd/gtkgreet.css ${loginArgs} ${lib.getExe' pkgs.sway "swaymsg"} exit'
   '';
 in
 {
-  assertions = [
-    {
-      assertion = config.programs.mango.enable or false;
-      message = "login-screen starts the host Mango package.";
-    }
-    {
-      assertion =
-        builtins.stringLength (toString mangoLogin) < 128 && !lib.hasInfix " " (toString mangoLogin);
-      message = "gtkgreet 0.8 sends the login command as one argv element of at most 127 bytes.";
-    }
-  ];
-
-  # cage 0.3.0 cannot set a per-output scale, so the greeter compositor is
-  # sway and the internal output scale comes from host facts.
-  services.greetd = {
-    enable = true;
-    settings.default_session.command = lib.concatStringsSep " " [
-      (lib.getExe' pkgs.coreutils "env")
-      "XCURSOR_THEME=${palette.cursor.name}"
-      "XCURSOR_SIZE=${toString palette.cursor.size}"
-      "XCURSOR_PATH=${pkgs.bibata-cursors}/share/icons"
-      "XKB_DEFAULT_LAYOUT=us"
-      "GTK_THEME=Adwaita:dark"
-      (lib.getExe' pkgs.dbus "dbus-run-session")
-      (lib.getExe pkgs.sway)
-      "--config"
-      "/etc/greetd/sway.conf"
-    ];
+  options.nixDotfiles.extraLoginCommands = lib.mkOption {
+    type = lib.types.listOf (
+      lib.types.submodule {
+        options = {
+          name = lib.mkOption { type = lib.types.str; };
+          command = lib.mkOption { type = lib.types.str; };
+        };
+      }
+    );
+    default = [ ];
+    description = "Extra login commands offered by gtkgreet, after the Mango session.";
   };
 
-  fonts.packages = [
-    pkgs.inter
-    pkgs.noto-fonts-cjk-sans
-  ];
+  config = {
+    assertions = [
+      {
+        assertion = config.programs.mango.enable or false;
+        message = "login-screen starts the host Mango package.";
+      }
+    ]
+    ++ map (entry: {
+      assertion = builtins.stringLength entry.command < 128 && !lib.hasInfix " " entry.command;
+      message = "gtkgreet 0.8 sends each login command as one argv element of at most 127 bytes (${entry.name}).";
+    }) loginCommands;
 
-  # The greeter session starts with an empty environment, before the user's
-  # Home Manager profile exists. Cursor lookup uses XCURSOR_PATH above.
-  environment = {
-    etc = {
-      "greetd/environments".text = "${mangoLogin}\n";
-      "greetd/gtkgreet.css".text = css;
-      "greetd/sway.conf".text = swayConfig;
+    # cage 0.3.0 cannot set a per-output scale, so the greeter compositor is
+    # sway and the internal output scale comes from host facts.
+    services.greetd = {
+      enable = true;
+      settings.default_session.command = lib.concatStringsSep " " [
+        (lib.getExe' pkgs.coreutils "env")
+        "XCURSOR_THEME=${palette.cursor.name}"
+        "XCURSOR_SIZE=${toString palette.cursor.size}"
+        "XCURSOR_PATH=${pkgs.bibata-cursors}/share/icons"
+        "XKB_DEFAULT_LAYOUT=us"
+        "GTK_THEME=Adwaita:dark"
+        (lib.getExe' pkgs.dbus "dbus-run-session")
+        (lib.getExe pkgs.sway)
+        "--config"
+        "/etc/greetd/sway.conf"
+      ];
     };
-    pathsToLink = [ "/share/wayland-sessions" ];
-    systemPackages = [ pkgs.bibata-cursors ];
+
+    fonts.packages = [
+      pkgs.inter
+      pkgs.noto-fonts-cjk-sans
+    ];
+
+    # The greeter session starts with an empty environment, before the user's
+    # Home Manager profile exists. Cursor lookup uses XCURSOR_PATH above.
+    environment = {
+      etc = {
+        "greetd/environments".text = lib.concatMapStrings (entry: "${entry.command}\n") loginCommands;
+        "greetd/gtkgreet.css".text = css;
+        "greetd/sway.conf".text = swayConfig;
+      };
+      pathsToLink = [ "/share/wayland-sessions" ];
+      systemPackages = [ pkgs.bibata-cursors ];
+    };
   };
 }
