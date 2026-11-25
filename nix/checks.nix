@@ -213,6 +213,67 @@
               map (package: package.outPath) home.home.packages
             )) "Bilibili TUI must be installed by media";
             pkgs.bilitui;
+          keybind-audit =
+            let
+              metadata = pkgs.writeText "keybind-audit.json" (
+                builtins.toJSON {
+                  hyprBind = home.wayland.windowManager.hyprland.settings.bind or [ ];
+                  hyprBindl = home.wayland.windowManager.hyprland.settings.bindl or [ ];
+                  mangoBind = home.wayland.windowManager.mango.settings.bind or [ ];
+                  mangoBindl = home.wayland.windowManager.mango.settings.key_mode.common.bindl or [ ];
+                }
+              );
+            in
+            pkgs.runCommand "keybind-audit"
+              {
+                nativeBuildInputs = [ pkgs.python3 ];
+                inherit metadata;
+              }
+              ''
+                python3 - "$metadata" <<'PY'
+                import json
+                import sys
+
+                data = json.load(open(sys.argv[1]))
+                bare = {
+                    "Super_L", "Super_R", "Alt_L", "Alt_R", "Control_L", "Control_R",
+                    "Shift_L", "Shift_R", "Meta_L", "Meta_R",
+                }
+                errors = []
+
+                def rows(value):
+                    return [row for row in value if isinstance(row, str)]
+
+                def chord(row):
+                    parts = [part.strip() for part in row.split(",", 3)]
+                    return (parts[0], parts[1]) if len(parts) >= 2 else None
+
+                def audit(session, rows, label):
+                    seen = {}
+                    for row in rows:
+                        pair = chord(row)
+                        if pair is None:
+                            continue
+                        mods, key = pair
+                        if key in bare:
+                            errors.append(f"{session}/{label}: bare modifier binding: {row}")
+                        seen.setdefault(pair, []).append(row)
+                    for pair, items in seen.items():
+                        if len(items) > 1:
+                            errors.append(f"{session}/{label}: duplicate chord {pair}: {items}")
+
+                audit("hyprland", rows(data["hyprBind"]), "bind")
+                audit("hyprland", rows(data["hyprBindl"]), "bindl")
+                audit("mango", rows(data["mangoBind"]), "bind")
+                audit("mango", rows(data["mangoBindl"]), "bindl")
+
+                if errors:
+                    print("\n".join(errors))
+                    sys.exit(1)
+                print("keybind audit ok")
+                PY
+                touch "$out"
+              '';
           architecture = pkgs.runCommand "architecture-check" { } "touch $out";
           docs = import ../tests/docs {
             inherit pkgs;
