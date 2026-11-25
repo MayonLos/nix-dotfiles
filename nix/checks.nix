@@ -67,6 +67,10 @@
           "aspects/appearance/appearance/resources/wallpaper"
           "aspects/dev/neovim/package.nix"
           "aspects/desktop/session-support/qt-style.nix"
+          # Noctalia shell configuration shared by the Umbriel and Hyprland
+          # sessions; the umbriel-session README lists them as public exports.
+          "aspects/desktop/umbriel-session/noctalia.nix"
+          "aspects/desktop/umbriel-session/luciole.nix"
         ]
         ++ map (path: lib.removePrefix "${toString ../.}/" (toString path)) registry;
       };

@@ -26,6 +26,7 @@ _: {
     ./desktop/mango-session
     ./desktop/greeter
     ./desktop/umbriel-session
+    ./desktop/hyprland-session
     ./dev/embedded
     ./dev/ai-agents
     ./dev/local-inference

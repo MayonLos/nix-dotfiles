@@ -69,6 +69,8 @@ in
           # Experimental second session (Umbriel + Noctalia); Mango stays the
           # default login entry and its configuration is untouched.
           umbriel-session
+          # Experimental third session (Hyprland + Noctalia); same greeter list.
+          hyprland-session
           engineering-workbench
           project-workbench
           embedded-workbench
