@@ -77,9 +77,9 @@ in
       telemetry_enabled = false;
       settings_show_advanced = true;
       clipboard_enabled = true;
-      # The repository's polkit-gnome agent is bound to mango-session.target,
-      # so the Umbriel session uses Noctalia's built-in agent instead.
-      polkit_agent = true;
+      # The Umbriel session autostarts the repository's polkit-gnome agent;
+      # Noctalia's own agent cannot register from this session cgroup.
+      polkit_agent = false;
       time_format = "{:%H:%M}";
       date_format = "%m-%d";
     };
@@ -218,16 +218,20 @@ in
       cpu = {
         type = "sysmon";
         stat = "cpu_usage";
+        custom_label = "CPU";
         visualization = "none";
         show_value = true;
-        label_show_units = false;
+        show_glyph = false;
+        label_show_units = true;
       };
       ram = {
         type = "sysmon";
         stat = "ram_used";
+        custom_label = "MEM";
         visualization = "none";
         show_value = true;
-        label_show_units = false;
+        show_glyph = false;
+        label_show_units = true;
       };
     };
   };

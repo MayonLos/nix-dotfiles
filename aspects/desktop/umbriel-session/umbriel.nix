@@ -233,8 +233,15 @@ in
 {
   xdg.configFile."umbriel/config.toml".source = toml.generate "umbriel-config.toml" {
     general = {
-      # The shell is a compositor child so it dies with the session.
-      autostart = [ noctalia ];
+      # The shell is a compositor child so it dies with the session. The
+      # repository's polkit-gnome agent is autostarted from the compositor
+      # environment: Noctalia's built-in agent cannot register its logind
+      # session from this cgroup ("Passed session ... differs"), while
+      # polkit-gnome is bound to mango-session.target only.
+      autostart = [
+        noctalia
+        "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"
+      ];
       xwayland = true;
       xwayland_native_resolution = true;
     };
