@@ -101,6 +101,15 @@ in
       settings.default_session.command = "${greeter}/bin/noctalia-greeter-session";
     };
 
+    # Session entries come from wayland-sessions. Mango's entry uses a bare
+    # `Exec=mango` and Steam's uses `Exec=steam`, while greetd's service PATH
+    # only contains its own tool packages. Add both binaries so selecting
+    # those entries does not fail with "command not found".
+    systemd.services.greetd.path = lib.mkAfter [
+      config.programs.mango.package
+      pkgs.steam
+    ];
+
     environment.systemPackages = [
       greeter
       pkgs.bibata-cursors
