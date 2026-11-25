@@ -11,7 +11,11 @@
     hyprland-session =
       { host, user, ... }:
       {
-        includes = [ den.aspects.graphical-session-support ];
+        includes = [
+          den.aspects.graphical-session-support
+          den.aspects.noctalia-shell
+          den.aspects.noctalia-benchmark
+        ];
         user.extraGroups = [ "video" ];
         homeManager =
           { pkgs, ... }:
@@ -20,12 +24,6 @@
               (import ./hyprland.nix {
                 palette = user.appearance;
                 display = host.facts.display;
-              })
-              # The shell contract (bar, palette, launcher, lock, OSD, system
-              # monitor) is compositor-independent, so it is shared verbatim
-              # with the Umbriel session instead of being forked.
-              (import ../umbriel-session/noctalia.nix {
-                palette = user.appearance;
               })
               ../umbriel-session/luciole.nix
             ];

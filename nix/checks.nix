@@ -67,9 +67,12 @@
           "aspects/appearance/appearance/resources/wallpaper"
           "aspects/dev/neovim/package.nix"
           "aspects/desktop/session-support/qt-style.nix"
-          # Noctalia shell configuration shared by the Umbriel and Hyprland
-          # sessions; the umbriel-session README lists them as public exports.
-          "aspects/desktop/umbriel-session/noctalia.nix"
+          # Noctalia shell configuration and services shared by all three
+          # sessions, plus the per-login benchmark collector.
+          "aspects/desktop/noctalia-shell/noctalia.nix"
+          "aspects/desktop/noctalia-shell/services.nix"
+          "aspects/desktop/noctalia-shell/clipboard-bridge.nix"
+          "aspects/desktop/noctalia-benchmark/benchmark.nix"
           "aspects/desktop/umbriel-session/luciole.nix"
         ]
         ++ map (path: lib.removePrefix "${toString ../.}/" (toString path)) registry;
@@ -182,7 +185,12 @@
             ".team"
             ".worktrees"
           ])
-          && !(lib.hasPrefix "result" name);
+          && !(lib.hasPrefix "result" name)
+          # Vendored upstream Nix recipes/modules are kept byte-for-byte from
+          # the pinned Noctalia/Umbriel tags; repository lint and formatting
+          # rules would rewrite provenance. The mark-shot Rust tree has the
+          # analogous rustfmt exclusion in nix/dev.nix.
+          && !(lib.hasInfix "/packages/noctalia-desktop/" path);
       };
     in
     {

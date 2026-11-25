@@ -9,7 +9,11 @@
     # It is additive: the Mango session aspect stays untouched, so the greeter
     # offers both sessions and either one can be selected at login.
     umbriel-session = { host, user, ... }: {
-      includes = [ den.aspects.graphical-session-support ];
+      includes = [
+        den.aspects.graphical-session-support
+        den.aspects.noctalia-shell
+        den.aspects.noctalia-benchmark
+      ];
       user.extraGroups = [ "video" ];
       homeManager =
         {
@@ -21,9 +25,6 @@
             (import ./umbriel.nix {
               palette = user.appearance;
               display = host.facts.display;
-            })
-            (import ./noctalia.nix {
-              palette = user.appearance;
             })
             ./luciole.nix
           ];

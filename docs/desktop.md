@@ -1,36 +1,41 @@
 ---
-summary: Mango 桌面的组成、窗口规则、独立会话组件和跨应用外观分工
-read_when: 修改顶栏、通知、OSD、壁纸、锁屏、窗口规则或应用主题接线
-code: [aspects/desktop/mango-session, aspects/desktop/session-support, aspects/desktop/greeter]
-checks: [desktop-composition, mango-blur-sampling, interactive-session-config, greeter-tech, gtk-qt-theme]
+summary: 三个可登录会话（Mango/Umbriel/Hyprland）共享 Noctalia shell 的桌面组成、服务与外观分工
+read_when: 修改顶栏、通知、OSD、壁纸、锁屏、启动器、窗口规则、会话选择或应用主题接线
+code: [aspects/desktop/mango-session, aspects/desktop/umbriel-session, aspects/desktop/hyprland-session, aspects/desktop/noctalia-shell, aspects/desktop/noctalia-benchmark, aspects/desktop/session-support, aspects/desktop/greeter]
+checks: [desktop-composition, mango-blur-sampling, unified-noctalia-session, greeter-tech, gtk-qt-theme]
 ---
 
-# Mango 桌面
+# 桌面
 
-参数值见 [visual.md](visual.md)，按键见 [keymap.md](keymap.md)，文件归属见 [config-ownership.md](config-ownership.md)。功能细节和补丁清单在 [Mango README](../aspects/desktop/mango-session/README.md)。
+登录器（greetd + gtkgreet）提供三个可选会话：**Mango**（默认，第 1 项）、**Umbriel**（第 2 项）、**Hyprland 0.55.4**（第 3 项）。三个会话共享同一份 Noctalia v5 shell 和同一套 input method / GTK / Qt 会话支持；合成器只负责窗口管理、键位和窗口规则。参数值见 [visual.md](visual.md)，按键见 [keymap.md](keymap.md)，文件归属见 [config-ownership.md](config-ownership.md)。
 
-## 组成
+## 共享 Shell（Noctalia）
 
-- **顶栏**：mangobar，高 30，完全透明（无背景、不模糊）。左侧为布局符号、工作区编号，以及最小化窗口数量（`hideclients`，数量为 0 时不画）；中间是窗口标题；右侧托盘、`CPU {usage}%`、`MEM {}%`、网络、电池百分比、中文日期时间。`{usage}` 是 `/proc/stat` 的占用百分比，内存 `{}` 是 `(MemTotal−MemAvailable)/MemTotal`；不用 `{load}`，那是 1 分钟 load average。栏上没有蓝牙状态。整条栏只有一种字体 `Maple Mono NF CN` Medium，活动工作区是蓝色数字，没有下划线。窗口标题来自 Mango 的客户标题，布局是 `layout_symbol`，托盘里的 `en` 是 fcitx。托盘右键 DBusMenu 由 mangobar 自绘，同一份 stylesheet 以 One Dark 着色（surface/border/hover/禁用项），对所有 SNI 程序生效。
-- **搜索与启动器**：`Alt+Space` 打开 `fuzzel --no-icons`，这是唯一的启动器，列表不画应用图标。`Super+V` 用 Kitty 浮窗打开 cliphist-tui，在现有 cliphist 历史里预览图片（Kitty 图形协议），回车写回 Wayland 并尝试粘贴。锁定的 Mango 热区默认关闭（`enable_hotarea` 为 0）；打开后进入概览，不是启动器。门户选择器保持 `chooser_type=none`。没有 Dock、控制中心或会话菜单。
-- **通知与 OSD**：mako 在右上，宽 360，不透明、无模糊；D-Bus 激活文件由包覆盖改成正确命名并带 `SystemdService=mako.service`，通知早到也只会拉起同一个用户单元。音量和亮度是 swayosd（含麦克风静音的 `--input-volume`），媒体键仍是 playerctl。swayosd 0.3.1 对未知配置键会 panic，配置只写它认识的键。
-- **壁纸**：`~/Pictures/Wallpapers/managed` 只读内置，`local/` 归用户。`sweetbgd` 作为会话服务绘制，HM 声明 `~/.config/sweetbg/config.toml`（工厂默认图、背景色、`cover`）；Mango 自己不渲染壁纸。`Super+W` 打开 Matuwall 网格，列出这两处的图片；选中后 `wallpaper-apply` 写 `~/.local/state/mango-session/wallpaper` 并通过 IPC 切图，不重启渲染器。状态无效或缺失时仍画工厂默认图 `wallpaper-005.png`。登录屏和锁屏继续用这张默认图，不读该状态文件。
-- **锁屏与 idle**：独立 `swaylock`（Mango 支持 ext-session-lock-v1）+ `swayidle`。没有空闲计时器：不会因为一段时间没操作而锁屏或挂起。`Super+Alt+L` 手动锁屏；logind 发起睡眠（合盖、手动 suspend）前会先锁。PAM 服务在 host 侧声明。不模拟自动关屏。
-- **登录**：gtkgreet 0.8，外层 sway 按 host facts 设置内屏缩放，背景用 CSS `cover`。只有 Mango 一个会话，登录卡会隐藏命令选择器，不再显示 `mango-login` 的 store 路径。gtkgreet 自带 `HH:MM` 时钟。细节在 [greeter README](../aspects/desktop/greeter/README.md)。
+- **顶栏**：Noctalia 的 30px 全透明栏（一个配置服务所有会话）。左侧工作区/窗口标题，右侧托盘、网络、电池、`CPU`/`MEM` 标签、中文时间；CPU 与内存只保留这两个采样器，GPU/网络/磁盘轮询为 0。
+- **启动器与面板**：`Alt+Space` 打开 Noctalia launcher；`Super+V` 打开剪贴板历史面板；`Super+W` 打开壁纸面板；`Super+Escape` 打开会话面板。没有 Dock、Launchpad 或第二套启动器。
+- **通知与 OSD**：Noctalia 统一绘制通知、音量/亮度/麦克风 OSD 和键盘锁定提示。媒体键之外的硬件键在三个合成器里都通过 Noctalia IPC 转发，不再有 swayosd。
+- **壁纸与锁屏**：Noctalia 绘制壁纸；`Super+Alt+L` 调用 Noctalia 锁屏，通过登录 PAM 栈认证。没有 swaybg/sweetbgd/Matuwall/swaylock/swayidle。
+- **优化配置**：`shell.offline_mode = true`（关闭 palette/天气/定位的周期 HTTP）、关闭 weather/calendar/community templates/screen time、剪贴板历史上限 50、动画跟随 `palette.reducedMotion`。生成配置在应用前用 `noctalia config validate` 校验。
+
+## 会话
+
+- **Mango**：默认会话，保留 mark-shot 的 Mango 窗口识别与拖拽吸附（`mmsg`）。`mango.nix` 负责配置、键位和窗口规则；`screenshot.nix` 只有 mark-shot 与 OCR，全屏截图走 Noctalia。窗口规则见 `mango/window-rules.nix`（文件选择、设置、确认、进度窗按比例居中；聊天/IDE/办公继续平铺；只有可区分标题的子窗浮动；QQ/微信登录与主窗用 `Super+Space` 手动浮动）。超级键（Super+Shift+...）与 Mango 的 tag/scratchpad 语义保留。
+- **Umbriel**：wlroots + scenefx 合成器，滚动布局；配置在 `umbriel-session/umbriel.nix`。Noctalia 的 layer blur 规则沿用；键位镜像 Mango 主要入口。
+- **Hyprland**：stable nixpkgs 的 0.55.4，hyprlang 配置（0.57 起改 Lua，未采用）；HM 模块负责 `hyprland-session.target`、portal 和环境导入。键位、截图和硬件键与 Mango 对齐。
+- **登录选择**：greeter 只显示 store 路径列表，Mango 为默认项；三个会话的身份变量（`XDG_CURRENT_DESKTOP`/`XDG_SESSION_DESKTOP`）由各自登录脚本导出。
 
 ## 服务
 
-Mango 配置用 `mmsg dispatch reload_config` 重载；Home Manager activation 会在每次 `nixos-rebuild switch` 后自动找到当前 Mango socket 并重载一次，所以新快捷键在切换后立即生效。mangobar、mako、swayosd、sweetbgd、swayidle、cliphist 和 wl-clip-persist 都挂在 `mango-session.target` 上，生命周期见 [service-policy.md](service-policy.md)。锁屏与 idle 没有常驻 shell 进程；swayidle 只执行固定命令。
+三个合成器在启动 session target 前都会把 `WAYLAND_DISPLAY`/`XDG_SESSION_TYPE` 导入 systemd user manager，因此同一套 unit 在三个会话里都可用：
 
-## 窗口规则
+- `noctalia.service`（`Type=notify`）、`polkit-gnome-authentication-agent-1.service`、`clipboard-bridge.service` 由 `mango-session.target`、`umbriel-session.target`、`hyprland-session.target` 共同 `WantedBy`。
+- `desktop-benchmark.service` 在登录后 90s/300s 写 idle 快照到 `~/.local/state/noctalia-bench/`，用于三个合成器同脚本比较（`Type=exec`，不阻塞 HM activation）。
+- fcitx5、GTK/Qt、X resources 由 `graphical-session-support` 挂到三个 target。
+- 生命周期与重启策略见 [service-policy.md](service-policy.md)；配置写入者见 [config-ownership.md](config-ownership.md)。
 
-唯一规则表是 `mango/window-rules.nix`，字段以锁定 Mango 的解析器为准。规则按顺序覆盖；`app_id` 与 `title` 同写时是 AND，标题变化后不重新匹配。
+## 窗口规则（Mango）
 
-- 文件选择、设置、确认、进度窗按比例初始居中，保留应用尺寸约束。
-- 音量、蓝牙、网络控制放右上；Firefox PiP 右下置顶、不抢焦点。
-- 聊天主窗、IDE 工程、办公文档继续平铺；只有可区分标题的子窗才浮动。QQ、微信的登录窗和主窗标识可能相同，无法只靠规则区分，用 `Super+Space` 手动浮动。
-- 没有固定工作区分配。`steam_app_*` 与 Minecraft 无边框、无阴影、无圆角。
-- 一个平铺窗口或 monocle 贴住可用区域，不留边框和圆角。两个及以上窗口用 2 px 描边、16 px 圆角和 10/16 间距。开合窗口从 0.92 缩放并带透明度，工作区横向滑入，焦点在 120 ms 内过渡描边和 dim。数值在 [visual.md](visual.md)。
+唯一规则表是 `aspects/desktop/mango-session/mango/window-rules.nix`，字段以锁定 Mango 的解析器为准。规则按顺序覆盖；`app_id` 与 `title` 同写时是 AND，标题变化后不重新匹配。`steam_app_*` 与 Minecraft 无边框、无阴影、无圆角；一个平铺窗口或 monocle 贴住可用区域，两个及以上窗口按 [visual.md](visual.md) 的描边/圆角/间距绘制。开合、工作区滑动和焦点过渡数值在 visual.md。
 
 ## 跨应用外观分工
 
@@ -50,8 +55,9 @@ Kitty 背景要和 Neovim `Normal` 同步（OSC 11），否则四周出现色框
 ## 排障
 
 - 主题改动后 Qt、输入法没变：`systemctl --user restart fcitx5-daemon.service`，已运行的应用要重开。
-- `swaylock` 不能解锁：确认 host 侧 `security.pam.services.swaylock` 存在；锁屏中不要重启会话服务。
+- 锁屏不能解锁：确认 Noctalia 锁屏通过登录 PAM 栈认证；锁屏中不要重启会话服务。
+- 某个会话没有顶栏：`systemctl --user status noctalia.service`，确认该 session target 已 active 且 unit 没被 `reset-failed` 挡住。
 - HM 报 “would be clobbered by backing up”：目标旁已有 `*.backup`，先看内容，改名加时间戳，不删除。
 - 服务重启失败：先查残留旧进程是否占着 D-Bus 名或单实例锁，结束后 `reset-failed` 再启动。
 
-隔离截图与通用陷阱见 [operations.md](operations.md#隔离视觉验证)。旧版说明归档在 [history/README.md](history/README.md)（原文 `desktop-design-2026-10-30.md`）。
+隔离截图与通用陷阱见 [operations.md](operations.md#隔离视觉验证)。旧版说明归档在 [history/README.md](history/README.md)。

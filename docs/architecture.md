@@ -207,7 +207,7 @@ inventory/
 
 ### 8.5 输入管理 [硬]
 
-- `flake.nix` 中每个输入注明 follows 策略与理由；`mango`、`llm-agents` **不加 follows**（源码依赖组合或预构建缓存依赖其 pin）。`mangobar` follows `nixpkgs-unstable`：上游 flake 在自己的 `outputs` 里 import 这份 nixpkgs，因此多一次求值；不要改跟 stable，也不要跟 mango 的 scenefx/wlroots。`pkgs.local.mangobar` 是上游 derivation 的别名。登录屏是 nixpkgs 里的 gtkgreet，不再是 flake 输入。截图工具源码在 `packages/mark-shot`，不再是 flake 输入。
+- `flake.nix` 中每个输入注明 follows 策略与理由；`mango`、`llm-agents` **不加 follows**（源码依赖组合或预构建缓存依赖其 pin）。登录屏是 nixpkgs 里的 gtkgreet，不再是 flake 输入。截图工具源码在 `packages/mark-shot`，不再是 flake 输入；Noctalia/Umbriel/Luciole/portal 的 pin 在 `packages/noctalia-desktop/`。
 - 架构重构期间冻结 `flake.lock`、`stateVersion`、包版本与依赖组合。
 - 更新输入后必须：构建 toplevel、`nix store diff-closures` 摘要、对照 workaround 原因复核。
 

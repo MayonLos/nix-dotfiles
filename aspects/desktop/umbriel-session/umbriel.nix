@@ -46,7 +46,7 @@ let
       repeat = false;
     };
     "Alt+Space" = {
-      action = "spawn fuzzel --no-icons";
+      action = "spawn " + nc "panel-toggle launcher";
       repeat = false;
     };
 
@@ -233,15 +233,9 @@ in
 {
   xdg.configFile."umbriel/config.toml".source = toml.generate "umbriel-config.toml" {
     general = {
-      # The shell is a compositor child so it dies with the session. The
-      # repository's polkit-gnome agent is autostarted from the compositor
-      # environment: Noctalia's built-in agent cannot register its logind
-      # session from this cgroup ("Passed session ... differs"), while
-      # polkit-gnome is bound to mango-session.target only.
-      autostart = [
-        noctalia
-        "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"
-      ];
+      # The shell, polkit agent and clipboard bridge are systemd user services
+      # started from umbriel-session.target; the compositor only supplies the
+      # Wayland session and its window rules.
       xwayland = true;
       xwayland_native_resolution = true;
     };
@@ -264,7 +258,7 @@ in
     layout.scrolling.default_extent_fraction = 0.5;
 
     output.${display.name} = {
-      scale = display.scale;
+      inherit (display) scale;
       position = [
         0
         0

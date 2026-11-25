@@ -16,8 +16,8 @@ checks: []
 | 高 | Zotero Connector | 已使用 Zotero 和 Firefox，适合补齐浏览器论文/网页采集；先核对是否已经手动安装。 |
 | 已定归档 | File Roller | GTK4 归档 GUI，Thunar TAP 固定其可执行路径；替换旧 Xarchiver。 |
 | 已移除 | Okular | 用户决定不安装；PDF 默认 Zathura，PDF 批注使用 Zotero 内置阅读器。 |
-| 已修改 | `cliphist` | 重新作为日常历史：文字和图片 watcher 都在。`Super+V` 用 cliphist-tui 在 Kitty 里预览，不另建数据库。X11↔Wayland 桥保留。 |
-| 已修改 | `pamixer` | 移除无消费者的安装声明；音量键走 swayosd-client。 |
+| 已修改 | `cliphist` | 移除：剪贴板历史改由 Noctalia 提供；X11↔Wayland 桥保留在共享 `clipboard-bridge.service`。 |
+| 已修改 | `pamixer` | 移除无消费者的安装声明；音量键走 Noctalia OSD。 |
 | 已修改 | `pavucontrol` | 由 `session-support` 安装，可从启动器打开并按浮窗规则显示；用于精细调节。音量键负责日常调节，顶栏不放音量图标。 |
 | 已修改 | Discord → Vesktop | 用户确认替换；使用 stable 包及系统 Vencord，Wayland/PipeWire 接线已构建，实际分享待验。 |
 | 按需 | 跨设备同步、远程开发 | 有第二台设备/服务器后，再选 Syncthing、Remote-SSH、Tailscale；不提前把所有服务打开。 |
@@ -42,14 +42,14 @@ checks: []
 | mpv | 保留 | 现有 Anime4K、Vulkan、NVDEC、字幕和播放脚本值得保留。更有价值的是按内容/电池状态使用不同播放 profile，避免始终启用高成本 shader；收益需实测。 |
 | mark-shot | 保留，源码在仓库 | 框选、注释、置顶和滚动截图。Rust 树在 `packages/mark-shot`，窗口吸附读 `mmsg`。`Print` 标注，`Shift+Print` 为 `mark-shot --scroll`。 |
 | Tesseract OCR | 保留 | 现有中英 OCR 是独立功能；截图工具不能自动替代语言数据与识别流程。 |
-| 桌面剪贴板历史 | cliphist + cliphist-tui | `Super+V` 在 Kitty 浮窗里预览 cliphist。图片走 Kitty 图形协议。回车写回并粘贴；旧历史文件不删除、不改路径。 |
-| cliphist | 保留，作为日常历史 | 文字和图片 watcher 随 Mango target 启动。不迁移、不删除原数据库，路径仍是默认缓存。 |
+| 桌面剪贴板历史 | Noctalia 剪贴板面板 | `Super+V` 打开 Noctalia 历史；旧 cliphist 数据库不删除、不迁移。 |
+| cliphist | 已移除 | 历史 owner 改为 Noctalia；桥接保留。 |
 | X11↔Wayland 剪贴板桥 | 保留 | 解决跨协议同步，和历史界面职责不同；QQ/微信图像粘贴链路仍需回归。 |
 | Fastfetch | 保留 | 终端快照，不与实时监视器等价；若以后发现启动拖慢，再测量并改成显式 `ff`，当前不假定存在延迟问题。 |
 | btop | 保留 | 进程选择、资源排序和结束进程；暂不另加 Mission Center。 |
-| pamixer | 已修改：移除 | 仓库无命令消费者，删除安装声明；音量键调用 swayosd-client。 |
+| pamixer | 已修改：移除 | 仓库无命令消费者，删除安装声明；音量键调用 Noctalia IPC。 |
 | pavucontrol | 保留 | 由 `session-support` 安装。桌面没有等价的硬件 card profile 菜单，高级操作也可用 wpctl/pw-cli，命令见 README。 |
-| brightnessctl | 保留 | swayosd 的背光写入仍调用它。包内 udev 规则把亮度节点交给 `video` 组。 |
+| brightnessctl | 保留 | Noctalia 的亮度控制仍需要背光设备访问；包内 udev 规则把亮度节点交给 `video` 组。 |
 | ddcutil | 保留 | 外接显示器 DDC/CI 后端，与笔记本背光不同。无支持设备时不会凭空带来功能。 |
 | playerctl | 保留 | MPRIS 媒体控制接线，不是另一个播放器。 |
 | Lenovo Legion 工具 | 保留主机专属 | 面向该笔记本；后续放入 host 硬件能力，服务器不继承。不能仅凭包名判断硬件功能已生效。 |
@@ -199,7 +199,7 @@ checks: []
 
 ## 桌面集成
 
-入口：[shell](../aspects/desktop/mango-session/shell.nix)、[壁纸](../aspects/desktop/mango-session/wallpaper.nix)、[锁屏与 idle](../aspects/desktop/mango-session/lock.nix)、[输入法](../aspects/desktop/session-support/input-method.nix)、[Portal/keyring](../aspects/desktop/mango-session/host/portal.nix)。启动器只有 fuzzel（`Alt+Space`，`--no-icons`）。`Super+W` 用 Matuwall 网格选择壁纸，选择经 `wallpaper-apply` 写状态并调用 sweetbg，不是第二个启动器。桌面 shell 已移除，Dock/Launchpad/控制中心和桌面通知历史不再提供。旧用户数据保留。
+入口：[Noctalia 配置](../aspects/desktop/noctalia-shell/noctalia.nix)、[会话服务](../aspects/desktop/noctalia-shell/services.nix)、[输入法](../aspects/desktop/session-support/input-method.nix)、[Portal/keyring](../aspects/desktop/mango-session/host/portal.nix)。启动器、剪贴板、壁纸面板和通知都由 Noctalia 提供（`Alt+Space`/`Super+V`/`Super+W`）；没有 fuzzel/Matuwall/sweetbg 或第二套桌面 shell。旧用户数据保留。
 
 | 项目 | 结论 |
 |---|---|
@@ -207,7 +207,7 @@ checks: []
 | qt6ct / GTK 设置 | 保留现有外观桥接；One Dark 应集中提供语义颜色，再输出各应用格式，避免每个模块各写一份色值。 |
 | GNOME keyring | 保留应用 Secret Service；不是网站密码库或 sops 的替代。 |
 | sops | 保留运行时秘密管理；不能把密码管理器主密钥或服务令牌直接写进 Nix 字符串。 |
-| polkit / 锁屏 / idle | 图形认证由宿主 polkit 提供；锁屏是 swaylock（PAM `swaylock`），idle 是 swayidle。通知由 mako 接收。音量和亮度 OSD 是 swayosd。 |
+| polkit / 锁屏 / idle | 图形认证由宿主 polkit 提供；锁屏由 Noctalia 锁屏（登录 PAM）；没有 swaylock/swayidle；通知与 OSD 由 Noctalia。 |
 | Portal / 屏幕共享 | 保留当前 workaround。捕获固定 eDP-1；若需共享外接屏，应调整该接线并实测，不是换 Discord 就能解决选择范围。 |
 
 ## 常用小工具
@@ -263,7 +263,7 @@ checks: []
 ## 后续执行顺序与验收
 
 1. 软件选型已结束；压缩包改用 File Roller，移除 Okular。用户后续决定移除 OnlyOffice，由 LibreOffice 统一处理九种 Office MIME；备份、密码库、Connector 及其他条件项以后有实际需求再纳入，不继续阻塞 Neovim 迁移。
-2. `pamixer` 与 `pavucontrol` 的安装决定不变：pamixer 不安装，pavucontrol 保留。cliphist 重新作为历史后端。不顺带删截图/OCR、剪贴板桥或用户历史。
+2. `pamixer` 与 `pavucontrol` 的安装决定不变：pamixer 不安装，pavucontrol 保留；剪贴板历史改由 Noctalia 提供。不顺带删截图/OCR、剪贴板桥或用户历史。
 3. 先删无用，再原生替换；Neovim Lua + Nix 入口现已接入。先前 Heirline/Navic 原生替代已被用户后续重建要求覆盖；现恢复成熟界面插件与公式预览，OneDark 继续固定，主题选择器不恢复。完整 LaTeX 保留。当前状态见[重建记录](neovim.md)，性能结论需独立测量。
 4. 在 Den 重构中，把桌面、开发、游戏、备份和服务器能力组合起来；实际主机只启用需要的能力，不把笔记本应用全集给服务器。
 5. 每批实现后做模块求值、相关构建；涉及剪贴板、音频、截图、分享、游戏和编辑器交互时做运行验证。应用配置另作明确步骤。

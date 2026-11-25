@@ -5,9 +5,14 @@
   ];
   den.aspects = {
     interactive-session = { host, user, ... }: {
-      includes = [ den.aspects.graphical-session-support ];
-      # swayosd's udev rules hand the backlight node to video. Volume does not
-      # need the group. Membership applies on the next login.
+      includes = [
+        den.aspects.graphical-session-support
+        den.aspects.noctalia-shell
+        den.aspects.noctalia-benchmark
+      ];
+      # The backlight node is handed to the video group by the kernel/udev
+      # rules; brightness keys go through Noctalia. Membership applies on the
+      # next login.
       user.extraGroups = [ "video" ];
       homeManager =
         {
@@ -17,10 +22,6 @@
         {
           imports = [
             (import ./mango.nix { palette = user.appearance; })
-            (import ./shell.nix { palette = user.appearance; })
-            (import ./wallpaper.nix { palette = user.appearance; })
-            (import ./lock.nix { palette = user.appearance; })
-            ./clipboard.nix
             ./screenshot.nix
           ];
           xdg.dataFile."applications/nvim.desktop".text = ''
@@ -37,8 +38,8 @@
           nixDotfiles.graphicalSessionTargets = [ "mango-session.target" ];
           home.sessionVariables.NIXOS_OZONE_WL = "1";
           systemd.user.sessionVariables.NIXOS_OZONE_WL = "1";
-          # Keep the native notification client available for scripts and for
-          # reviewing what the mako daemon draws.
+          # Keep the native notification client available for scripts; the
+          # Noctalia daemon draws them.
           home.packages = with pkgs; [
             libnotify
             wl-clipboard

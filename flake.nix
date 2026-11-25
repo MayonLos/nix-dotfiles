@@ -22,15 +22,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Status bar. Follow unstable rather than stable: upstream still imports
-    # that nixpkgs inside its own outputs, so locking it costs one extra
-    # evaluation. Do not follow mango's scenefx/wlroots; this package does
-    # not build the compositor.
-    mangobar = {
-      url = "github:mangowm/mangobar";
-      inputs.nixpkgs.follows = "nixpkgs-unstable";
-    };
-
     # MangoWC: the compositor this host runs (aspects/desktop/mango-session/host/mango.nix,
     # aspects/desktop/mango-session/), a dwl derivative. It is in
     # nixpkgs-unstable, but the flake is what carries the home-manager module
@@ -44,18 +35,6 @@
     # but there is also nothing to lose: it is dwl-sized C and builds in
     # seconds.
     mango.url = "github:mangowm/mango";
-
-    # Small C wallpaper daemon + picker, both outside nixpkgs. They follow the
-    # host stable channel: neither publishes a binary cache, and the packages
-    # build in seconds, so a second nixpkgs evaluation buys nothing.
-    sweetbg = {
-      url = "github:sweetwm/sweetbg";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    matuwall = {
-      url = "github:naurissteins/Matuwall";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
 
     # Daily-updated packages for AI coding agents: dsh, grok, antigravity
     # and the review/usage tooling around them. zcode is deliberately NOT

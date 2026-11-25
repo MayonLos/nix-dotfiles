@@ -38,23 +38,27 @@ let
         selection_bg = palette.selection;
         selection_fg = palette.brightFg;
         normal = {
-          black = palette.black;
-          red = palette.red;
-          green = palette.green;
-          yellow = palette.yellow;
-          blue = palette.blue;
+          inherit (palette)
+            black
+            red
+            green
+            yellow
+            blue
+            cyan
+            ;
           magenta = palette.purple;
-          cyan = palette.cyan;
           white = palette.fg;
         };
         bright = {
           black = palette.muted;
-          red = palette.red;
-          green = palette.green;
+          inherit (palette)
+            red
+            green
+            blue
+            cyan
+            ;
           yellow = palette.orange;
-          blue = palette.blue;
           magenta = palette.purple;
-          cyan = palette.cyan;
           white = palette.brightFg;
         };
       };
@@ -75,8 +79,14 @@ in
       font_family = "";
       corner_radius_scale = 1.0;
       telemetry_enabled = false;
+      screen_time_enabled = false;
+      # Offline: all palette/weather/geolocation fetches are unnecessary here
+      # and this removes the only recurring outbound HTTP from the shell.
+      offline_mode = true;
       settings_show_advanced = true;
       clipboard_enabled = true;
+      clipboard_history_max_entries = 50;
+      animation.enabled = !palette.reducedMotion;
       # The Umbriel session autostarts the repository's polkit-gnome agent;
       # Noctalia's own agent cannot register from this session cgroup.
       polkit_agent = false;
@@ -89,7 +99,14 @@ in
       source = "custom";
       custom_palette = "one-dark";
       pure_black_dark = false;
+      templates.enable_community_templates = false;
     };
+
+    # Optional shell services that this desktop does not use. Disabling them
+    # removes their background samplers and DBus agents.
+    calendar.enabled = false;
+    weather.enabled = false;
+    location.auto_locate = false;
 
     wallpaper = {
       enabled = true;
@@ -147,11 +164,15 @@ in
       };
     };
 
+    # Only CPU and memory are shown in the bar; the GPU/network/disk samplers
+    # are disabled with 0 seconds instead of paying for their polling.
     system.monitor = {
       enabled = true;
-      cpu_poll_seconds = 2.0;
-      memory_poll_seconds = 2.0;
-      network_poll_seconds = 3.0;
+      cpu_poll_seconds = 3.0;
+      memory_poll_seconds = 3.0;
+      gpu_poll_seconds = 0;
+      network_poll_seconds = 0;
+      disk_poll_seconds = 0;
     };
 
     dock.enabled = false;

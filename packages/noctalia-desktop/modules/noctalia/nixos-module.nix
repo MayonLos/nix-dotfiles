@@ -53,6 +53,7 @@ in
           wantedBy = [ cfg.systemd.target ];
           restartTriggers = [ cfg.package ];
 
+          # force: upstream clears the inherited PATH so the wrapped package PATH wins.
           environment.PATH = lib.mkForce null;
 
           serviceConfig = {

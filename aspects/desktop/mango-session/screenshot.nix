@@ -1,25 +1,9 @@
-{
-  pkgs,
-  config,
-  ...
-}:
+{ pkgs, ... }:
 
 let
   # Region, annotation and scrolling capture are the vendored Rust program in
   # packages/mark-shot. It asks mmsg for window rectangles itself.
   mark-shot = pkgs.local.mark-shot;
-
-  screenshotScreen = pkgs.writeShellScriptBin "screenshot-screen" ''
-    set -euo pipefail
-    img="$(${pkgs.coreutils}/bin/mktemp --suffix=.png)"
-    trap '${pkgs.coreutils}/bin/rm -f "$img"' EXIT
-
-    # The pointer's monitor is the current screen, even with several outputs.
-    output="$(${config.wayland.windowManager.mango.package}/bin/mmsg get cursorpos | ${pkgs.jq}/bin/jq -er '.monitor')"
-    ${pkgs.grim}/bin/grim -o "$output" "$img"
-    ${pkgs.wl-clipboard}/bin/wl-copy --type image/png <"$img" >/dev/null 2>&1
-    ${pkgs.libnotify}/bin/notify-send "截图已复制" "当前屏幕：$output" || true
-  '';
 
   # Print-family OCR entry points used by mango.nix. Region cancellation is
   # harmless; the full-screen variant captures every output. All tools use
@@ -71,11 +55,10 @@ let
 in
 {
   # Region select, annotate, copy, save, pin and scrolling capture are one
-  # program. Shift+Print runs `mark-shot --scroll`. grim stays for the
-  # whole-screen shortcut and OCR; satty has no remaining user.
+  # program. Ctrl+Print is Noctalia's full-screen screenshot, Shift+Print runs
+  # `mark-shot --scroll`. grim/slurp stay as the OCR capture backend.
   home.packages = [
     mark-shot
-    screenshotScreen
     (mkOcr "ocr-region" false)
     (mkOcr "ocr-screen" true)
   ];

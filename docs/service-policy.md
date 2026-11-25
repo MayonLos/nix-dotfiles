@@ -14,12 +14,12 @@ checks: []
 | 功能 | 声明和启动方 | 停止、恢复与数据边界 |
 |---|---|---|
 | 登录与会话 | host 明选 [login-screen](../aspects/desktop/greeter/greeter.nix)。greetd 的默认会话是 sway 里的 gtkgreet；登录成功后的命令是短脚本，设置 `XDG_CURRENT_DESKTOP=mango:wlroots` 后 exec 主机的 Mango 包。锁定 Mango C 实现先导入动态 DISPLAY/WAYLAND/cursor 环境并请求 `mango-session.target`；HM 非空 `autostart_sh = ":"` 是补充同步钩子，不是唯一启动路径。 | Mango 退出由其会话 target 路径结束。冷登录/退出时序仍需实机核验，不依赖 autostart 比 C 路径先运行。当前移除状态见[执行记录](history/README.md)（原文 `hyprland-removal-execution.md`）。 |
-| 桌面组件 | [shell.nix](../aspects/desktop/mango-session/shell.nix) 的 mangobar、mako、swayosd 和 polkit agent，[wallpaper.nix](../aspects/desktop/mango-session/wallpaper.nix) 的 sweetbgd，[lock.nix](../aspects/desktop/mango-session/lock.nix) 的 swayidle：`PartOf`/`After`/`WantedBy` 均指向 Mango target，没有 `&` 后台启动。安全静态环境由同源白名单提供。sweetbgd 读取 HM 渲染的 `/config/sweetbg/config.toml`（工厂默认图/颜色/cover），`ExecStartPost` 调 `wallpaper-apply --restore` 应用上次选择；`wallpaper-pick` 只启动 Matuwall 并通过 `wallpaper-apply` 写状态、发 IPC，不重启渲染器。 | mangobar `Restart=on-failure`，mako/swayosd/sweetbgd `Restart=always`，均为 2 秒、60 秒内最多 3 次；`swayidle` 由 HM 模块拉起同一 target。锁屏由 swaylock 客户端按 ext-session-lock 接管；swayidle 没有空闲计时器，只在 logind 睡眠前执行固定锁屏命令。会话退出时序与应用存活仍未实机验证。 |
+| 桌面 shell | [noctalia-shell/services.nix](../aspects/desktop/noctalia-shell/services.nix) 的 `noctalia.service`、`polkit-gnome-authentication-agent-1` 和 [clipboard-bridge.nix](../aspects/desktop/noctalia-shell/clipboard-bridge.nix)：`PartOf`/`After`/`WantedBy` 指向三个 session target，没有 `&` 后台启动。Noctalia 是唯一通知/OSD/锁屏/剪贴板历史 owner。 | `noctalia.service` `Type=notify`、`Restart=on-failure`、2 秒；polkit 与 bridge 同 target；`desktop-benchmark` 是 `Type=exec` 的一次性采样，不阻塞 HM activation。会话退出时序与锁屏解锁待实机验收。 |
 | 输入法 | [Fcitx5/Rime](../aspects/desktop/session-support/input-method.nix) 的官方 HM daemon 绑定已选 Mango target。输入法环境仅共享明确的键，不复制全部 home vars。 | 用户词库、学习数据和应用状态保留。候选框缩放、QQ/微信、实际退出与恢复未验证。 |
-| 剪贴板 | [clipboard bridge](../aspects/desktop/mango-session/clipboard.nix) 做 Wayland/X11 selection 桥接。cliphist 的文字和图片 watcher，以及 wl-clip-persist（`--clipboard regular --reconnect-tries 0`），都随 Mango target 拉起；没有第二个剪贴板历史写入者。`Super+V` 打开期间 cliphist-tui 自己的 `wl-paste --watch` 只通知界面刷新，不调用 `cliphist store`。 | 桥接、cliphist、cliphist-images、wl-clip-persist 都是 `Restart=always`、2 秒、3 次/60 秒。历史库留在 cliphist 的默认缓存路径，不删除、不改道。真实图片/文字双向复制及 Secret Service 解锁待验收。 |
-| 顶栏、搜索、通知、OSD | [shell.nix](../aspects/desktop/mango-session/shell.nix) 启用 mangobar、fuzzel、mako、swayosd。mangobar 与 mako 由本功能把 unit 收到 Mango target；swayosd 的 HM unit 原挂 `graphical-session.target`，这里用 `mkForce` 改到同一 target。不启动 swayosd 的 libinput backend。 | mangobar `Restart=on-failure`、2 秒、3 次/60 秒，并设置 `LC_TIME=zh_CN.UTF-8`。mako 与 swayosd 为 `Restart=always`、2 秒、3 次/60 秒。mako 1.11.0 的 D-Bus service 文件直接 Exec 二进制，没有 `SystemdService=`。亮度写入依赖 swayosd 的 udev 规则和 `video` 组，组在下次登录后生效。 |
+| 剪贴板 | [clipboard-bridge.nix](../aspects/desktop/noctalia-shell/clipboard-bridge.nix) 做 Wayland/X11 selection 桥接；剪贴板历史由 Noctalia 提供。 | 桥接 `Restart=always`、2 秒、3 次/60 秒；历史在 `~/.local/state/noctalia`，不删除、不改道。真实图片/文字双向复制待验收。 |
+| 顶栏、搜索、通知、OSD | [noctalia.nix](../aspects/desktop/noctalia-shell/noctalia.nix) 配置唯一 shell；`Alt+Space`/`Super+V`/`Super+W` 都走 Noctalia IPC。 | `noctalia.service` 由三个 target 拉起；没有 mangobar/fuzzel/mako/swayosd。 |
 | X11 DPI | [xrdb-merge](../aspects/desktop/session-support/xresources.nix) 随 Mango target 运行 oneshot，有限重试等待 X server。 | 不替代客户端实际缩放检查；无常驻轮询进程。 |
-| Portal / keyring / polkit | [交互宿主支持](../aspects/desktop/session-support/default.nix) 共享提供 GTK portal backend、keyring/PAM 和系统 polkit；图形认证 agent 由 `mango-session/shell.nix` 在会话内启动。 | 这些是宿主共享能力，不是每账号私有的访问控制。每个 bus 名称只能有实际预期 backend；屏幕共享、解锁与单 agent 需实测。 |
+| Portal / keyring / polkit | [交互宿主支持](../aspects/desktop/session-support/default.nix) 共享提供 GTK portal backend、keyring/PAM 和系统 polkit；图形认证 agent 由 `noctalia-shell/services.nix` 在三个会话内启动。 | 这些是宿主共享能力，不是每账号私有的访问控制。每个 bus 名称只能有实际预期 backend；屏幕共享、解锁与单 agent 需实测。 |
 | 音频 | [PipeWire/WirePlumber](../aspects/desktop/session-support/host/audio.nix) 是共享宿主支持，保留 ALSA/Pulse/JACK 和现有通信兼容规则；不常驻 echo-cancel 模块（它常开内置麦并把默认输出拉进麦克风的 256 帧图，导致蓝牙 A2DP 持续丢包），回声消除由通话应用自带。WirePlumber 关闭蓝牙耳机自动切到 HFP：麦克风采集（如 pavucontrol 电平条）曾把 A2DP 切成 8/16 kHz 单声道并导致断连，耳机麦需手动选 HFP profile。全局 `sockets.target` wants 关闭，只有选中账号的桌面 targets 请求 PipeWire sockets。 | 支持 socket 按需激活，音频进程继续遵循 user manager 生命周期，不随桌面组件重启。未选账号不会自动得到个人音频启动配置；共享系统能力仍可被显式请求。实际音频设备与休眠恢复待验收。 |
 | 网络与设备 | NM/resolved、Clash、Bluetooth、Intel/NVIDIA、power profiles、thermald、upower、earlyoom 等由真实 laptop host 明确选择。Nix daemon 不强制指向 Clash 本地端口；Clash 关闭时保留直接下载能力。 | 不按通用身份或平台隐式启用。休眠不主动关闭业务/VM/容器；无新增周期设备轮询或通用 sleep inhibitor。 |
 | 内核与调度 | legion-laptop 选 stable 默认 LTS `linuxPackages`（当前 6.18.63）；Legion 用户态与内核模块升级到 unstable 0.1.4；已用 `rmmod`/`insmod` 热加载验证扇表（0→4500/4800 RPM，max 5600），下次启动自动加载同一模块，NVIDIA stable（595.71.05）由同一 kernelPackages 提供，保留 open / PRIME offload。`scx.service` 随 `multi-user.target` 启动 `scx_lavd` 1.1.2，空参数保留按负载调整的默认 autopilot，不使用跟随电源 profile 的 `--autopower`。 | 服务以 `/sys/kernel/sched_ext` 为启动条件，失败自动重启，30 秒内最多 2 次；无需桌面会话提供。2026-10-24 18:11 实机启动已核对 `uname -r = 6.18.57`、NVIDIA 595.71.05、`scx.service` active、sched_ext `enabled` 且 ops 为 `lavd_1.1.2`，legion 模块已加载、Wi-Fi 已连接。后续启动和交互稳定性仍需持续观察；证据与回退见[第四轮记录](history/README.md)（原文 `optimization-2026-10-24.md`）。 |
@@ -43,7 +43,7 @@ Mango 和会话服务只消费 [白名单投影](../aspects/desktop/mango-sessio
 应用后按实际 generation 记录以下项目，未完成者不得标成通过：
 
 1. Mango 冷登录/退出 target 顺序、退出后共享服务清理、unit PartOf/After/WantedBy、manager 安全环境与 D-Bus 单 agent。
-2. 旧 llama/cliphist 的有序停用与历史/模型保留；新服务故障恢复和已启动应用存活。
+2. 旧 cliphist/llama 等组件的停用与用户历史保留；新服务故障恢复和已启动应用存活。
 3. GTK/Qt/Firefox 生成文件、Kitty/Mango 单 renderer、壁纸渲染与锁屏解锁；IME、截图、剪贴板与屏幕共享。
 4. Docker timer 仅预期用户运行、socket 环境正确、prune 范围；libvirt socket 连接、各 URI 的 domain XML/autostart 只读核对。
 5. 音频/蓝牙/USB/外屏、greeter、游戏、休眠/唤醒和低电量 hook（放电跨越 5% 时 suspend）的真实行为。
@@ -51,7 +51,7 @@ Mango 和会话服务只消费 [白名单投影](../aspects/desktop/mango-sessio
 
 长期不可恢复任务可由用户选择 sleep inhibitor；配置不自动阻止休眠、杀游戏、暂停/关闭 VM 或容器。未来服务器另按[真实实例规划](server-plan.md)确定服务账号、端口、数据保护和部署。
 
-源码依据为当前 `flake.lock` 的 Mango C/HM、Home Manager 的 swaylock/swayidle 模块和 stable nixpkgs 的 docker-rootless/libvirtd/pipewire 模块；以锁定源码核实，不沿用旧注释推断启动行为。
+源码依据为当前 `flake.lock` 的 Mango C/HM、Home Manager 的 Hyprland/Hyprland HM 模块、Noctalia 5.6.0 上游模块和 stable nixpkgs 的 docker-rootless/libvirtd/pipewire 模块；以锁定源码核实，不沿用旧注释推断启动行为。
 
 执行操作与回滚见[操作说明](operations.md)。
 

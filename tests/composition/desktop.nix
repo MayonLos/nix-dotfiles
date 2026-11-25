@@ -128,11 +128,13 @@ let
     (host configs hostName).home-manager.users.${user};
 
   hasHomeUnit = hm: name: builtins.hasAttr name hm.systemd.user.services;
+  # The unified shell: Noctalia plus its two session companions. The old
+  # mangobar/mako/swayosd/sweetbgd/swayidle units are intentionally gone.
   desktopUnits = [
-    "sweetbgd"
-    "swayidle"
-    "fcitx5-daemon"
+    "noctalia"
+    "polkit-gnome-authentication-agent-1"
     "clipboard-bridge"
+    "fcitx5-daemon"
   ];
   hasAllDesktopUnits = hm: builtins.all (hasHomeUnit hm) desktopUnits;
   hasNoDesktopUnits = hm: builtins.all (name: !(hasHomeUnit hm name)) desktopUnits;

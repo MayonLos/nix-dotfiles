@@ -21,16 +21,7 @@ let
   rgba = hex: "rgba(${lib.removePrefix "#" hex}ff)";
 
   kitty = lib.getExe pkgs.kitty;
-  fuzzel = lib.getExe pkgs.fuzzel;
   markShot = "${pkgs.local.mark-shot}/bin/mark-shot";
-
-  # The Home Manager module already prepends its dbus-update-activation-environment
-  # exec-once, whose default extraCommands start hyprland-session.target. The
-  # explicit start is kept as the session-support contract for this feature and
-  # is idempotent, so it also covers a config that starts Hyprland by hand.
-  sessionStart = pkgs.writeShellScript "hyprland-session-start" ''
-    systemctl --user start hyprland-session.target
-  '';
 
   # host.facts.display carries an exact refresh rate; Hyprland matches the
   # closest available mode, so round to the integer printed by typical mode
@@ -78,11 +69,9 @@ in
       # The compositor starts the shell and the repository's polkit agent, the
       # same pairing as the Umbriel session. Paths are absolute because the
       # greeter environment has no Home Manager profile on PATH.
-      exec-once = [
-        noctalia
-        "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"
-        "${sessionStart}"
-      ];
+      # The shell, polkit agent and clipboard bridge are systemd user services
+      # started from hyprland-session.target; the compositor only supplies the
+      # Wayland session and its window rules.
 
       general = {
         gaps_in = 8;
@@ -131,7 +120,7 @@ in
         "SUPER, Return, exec, ${kitty}"
         "SUPER, E, exec, ${profile}/bin/workspace-files"
         "SUPER, B, exec, ${profile}/bin/workspace-browser"
-        "ALT, Space, exec, ${fuzzel} --no-icons"
+        "ALT, Space, exec, ${nc "panel-toggle launcher"}"
         "SUPER, V, exec, ${nc "panel-toggle clipboard"}"
         "SUPER, Escape, exec, ${nc "panel-toggle session"}"
         "SUPER ALT, L, exec, ${nc "session lock"}"

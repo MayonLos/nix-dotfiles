@@ -382,17 +382,12 @@ in
       enable_floating_snap = 1;
       snap_distance = 16;
 
-      # Rules apply in order: layer surfaces are unblurred; mangobar, mako and
-      # swayosd also opt out of animation and shadows to match their own
-      # design (transparent bar, opaque popups).
+      # Noctalia owns every layer surface (bar, panels, OSD, notifications,
+      # lock). The bar is fully transparent and no layer surface should pay
+      # for an extra compositor blur pass; Noctalia publishes its own blur
+      # regions for the surfaces that want one.
       layer_rule = [
         "layer_name:.*,no_blur:1"
-        # mangobar is fully transparent; blurring its layer would still frost
-        # the empty middle span. mako and swayosd are opaque; blur would grey
-        # their fill. None of them animate through the compositor.
-        "layer_name:^mangobar$,no_blur:1,no_animation:1,no_shadow:1"
-        "layer_name:^notifications$,no_animation:1,no_blur:1,no_shadow:1"
-        "layer_name:^swayosd$,no_animation:1,no_blur:1,no_shadow:1"
       ];
 
       # Single rule owner. Keep app destinations opt-in to preserve current tags.
@@ -468,7 +463,8 @@ in
     # Keep this non-empty for Mango HM's environment/target synchronization
     # hook. Mango's C startup path also requests mango-session.target before
     # exec_once, so target startup does not depend on this hook winning a race.
-    # Desktop shell services are owned by their own systemd user units.
+    # Desktop shell services are owned by their own systemd user units; the
+    # shared noctalia.service starts from mango-session.target.
     autostart_sh = ":";
     extraConfig = "";
   };

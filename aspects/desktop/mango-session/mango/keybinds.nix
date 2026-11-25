@@ -4,6 +4,9 @@
   display,
 }:
 let
+  # The Noctalia shell owns launcher, clipboard, OSD, lock, wallpaper and
+  # screenshots in every session; Mango only forwards verbs to it.
+  noctalia = lib.getExe pkgs.local.noctaliaDesktop.noctalia;
   defaultBinds = [
     # Expand only after helpText is rendered, so its own path is not recursive.
     "SUPER,F1,spawn,__MANGO_HELP__"
@@ -23,16 +26,15 @@ let
     "SUPER+CTRL,G,toggleglobal"
     "SUPER+ALT,G,toggleoverlay"
     "SUPER+CTRL,S,tag_special_silent"
-    # --no-icons is only the launcher. Super+V opens cliphist-tui in Kitty.
-    "ALT,space,spawn,fuzzel --no-icons"
-    # Mango's own `switcher,next` binding below is the window switcher;
-    # fuzzel is the only launcher and no control center is provided.
+    # Noctalia launcher (same chord as the other two sessions).
+    "ALT,space,spawn,${noctalia} msg panel-toggle launcher"
+    # Mango's own `switcher,next` binding below is the window switcher; the
+    # Noctalia launcher is the only launcher, and its panels are layer-shell.
     # No argument: the keybind path has no client, so this toggles tag 0
     # on the selected monitor.
     "SUPER+SHIFT,S,toggle_special_tag"
-    # Standalone lock surface (swaylock); PAM service setup lives in
-    # mango-session/host/mango.nix.
-    "SUPER+ALT,L,spawn,session-lock"
+    # Noctalia lock surface; it authenticates through the login PAM stack.
+    "SUPER+ALT,L,spawn,${noctalia} msg session lock"
     "SUPER,0,toggleoverview"
     "SUPER+SHIFT,0,togglejump"
 
@@ -139,12 +141,12 @@ let
     "SUPER+SHIFT,Equal,resizewin,+0,+10"
     "SUPER,space,togglefloating"
     "SUPER,Equal,switch_layout"
-    "SUPER,W,spawn,wallpaper-pick"
+    "SUPER,W,spawn,${noctalia} msg panel-toggle wallpaper"
     "SUPER,Z,zoom"
     "SUPER+SHIFT,G,togglegaps"
 
     "NONE,Print,spawn,mark-shot"
-    "CTRL,Print,spawn,screenshot-screen"
+    "CTRL,Print,spawn,${noctalia} msg screenshot-fullscreen"
     "SHIFT,Print,spawn,mark-shot --scroll"
     # Screen-text OCR, so the whole Print family is capture: bare = region
     # screenshot, Ctrl = copy current screen, Shift = scrolling capture,
@@ -155,9 +157,9 @@ let
     "SUPER+SHIFT,Print,spawn,ocr-screen"
     # The old Ctrl+Alt+Delete session menu is gone. Log out with
     # `mmsg dispatch quit`; use `loginctl`/`systemctl` for power actions.
-    # cliphist owns history. cliphist-tui only displays it. There is no second
-    # launcher on Super+A.
-    "SUPER,V,spawn,clipboard-history"
+    # Noctalia owns clipboard history and previews; there is no second
+    # clipboard daemon and no second launcher on Super+A.
+    "SUPER,V,spawn,${noctalia} msg panel-toggle clipboard"
     # Bluetooth headset mic: HFP on/off (A2DP otherwise; no autoswitch).
     "SUPER+SHIFT,N,spawn,headset-mic toggle"
     "SUPER+SHIFT,P,sleep_monitor,${display.name}"
@@ -191,16 +193,15 @@ let
 
   ];
   hardwareBinds = [
-    # swayosd-client verbs are raise/lower/mute-toggle. Do not call a second
-    # volume or brightness tool: the step would run twice. Input volume uses
-    # the same OSD server, so the microphone mute key still gets feedback.
+    # Noctalia owns the volume/brightness OSD in every session. Do not call a
+    # second volume or brightness tool: the step would run twice.
     # No comma in these commands: the help renderer splits fields on commas.
-    "NONE,XF86AudioRaiseVolume,spawn,swayosd-client --output-volume raise"
-    "NONE,XF86AudioLowerVolume,spawn,swayosd-client --output-volume lower"
-    "NONE,XF86AudioMute,spawn,swayosd-client --output-volume mute-toggle"
-    "NONE,XF86AudioMicMute,spawn,swayosd-client --input-volume mute-toggle"
-    "NONE,XF86MonBrightnessUp,spawn,swayosd-client --brightness raise"
-    "NONE,XF86MonBrightnessDown,spawn,swayosd-client --brightness lower"
+    "NONE,XF86AudioRaiseVolume,spawn,${noctalia} msg volume-up"
+    "NONE,XF86AudioLowerVolume,spawn,${noctalia} msg volume-down"
+    "NONE,XF86AudioMute,spawn,${noctalia} msg volume-mute"
+    "NONE,XF86AudioMicMute,spawn,${noctalia} msg mic-mute"
+    "NONE,XF86MonBrightnessUp,spawn,${noctalia} msg brightness-up"
+    "NONE,XF86MonBrightnessDown,spawn,${noctalia} msg brightness-down"
     "NONE,XF86AudioPlay,spawn,playerctl play-pause"
     "NONE,XF86AudioStop,spawn,playerctl stop"
     "NONE,XF86AudioPrev,spawn,playerctl previous"
@@ -284,7 +285,7 @@ let
       key = lib.concatStringsSep "," (lib.take 2 fields);
       action = lib.elemAt fields 2;
       label =
-        if action == "spawn" && lib.hasInfix "wallpaper-pick" row then
+        if action == "spawn" && lib.hasInfix "panel-toggle wallpaper" row then
           "切换壁纸"
         else
           actionNames.${action} or action;
@@ -297,7 +298,7 @@ let
         mayon-bili = "哔哩哔哩";
       };
       args =
-        if action == "spawn" && lib.hasInfix "wallpaper-pick" row then
+        if action == "spawn" && lib.hasInfix "panel-toggle wallpaper" row then
           ""
         else if action == "toggle_named_scratchpad" then
           scratchpadNames.${lib.elemAt fields 3} or (lib.elemAt fields 3)

@@ -52,9 +52,6 @@
             bilitui = import ../packages/bilitui { pkgs = final; };
             mayonTui = import ../packages/mayon-tui { pkgs = final; };
             mayonVoice = import ../packages/mayon-voice { pkgs = final; };
-            # Standalone layer-shell clipboard/launcher. The Mango session does
-            # not install or bind it; Alt+Space is fuzzel and Super+V is cliphist-tui.
-            mayonOverlay = import ../packages/mayon-overlay { pkgs = final; };
             # Explicit exceptions to stable; each consumer uses this shared instance.
             unstable = {
               # unstable: Neovim 0.12.6 fixes TUI/runtime issues after stable 0.12.4.
@@ -76,13 +73,6 @@
             };
             # Aliases preserve upstream derivations and their pinned build caches.
             local = {
-              # Upstream derivation alias. The mangobar flake still imports
-              # the followed nixpkgs-unstable while producing this package.
-              mangobar = inputs.mangobar.packages.${system}.default;
-              # Wallpaper daemon (sweetbg) and picker (Matuwall). Matuwall's
-              # symlinked-directory patch lives with the wallpaper feature.
-              sweetbg = inputs.sweetbg.packages.${system}.default;
-              matuwall = inputs.matuwall.packages.${system}.default;
               # Vendored Rust tree. rust-toolchain.toml pins 1.99.1; stable rustc
               # is 1.95.0 and this unstable instance provides rustc 1.99.1.
               # System libraries stay on `final` (stable).
