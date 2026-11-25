@@ -39,8 +39,6 @@ let
     }
   ]
   ++ config.nixDotfiles.extraLoginCommands;
-  loginArgs = lib.concatMapStringsSep " " (entry: "-c ${entry.command}") loginCommands;
-
   # gtkgreet always draws its "Command to run on login" chooser, and for the
   # single-session case it shows the whole /nix/store path of the login
   # command. The patch hides the chooser when only one command is available;
@@ -118,7 +116,7 @@ let
     seat seat0 xcursor_theme ${palette.cursor.name} ${toString palette.cursor.size}
     input type:keyboard xkb_layout us
     xwayland disable
-    exec '${lib.getExe gtkgreet} -l -s /etc/greetd/gtkgreet.css ${loginArgs} ${lib.getExe' pkgs.sway "swaymsg"} exit'
+    exec '${lib.getExe gtkgreet} -l -s /etc/greetd/gtkgreet.css -c ${(builtins.head loginCommands).command} ${lib.getExe' pkgs.sway "swaymsg"} exit'
   '';
 in
 {

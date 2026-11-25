@@ -77,8 +77,9 @@ in
       telemetry_enabled = false;
       settings_show_advanced = true;
       clipboard_enabled = true;
-      # The repository already runs its own polkit agent in session-support.
-      polkit_agent = false;
+      # The repository's polkit-gnome agent is bound to mango-session.target,
+      # so the Umbriel session uses Noctalia's built-in agent instead.
+      polkit_agent = true;
       time_format = "{:%H:%M}";
       date_format = "%m-%d";
     };

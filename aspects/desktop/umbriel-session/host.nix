@@ -11,6 +11,8 @@ let
     export XDG_CURRENT_DESKTOP=Umbriel
     export XDG_SESSION_DESKTOP=umbriel
     export XKB_DEFAULT_LAYOUT=us
+    export SHELL=/run/current-system/sw/bin/zsh
+    export PATH="/run/current-system/sw/bin:$HOME/.nix-profile/bin:$PATH"
     export XCURSOR_THEME=${palette.cursor.name}
     export XCURSOR_SIZE=${toString palette.cursor.size}
     exec ${stack.umbriel}/bin/start-umbriel
@@ -35,8 +37,8 @@ in
     # The experiment session prefers Umbriel's portal backend; the GTK backend
     # stays as the fallback for interfaces it does not implement.
     config.umbriel = {
+      # The Umbriel backend serves FileChooser through Luciole when installed.
       default = "umbriel;gtk";
-      "org.freedesktop.impl.portal.FileChooser" = "gtk";
     };
   };
 

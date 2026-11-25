@@ -2,9 +2,7 @@
 { pkgs, lib, ... }:
 let
   toml = pkgs.formats.toml { };
-  # Resolved through the Home Manager profile PATH, like any other session
-  # command; this keeps the generated TOML free of package-store paths.
-  noctalia = "noctalia";
+  noctalia = "${pkgs.local.noctaliaDesktop.noctalia}/bin/noctalia";
   # Keep the familiar Mango keybinds on the same chords. Commands that are
   # repository scripts resolve through the Home Manager profile PATH.
   nc = command: "${noctalia} msg ${command}";
