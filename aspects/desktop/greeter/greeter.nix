@@ -116,7 +116,7 @@ let
     seat seat0 xcursor_theme ${palette.cursor.name} ${toString palette.cursor.size}
     input type:keyboard xkb_layout us
     xwayland disable
-    exec '${lib.getExe gtkgreet} -l -s /etc/greetd/gtkgreet.css -c ${(builtins.head loginCommands).command} ${lib.getExe' pkgs.sway "swaymsg"} exit'
+    exec '${lib.getExe gtkgreet} -l -s /etc/greetd/gtkgreet.css -c ${(builtins.head loginCommands).command}; ${lib.getExe' pkgs.sway "swaymsg"} exit'
   '';
 in
 {
@@ -143,7 +143,18 @@ in
     ++ map (entry: {
       assertion = builtins.stringLength entry.command < 128 && !lib.hasInfix " " entry.command;
       message = "gtkgreet 0.8 sends each login command as one argv element of at most 127 bytes (${entry.name}).";
-    }) loginCommands;
+    }) loginCommands
+    ++ [
+      {
+        assertion =
+          let
+            execLine = lib.findFirst (line: lib.hasInfix "gtkgreet" line) "" (lib.splitString "
+" swayConfig);
+          in
+          lib.hasInfix "; " execLine;
+        message = "greeter exec must pass -c and separate the gtkgreet command from swaymsg with ';'.";
+      }
+    ];
 
     # cage 0.3.0 cannot set a per-output scale, so the greeter compositor is
     # sway and the internal output scale comes from host facts.
