@@ -16,7 +16,7 @@ let
     dark = {
       primary = palette.blue;
       on_primary = palette.black;
-      secondary = palette.purple;
+      secondary = palette.green;
       on_secondary = palette.black;
       tertiary = palette.cyan;
       on_tertiary = palette.black;
@@ -77,7 +77,7 @@ in
       # Empty means "whatever GTK/fontconfig resolves", which keeps the
       # repository's Inter/Noto configuration authoritative.
       font_family = "";
-      corner_radius_scale = 1.0;
+      corner_radius_scale = 0.8;
       telemetry_enabled = false;
       screen_time_enabled = false;
       # Offline: all palette/weather/geolocation fetches are unnecessary here
@@ -86,7 +86,42 @@ in
       settings_show_advanced = true;
       clipboard_enabled = true;
       clipboard_history_max_entries = 50;
-      animation.enabled = !palette.reducedMotion;
+      animation = {
+        enabled = !palette.reducedMotion;
+        speed = 1.0;
+      };
+      # Floating panels get the repository's soft, bordered look; the control
+      # center stays attached to the bar so it opens under the clicked icon.
+      panel = {
+        transparency_mode = "solid";
+        borders = true;
+        border_color = "outline_variant";
+        border_width = 1.0;
+        shadow = true;
+        launcher_placement = "floating";
+        clipboard_placement = "floating";
+        control_center_placement = "floating";
+        wallpaper_placement = "attached";
+        session_placement = "attached";
+        open_near_click_control_center = true;
+      };
+      shadow = {
+        direction = "down";
+        alpha = 0.5;
+      };
+      # Minimal launcher: search + results, no chrome the shell does not use.
+      launcher = {
+        layout = "simple";
+        compact = true;
+        show_icons = false;
+        categories = false;
+        show_navigation_labels = false;
+        show_settings_button = false;
+        show_session_button = false;
+        show_app_origin_indicator = false;
+        track_usage = true;
+        sort_by_usage = true;
+      };
       # The Umbriel session autostarts the repository's polkit-gnome agent;
       # Noctalia's own agent cannot register from this session cgroup.
       polkit_agent = false;
@@ -108,6 +143,11 @@ in
     weather.enabled = false;
     location.auto_locate = false;
 
+    control_center = {
+      show_avatar_border = false;
+      media.show_visualizer = false;
+    };
+
     wallpaper = {
       enabled = true;
       fill_mode = "crop";
@@ -123,15 +163,24 @@ in
       enable_daemon = true;
       colorize_icons = false;
       group_by_app = true;
-      scale = 1.0;
+      scale = 0.95;
+      background_opacity = 0.97;
+      border = true;
+      border_color = "outline_variant";
+      border_width = 1;
+      offset_x = 16;
+      offset_y = 8;
     };
 
     osd = {
       position = "top_right";
+      kinds.keyboard_layout = false;
       hide_delay_ms = 1400;
-      scale = 1.0;
-      background_opacity = 0.97;
-      border = false;
+      scale = 0.95;
+      background_opacity = 0.95;
+      border = true;
+      border_color = "outline_variant";
+      border_width = 1;
       offset_x = 16;
       offset_y = 8;
     };
@@ -140,25 +189,24 @@ in
       enabled = true;
       lock_before_suspend = true;
       grace_period_seconds = 0;
-      blurred_desktop = false;
-      transition = [
-        "fade"
-        "wipe"
-      ];
-      transition_duration = 900;
+      blurred_desktop = true;
+      transition = [ "fade" ];
+      transition_duration = 450;
       tint_color = "surface";
-      blur_intensity = 0.5;
-      tint_intensity = 0.3;
+      blur_intensity = 0.6;
+      tint_intensity = 0.35;
     };
 
+    # No timed idle lock or screen-off, matching the previous Mango policy:
+    # lock only on Super+Alt+L and before suspend.
     idle.behavior = {
       lock = {
-        enabled = true;
+        enabled = false;
         timeout = 600;
         action = "lock";
       };
       screen-off = {
-        enabled = true;
+        enabled = false;
         timeout = 660;
         action = "screen_off";
       };
@@ -168,11 +216,11 @@ in
     # are disabled with 0 seconds instead of paying for their polling.
     system.monitor = {
       enabled = true;
-      cpu_poll_seconds = 3.0;
-      memory_poll_seconds = 3.0;
+      cpu_poll_seconds = 2.0;
+      memory_poll_seconds = 2.0;
       gpu_poll_seconds = 0;
-      network_poll_seconds = 0;
-      disk_poll_seconds = 0;
+      network_poll_seconds = 3.0;
+      disk_poll_seconds = 10.0;
     };
 
     dock.enabled = false;
@@ -192,9 +240,9 @@ in
         radius = 0;
         margin_ends = 0;
         margin_edge = 0;
-        padding = 16;
-        widget_spacing = 10;
-        font_scale = 0.93;
+        padding = 14;
+        widget_spacing = 8;
+        font_scale = 0.94;
         font_weight = 500;
         reserve_space = true;
         capsule = false;
@@ -207,6 +255,8 @@ in
           "battery"
           "cpu"
           "ram"
+          "notifications"
+          "control-center"
           "clock"
         ];
       };
