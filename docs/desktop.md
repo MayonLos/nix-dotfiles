@@ -11,7 +11,7 @@ checks: [desktop-composition, mango-blur-sampling, unified-noctalia-session, gre
 
 ## 共享 Shell（Noctalia）
 
-- **顶栏**：Noctalia 的 30px 全透明栏（一个配置服务所有会话）。左侧工作区编号（当前 blue、占用 brightFg、空 fg）与窗口标题，右侧托盘、网络、电池、`CPU`/`MEM` 标签、通知、控制中心与中文日期时间（`%m月%d日 %H:%M`）；CPU/内存轮询 2 s，GPU 轮询为 0，网络 3 s、磁盘 10 s 只供状态显示。
+- **顶栏**：Noctalia 的 30px 全透明栏（一个配置服务所有会话）。左侧工作区编号（当前 blue、占用 brightFg、空 fg）、最小化计数（本地 `hideclients` 插件：eye-off + 数量，muted 色，0 时整个组件隐藏，点击恢复最近一个）与窗口标题，右侧托盘、网络、电池、`CPU`/`MEM` 标签、通知、控制中心与中文日期时间（`%m月%d日 %H:%M`）；CPU/内存轮询 2 s，GPU 轮询为 0，网络 3 s、磁盘 10 s 只供状态显示。
 - **启动器与面板**：`Alt+Space` 打开 Noctalia launcher；`Super+V` 打开剪贴板历史面板；`Super+W` 打开壁纸面板（浏览 `~/Pictures/Wallpapers`，`managed/` 为内置 18 张、`local/` 为用户图）；Umbriel/Hyprland 用 Mod+Escape、Mango 用 `Super+Shift+Escape` 打开会话面板（Mango 的 `Super+Esc` 留给按键模式退出）。没有 Dock、Launchpad 或第二套启动器。
 - **通知与 OSD**：Noctalia 统一绘制通知、音量/亮度/麦克风 OSD 和键盘锁定提示；OSD 在底部居中（`bottom_center`，`offset_y` 48），通知保持右上。音量、亮度、麦克风与媒体键在三个合成器里都通过 Noctalia IPC 转发，不再有 swayosd 或直接调用 playerctl 的媒体键。
 - **壁纸与锁屏**：Noctalia 绘制壁纸，壁纸面板只浏览 `~/Pictures/Wallpapers`（HM 只维护 `managed/` 链接，`local/` 用户数据不动）；`Super+Alt+L` 调用 Noctalia 锁屏，通过登录 PAM 栈认证。没有 swaybg/sweetbgd/Matuwall/swaylock/swayidle。

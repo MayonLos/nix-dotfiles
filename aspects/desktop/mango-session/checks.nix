@@ -61,6 +61,10 @@ in
         MANGO_CONFIG = home.xdg.configFile."mango/config.conf".source;
         EXPECTED_ON_SURFACE = appearance.brightFg;
         EXPECTED_ON_SURFACE_VARIANT = appearance.fg;
+        # The local hideclients plugin: manifest and the generated Luau entry.
+        PLUGIN_MANIFEST = home.home.file.".local/share/noctalia/plugins/hideclients/plugin.toml".source;
+        PLUGIN_ENTRY = home.home.file.".local/share/noctalia/plugins/hideclients/indicator.luau".source;
+        EXPECTED_MMSG = "${nixos.programs.mango.package}/bin/mmsg";
       }
       ''
         python3 - "$metadata" <<'PY'
@@ -187,6 +191,43 @@ in
         want(
             settings.get("width") == "1020" and settings.get("height") == "900",
             "Noctalia Settings window must float at 1020x900",
+        )
+
+        # Local Noctalia plugin restoring the mangobar-era minimized-client
+        # counter: files installed, plugin enabled, widget placed on the bar,
+        # and the Luau entry templated with a real mmsg path.
+        for target in (
+            ".local/share/noctalia/plugins/hideclients/plugin.toml",
+            ".local/share/noctalia/plugins/hideclients/indicator.luau",
+        ):
+            want(target in data["homeFiles"], f"hideclients plugin file missing: {target}")
+        want(
+            "nix-dotfiles/hideclients" in config.get("plugins", {}).get("enabled", []),
+            "hideclients plugin is not enabled in the generated config",
+        )
+        want(
+            "hideclients" in config["bar"]["main"]["start"],
+            "hideclients widget is not placed on the bar",
+        )
+        want(
+            config["widget"]["hideclients"]["type"] == "nix-dotfiles/hideclients:indicator",
+            "hideclients widget type is wrong",
+        )
+        with open(os.environ["PLUGIN_MANIFEST"], "rb") as fh:
+            manifest = tomllib.load(fh)
+        want(manifest.get("id") == "nix-dotfiles/hideclients", "plugin manifest id mismatch")
+        want(manifest.get("plugin_api") == 3, "plugin manifest api level mismatch")
+        want(
+            any(entry.get("id") == "indicator" for entry in manifest.get("widget") or []),
+            "plugin manifest has no indicator widget",
+        )
+        with open(os.environ["PLUGIN_ENTRY"], "r", encoding="utf-8") as fh:
+            entry_text = fh.read()
+        for placeholder in ("@mmsg@", "@mutedFg@"):
+            want(placeholder not in entry_text, f"plugin entry keeps {placeholder}")
+        want(
+            os.environ["EXPECTED_MMSG"] in entry_text,
+            "plugin entry has no absolute mmsg path",
         )
 
         if errors:

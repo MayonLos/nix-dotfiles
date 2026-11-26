@@ -1,5 +1,10 @@
 { palette }:
-{ pkgs, lib, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 let
   toml = pkgs.formats.toml { };
   json = pkgs.formats.json { };
@@ -7,6 +12,13 @@ let
   wallpapers = import ../../appearance/appearance/resources/wallpaper/package.nix {
     inherit pkgs palette;
   };
+
+  # The minimized-window counter plugin reads Mango IPC. Resolve an absolute
+  # `mmsg` path instead of relying on the Noctalia service PATH: a missing
+  # command would leave the widget permanently hidden. The attribute is guarded
+  # so configs without the Mango Home Manager module still evaluate.
+  mangoPackage = lib.attrByPath [ "wayland" "windowManager" "mango" "package" ] null config;
+  mmsg = if mangoPackage != null then lib.getExe' mangoPackage "mmsg" else "mmsg";
 
   # One Dark -> Noctalia palette format 2 (16 direct roles plus terminal ANSI).
   oneDark = {
@@ -68,13 +80,33 @@ let
   };
 in
 {
-  home.packages = [ noctalia ];
+  # One attribute set: statix rejects repeated `home.*` keys, and the managed
+  # wallpaper link plus the local plugin files are all Home Manager outputs of
+  # this feature.
+  home = {
+    packages = [ noctalia ];
 
-  # The appearance factory's 18-image link farm is the managed wallpaper set.
-  # This feature owns only that link; user images under .../Wallpapers/local/
-  # stay untouched. Noctalia's wallpaper panel browses [wallpaper] directory
-  # below, one level above both directories.
-  home.file."Pictures/Wallpapers/managed".source = wallpapers.directory;
+    # The appearance factory's 18-image link farm is the managed wallpaper set.
+    # This feature owns only that link; user images under .../Wallpapers/local/
+    # stay untouched. Noctalia's wallpaper panel browses [wallpaper] directory
+    # below, one level above both directories.
+    file = {
+      "Pictures/Wallpapers/managed".source = wallpapers.directory;
+
+      # Local Noctalia plugin (the implicit "local" source under the XDG data
+      # home) that restores the mangobar-era minimized-clients counter. The
+      # manifest is static; the Luau entry gets the absolute mmsg path and the
+      # palette's muted token substituted at build time. [plugins] and the bar
+      # below enable and place it.
+      ".local/share/noctalia/plugins/hideclients/plugin.toml".source = ./plugins/hideclients/plugin.toml;
+      ".local/share/noctalia/plugins/hideclients/indicator.luau".source =
+        pkgs.replaceVars ./plugins/hideclients/indicator.luau
+          {
+            inherit mmsg;
+            mutedFg = palette.muted;
+          };
+    };
+  };
 
   # Palettes live next to the config and are selected by name, matching the
   # upstream Home Manager module's layout.
@@ -135,6 +167,13 @@ in
       polkit_agent = false;
       time_format = "{:%H:%M}";
       date_format = "%m-%d";
+    };
+
+    # The only plugin is the repository's local hideclients widget; no git
+    # sources are configured, so background updates are disabled outright.
+    plugins = {
+      auto_update = "none";
+      enabled = [ "nix-dotfiles/hideclients" ];
     };
 
     theme = {
@@ -259,7 +298,10 @@ in
         reserve_space = true;
         capsule = false;
         show_tooltip = true;
-        start = [ "workspaces" ];
+        start = [
+          "workspaces"
+          "hideclients"
+        ];
         center = [ "active_window" ];
         end = [
           "tray"
@@ -321,6 +363,9 @@ in
         show_glyph = false;
         label_show_units = true;
       };
+      # Local plugin placement; the counter hides itself until a Mango window
+      # is minimized, and stays hidden in the Umbriel/Hyprland sessions.
+      hideclients.type = "nix-dotfiles/hideclients:indicator";
     };
   };
 }

@@ -62,7 +62,7 @@ tmux 保留前缀窗口管理；无前缀 `Ctrl+h/j/k/l` 根据 smart-splits 维
 | 浮动 / 布局 / 主窗口 | `Super+Space` / `Super+=` / `Super+Z` | 布局仍为 tile/scroller/monocle。`Super+=` 循环这三种。主区域比例用 `Super+Minus` 减小、`Super+Ctrl+=` 增大。`Super+Shift+W` 不绑定 |
 | 壁纸 | `Super+W` | Noctalia 壁纸面板，浏览 `~/Pictures/Wallpapers`（`managed/` 内置 18 张、`local/` 用户图）；选中的壁纸由 Noctalia 自己绘制，不再有 sweetbg/Matuwall |
 | 关闭窗口 / 重载配置 | `Super+Q` / `Super+Alt+R` | 所有 Mango 模式可达；不全局拦截裸 Esc |
-| 最小化 / 找回 | `Super+H` / `Super+Shift+H` | 最小化同时进入 scratchpad 池；`Super+Shift+H`（`toggle_scratchpad`）取回。与命名临时终端不同 |
+| 最小化 / 找回 | `Super+H` / `Super+Shift+H` | 最小化同时进入 scratchpad 池；`Super+Shift+H`（`toggle_scratchpad`）取回。与命名临时终端不同。最小化后在顶栏工作区右侧出现 eye-off 计数（0 时隐藏），点击该计数也恢复最近一个；Umbriel/Hyprland 无此计数 |
 | 操作帮助 | `Super+F1` | 显示同一份按键数据生成的分组帮助；新增工具键同步出现在帮助中 |
 
 所有 tag 默认使用 tile 布局，主区域比例 60%（`tag_rule = id:*,layout_name:tile`、

@@ -1,0 +1,12 @@
+id          = "nix-dotfiles/hideclients"
+name        = "Minimized windows"
+version     = "1.0.0"
+plugin_api  = 3
+author      = "nix-dotfiles"
+license     = "MIT"
+icon        = "eye-off"
+description = "Number of minimized Mango windows; clicking restores the latest one."
+
+[[widget]]
+id    = "indicator"
+entry = "indicator.luau"
