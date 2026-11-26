@@ -10,6 +10,7 @@ _: {
     ./dev/languages
     ./system/maintenance
     ./network/port-tools
+    ./network/packet-capture
     ./network/laptop-network
     ./network/remote-access
     ./hardware/legion-laptop
@@ -37,6 +38,7 @@ _: {
     ./apps/documents
     ./apps/file-manager
     ./apps/media
+    ./apps/science
     ./apps/voice-input
     ./apps/gaming
     ./dev/containers

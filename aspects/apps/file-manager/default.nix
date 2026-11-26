@@ -12,6 +12,7 @@
         ];
         home.packages = [
           pkgs.file-roller
+          pkgs.meld
         ];
       };
     provides.${host.name}.includes = [ den.aspects.file-manager-host-support ];

@@ -1,6 +1,6 @@
 # File manager
 
-Installs File Roller for the selected user and host-wide Thunar, GVfs, thumbnailing, archive and volume plugins. It needs the normal package set; host support is routed through `file-manager-host-support`. `packages.nix` is the single private package factory. No other feature should import its implementation files.
+Installs File Roller and Meld for the selected user and host-wide Thunar, GVfs, thumbnailing, archive and volume plugins. File Roller backs the Thunar archive actions; Meld is available as the GUI file/directory comparison tool and does not declare a custom action or MIME default. It needs the normal package set; host support is routed through `file-manager-host-support`. `packages.nix` is the single private package factory. No other feature should import its implementation files.
 
 ## Finder shell and preference ownership
 

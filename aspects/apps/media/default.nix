@@ -26,6 +26,8 @@ _: {
         wl-screenrec
         bilitui
         gimp
+        inkscape
+        audacity
         kdePackages.kdenlive
         imagemagick
       ];

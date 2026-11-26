@@ -17,6 +17,9 @@ let
   qtPaletteSeed = pkgs.writeText "qt-palette-seed.sh" (
     replaceConfig home.home.activation.seedQt6ctPalette.data
   );
+  qt5ctSeed = pkgs.writeText "qt5ct-theme-seed.sh" (
+    replaceConfig home.home.activation.seedQt5ctConfig.data
+  );
   qtMigration = pkgs.writeText "qt-theme-migrate.sh" (
     replaceConfig home.home.activation.migrateQt6ctFonts.data
   );
@@ -44,6 +47,7 @@ pkgs.runCommand "gtk-qt-theme-check" {
   QT_SVG_PLUGIN_PATH = "${pkgs.qt6Packages.qtsvg}/${pkgs.qt6Packages.qtbase.qtPluginPrefix}";
   QT_SEED = qtSeed;
   QT_PALETTE_SEED = qtPaletteSeed;
+  QT5CT_SEED = qt5ctSeed;
   QT_MIGRATION = qtMigration;
   GTK_THEME_PACKAGE = home.gtk.theme.package;
   GTK_THEME_NAME = home.gtk.theme.name;

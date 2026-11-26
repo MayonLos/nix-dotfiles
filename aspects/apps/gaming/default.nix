@@ -11,6 +11,7 @@
     gaming-host.nixos.imports = [
       ./host/gamemode.nix
       ./host/gamescope.nix
+      ./host/minecraft.nix
       ./host/steam.nix
     ];
   };

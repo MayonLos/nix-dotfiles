@@ -1,0 +1,650 @@
+diff --git a/src/app/upload.rs b/src/app/upload.rs
+index 5f759ae..2a4a295 100644
+--- a/src/app/upload.rs
++++ b/src/app/upload.rs
+@@ -181,15 +181,17 @@ pub(super) fn complete(
+             },
+             Err(error) => {
+                 log::error!("【图片上传】【任务失败】{error}");
+-                feedback(
+-                    state,
+-                    if error.kind == crate::upload::ErrorKind::Timeout {
+-                        "Upload timed out"
+-                    } else {
+-                        "Upload failed"
+-                    },
+-                    dirty,
+-                );
++                // A missing or malformed endpoint is the most common failure and
++                // cannot be fixed from the editor, so the toast names the settings
++                // page instead of repeating the generic upload failure.
++                let message = match error.kind {
++                    crate::upload::ErrorKind::Configuration => {
++                        "Upload not configured — open Settings → Integrations"
++                    }
++                    crate::upload::ErrorKind::Timeout => "Upload timed out",
++                    _ => "Upload failed",
++                };
++                feedback(state, message, dirty);
+             }
+         }
+     }
+diff --git a/src/config/default.toml b/src/config/default.toml
+index efefd7f..ecf3b77 100644
+--- a/src/config/default.toml
++++ b/src/config/default.toml
+@@ -6,8 +6,9 @@
+ # 颜色留空或注释后跟随主题；只有需要覆盖默认值时才写入用户配置
+ 
+ [ui]
+-# 【界面主题】【明暗选择】默认浅色；Ctrl+Shift+L 切换并保存，设置窗口无需打开
+-theme = "light"
++# 【界面主题】【明暗选择】默认跟随桌面外观，prefer-dark 时使用仓库 One Dark 暗色；
++# Ctrl+Shift+L 切换并保存，设置窗口无需打开
++theme = "system"
+ 
+ # system | english | chinese; MARK_SHOT_LANG takes precedence
+ language = ""
+diff --git a/src/config/interface_theme.rs b/src/config/interface_theme.rs
+index c3298ed..e121cd2 100644
+--- a/src/config/interface_theme.rs
++++ b/src/config/interface_theme.rs
+@@ -178,11 +178,11 @@ pub(crate) fn path() -> Option<std::path::PathBuf> {
+     super::loading::config_path()
+ }
+ 
+-/// 【主题配置】【通知读取】按 path 有界读取已保存主题，缺省或删除使用浅色；无效文件返回错误，不改变进程状态
++/// 【主题配置】【通知读取】按 path 有界读取已保存主题，缺省或删除使用默认主题；无效文件返回错误，不改变进程状态
+ pub(crate) fn read_mode(path: &Path) -> io::Result<Mode> {
+     let text = match super::persistence::read(path) {
+         Ok(text) => text,
+-        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(Mode::Light),
++        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(Mode::default()),
+         Err(error) => return Err(error),
+     };
+     let root = super::document::root(path, &text)?;
+diff --git a/src/config/legacy/mod.rs b/src/config/legacy/mod.rs
+index b3fc69d..2ba752f 100644
+--- a/src/config/legacy/mod.rs
++++ b/src/config/legacy/mod.rs
+@@ -10,38 +10,191 @@ mod shortcuts;
+ mod startup;
+ mod values;
+ 
++/// Highest number of invalid fields one recovery pass may remove.
++const MAX_REMOVED_FIELDS: usize = 64;
++
++/// Result of a tolerant JSON decode: the usable config plus every field that
++/// was dropped because the typed config rejected it.
++pub(super) struct Recovered {
++    pub config: super::Config,
++    pub removed: Vec<(String, Value)>,
++}
++
+ /// 【原版配置】【完整解析】按 text 返回原生运行参数，明确配置保留，原始厂商数据不重写为另一格式
+ pub(super) fn decode(text: &str) -> io::Result<super::Config> {
+     let root = super::document::root(Path::new("config.json"), text)?;
++    from_root(&root).map_err(io::Error::other)
++}
++
++/// 【原版配置】【容错解析】按 text 返回可用运行参数并报告被跳过的非法字段，供启动与修复共用
++pub(super) fn decode_recovering(text: &str) -> io::Result<Recovered> {
++    let root = super::document::root(Path::new("config.json"), text)?;
++    let (root, removed) = recover_root(&root).map_err(io::Error::other)?;
++    let config = from_root(&root).map_err(io::Error::other)?;
++    Ok(Recovered { config, removed })
++}
++
++/// 【原版配置】【字段剔除】返回删除非法字段后的原始 JSON 对象及字段值；未知键、旧分组和厂商字段保持不变
++///
++/// A single invalid value (for example a toolbar size stored as a word) must
++/// not discard every other setting. The search drops one leaf at a time and
++/// proves with the strict decoder that the remaining document is valid, so the
++/// repaired file is written in its original shape instead of the normalized
++/// startup representation.
++pub(super) fn recover_root(root: &Value) -> Result<(Value, Vec<(String, Value)>), String> {
++    let mut cleaned = root.clone();
++    let mut removed = Vec::new();
++    for _ in 0..MAX_REMOVED_FIELDS {
++        if from_root(&cleaned).is_ok() {
++            return Ok((cleaned, removed));
++        }
++        let mut paths = Vec::new();
++        locate(&cleaned, &mut Vec::new(), &mut paths);
++        if paths.is_empty() {
++            let error = from_root(&cleaned).err().unwrap_or_default();
++            return Err(error);
++        }
++        let before = removed.len();
++        for path in paths {
++            if let Some(value) = take(&mut cleaned, &path) {
++                removed.push((path.join("."), value));
++            }
++        }
++        if removed.len() == before {
++            return Err("invalid configuration cannot be repaired".into());
++        }
++    }
++    Err("too many invalid configuration fields".into())
++}
++
++/// 【原版配置】【类型解码】把原始对象规范化为运行时配置，返回第一个类型错误；不做容错
++fn from_root(root: &Value) -> Result<super::Config, String> {
++    let mut normalized = normalized(root);
++    let mut config: super::Config =
++        serde_json::from_value(normalized.take()).map_err(|error| error.to_string())?;
++    if let Some(color) = normalized.color {
++        config.tools.color = color;
++    }
++    super::interface_theme::apply_root(&mut config, root);
++    config.resolve();
++    super::loading::validate(&mut config);
++    Ok(config)
++}
++
++struct Normalized {
++    value: Value,
++    color: Option<crate::theme::Rgba>,
++}
++
++impl Normalized {
++    fn take(&mut self) -> Value {
++        std::mem::take(&mut self.value)
++    }
++}
++
++/// 【原版配置】【字段归一】按 root 生成运行时字段名，返回对象与编辑器颜色覆盖
++fn normalized(root: &Value) -> Normalized {
+     let mut normalized = root
+         .as_object()
+         .expect("root was checked as an object")
+         .clone();
+-    if let Some(history) = history::section(&root) {
++    if let Some(history) = history::section(root) {
+         normalized.insert("history".into(), history);
+     }
+-    if let Some(pinned) = pinned::section(&root) {
++    if let Some(pinned) = pinned::section(root) {
+         normalized.insert("pinned".into(), pinned);
+     }
+-    normalized.insert("capture".into(), capture::settings(&root));
+-    normalized.insert("region_detection".into(), capture::detection(&root, true));
+-    normalized.insert("window_detection".into(), capture::detection(&root, false));
++    normalized.insert("capture".into(), capture::settings(root));
++    normalized.insert("region_detection".into(), capture::detection(root, true));
++    normalized.insert("window_detection".into(), capture::detection(root, false));
+     normalized.remove("regionDetection");
+     normalized.remove("windowDetection");
+-    normalized.insert("keys".into(), shortcuts::section(&root));
+-    let (startup, color) = startup::section(&root);
++    normalized.insert("keys".into(), shortcuts::section(root));
++    let (startup, color) = startup::section(root);
+     normalized.insert("startup".into(), startup);
+-    normalized.insert("log".into(), startup::log(&root));
++    normalized.insert("log".into(), startup::log(root));
+     if let Some(ui) = normalized.get_mut("ui").and_then(Value::as_object_mut) {
+         ui.retain(|key, value| !matches!(key.as_str(), "language" | "theme") || value.is_string());
+     }
+-    let mut config: super::Config =
+-        serde_json::from_value(normalized.into()).map_err(io::Error::other)?;
+-    if let Some(color) = color {
+-        config.tools.color = color;
++    Normalized {
++        value: normalized.into(),
++        color,
+     }
+-    super::interface_theme::apply_root(&mut config, &root);
+-    config.resolve();
+-    super::loading::validate(&mut config);
+-    Ok(config)
++}
++
++/// 【原版配置】【字段定位】向 out 追加导致整份配置无法解码的原始 JSON 字段路径
++fn locate(root: &Value, path: &mut Vec<String>, out: &mut Vec<Vec<String>>) {
++    if decodes(root, path) {
++        return;
++    }
++    let value = at(root, path);
++    match value {
++        Some(Value::Object(map)) if !map.is_empty() => {
++            let before = out.len();
++            for key in map.keys() {
++                path.push(key.clone());
++                locate(root, path, out);
++                path.pop();
++            }
++            if out.len() == before {
++                if path.is_empty() {
++                    locate_top_level(root, out);
++                } else {
++                    out.push(path.clone());
++                }
++            }
++        }
++        Some(_) | None if !path.is_empty() => out.push(path.clone()),
++        _ => locate_top_level(root, out),
++    }
++}
++
++/// 【原版配置】【顶层定位】子树单独解码正常但组合失败时，逐个删除顶层分组确认可恢复的字段
++fn locate_top_level(root: &Value, out: &mut Vec<Vec<String>>) {
++    let Some(map) = root.as_object() else {
++        return;
++    };
++    for key in map.keys() {
++        let mut trial = root.clone();
++        if let Some(object) = trial.as_object_mut() {
++            object.remove(key);
++        }
++        if from_root(&trial).is_ok() {
++            out.push(vec![key.clone()]);
++            return;
++        }
++    }
++}
++
++/// 【原版配置】【子树判定】path 指向的子树（连同规范化规则）是否能被强类型配置接受
++fn decodes(root: &Value, path: &[String]) -> bool {
++    if path.is_empty() {
++        return from_root(root).is_ok();
++    }
++    at(root, path).is_none_or(|value| from_root(&wrapped(value, path)).is_ok())
++}
++
++/// 【原版配置】【路径取值】按 path 返回 root 对应节点
++fn at<'a>(root: &'a Value, path: &[String]) -> Option<&'a Value> {
++    path.iter().try_fold(root, |value, key| value.get(key))
++}
++
++/// 【原版配置】【路径包装】按 path 把 value 放回原始嵌套层级，供解码器单独验证
++fn wrapped(value: &Value, path: &[String]) -> Value {
++    let mut current = value.clone();
++    for key in path.iter().rev() {
++        let mut object = serde_json::Map::new();
++        object.insert(key.clone(), current);
++        current = Value::Object(object);
++    }
++    current
++}
++
++/// 【原版配置】【路径删除】按 path 从 root 移除并返回节点，缺失返回空值
++fn take(root: &mut Value, path: &[String]) -> Option<Value> {
++    let (last, parents) = path.split_last()?;
++    let parent = parents
++        .iter()
++        .try_fold(root, |value, key| value.get_mut(key))?;
++    parent.as_object_mut()?.remove(last)
+ }
+diff --git a/src/config/loading.rs b/src/config/loading.rs
+index 30b74d4..3640e46 100644
+--- a/src/config/loading.rs
++++ b/src/config/loading.rs
+@@ -28,12 +28,23 @@ pub(super) const MAX_BAD_LINES: usize = 64;
+ 
+ pub(super) fn parse(text: &str, origin: &str) -> Config {
+     if super::document::is_json(std::path::Path::new(origin), text) {
+-        return super::legacy::decode(text).unwrap_or_else(|_| {
+-            complain(format!(
+-                "【应用配置】【JSON 读取】无法读取 {origin}，使用默认配置"
+-            ));
+-            Config::default()
+-        });
++        return match super::legacy::decode_recovering(text) {
++            Ok(recovered) => {
++                for (field, value) in &recovered.removed {
++                    complain(format!(
++                        "config: {origin}: invalid value for `{field}` ({value}), using the default"
++                    ));
++                }
++                recovered.config
++            }
++            Err(error) => {
++                complain(format!("config: {origin}: {error}; using the defaults"));
++                complain(format!(
++                    "【应用配置】【JSON 读取】无法读取 {origin}，使用默认配置"
++                ));
++                Config::default()
++            }
++        };
+     }
+     let mut text = text.to_owned();
+     for _ in 0..MAX_BAD_LINES {
+@@ -373,3 +384,39 @@ pub fn pass_to(command: &mut std::process::Command) {
+         command.env("MARK_SHOT_LOG", level);
+     }
+ }
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    const BROKEN: &str = r#"{
++  "toolbar": {"fontSize": "middle", "iconSize": "middle"},
++  "save": {"directory": "shots"},
++  "translation": {"targetLanguage": "English"},
++  "custom": {"keep": "yes"}
++}"#;
++
++    /// 【应用配置】【启动容错】无参数，非法工具栏值只回退对应字段并报告路径，其他合法分组与未知键照常生效
++    #[test]
++    fn json_startup_drops_only_the_rejected_fields() {
++        let config = parse(BROKEN, "config.json");
++        assert_eq!(
++            config.toolbar.font_size,
++            crate::config::Toolbar::default().font_size
++        );
++        assert_eq!(
++            config.toolbar.icon_size,
++            crate::config::Toolbar::default().icon_size
++        );
++        assert_eq!(config.save.directory, "shots");
++        assert_eq!(config.translation.target_language, "English");
++        let recovered = super::super::legacy::decode_recovering(BROKEN).unwrap();
++        let fields: Vec<&str> = recovered
++            .removed
++            .iter()
++            .map(|(field, _)| field.as_str())
++            .collect();
++        assert!(fields.contains(&"toolbar.fontSize"), "{fields:?}");
++        assert!(fields.contains(&"toolbar.iconSize"), "{fields:?}");
++    }
++}
+diff --git a/src/config/preferences.rs b/src/config/preferences.rs
+index c302316..c2c49d9 100644
+--- a/src/config/preferences.rs
++++ b/src/config/preferences.rs
+@@ -47,7 +47,22 @@ pub fn load(path: &Path) -> io::Result<super::Config> {
+         Ok(text) => {
+             super::document::root(path, &text)?;
+             if super::document::is_json(path, &text) {
+-                return super::legacy::decode(&text);
++                // The settings window must not edit a document whose typed
++                // config is broken, but the error has to name the fields so
++                // the repair entry can explain what it will drop.
++                let recovered = super::legacy::decode_recovering(&text)?;
++                if !recovered.removed.is_empty() {
++                    let fields = recovered
++                        .removed
++                        .iter()
++                        .map(|(field, _)| field.as_str())
++                        .collect::<Vec<_>>()
++                        .join(", ");
++                    return Err(io::Error::other(format!(
++                        "无效配置字段 / invalid configuration fields: {fields}"
++                    )));
++                }
++                return Ok(recovered.config);
+             }
+             toml::from_str::<super::Config>(&text).map_err(io::Error::other)?;
+             super::loading::parse(&text, &path.to_string_lossy())
+diff --git a/src/config/recovery.rs b/src/config/recovery.rs
+index f88342c..27a84bc 100644
+--- a/src/config/recovery.rs
++++ b/src/config/recovery.rs
+@@ -1,10 +1,10 @@
+-//! 【应用设置】【故障修复】先保存原始备份，再修复可定位的错误行，禁止无备份覆盖
++//! 【应用设置】【故障修复】先保存原始备份，再修复可定位的无效字段，禁止无备份覆盖
+ use std::{
+     io,
+     path::{Path, PathBuf},
+ };
+ 
+-/// 【应用设置】【备份修复】按 path 在共享锁内备份原文并移除非法 TOML 行，JSON 语法损坏恢复空对象，返回备份路径
++/// 【应用设置】【备份修复】按 path 在共享锁内备份原文并移除非法字段，JSON 语法损坏恢复空对象，返回备份路径
+ pub fn repair(path: &Path) -> io::Result<PathBuf> {
+     use io::Write;
+     super::persistence::update(path, |text| {
+@@ -17,11 +17,7 @@ pub fn repair(path: &Path) -> io::Result<PathBuf> {
+         backup.as_file().sync_all()?;
+         let (_, backup_path) = backup.keep().map_err(|error| error.error)?;
+         let repaired = if super::document::is_json(path, text) {
+-            if super::legacy::decode(text).is_ok() {
+-                text.into()
+-            } else {
+-                "{}\n".into()
+-            }
++            json_repaired(path, text)?
+         } else {
+             repair_toml(text)?
+         };
+@@ -29,6 +25,22 @@ pub fn repair(path: &Path) -> io::Result<PathBuf> {
+     })
+ }
+ 
++/// 【应用设置】【JSON 修复】按 path、text 只删除类型解码拒绝的字段；语法无法解析时才恢复空对象
++fn json_repaired(path: &Path, text: &str) -> io::Result<String> {
++    let Ok(root) = super::document::root(path, text) else {
++        return Ok("{}\n".into());
++    };
++    let (cleaned, removed) = super::legacy::recover_root(&root)
++        .map_err(|error| io::Error::other(format!("无法定位无效字段：{error}；原文已备份")))?;
++    if removed.is_empty() {
++        return Ok(text.into());
++    }
++    for (field, value) in &removed {
++        log::warn!("config: repaired by removing invalid `{field}` ({value})");
++    }
++    Ok(serde_json::to_string_pretty(&cleaned).map_err(io::Error::other)? + "\n")
++}
++
+ /// 【应用设置】【语法修复】按 text 逐行移除解析错误，保留合法字段、注释与未知键；无法定位返回错误
+ fn repair_toml(text: &str) -> io::Result<String> {
+     let mut text = text.to_owned();
+@@ -76,4 +88,34 @@ mod tests {
+             "%Y"
+         );
+     }
++
++    /// 【应用设置】【JSON 修复】无参数，只移除类型无效字段，保留其他设置、未知键和原文件备份
++    #[test]
++    fn json_repair_removes_only_invalid_fields() {
++        let directory = tempfile::tempdir().unwrap();
++        let path = directory.path().join("config.json");
++        let text = r#"{"toolbar":{"fontSize":"middle","iconSize":"middle"},"save":{"directory":"shots"},"custom":{"keep":"yes"}}"#;
++        std::fs::write(&path, text).unwrap();
++        let backup = repair(&path).unwrap();
++        assert_eq!(std::fs::read_to_string(backup).unwrap(), text);
++        let repaired = std::fs::read_to_string(&path).unwrap();
++        super::super::legacy::decode(&repaired).unwrap();
++        let root: serde_json::Value = serde_json::from_str(&repaired).unwrap();
++        assert_eq!(root["save"]["directory"], "shots");
++        assert_eq!(root["custom"]["keep"], "yes");
++        assert!(root["toolbar"].get("fontSize").is_none());
++        assert!(root["toolbar"].get("iconSize").is_none());
++    }
++
++    /// 【应用设置】【JSON 语法】无参数，语法损坏无法定位字段时备份后恢复空对象
++    #[test]
++    fn unparseable_json_repair_resets_to_empty_object() {
++        let directory = tempfile::tempdir().unwrap();
++        let path = directory.path().join("config.json");
++        let text = "{\"save\": {\"directory\": unfinished";
++        std::fs::write(&path, text).unwrap();
++        let backup = repair(&path).unwrap();
++        assert_eq!(std::fs::read_to_string(backup).unwrap(), text);
++        assert_eq!(std::fs::read_to_string(&path).unwrap(), "{}\n");
++    }
+ }
+diff --git a/src/config/settings_store.rs b/src/config/settings_store.rs
+index e52d2cb..b86faf0 100644
+--- a/src/config/settings_store.rs
++++ b/src/config/settings_store.rs
+@@ -62,6 +62,18 @@ fn alias(key: &str) -> String {
+ /// 【应用设置】【文档路径】按 root、path 和 json 返回原文档采用的路径，旧 JSON 优先更新原结构
+ fn path_in(root: &Value, path: &str, json: bool) -> Vec<String> {
+     let mut keys: Vec<String> = path.split('.').map(snake).collect();
++    // The upload section accepts four legacy JSON group names. Writing a
++    // second group would make the typed decoder report `duplicate field
++    // 'upload'`, so keep edits inside whichever alias the file already uses.
++    if json
++        && path.starts_with("upload.")
++        && root.get("upload").is_none()
++        && let Some(group) = ["imageUpload", "uploader", "imageHost"]
++            .into_iter()
++            .find(|key| root.get(*key).is_some_and(Value::is_object))
++    {
++        keys[0] = group.to_owned();
++    }
+     if json && let Some(field) = path.strip_prefix("capture.") {
+         let section = super::legacy::capture::capture_key(root);
+         if field == "freeze_scope"
+@@ -321,7 +333,17 @@ pub fn write(path: &Path, changes: &[(String, Value)]) -> io::Result<()> {
+         let mut root = super::document::root(path, text)?;
+         let json = super::document::is_json(path, text);
+         if json {
+-            super::legacy::decode(text)?;
++            if let Err(error) = super::legacy::decode(text) {
++                // A user save must not be blocked by an unrelated stale value:
++                // drop only the fields the typed config rejects, keep everything
++                // else and let the rewritten document pass the strict decoder.
++                let (cleaned, removed) = super::legacy::recover_root(&root)
++                    .map_err(|_| io::Error::other(error.to_string()))?;
++                for (field, value) in &removed {
++                    log::warn!("config: dropping invalid `{field}` ({value}) before saving");
++                }
++                root = cleaned;
++            }
+         } else {
+             toml::from_str::<super::Config>(text).map_err(io::Error::other)?;
+         }
+@@ -490,4 +512,21 @@ mod tests {
+             assert!(value(&root, "pinned.border_width").is_null());
+         }
+     }
++
++    /// 【应用设置】【上传兼容】旧 JSON 只使用 uploader 分组时保存上传字段仍写回原组，不产生重复 upload 字段
++    #[test]
++    fn upload_edits_stay_in_the_existing_legacy_group() {
++        let directory = tempfile::tempdir().unwrap();
++        let path = directory.path().join("config.json");
++        std::fs::write(&path, r#"{"uploader":{"command":"old.sh"}}"#).unwrap();
++        write(
++            &path,
++            &[("upload.timeout_ms".into(), serde_json::json!(90000))],
++        )
++        .unwrap();
++        let root = source(&path).unwrap();
++        assert!(root.get("upload").is_none());
++        assert_eq!(root["uploader"]["timeout_ms"], 90000);
++        assert_eq!(root["uploader"]["command"], "old.sh");
++    }
+ }
+diff --git a/src/config/tests/interface_theme.rs b/src/config/tests/interface_theme.rs
+index f9a8bf7..8026dc8 100644
+--- a/src/config/tests/interface_theme.rs
++++ b/src/config/tests/interface_theme.rs
+@@ -2,12 +2,13 @@
+ 
+ use super::*;
+ 
+-/// 【主题配置测试】【默认浅色】空配置和模板都使用原版浅色角色；暗色配置只替换颜色，尺寸保持一致，无参数、无返回值
++/// 【主题配置测试】【默认跟随系统】空配置和模板都使用 system；测试环境解析为浅色角色。
++/// 显式 dark 配置只替换颜色，尺寸保持一致，无参数、无返回值
+ #[test]
+-fn light_is_the_default_and_dark_changes_only_colors() {
++fn system_is_the_default_and_dark_changes_only_colors() {
+     let light = super::super::loading::parse("", "test");
+     let dark = super::super::loading::parse("[ui]\ntheme = \"dark\"\n", "test");
+-    assert_eq!(light.ui.theme, Mode::Light);
++    assert_eq!(light.ui.theme, Mode::System);
+     assert_eq!(light.theme, Theme::for_mode(Mode::Light));
+     assert_eq!(dark.ui.theme, Mode::Dark);
+     assert_eq!(dark.theme, Theme::for_mode(Mode::Dark));
+@@ -16,12 +17,12 @@ fn light_is_the_default_and_dark_changes_only_colors() {
+     assert_eq!(light.theme.font_size, dark.theme.font_size);
+ }
+ 
+-/// 【主题配置测试】【覆盖优先】旧模板内置颜色使用默认浅色，显式自定义颜色与尺寸继续生效，未知名称回退浅色，无参数、无返回值
++/// 【主题配置测试】【覆盖优先】旧模板内置颜色跟随默认 system（测试环境解析浅色），显式自定义颜色与尺寸继续生效，未知名称回退浅色，无参数、无返回值
+ #[test]
+ fn legacy_background_and_explicit_colors_remain_compatible() {
+     let read = |text| super::super::loading::parse(text, "test");
+     let legacy = read("[theme]\nbackground = \"#0F1117E6\"\n");
+-    assert_eq!(legacy.ui.theme, Mode::Light);
++    assert_eq!(legacy.ui.theme, Mode::System);
+     assert_eq!(
+         legacy.theme.foreground,
+         Theme::for_mode(Mode::Light).foreground
+diff --git a/src/config/translation.rs b/src/config/translation.rs
+index 4d05e3d..18d4c31 100644
+--- a/src/config/translation.rs
++++ b/src/config/translation.rs
+@@ -134,3 +134,34 @@ pub(crate) fn save_target_at(path: &Path, target: &str) -> io::Result<String> {
+ #[cfg(test)]
+ #[path = "tests/translation.rs"]
+ mod tests;
++
++#[cfg(test)]
++mod persistence_tests {
++    use super::*;
++
++    /// A stale unrelated value with the wrong type must not block saving the target language: the
++    /// shared writer drops only the rejected field, the target is persisted, the remaining document
++    /// keeps its shape, and the rewritten file passes the strict decoder again.
++    #[test]
++    fn target_language_save_survives_unrelated_invalid_configuration() {
++        let root = tempfile::tempdir().unwrap();
++        let path = root.path().join("config.json");
++        std::fs::write(
++            &path,
++            r#"{"toolbar":{"fontSize":"middle","iconSize":"middle"},"save":{"directory":"shots"},"translation":{"targetLanguage":"English","apiBase":"https://api.openai.com/v1","apiKey":"local-test-value","model":"gpt-4o-mini"},"custom":{"keep":"yes"}}"#,
++        )
++        .unwrap();
++        assert_eq!(save_target_at(&path, "Japanese").unwrap(), "Japanese");
++        let saved = crate::config::settings_store::source(&path).unwrap();
++        // The writer keeps the key casing of the existing document.
++        assert_eq!(saved["translation"]["targetLanguage"], "Japanese");
++        assert!(saved["translation"].get("target_language").is_none());
++        assert_eq!(saved["translation"]["apiKey"], "local-test-value");
++        assert_eq!(saved["save"]["directory"], "shots");
++        assert_eq!(saved["custom"]["keep"], "yes");
++        assert!(saved["toolbar"].get("fontSize").is_none());
++        let text = std::fs::read_to_string(&path).unwrap();
++        crate::config::legacy::decode(&text).unwrap();
++        assert_eq!(read_at(&path).unwrap().target_language, "Japanese");
++    }
++}
+diff --git a/src/ocr/runtime_library.rs b/src/ocr/runtime_library.rs
+index 3115fba..7cfdc09 100644
+--- a/src/ocr/runtime_library.rs
++++ b/src/ocr/runtime_library.rs
+@@ -50,6 +50,25 @@ pub fn installed() -> bool {
+     install::verify_installed(&root.join("installed"), dist).is_ok()
+ }
+ 
++/// Appends the dynamic loader's own reason to an ONNX Runtime load failure.
++/// `libloading` renders every `dlopen` failure as just "dlopen failed"; the
++/// missing dependency name is only in the error source, so the bare Display
++/// would hide which system library the downloaded runtime needed.
++#[cfg(feature = "ocr-dynamic")]
++fn loader_detail(error: &ort::LoadDynamicError) -> String {
++    let ort::LoadDynamicError::Dlopen {
++        error: loader_error,
++        ..
++    } = error
++    else {
++        return error.to_string();
++    };
++    match std::error::Error::source(loader_error) {
++        Some(cause) => format!("{error}: {cause}"),
++        None => error.to_string(),
++    }
++}
++
+ /// 【识别运行库】【加载入口】无参数，串行校验和初始化当前进程的运行库；未安装时返回引导信息，绝不自动下载
+ pub fn load() -> Result<(), String> {
+     #[cfg(feature = "ocr-dynamic")]
+@@ -69,7 +88,12 @@ pub fn load() -> Result<(), String> {
+             format!("请在 OCR 面板下载或修复推理库 / Install or repair the OCR runtime: {error}")
+         })?;
+         ort::init_from(root.join(dist.library.file))
+-            .map_err(|error| format!("Install or repair the OCR runtime: {error}"))?
++            .map_err(|error| {
++                format!(
++                    "Install or repair the OCR runtime: {}",
++                    loader_detail(&error)
++                )
++            })?
+             .commit();
+         let _ = LOADED.set(());
+     }
