@@ -43,7 +43,7 @@ let
   # Latest main commit (no tagged releases); 0.1.0 is the Meson project version.
   rev = "426d3d433d5a738d4abf01474c34487f884396ae";
 in
-stdenv.mkDerivation (finalAttrs: {
+stdenv.mkDerivation (_finalAttrs: {
   pname = "xdg-desktop-portal-umbriel";
   version = "0.1.0";
 

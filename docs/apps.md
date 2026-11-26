@@ -51,7 +51,7 @@ checks: []
 | pavucontrol | 保留 | 由 `session-support` 安装。桌面没有等价的硬件 card profile 菜单，高级操作也可用 wpctl/pw-cli，命令见 README。 |
 | brightnessctl | 保留 | Noctalia 的亮度控制仍需要背光设备访问；包内 udev 规则把亮度节点交给 `video` 组。 |
 | ddcutil | 保留 | 外接显示器 DDC/CI 后端，与笔记本背光不同。无支持设备时不会凭空带来功能。 |
-| playerctl | 保留 | MPRIS 媒体控制接线，不是另一个播放器。 |
+| playerctl | 保留 | MPRIS 命令行工具，不是另一个播放器；桌面媒体键改由 Noctalia IPC（`media toggle/stop/previous/next`）转发，playerctl 仍是排障与脚本入口。 |
 | Lenovo Legion 工具 | 保留主机专属 | 面向该笔记本；后续放入 host 硬件能力，服务器不继承。不能仅凭包名判断硬件功能已生效。 |
 
 资料：[Mozilla 定制](https://support.mozilla.org/en-US/kb/firefox-advanced-customization-and-configuration)、[QQ Linux](https://im.qq.com/linuxqq/index.shtml)、[Discord 分享限制](https://support.discord.com/hc/en-us/articles/360040816151-Go-Live-and-Screen-Share)、[Vesktop 排障](https://vesktop.dev/wiki/linux/troubleshooting/)、[Mihomo TUN](https://wiki.metacubex.one/config/inbound/tun/)、[Yazi](https://yazi-rs.github.io/docs/configuration/yazi/)、[Swayimg v4.7](https://github.com/artemsen/swayimg/blob/v4.7/README.md)、[mpv 手册](https://mpv.io/manual/stable/)、[btop](https://github.com/aristocratos/btop)。
@@ -257,7 +257,7 @@ checks: []
 | Tailscale（条件） | 多台设备跨网络互联，需要方便地访问 SSH/服务 | 引入账户、控制面和 ACL 管理；只有一台本机时价值有限。Headscale 自建控制面以后有真实需求再选，不同时铺开。 | host 选择网络角色，不复制桌面配置。 |
 | fwupd（条件） | 支持 LVFS 的设备固件更新 | 先核对具体设备是否支持。现有 redistributable firmware 是驱动固件分发，不等于 BIOS/设备更新服务。 | 硬件能力；不预设 Lenovo 全部设备可更新。 |
 | Okular（已移除） | 用户决定移除；PDF 默认仍为 Zathura，批注使用 Zotero 内置阅读器 | 删除包与 MIME association；Zotero 当前锁定版本 9.0.6。 | 不删除 PDF 或应用数据。 |
-| Crosspipe（条件） | 可视化 PipeWire 节点连接，例如复杂录音/直播路由 | 日常音量已有 swayosd，排障可用 wpctl/pw-cli。锁定 nixpkgs 已移除 Helvum 包别名，不照旧推荐它；Crosspipe 仍需验证实际路由。 | 桌面音频工具，按需打开。 |
+| Crosspipe（条件） | 可视化 PipeWire 节点连接，例如复杂录音/直播路由 | 日常音量已有 Noctalia OSD，排障可用 wpctl/pw-cli。锁定 nixpkgs 已移除 Helvum 包别名，不照旧推荐它；Crosspipe 仍需验证实际路由。 | 桌面音频工具，按需打开。 |
 | EasyEffects（条件） | 明确需要麦克风 EQ、降噪、压缩或输出处理 | 系统不常驻 echo-cancel（曾拖垮蓝牙 A2DP），通话应用自带回声消除。效果链增加调试和处理成本，没有需求先不加。 | 用户级音效能力，避免双重处理。 |
 | Heroic（条件） | 确实有 Epic/GOG/Amazon 游戏 | 商店登录和 Wine/游戏兼容另需维护，Steam/Prism 用户不自动需要。 | 游戏桌面角色。 |
 | darktable（条件） | 拍 RAW，需要冲洗和照片库 | 与 GIMP 分工；普通截图/网页图片无需增加。 | 摄影角色。 |

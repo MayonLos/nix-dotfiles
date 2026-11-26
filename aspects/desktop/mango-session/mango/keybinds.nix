@@ -35,6 +35,10 @@ let
     "SUPER+SHIFT,S,toggle_special_tag"
     # Noctalia lock surface; it authenticates through the login PAM stack.
     "SUPER+ALT,L,spawn,${noctalia} msg session lock"
+    # Noctalia session panel (lock/reboot/logout). Super+Escape is the key-mode
+    # safety net below, so the default session uses Shift for the same panel
+    # that Mod+Escape opens in Umbriel and Hyprland.
+    "SUPER+SHIFT,Escape,spawn,${noctalia} msg panel-toggle session"
     "SUPER,0,toggleoverview"
     "SUPER+SHIFT,0,togglejump"
 
@@ -155,8 +159,9 @@ let
     # aspects/desktop/mango-session/screenshot.nix.
     "SUPER,Print,spawn,ocr-region"
     "SUPER+SHIFT,Print,spawn,ocr-screen"
-    # The old Ctrl+Alt+Delete session menu is gone. Log out with
-    # `mmsg dispatch quit`; use `loginctl`/`systemctl` for power actions.
+    # The old Ctrl+Alt+Delete session menu is gone. The Noctalia session panel
+    # is on Super+Shift+Escape; `mmsg dispatch quit` and loginctl/systemctl
+    # remain the scriptable equivalents.
     # Noctalia owns clipboard history and previews; there is no second
     # clipboard daemon and no second launcher on Super+A.
     "SUPER,V,spawn,${noctalia} msg panel-toggle clipboard"
@@ -193,8 +198,9 @@ let
 
   ];
   hardwareBinds = [
-    # Noctalia owns the volume/brightness OSD in every session. Do not call a
-    # second volume or brightness tool: the step would run twice.
+    # Noctalia owns the volume/brightness/media OSD in every session. Do not
+    # call a second volume, brightness or media tool: the action would run
+    # twice and the bar/OSD state would disagree between sessions.
     # No comma in these commands: the help renderer splits fields on commas.
     "NONE,XF86AudioRaiseVolume,spawn,${noctalia} msg volume-up"
     "NONE,XF86AudioLowerVolume,spawn,${noctalia} msg volume-down"
@@ -202,10 +208,10 @@ let
     "NONE,XF86AudioMicMute,spawn,${noctalia} msg mic-mute"
     "NONE,XF86MonBrightnessUp,spawn,${noctalia} msg brightness-up"
     "NONE,XF86MonBrightnessDown,spawn,${noctalia} msg brightness-down"
-    "NONE,XF86AudioPlay,spawn,playerctl play-pause"
-    "NONE,XF86AudioStop,spawn,playerctl stop"
-    "NONE,XF86AudioPrev,spawn,playerctl previous"
-    "NONE,XF86AudioNext,spawn,playerctl next"
+    "NONE,XF86AudioPlay,spawn,${noctalia} msg media toggle"
+    "NONE,XF86AudioStop,spawn,${noctalia} msg media stop"
+    "NONE,XF86AudioPrev,spawn,${noctalia} msg media previous"
+    "NONE,XF86AudioNext,spawn,${noctalia} msg media next"
 
   ];
   resizeBinds = [
@@ -284,11 +290,25 @@ let
       fields = lib.splitString "," (builtins.unsafeDiscardStringContext row);
       key = lib.concatStringsSep "," (lib.take 2 fields);
       action = lib.elemAt fields 2;
-      label =
-        if action == "spawn" && lib.hasInfix "panel-toggle wallpaper" row then
-          "切换壁纸"
+      # Noctalia panel verbs are store paths; show a readable label instead of
+      # dumping the command into the help text (same treatment as wallpaper).
+      panelToggle =
+        if action == "spawn" then
+          lib.findFirst (infix: lib.hasInfix infix row) null [
+            "panel-toggle launcher"
+            "panel-toggle clipboard"
+            "panel-toggle session"
+            "panel-toggle wallpaper"
+          ]
         else
-          actionNames.${action} or action;
+          null;
+      panelLabels = {
+        "panel-toggle launcher" = "打开启动器";
+        "panel-toggle clipboard" = "打开剪贴板历史";
+        "panel-toggle session" = "打开会话面板";
+        "panel-toggle wallpaper" = "切换壁纸";
+      };
+      label = if panelToggle != null then panelLabels.${panelToggle} else actionNames.${action} or action;
       scratchpadNames = {
         mayon-scratch = "临时终端";
         mayon-files = "临时文件 Yazi";
@@ -298,7 +318,7 @@ let
         mayon-bili = "哔哩哔哩";
       };
       args =
-        if action == "spawn" && lib.hasInfix "panel-toggle wallpaper" row then
+        if panelToggle != null then
           ""
         else if action == "toggle_named_scratchpad" then
           scratchpadNames.${lib.elemAt fields 3} or (lib.elemAt fields 3)

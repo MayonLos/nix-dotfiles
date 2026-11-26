@@ -74,6 +74,9 @@ else
       grep -Fq '[appearance.palette]' ${greeterTomlFile}
       grep -Fq 'default = "Mango"' ${greeterTomlFile}
       grep -Fq 'primary = "${appearance.blue}"' ${greeterTomlFile}
+      grep -Fq 'on_surface = "${appearance.brightFg}"' ${greeterTomlFile}
+      grep -Fq 'on_surface_variant = "${appearance.fg}"' ${greeterTomlFile}
+      grep -Fq 'scheme_selector_position = "hidden"' ${greeterTomlFile}
       grep -Fq 'theme = "${appearance.cursor.name}"' ${greeterTomlFile}
       grep -Fq 'layout = "us"' ${greeterTomlFile}
       test ${if builtins.elem "greeter" (builtins.attrNames nixos.users.users) then "1" else "0"} = 1

@@ -28,7 +28,9 @@ let
       password_style = "default";
       hide_logo = false;
       power_buttons_position = "bottom-right";
-      scheme_selector_position = "top-right";
+      # The session is fixed to One Dark; a scheme picker on the login screen
+      # would advertise a choice that the shell and lock screen do not honor.
+      scheme_selector_position = "hidden";
       corner_radius_scale = 0.8;
       font_family = "Inter";
       palette = {
@@ -41,9 +43,9 @@ let
         error = palette.red;
         on_error = palette.black;
         surface = palette.bg;
-        on_surface = palette.fg;
+        on_surface = palette.brightFg;
         surface_variant = palette.surface;
-        on_surface_variant = palette.muted;
+        on_surface_variant = palette.fg;
         outline = palette.border;
         shadow = palette.black;
         hover = palette.selection;

@@ -41,7 +41,7 @@
 let
   rev = "b56b66ce66b4cf84d34e522d3ad63a82b215ccd9";
 in
-stdenv.mkDerivation (finalAttrs: {
+stdenv.mkDerivation (_finalAttrs: {
   pname = "umbriel";
   version = "0-unstable-2026-11-24";
 

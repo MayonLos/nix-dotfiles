@@ -2,7 +2,7 @@
 summary: One Dark 配色令牌、用色规则、字体和桌面现行尺寸
 read_when: 调整任何界面的颜色、字体、圆角、间距、透明度或动效
 code: [aspects/appearance/appearance/onedark.nix, aspects/desktop/mango-session/mango.nix, aspects/desktop/noctalia-shell/noctalia.nix, aspects/desktop/noctalia-shell/services.nix, aspects/desktop/session-support/gtk.nix]
-checks: [palette-contrast, gtk-qt-theme, interactive-session-config]
+checks: [palette-contrast, gtk-qt-theme, unified-noctalia-session]
 ---
 
 # 视觉规范
@@ -38,7 +38,7 @@ checks: [palette-contrast, gtk-qt-theme, interactive-session-config]
 - 正文统一 brightFg，次级用 fg。选中态是 selection 底加 blue 短标记，不铺整块蓝。
 - 红、紫只做标记，错误句子正文仍用 brightFg。状态要配文字或符号，不只靠颜色。
 - 对比度门槛：正文 ≥7，次级 ≥4.5。muted 在 surface 和 selection 上不达标（4.03、3.38），border 不能作文字。`palette-contrast` 检查负责校验。
-- 浮层、认证输入、候选框和通知不透明。
+- 浮层、认证输入、候选框和通知保持高不透明度：Noctalia 通知 0.97、OSD 0.95（不是 1.0），也不加模糊。
 
 ## 字体
 
@@ -58,16 +58,16 @@ checks: [palette-contrast, gtk-qt-theme, interactive-session-config]
 | 间距 内 / 外 | 10 / 16。单个平铺窗口同样保留（`smart_gaps = 0`），只有 monocle 去掉间距 | `mango.nix` |
 | 动画 开 / 关 / 移动 / tag / 焦点 | 220 / 180 / 180 / 280 / 120 ms。开合都是 zoom，起止比例 0.92。开窗透明度从 0 到 1，关窗从 1 到 0。工作区切换是横向滑入。焦点时长只插值边框和 dim | `mango.nix` |
 | 非焦点 | 不透明，dim 为 black 的 0x18。浮动窗阴影 size 18、blur 32、下移 10 | `mango.nix` |
-| 顶栏 | 高 30，完全透明（无背景、不模糊），贴顶。字体 Maple Mono NF CN Medium 13px。左侧为布局符号与工作区编号，中间为窗口标题；活动工作区为 blue 数字，无下划线、无色块 | `shell.nix` |
+| 顶栏 | Noctalia 高 30、完全透明（无背景、不模糊）、贴顶，三个会话共用。左侧工作区编号（当前 blue、占用 brightFg、空 fg，靠颜色层级区分、无下划线）；中间窗口标题；右侧托盘、网络、电池、CPU/MEM、通知、控制中心与 `%m月%d日 %H:%M` 时钟 | `noctalia-shell/noctalia.nix` |
 | 搜索 | Noctalia launcher 面板居中，不画应用图标；`Alt+Space` | `noctalia-shell/noctalia.nix` |
-| 通知 | Noctalia 通知卡片：右上、不透明、1 px 边框、无模糊，最多 3 条 | `noctalia-shell/noctalia.nix` |
-| OSD | Noctalia 音量/亮度/麦克风胶囊；锁定键提示由合成器 IPC 转发 | `noctalia-shell/services.nix` |
-| 壁纸 | Noctalia 绘制当前壁纸，背景色 bg；默认图由 appearance 提供 | `noctalia-shell/noctalia.nix` |
+| 通知 | Noctalia 通知卡片：右上、`background_opacity` 0.97、1 px 边框、无模糊；可见条数由屏幕空间决定（未设 `max_visible`） | `noctalia-shell/noctalia.nix` |
+| OSD | Noctalia 音量/亮度/麦克风胶囊：底部居中（`bottom_center`，`offset_y` 48），避开右上通知；锁定键提示由合成器 IPC 转发 | `noctalia-shell/noctalia.nix` |
+| 壁纸 | Noctalia 绘制当前壁纸，背景色 bg；默认图由 appearance 提供。壁纸面板浏览 `~/Pictures/Wallpapers`：`managed/` 为 18 张内置图，`local/` 归用户 | `noctalia-shell/noctalia.nix` |
 | 锁屏 | Noctalia 锁屏覆盖层，认证走登录 PAM 栈 | `noctalia-shell/services.nix` |
 
 ## 模糊
 
-三个合成器都把 layer 规则设成默认 `no_blur:1`；Noctalia 顶栏完全透明，面板和 OSD 自己提供 blur 区域。
+Mango 的 layer 规则默认 `no_blur:1`，Noctalia 顶栏完全透明；Umbriel 只对 Noctalia 的 bar/面板/通知/OSD 层开放 blur；Hyprland 没有配置 layer rule。Noctalia 面板为 solid，不依赖合成器 blur。
 
 通知与 OSD 在 Mango 下保持 `no_blur:1`：半透明卡片再模糊会让底色发灰（2026-10-31 实机确认）。壁纸由 Noctalia 绘制，不参与 Mango 的 layer 模糊。
 

@@ -11,10 +11,10 @@ checks: [desktop-composition, mango-blur-sampling, unified-noctalia-session, gre
 
 ## 共享 Shell（Noctalia）
 
-- **顶栏**：Noctalia 的 30px 全透明栏（一个配置服务所有会话）。左侧工作区/窗口标题，右侧托盘、网络、电池、`CPU`/`MEM` 标签、中文时间；CPU 与内存只保留这两个采样器，GPU/网络/磁盘轮询为 0。
-- **启动器与面板**：`Alt+Space` 打开 Noctalia launcher；`Super+V` 打开剪贴板历史面板；`Super+W` 打开壁纸面板；`Super+Escape` 打开会话面板。没有 Dock、Launchpad 或第二套启动器。
-- **通知与 OSD**：Noctalia 统一绘制通知、音量/亮度/麦克风 OSD 和键盘锁定提示。媒体键之外的硬件键在三个合成器里都通过 Noctalia IPC 转发，不再有 swayosd。
-- **壁纸与锁屏**：Noctalia 绘制壁纸；`Super+Alt+L` 调用 Noctalia 锁屏，通过登录 PAM 栈认证。没有 swaybg/sweetbgd/Matuwall/swaylock/swayidle。
+- **顶栏**：Noctalia 的 30px 全透明栏（一个配置服务所有会话）。左侧工作区编号（当前 blue、占用 brightFg、空 fg）与窗口标题，右侧托盘、网络、电池、`CPU`/`MEM` 标签、通知、控制中心与中文日期时间（`%m月%d日 %H:%M`）；CPU/内存轮询 2 s，GPU 轮询为 0，网络 3 s、磁盘 10 s 只供状态显示。
+- **启动器与面板**：`Alt+Space` 打开 Noctalia launcher；`Super+V` 打开剪贴板历史面板；`Super+W` 打开壁纸面板（浏览 `~/Pictures/Wallpapers`，`managed/` 为内置 18 张、`local/` 为用户图）；Umbriel/Hyprland 用 Mod+Escape、Mango 用 `Super+Shift+Escape` 打开会话面板（Mango 的 `Super+Esc` 留给按键模式退出）。没有 Dock、Launchpad 或第二套启动器。
+- **通知与 OSD**：Noctalia 统一绘制通知、音量/亮度/麦克风 OSD 和键盘锁定提示；OSD 在底部居中（`bottom_center`，`offset_y` 48），通知保持右上。音量、亮度、麦克风与媒体键在三个合成器里都通过 Noctalia IPC 转发，不再有 swayosd 或直接调用 playerctl 的媒体键。
+- **壁纸与锁屏**：Noctalia 绘制壁纸，壁纸面板只浏览 `~/Pictures/Wallpapers`（HM 只维护 `managed/` 链接，`local/` 用户数据不动）；`Super+Alt+L` 调用 Noctalia 锁屏，通过登录 PAM 栈认证。没有 swaybg/sweetbgd/Matuwall/swaylock/swayidle。
 - **优化配置**：`shell.offline_mode = true`（关闭 palette/天气/定位的周期 HTTP）、关闭 weather/calendar/community templates/screen time、剪贴板历史上限 50、动画跟随 `palette.reducedMotion`。生成配置在应用前用 `noctalia config validate` 校验。
 
 ## 会话
@@ -35,7 +35,7 @@ checks: [desktop-composition, mango-blur-sampling, unified-noctalia-session, gre
 
 ## 窗口规则（Mango）
 
-唯一规则表是 `aspects/desktop/mango-session/mango/window-rules.nix`，字段以锁定 Mango 的解析器为准。规则按顺序覆盖；`app_id` 与 `title` 同写时是 AND，标题变化后不重新匹配。`steam_app_*` 与 Minecraft 无边框、无阴影、无圆角；一个平铺窗口或 monocle 贴住可用区域，两个及以上窗口按 [visual.md](visual.md) 的描边/圆角/间距绘制。开合、工作区滑动和焦点过渡数值在 visual.md。
+唯一规则表是 `aspects/desktop/mango-session/mango/window-rules.nix`，字段以锁定 Mango 的解析器为准。规则按顺序覆盖；`app_id` 与 `title` 同写时是 AND，标题变化后不重新匹配。Noctalia Settings（app_id `dev.noctalia.Noctalia`）单独浮动为 1020×900，和 Umbriel 的规则一致。`steam_app_*` 与 Minecraft 无边框、无阴影、无圆角；一个平铺窗口或 monocle 贴住可用区域，两个及以上窗口按 [visual.md](visual.md) 的描边/圆角/间距绘制。开合、工作区滑动和焦点过渡数值在 visual.md。
 
 ## 跨应用外观分工
 

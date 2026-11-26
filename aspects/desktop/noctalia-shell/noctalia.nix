@@ -4,10 +4,9 @@ let
   toml = pkgs.formats.toml { };
   json = pkgs.formats.json { };
   noctalia = pkgs.local.noctaliaDesktop.noctalia;
-  wallpaper =
-    (import ../../appearance/appearance/resources/wallpaper/package.nix {
-      inherit pkgs palette;
-    }).default;
+  wallpapers = import ../../appearance/appearance/resources/wallpaper/package.nix {
+    inherit pkgs palette;
+  };
 
   # One Dark -> Noctalia palette format 2 (16 direct roles plus terminal ANSI).
   oneDark = {
@@ -23,9 +22,12 @@ let
       error = palette.red;
       on_error = palette.black;
       surface = palette.bg;
-      on_surface = palette.fg;
+      # Token semantics from visual.md: brightFg is body text, fg is secondary.
+      # muted is auxiliary only and fails the contrast floor on cards, so it is
+      # deliberately not mapped to either text role.
+      on_surface = palette.brightFg;
       surface_container = palette.surface;
-      on_surface_variant = palette.muted;
+      on_surface_variant = palette.fg;
       outline_variant = palette.border;
       shadow = palette.black;
       hover = palette.selection;
@@ -67,6 +69,12 @@ let
 in
 {
   home.packages = [ noctalia ];
+
+  # The appearance factory's 18-image link farm is the managed wallpaper set.
+  # This feature owns only that link; user images under .../Wallpapers/local/
+  # stay untouched. Noctalia's wallpaper panel browses [wallpaper] directory
+  # below, one level above both directories.
+  home.file."Pictures/Wallpapers/managed".source = wallpapers.directory;
 
   # Palettes live next to the config and are selected by name, matching the
   # upstream Home Manager module's layout.
@@ -153,9 +161,11 @@ in
       fill_mode = "crop";
       transition = [ "fade" ];
       transition_duration = 600;
-      directory = "";
+      # One level above `managed/` and `local/`; an empty value would fall back
+      # to the XDG Pictures root and mix screenshots into the picker.
+      directory = "~/Pictures/Wallpapers";
     };
-    wallpaper.default.path = "${wallpaper}";
+    wallpaper.default.path = "${wallpapers.default}";
 
     backdrop.enabled = false;
 
@@ -173,7 +183,9 @@ in
     };
 
     osd = {
-      position = "top_right";
+      # Notifications default to the top-right corner; keep the OSD away from
+      # them. bottom_center also matches the retired swayosd placement.
+      position = "bottom_center";
       kinds.keyboard_layout = false;
       hide_delay_ms = 1400;
       scale = 0.95;
@@ -182,7 +194,7 @@ in
       border_color = "outline_variant";
       border_width = 1;
       offset_x = 16;
-      offset_y = 8;
+      offset_y = 48;
     };
 
     lockscreen = {
@@ -269,8 +281,11 @@ in
         label_source = "id";
         max_label_chars = 1;
         focused_color = "primary";
-        occupied_color = "on_surface_variant";
-        empty_color = "surface_container";
+        # Occupied and empty are a text hierarchy, not surfaces: occupied is
+        # the body role, empty steps down to the secondary role. The previous
+        # surface_container color made empty tags unreadable on the wallpaper.
+        occupied_color = "on_surface";
+        empty_color = "on_surface_variant";
         urgent_color = "error";
         change_color_on_hover = true;
         hide_when_empty = false;
@@ -283,7 +298,9 @@ in
         show_empty_label = false;
       };
       clock = {
-        format = "{:%H:%M}";
+        # Date + time; Chinese month/day literals keep the format independent
+        # of the session LC_TIME locale (weekday abbreviations would not).
+        format = "{:%m月%d日 %H:%M}";
         tooltip_format = "{:%Y-%m-%d %A}";
       };
       cpu = {

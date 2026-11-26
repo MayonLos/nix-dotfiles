@@ -10,4 +10,4 @@ Public exports: `onedark.nix`, `ansi.nix`, and `resources/wallpaper/` are public
 
 Owned files are `contract.nix`, `default.nix`, the public data files, wallpaper factory/resources, and the license. Removing the aspect removes its schema declarations; it does not rewrite application settings or remove wallpaper/user data already copied elsewhere. Rendered configurations disappear only when their consuming features are also removed and a new generation is activated.
 
-The factory does not create home directories. The Mango consumer owns only the managed wallpaper link and missing-directory creation; user `Pictures/Wallpapers/local/` contents remain user-owned and survive feature removal.
+The factory does not create home directories. The shared Noctalia shell consumer (`aspects/desktop/noctalia-shell/noctalia.nix`) owns only the `~/Pictures/Wallpapers/managed` link; the sibling `local/` directory and its contents remain user-owned and survive feature removal. Noctalia's wallpaper panel browses `~/Pictures/Wallpapers`, one level above both directories.
