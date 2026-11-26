@@ -194,46 +194,6 @@
         "type": "github"
       }
     },
-    "mangobar": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs-unstable"
-        ]
-      },
-      "locked": {
-        "lastModified": 1793751277,
-        "narHash": "sha256-Nod3JUwnQ3zWRIjNf05xa5OAgBCOQbgBRyPS2mbIk4A=",
-        "owner": "mangowm",
-        "repo": "mangobar",
-        "rev": "2b79fcb956cce8d80c0ece997e0e2aa2b02b71c1",
-        "type": "github"
-      },
-      "original": {
-        "owner": "mangowm",
-        "repo": "mangobar",
-        "type": "github"
-      }
-    },
-    "matuwall": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1795457396,
-        "narHash": "sha256-V1vpRPerj/KrqNQNnTPqgCLbXPoK87iT7VA2SIujBBs=",
-        "owner": "naurissteins",
-        "repo": "Matuwall",
-        "rev": "31fcf27e45ce90cd53ae59c4a8269539489763ba",
-        "type": "github"
-      },
-      "original": {
-        "owner": "naurissteins",
-        "repo": "Matuwall",
-        "type": "github"
-      }
-    },
     "nix-index-database": {
       "inputs": {
         "nixpkgs": [
@@ -340,13 +300,10 @@
         "home-manager": "home-manager",
         "llm-agents": "llm-agents",
         "mango": "mango",
-        "mangobar": "mangobar",
-        "matuwall": "matuwall",
         "nix-index-database": "nix-index-database",
         "nixpkgs": "nixpkgs_3",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "sops-nix": "sops-nix",
-        "sweetbg": "sweetbg",
         "treefmt-nix": "treefmt-nix_2"
       }
     },
@@ -390,26 +347,6 @@
       "original": {
         "owner": "Mic92",
         "repo": "sops-nix",
-        "type": "github"
-      }
-    },
-    "sweetbg": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1794683414,
-        "narHash": "sha256-M7wpaCt93ulPnaJzBqGGvXczg4mfE0K9oVC8Ni5FTT8=",
-        "owner": "sweetwm",
-        "repo": "sweetbg",
-        "rev": "1d7dcea6e00b2b42ff334aba88f4d62e825e54dd",
-        "type": "github"
-      },
-      "original": {
-        "owner": "sweetwm",
-        "repo": "sweetbg",
         "type": "github"
       }
     },
