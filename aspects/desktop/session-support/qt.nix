@@ -19,6 +19,11 @@
       qt6ctDir = "${configHome}/qt6ct";
       qt6ctConfig = "${qt6ctDir}/qt6ct.conf";
       colorScheme = "${qt6ctDir}/colors/one-dark.conf";
+      # qt5ct reads the same palette file: the QSettings colour roles did not
+      # change between Qt 5 and Qt 6. Octave is the only Qt 5 application and
+      # pins QT_QPA_PLATFORMTHEME to qt5ct in its own wrapper.
+      qt5ctDir = "${configHome}/qt5ct";
+      qt5ctConfig = "${qt5ctDir}/qt5ct.conf";
       # qt6ct 0.11's stylesheet picker scans userStyleSheetPath(), which is
       # <config>/qt6ct/qss; keep the HM resource discoverable there.
       stylesheet = "${qt6ctDir}/qss/one-dark.qss";
@@ -39,6 +44,21 @@
 
         [Interface]
         stylesheets=${stylesheet}
+      '';
+      # qt5ct 1.9 has no stylesheet field; palette, icons and Fusion are what
+      # it reads. Fonts mirror qt6ct so the one Qt 5 application uses the same
+      # faces as the rest of the session.
+      mkQt5ctConf = pkgs.writeText "qt5ct.conf" ''
+        [Appearance]
+        color_scheme_path=${colorScheme}
+        custom_palette=true
+        icon_theme=${desktop.iconTheme}
+        standard_dialogs=default
+        style=Fusion
+
+        [Fonts]
+        general="${palette.fonts.sans},10.5,-1,5,50,0,0,0,0,0"
+        fixed="${palette.fonts.mono},11,-1,5,50,0,0,0,0,0"
       '';
       initialPalette =
         let
@@ -118,6 +138,7 @@
     in
     {
       seedQt6ctConfig = safeSeed qt6ctConfig mkConf;
+      seedQt5ctConfig = safeSeed qt5ctConfig mkQt5ctConf;
       migrateQt6ctFonts = lib.hm.dag.entryAfter [ "seedQt6ctConfig" ] ''
         run ${pkgs.python3}/bin/python3 ${migrate} ${lib.escapeShellArg qt6ctConfig} ${lib.escapeShellArg stylesheet} ${lib.escapeShellArg desktop.iconTheme} ${lib.escapeShellArg palette.fonts.sans} ${lib.escapeShellArg palette.fonts.mono}
       '';

@@ -1,0 +1,3 @@
+# Unified diffs carry an empty context line as a line containing one space;
+# that is patch payload, not source whitespace, so do not fail diff --check.
+patches/*.patch -whitespace

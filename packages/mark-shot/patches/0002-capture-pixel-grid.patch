@@ -1,0 +1,690 @@
+diff --git a/src/app.rs b/src/app.rs
+index 0504e69..359d2b2 100644
+--- a/src/app.rs
++++ b/src/app.rs
+@@ -57,7 +57,9 @@ pub(crate) mod text_context_menu;
+ pub(crate) mod text_input;
+ pub(crate) mod text_menu_surface;
+ 
+-pub(crate) use init::{build_captures, build_placements, load_icons_cache};
++#[cfg(test)]
++pub(crate) use init::build_placements;
++pub(crate) use init::{build_captures, build_placements_for_frames, load_icons_cache};
+ pub(crate) use input::select_tool;
+ pub(crate) use input::text_reedit;
+ pub(crate) use panels::recording::activate as activate_recording_tool;
+diff --git a/src/app/capture_setup.rs b/src/app/capture_setup.rs
+index c3fa1b7..6781292 100644
+--- a/src/app/capture_setup.rs
++++ b/src/app/capture_setup.rs
+@@ -94,10 +94,22 @@ pub(super) async fn start_capture(
+         return Err("no monitor was captured".into());
+     }
+     let shrunk = kept.len() < outputs.len();
++    // 2. 【截图】【物理网格】捕获帧是唯一像素网格：布局跟随帧顺序，覆盖层表面按目标顺序各自记录
++    let frame_pixels: Vec<(u32, u32)> = screenshots
++        .frames
++        .iter()
++        .map(|frame| (frame.pw_width, frame.pw_height))
++        .collect();
++    let mut output_pixels = vec![(0, 0); targets.len()];
++    for frame in &screenshots.frames {
++        if let Some(slot) = output_pixels.get_mut(frame.output) {
++            *slot = (frame.pw_width, frame.pw_height);
++        }
++    }
+     let outputs: Vec<_> = kept.iter().map(|&i| outputs[i].clone()).collect();
+ 
+     let mut captures = init::build_captures(screenshots.frames)?;
+-    let placements = init::build_placements(&outputs, hidpi);
++    let placements = init::build_placements_for_frames(&outputs, hidpi, &frame_pixels);
+     let compatible = super::frame_backdrop::compatible(&captures, &placements);
+     if !compatible {
+         overlay.set_composited_background(false);
+@@ -107,6 +119,8 @@ pub(super) async fn start_capture(
+         && overlay.enable_capture_scene(&mut captures)?;
+     log::info!("【截图场景】【能力选择】稀疏前景={native_scene}，原始网格兼容={compatible}");
+     // 3. 【截图】【覆盖层显示】原始帧已经进入私有来源后才分配绘制与原生表面，避免两份整屏缓冲叠加缓存写入峰值
++    //    覆盖层缓冲必须使用捕获帧的物理像素网格，不能从 configure 的逻辑尺寸乘比例再取整
++    overlay.set_output_pixels(&output_pixels);
+     let present_at = std::time::Instant::now();
+     overlay.present(&targets)?;
+     let present_dt = present_at.elapsed();
+diff --git a/src/app/export.rs b/src/app/export.rs
+index 2c02611..fafa916 100644
+--- a/src/app/export.rs
++++ b/src/app/export.rs
+@@ -74,12 +74,10 @@ pub(in crate::app) fn render_final_precise(
+     };
+ 
+     let scale = renderer::capture_scale(&editor_state.captures, &editor_state.placements, sel);
+-    let (mut out, origin, _) = renderer::composite_precise(
+-        &editor_state.captures,
+-        &editor_state.placements,
+-        sel,
+-        Some(scale),
+-    )?;
++    // 1. 【截图导出】【精确网格】让合成器按捕获帧与逻辑尺寸的两轴真实比例映射像素边缘，
++    //    完整桌面得到 2560x1600 而不是逻辑尺寸乘 1.5 向上取整的 2561x1601。
++    let (mut out, origin, _) =
++        renderer::composite_precise(&editor_state.captures, &editor_state.placements, sel, None)?;
+ 
+     let offset = (
+         (origin.0 * f64::from(scale)) as f32,
+diff --git a/src/app/init.rs b/src/app/init.rs
+index a31a938..4d6fc24 100644
+--- a/src/app/init.rs
++++ b/src/app/init.rs
+@@ -23,9 +23,14 @@ pub fn build_captures(frames: Vec<MonitorFrame>) -> Result<Vec<Capture>, String>
+             })?;
+             let logical_w = f.info.size.map_or(src_w as i32, |s| s.0).max(1);
+             let ratio = src_w as f32 / logical_w as f32;
+-            // 1. 【截图初始化】【分数比例】协议使用一百二十分之一单位，逻辑尺寸取整不能引入额外像素缩放
+-            let quantized = (ratio * 120.0).round() / 120.0;
+-            let scale = if quantized > 0.0 { quantized } else { ratio };
++            // 1. 【截图初始化】【物理网格】捕获帧的物理宽度才是像素网格的真值：逻辑宽度按整数上报，
++            // 协议比例（如 1.5）与 2560/1707 不同；量化到 1/120 会把 2560x1600 的帧画进
++            // 2559x1599 的缓冲并在导出时多出透明边。直接使用精确比例让画布、缓冲和导出共用同一网格。
++            let scale = if ratio.is_finite() && ratio > 0.0 {
++                ratio
++            } else {
++                1.0
++            };
+ 
+             let row_bytes = (src_w as usize) * 4;
+             let src_stride = f.pw_stride as usize;
+@@ -101,7 +106,32 @@ pub fn build_placements(outputs: &[Output], hidpi: bool) -> Vec<Placement> {
+         .collect()
+ }
+ 
+-/// 【截图初始化】【原生网格】按 output 与 hidpi 返回 X11 或 Windows 原生表面尺寸，Wayland 缓冲仍采用合成器逻辑尺寸
++/// 【截图初始化】【物理网格】在输出布局上按真实捕获帧确定比例与像素网格，返回与冻结图像素完全一致的布局
++///
++/// 分数缩放合成器把逻辑宽度取整上报：2560 物理 / 1.5 = 1706.67 → 1707。若布局仍用协议比例
++/// 1.5，`px_size()` 得到 2561x1601，画布、覆盖层缓冲与导出都比真实帧多一像素。这里以帧宽除以
++/// 逻辑宽得到精确比例（2560/1707），并把帧尺寸写入 `native_size`，让 `px_size()` 与捕获缓冲逐像素一致。
++pub fn build_placements_for_frames(
++    outputs: &[Output],
++    hidpi: bool,
++    frames: &[(u32, u32)],
++) -> Vec<Placement> {
++    let mut placements = build_placements(outputs, hidpi);
++    for (placement, &(frame_w, frame_h)) in placements.iter_mut().zip(frames) {
++        if !hidpi || frame_w == 0 || frame_h == 0 {
++            continue;
++        }
++        let logical_w = placement.size.0.max(1) as f32;
++        let ratio = frame_w as f32 / logical_w;
++        if ratio.is_finite() && ratio > 0.0 {
++            placement.scale = ratio;
++            placement.native_size = Some((frame_w, frame_h));
++        }
++    }
++    placements
++}
++
++/// 【截图初始化】【原生网格】按 output 与 hidpi 返回 X11 或 Windows 原生表面尺寸，Wayland 截图路径另由捕获帧补齐
+ fn native_pixel_size(output: &Output, hidpi: bool) -> Option<(u32, u32)> {
+     #[cfg(target_os = "linux")]
+     if output.wl_output.is_some() {
+@@ -260,10 +290,10 @@ mod tests {
+         let cases = [
+             ("hidpi", 3840u32, Some((1920, 1080)), 2.0),
+             (
+-                "fractional logical dimensions are rounded",
++                "fractional logical dimensions keep the exact physical ratio",
+                 1280,
+                 Some((853, 533)),
+-                1.5,
++                1280.0 / 853.0,
+             ),
+             ("no logical size at all", 1920, None, 1.0),
+         ];
+@@ -282,4 +312,33 @@ mod tests {
+             );
+         }
+     }
++
++    /// 【截图初始化测试】【物理网格】无参数，检查 2560x1600@1.5 报 1707x1067 时画布像素网格仍是真实帧尺寸；无返回值
++    #[cfg(target_os = "linux")]
++    #[test]
++    fn placements_use_the_captured_pixel_grid() {
++        // Mango reports logical 1707x1067 for a 2560x1600 output at scale 1.5;
++        // 1707 * 1.5 = 2560.5 would round to a 2561-wide canvas.
++        let output = Output {
++            wl_output: None,
++            info: crate::types::linux_output::Info {
++                id: 0,
++                name: Some("eDP-1".into()),
++                description: None,
++                location: (0, 0),
++                logical_position: Some((0, 0)),
++                logical_size: Some((1707, 1067)),
++                physical_size: (0, 0),
++                make: String::new(),
++                model: String::new(),
++                scale_factor: 2,
++                subpixel: wayland_client::protocol::wl_output::Subpixel::Unknown,
++                transform: wayland_client::protocol::wl_output::Transform::Normal,
++                modes: Vec::new(),
++            },
++        };
++        let placements = build_placements_for_frames(&[output], true, &[(2560, 1600)]);
++        assert_eq!(placements[0].px_size(), (2560, 1600));
++        assert!((placements[0].scale - 2560.0 / 1707.0).abs() < 0.0001);
++    }
+ }
+diff --git a/src/app/input/tests/selection_size.rs b/src/app/input/tests/selection_size.rs
+index f94c318..cb697ac 100644
+--- a/src/app/input/tests/selection_size.rs
++++ b/src/app/input/tests/selection_size.rs
+@@ -525,13 +525,17 @@ fn physical_png_bounds_match_real_qt_alignment_after_exact_resize() {
+         state.selection.zone = Rect::from_xywh(values[0], values[1], values[2], values[3]);
+         assert!(selection_size::apply::size(&mut state, (100, 80), &mut 0));
+         let pixels = Pixmap::decode_png(&crate::app::render_final(&mut state).unwrap().0).unwrap();
+-        assert_eq!(
+-            (pixels.width(), pixels.height()),
+-            (
+-                sample["aligned"][2].as_u64().unwrap() as u32,
+-                sample["aligned"][3].as_u64().unwrap() as u32
+-            ),
+-            "{sample}"
++        // 2. 【选区尺寸测试】【物理网格】导出按捕获帧尺寸与逻辑尺寸的两轴精确比例映射：
++        //    分数缩放下 2560/1707 与 1600/1067 不同，完整桌面因此精确等于物理尺寸，而本参考
++        //    样本记录的是原版单一比例下的整数边界，允许每轴 1 像素的取整差异。
++        let expected_width = sample["aligned"][2].as_u64().unwrap() as i64;
++        let expected_height = sample["aligned"][3].as_u64().unwrap() as i64;
++        assert!(
++            (i64::from(pixels.width()) - expected_width).abs() <= 1
++                && (i64::from(pixels.height()) - expected_height).abs() <= 1,
++            "{sample}: got {}x{}",
++            pixels.width(),
++            pixels.height()
+         );
+     }
+ }
+diff --git a/src/app/instant.rs b/src/app/instant.rs
+index 67b0ffa..5d1081c 100644
+--- a/src/app/instant.rs
++++ b/src/app/instant.rs
+@@ -69,8 +69,13 @@ pub async fn full(conn: crate::backend::session::Session, launch: Launch) -> Res
+         .iter()
+         .map(|f| outputs[f.output].clone())
+         .collect();
++    let frame_pixels: Vec<(u32, u32)> = shots
++        .frames
++        .iter()
++        .map(|frame| (frame.pw_width, frame.pw_height))
++        .collect();
+     let captures = init::build_captures(shots.frames)?;
+-    let placements = init::build_placements(&outputs, false);
++    let placements = init::build_placements_for_frames(&outputs, false, &frame_pixels);
+     let region = get_full_workspace_rect(&placements).ok_or("no monitor was captured")?;
+     let (pixmap, _, scale) = renderer::composite(&captures, &placements, region, None)
+         .ok_or("couldn't put the monitors together")?;
+diff --git a/src/backend.rs b/src/backend.rs
+index 595434c..27009ac 100644
+--- a/src/backend.rs
++++ b/src/backend.rs
+@@ -64,6 +64,9 @@ pub(crate) mod native_backdrop;
+ pub(crate) mod software_scene;
+ 
+ pub trait ScreenOverlay {
++    /// 【截图场景】【物理网格】按目标顺序记录捕获帧的真实像素尺寸；present 时必须用该网格分配缓冲，缺省后端忽略
++    fn set_output_pixels(&mut self, _pixels: &[(u32, u32)]) {}
++
+     /// 【剪贴板】【窗口结束】无参数，销毁窗口并按后端需要交接剪贴板服务，返回交接结果；原生辅助进程无需保留本连接
+     fn finish_clipboard(self: Box<Self>) -> crate::AppResult {
+         Ok(())
+diff --git a/src/backend/wayland/overlay.rs b/src/backend/wayland/overlay.rs
+index db8c0a5..6ba9397 100644
+--- a/src/backend/wayland/overlay.rs
++++ b/src/backend/wayland/overlay.rs
+@@ -49,6 +49,8 @@ pub struct WaylandOverlay {
+     faulted: usize,
+     composited_background: bool,
+     targets: Vec<wayland_client::protocol::wl_output::WlOutput>,
++    /// Capture frames in target order; their physical pixel grid sizes the overlay buffers.
++    frame_pixels: Vec<(u32, u32)>,
+     suspended: bool,
+     scrolling: Option<usize>,
+     scroll_window: Option<scroll_window::ScrollWindow>,
+@@ -83,6 +85,7 @@ impl WaylandOverlay {
+             faulted: 0,
+             composited_background: false,
+             targets: Vec::new(),
++            frame_pixels: Vec::new(),
+             suspended: false,
+             scrolling: None,
+             scroll_window: None,
+@@ -95,6 +98,10 @@ impl WaylandOverlay {
+ }
+ 
+ impl ScreenOverlay for WaylandOverlay {
++    /// 【截图场景】【物理网格】按目标顺序记录捕获帧的真实像素尺寸，present 用同一网格分配缓冲
++    fn set_output_pixels(&mut self, pixels: &[(u32, u32)]) {
++        self.frame_pixels = pixels.to_vec();
++    }
+     /// 【Wayland剪贴板】【快捷复制准备】无参数，为无界面捕获映射短期授权表面，返回协议结果
+     fn prepare_clipboard_copy(&mut self) -> crate::AppResult {
+         self.prepare_clipboard_window()
+diff --git a/src/backend/wayland/overlay/frame_staging.rs b/src/backend/wayland/overlay/frame_staging.rs
+index 0d903b3..a78f111 100644
+--- a/src/backend/wayland/overlay/frame_staging.rs
++++ b/src/backend/wayland/overlay/frame_staging.rs
+@@ -95,8 +95,18 @@ impl WaylandOverlay {
+             .ok_or("surface not found")?;
+         let size = surface.buffer_size();
+         let length = size.0 as usize * size.1 as usize * 4;
++        // The capture frame, editor canvas and overlay buffer must share one
++        // physical pixel grid. Guessing a nearby size here hides a real
++        // mismatch and leaves viewport, canvas and damage rectangles on
++        // different grids, which shows up as shifted or torn content.
+         if pixels.len() != length {
+-            return Err("the native frame does not match the configured buffer".into());
++            return Err(format!(
++                "the native frame ({} bytes) does not match the configured buffer {}x{}",
++                pixels.len(),
++                size.0,
++                size.1
++            )
++            .into());
+         }
+         let current = surface
+             .shm_buffer
+diff --git a/src/backend/wayland/overlay/presentation.rs b/src/backend/wayland/overlay/presentation.rs
+index 97fda64..0eea659 100644
+--- a/src/backend/wayland/overlay/presentation.rs
++++ b/src/backend/wayland/overlay/presentation.rs
+@@ -81,6 +81,15 @@ impl WaylandOverlay {
+                 (rect.width().ceil() as u32, rect.height().ceil() as u32)
+             });
+             let (w, h) = rt.state.image_window.unwrap_or((w, h));
++            // The capture frame is the authoritative physical grid for a full-output
++            // overlay; panels, popups and image windows keep deriving their buffer
++            // from the configured logical size.
++            let capture_pixels = (self.scrolling.is_none()
++                && rt.state.image_window.is_none()
++                && panel_rect.is_none())
++            .then(|| self.frame_pixels.get(i).copied())
++            .flatten()
++            .filter(|(width, height)| *width > 0 && *height > 0);
+ 
+             let surface = rt.state.compositor_state.create_surface(&qh);
+ 
+@@ -106,6 +115,13 @@ impl WaylandOverlay {
+                         Some(self.shell_policy.namespace),
+                         Some(&wl_output),
+                     );
++                    // A full-output layer surface must cover the whole logical output. Mango
++                    // otherwise answers with floor(physical / scale) (1706x1066 for 2560x1600
++                    // at 1.5) while wl_output reports 1707x1067; requesting the reported
++                    // logical size keeps the surface grid equal to the frame grid.
++                    if self.scrolling.is_none() && rt.state.image_window.is_none() {
++                        layer.set_size(w.max(1), h.max(1));
++                    }
+                     layer.set_anchor(Anchor::all());
+                     layer.set_exclusive_zone(-1);
+                     layer.set_keyboard_interactivity(if self.scrolling.is_some() {
+@@ -230,8 +246,13 @@ impl WaylandOverlay {
+                 (scrolling.is_some() && matches!(&role, Role::Layer(_))).then(Default::default);
+             let capture_surface = rt.state.image_window.is_none() && panel_rect.is_none();
+             let capture_logical_size = capture_surface.then_some((w.max(1), h.max(1)));
+-            let capture_buffer_size = (capture_surface && viewport.is_some())
+-                .then(|| crate::types::px_size((w.max(1), h.max(1)), scale));
++            // A delivered capture frame's physical grid is the buffer grid: deriving it from
++            // the logical configure size times a fractional scale rounds to a different pixel
++            // count (1706 * 1.5 = 2559 against a 2560-wide frame) and desynchronises the
++            // canvas from the buffer.
++            let capture_buffer_size = (capture_surface && viewport.is_some()).then(|| {
++                capture_pixels.unwrap_or_else(|| crate::types::px_size((w.max(1), h.max(1)), scale))
++            });
+             let fullscreen_output =
+                 (capture_surface && matches!(&role, Role::Window(_))).then_some(wl_output);
+             rt.state.surfaces.insert(
+diff --git a/src/cli/headless.rs b/src/cli/headless.rs
+index be87778..f94fab3 100644
+--- a/src/cli/headless.rs
++++ b/src/cli/headless.rs
+@@ -88,8 +88,13 @@ async fn capture(
+                 .ok_or("capture returned an invalid display index")
+         })
+         .collect::<Result<_, _>>()?;
++    let frame_pixels: Vec<(u32, u32)> = result
++        .frames
++        .iter()
++        .map(|frame| (frame.pw_width, frame.pw_height))
++        .collect();
+     let captures = crate::app::build_captures(result.frames)?;
+-    let placements = crate::app::build_placements(&kept, false);
++    let placements = crate::app::build_placements_for_frames(&kept, false, &frame_pixels);
+     let bounds =
+         crate::utils::get_full_workspace_rect(&placements).ok_or("no display was captured")?;
+     let region = options
+diff --git a/src/renderer/capture_composite.rs b/src/renderer/capture_composite.rs
+index 0d91453..72773d9 100644
+--- a/src/renderer/capture_composite.rs
++++ b/src/renderer/capture_composite.rs
+@@ -1,6 +1,7 @@
+ //! 【截图】【像素合成】按逻辑区域与显示器比例合成原始截图
+ 
+ use super::*;
++use tiny_skia::IntRect;
+ 
+ /// the highest scale among monitors the region touches
+ pub fn capture_scale(
+@@ -25,33 +26,105 @@ pub fn capture_scale(
+     if max > 0.0 { max } else { 1.0 }
+ }
+ 
++/// 【截图裁切】【精确轴比例】按覆盖 region 面积最大的显示器返回 (水平, 垂直) 物理像素/逻辑像素
++///
++/// 分数缩放的逻辑尺寸是取整后的整数：2560 物理宽、1.5 缩放时逻辑上报 1707，两轴的真实比例
++/// 分别是 2560/1707 与 1600/1067，并不相等。只用一个标量会把完整桌面算成 2561x1601，多出
++/// 一列一行透明像素；因此按捕获帧尺寸与逻辑尺寸分别给出两轴比例。
++fn capture_axes(
++    captures: &[crate::types::Capture],
++    placements: &[crate::types::Placement],
++    region: Rect,
++) -> (f32, f32) {
++    let mut best: Option<(f32, f32, f32)> = None;
++    for (placement, capture) in placements.iter().zip(captures) {
++        let Some(logical) = Rect::from_xywh(
++            placement.position.0 as f32,
++            placement.position.1 as f32,
++            placement.size.0.max(1) as f32,
++            placement.size.1.max(1) as f32,
++        ) else {
++            continue;
++        };
++        let Some(overlap) = logical.intersect(&region) else {
++            continue;
++        };
++        let sx = capture.pixmap.width() as f32 / logical.width();
++        let sy = capture.pixmap.height() as f32 / logical.height();
++        if !(sx.is_finite() && sy.is_finite()) || sx <= 0.0 || sy <= 0.0 {
++            continue;
++        }
++        let area = overlap.width() * overlap.height();
++        if best.is_none_or(|(best_area, _, _)| area > best_area) {
++            best = Some((area, sx, sy));
++        }
++    }
++    best.map(|(_, sx, sy)| (sx, sy)).unwrap_or((1.0, 1.0))
++}
++
++/// 【截图裁切】【物理覆盖】按 placements、逻辑原点和两轴比例返回所有捕获帧实际覆盖的物理像素边界
++///
++/// 布局逻辑范围由 `native_size / scale` 或逻辑尺寸给出，两轴比例却来自真实帧，完整桌面在高或宽
++/// 方向可能比帧多出不到 1 像素；合成的可写范围只能是捕获帧本身，因此用它裁掉取整溢出，避免
++/// 导出多出透明行列。
++fn physical_coverage(
++    placements: &[crate::types::Placement],
++    origin: (f32, f32),
++    axes: (f32, f32),
++) -> Option<IntRect> {
++    let scale_x = f64::from(axes.0);
++    let scale_y = f64::from(axes.1);
++    let mut coverage: Option<(i32, i32, i32, i32)> = None;
++    for placement in placements {
++        let left =
++            ((f64::from(placement.position.0) - f64::from(origin.0)) * scale_x).round() as i32;
++        let top =
++            ((f64::from(placement.position.1) - f64::from(origin.1)) * scale_y).round() as i32;
++        let right = ((f64::from(placement.position.0 + placement.size.0) - f64::from(origin.0))
++            * scale_x)
++            .round() as i32;
++        let bottom = ((f64::from(placement.position.1 + placement.size.1) - f64::from(origin.1))
++            * scale_y)
++            .round() as i32;
++        if right <= left || bottom <= top {
++            continue;
++        }
++        coverage = Some(match coverage {
++            Some((leftmost, topmost, rightmost, bottommost)) => (
++                leftmost.min(left),
++                topmost.min(top),
++                rightmost.max(right),
++                bottommost.max(bottom),
++            ),
++            None => (left, top, right, bottom),
++        });
++    }
++    let (left, top, right, bottom) = coverage?;
++    IntRect::from_ltrb(left, top, right, bottom)
++}
++
+ pub fn composite(
+     captures: &[crate::types::Capture],
+     placements: &[crate::types::Placement],
+     region: Rect,
+     scale: Option<f32>,
+ ) -> Option<(Pixmap, (i32, i32), f32)> {
+-    let left = region.left().floor() as i32;
+-    let top = region.top().floor() as i32;
+-    let width = (region.right().ceil() as i32 - left).max(0) as u32;
+-    let height = (region.bottom().ceil() as i32 - top).max(0) as u32;
+-    if width == 0 || height == 0 {
++    let axes = scale
++        .map(|value| (value, value))
++        .unwrap_or_else(|| capture_axes(captures, placements, region));
++    let anchor = (0.0, 0.0);
++    let bounds =
++        super::pixel_bounds::map_axes(region, anchor, (f64::from(axes.0), f64::from(axes.1)))?
++            .intersect(&physical_coverage(placements, anchor, axes)?)?;
++    if bounds.width() == 0 || bounds.height() == 0 {
+         return None;
+     }
+-    let area = Rect::from_xywh(left as f32, top as f32, width as f32, height as f32)?;
+-
+-    let scale = scale.unwrap_or_else(|| capture_scale(captures, placements, area));
+-
+-    let out_w = (width as f32 * scale).round() as u32;
+-    let out_h = (height as f32 * scale).round() as u32;
+-    let out = compose(
+-        captures,
+-        placements,
+-        (f64::from(left), f64::from(top)),
+-        (out_w, out_h),
+-        scale,
+-    )?;
+-    Some((out, (left, top), scale))
++    let out = compose(captures, placements, anchor, bounds, axes)?;
++    let origin = (
++        (f64::from(bounds.x()) / f64::from(axes.0)).round() as i32,
++        (f64::from(bounds.y()) / f64::from(axes.1)).round() as i32,
++    );
++    Some((out, origin, axes.0))
+ }
+ 
+ /// 【截图裁切】【物理合成】按 captures、placements、region 和可选 scale 返回物理像素、精确全局原点及比例
+@@ -63,47 +136,63 @@ pub(crate) fn composite_precise(
+ ) -> Option<(Pixmap, (f64, f64), f32)> {
+     let workspace = crate::utils::get_full_workspace_rect(placements)?;
+     let region = region.intersect(&workspace)?;
+-    let scale = scale.unwrap_or_else(|| capture_scale(captures, placements, region));
+-    let bounds = super::pixel_bounds::map(
+-        region,
+-        (workspace.left(), workspace.top()),
+-        f64::from(scale),
+-    )?;
++    let axes = scale
++        .map(|value| (value, value))
++        .unwrap_or_else(|| capture_axes(captures, placements, region));
++    let anchor = (workspace.left(), workspace.top());
++    let bounds =
++        super::pixel_bounds::map_axes(region, anchor, (f64::from(axes.0), f64::from(axes.1)))?
++            .intersect(&physical_coverage(placements, anchor, axes)?)?;
++    if bounds.width() == 0 || bounds.height() == 0 {
++        return None;
++    }
+     let origin = (
+-        f64::from(workspace.left()) + f64::from(bounds.x()) / f64::from(scale),
+-        f64::from(workspace.top()) + f64::from(bounds.y()) / f64::from(scale),
++        f64::from(workspace.left()) + f64::from(bounds.x()) / f64::from(axes.0),
++        f64::from(workspace.top()) + f64::from(bounds.y()) / f64::from(axes.1),
+     );
+-    let out = compose(
+-        captures,
+-        placements,
+-        origin,
+-        (bounds.width(), bounds.height()),
+-        scale,
+-    )?;
+-    Some((out, origin, scale))
++    let out = compose(captures, placements, anchor, bounds, axes)?;
++    Some((out, origin, axes.0))
+ }
+ 
+-/// 【截图裁切】【像素写入】按 origin、size 和 scale 把 captures 合成到统一物理画布，placements 提供全局位置，返回缓冲
++/// 【截图裁切】【像素写入】按逻辑原点、整像素范围和两轴比例把 captures 合成到统一物理画布，返回缓冲
++///
++/// 每个显示器使用自己的捕获帧尺寸作为目标像素尺寸。完整桌面时目标矩形与源缓冲同尺寸、偏移是
++/// 整数，走恒等绘制保持逐字节复制，不再因为取整差异触发一次双三次重采样。
+ fn compose(
+     captures: &[crate::types::Capture],
+     placements: &[crate::types::Placement],
+-    origin: (f64, f64),
+-    size: (u32, u32),
+-    scale: f32,
++    origin: (f32, f32),
++    bounds: IntRect,
++    axes: (f32, f32),
+ ) -> Option<Pixmap> {
+-    let mut out = Pixmap::new(size.0, size.1)?;
++    let mut out = Pixmap::new(bounds.width(), bounds.height())?;
++    let scale_x = f64::from(axes.0);
++    let scale_y = f64::from(axes.1);
+ 
+     for (placement, capture) in placements.iter().zip(captures) {
+         let src = &capture.pixmap;
+-        // 1. 【截图裁切】【原生比例】使用捕获比例统一映射两轴，取整后的输出逻辑尺寸不能再次缩放原始缓冲
+-        let factor = scale / capture.scale;
+-        let tx = ((f64::from(placement.position.0) - origin.0) * f64::from(scale)) as f32;
+-        let ty = ((f64::from(placement.position.1) - origin.1) * f64::from(scale)) as f32;
+-
+-        if factor == 1.0 && tx.fract() == 0.0 && ty.fract() == 0.0 {
++        let left =
++            ((f64::from(placement.position.0) - f64::from(origin.0)) * scale_x).round() as i32;
++        let top =
++            ((f64::from(placement.position.1) - f64::from(origin.1)) * scale_y).round() as i32;
++        let right = ((f64::from(placement.position.0 + placement.size.0) - f64::from(origin.0))
++            * scale_x)
++            .round() as i32;
++        let bottom = ((f64::from(placement.position.1 + placement.size.1) - f64::from(origin.1))
++            * scale_y)
++            .round() as i32;
++        let destination = ((right - left).max(0) as u32, (bottom - top).max(0) as u32);
++        if destination.0 == 0 || destination.1 == 0 {
++            continue;
++        }
++        let tx = left - bounds.x();
++        let ty = top - bounds.y();
++        let factor_x = destination.0 as f32 / src.width() as f32;
++        let factor_y = destination.1 as f32 / src.height() as f32;
++        if factor_x == 1.0 && factor_y == 1.0 {
+             out.draw_pixmap(
+-                tx as i32,
+-                ty as i32,
++                tx,
++                ty,
+                 src.as_ref(),
+                 &tiny_skia::PixmapPaint::default(),
+                 Transform::identity(),
+@@ -118,7 +207,7 @@ fn compose(
+                     quality: tiny_skia::FilterQuality::Bicubic,
+                     ..tiny_skia::PixmapPaint::default()
+                 },
+-                Transform::from_row(factor, 0.0, 0.0, factor, tx, ty),
++                Transform::from_row(factor_x, 0.0, 0.0, factor_y, tx as f32, ty as f32),
+                 None,
+             );
+         }
+diff --git a/src/renderer/capture_composite/tests.rs b/src/renderer/capture_composite/tests.rs
+index faa0bd3..10eb81a 100644
+--- a/src/renderer/capture_composite/tests.rs
++++ b/src/renderer/capture_composite/tests.rs
+@@ -42,19 +42,33 @@ fn fractional_native_crops_keep_frozen_pixels() {
+                 height as f32 / scale,
+             )
+             .unwrap();
+-            let (actual, _, _) = composite_precise(
++            let (actual, origin, _) = composite_precise(
+                 std::slice::from_ref(&capture),
+                 std::slice::from_ref(&placement),
+                 region,
+                 None,
+             )
+             .unwrap();
+-            assert_eq!((actual.width(), actual.height()), (width, height));
+-            for row in 0..height as usize {
+-                let start = ((y as usize + row) * 1280 + x as usize) * 4;
++            // 2. 【截图裁切回归】【覆盖边缘】映射使用捕获帧与逻辑尺寸的精确轴比例：分数原点
++            //    按 floor/ceil 覆盖部分像素，输出最多比逻辑请求各轴多 1 像素。
++            let scale_x = 1280.0_f32 / 853.0_f32;
++            let scale_y = 800.0_f32 / 533.0_f32;
++            let left = (origin.0 * f64::from(scale_x)).round() as usize;
++            let top = (origin.1 * f64::from(scale_y)).round() as usize;
++            let (crop_width, crop_height) = (actual.width() as usize, actual.height() as usize);
++            assert!(
++                crop_width == width as usize || crop_width == width as usize + 1,
++                "scale={scale}, crop=({x},{y},{width},{height}), width={crop_width}"
++            );
++            assert!(
++                crop_height == height as usize || crop_height == height as usize + 1,
++                "scale={scale}, crop=({x},{y},{width},{height}), height={crop_height}"
++            );
++            for row in 0..crop_height {
++                let start = ((top + row) * 1280 + left) * 4;
+                 assert_eq!(
+-                    &actual.data()[row * width as usize * 4..(row + 1) * width as usize * 4],
+-                    &capture.pixmap.data()[start..start + width as usize * 4],
++                    &actual.data()[row * crop_width * 4..(row + 1) * crop_width * 4],
++                    &capture.pixmap.data()[start..start + crop_width * 4],
+                     "scale={scale}, crop=({x},{y},{width},{height}), row={row}"
+                 );
+             }
+diff --git a/src/renderer/pixel_bounds.rs b/src/renderer/pixel_bounds.rs
+index c19ed27..aa50918 100644
+--- a/src/renderer/pixel_bounds.rs
++++ b/src/renderer/pixel_bounds.rs
+@@ -13,22 +13,22 @@ fn stable(value: f64, logical_magnitude: f64, scale: f64) -> f64 {
+     }
+ }
+ 
+-/// 【截图裁切】【物理范围】按 region、origin 和 scale 返回对齐像素矩形，空范围或无效比例返回空值，不提前扩展逻辑边缘
+-pub(crate) fn map(region: Rect, origin: (f32, f32), scale: f64) -> Option<IntRect> {
+-    if !scale.is_finite() || scale <= 0.0 {
++/// 【截图裁切】【物理范围】按 region、origin 和两轴比例返回对齐像素矩形，空范围或无效比例返回空值，不提前扩展逻辑边缘
++pub(crate) fn map_axes(region: Rect, origin: (f32, f32), axes: (f64, f64)) -> Option<IntRect> {
++    if !axes.0.is_finite() || !axes.1.is_finite() || axes.0 <= 0.0 || axes.1 <= 0.0 {
+         return None;
+     }
+-    let edge = |value: f32, origin: f32| {
++    let edge = |value: f32, origin: f32, scale: f64| {
+         stable(
+             (f64::from(value) - f64::from(origin)) * scale,
+             f64::from(value.abs().max(origin.abs())),
+             scale,
+         )
+     };
+-    let left = edge(region.left(), origin.0).floor() as i32;
+-    let top = edge(region.top(), origin.1).floor() as i32;
+-    let right = edge(region.right(), origin.0).ceil() as i32;
+-    let bottom = edge(region.bottom(), origin.1).ceil() as i32;
++    let left = edge(region.left(), origin.0, axes.0).floor() as i32;
++    let top = edge(region.top(), origin.1, axes.1).floor() as i32;
++    let right = edge(region.right(), origin.0, axes.0).ceil() as i32;
++    let bottom = edge(region.bottom(), origin.1, axes.1).ceil() as i32;
+     IntRect::from_xywh(
+         left,
+         top,
+@@ -36,3 +36,8 @@ pub(crate) fn map(region: Rect, origin: (f32, f32), scale: f64) -> Option<IntRec
+         bottom.checked_sub(top)? as u32,
+     )
+ }
++
++/// 【截图裁切】【物理范围】按统一 scale 调用两轴映射，保持尺子和文件画布等既有调用方的语义
++pub(crate) fn map(region: Rect, origin: (f32, f32), scale: f64) -> Option<IntRect> {
++    map_axes(region, origin, (scale, scale))
++}

@@ -1,0 +1,270 @@
+diff --git a/src/theme/canvas.rs b/src/theme/canvas.rs
+index 640def7..4dfa298 100644
+--- a/src/theme/canvas.rs
++++ b/src/theme/canvas.rs
+@@ -2,9 +2,9 @@
+ 
+ use super::{Mode, Rgba};
+ 
+-/// 【显示画布】【模式配色】接收 mode 并返回与 Qt 一致的棋盘格首色；图片背景独立于控件主题
++/// 【显示画布】【模式配色】接收 mode 并返回图片外围底色；按仓库 One Dark 使用 deep(#181b20)
+ pub fn background(_mode: Mode) -> Rgba {
+-    Rgba(51, 55, 62, 255)
++    Rgba(24, 27, 32, 255)
+ }
+ 
+ /// 【显示画布】【当前底色】返回当前主题的显示底色，不读取或修改图像内容
+@@ -35,7 +35,7 @@ pub(crate) fn checkerboard_area(
+         return;
+     };
+     let stride = canvas.width() as usize * 4;
+-    let colors = [[51, 55, 62, 255], [60, 64, 72, 255]];
++    let colors = [[30, 34, 40, 255], [39, 44, 51, 255]];
+     let cell = ((12.0 * scale.0).max(1.0), (12.0 * scale.1).max(1.0));
+     let rows = [0_usize, 1].map(|phase| {
+         (area.left()..area.right())
+diff --git a/src/theme/config_watch/mod.rs b/src/theme/config_watch/mod.rs
+index 9aa1018..b5844cc 100644
+--- a/src/theme/config_watch/mod.rs
++++ b/src/theme/config_watch/mod.rs
+@@ -55,7 +55,10 @@ impl Watch {
+             return Ok(None);
+         }
+         let mode = crate::config::interface_theme::read_mode(&self.path)?;
+-        if self.seen.replace(mode) == mode {
++        // A saved system mode resolves to the same palette as the visible
++        // light/dark mode, so comparing the raw value would notify once for the
++        // default even though nothing on screen changed.
++        if self.seen.replace(mode).resolved() == mode.resolved() {
+             Ok(None)
+         } else {
+             Ok(Some(mode))
+diff --git a/src/theme/config_watch/tests.rs b/src/theme/config_watch/tests.rs
+index c6742e9..571b51c 100644
+--- a/src/theme/config_watch/tests.rs
++++ b/src/theme/config_watch/tests.rs
+@@ -35,7 +35,7 @@ fn creation_and_direct_write_work_without_notifying_for_unrelated_edits() {
+     std::fs::write(&path, "[ui]\ntheme='dark'\n[history]\nlimit=12\n").unwrap();
+     assert_eq!(watch.changed().unwrap(), None);
+     std::fs::remove_file(&path).unwrap();
+-    assert_eq!(watch.changed().unwrap(), Some(Mode::Light));
++    assert_eq!(watch.changed().unwrap(), Some(Mode::default()));
+ }
+ 
+ /// 【主题通知测试】【无效文件】无参数，无效中间内容不替换已保存主题，后续合法JSON替换继续通知，无返回值
+diff --git a/src/theme/context_menu.rs b/src/theme/context_menu.rs
+index d6240e3..0506e8f 100644
+--- a/src/theme/context_menu.rs
++++ b/src/theme/context_menu.rs
+@@ -45,19 +45,19 @@ impl Palette {
+                 text: Rgba(31, 41, 55, 255),
+             },
+             Mode::Dark => Self {
+-                accent: Rgba(94, 234, 212, 255),
+-                background: Rgba(24, 27, 35, 246),
+-                border: Rgba(255, 255, 255, 30),
+-                checked_background: Rgba(45, 212, 191, 36),
+-                danger_hover_background: Rgba(239, 68, 68, 52),
+-                danger_hover_text: Rgba(252, 165, 165, 255),
+-                danger_text: Rgba(248, 113, 113, 255),
+-                disabled_text: Rgba(100, 116, 139, 255),
+-                hover_background: Rgba(45, 212, 191, 46),
+-                hover_text: Rgba(248, 250, 252, 255),
+-                secondary_text: Rgba(148, 163, 184, 255),
+-                separator: Rgba(255, 255, 255, 22),
+-                text: Rgba(229, 231, 235, 255),
++                accent: Rgba(97, 175, 239, 255),
++                background: Rgba(30, 34, 40, 248),
++                border: Rgba(92, 99, 112, 120),
++                checked_background: Rgba(97, 175, 239, 40),
++                danger_hover_background: Rgba(224, 108, 117, 60),
++                danger_hover_text: Rgba(235, 155, 160, 255),
++                danger_text: Rgba(224, 108, 117, 255),
++                disabled_text: Rgba(130, 138, 149, 255),
++                hover_background: Rgba(97, 175, 239, 45),
++                hover_text: Rgba(215, 218, 224, 255),
++                secondary_text: Rgba(171, 178, 191, 255),
++                separator: Rgba(92, 99, 112, 90),
++                text: Rgba(215, 218, 224, 255),
+             },
+         }
+     }
+diff --git a/src/theme/mode.rs b/src/theme/mode.rs
+index d079f20..14dae47 100644
+--- a/src/theme/mode.rs
++++ b/src/theme/mode.rs
+@@ -11,9 +11,11 @@ use std::sync::{
+ #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
+ #[serde(rename_all = "lowercase")]
+ pub enum Mode {
+-    #[default]
+     Light,
+     Dark,
++    /// 【界面主题】【默认跟随桌面】仓库默认值；桌面报告 prefer-dark 时使用 One Dark 暗色，
++    /// 无门户信息的测试环境由 system::detect() 解析为浅色
++    #[default]
+     System,
+ }
+ 
+diff --git a/src/theme/toolbar.rs b/src/theme/toolbar.rs
+index a29f45c..e5af9be 100644
+--- a/src/theme/toolbar.rs
++++ b/src/theme/toolbar.rs
+@@ -133,63 +133,63 @@ impl Palette {
+                 tile_checked_text: Rgba(4, 47, 46, 255),
+             },
+             Mode::Dark => Self {
+-                panel_fill: Rgba(15, 17, 23, 230),
+-                panel_border: Rgba(255, 255, 255, 28),
+-                popup_fill: Rgba(15, 17, 23, 240),
+-                popup_border: Rgba(255, 255, 255, 14),
+-                separator: Rgba(148, 163, 184, 70),
+-                grip_dot: Rgba(148, 163, 184, 150),
+-                grip_dot_hover: Rgba(203, 213, 225, 220),
+-                grip_dot_disabled: Rgba(148, 163, 184, 60),
+-                grip_hover_fill: Rgba(148, 163, 184, 40),
+-                text: Rgba(229, 231, 235, 255),
+-                strong_text: Rgba(248, 250, 252, 255),
+-                muted_text: Rgba(156, 163, 175, 255),
+-                primary_text: Rgba(255, 255, 255, 255),
+-                hover_fill: Rgba(45, 212, 191, 255),
+-                hover_border: Rgba(94, 234, 212, 255),
+-                hover_text: Rgba(4, 47, 46, 255),
+-                hover_icon: Rgba(26, 24, 20, 255),
+-                pressed_fill: Rgba(20, 184, 166, 255),
+-                pressed_border: Rgba(45, 212, 191, 255),
+-                active_fill: Rgba(153, 246, 228, 78),
+-                active_border: Rgba(153, 246, 228, 150),
+-                primary_top: Rgba(16, 185, 129, 255),
+-                primary_bottom: Rgba(5, 150, 105, 255),
+-                primary_border: Rgba(52, 211, 153, 255),
+-                primary_hover_top: Rgba(52, 211, 153, 255),
+-                primary_hover_bottom: Rgba(16, 185, 129, 255),
+-                primary_hover_border: Rgba(110, 231, 183, 255),
+-                accent_fill: Rgba(45, 212, 191, 34),
+-                accent_border: Rgba(45, 212, 191, 96),
+-                accent_hover_fill: Rgba(45, 212, 191, 64),
+-                accent_hover_border: Rgba(94, 234, 212, 150),
+-                danger_hover_text: Rgba(252, 165, 165, 255),
+-                danger_hover_fill: Rgba(239, 68, 68, 70),
+-                danger_hover_border: Rgba(252, 165, 165, 140),
+-                control_fill: Rgba(255, 255, 255, 16),
+-                control_hover_fill: Rgba(255, 255, 255, 26),
+-                control_border: Rgba(255, 255, 255, 24),
+-                focus_border: Rgba(45, 212, 191, 150),
+-                list_fill: Rgba(17, 24, 39, 255),
+-                list_border: Rgba(255, 255, 255, 18),
+-                selection_fill: Rgba(45, 212, 191, 70),
+-                soft_hover_fill: Rgba(45, 212, 191, 28),
+-                soft_hover_border: Rgba(45, 212, 191, 80),
+-                slider_groove: Rgba(255, 255, 255, 22),
+-                slider_start: Rgba(13, 148, 136, 255),
+-                slider_end: Rgba(45, 212, 191, 255),
+-                slider_handle: Rgba(255, 255, 255, 255),
+-                slider_handle_border: Rgba(15, 17, 23, 100),
+-                slider_handle_hover_border: Rgba(94, 234, 212, 255),
+-                tile_fill: Rgba(30, 41, 59, 220),
+-                tile_border: Rgba(148, 163, 184, 50),
+-                tile_hover_fill: Rgba(45, 212, 191, 40),
+-                tile_hover_border: Rgba(45, 212, 191, 90),
+-                tile_checked_top: Rgba(94, 234, 212, 255),
+-                tile_checked_bottom: Rgba(45, 212, 191, 255),
+-                tile_checked_border: Rgba(153, 246, 228, 255),
+-                tile_checked_text: Rgba(4, 47, 46, 255),
++                panel_fill: Rgba(30, 34, 40, 240),
++                panel_border: Rgba(92, 99, 112, 128),
++                popup_fill: Rgba(30, 34, 40, 250),
++                popup_border: Rgba(92, 99, 112, 120),
++                separator: Rgba(92, 99, 112, 80),
++                grip_dot: Rgba(130, 138, 149, 160),
++                grip_dot_hover: Rgba(215, 218, 224, 230),
++                grip_dot_disabled: Rgba(92, 99, 112, 80),
++                grip_hover_fill: Rgba(92, 99, 112, 45),
++                text: Rgba(171, 178, 191, 255),
++                strong_text: Rgba(215, 218, 224, 255),
++                muted_text: Rgba(130, 138, 149, 255),
++                primary_text: Rgba(14, 16, 19, 255),
++                hover_fill: Rgba(97, 175, 239, 255),
++                hover_border: Rgba(97, 175, 239, 255),
++                hover_text: Rgba(14, 16, 19, 255),
++                hover_icon: Rgba(14, 16, 19, 255),
++                pressed_fill: Rgba(79, 159, 220, 255),
++                pressed_border: Rgba(97, 175, 239, 255),
++                active_fill: Rgba(97, 175, 239, 60),
++                active_border: Rgba(97, 175, 239, 140),
++                primary_top: Rgba(97, 175, 239, 255),
++                primary_bottom: Rgba(79, 159, 220, 255),
++                primary_border: Rgba(137, 197, 246, 255),
++                primary_hover_top: Rgba(137, 197, 246, 255),
++                primary_hover_bottom: Rgba(97, 175, 239, 255),
++                primary_hover_border: Rgba(164, 213, 250, 255),
++                accent_fill: Rgba(97, 175, 239, 34),
++                accent_border: Rgba(97, 175, 239, 110),
++                accent_hover_fill: Rgba(97, 175, 239, 64),
++                accent_hover_border: Rgba(137, 197, 246, 160),
++                danger_hover_text: Rgba(224, 108, 117, 255),
++                danger_hover_fill: Rgba(224, 108, 117, 70),
++                danger_hover_border: Rgba(224, 108, 117, 150),
++                control_fill: Rgba(39, 44, 51, 220),
++                control_hover_fill: Rgba(50, 56, 67, 230),
++                control_border: Rgba(92, 99, 112, 180),
++                focus_border: Rgba(97, 175, 239, 190),
++                list_fill: Rgba(24, 27, 32, 255),
++                list_border: Rgba(92, 99, 112, 110),
++                selection_fill: Rgba(97, 175, 239, 80),
++                soft_hover_fill: Rgba(97, 175, 239, 30),
++                soft_hover_border: Rgba(97, 175, 239, 90),
++                slider_groove: Rgba(92, 99, 112, 90),
++                slider_start: Rgba(97, 175, 239, 255),
++                slider_end: Rgba(86, 182, 194, 255),
++                slider_handle: Rgba(215, 218, 224, 255),
++                slider_handle_border: Rgba(92, 99, 112, 180),
++                slider_handle_hover_border: Rgba(97, 175, 239, 255),
++                tile_fill: Rgba(39, 44, 51, 235),
++                tile_border: Rgba(92, 99, 112, 110),
++                tile_hover_fill: Rgba(97, 175, 239, 40),
++                tile_hover_border: Rgba(97, 175, 239, 90),
++                tile_checked_top: Rgba(97, 175, 239, 255),
++                tile_checked_bottom: Rgba(79, 159, 220, 255),
++                tile_checked_border: Rgba(137, 197, 246, 255),
++                tile_checked_text: Rgba(14, 16, 19, 255),
+             },
+         }
+     }
+diff --git a/src/theme/window.rs b/src/theme/window.rs
+index 41b4449..082a9df 100644
+--- a/src/theme/window.rs
++++ b/src/theme/window.rs
+@@ -45,19 +45,19 @@ impl Palette {
+             }
+         } else {
+             Self {
+-                window: Rgba(15, 23, 42, 255),
+-                base: Rgba(15, 23, 42, 255),
+-                error: Rgba(252, 165, 165, 255),
+-                text: Rgba(241, 245, 249, 255),
+-                muted: Rgba(148, 163, 184, 255),
+-                border: Rgba(51, 65, 85, 255),
+-                alternate: Rgba(30, 41, 59, 255),
+-                accent: Rgba(94, 234, 212, 255),
+-                on_accent: Rgba(15, 23, 42, 255),
+-                pressed: Rgba(22, 61, 64, 255),
+-                segment: Rgba(45, 45, 45, 255),
+-                selected_segment: Rgba(71, 71, 71, 255),
+-                more_icon: Rgba(203, 213, 225, 255),
++                window: Rgba(14, 16, 19, 255),
++                base: Rgba(30, 34, 40, 255),
++                error: Rgba(224, 108, 117, 255),
++                text: Rgba(215, 218, 224, 255),
++                muted: Rgba(130, 138, 149, 255),
++                border: Rgba(92, 99, 112, 255),
++                alternate: Rgba(39, 44, 51, 255),
++                accent: Rgba(97, 175, 239, 255),
++                on_accent: Rgba(14, 16, 19, 255),
++                pressed: Rgba(45, 80, 120, 255),
++                segment: Rgba(39, 44, 51, 255),
++                selected_segment: Rgba(50, 56, 67, 255),
++                more_icon: Rgba(171, 178, 191, 255),
+             }
+         }
+     }

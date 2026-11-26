@@ -5,8 +5,9 @@
 }:
 
 let
-  # Region, annotation and scrolling capture are the vendored Rust program in
-  # packages/mark-shot. It asks mmsg for window rectangles itself.
+  # Region, annotation and scrolling capture come from the upstream mark-shot
+  # source plus this repository's patches in packages/mark-shot. It asks mmsg
+  # for window rectangles itself.
   mark-shot = pkgs.local.mark-shot;
 
   screenshotScreen = pkgs.writeShellScriptBin "screenshot-screen" ''

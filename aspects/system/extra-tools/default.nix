@@ -9,6 +9,7 @@ _: {
         nvd
         bluetui
         gdu
+        gparted
         newsboat
         trippy
         bind.dnsutils

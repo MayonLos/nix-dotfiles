@@ -12,7 +12,18 @@
       # Host instantiation and every consumer share these two per-system instances.
       _module.args.pkgs = import inputs.nixpkgs {
         inherit system;
-        config.allowUnfree = true;
+        config = {
+          allowUnfree = true;
+          # nixpkgs 2026-11-22 marks CLion 2026.2.4.1 insecure: CVE-2026-111497
+          # is fixed in 2026.3.0.1, which is not packaged in either channel yet.
+          # The jetbrains feature keeps CLion for C/C++ and embedded work, and
+          # the wrapper (`...-skiko-fix`) inherits the same meta, so both names
+          # are needed. Drop this list once jetbrains.clion reaches 2026.3.0.1.
+          permittedInsecurePackages = [
+            "clion-2026.2.4.1"
+            "clion-2026.2.4.1-skiko-fix"
+          ];
+        };
         overlays = [
           # xdg-desktop-portal-wlr is what serves ScreenCast under mango.
           # Stable is 0.8.2; 0.8.3 took over driving the PipeWire graph and
@@ -83,9 +94,11 @@
               # symlinked-directory patch lives with the wallpaper feature.
               sweetbg = inputs.sweetbg.packages.${system}.default;
               matuwall = inputs.matuwall.packages.${system}.default;
-              # Vendored Rust tree. rust-toolchain.toml pins 1.99.1; stable rustc
-              # is 1.95.0 and this unstable instance provides rustc 1.99.1.
-              # System libraries stay on `final` (stable).
+              # Upstream v0.2.4 source plus repository patches (Mango window
+              # rectangles, physical pixel grid, config recovery, One Dark).
+              # rust-toolchain.toml pins 1.99.1; stable rustc is 1.95.0 and this
+              # unstable instance provides rustc 1.99.1. System libraries stay
+              # on `final` (stable).
               mark-shot = import ../packages/mark-shot {
                 pkgs = final;
                 inherit (u) rustc cargo;

@@ -1,4 +1,4 @@
-# In-process media library for mark-shot, built from pinned upstream sources.
+# In-process media library for mark-shot, built from upstream sources.
 #
 # `crates/shot-media` loads `media/libmarkshot-media.so` next to the executable
 # (or the absolute path in `MARK_SHOT_MEDIA_LIBRARY`) and only uses the stable
@@ -6,7 +6,8 @@
 # export are linked into that one shared object, so FFmpeg is linked statically
 # and must be an LGPL-only configuration: no GPL and no nonfree components. The
 # pins, components and configure flags mirror `scripts/media/build-libraries.sh`
-# in this vendored tree so the Nix output matches the release media bundle:
+# in the upstream source tree so the Nix output matches the release media
+# bundle:
 # OpenH264 2.6.0 and nv-codec-headers n13.0.19.0 are exactly the versions the
 # script downloads. FFmpeg is 9.0.2, the current patch release of the 9.0
 # series the script pins (9.0); the patch release keeps the same configure
@@ -18,7 +19,7 @@
 # `ffnvcodec >= 12.1.14.0` and the renumbered headers advertise 9.1.23.1, which
 # would silently disable the NVENC encoders. The GitHub tag pinned by the
 # vendored script satisfies the check and keeps h264_nvenc available.
-{ pkgs }:
+{ pkgs, src }:
 let
   inherit (pkgs) lib stdenv fetchurl;
   inherit (pkgs) nasm pkg-config patchelf;
@@ -186,8 +187,8 @@ let
 
   library = stdenv.mkDerivation {
     pname = "mark-shot-media";
-    version = "0.2.0";
-    src = ./crates/shot-media/native;
+    version = "0.2.4";
+    src = "${src}/crates/shot-media/native";
 
     nativeBuildInputs = [
       pkg-config

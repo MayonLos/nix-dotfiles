@@ -4,7 +4,7 @@ set -euo pipefail
 unset DISPLAY WAYLAND_DISPLAY DBUS_SESSION_BUS_ADDRESS SWAYSOCK
 export HOME="$TMPDIR/home" XDG_CONFIG_HOME="$TMPDIR/config" XDG_DATA_HOME="$TMPDIR/data" XDG_CACHE_HOME="$TMPDIR/cache"
 export GSETTINGS_BACKEND=keyfile GTK_A11Y=none LC_ALL=C.UTF-8
-mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME" "$out"/{gtk-3.0,gtk-4.0,qt6ct}
+mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME" "$out"/{gtk-3.0,gtk-4.0,qt6ct,qt5ct}
 test -f "$GTK_THEME_PACKAGE/share/themes/$GTK_THEME_NAME/gtk-3.0/gtk.css"
 test -f "$ICON_PACKAGE/share/icons/$ICON_NAME/index.theme"
 test -f "$ICON_PACKAGE/share/icons/$ICON_NAME/places/16/folder.svg"
@@ -189,3 +189,19 @@ mv "$XDG_CONFIG_HOME/qt6ct-real/qt6ct.conf" "$TMPDIR/missing-target.conf"
 source "$QT_SEED"
 test ! -e "$XDG_CONFIG_HOME/qt6ct-real/qt6ct.conf"
 cmp "$TMPDIR/missing-target.conf" "$TMPDIR/unchanged.conf"
+
+# qt5ct is the Qt 5 counterpart for Octave and reads the same palette file.
+source "$QT5CT_SEED"
+python3 - "$XDG_CONFIG_HOME/qt5ct/qt5ct.conf" "$PRODUCTION_CONFIG_HOME/qt6ct/colors/one-dark.conf" <<'PY_QT5CT'
+import configparser, sys
+config = configparser.ConfigParser()
+config.read(sys.argv[1])
+assert config["Appearance"]["style"] == "Fusion"
+assert config["Appearance"]["custom_palette"] == "true"
+assert config["Appearance"]["color_scheme_path"] == sys.argv[2]
+assert config["Fonts"]["general"].strip('"').endswith(",10.5,-1,5,50,0,0,0,0,0")
+PY_QT5CT
+cp "$XDG_CONFIG_HOME/qt5ct/qt5ct.conf" "$out/qt5ct/seed.conf"
+printf 'user-edited\n' > "$XDG_CONFIG_HOME/qt5ct/qt5ct.conf"
+source "$QT5CT_SEED"
+grep -Fx 'user-edited' "$XDG_CONFIG_HOME/qt5ct/qt5ct.conf" > "$out/qt5ct/seed-preserves-existing.txt"

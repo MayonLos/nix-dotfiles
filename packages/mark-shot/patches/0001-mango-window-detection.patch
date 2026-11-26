@@ -1,0 +1,263 @@
+--- /dev/null
++++ b/src/backend/window_detection/mango.rs
+@@ -0,0 +1,240 @@
++//! 【Mango 窗口识别】【单次快照】用 mmsg 读取已排好的全局逻辑矩形，不订阅持续事件
++
++use super::{Result, Window, geometry};
++use serde_json::Value;
++use std::time::Duration;
++use tokio::{process::Command, time::timeout};
++
++const QUERY_TIMEOUT: Duration = Duration::from_millis(400);
++
++#[derive(Clone, Copy)]
++struct Bounds {
++    x: f64,
++    y: f64,
++    width: f64,
++    height: f64,
++}
++
++/// 【Mango 窗口识别】【桌面读取】查询 all-clients 与 all-monitors，返回可见窗口矩形
++pub(super) async fn snapshot() -> Result<Vec<Window>> {
++    let binary = std::env::var("MARK_SHOT_MMSG_BIN").unwrap_or_else(|_| "mmsg".to_owned());
++    let clients = query(&binary, "all-clients", "clients").await?;
++    let monitors = query(&binary, "all-monitors", "monitors").await?;
++    let allowed = selected_outputs(
++        &monitors,
++        std::env::var_os("MARK_SHOT_CAPTURE_ALL_OUTPUTS").is_some_and(|value| value == "1"),
++        std::env::var("MARK_SHOT_CAPTURE_OUTPUT").ok().as_deref(),
++    );
++    Ok(collect(&clients, allowed.as_deref(), capture_bounds()))
++}
++
++async fn query(binary: &str, name: &str, key: &str) -> Result<Vec<Value>> {
++    let child = Command::new(binary)
++        .args(["get", name])
++        .kill_on_drop(true)
++        .output();
++    let output = match timeout(QUERY_TIMEOUT, child).await {
++        Ok(result) => result.map_err(|error| format!("mmsg is unavailable: {error}"))?,
++        Err(_) => return Err("mmsg query timed out".into()),
++    };
++    if !output.status.success() {
++        return Err(format!("mmsg get {name} exited {}", output.status).into());
++    }
++    let value: Value = serde_json::from_slice(&output.stdout)?;
++    entries(&value, key).ok_or_else(|| format!("mmsg get {name} did not return {key}").into())
++}
++
++fn entries(value: &Value, key: &str) -> Option<Vec<Value>> {
++    value
++        .as_array()
++        .or_else(|| value.get(key).and_then(Value::as_array))
++        .cloned()
++}
++
++fn flag(value: &Value, key: &str) -> bool {
++    value.get(key).and_then(Value::as_bool).unwrap_or(false)
++}
++
++fn number(value: &Value, key: &str) -> Option<f64> {
++    match value.get(key)? {
++        Value::Number(number) => number.as_f64(),
++        Value::String(text) => text.parse().ok(),
++        _ => None,
++    }
++}
++
++/// 【Mango 窗口识别】【输出过滤】全部输出、指定输出或当前活动输出；没有活动输出时保留全部
++fn selected_outputs(
++    monitors: &[Value],
++    all_outputs: bool,
++    wanted: Option<&str>,
++) -> Option<Vec<String>> {
++    if all_outputs {
++        return None;
++    }
++    if let Some(name) = wanted.map(str::trim).filter(|name| !name.is_empty()) {
++        return Some(vec![name.to_owned()]);
++    }
++    let active: Vec<String> = monitors
++        .iter()
++        .filter(|monitor| flag(monitor, "active"))
++        .filter_map(|monitor| {
++            monitor
++                .get("name")
++                .and_then(Value::as_str)
++                .map(str::to_owned)
++        })
++        .collect();
++    if active.is_empty() {
++        None
++    } else {
++        Some(active)
++    }
++}
++
++fn capture_bounds() -> Option<Bounds> {
++    let mut values = Vec::with_capacity(4);
++    for name in ["X", "Y", "WIDTH", "HEIGHT"] {
++        values.push(
++            std::env::var(format!("MARK_SHOT_CAPTURE_{name}"))
++                .ok()?
++                .parse()
++                .ok()?,
++        );
++    }
++    let [x, y, width, height] = values.try_into().ok()?;
++    if width <= 0.0 || height <= 0.0 {
++        None
++    } else {
++        Some(Bounds {
++            x,
++            y,
++            width,
++            height,
++        })
++    }
++}
++
++fn clip(x: f64, y: f64, width: f64, height: f64, bounds: Option<Bounds>) -> (f64, f64, f64, f64) {
++    let Some(bounds) = bounds else {
++        return (x, y, width, height);
++    };
++    let right = (x + width).min(bounds.x + bounds.width);
++    let bottom = (y + height).min(bounds.y + bounds.height);
++    let x = x.max(bounds.x);
++    let y = y.max(bounds.y);
++    (x, y, right - x, bottom - y)
++}
++
++fn z_order(client: &Value, index: usize) -> i32 {
++    let mut order = i32::try_from(index).unwrap_or(i32::MAX);
++    if flag(client, "is_floating") {
++        order = order.saturating_add(10_000);
++    }
++    if flag(client, "is_overlay") || flag(client, "is_global") {
++        order = order.saturating_add(20_000);
++    }
++    if flag(client, "is_fullscreen") || flag(client, "is_fakefullscreen") {
++        order = order.saturating_add(30_000);
++    }
++    if flag(client, "is_focused") {
++        order = order.saturating_add(40_000);
++    }
++    order
++}
++
++fn collect(clients: &[Value], allowed: Option<&[String]>, bounds: Option<Bounds>) -> Vec<Window> {
++    let mut windows = Vec::new();
++    for (index, client) in clients.iter().enumerate() {
++        if !flag(client, "is_visible") || flag(client, "is_minimized") {
++            continue;
++        }
++        if let Some(allowed) = allowed
++            && !allowed
++                .iter()
++                .any(|name| client.get("monitor").and_then(Value::as_str) == Some(name.as_str()))
++        {
++            continue;
++        }
++        let Some(x) = number(client, "x") else {
++            continue;
++        };
++        let Some(y) = number(client, "y") else {
++            continue;
++        };
++        let Some(width) = number(client, "width") else {
++            continue;
++        };
++        let Some(height) = number(client, "height") else {
++            continue;
++        };
++        let (x, y, width, height) = clip(x, y, width, height, bounds);
++        let Some(rect) = geometry::rect(x, y, width, height) else {
++            continue;
++        };
++        geometry::append(&mut windows, rect, Some(z_order(client, index)));
++    }
++    windows
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use serde_json::json;
++
++    fn client(x: f64, width: f64, monitor: &str) -> Value {
++        json!({
++            "x": x,
++            "y": 42.0,
++            "width": width,
++            "height": 100.0,
++            "is_visible": true,
++            "is_minimized": false,
++            "is_floating": false,
++            "is_focused": false,
++            "monitor": monitor
++        })
++    }
++
++    #[test]
++    fn visible_clients_on_the_active_output_keep_global_rectangles() {
++        let mut hidden = client(12.0, 200.0, "eDP-1");
++        hidden["is_visible"] = json!(false);
++        let mut minimized = client(300.0, 80.0, "eDP-1");
++        minimized["is_minimized"] = json!(true);
++        let other = client(2000.0, 400.0, "HDMI-A-1");
++        let clients = vec![client(12.0, 200.0, "eDP-1"), hidden, minimized, other];
++        let monitors = vec![
++            json!({"name": "eDP-1", "active": true}),
++            json!({"name": "HDMI-A-1", "active": false}),
++        ];
++        let allowed = selected_outputs(&monitors, false, None);
++        let windows = collect(&clients, allowed.as_deref(), None);
++        assert_eq!(windows.len(), 1);
++        assert_eq!(windows[0].rect.x(), 12.0);
++        assert_eq!(windows[0].rect.width(), 200.0);
++    }
++
++    #[test]
++    fn focused_floating_window_is_above_a_tiled_one() {
++        let mut floating = client(10.0, 120.0, "eDP-1");
++        floating["is_floating"] = json!(true);
++        floating["is_focused"] = json!(true);
++        let windows = collect(&[client(10.0, 400.0, "eDP-1"), floating], None, None);
++        assert!(windows[1].z_order > windows[0].z_order);
++    }
++
++    #[test]
++    fn capture_bounds_drop_rectangles_outside_the_requested_area() {
++        let bounds = Bounds {
++            x: 0.0,
++            y: 0.0,
++            width: 100.0,
++            height: 80.0,
++        };
++        let windows = collect(&[client(80.0, 50.0, "eDP-1")], None, Some(bounds));
++        assert_eq!(windows.len(), 1);
++        assert_eq!(windows[0].rect.x(), 80.0);
++        assert_eq!(windows[0].rect.width(), 20.0);
++    }
++}
+--- a/src/backend/window_detection/mod.rs
++++ b/src/backend/window_detection/mod.rs
+@@ -4,6 +4,8 @@ mod geometry;
+ #[cfg(target_os = "linux")]
+ mod kde;
+ #[cfg(target_os = "linux")]
++mod mango;
++#[cfg(target_os = "linux")]
+ mod niri;
+ #[cfg(any(target_os = "windows", test))]
+ pub(crate) mod requests;
+@@ -54,7 +56,7 @@ pub async fn snapshot(connection: &Connection) -> Vec<Window> {
+         }) {
+             kde::snapshot(connection).await
+         } else {
+-            Ok(Vec::new())
++            mango::snapshot().await
+         }
+     };
+     match tokio::time::timeout(Duration::from_millis(500), work).await {

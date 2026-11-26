@@ -35,7 +35,7 @@ checks: [mayon-tui, bilitui, serial-mayon, keys-mayon, keys-mayon-bindings, mayo
 ## 已移除（不要找也不要恢复接线）
 
 `seek`、`power-mayon`、`mcsrv-mayon`、`study-mayon`、`shots-mayon` 于 2026-10-31 删除，
-相关数据目录已由用户清理。截图由本仓库维护的 Rust [mark-shot](../packages/mark-shot/README.md) 提供，含滚动截图。
+相关数据目录已由用户清理。截图由上游 [mark-shot](https://github.com/jswysnemc/mark-shot) `v0.2.4` 源码加本仓库补丁（[packages/mark-shot](../packages/mark-shot/README.md)）提供，含滚动截图。
 `musicfox` 决定继续使用上游，不自写。代码可从 Git 历史 `47fcebe` 找回。
 
 ## 统一约定（新增工具必须遵守）

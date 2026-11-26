@@ -40,7 +40,7 @@ checks: []
 | Yazi | 保留 | 终端文件管理、Git/文档预览和 Kitty 图像与 Thunar 互补。换 lf/ranger 要重写插件与预览，不是现成精简。 |
 | Swayimg | 保留，完善现有配置 | 锁定版本是 **4.7、INI 配置**，已有 gallery、动画及多格式支持。不要直接套主线新版 Lua；可在当前版本内调整缩放、背景、导航和 MIME。 |
 | mpv | 保留 | 现有 Anime4K、Vulkan、NVDEC、字幕和播放脚本值得保留。更有价值的是按内容/电池状态使用不同播放 profile，避免始终启用高成本 shader；收益需实测。 |
-| mark-shot | 保留，源码在仓库 | 框选、注释、置顶和滚动截图。Rust 树在 `packages/mark-shot`，窗口吸附读 `mmsg`。`Print` 标注，`Shift+Print` 为 `mark-shot --scroll`。 |
+| mark-shot | 保留，上游源码 + 仓库补丁 | 框选、注释、置顶、滚动截图和录制。上游 `v0.2.4` tag 源码加 `packages/mark-shot/patches/`（Mango 窗口矩形、物理像素网格、配置容错、One Dark），窗口吸附读 `mmsg`。`Print` 标注，`Shift+Print` 为 `mark-shot --scroll`。 |
 | Tesseract OCR | 保留 | 现有中英 OCR 是独立功能；截图工具不能自动替代语言数据与识别流程。 |
 | 桌面剪贴板历史 | cliphist + cliphist-tui | `Super+V` 在 Kitty 浮窗里预览 cliphist。图片走 Kitty 图形协议。回车写回并粘贴；旧历史文件不删除、不改路径。 |
 | cliphist | 保留，作为日常历史 | 文字和图片 watcher 随 Mango target 启动。不迁移、不删除原数据库，路径仍是默认缓存。 |
@@ -68,6 +68,7 @@ checks: []
 |---|---|---|
 | Blender | 保留 | 通用 3D 创作没有直接等价的轻量替代。Cycles CUDA/OptiX 选择应结合实际 GPU/显存测试，不能把 NVIDIA 存在当成最佳后端已配置。 |
 | GIMP | 保留 | 通用位图编辑；Krita 更偏绘画，darktable 偏 RAW，不是等价替代。没有 RAW 工作流就无需额外补照片软件。 |
+| Inkscape | 保留 | 矢量示意图、流程图和插图；与 GIMP 的位图编辑、Blender 的 3D 分工。没有矢量工作流时再考虑删除。 |
 | OBS Studio | 保留，比较捕获源 | 已配 wlrobs 与 obs-vkcapture。可在 Mango 上比较原生 PipeWire 与 wlrobs 的画面、帧率和卡顿，再决定是否移除插件；游戏捕获也需单独验证。 |
 | Kdenlive | 暂留，用户考虑中 | 如果没有剪辑需求，删除比换另一套剪辑软件更合理。若只是裁剪/转码，可先用现有 FFmpeg；要时间线编辑则保留。Resolve 不是更轻更省事的默认替代。 |
 | Thunderbird | 保留 | 邮件、日历、联系人集中入口；网页邮箱会改变离线和多账户流程，没有明确替换收益。 |
@@ -78,10 +79,13 @@ checks: []
 | Zathura | 保留 | 键盘式 PDF 阅读与 SyncTeX；PDF 批注使用 Zotero 内置阅读器。若另有手写批注需求，再评估 Xournal++，不安装 Okular。 |
 | Quill | 保留 | 面板快记、todo 与主笔记库分工。先明确哪些内容应长期进入 Obsidian，避免同一事项在两处维护。 |
 | Musicfox | 保留 | 网易云终端入口；不承担通用本地音乐库，无需因为已有 mpv 就删除。 |
+| Audacity | 保留 | 多轨录音、降噪与波形剪辑；FFmpeg 仍是转码后端，`wl-screenrec` 只负责录制。 |
 | FFmpeg | 保留 | 视频/音频转换、截取和工作流后端；OBS 自带库不等于 shell 有可用命令。 |
 | ImageMagick | 保留 | Thunar 图片动作及编辑器 PDF/图像处理有消费者；不要因存在 GIMP 就删命令行图像后端。 |
 
 2026-11-16 补齐：`wl-screenrec`（VAAPI 与音频实录通过）、`yt-dlp`/`streamlink`（公开视频解析通过）、`ocrmypdf`（`chi_sim` force-OCR 通过）、`qpdf`、`foliate`、`pandoc`、`typst`。系统工具 `lm_sensors`、`s-tui`、`nvme-cli`、`smartmontools`、`nvd`、`bluetui`、`gdu` 已安装并做启动/读取冒烟；`trip` 通过 `CAP_NET_RAW` wrapper 实测；`newsboat` 已配 5 个源（重载 147 篇）。
+
+2026-11-23 补齐：按用户要求安装 Wireshark 4.6.9（[packet-capture](../aspects/network/packet-capture/README.md)，`programs.wireshark` + dumpcap capability wrapper）、Inkscape 1.4.4、Audacity 3.7.7（media）、GParted 1.8.1（extra-tools）、Meld 3.23.1（file-manager），并重新安装 Octave 11.1.0（science）。构建到 toplevel，捕获与 GUI 运行行为未实测。
 
 资料：[Blender GPU](https://docs.blender.org/manual/en/5.0/render/cycles/gpu_rendering.html)、[OBS 捕获源](https://obsproject.com/kb/display-capture-sources)、[wlrobs](https://github.com/zsien-debian-repo/wlrobs)、[Kdenlive](https://apps.kde.org/kdenlive/)、[Thunderbird](https://www.thunderbird.net/en-GB/)、[LibreOffice 格式](https://help.libreoffice.org/latest/ug/text/shared/guide/ms_user.html)、[Zotero Connector](https://www.zotero.org/support/connector)、[Typora](https://support.typora.io/Quick-Start/)。
 
@@ -106,6 +110,7 @@ checks: []
 | GitHub CLI（gh） | 保留 | PR、仓库等 GitHub 操作；与本地 Git 分工。只有不使用这些命令时才有删的理由。 |
 | lazygit | 保留 | 交互暂存、提交和 rebase；`lg` 已接线，和 gh 分工不同。 |
 | delta | 保留 | diff pager，不是另一个完整 Git 客户端；删除会简化显示而非删除 Git 能力。 |
+| Meld | 保留 | 目录比较和三方差分合并的 GUI；不做 MIME 默认或 Thunar 自定义动作，IDE 与 delta/lazygit 保留各自角色。 |
 | direnv / nix-direnv | 保留 | 自动加载用户自己的项目 flake，缓存进入环境的工作。首次下载仍取决于项目依赖及缓存，不承诺首次进入零等待。 |
 | nix-index / comma | 保留 | 文件/命令所属包查询及临时运行共享同一数据库。不能只删数据库却保留依赖它的 command-not-found/comma 接线。 |
 | nh / nix-output-monitor | 保留 | 重建、清理与构建展示已有 `nr`/`nc` 工作流；不需再堆一套 Nix 管理前端。 |
@@ -158,7 +163,8 @@ checks: []
 | 编辑器 LSP | 保留按现有语言使用的 bash、clangd、CMake、Docker、Java、Lua、Markdown、MATLAB、Nix、Python、TeX、TS/HTML/CSS/JSON/YAML 服务；迁移时验证启动及项目根识别。 |
 | 格式化与检查 | 保留 clang-format、google-java-format、nixfmt、shfmt、stylua、luacheck、ruff、shellcheck；它们与完整 IDE 并非所有调用方都相同。暂不为统一品牌换一整套。 |
 | trash-cli | 保留，Neovim 文件树的安全适配需要回收站命令；不是无消费者的杂项。 |
-| MATLAB | 保留课程/工具箱/Simulink 工作流；Python 科学计算和 Octave 都不是保证等价的替代，且 Octave 已确认删除。 |
+| MATLAB | 保留课程/工具箱/Simulink 工作流；Python 科学计算不保证等价。 |
+| Octave | 2026-11-23 按用户要求重新安装：`pkgs.octaveFull`（Qt 5 GUI），用于 .m 课程和免登录的快速启动。nixpkgs 的 `octaveFull` 只比 `octave` 多 GUI，不包含 62 个 `octavePackages` 工具箱；需要 signal/control 等 toolbox 时在 [science feature](../aspects/apps/science/README.md) 里改用 `octaveFull.withPackages`，它们针对该 Octave 本地编译。GUI 由 qt5ct 读取共享 One Dark palette。 |
 | CUDA toolkit / cuDNN | 继续放 `.#cuda`，不迁入全局。重复 nvcc 声明已经精简，不把共享闭包去重说成额外释放空间。 |
 | llama.cpp（CUDA） | 新增 [local-inference](../aspects/dev/local-inference/README.md)，只在 `mayon@nixos-btw` 绑定选择，不进 bundle。CUDA 构建不在任何二进制缓存里，nixpkgs pin 变化会重编；模型是用户数据。服务器角色不继承。 |
 | sccache / mold | 只进 `nix develop` 默认 shell：`RUSTC_WRAPPER=sccache`（缓存库/proc-macro crate，最终 bin crate 按设计不缓存）、`CARGO_INCREMENTAL=0`、原生目标 `-fuse-ld=mold` 负责链接。nix 构建在沙箱内，不经过这两个缓存。实测 C 与 Rust 库 crate 都是首次 miss、再次 hit。 |
@@ -231,6 +237,8 @@ checks: []
 | grim / slurp | 保留截图与 OCR 后端，不因已有 GUI 截图入口而删除。 |
 | wget | 保留基础下载入口，暂不因无明确并行/断点任务额外添 aria2。 |
 | lshw | 保留硬件诊断；可按需运行，不需要常驻。 |
+| Wireshark | 保留网络排障 | `programs.wireshark` 装 GUI 与 `tshark`，创建 `wireshark` 组并给 `/run/wrappers/bin/dumpcap` 提供 `cap_net_raw,cap_net_admin`；用户入组后捕获不需要 root。`usbmon` 未启用。 |
+| GParted | 保留磁盘维护 | 图形分区/格式化；不预设布局、不写 `fstab`，授权由会话 polkit agent 处理。 |
 | 系统 Vim | 保留应急编辑入口；与 Home Manager 的完整 Neovim 配置生命周期不同。 |
 
 ## 缺失推荐：选择标准、成本和落点
@@ -256,7 +264,7 @@ checks: []
 | Nvim DAP / Neotest（条件） | 希望断点、变量、测试发现/结果留在 Nvim | IDE 已有对应能力；需要按语言维护 adapter。之前已删除 DAP，不能未经选择重新加入。 | 原生 Lua 迁移完成后，按语言单独决定。 |
 | JupyterLab（条件） | Python 实验、数据分析和可交互报告 | PyCharm/VSCode/MATLAB 已覆盖部分场景；优先项目 flake/uv 环境，不扩大全局 Python。 | 具体项目。 |
 
-官方依据：[Borg](https://borgbackup.readthedocs.io/en/stable/)、[Connector](https://www.zotero.org/support/connector)、[uBlock Origin](https://github.com/gorhill/uBlock)、[Xarchiver](https://github.com/ib/xarchiver)、[Syncthing FAQ](https://docs.syncthing.net/users/faq.html)、[Zotero 数据目录限制](https://www.zotero.org/support/kb/data_directory_in_cloud_storage_folder)、[rclone](https://rclone.org/)、[Tailscale](https://tailscale.com/docs/concepts/what-is-tailscale)、[LVFS/fwupd](https://fwupd.org/)、[Okular](https://apps.kde.org/okular/)、[Xournal++](https://xournalpp.github.io/)、[Crosspipe](https://github.com/dp0sk/crosspipe)、[EasyEffects](https://github.com/wwmm/easyeffects)、[Heroic](https://github.com/Heroic-Games-Launcher/HeroicGamesLauncher)、[darktable](https://www.darktable.org/)。
+官方依据：[Borg](https://borgbackup.readthedocs.io/en/stable/)、[Connector](https://www.zotero.org/support/connector)、[uBlock Origin](https://github.com/gorhill/uBlock)、[Xarchiver](https://github.com/ib/xarchiver)、[Syncthing FAQ](https://docs.syncthing.net/users/faq.html)、[Zotero 数据目录限制](https://www.zotero.org/support/kb/data_directory_in_cloud_storage_folder)、[rclone](https://rclone.org/)、[Tailscale](https://tailscale.com/docs/concepts/what-is-tailscale)、[LVFS/fwupd](https://fwupd.org/)、[Okular](https://apps.kde.org/okular/)、[Xournal++](https://xournalpp.github.io/)、[Crosspipe](https://github.com/dp0sk/crosspipe)、[EasyEffects](https://github.com/wwmm/easyeffects)、[Heroic](https://github.com/Heroic-Games-Launcher/HeroicGamesLauncher)、[darktable](https://www.darktable.org/)、[Wireshark](https://www.wireshark.org/docs/)、[Inkscape](https://inkscape.org/doc/)、[Audacity](https://support.audacityteam.org/)、[GParted](https://gparted.org/documentation.php)、[Meld](https://meldmerge.org/help/)。
 
 早期选型时只读求值过的候选包版本包括 Borg 1.4.4、Vorta 0.11.0、Syncthing 2.1.3、Xarchiver 0.5.4.26、Tailscale 1.98.10、fwupd 2.1.4、rclone 1.75.1、Okular 26.04.3、Xournal++ 1.3.4、Crosspipe 0.1.1、EasyEffects 8.2.4、Heroic 2.22.1；这是候选版本记录，不代表当前安装清单。**属性/版本可求值不等于构建、运行和桌面集成已经通过**；在线最新文档也不能替代锁定版本验证。
 

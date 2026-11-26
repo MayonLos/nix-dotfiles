@@ -19,6 +19,7 @@
 | `nvd` | 比较 Nix store 中两代 closure 的差异。 |
 | `bluetui` | 终端蓝牙管理 TUI；BlueZ 服务和权限由系统现有配置提供。 |
 | `gdu` | 终端磁盘占用分析。 |
+| `gparted` | 图形分区编辑器；分区写入仍由 polkit 认证和运行中的文件系统状态约束。 |
 | `newsboat` | 终端 RSS/Atom 阅读器；HM 生成 5 个公开新闻源（NixOS Discourse、LWN、Phoronix、少数派、IT之家）。 |
 | `trippy` | `trip` 网络路径追踪；`security.wrappers` 提供 `cap_net_raw+ep`。 |
 | `bind.dnsutils` | `dig`、`nslookup`、`host`；与 `pkgs.dnsutils` 是同一 derivation。 |
@@ -33,6 +34,7 @@
 - `trippy` 通过 wrapper 获得 raw socket 能力；wrapper 只在 `/run/wrappers/bin` 生效。
 - `lm_sensors` 没有 `sensors-detect` 配置，`smartmontools` 没有 `smartd`，`bluetui` 没有新增
   蓝牙服务。
+- `gparted` 只是安装 GUI；不预设分区布局，也不写 `fstab`，授权由会话 polkit agent 处理。
 
 ## 拥有文件与状态
 

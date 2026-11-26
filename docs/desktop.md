@@ -38,7 +38,7 @@ Mango 配置用 `mmsg dispatch reload_config` 重载；Home Manager activation �
 |---|---|
 | GTK3 / Thunar | adw-gtk3-dark；HM 把 One Dark CSS 渲染进 `gtk-3.0/gtk.css` |
 | GTK4 | 保留 libadwaita 控件；HM 渲染 `gtk-4.0/gtk.css` |
-| Qt | qt6ct + Fusion，只读 QSS，既有 GUI 偏好保留 |
+| Qt | qt6ct + Fusion，只读 QSS，既有 GUI 偏好保留；Octave 是唯一的 Qt 5 应用，由 qt5ct 读同一 palette |
 | KDE 组件 | `kdeglobals` 配色与图标（否则会回到亮色） |
 | Firefox | 单一 seed 维护 `userChrome.css` 标记块，页面不反色 |
 | Fcitx5 | SVG 主题，横排 7 项 |

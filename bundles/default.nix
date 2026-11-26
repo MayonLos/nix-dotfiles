@@ -6,11 +6,13 @@
       keys-mayon
       default-tools
       extra-tools
+      packet-capture
       firefox
       communication
       documents
       file-manager
       media
+      science
     ];
     engineering-workbench.includes = with den.aspects; [
       command-line

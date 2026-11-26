@@ -13,6 +13,9 @@
   };
   home.packages = with pkgs; [
     qt6Packages.qt6ct
+    # Octave is the one Qt 5 application; its wrapper asks for qt5ct so the
+    # palette seeded in qt.nix applies instead of light Fusion.
+    libsForQt5.qt5ct
     brightnessctl
     ddcutil
     playerctl
