@@ -156,12 +156,9 @@ let
       selectedHost.fonts.fontconfig.defaultFonts.monospace == [ palette.fonts.mono ]
       && selectedHome.gtk.font.name == palette.fonts.sans
       # fcitx5 owns a writable config dir now: the profile and classicui.conf
-      # are activation seeds, and the optional WeTypeX addon is built in.
+      # are activation seeds.
       && selectedHome.home.activation ? seedFcitx5Profile
       && selectedHome.home.activation ? seedFcitx5ClassicUi
-      && builtins.any (
-        package: (package.pname or "") == "fcitx5-wetypex"
-      ) selectedHome.i18n.inputMethod.fcitx5.addons
       && selectedHome.home.pointerCursor.name == palette.cursor.name
       && selectedHome.home.pointerCursor.size == palette.cursor.size
       && selectedHome.gtk.iconTheme.name == palette.iconTheme

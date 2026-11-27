@@ -65,17 +65,6 @@
       url = "github:numtide/treefmt-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
-    # Optional WeTypeX fcitx5 addon (open adapter for the proprietary WeChat
-    # input engine). Follows the host nixpkgs because the fcitx5 plugin ABI
-    # must match the system fcitx5; only the open adapter is built here, the
-    # proprietary runtime is downloaded by the user at first setup
-    # (`fcitx5-wetypex-setup --download --accept-upstream-license`) and lives
-    # under ~/.local/share/fcitx5-wetypex, never in the Nix store.
-    wetypex = {
-      url = "github:panxuc/fcitx5-wetypex";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   outputs = inputs: inputs.flake-parts.lib.mkFlake { inherit inputs; } ./nix;

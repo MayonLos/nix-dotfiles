@@ -304,8 +304,7 @@
         "nixpkgs": "nixpkgs_3",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "sops-nix": "sops-nix",
-        "treefmt-nix": "treefmt-nix_2",
-        "wetypex": "wetypex"
+        "treefmt-nix": "treefmt-nix_2"
       }
     },
     "scenefx": {
@@ -419,26 +418,6 @@
       "original": {
         "owner": "numtide",
         "repo": "treefmt-nix",
-        "type": "github"
-      }
-    },
-    "wetypex": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1795353384,
-        "narHash": "sha256-cq+xxk2kbsRAW+eVDisdhFcPOCpBOgxvOlao5C0VWhQ=",
-        "owner": "panxuc",
-        "repo": "fcitx5-wetypex",
-        "rev": "68699d7c8320be745877b51ed3c63e347b4d1b81",
-        "type": "github"
-      },
-      "original": {
-        "owner": "panxuc",
-        "repo": "fcitx5-wetypex",
         "type": "github"
       }
     }

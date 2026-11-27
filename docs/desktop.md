@@ -44,7 +44,7 @@ Mango 在启动 session target 前把 `WAYLAND_DISPLAY`/`XDG_SESSION_TYPE` 导�
 | Qt | qt6ct + Fusion，只读 QSS，既有 GUI 偏好保留；Octave 是唯一的 Qt 5 应用，由 qt5ct 读同一 palette |
 | KDE 组件 | `kdeglobals` 配色与图标（否则会回到亮色） |
 | Firefox | 单一 seed 维护 `userChrome.css` 标记块，页面不反色 |
-| Fcitx5 | SVG 主题，横排 7 项；`~/.config/fcitx5` 归用户，`profile`/`classicui.conf` 由 activation 首次 seed（Rime 默认 + 可选 wetypex 项），GUI/WeTypeX 之后可写 |
+| Fcitx5 | SVG 主题，横排 7 项；`~/.config/fcitx5` 归用户，`profile`/`classicui.conf` 由 activation 首次 seed（Rime 默认），之后 GUI 可写 |
 | Kitty、btop、Yazi | HM 独占渲染 |
 | Zathura、Obsidian | documents 自己渲染的 palette 文件/snippet |
 

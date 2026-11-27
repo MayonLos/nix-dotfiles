@@ -1,17 +1,16 @@
 { palette }:
 {
   config,
-  inputs,
   pkgs,
   lib,
   ...
 }:
 let
-  # fcitx5 must own a writable ~/.config/fcitx5: it rewrites `profile` from the
-  # GUI and the optional WeTypeX addon writes its preferences there. Home
-  # Manager's input-method module would otherwise make the whole directory a
-  # read-only store link. Seed the two static files once and let the running
-  # application own the directory afterwards.
+  # fcitx5 must own a writable ~/.config/fcitx5: it rewrites `profile` and
+  # addon preferences from the GUI. Home Manager's input-method module would
+  # otherwise make the whole directory a read-only store link. Seed the two
+  # static files once and let the running application own the directory
+  # afterwards.
   seed = import ../../../lib/seed-file.nix { inherit lib pkgs; };
   configHome = config.home.homeDirectory + "/.config";
   fcitx5Config = import ./fcitx5-config.nix { inherit pkgs palette; };
@@ -34,20 +33,6 @@ in
       waylandFrontend = true;
       addons = with pkgs; [
         (import ./rime/package.nix { inherit pkgs; })
-        # Optional second engine: the open WeTypeX adapter for the WeChat
-        # input engine. Rime stays the DefaultIM and the group item below
-        # only makes the engine switchable; AI/voice/layer-shell/WeType skin
-        # are disabled to keep the closure small and let the repository theme
-        # own the candidate UI. The proprietary runtime is a user-data step,
-        # not a Nix build step: run once as the user
-        #   fcitx5-wetypex-setup --download --accept-upstream-license
-        # Data lives in ~/.local/share/fcitx5-wetypex and survives updates.
-        (inputs.wetypex.packages.${pkgs.stdenv.hostPlatform.system}.fcitx5-wetypex.override {
-          enableAI = false;
-          enableVoice = false;
-          enableLayerShell = false;
-          enableWeTypeTheme = false;
-        })
         fcitx5-gtk
         libsForQt5.fcitx5-qt
         qt6Packages.fcitx5-configtool
