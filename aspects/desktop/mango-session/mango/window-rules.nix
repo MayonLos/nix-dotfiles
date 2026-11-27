@@ -34,7 +34,7 @@ let
     "libreoffice.*|soffice"
     "Zotero|zotero|org[.]zotero[.]Zotero"
     "MATLAB.*|matlab.*|com[.]mathworks[.]MATLAB.*"
-    "com[.]obsproject[.]Studio|obs|org[.]kde[.]kdenlive|kdenlive"
+    "com[.]obsproject[.]Studio|obs"
     "gimp.*|Gimp.*|org[.]gimp[.]GIMP|[Bb]lender"
     "obsidian|md[.]obsidian[.]Obsidian|excalidraw|Excalidraw"
   ]
@@ -64,7 +64,7 @@ let
     "${float},no_focus:1,${silent},app_id:^(${browser})$,title:^.*(Sharing Indicator|共享指示器)$"
     # Image viewers own one centered workspace-sized surface when launched.
     "${workspace},app_id:^(mpv|imv|swayimg|feh)$"
-    "${opaque},app_id:^(mpv|imv|swayimg|feh|[Bb]lender|gimp.*|org[.]gimp[.]GIMP|com[.]obsproject[.]Studio|org[.]kde[.]kdenlive)$"
+    "${opaque},app_id:^(mpv|imv|swayimg|feh|[Bb]lender|gimp.*|org[.]gimp[.]GIMP|com[.]obsproject[.]Studio)$"
 
     # Standalone controls retain their application-scoped IDs from the existing table.
     "${tools},app_id:^(org[.]pulseaudio[.]pavucontrol|pavucontrol|[Bb]lueman-manager|org[.]blueman[.]Manager|[.]blueman-manager-wrapped|nm-connection-editor)$"

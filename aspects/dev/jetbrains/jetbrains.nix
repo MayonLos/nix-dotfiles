@@ -52,7 +52,6 @@ in
     [
       idea
       pycharm
-      clion
     ]
   );
 }

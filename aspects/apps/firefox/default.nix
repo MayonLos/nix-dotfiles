@@ -19,6 +19,18 @@
               "{443bf4af-0884-4c22-886b-21f936e899df}".installation_mode = "blocked";
               "{7efc2a80-496f-49b1-88db-4ddd7d312757}".installation_mode = "blocked";
               "{894e1fa0-bfe2-4ee8-ad01-6e9ff4092ad0}".installation_mode = "blocked";
+              # The cleanup audit's two browser-side recommendations: paper
+              # collection (Zotero) and content blocking. install_url pulls the
+              # signed latest XPI from AMO on first start, so a fresh profile
+              # needs network once; the extensions update themselves afterwards.
+              "uBlock0@raymondhill.net" = {
+                installation_mode = "force_installed";
+                install_url = "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi";
+              };
+              "zotero@chnm.gmu.edu" = {
+                installation_mode = "force_installed";
+                install_url = "https://addons.mozilla.org/firefox/downloads/latest/zotero-connector/latest.xpi";
+              };
             };
           };
           extraPrefs = ''

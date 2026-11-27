@@ -28,7 +28,6 @@ _: {
         gimp
         inkscape
         audacity
-        kdePackages.kdenlive
         imagemagick
       ];
     };

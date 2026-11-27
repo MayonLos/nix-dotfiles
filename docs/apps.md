@@ -13,7 +13,7 @@ checks: []
 
 | 优先级 | 项目 | 建议与条件 |
 |---|---|---|
-| 高 | Zotero Connector | 已使用 Zotero 和 Firefox，适合补齐浏览器论文/网页采集；先核对是否已经手动安装。 |
+| 已装 | Zotero Connector / uBlock Origin | 2026-11-27 起由 Firefox 策略 `force_installed` 强制安装（首次启动联网下载签名 XPI）；对应旧“缺失推荐”两条已落地。 |
 | 已定归档 | File Roller | GTK4 归档 GUI，Thunar TAP 固定其可执行路径；替换旧 Xarchiver。 |
 | 已移除 | Okular | 用户决定不安装；PDF 默认 Zathura，PDF 批注使用 Zotero 内置阅读器。 |
 | 已修改 | `cliphist` | 移除：剪贴板历史改由 Noctalia 提供；X11↔Wayland 桥保留在共享 `clipboard-bridge.service`。 |
@@ -70,7 +70,7 @@ checks: []
 | GIMP | 保留 | 通用位图编辑；Krita 更偏绘画，darktable 偏 RAW，不是等价替代。没有 RAW 工作流就无需额外补照片软件。 |
 | Inkscape | 保留 | 矢量示意图、流程图和插图；与 GIMP 的位图编辑、Blender 的 3D 分工。没有矢量工作流时再考虑删除。 |
 | OBS Studio | 保留，比较捕获源 | 已配 wlrobs 与 obs-vkcapture。可在 Mango 上比较原生 PipeWire 与 wlrobs 的画面、帧率和卡顿，再决定是否移除插件；游戏捕获也需单独验证。 |
-| Kdenlive | 暂留，用户考虑中 | 如果没有剪辑需求，删除比换另一套剪辑软件更合理。若只是裁剪/转码，可先用现有 FFmpeg；要时间线编辑则保留。Resolve 不是更轻更省事的默认替代。 |
+| Kdenlive | 2026-11-27 删除 | 清理审计无使用证据：recently-used 0 次、配置停在 2026-10-18、无 MIME 关联；只撤回包声明，项目文件保留，需要时间线剪辑时重装即可。只做裁剪/转码时 FFmpeg 够用。 |
 | Thunderbird | 保留 | 邮件、日历、联系人集中入口；网页邮箱会改变离线和多账户流程，没有明确替换收益。 |
 | LibreOffice | 保留，统一处理 Office 格式 | DOC/DOCX、XLS/XLSX、PPT/PPTX 与 ODT/ODS/ODP 均由 LibreOffice 默认打开，分别使用 Writer、Calc、Impress。复杂文档仍应使用真实文件检查排版，不凭格式支持宣称兼容性普遍更好。 |
 | Zotero | 保留，优先补 Connector | 文献库和论文注释已有一体化流程；浏览器扩展可减少手动录入。不要用普通文件同步器同步正在使用的数据目录。 |
@@ -85,9 +85,11 @@ checks: []
 
 2026-11-16 补齐：`wl-screenrec`（VAAPI 与音频实录通过）、`yt-dlp`/`streamlink`（公开视频解析通过）、`ocrmypdf`（`chi_sim` force-OCR 通过）、`qpdf`、`foliate`、`pandoc`、`typst`。系统工具 `lm_sensors`、`s-tui`、`nvme-cli`、`smartmontools`、`nvd`、`bluetui`、`gdu` 已安装并做启动/读取冒烟；`trip` 通过 `CAP_NET_RAW` wrapper 实测；`newsboat` 已配 5 个源（重载 147 篇）。
 
+2026-11-27 清理落地：删除 Kdenlive（无时间线剪辑使用证据）与 CLion（2026-08-07 后未启动、无项目目录；同时撤回 CVE-2026-111497 的临时 insecure 放行，`nix/pkgs.nix` 不再有 `permittedInsecurePackages`）；按旧“缺失推荐”给 Firefox 增加 `uBlock0@raymondhill.net` 与 `zotero@chnm.gmu.edu` 两个 `force_installed` 扩展。
+
 2026-11-23 补齐：按用户要求安装 Wireshark 4.6.9（[packet-capture](../aspects/network/packet-capture/README.md)，`programs.wireshark` + dumpcap capability wrapper）、Inkscape 1.4.4、Audacity 3.7.7（media）、GParted 1.8.1（extra-tools）、Meld 3.23.1（file-manager），并重新安装 Octave 11.1.0（science）。构建到 toplevel，捕获与 GUI 运行行为未实测。
 
-资料：[Blender GPU](https://docs.blender.org/manual/en/5.0/render/cycles/gpu_rendering.html)、[OBS 捕获源](https://obsproject.com/kb/display-capture-sources)、[wlrobs](https://github.com/zsien-debian-repo/wlrobs)、[Kdenlive](https://apps.kde.org/kdenlive/)、[Thunderbird](https://www.thunderbird.net/en-GB/)、[LibreOffice 格式](https://help.libreoffice.org/latest/ug/text/shared/guide/ms_user.html)、[Zotero Connector](https://www.zotero.org/support/connector)、[Typora](https://support.typora.io/Quick-Start/)。
+资料：[Blender GPU](https://docs.blender.org/manual/en/5.0/render/cycles/gpu_rendering.html)、[OBS 捕获源](https://obsproject.com/kb/display-capture-sources)、[wlrobs](https://github.com/zsien-debian-repo/wlrobs)、[Thunderbird](https://www.thunderbird.net/en-GB/)、[LibreOffice 格式](https://help.libreoffice.org/latest/ug/text/shared/guide/ms_user.html)、[Zotero Connector](https://www.zotero.org/support/connector)、[Typora](https://support.typora.io/Quick-Start/)。
 
 ## 编辑器、终端与 Git
 
@@ -97,7 +99,7 @@ checks: []
 |---|---|---|
 | IntelliJ IDEA | 保留 | JVM 主 IDE；可以覆盖部分其他语言，但插件和订阅决定完整能力，不据“一套 IDE”口号重新扩装。 |
 | PyCharm | 保留；可选合并入口 | IDEA 官方有 Python 插件。只有现有许可、插件和 Python 工作流都满足时，才值得试把 PyCharm 项目放入 IDEA；会改变独立设置与窗口习惯。用户已确认常用，保留。 |
-| CLion | 保留 | C/C++ 项目模型、调试与嵌入式支持不是 clangd 的等价功能；无需额外安装 DataGrip 才能获得全部基础数据库入口，具体能力看 IDE 功能和许可。 |
+| CLion | 2026-11-27 删除 | 清理审计显示 2026-08-07 后未启动、无 `CLionProjects`、shell 历史无真实使用；同时撤回 nixpkgs CVE-2026-111497 的临时放行。C/C++ 仍可用 IDEA + VSCode + clangd/CMake/GDB，需要时按原配置恢复。 |
 | VSCode FHS | 保留 | 为扩展附带的二进制和 USB/调试库提供兼容环境。改普通包会重新承担逐个扩展追依赖的工作。Remote-SSH 是否已手动安装需核对。 |
 | Neovim | 已迁移到原生 Lua + Nix 包 | `aspects/dev/neovim/config/` 承载配置，`aspects/dev/neovim/` 固定插件/parser 和 wrapper；保留插件由 Nix 提供，不使用在线插件管理器。专项包检查已通过；见[迁移计划](history/README.md)（原文 `neovim-migration-plan.md`）了解尚待核验项目。没有性能比较结论。 |
 | colorizer | 已改原生 | 移除外部插件，使用内建 LSP documentColor 和 `<leader>uc` 当前 buffer 开关；不再独立扫描无相关 LSP 的文件/Tailwind 类名，没有新写 CSS 解析器。 |
@@ -120,7 +122,7 @@ checks: []
 | fzf-tab | 保留 | 服务 Zsh 补全菜单，不等于 fzf 历史搜索；删后会退回普通补全。 |
 | zoxide | 保留 | 按使用习惯跳目录，与 fzf 选择目录互补。 |
 
-资料：[IDEA Python](https://www.jetbrains.com/help/idea/python.html)、[IDEA 统一发行](https://blog.jetbrains.com/idea/2025/07/intellij-idea-unified-distribution-plan/)、[PyCharm 版本](https://www.jetbrains.com/pycharm/editions/)、[CLion 嵌入式](https://www.jetbrains.com/help/clion/embedded-overview.html)、[CLion 数据库工具](https://www.jetbrains.com/clion/features/terminal.html)、[VSCode Remote-SSH](https://code.visualstudio.com/docs/remote/ssh)、[matchup](https://github.com/andymass/vim-matchup)、[Heirline](https://github.com/rebelot/heirline.nvim)、[Kitty FAQ](https://sw.kovidgoyal.net/kitty/faq/)、[tmux FAQ](https://github.com/tmux/tmux/wiki/FAQ)、[lazygit](https://github.com/jesseduffield/lazygit)、[delta](https://dandavison.github.io/delta/features.html)、[comma](https://github.com/nix-community/comma)。IDEA 2026.2 文档代表当前上游能力，不能证明本机的订阅、插件及实际功能已经就绪。
+资料：[IDEA Python](https://www.jetbrains.com/help/idea/python.html)、[IDEA 统一发行](https://blog.jetbrains.com/idea/2025/07/intellij-idea-unified-distribution-plan/)、[PyCharm 版本](https://www.jetbrains.com/pycharm/editions/)、[VSCode Remote-SSH](https://code.visualstudio.com/docs/remote/ssh)、[matchup](https://github.com/andymass/vim-matchup)、[Heirline](https://github.com/rebelot/heirline.nvim)、[Kitty FAQ](https://sw.kovidgoyal.net/kitty/faq/)、[tmux FAQ](https://github.com/tmux/tmux/wiki/FAQ)、[lazygit](https://github.com/jesseduffield/lazygit)、[delta](https://dandavison.github.io/delta/features.html)、[comma](https://github.com/nix-community/comma)。IDEA 2026.2 文档代表当前上游能力，不能证明本机的订阅、插件及实际功能已经就绪。
 
 ## AI 应用与编辑器集成
 
@@ -151,7 +153,7 @@ checks: []
 | 工具 | 判断与更优解 |
 |---|---|
 | Clang / LLD | 保留全局常用 C/C++ 编译与链接；项目 flake 可覆盖版本。与 clangd 编辑功能不同。 |
-| CMake / Ninja / pkg-config / GNU Make | 保留。项目配置、执行构建和查库分工不同；不因 CLion 存在就删编译工具。 |
+| CMake / Ninja / pkg-config / GNU Make | 保留。项目配置、执行构建和查库分工不同；不因 IDE 存在就删编译工具。 |
 | 主机 GDB | 保留原生调试；不是 Cortex-M 交叉 GDB 的替代。 |
 | Python 3 | 已简化为基础解释器；项目库留给 uv/项目环境，不恢复全局 IPython 大集合。 |
 | uv | 保留，负责 Python 项目依赖/虚拟环境；不替代 flake 的系统库和编译器环境。 |
@@ -184,9 +186,9 @@ checks: []
 | virt-manager | 保留现有 GUI；命令行 virsh 可补充操作，不需换 Web 管理面板。 |
 | swtpm / SPICE USB | 作为当前虚拟机能力保留；是否具体 VM 使用需看 VM 配置，未来服务器 role 不默认继承桌面 USB 重定向。 |
 
-资料：[uv 项目](https://docs.astral.sh/uv/guides/projects/)、[MATLAB](https://www.mathworks.com/products/matlab.html)、[CLion 嵌入式](https://www.jetbrains.com/help/clion/embedded-overview.html)、[STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html)、[Docker contexts](https://docs.docker.com/engine/manage-resources/contexts/)、[virt-manager](https://virt-manager.org/)。嵌入式工具的选择以探针、芯片和项目为准，本次没有连接开发板验证。
+资料：[uv 项目](https://docs.astral.sh/uv/guides/projects/)、[MATLAB](https://www.mathworks.com/products/matlab.html)、[STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html)、[Docker contexts](https://docs.docker.com/engine/manage-resources/contexts/)、[virt-manager](https://virt-manager.org/)。嵌入式工具的选择以探针、芯片和项目为准，本次没有连接开发板验证。
 
-不默认补 STM32CubeIDE：当前已有 CLion 和 VSCode。若确实需要 ST 专属调试界面，先比较其 VSCode 工作流，避免无目的增加第四个 IDE。
+不默认补 STM32CubeIDE：当前已有 VSCode 与 IDEA。若确实需要 ST 专属调试界面，先比较其 VSCode 工作流，避免无目的增加第四个 IDE。
 
 ## 游戏
 
@@ -248,8 +250,6 @@ checks: []
 | 候选 | 补什么、适合什么场景 | 成本与现有功能边界 | 建议落点 |
 |---|---|---|---|
 | Borg + Vorta（备选） | 偏重本地/SSH 备份，想用 GUI 管档案 | 多一个 GUI 集成；不要和 Restic 同时成为默认引擎。Pika 可另作更简化的 Borg GUI 比较，不装三个前端。 | 桌面前端与备份引擎分开。 |
-| **Zotero Connector** | 浏览器一键收集网页、论文元数据/附件 | 当前仅声明 Dark Reader；可能已手动安装。增量维护小，实际导入仍看站点支持。 | Firefox 扩展声明，保留 Zotero 本体。 |
-| uBlock Origin（条件） | Firefox 的广告/内容过滤；尚未使用同类方案时值得补 | 未在仓库扩展清单声明，不代表运行时没有安装。Clash 的整机代理与浏览器内容过滤分工不同；少数站点需单独放行，不盲目叠加大量过滤列表。 | Firefox 扩展；与密码库扩展、Connector 一并整理。 |
 | **File Roller（替换 Xarchiver）** | 浏览压缩包、选择性解压，与 Thunar archive plugin 配合 | 使用 GTK4 版本，TAP 指向包的绝对可执行路径；不再安装 Xarchiver。 | 桌面文件工具能力；保留 Thunar。 |
 | Syncthing（条件） | 第二台电脑间同步文档/Obsidian 等普通文件 | 同步会传播修改/删除，不能替代备份。不要同步正在使用的 Zotero 数据目录、VM 磁盘或任意应用数据库；Zotero 使用自己的同步方案。 | 设备逐个启用，明确目录，避免整个 home。 |
 | rclone（条件） | 已有网盘/对象存储，需要批量传输或接入备份目的地 | 云端 API、授权和挂载行为需要维护；没有具体云服务需求就暂不装。 | 需要的主机/用户角色，非默认常驻挂载。 |
