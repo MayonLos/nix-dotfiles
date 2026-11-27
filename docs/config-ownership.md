@@ -39,7 +39,7 @@ checks: []
 | 系统 profile 的 `share/dbus-1/services/org.freedesktop.FileManager1.service` | file-manager 的 host Thunar 包提供唯一规范服务文件；HM 不再安装重复包或生成本地服务。 | 与 `inode/directory=thunar.desktop` 配合，Exec 指向带插件 Thunar；移除 feature 仅撤回声明，保留应用状态。 |
 | Thunar actions 与快捷键 | `aspects/apps/file-manager/thunar-actions.nix` 生成完整 `~/.config/Thunar/uca.xml`；activation 只维护 `accels.scm` 中仓库 `copy-image-as-png-1` 的一行。`thunar-terminal.nix` 生成绝对路径 helper 与 XFCE terminal helper 选择；动作经 workspace terminal/editor 或显式包路径运行。 | `uca.xml` 不再由 Thunar GUI 保存；accels 其余行归 Thunar/用户。首次交接前须检查旧 action、ID 和 accel 行。 |
 | mark-shot 配置 | 程序自己读写 `~/.config/mark-shot/config.toml`。没有 TOML 时继续读已有 `config.json`。Mango 窗口矩形由程序内的 `mmsg` 查询产生，激活脚本不再改写 `windowDetection.command`。 | 配置、历史和已保存图片归程序与用户。移除安装不删除这些文件。 |
-| `~/.config/noctalia/config.toml`、`palettes/one-dark.json` | `aspects/desktop/noctalia-shell/noctalia.nix` 是唯一声明写入者；三个会话共用。 | 移除 noctalia-shell feature 后撤回声明；`~/.local/state/noctalia` 与缓存是用户数据。 |
+| `~/.config/noctalia/config.toml`、`palettes/one-dark.json` | `aspects/desktop/noctalia-shell/noctalia.nix` 是唯一声明写入者；两个会话共用。 | 移除 noctalia-shell feature 后撤回声明；`~/.local/state/noctalia` 与缓存是用户数据。 |
 | `~/.config/noctalia/` 运行时状态 | Noctalia 进程写入设置/历史；仓库不手写运行时文件。 | 用户数据，不清理、不迁移。 |
 | 剪贴板与通知 | `noctalia.service` 是唯一 `org.freedesktop.Notifications` 与剪贴板历史 owner；`clipboard-bridge.service` 负责 X11↔Wayland。 | 通知历史与剪贴板历史是 Noctalia 运行时状态，配置不清理已弹出消息。 |
 | 壁纸/锁屏/OSD | 全部由 `noctalia.service` 拥有，不再有单独的 swaybg/sweetbgd/Matuwall/swaylock/swayidle/swayosd 配置或 unit。 | 移除 feature 后撤回声明。 |

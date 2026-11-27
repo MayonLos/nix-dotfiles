@@ -37,7 +37,7 @@ let
     "SUPER+ALT,L,spawn,${noctalia} msg session lock"
     # Noctalia session panel (lock/reboot/logout). Super+Escape is the key-mode
     # safety net below, so the default session uses Shift for the same panel
-    # that Mod+Escape opens in Umbriel and Hyprland.
+    # that Mod+Escape opens in Umbriel.
     "SUPER+SHIFT,Escape,spawn,${noctalia} msg panel-toggle session"
     "SUPER,0,toggleoverview"
     "SUPER+SHIFT,0,togglejump"

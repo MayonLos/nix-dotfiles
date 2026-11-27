@@ -1,7 +1,7 @@
 # noctalia-shell
 
-Shared Noctalia v5 shell for every selectable session (Mango, Umbriel and
-Hyprland). It owns the shell configuration, the palette, and the systemd user
+Shared Noctalia v5 shell for every selectable session (Mango and
+Umbriel). It owns the shell configuration, the palette, and the systemd user
 services that start the shell and its companions from each compositor's session
 target.
 
@@ -18,13 +18,13 @@ upstream Noctalia package from `pkgs.local.noctaliaDesktop.noctalia`.
 | `~/.config/noctalia/palettes/one-dark.json` | `noctalia.nix` |
 | `~/Pictures/Wallpapers/managed` | `noctalia.nix`; HM link to the appearance factory's 18-image link farm. The sibling `local/` directory is user data and is never written here. |
 | `~/.local/share/noctalia/plugins/hideclients/{plugin.toml,indicator.luau}` | `noctalia.nix`; read-only local Noctalia plugin. |
-| `noctalia.service` | `services.nix`; `Type=notify`, `WantedBy` the three session targets |
+| `noctalia.service` | `services.nix`; `Type=notify`, `WantedBy` the two session targets |
 | `polkit-gnome-authentication-agent-1.service` | `services.nix` |
 | `clipboard-bridge.service` | `services.nix` + `clipboard-bridge.nix` |
 
 Compositors import `WAYLAND_DISPLAY`/`XDG_SESSION_TYPE` before starting their
-target (Mango via the HM module's systemd hook, Umbriel via `start-umbriel`,
-Hyprland via the HM module), so one set of services works in all three.
+target (Mango via the HM module's systemd hook, Umbriel via `start-umbriel`),
+so one set of services works in both.
 
 ## Optimizations
 
@@ -45,7 +45,7 @@ Hyprland via the HM module), so one set of services works in all three.
   (`hide_clients` summed over monitors), hidden at zero in One Dark `muted`.
   Clicking restores the latest minimized client through
   `mmsg dispatch toggle_scratchpad`. Only the Mango session has this IPC, so
-  the widget stays hidden in the Umbriel and Hyprland sessions; the `mmsg`
+  the widget stays hidden in the Umbriel session; the `mmsg`
   path is substituted at build time instead of relying on the service PATH.
 
 ## Removal

@@ -1,8 +1,8 @@
 # Noctalia Greeter backend for the login-screen feature.
 #
 # The greeter is a greetd client with its own wlroots compositor. Sessions are
-# discovered from share/wayland-sessions, so the existing Mango/Umbriel/
-# Hyprland .desktop entries are reused instead of gtkgreet's environment file.
+# discovered from share/wayland-sessions, so the existing Mango/Umbriel
+# .desktop entries are reused instead of gtkgreet's environment file.
 { palette }:
 {
   hostFacts,

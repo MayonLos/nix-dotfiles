@@ -1,10 +1,10 @@
 # noctalia-benchmark
 
-Collects idle desktop measurements for the three selectable sessions so they
+Collects idle desktop measurements for the two selectable sessions so they
 can be compared with one script instead of ad-hoc `ps` output.
 
 The `desktop-benchmark.service` user unit is `WantedBy` `mango-session.target`,
-`umbriel-session.target` and `hyprland-session.target`. After each login it
+`umbriel-session.target`. After each login it
 writes two JSON snapshots (90s and 300s) under
 `${XDG_STATE_HOME:-~/.local/state}/noctalia-bench/`:
 

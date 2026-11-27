@@ -47,7 +47,7 @@ tmux 保留前缀窗口管理；无前缀 `Ctrl+h/j/k/l` 根据 smart-splits 维
 | 剪贴板 | `Super+V` | Noctalia 剪贴板历史面板；图片/文字预览由 Noctalia 处理，回车写回 Wayland |
 | 音量 / 亮度 / 麦克风 / 媒体 | 硬件键 | Noctalia IPC：`volume-up/down/mute`、`mic-mute`、`brightness-up/down`，媒体键用 `noctalia msg media toggle/stop/previous/next`；不再直接调用 playerctl |
 | 锁屏 | `Super+Alt+L` | Noctalia 锁屏，走登录 PAM；没有额外 idle 守护进程 |
-| 会话面板 | `Super+Shift+Escape` | Noctalia 会话面板（锁屏/重启/关机/登出）；`Super+Esc` 留给按键模式退出，Umbriel/Hyprland 用 Mod+Escape |
+| 会话面板 | `Super+Shift+Escape` | Noctalia 会话面板（锁屏/重启/关机/登出）；`Super+Esc` 留给按键模式退出，Umbriel 用 Mod+Escape |
 | 窗口聚焦 | `Super+j/k/l` 或方向键 | 向左只用方向键。`Super+H` 用来最小化窗口 |
 | 移动窗口 | `Super+Shift+j/k/l` 或方向键 | 向左只用方向键。`Super+Shift+H` 用来找回最小化窗口 |
 | 移到相邻显示器 | `Super+Ctrl+方向键` | 保留，不为当前锁定版本捏造 HJKL 方向语义 |
@@ -62,7 +62,7 @@ tmux 保留前缀窗口管理；无前缀 `Ctrl+h/j/k/l` 根据 smart-splits 维
 | 浮动 / 布局 / 主窗口 | `Super+Space` / `Super+=` / `Super+Z` | 布局仍为 tile/scroller/monocle。`Super+=` 循环这三种。主区域比例用 `Super+Minus` 减小、`Super+Ctrl+=` 增大。`Super+Shift+W` 不绑定 |
 | 壁纸 | `Super+W` | Noctalia 壁纸面板，浏览 `~/Pictures/Wallpapers`（`managed/` 内置 18 张、`local/` 用户图）；选中的壁纸由 Noctalia 自己绘制，不再有 sweetbg/Matuwall |
 | 关闭窗口 / 重载配置 | `Super+Q` / `Super+Alt+R` | 所有 Mango 模式可达；不全局拦截裸 Esc |
-| 最小化 / 找回 | `Super+H` / `Super+Shift+H` | 最小化同时进入 scratchpad 池；`Super+Shift+H`（`toggle_scratchpad`）取回。与命名临时终端不同。最小化后在顶栏工作区右侧出现 eye-off 计数（0 时隐藏），点击该计数也恢复最近一个；Umbriel/Hyprland 无此计数 |
+| 最小化 / 找回 | `Super+H` / `Super+Shift+H` | 最小化同时进入 scratchpad 池；`Super+Shift+H`（`toggle_scratchpad`）取回。与命名临时终端不同。最小化后在顶栏工作区右侧出现 eye-off 计数（0 时隐藏），点击该计数也恢复最近一个；Umbriel 无此计数 |
 | 操作帮助 | `Super+F1` | 显示同一份按键数据生成的分组帮助；新增工具键同步出现在帮助中 |
 
 所有 tag 默认使用 tile 布局，主区域比例 60%（`tag_rule = id:*,layout_name:tile`、

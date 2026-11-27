@@ -29,7 +29,6 @@ _: {
     ./desktop/noctalia-shell
     ./desktop/noctalia-benchmark
     ./desktop/umbriel-session
-    ./desktop/hyprland-session
     ./dev/embedded
     ./dev/ai-agents
     ./dev/local-inference

@@ -67,13 +67,12 @@
           "aspects/appearance/appearance/resources/wallpaper"
           "aspects/dev/neovim/package.nix"
           "aspects/desktop/session-support/qt-style.nix"
-          # Noctalia shell configuration and services shared by all three
-          # sessions, plus the per-login benchmark collector.
+          # Noctalia shell configuration and services shared by both sessions,
+          # plus the per-login benchmark collector.
           "aspects/desktop/noctalia-shell/noctalia.nix"
           "aspects/desktop/noctalia-shell/services.nix"
           "aspects/desktop/noctalia-shell/clipboard-bridge.nix"
           "aspects/desktop/noctalia-benchmark/benchmark.nix"
-          "aspects/desktop/umbriel-session/luciole.nix"
         ]
         ++ map (path: lib.removePrefix "${toString ../.}/" (toString path)) registry;
       };
@@ -217,8 +216,6 @@
             let
               metadata = pkgs.writeText "keybind-audit.json" (
                 builtins.toJSON {
-                  hyprBind = home.wayland.windowManager.hyprland.settings.bind or [ ];
-                  hyprBindl = home.wayland.windowManager.hyprland.settings.bindl or [ ];
                   mangoBind = home.wayland.windowManager.mango.settings.bind or [ ];
                   mangoBindl = home.wayland.windowManager.mango.settings.key_mode.common.bindl or [ ];
                 }
@@ -262,8 +259,6 @@
                         if len(items) > 1:
                             errors.append(f"{session}/{label}: duplicate chord {pair}: {items}")
 
-                audit("hyprland", rows(data["hyprBind"]), "bind")
-                audit("hyprland", rows(data["hyprBindl"]), "bindl")
                 audit("mango", rows(data["mangoBind"]), "bind")
                 audit("mango", rows(data["mangoBindl"]), "bindl")
 

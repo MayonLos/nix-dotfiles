@@ -1,19 +1,19 @@
 ---
-summary: 三个可登录会话（Mango/Umbriel/Hyprland）共享 Noctalia shell 的桌面组成、服务与外观分工
+summary: 两个可登录会话（Mango/Umbriel）共享 Noctalia shell 的桌面组成、服务与外观分工
 read_when: 修改顶栏、通知、OSD、壁纸、锁屏、启动器、窗口规则、会话选择或应用主题接线
-code: [aspects/desktop/mango-session, aspects/desktop/umbriel-session, aspects/desktop/hyprland-session, aspects/desktop/noctalia-shell, aspects/desktop/noctalia-benchmark, aspects/desktop/session-support, aspects/desktop/greeter]
+code: [aspects/desktop/mango-session, aspects/desktop/umbriel-session, aspects/desktop/noctalia-shell, aspects/desktop/noctalia-benchmark, aspects/desktop/session-support, aspects/desktop/greeter]
 checks: [desktop-composition, mango-blur-sampling, unified-noctalia-session, greeter-tech, gtk-qt-theme]
 ---
 
 # 桌面
 
-登录器（greetd + Noctalia Greeter，实验分支默认；可切回 gtkgreet）列出三个可选会话：**Mango**（默认）、**Umbriel**、**Hyprland 0.55.4**。三个会话共享同一份 Noctalia v5 shell 和同一套 input method / GTK / Qt 会话支持；合成器只负责窗口管理、键位和窗口规则。参数值见 [visual.md](visual.md)，按键见 [keymap.md](keymap.md)，文件归属见 [config-ownership.md](config-ownership.md)。
+登录器（greetd + Noctalia Greeter，实验分支默认；可切回 gtkgreet）列出两个可选会话：**Mango**（默认）、**Umbriel**。两个会话共享同一份 Noctalia v5 shell 和同一套 input method / GTK / Qt 会话支持；合成器只负责窗口管理、键位和窗口规则。参数值见 [visual.md](visual.md)，按键见 [keymap.md](keymap.md)，文件归属见 [config-ownership.md](config-ownership.md)。
 
 ## 共享 Shell（Noctalia）
 
 - **顶栏**：Noctalia 的 30px 全透明栏（一个配置服务所有会话）。左侧工作区编号（当前 blue、占用 brightFg、空 fg）、最小化计数（本地 `hideclients` 插件：eye-off + 数量，muted 色，0 时整个组件隐藏，点击恢复最近一个）与窗口标题，右侧托盘、网络、电池、`CPU`/`MEM` 标签、通知、控制中心与中文日期时间（`%m月%d日 %H:%M`）；CPU/内存轮询 2 s，GPU 轮询为 0，网络 3 s、磁盘 10 s 只供状态显示。
-- **启动器与面板**：`Alt+Space` 打开 Noctalia launcher；`Super+V` 打开剪贴板历史面板；`Super+W` 打开壁纸面板（浏览 `~/Pictures/Wallpapers`，`managed/` 为内置 18 张、`local/` 为用户图）；Umbriel/Hyprland 用 Mod+Escape、Mango 用 `Super+Shift+Escape` 打开会话面板（Mango 的 `Super+Esc` 留给按键模式退出）。没有 Dock、Launchpad 或第二套启动器。
-- **通知与 OSD**：Noctalia 统一绘制通知、音量/亮度/麦克风 OSD 和键盘锁定提示；OSD 在底部居中（`bottom_center`，`offset_y` 48），通知保持右上。音量、亮度、麦克风与媒体键在三个合成器里都通过 Noctalia IPC 转发，不再有 swayosd 或直接调用 playerctl 的媒体键。
+- **启动器与面板**：`Alt+Space` 打开 Noctalia launcher；`Super+V` 打开剪贴板历史面板；`Super+W` 打开壁纸面板（浏览 `~/Pictures/Wallpapers`，`managed/` 为内置 18 张、`local/` 为用户图）；Umbriel 用 Mod+Escape、Mango 用 `Super+Shift+Escape` 打开会话面板（Mango 的 `Super+Esc` 留给按键模式退出）。没有 Dock、Launchpad 或第二套启动器。
+- **通知与 OSD**：Noctalia 统一绘制通知、音量/亮度/麦克风 OSD 和键盘锁定提示；OSD 在底部居中（`bottom_center`，`offset_y` 48），通知保持右上。音量、亮度、麦克风与媒体键在两个合成器里都通过 Noctalia IPC 转发，不再有 swayosd 或直接调用 playerctl 的媒体键。
 - **壁纸与锁屏**：Noctalia 绘制壁纸，壁纸面板只浏览 `~/Pictures/Wallpapers`（HM 只维护 `managed/` 链接，`local/` 用户数据不动）；`Super+Alt+L` 调用 Noctalia 锁屏，通过登录 PAM 栈认证。没有 swaybg/sweetbgd/Matuwall/swaylock/swayidle。
 - **优化配置**：`shell.offline_mode = true`（关闭 palette/天气/定位的周期 HTTP）、关闭 weather/calendar/community templates/screen time、剪贴板历史上限 50、动画跟随 `palette.reducedMotion`。生成配置在应用前用 `noctalia config validate` 校验。
 
@@ -21,16 +21,15 @@ checks: [desktop-composition, mango-blur-sampling, unified-noctalia-session, gre
 
 - **Mango**：默认会话，保留 mark-shot 的 Mango 窗口识别与拖拽吸附（`mmsg`）。`mango.nix` 负责配置、键位和窗口规则；`screenshot.nix` 只有 mark-shot 与 OCR，全屏截图走 Noctalia。窗口规则见 `mango/window-rules.nix`（文件选择、设置、确认、进度窗按比例居中；聊天/IDE/办公继续平铺；只有可区分标题的子窗浮动；QQ/微信登录与主窗用 `Super+Space` 手动浮动）。超级键（Super+Shift+...）与 Mango 的 tag/scratchpad 语义保留。
 - **Umbriel**：wlroots + scenefx 合成器，滚动布局；配置在 `umbriel-session/umbriel.nix`。Noctalia 的 layer blur 规则沿用；键位镜像 Mango 主要入口。
-- **Hyprland**：stable nixpkgs 的 0.55.4，hyprlang 配置（0.57 起改 Lua，未采用）；HM 模块负责 `hyprland-session.target`、portal 和环境导入。键位、截图和硬件键与 Mango 对齐。
-- **登录选择**：greeter 只显示 store 路径列表，Mango 为默认项；三个会话的身份变量（`XDG_CURRENT_DESKTOP`/`XDG_SESSION_DESKTOP`）由各自登录脚本导出。
+- **登录选择**：greeter 只显示 store 路径列表，Mango 为默认项；两个会话的身份变量（`XDG_CURRENT_DESKTOP`/`XDG_SESSION_DESKTOP`）由各自登录脚本导出。
 
 ## 服务
 
-三个合成器在启动 session target 前都会把 `WAYLAND_DISPLAY`/`XDG_SESSION_TYPE` 导入 systemd user manager，因此同一套 unit 在三个会话里都可用：
+两个合成器在启动 session target 前都会把 `WAYLAND_DISPLAY`/`XDG_SESSION_TYPE` 导入 systemd user manager，因此同一套 unit 在两个会话里都可用：
 
-- `noctalia.service`（`Type=notify`）、`polkit-gnome-authentication-agent-1.service`、`clipboard-bridge.service` 由 `mango-session.target`、`umbriel-session.target`、`hyprland-session.target` 共同 `WantedBy`。
-- `desktop-benchmark.service` 在登录后 90s/300s 写 idle 快照到 `~/.local/state/noctalia-bench/`，用于三个合成器同脚本比较（`Type=exec`，不阻塞 HM activation）。
-- fcitx5、GTK/Qt、X resources 由 `graphical-session-support` 挂到三个 target。
+- `noctalia.service`（`Type=notify`）、`polkit-gnome-authentication-agent-1.service`、`clipboard-bridge.service` 由 `mango-session.target`、`umbriel-session.target` 共同 `WantedBy`。
+- `desktop-benchmark.service` 在登录后 90s/300s 写 idle 快照到 `~/.local/state/noctalia-bench/`，用于两个合成器同脚本比较（`Type=exec`，不阻塞 HM activation）。
+- fcitx5、GTK/Qt、X resources 由 `graphical-session-support` 挂到两个 target。
 - 生命周期与重启策略见 [service-policy.md](service-policy.md)；配置写入者见 [config-ownership.md](config-ownership.md)。
 
 ## 窗口规则（Mango）

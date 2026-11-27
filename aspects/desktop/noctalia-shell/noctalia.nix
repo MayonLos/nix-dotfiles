@@ -364,7 +364,7 @@ in
         label_show_units = true;
       };
       # Local plugin placement; the counter hides itself until a Mango window
-      # is minimized, and stays hidden in the Umbriel/Hyprland sessions.
+      # is minimized, and stays hidden in the Umbriel session.
       hideclients.type = "nix-dotfiles/hideclients:indicator";
     };
   };

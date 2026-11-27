@@ -12,7 +12,6 @@ let
       targets = [
         "mango-session.target"
         "umbriel-session.target"
-        "hyprland-session.target"
       ];
       graphicalSessionTargets = home.nixDotfiles.graphicalSessionTargets;
       noctalia = {
@@ -45,7 +44,7 @@ in
     mango = nixos.programs.mango.package;
   };
 
-  # The three sessions share one shell: Noctalia plus the polkit agent and the
+  # The two sessions share one shell: Noctalia plus the polkit agent and the
   # X11 clipboard bridge are services on every session target, and no Mango
   # shell package (mangobar/mako/swayosd/fuzzel/swaylock/wallpaper daemons) is
   # installed any more. The generated Noctalia config, palette and Mango rule

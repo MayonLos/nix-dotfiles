@@ -1,4 +1,4 @@
-# X11 <-> Wayland clipboard bridge, shared by all three sessions.
+# X11 <-> Wayland clipboard bridge, shared by both sessions.
 #
 # Kept verbatim from the old Mango session module: the measured failure on
 # 2026-09-15 was a compositor-independent XWayland selection problem (QQ copies

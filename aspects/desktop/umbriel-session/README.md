@@ -38,15 +38,11 @@
 Noctalia 运行时写入的应用数据（`~/.local/state/noctalia/`、`~/.cache/noctalia/`）归程序所有；
 本 feature 不清理、不移除。
 
-## 公开导出
+## 实现边界
 
-以下两个文件在 `nix/checks.nix` 的 `publicFiles` 里登记为公开导出，供
-`aspects/desktop/hyprland-session/` 复用；改签名时两个会话需要同步：
-
-- `noctalia.nix`：`{ palette }` → Noctalia 配置、One Dark palette v2 与壁纸；
-- `luciole.nix`：安装 Luciole 文件管理器。
-
-`umbriel.nix`、`host.nix` 仍是本 feature 私有的合成器/登录实现。
+Hyprland 实验会话删除后，本 feature 不再向其他 feature 导出文件；
+`umbriel.nix`、`host.nix`、`luciole.nix` 都是本 feature 私有的合成器/
+登录/文件管理器实现。
 
 ## 风格
 
