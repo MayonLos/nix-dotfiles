@@ -24,7 +24,8 @@ let
         ;
     }
   );
-  classicUi = home.i18n.inputMethod.fcitx5.settings.addons.classicui.globalSection;
+  fcitx5Config = import ./fcitx5-config.nix { inherit pkgs palette; };
+  inherit (fcitx5Config) classicUi;
   files = [
     "default.custom.yaml"
     "rime_ice.custom.yaml"
@@ -66,7 +67,7 @@ pkgs.runCommand "rime-technical-runtime"
     grep -F 'loading gram db: ${rime}/share/rime-data/wanxiang-lts-zh-hans.gram' "$out/deploy.log"
     grep -F 'found double array image of size' "$out/deploy.log"
     if grep -Ei 'error|failed|cannot|could not' "$out/deploy.log"; then exit 1; fi
-    python3 - "$TMPDIR/rime" ${theme} ${paletteMetadata} '${builtins.toJSON classicUi}' <<'PY'
+    python3 - "$TMPDIR/rime" ${theme} ${paletteMetadata} ${classicUi} <<'PY'
     import configparser, json, pathlib, sys, yaml
     user = pathlib.Path(sys.argv[1])
     schema = yaml.safe_load((user / "build/rime_ice.schema.yaml").read_text())
@@ -83,7 +84,11 @@ pkgs.runCommand "rime-technical-runtime"
     assert default["menu"]["page_size"] == 7
     theme = pathlib.Path(sys.argv[2])
     palette = json.loads(pathlib.Path(sys.argv[3]).read_text())
-    classic_ui = json.loads(sys.argv[4])
+    classic_ui = dict(
+        line.split("=", 1)
+        for line in pathlib.Path(sys.argv[4]).read_text().splitlines()
+        if line and not line.startswith("[")
+    )
     assert classic_ui["Vertical Candidate List"] == "False"
     assert classic_ui["Font"].endswith(" 10")
     panel = configparser.ConfigParser()

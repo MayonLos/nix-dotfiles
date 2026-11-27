@@ -1,10 +1,23 @@
 { palette }:
 {
   config,
+  inputs,
   pkgs,
   lib,
   ...
 }:
+let
+  # fcitx5 must own a writable ~/.config/fcitx5: it rewrites `profile` from the
+  # GUI and the optional WeTypeX addon writes its preferences there. Home
+  # Manager's input-method module would otherwise make the whole directory a
+  # read-only store link. Seed the two static files once and let the running
+  # application own the directory afterwards.
+  seed = import ../../../lib/seed-file.nix { inherit lib pkgs; };
+  configHome = config.home.homeDirectory + "/.config";
+  fcitx5Config = import ./fcitx5-config.nix { inherit pkgs palette; };
+  fcitx5Profile = fcitx5Config.profile;
+  fcitx5ClassicUi = fcitx5Config.classicUi;
+in
 {
   # The KDE settings module needs systemsettings; fcitx5-configtool stays available.
   xdg.dataFile."applications/kcm_fcitx5.desktop".text = ''
@@ -21,50 +34,59 @@
       waylandFrontend = true;
       addons = with pkgs; [
         (import ./rime/package.nix { inherit pkgs; })
+        # Optional second engine: the open WeTypeX adapter for the WeChat
+        # input engine. Rime stays the DefaultIM and the group item below
+        # only makes the engine switchable; AI/voice/layer-shell/WeType skin
+        # are disabled to keep the closure small and let the repository theme
+        # own the candidate UI. The proprietary runtime is a user-data step,
+        # not a Nix build step: run once as the user
+        #   fcitx5-wetypex-setup --download --accept-upstream-license
+        # Data lives in ~/.local/share/fcitx5-wetypex and survives updates.
+        (inputs.wetypex.packages.${pkgs.stdenv.hostPlatform.system}.fcitx5-wetypex.override {
+          enableAI = false;
+          enableVoice = false;
+          enableLayerShell = false;
+          enableWeTypeTheme = false;
+        })
         fcitx5-gtk
         libsForQt5.fcitx5-qt
         qt6Packages.fcitx5-configtool
       ];
 
-      settings = {
-        inputMethod = {
-          "Groups/0" = {
-            Name = "Default";
-            "Default Layout" = "us";
-            DefaultIM = "rime";
-          };
-          "Groups/0/Items/0".Name = "keyboard-us";
-          "Groups/0/Items/1".Name = "rime";
-        };
-
-        addons.classicui.globalSection = {
-          # SNI must render the engine's subModeLabel (Rime 中/英), not a
-          # static input-rime icon. The bar exposes this native Fcitx tray item.
-          PreferTextIcon = "True";
-          # Fcitx strokes tray labels in opaque black by default; on the translucent
-          # bar that reads as a dark box around the schema character.
-          TrayOutlineColor = "#00000000";
-          Theme = "onedark";
-          DarkTheme = "onedark";
-          # Fcitx5 Classic UI parses this with Pango's font-description syntax;
-          # the bare integer is a point size (13 pt), not a logical pixel size.
-          Font = "${palette.fonts.cjk} 10";
-          "Vertical Candidate List" = "False";
-
-          # Wayland already scales classicui through wp_fractional_scale_v1.
-          # Do not force 144 DPI there: it would multiply the scale twice.
-          # Xwayland clients read the merged Xft.dpi value instead.
-          PerScreenDPI = "False";
-        };
-      };
     };
   };
 
+  # Replace the old read-only HM directory link (first switch after this
+  # change) and seed the files once. The seeds are idempotent and never
+  # overwrite a profile or classicui.conf the user edited later.
+  home.activation = {
+    fcitx5ReplaceManagedConfigDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      if [ -L "${configHome}/fcitx5" ]; then
+        run rm "${configHome}/fcitx5"
+      fi
+    '';
+    seedFcitx5Profile = lib.hm.dag.entryAfter [
+      "writeBoundary"
+      "fcitx5ReplaceManagedConfigDir"
+    ] (seed.mkScript "${configHome}/fcitx5/profile" { source = fcitx5Profile; });
+    seedFcitx5ClassicUi = lib.hm.dag.entryAfter [
+      "writeBoundary"
+      "seedFcitx5Profile"
+    ] (seed.mkScript "${configHome}/fcitx5/conf/classicui.conf" { source = fcitx5ClassicUi; });
+  };
+
   systemd.user.services.fcitx5-daemon = {
-    # force: Replace HM generic graphical target relationships with the selected session targets.
-    Unit.PartOf = lib.mkForce config.nixDotfiles.graphicalSessionTargets;
-    # force: Replace HM generic graphical target relationships with the selected session targets.
-    Unit.After = lib.mkForce config.nixDotfiles.graphicalSessionTargets;
+    Unit = {
+      # force: Replace HM generic graphical target relationships with the selected session targets.
+      PartOf = lib.mkForce config.nixDotfiles.graphicalSessionTargets;
+      # force: Replace HM generic graphical target relationships with the selected session targets.
+      After = lib.mkForce config.nixDotfiles.graphicalSessionTargets;
+      # Restart when a seeded file changes so a rebuild applies profile/theme edits.
+      X-Restart-Triggers = [
+        "${fcitx5Profile}"
+        "${fcitx5ClassicUi}"
+      ];
+    };
     # force: Replace HM generic graphical target relationships with the selected session targets.
     Install.WantedBy = lib.mkForce config.nixDotfiles.graphicalSessionTargets;
   };

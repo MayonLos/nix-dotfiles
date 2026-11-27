@@ -209,9 +209,11 @@ checks: []
 
 入口：[Noctalia 配置](../aspects/desktop/noctalia-shell/noctalia.nix)、[会话服务](../aspects/desktop/noctalia-shell/services.nix)、[输入法](../aspects/desktop/session-support/input-method.nix)、[Portal/keyring](../aspects/desktop/mango-session/host/portal.nix)。启动器、剪贴板、壁纸面板和通知都由 Noctalia 提供（`Alt+Space`/`Super+V`/`Super+W`）；没有 fuzzel/Matuwall/sweetbg 或第二套桌面 shell。旧用户数据保留。
 
+输入法补充：仓库把 `fcitx5-wetypex` 作为 **可选** addon 编译进 fcitx5（`aspects/desktop/session-support/input-method.nix`），Rime 仍是 `DefaultIM`；WeTypeX 只提供开源适配层，专有引擎 runtime 由用户首次执行 `fcitx5-wetypex-setup --download --accept-upstream-license` 下载到 `~/.local/share/fcitx5-wetypex`，不进 Nix store。构建时关闭 AI/语音/layer-shell/WeType 皮肤以缩小闭包；云候选/账号同步依赖腾讯服务，README 明示可能含遥测，敏感文本仍用 Rime。删掉该 addon 即回到纯 Rime，用户词库数据保留。
+
 | 项目 | 结论 |
 |---|---|
-| Fcitx5 / Rime / rime-ice | 保留，后续统一候选框配色；GTK/Qt addon 为应用接入，不能因有 Wayland frontend 一并删除。 |
+| Fcitx5 / Rime / rime-ice | 保留为唯一默认输入法，后续统一候选框配色；GTK/Qt addon 为应用接入，不能因有 Wayland frontend 一并删除。可选第二引擎 WeTypeX 见下段，**不设默认**。 |
 | qt6ct / GTK 设置 | 保留现有外观桥接；One Dark 应集中提供语义颜色，再输出各应用格式，避免每个模块各写一份色值。 |
 | GNOME keyring | 保留应用 Secret Service；不是网站密码库或 sops 的替代。 |
 | sops | 保留运行时秘密管理；不能把密码管理器主密钥或服务令牌直接写进 Nix 字符串。 |
