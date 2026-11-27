@@ -64,6 +64,7 @@ in
         PLUGIN_MANIFEST = home.home.file.".local/share/noctalia/plugins/hideclients/plugin.toml".source;
         PLUGIN_ENTRY = home.home.file.".local/share/noctalia/plugins/hideclients/indicator.luau".source;
         EXPECTED_MMSG = "${nixos.programs.mango.package}/bin/mmsg";
+        EXPECTED_UMBRIEL = "${pkgs.local.noctaliaDesktop.umbriel}/bin/umbriel";
       }
       ''
         python3 - "$metadata" <<'PY'
@@ -224,10 +225,14 @@ in
             entry_text = fh.read()
         for placeholder in ("@mmsg@", "@mutedFg@"):
             want(placeholder not in entry_text, f"plugin entry keeps {placeholder}")
-        want(
-            os.environ["EXPECTED_MMSG"] in entry_text,
-            "plugin entry has no absolute mmsg path",
-        )
+        for env, description in (
+            ("EXPECTED_MMSG", "mmsg"),
+            ("EXPECTED_UMBRIEL", "umbriel"),
+        ):
+            want(
+                os.environ[env] in entry_text,
+                f"plugin entry has no absolute {description} path",
+            )
 
         if errors:
             print("\n".join(errors))

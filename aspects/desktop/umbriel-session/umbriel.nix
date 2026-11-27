@@ -103,7 +103,6 @@ let
     "Mod+Down" = "window-focus-down";
     "Mod+Up" = "window-focus-up";
     "Mod+Right" = "window-focus-right";
-    "Mod+H" = "window-focus-left";
     "Mod+J" = "window-focus-down";
     "Mod+K" = "window-focus-up";
     "Mod+L" = "window-focus-right";
@@ -161,8 +160,31 @@ let
       action = "window-move-to-scratchpad";
       repeat = false;
     };
-    "Mod+Control+Space" = {
+    # Mango parity: H stores the focused window in the scratchpad pool and
+    # Shift+H shows or hides that pool. Mango's minimized clients live in the
+    # same kind of pool, so the H keys mean the same thing in both sessions;
+    # left focus stays on the arrow key, as in Mango.
+    "Mod+H" = {
+      action = "window-move-to-scratchpad";
+      repeat = false;
+    };
+    "Mod+Shift+H" = {
       action = "scratchpad-toggle";
+      repeat = false;
+    };
+    # Umbriel's native minimize only hides a floating, unpinned window; keep it
+    # available on its own chords while the scratchpad path above also works
+    # for tiled windows.
+    "Mod+Shift+M" = {
+      action = "window-minimize";
+      repeat = false;
+    };
+    "Mod+Control+M" = {
+      action = "window-restore-minimized";
+      repeat = false;
+    };
+    "Mod+Control+Space" = {
+      action = "window-restore-from-scratchpad";
       repeat = false;
     };
 

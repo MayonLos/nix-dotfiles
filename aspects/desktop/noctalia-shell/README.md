@@ -41,12 +41,15 @@ so one set of services works in both.
 - OSD is anchored `bottom_center` (offset 48) so it cannot cover the top-right
   notification stack. The wallpaper panel browses `~/Pictures/Wallpapers`.
 - The local `hideclients` plugin restores the mangobar-era minimized-window
-  counter: an eye-off glyph plus the count from `mmsg get all-monitors`
-  (`hide_clients` summed over monitors), hidden at zero in One Dark `muted`.
-  Clicking restores the latest minimized client through
-  `mmsg dispatch toggle_scratchpad`. Only the Mango session has this IPC, so
-  the widget stays hidden in the Umbriel session; the `mmsg`
-  path is substituted at build time instead of relying on the service PATH.
+  counter: an eye-off glyph plus the hidden-window count, hidden at zero in One
+  Dark `muted`. Mango supplies `hide_clients` through `mmsg get all-monitors`;
+  Umbriel supplies `minimized` plus hidden scratchpad members through
+  `umbriel windows --json` (a shown scratchpad marks its windows visible, so
+  only the hidden pool counts). Clicking restores through
+  `mmsg dispatch toggle_scratchpad` or `umbriel msg scratchpad-toggle` /
+  `window-restore-minimized`. Both tool paths are substituted at build time
+  instead of relying on the service PATH, and the widget stays hidden in
+  sessions with neither IPC.
 
 ## Removal
 
