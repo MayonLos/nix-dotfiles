@@ -73,8 +73,8 @@ let
     "${dialog},app_id:^(qt[56]ct|fcitx5-config-qt|org[.]fcitx[.].*|org[.]fcitx[.]Fcitx5[.]Config)$"
     "${dialog},app_id:^(org[.]gnome[.]FileRoller|file-roller|kbd-layout-viewer5?|legion_gui)$"
     # Noctalia Settings is a normal toplevel (app_id dev.noctalia.Noctalia), not
-    # a layer surface. Float it at the size Umbriel's window rule uses instead
-    # of tiling it across the tag; width/height > 1 are pixels in Mango.
+    # a layer surface. Float it instead of tiling it across the tag;
+    # width/height > 1 are pixels in Mango.
     "${float},width:1020,height:900,app_id:^dev[.]noctalia[.]Noctalia$"
     # Capture overlays are layer surfaces. Do not resize their full-output
     # areas; this catches the editor, pin and scroll toplevels as well.

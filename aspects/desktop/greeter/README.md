@@ -5,7 +5,7 @@ greetd login screen with two selectable backends (`nixDotfiles.greeterBackend`):
 - **`noctalia`** (this branch's default): Noctalia Greeter 1.7.1. greetd starts
   `noctalia-greeter-session`, which brings its own wlroots compositor and
   renders the login UI. Sessions are discovered from the installed
-  `share/wayland-sessions` entries (Mango, Umbriel), so the old
+  `share/wayland-sessions` entries (Mango), so the old
   `/etc/greetd/environments` list is not used. The generated
   `/var/lib/noctalia-greeter/greeter.toml` pins the One Dark palette, factory
   wallpaper, `eDP-1` output at 1.5 scale, US keyboard, cursor theme and Mango as

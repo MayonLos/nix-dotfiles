@@ -186,7 +186,7 @@
           ])
           && !(lib.hasPrefix "result" name)
           # Vendored upstream Nix recipes/modules are kept byte-for-byte from
-          # the pinned Noctalia/Umbriel tags; repository lint and formatting
+          # the pinned Noctalia tag; repository lint and formatting
           # rules would rewrite provenance. The mark-shot Rust tree has the
           # analogous rustfmt exclusion in nix/dev.nix.
           && !(lib.hasInfix "/packages/noctalia-desktop/" path);

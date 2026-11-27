@@ -58,7 +58,7 @@ checks: [palette-contrast, gtk-qt-theme, unified-noctalia-session]
 | 间距 内 / 外 | 10 / 16。单个平铺窗口同样保留（`smart_gaps = 0`），只有 monocle 去掉间距 | `mango.nix` |
 | 动画 开 / 关 / 移动 / tag / 焦点 | 220 / 180 / 180 / 280 / 120 ms。开合都是 zoom，起止比例 0.92。开窗透明度从 0 到 1，关窗从 1 到 0。工作区切换是横向滑入。焦点时长只插值边框和 dim | `mango.nix` |
 | 非焦点 | 不透明，dim 为 black 的 0x18。浮动窗阴影 size 18、blur 32、下移 10 | `mango.nix` |
-| 顶栏 | Noctalia 高 30、完全透明（无背景、不模糊）、贴顶，两个会话共用。左侧工作区编号（当前 blue、占用 brightFg、空 fg，靠颜色层级区分、无下划线）、最小化计数（`hideclients` 插件，eye-off + 数量，muted，0 时隐藏；Mango/Umbriel 各自取数）与窗口标题；右侧托盘、网络、电池、CPU/MEM、通知、控制中心与 `%m月%d日 %H:%M` 时钟 | `noctalia-shell/noctalia.nix` |
+| 顶栏 | Noctalia 高 30、完全透明（无背景、不模糊）、贴顶，Mango 会话使用。左侧工作区编号（当前 blue、占用 brightFg、空 fg，靠颜色层级区分、无下划线）、最小化计数（`hideclients` 插件，eye-off + 数量，muted，0 时隐藏）与窗口标题；右侧托盘、网络、电池、CPU/MEM、通知、控制中心与 `%m月%d日 %H:%M` 时钟 | `noctalia-shell/noctalia.nix` |
 | 搜索 | Noctalia launcher 面板居中，不画应用图标；`Alt+Space` | `noctalia-shell/noctalia.nix` |
 | 通知 | Noctalia 通知卡片：右上、`background_opacity` 0.97、1 px 边框、无模糊；可见条数由屏幕空间决定（未设 `max_visible`） | `noctalia-shell/noctalia.nix` |
 | OSD | Noctalia 音量/亮度/麦克风胶囊：底部居中（`bottom_center`，`offset_y` 48），避开右上通知；锁定键提示由合成器 IPC 转发 | `noctalia-shell/noctalia.nix` |
@@ -67,7 +67,7 @@ checks: [palette-contrast, gtk-qt-theme, unified-noctalia-session]
 
 ## 模糊
 
-Mango 的 layer 规则默认 `no_blur:1`，Noctalia 顶栏完全透明；Umbriel 只对 Noctalia 的 bar/面板/通知/OSD 层开放 blur。Noctalia 面板为 solid，不依赖合成器 blur。
+Mango 的 layer 规则默认 `no_blur:1`，Noctalia 顶栏完全透明；Noctalia 面板为 solid，不依赖合成器 blur。
 
 通知与 OSD 在 Mango 下保持 `no_blur:1`：半透明卡片再模糊会让底色发灰（2026-10-31 实机确认）。壁纸由 Noctalia 绘制，不参与 Mango 的 layer 模糊。
 

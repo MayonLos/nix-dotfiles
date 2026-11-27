@@ -11,7 +11,6 @@ let
     builtins.toJSON {
       targets = [
         "mango-session.target"
-        "umbriel-session.target"
       ];
       graphicalSessionTargets = home.nixDotfiles.graphicalSessionTargets;
       noctalia = {
@@ -44,7 +43,7 @@ in
     mango = nixos.programs.mango.package;
   };
 
-  # The two sessions share one shell: Noctalia plus the polkit agent and the
+  # The Mango session owns the shell: Noctalia plus the polkit agent and the
   # X11 clipboard bridge are services on every session target, and no Mango
   # shell package (mangobar/mako/swayosd/fuzzel/swaylock/wallpaper daemons) is
   # installed any more. The generated Noctalia config, palette and Mango rule
@@ -64,7 +63,6 @@ in
         PLUGIN_MANIFEST = home.home.file.".local/share/noctalia/plugins/hideclients/plugin.toml".source;
         PLUGIN_ENTRY = home.home.file.".local/share/noctalia/plugins/hideclients/indicator.luau".source;
         EXPECTED_MMSG = "${nixos.programs.mango.package}/bin/mmsg";
-        EXPECTED_UMBRIEL = "${pkgs.local.noctaliaDesktop.umbriel}/bin/umbriel";
       }
       ''
         python3 - "$metadata" <<'PY'
@@ -85,6 +83,7 @@ in
         forbidden = {
             "mangobar", "mako", "swayosd", "fuzzel", "swaylock",
             "sweetbgd", "matuwall", "cliphist", "cliphist-tui", "wl-clip-persist",
+            "umbriel", "luciole",
         }
         leftovers = forbidden.intersection(data["packageNames"])
         want(not leftovers, f"removed shell packages are still installed: {sorted(leftovers)}")
@@ -225,14 +224,10 @@ in
             entry_text = fh.read()
         for placeholder in ("@mmsg@", "@mutedFg@"):
             want(placeholder not in entry_text, f"plugin entry keeps {placeholder}")
-        for env, description in (
-            ("EXPECTED_MMSG", "mmsg"),
-            ("EXPECTED_UMBRIEL", "umbriel"),
-        ):
-            want(
-                os.environ[env] in entry_text,
-                f"plugin entry has no absolute {description} path",
-            )
+        want(
+            os.environ["EXPECTED_MMSG"] in entry_text,
+            "plugin entry has no absolute mmsg path",
+        )
 
         if errors:
             print("\n".join(errors))

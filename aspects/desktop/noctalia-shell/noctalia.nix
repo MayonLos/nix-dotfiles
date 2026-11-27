@@ -9,16 +9,14 @@ let
   toml = pkgs.formats.toml { };
   json = pkgs.formats.json { };
   noctalia = pkgs.local.noctaliaDesktop.noctalia;
-  umbriel = pkgs.local.noctaliaDesktop.umbriel;
   wallpapers = import ../../appearance/appearance/resources/wallpaper/package.nix {
     inherit pkgs palette;
   };
 
-  # The minimized-window counter plugin reads Mango IPC (`mmsg`) and, in the
-  # Umbriel session, `umbriel windows --json`. Resolve absolute store paths
-  # instead of relying on the Noctalia service PATH: a missing command would
-  # leave the widget permanently hidden. The Mango package attribute is guarded
-  # so configs without the Mango Home Manager module still evaluate.
+  # The minimized-window counter plugin reads Mango IPC (`mmsg`). Resolve an
+  # absolute store path instead of relying on the Noctalia service PATH: a
+  # missing command would leave the widget permanently hidden. The attribute
+  # is guarded so configs without the Mango Home Manager module still evaluate.
   mangoPackage = lib.attrByPath [ "wayland" "windowManager" "mango" "package" ] null config;
   mmsg = if mangoPackage != null then lib.getExe' mangoPackage "mmsg" else "mmsg";
 
@@ -97,15 +95,14 @@ in
 
       # Local Noctalia plugin (the implicit "local" source under the XDG data
       # home) that restores the mangobar-era minimized-clients counter. The
-      # manifest is static; the Luau entry gets the absolute workbench paths
-      # (`mmsg`/`umbriel`) and the palette's muted token substituted at build
-      # time. [plugins] and the bar below enable and place it.
+      # manifest is static; the Luau entry gets the absolute `mmsg` path and
+      # the palette's muted token substituted at build time. [plugins] and the
+      # bar below enable and place it.
       ".local/share/noctalia/plugins/hideclients/plugin.toml".source = ./plugins/hideclients/plugin.toml;
       ".local/share/noctalia/plugins/hideclients/indicator.luau".source =
         pkgs.replaceVars ./plugins/hideclients/indicator.luau
           {
             inherit mmsg;
-            umbriel = lib.getExe umbriel;
             mutedFg = palette.muted;
           };
     };
@@ -165,8 +162,8 @@ in
         track_usage = true;
         sort_by_usage = true;
       };
-      # The Umbriel session autostarts the repository's polkit-gnome agent;
-      # Noctalia's own agent cannot register from this session cgroup.
+      # The Mango session uses the repository's polkit-gnome agent; Noctalia's
+      # own agent cannot register from this session cgroup.
       polkit_agent = false;
       time_format = "{:%H:%M}";
       date_format = "%m-%d";
@@ -366,8 +363,8 @@ in
         show_glyph = false;
         label_show_units = true;
       };
-      # Local plugin placement; the counter hides itself until a Mango or
-      # Umbriel window is minimized/stashed, and stays hidden elsewhere.
+      # Local plugin placement; the counter hides itself until a Mango window
+      # is minimized.
       hideclients.type = "nix-dotfiles/hideclients:indicator";
     };
   };

@@ -7,14 +7,13 @@
 let
   targets = [
     "mango-session.target"
-    "umbriel-session.target"
   ];
   noctalia = "${pkgs.local.noctaliaDesktop.noctalia}/bin/noctalia";
   polkitAgent = "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1";
   clipboardBridge = import ./clipboard-bridge.nix { inherit pkgs; };
   # Compositors import WAYLAND_DISPLAY/XDG_SESSION_TYPE into the user manager
   # before starting their session target, so a service WantedBy every target
-  # gets the same environment in both sessions.
+  # gets the same environment in the Mango session.
   shellPath = "${config.home.profileDirectory}/bin:/run/current-system/sw/bin";
   configuredFiles = builtins.attrNames config.xdg.configFile;
   restartFiles = map (name: config.xdg.configFile.${name}.source) (

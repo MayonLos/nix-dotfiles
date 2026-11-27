@@ -207,7 +207,7 @@ inventory/
 
 ### 8.5 输入管理 [硬]
 
-- `flake.nix` 中每个输入注明 follows 策略与理由；`mango`、`llm-agents` **不加 follows**（源码依赖组合或预构建缓存依赖其 pin）。登录屏默认是 Noctalia Greeter（`packages/noctalia-desktop/noctalia-greeter.nix` 固定上游 rev），可切回 nixpkgs 的 gtkgreet，两者都不是 flake 输入。截图工具从上游 `v0.2.4` tag 取源码、在 `packages/mark-shot` 应用本仓库补丁，没有单独 flake 输入；Noctalia/Umbriel/Luciole/portal 的 pin 在 `packages/noctalia-desktop/`。
+- `flake.nix` 中每个输入注明 follows 策略与理由；`mango`、`llm-agents` **不加 follows**（源码依赖组合或预构建缓存依赖其 pin）。登录屏默认是 Noctalia Greeter（`packages/noctalia-desktop/noctalia-greeter.nix` 固定上游 rev），可切回 nixpkgs 的 gtkgreet，两者都不是 flake 输入。截图工具从上游 `v0.2.4` tag 取源码、在 `packages/mark-shot` 应用本仓库补丁，没有单独 flake 输入；Noctalia 与 Noctalia Greeter 的 pin 在 `packages/noctalia-desktop/`。
 - 架构重构期间冻结 `flake.lock`、`stateVersion`、包版本与依赖组合。
 - 更新输入后必须：构建 toplevel、`nix store diff-closures` 摘要、对照 workaround 原因复核。
 

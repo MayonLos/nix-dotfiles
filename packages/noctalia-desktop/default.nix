@@ -1,43 +1,18 @@
-# Package factory for the Noctalia desktop stack (experimental, 2026-11).
+# Package factory for the Noctalia components this repository uses.
 #
-# Every package pins an upstream revision with a fixed fetch hash; each
-# derivation exposes `passthru.version` and `passthru.rev` (or tag) plus an
-# `updateScript`. See README.md for provenance and .work/research/ for the
-# build evidence report.
+# Every package pins an upstream revision with a fixed fetch hash and exposes
+# its passthru metadata plus an updateScript. The experimental Umbriel session,
+# its compositor, Luciole and the Umbriel portal were removed on 2026-11-27;
+# only the shell and the login greeter remain.
 #
-# Expected wiring (aspects are owned by another change):
+# Expected wiring:
 #   pkgs.local.noctaliaDesktop = import ../packages/noctalia-desktop { pkgs = final; };
-#   pkgs.local.noctaliaDesktop.{noctalia,luciole,umbriel,noctalia-greeter,portal}
+#   pkgs.local.noctaliaDesktop.{noctalia,greeter}
 { pkgs, ... }:
-let
-  noctalia = pkgs.callPackage ./noctalia.nix { };
-  umbriel = pkgs.callPackage ./umbriel.nix { };
-  greeter = pkgs.callPackage ./noctalia-greeter.nix { };
-  luciole = pkgs.callPackage ./luciole.nix { };
-  portal = pkgs.callPackage ./xdg-desktop-portal-umbriel.nix { };
-in
 {
-  inherit
-    noctalia
-    luciole
-    umbriel
-    greeter
-    portal
-    ;
+  noctalia = pkgs.callPackage ./noctalia.nix { };
+  greeter = pkgs.callPackage ./noctalia-greeter.nix { };
 
-  # The greeter's upstream attribute name.
-  noctalia-greeter = greeter;
-
-  # The portal's upstream attribute name, kept so consumers can use either key.
-  xdg-desktop-portal-umbriel = portal;
-
-  # Verbatim copies of the upstream v5.6.0 module files. They are plain imports;
-  # the caller wires the package option to the derivations above.
-  modules = {
-    noctalia = {
-      homeManager = ./modules/noctalia/home-module.nix;
-      nixos = ./modules/noctalia/nixos-module.nix;
-      hjem = ./modules/noctalia/hjem-module.nix;
-    };
-  };
+  # Upstream attribute name kept for callers/docs that use it.
+  noctalia-greeter = pkgs.callPackage ./noctalia-greeter.nix { };
 }

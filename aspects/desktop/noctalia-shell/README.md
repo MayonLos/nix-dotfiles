@@ -1,9 +1,8 @@
 # noctalia-shell
 
-Shared Noctalia v5 shell for every selectable session (Mango and
-Umbriel). It owns the shell configuration, the palette, and the systemd user
-services that start the shell and its companions from each compositor's session
-target.
+The single Noctalia v5 shell for the Mango session. It owns the shell
+configuration, the palette, and the systemd user services that start the
+shell and its companions from the compositor's session target.
 
 ## Inputs
 
@@ -18,13 +17,13 @@ upstream Noctalia package from `pkgs.local.noctaliaDesktop.noctalia`.
 | `~/.config/noctalia/palettes/one-dark.json` | `noctalia.nix` |
 | `~/Pictures/Wallpapers/managed` | `noctalia.nix`; HM link to the appearance factory's 18-image link farm. The sibling `local/` directory is user data and is never written here. |
 | `~/.local/share/noctalia/plugins/hideclients/{plugin.toml,indicator.luau}` | `noctalia.nix`; read-only local Noctalia plugin. |
-| `noctalia.service` | `services.nix`; `Type=notify`, `WantedBy` the two session targets |
+| `noctalia.service` | `services.nix`; `Type=notify`, `WantedBy` the Mango session target |
 | `polkit-gnome-authentication-agent-1.service` | `services.nix` |
 | `clipboard-bridge.service` | `services.nix` + `clipboard-bridge.nix` |
 
-Compositors import `WAYLAND_DISPLAY`/`XDG_SESSION_TYPE` before starting their
-target (Mango via the HM module's systemd hook, Umbriel via `start-umbriel`),
-so one set of services works in both.
+The Mango Home Manager module imports `WAYLAND_DISPLAY`/`XDG_SESSION_TYPE`
+into the user manager before starting the target, so one set of services
+works for the session.
 
 ## Optimizations
 
@@ -41,15 +40,12 @@ so one set of services works in both.
 - OSD is anchored `bottom_center` (offset 48) so it cannot cover the top-right
   notification stack. The wallpaper panel browses `~/Pictures/Wallpapers`.
 - The local `hideclients` plugin restores the mangobar-era minimized-window
-  counter: an eye-off glyph plus the hidden-window count, hidden at zero in One
-  Dark `muted`. Mango supplies `hide_clients` through `mmsg get all-monitors`;
-  Umbriel supplies `minimized` plus hidden scratchpad members through
-  `umbriel windows --json` (a shown scratchpad marks its windows visible, so
-  only the hidden pool counts). Clicking restores through
-  `mmsg dispatch toggle_scratchpad` or `umbriel msg scratchpad-toggle` /
-  `window-restore-minimized`. Both tool paths are substituted at build time
-  instead of relying on the service PATH, and the widget stays hidden in
-  sessions with neither IPC.
+  counter: an eye-off glyph plus the count from `mmsg get all-monitors`
+  (`hide_clients` summed over monitors), hidden at zero in One Dark `muted`.
+  Clicking restores the latest minimized client through
+  `mmsg dispatch toggle_scratchpad`. The `mmsg` path is substituted at build
+  time instead of relying on the service PATH, and the widget stays hidden in
+  sessions without that IPC.
 
 ## Removal
 

@@ -28,7 +28,6 @@ _: {
     ./desktop/greeter
     ./desktop/noctalia-shell
     ./desktop/noctalia-benchmark
-    ./desktop/umbriel-session
     ./dev/embedded
     ./dev/ai-agents
     ./dev/local-inference
